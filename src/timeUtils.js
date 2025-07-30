@@ -15,21 +15,15 @@ export const normalizeDate = (date) => {
 };
 
 export const normalizeTime = (timeStr) => {
-  console.log('⏱ normalizeTime called with:', timeStr);
-
   if (!timeStr || typeof timeStr !== 'string') return '';
-
   const trimmed = timeStr.trim().toUpperCase();
-
   // Explicitly enforce AM/PM format
   const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
   if (timeMatch) {
     const normalized = `${timeMatch[1]}:${timeMatch[2]} ${timeMatch[3].toUpperCase()}`;
-    console.log('✅ Normalized time string:', normalized);
     return normalized;
   }
 
-  console.warn('⚠️ Failed to normalize time string:', timeStr);
   return timeStr;
 };
 
@@ -42,7 +36,6 @@ export const formatTime = (val) => {
   const parsed = dayjs(val, ["HH:mm", "h:mm A", dayjs.ISO_8601]).tz(TIMEZONE);
   return parsed.isValid() ? parsed.format('h:mm A') : val;
 };
-
 
 export const calculateDropOff = (pickup, duration) => {
   try {
@@ -64,13 +57,9 @@ export const calculateDropOff = (pickup, duration) => {
     const dropoff = pickupDT.add(hr, 'hour').add(min, 'minute');
     return dropoff.format('h:mm A');
   } catch (e) {
-    console.warn('Dropoff calc error:', e);
     return 'N/A';
   }
 };
-
-
-
 
 export const formatDuration = (h, m) => {
   const hh = parseInt(h || 0, 10);

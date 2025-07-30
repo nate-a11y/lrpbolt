@@ -51,7 +51,6 @@ export default function TicketScanner() {
         () => {}
       );
     } catch (err) {
-      console.warn("Primary camera failed, retrying...");
       if (cameras.length > 1) {
         const fallbackCam = cameras.find(c => c.id !== cameraId);
         if (fallbackCam) {
@@ -195,7 +194,7 @@ export default function TicketScanner() {
         setTorchOn(!torchOn);
       }
     } catch (e) {
-      console.warn("Torch toggle failed", e);
+      // ignore failure to toggle torch
     }
   };
 
