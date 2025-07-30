@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/TicketScanner.jsx — now with BEYOND GOD MODE ⚡
 import React, { useEffect, useRef, useState } from 'react';
 import {

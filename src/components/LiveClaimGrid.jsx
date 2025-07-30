@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState } from 'react';
 import {
   Box, IconButton, Snackbar, Alert, Tooltip

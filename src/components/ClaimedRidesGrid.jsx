@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
 import React, { useEffect, useState } from 'react';
 import {

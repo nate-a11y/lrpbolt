@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Email, Download, Search, Summary, Scanner Status
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';

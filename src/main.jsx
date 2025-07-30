@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';

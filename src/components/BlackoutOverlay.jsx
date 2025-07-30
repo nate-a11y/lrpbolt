@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/BlackoutOverlay.jsx
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Button } from '@mui/material';

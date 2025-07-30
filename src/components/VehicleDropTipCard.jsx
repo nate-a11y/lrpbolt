@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
 

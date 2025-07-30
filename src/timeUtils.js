@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // Updated timeUtils.js
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
