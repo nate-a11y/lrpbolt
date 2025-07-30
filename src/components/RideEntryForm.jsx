@@ -213,7 +213,7 @@ export default function RideEntryForm() {
     setSubmitting(true);
     try {
       const lines = multiInput.trim().split('\n');
-      for (const line of lines) {
+      await Promise.all(lines.map(line => {
         const [TripID, Date, PickupTime, DurationHours, DurationMinutes, RideType, Vehicle, RideNotes] =
           line.split(',').map(s => s.trim());
         const rideDuration = formatDuration(DurationHours, DurationMinutes);
@@ -228,7 +228,7 @@ export default function RideEntryForm() {
           CreatedBy: currentUser,
           LastModifiedBy: currentUser
         };
-        await fetch('https://lakeridepros.xyz/claim-proxy.php', {
+        return fetch('https://lakeridepros.xyz/claim-proxy.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -238,7 +238,7 @@ export default function RideEntryForm() {
             data: payload
           })
         });
-      }
+      }));
       setToast({ open: true, message: '✅ Rides added!', severity: 'success' });
       setMultiInput('');
     } catch (err) {
