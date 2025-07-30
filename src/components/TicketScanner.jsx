@@ -7,6 +7,7 @@ import QRCode from 'react-qr-code';
 import { Html5Qrcode } from 'html5-qrcode';
 import beepSound from '/src/assets/beep.mp3';
 import { normalizeDate, normalizeTime, formatDate, formatTime } from '../timeUtils';
+import { fetchTicket, updateTicketScan } from '../hooks/api';
 
 export default function TicketScanner() {
   const [scannedData, setScannedData] = useState(null);
@@ -102,8 +103,7 @@ export default function TicketScanner() {
     setScannedData(ticketId);
     setLoading(true);
   
-    fetch(`https://lakeridepros.xyz/claim-proxy.php?type=ticket&ticketId=${ticketId}`)
-      .then(res => res.json())
+    fetchTicket(ticketId)
       .then(data => {
         setLoading(false);
         if (data?.ticketId) {
@@ -147,19 +147,12 @@ export default function TicketScanner() {
       return;
     }
   
-    fetch('https://lakeridepros.xyz/claim-proxy.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        key: 'a9eF12kQvB67xZsT30pL',
-        type: 'updateticket',
-        ticketId: ticket.ticketId,
-        scanType,
-        scannedAt: new Date().toISOString(),
-        scannedBy: localStorage.getItem('lrp_driver') || 'Unknown'
-      })
-    })
-      .then(res => res.json())
+    updateTicketScan(
+      ticket.ticketId,
+      scanType,
+      new Date().toISOString(),
+      localStorage.getItem('lrp_driver') || 'Unknown'
+    )
       .then(result => {
         if (result.success) {
           const updatedFields = scanType === 'outbound'

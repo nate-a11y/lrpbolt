@@ -7,6 +7,7 @@ import {
 import RideGroup from '../RideGroup';
 import BlackoutOverlay from './BlackoutOverlay';
 import { normalizeDate } from '../timeUtils';
+import { fetchLiveRides, claimRide as apiClaimRide } from '../hooks/api';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -29,38 +30,20 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     setToast({ open: true, message, severity });
 
   const claimRide = async (tripId) => {
-    const payload = {
-      type: 'claim',
-      tripId,
-      claimedBy: driver,
-      claimedAt: new Date().toISOString(),
-      key: 'a9eF12kQvB67xZsT30pL',
-    };
-
-    const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await res.json();
-
+    const result = await apiClaimRide(tripId, driver);
     if (result.success) {
       setClaimLog((prev) => [...prev, { tripId, time: new Date().toLocaleTimeString() }]);
       hasLoadedRef.current = false;
       loadRides();
       return true;
-    } else {
-      throw new Error(result.message || 'Claim failed');
     }
+    throw new Error(result.message || 'Claim failed');
   };
 
   const loadRides = async () => {
     setLoadingRides(true);
     try {
-      const response = await fetch('https://lakeridepros.xyz/claim-proxy.php?type=rides');
-      if (!response.ok) throw new Error('Failed to load rides');
-      const data = await response.json();
+      const data = await fetchLiveRides();
       const unclaimed = data.filter((r) => {
         const claimed = (r.ClaimedBy || '').toString().trim().toLowerCase();
         return claimed === '' || claimed === 'unclaimed' || claimed === 'null' || claimed === 'none';

@@ -10,6 +10,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTheme } from '@mui/material/styles';
 import dayjs from 'dayjs';
+import { logTime, fetchTimeLogs } from '../hooks/api';
 
 const TimeClock = ({ driver, setIsTracking }) => {
   const theme = useTheme();
@@ -55,30 +56,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
   }, [isRunning, startTime]);
 
   const loadSessions = () => {
-    fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNqJgbe9yGcjFht3qmwMnTIvq/pub?gid=888251608&single=true&output=csv')
-      .then(res => res.text())
-      .then(text => {
-        const lines = text.trim().split('\n');
-        const headers = lines[0].split(',');
-        const driverIdx = headers.indexOf('Driver');
-        const startIdx = headers.indexOf('StartTime');
-        const endIdx = headers.indexOf('EndTime');
-        const durationIdx = headers.indexOf('Duration');
-        const rideIdIdx = headers.indexOf('RideID');
-
-        const logs = lines.slice(1).map(row => {
-          const parts = row.split(',');
-          return {
-            driver: parts[driverIdx],
-            start: parts[startIdx],
-            end: parts[endIdx],
-            duration: parts[durationIdx],
-            rideId: parts[rideIdIdx] || 'N/A'
-          };
-        }).filter(log => log.driver === driver);
-
-        setPreviousSessions(logs);
-      });
+    fetchTimeLogs(driver).then(setPreviousSessions);
   };
 
   useEffect(() => {
@@ -115,23 +93,16 @@ const TimeClock = ({ driver, setIsTracking }) => {
 
     const duration = end.diff(startTime, 'minute');
     const payload = {
-      type: 'logtime',
       driver,
       rideId: isNA ? 'N/A' : isMulti ? 'MULTI' : rideId,
       startTime: startTime.format('MM/DD/YYYY HH:mm'),
       endTime: end.format('MM/DD/YYYY HH:mm'),
       duration,
       loggedAt: dayjs().format('MM/DD/YYYY HH:mm'),
-      key: 'a9eF12kQvB67xZsT30pL',
     };
 
-    fetch('https://lakeridepros.xyz/claim-proxy.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then(res => res.json())
-      .then(data => {
+    logTime(payload)
+      .then((data) => {
         if (data.success) {
           showSnack('✅ Time successfully logged!');
           localStorage.removeItem('lrp_timeTrack');
@@ -144,7 +115,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
           showSnack(`❌ Failed to log time: ${data.message}`, 'error');
         }
       })
-      .catch(err => showSnack('❌ Network error: ' + err.message, 'error'))
+      .catch((err) => showSnack('❌ Network error: ' + err.message, 'error'))
       .finally(() => setIsSubmitting(false));
   };
 
