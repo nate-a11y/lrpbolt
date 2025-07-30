@@ -3,10 +3,9 @@ import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'rea
 import {
   ThemeProvider, createTheme, CssBaseline, Box, Typography, Button,
   Snackbar, Alert, Switch, Divider, TextField, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions, Toolbar, CircularProgress, Container
+  Dialog, DialogTitle, DialogContent, DialogActions, Toolbar, CircularProgress
 } from '@mui/material';
 import { ErrorBoundary } from 'react-error-boundary';
-import LoopIcon from '@mui/icons-material/Loop';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import InstallBanner from './components/InstallBanner';
@@ -61,7 +60,7 @@ const preloadDriverList = async () => {
     const data = await res.json();
     localStorage.setItem("lrp_driverList", JSON.stringify(data));
     localStorage.setItem("lrp_driverList_exp", now + 86400000);
-  } catch (err) {
+  } catch {
     // ignore preload errors
   }
 };
@@ -117,8 +116,20 @@ export default function App() {
 
   const fetchRole = async (email) => {
     try {
-      const res = await fetch("https://lakeridepros.xyz/claim-proxy.php?type=access");
-      const data = await res.json();
+      const cached = localStorage.getItem("lrp_roles");
+      const expires = localStorage.getItem("lrp_roles_exp");
+      const now = Date.now();
+      let data;
+
+      if (cached && expires && now < parseInt(expires, 10)) {
+        data = JSON.parse(cached);
+      } else {
+        const res = await fetch("https://lakeridepros.xyz/claim-proxy.php?type=access");
+        data = await res.json();
+        localStorage.setItem("lrp_roles", JSON.stringify(data));
+        localStorage.setItem("lrp_roles_exp", now + 86400000);
+      }
+
       const match = data.find(u => u.email.toLowerCase() === email.toLowerCase());
       const access = match?.access || 'User';
       setRole(access);

@@ -184,9 +184,9 @@ const TimeClock = ({ driver, setIsTracking }) => {
             <Typography variant="subtitle1">📖 How to Use The Time Tracker & Moovs</Typography>
           </AccordionSummary>
           <AccordionDetails>
-            <Typography variant="body2" gutterBottom>
-              ⏱️ Use the <strong> 🚀 Start</strong> button when you begin working. If it's not for a ride, check <strong>N/A – Non-Ride Task</strong>.
-            </Typography>
+              <Typography variant="body2" gutterBottom>
+                ⏱️ Use the <strong> 🚀 Start</strong> button when you begin working. If it&apos;s not for a ride, check <strong>N/A – Non-Ride Task</strong>.
+              </Typography>
             <Typography variant="body2" gutterBottom>
               ✨ Start the trip in Moovs when you are actually on the way to get the customer, instead of when you are starting the get-ready and washing the vehicle.
             </Typography>
@@ -196,15 +196,15 @@ const TimeClock = ({ driver, setIsTracking }) => {
             <Typography variant="body2" gutterBottom>
               📝 You can enter a <strong>Ride ID</strong> for ride-related work, or check <strong>N/A</strong> for meetings, cleaning, prep, etc.
             </Typography>
-            <Typography variant="body2" gutterBottom>
-              📋 View previous sessions below. Use <strong>🔄 Refresh</strong> if your recent entry isn’t showing.
-            </Typography>
+              <Typography variant="body2" gutterBottom>
+                📋 View previous sessions below. Use <strong>🔄 Refresh</strong> if your recent entry isn&apos;t showing.
+              </Typography>
             <Typography variant="body2" gutterBottom>
               💡 Don’t close the tab while tracking — or it might pause your timer.
             </Typography>
-            <Typography variant="body2" gutterBottom>
-              🦒 If you're doing back-to-back rides with no meaningful break in between, you can now use the new <strong>Multiple Back-to-Back Rides</strong> option to track them all together.
-            </Typography>
+              <Typography variant="body2" gutterBottom>
+                🦒 If you&apos;re doing back-to-back rides with no meaningful break in between, you can now use the new <strong>Multiple Back-to-Back Rides</strong> option to track them all together.
+              </Typography>
           </AccordionDetails>
         </Accordion>
 
