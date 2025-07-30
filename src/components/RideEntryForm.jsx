@@ -13,6 +13,7 @@ import { auth } from '../firebase';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { TIMEZONE } from '../constants';
 import {fetchLiveRides, fetchRideQueue} from '../hooks/api'
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -45,7 +46,7 @@ export default function RideEntryForm() {
 
   useEffect(() => {
     const rideDuration = formatDuration(formData.DurationHours, formData.DurationMinutes);
-    const formattedDate = formData.Date ? dayjs(formData.Date).tz('America/Chicago').format('M/D/YYYY') : 'N/A';
+    const formattedDate = formData.Date ? dayjs(formData.Date).tz(TIMEZONE).format('M/D/YYYY') : 'N/A';
     const formattedTime = toTimeString12Hr(formData.PickupTime);
     setPreview({ ...formData, PickupTime: formattedTime, Date: formattedDate, RideDuration: rideDuration });
   }, [formData]);
@@ -140,8 +141,8 @@ export default function RideEntryForm() {
     setSubmitting(true);
     try {
       const rideDuration = formatDuration(formData.DurationHours, formData.DurationMinutes);
-      const formattedDate = dayjs(formData.Date).tz('America/Chicago').format('MM/DD/YYYY');
-      const formattedTime = dayjs(`2000-01-01T${formData.PickupTime}`).tz('America/Chicago').format('h:mm A');
+      const formattedDate = dayjs(formData.Date).tz(TIMEZONE).format('MM/DD/YYYY');
+      const formattedTime = dayjs(`2000-01-01T${formData.PickupTime}`).tz(TIMEZONE).format('h:mm A');
       const payload = {
         ...formData,
         Date: formattedDate,
@@ -218,7 +219,7 @@ export default function RideEntryForm() {
         const payload = {
           TripID,
           Date: dayjs(Date).format('MM/DD/YYYY'),
-          PickupTime: dayjs(`2000-01-01T${PickupTime}`).tz('America/Chicago').format('h:mm A'),
+          PickupTime: dayjs(`2000-01-01T${PickupTime}`).tz(TIMEZONE).format('h:mm A'),
           RideDuration: rideDuration,
           RideType,
           Vehicle,

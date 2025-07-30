@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { TIMEZONE } from '../constants';
 import {
   Box, Typography, Button, CircularProgress, Dialog, Stack, Chip,
   useMediaQuery, useTheme, TextField, Switch, Tooltip
@@ -14,7 +15,7 @@ import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 
 const API_KEY = 'AIzaSyC6lPYlKbvx3O3q-i0ckUXtwwmZJ4dBGSQ';
 const CALENDAR_ID = 'c_7869dda1daed131fa3d21a570e7290d121284fe6062c94c0efa9eac6c63afc65@group.calendar.google.com';
-const CST = 'America/Chicago';
+const CST = TIMEZONE;
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
