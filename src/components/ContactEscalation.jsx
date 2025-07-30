@@ -17,8 +17,8 @@ import PhoneIcon from '@mui/icons-material/Phone';
 const contacts = [
   {
     name: "Jim Brentlinger (LRP1)",
-    phone: "573-353-2849",
-    email: "jim@lakeridepros.com",
+    phone: "555-0101",
+    email: "driver1@example.com",
     responsibilities: [
       "Trip issues (larger vehicles)",
       "Vehicle issues, schedule issues",
@@ -31,8 +31,8 @@ const contacts = [
   },
   {
     name: "Nate Bullock (LRP2)",
-    phone: "417-380-9953",
-    email: "nate@lakeridepros.com",
+    phone: "555-0102",
+    email: "driver2@example.com",
     responsibilities: [
       "Moovs issues (driver or backend)",
       "Claim Portal / Tech support",
@@ -45,8 +45,8 @@ const contacts = [
   },
   {
     name: "Michael Brandt (LRP3)",
-    phone: "573-286-9110",
-    email: "michael@lakeridepros.com",
+    phone: "555-0103",
+    email: "driver3@example.com",
     responsibilities: [
       "Social Media / Promotions",
       "Insider memberships",
