@@ -1,54 +1,55 @@
-# React + TypeScript + Vite
+# Lake Ride Pros Driver Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Progressive Web App (PWA) for Lake Ride Pros drivers. The portal lets drivers claim rides, track time, access drop-off tips, manage tickets and more. It is built with **React**, **Vite** and **Material UI**, and includes Firebase authentication and offline support via `vite-plugin-pwa`.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Ride Claiming** – view unclaimed rides and claim them with filtering by vehicle or day.
+- **Time Clock** – track start/end times for rides with a log of previous sessions.
+- **Driver Tools** – directory of drivers, vehicle drop-off guides and escalation contacts.
+- **Ticket Management** – generate, scan and view QR code tickets.
+- **Admin Utilities** – view time logs and add rides (admin role only).
+- **Offline Ready** – ships as a PWA and works offline once installed.
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Node.js** `>=18`
+- No additional environment variables are required.
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+Install dependencies once with:
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Start the development server with hot reload:
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+npm run dev
 ```
+
+The app will open in your browser on the Vite dev server.
+
+## Building
+
+Create a production build in the `dist` folder:
+
+```bash
+npm run build
+```
+
+You can locally preview the built output using:
+
+```bash
+npm run preview
+```
+
+## Deployment
+
+Deploy the contents of the generated `dist` directory to any static hosting provider.
+
+## Optional Scripts
+
+At the moment the project does not define linting or testing scripts, but `eslint.config.js` is provided if you wish to run ESLint manually.
