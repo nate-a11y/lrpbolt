@@ -72,8 +72,8 @@ if ('serviceWorker' in navigator) {
           };
         };
       })
-      .catch(err => {
-        console.warn('Service Worker registration failed:', err);
+      .catch(() => {
+        // Service worker registration failed
       });
   });
 }

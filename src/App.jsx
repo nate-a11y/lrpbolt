@@ -61,7 +61,7 @@ const preloadDriverList = async () => {
     localStorage.setItem("lrp_driverList", JSON.stringify(data));
     localStorage.setItem("lrp_driverList_exp", now + 86400000);
   } catch (err) {
-    console.warn("Preload driver list failed:", err);
+    // ignore preload errors
   }
 };
 preloadDriverList();

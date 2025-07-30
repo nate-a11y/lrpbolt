@@ -86,7 +86,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   useEffect(() => {
     if (driver && !isLockedOut && !hasLoadedRef.current) {
-      console.log('[RideClaimTab] loading rides for:', driver);
       hasLoadedRef.current = true;
       loadRides();
     }
