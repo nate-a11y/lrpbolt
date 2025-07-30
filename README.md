@@ -52,3 +52,7 @@ export default tseslint.config({
   },
 })
 ```
+
+## License
+
+This project is provided under a proprietary license; no use is permitted. See the [LICENSE](LICENSE) file for details.
