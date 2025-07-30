@@ -30,6 +30,7 @@ import {
   createUserWithEmailAndPassword, onAuthStateChanged
 } from './firebase';
 import './index.css';
+import { TIMEZONE } from './constants';
 
 const RideClaimTab = lazy(() => import('./components/RideClaimTab'));
 const TimeClock = lazy(() => import('./components/TimeClock'));
@@ -41,7 +42,7 @@ const RideVehicleCalendar = lazy(() => import('./components/RideVehicleCalendar'
 const dayjs = window.dayjs;
 dayjs.extend(window.dayjs_plugin_utc);
 dayjs.extend(window.dayjs_plugin_timezone);
-const CST = 'America/Chicago';
+const CST = TIMEZONE;
 
 const isInLockoutWindow = () => {
   const now = dayjs().tz(CST);

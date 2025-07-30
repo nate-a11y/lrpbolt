@@ -10,10 +10,11 @@ import { normalizeDate } from '../timeUtils';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { TIMEZONE } from '../constants';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-const CST = 'America/Chicago';
+const CST = TIMEZONE;
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const [rides, setRides] = useState([]);

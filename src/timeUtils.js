@@ -2,10 +2,12 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { TIMEZONE } from './constants';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-const CST = 'America/Chicago';
+
+const CST = TIMEZONE;
 
 export const normalizeDate = (date) => {
   const parsed = dayjs(date);
@@ -32,12 +34,12 @@ export const normalizeTime = (timeStr) => {
 };
 
 export const formatDate = (val) => {
-  const parsed = dayjs(val, ["YYYY-MM-DD", dayjs.ISO_8601]).tz('America/Chicago');
+  const parsed = dayjs(val, ["YYYY-MM-DD", dayjs.ISO_8601]).tz(TIMEZONE);
   return parsed.isValid() ? parsed.format('MMM D, YYYY') : val;
 };
 
 export const formatTime = (val) => {
-  const parsed = dayjs(val, ["HH:mm", "h:mm A", dayjs.ISO_8601]).tz('America/Chicago');
+  const parsed = dayjs(val, ["HH:mm", "h:mm A", dayjs.ISO_8601]).tz(TIMEZONE);
   return parsed.isValid() ? parsed.format('h:mm A') : val;
 };
 
@@ -88,6 +90,6 @@ export const parseDuration = (str) => {
 export const toTimeString12Hr = (t) => {
   if (!t) return '';
   const parsed = dayjs(`2000-01-01 ${t}`, ['h:mm A', 'H:mm', 'HH:mm']);
-  return parsed.isValid() ? parsed.tz('America/Chicago').format('h:mm A') : t;
+  return parsed.isValid() ? parsed.tz(TIMEZONE).format('h:mm A') : t;
 };
 

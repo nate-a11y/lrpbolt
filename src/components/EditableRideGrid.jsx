@@ -14,6 +14,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { motion } from 'framer-motion';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { auth } from '../firebase';
+import { TIMEZONE } from '../constants';
 import {
   normalizeDate,
   normalizeTime,
@@ -79,7 +80,7 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
 
     const finalDuration = formatDuration(editedRow.DurationHours, editedRow.DurationMinutes);
     const formattedTime = window.dayjs(`2000-01-01 ${editedRow.PickupTime}`, 'YYYY-MM-DD HH:mm')
-      .tz('America/Chicago')
+      .tz(TIMEZONE)
       .format('h:mm A');
     const formattedDate = window.dayjs(editedRow.Date).format('MM/DD/YYYY');
 
