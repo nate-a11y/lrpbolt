@@ -61,6 +61,18 @@ Run unit tests with:
 npm test
 ```
 
+## Environment Setup
+
+On some systems `npm` warns about an unknown `http-proxy` environment
+variable. To avoid this warning, unset `HTTP_PROXY` and `http_proxy` and
+set the recognized `npm_config_proxy` and `npm_config_https_proxy` variables:
+
+```bash
+unset HTTP_PROXY http_proxy
+export npm_config_proxy="http://proxy:8080"
+export npm_config_https_proxy="http://proxy:8080"
+```
+
 ## License
 
 This project is provided under a proprietary license; no use is permitted. See the [LICENSE](LICENSE) file for details.
