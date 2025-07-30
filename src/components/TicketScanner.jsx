@@ -63,7 +63,10 @@ export default function TicketScanner() {
       }
       setCameraError(true);
     }
+
   }, [cameras]);
+
+  }, [cameras, handleScan]);
 
   useEffect(() => {
     Html5Qrcode.getCameras().then(devices => {
@@ -134,10 +137,10 @@ export default function TicketScanner() {
         resetScanner();
       });
   }, [resetScanner]);
-
-  useEffect(() => {
+ useEffect(() => {
     handleScanRef.current = handleScan;
   }, [handleScan]);
+
   
 
   const confirmTicket = () => {
