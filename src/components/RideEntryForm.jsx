@@ -244,7 +244,7 @@ export default function RideEntryForm() {
     } catch (err) {
       setToast({ open: true, message: `❌ ${err.message}`, severity: 'error' });
     } finally {
-      setSubmitting(false); // 🔥 critical
+      setSubmitting(false);
     }
   };
  
