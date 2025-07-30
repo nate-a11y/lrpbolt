@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-// src/components/TicketScanner.jsx — now with BEYOND GOD MODE ⚡
+// src/components/TicketScanner.jsx — BEYOND GOD MODE ⚡ PATCHED
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Snackbar, Alert, Modal, Divider, Button, Fade, CircularProgress, ToggleButton, ToggleButtonGroup
@@ -24,7 +24,7 @@ export default function TicketScanner() {
   const [scanType, setScanType] = useState('outbound');
   const html5QrCodeRef = useRef(null);
   const handleScanRef = useRef(null);
-  const audioRef = useRef(new Audio(beepSound));
+  const audioRef = useRef(null);
   const isScanningRef = useRef(false);
   const cooldownRef = useRef(null);
   const [confirming, setConfirming] = useState(false);
@@ -85,22 +85,19 @@ export default function TicketScanner() {
     setShowSuccess(false);
     isScanningRef.current = false;
   
-    // Add this delay to allow camera to move away from QR before restarting
     setTimeout(() => {
       if (currentCameraId) {
         initScanner(currentCameraId);
       }
-    }, 1200); // give enough time for user to move QR away
+    }, 1200);
   }, [currentCameraId, initScanner]);
   
   const handleScan = useCallback(async (text) => {
     const ticketId = text?.split("/").pop()?.trim();
-  
-    // prevent scanning same ticket back-to-back
     if (!ticketId || isScanningRef.current || cooldownRef.current === ticketId) return;
   
     isScanningRef.current = true;
-    cooldownRef.current = ticketId; // mark current scan to ignore it shortly after
+    cooldownRef.current = ticketId;
   
     await stopScanner();
     setScannedData(ticketId);
@@ -118,13 +115,13 @@ export default function TicketScanner() {
           data.scannedReturnBy = data.scannedreturnby;
           setTicket(data);
           setModalOpen(true);
-          audioRef.current.play();
+
+          audioRef.current?.play().catch(() => {}); // ✅ Safe beep
           navigator.vibrate?.([100]);
   
-          // Start short cooldown to ignore same QR again
           setTimeout(() => {
             cooldownRef.current = null;
-          }, 3000); // 3 second safety window
+          }, 3000);
         } else {
           setSnackbar({ open: true, message: '❌ Ticket not found', severity: 'error' });
           resetScanner();
@@ -140,14 +137,11 @@ export default function TicketScanner() {
     handleScanRef.current = handleScan;
   }, [handleScan]);
 
-  
-
   const confirmTicket = () => {
     if (!ticket || !scanType || confirming) return;
     setConfirming(true);
   
     const alreadyScanned = scanType === 'outbound' ? ticket.scannedoutbound : ticket.scannedreturn;
-  
     if (alreadyScanned) {
       setSnackbar({ open: true, message: `⚠️ Ticket already scanned for ${scanType}`, severity: 'warning' });
       resetScanner();
@@ -166,12 +160,16 @@ export default function TicketScanner() {
             ? { scannedoutbound: true, scannedoutboundby: localStorage.getItem('lrp_driver') || 'Unknown' }
             : { scannedreturn: true, scannedreturnby: localStorage.getItem('lrp_driver') || 'Unknown' };
   
+          audioRef.current?.play().catch(() => {}); // ✅ Safe beep
+
           setTicket(prev => ({ ...prev, ...updatedFields }));
           setShowSuccess(true);
-          audioRef.current.play();
           setSnackbar({ open: true, message: `✅ ${scanType} scanned!`, severity: 'success' });
-          setModalOpen(false);
-          setTimeout(() => resetScanner(), 1200);
+
+          setTimeout(() => {
+            setModalOpen(false);
+            resetScanner();
+          }, 300);
         } else {
           setSnackbar({ open: true, message: '❌ Failed to update scan', severity: 'error' });
           setModalOpen(false);
@@ -194,9 +192,7 @@ export default function TicketScanner() {
         await scanner.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
         setTorchOn(!torchOn);
       }
-    } catch (e) {
-      // ignore failure to toggle torch
-    }
+    } catch {}
   }, [torchOn]);
 
   return (
@@ -204,6 +200,9 @@ export default function TicketScanner() {
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         🎯 Ticket Scanner
       </Typography>
+
+      {/* ✅ Persistent audio element */}
+      <audio ref={audioRef} src={beepSound} preload="auto" style={{ display: 'none' }} />
 
       <ToggleButtonGroup value={scanType} exclusive onChange={(e, val) => val && setScanType(val)} fullWidth sx={{ mb: 2 }}>
         <ToggleButton value="outbound">⬅️ Outbound</ToggleButton>
@@ -241,9 +240,9 @@ export default function TicketScanner() {
       {loading && <CircularProgress sx={{ display: 'block', mx: 'auto', mb: 2 }} />}
 
       <Modal open={modalOpen} onClose={() => {
-    setModalOpen(false);
-    setTimeout(() => resetScanner(), 200); // slight delay to prevent race with modal exit animation
-  }}>
+        setModalOpen(false);
+        setTimeout(() => resetScanner(), 200);
+      }}>
         <Box sx={{ backgroundColor: 'background.paper', borderRadius: 2, p: 4, width: 360, mx: 'auto', mt: '10vh', boxShadow: 24, outline: 'none' }}>
           {ticket ? (
             <>
@@ -268,15 +267,14 @@ export default function TicketScanner() {
                 <strong>Return:</strong> {ticket.scannedreturn ? `✅ by ${ticket.scannedreturnby || '—'}` : '❌ Not Scanned'}
               </Typography>
               <Button
-  fullWidth
-  onClick={confirmTicket}
-  sx={{ mt: 2 }}
-  variant="contained"
-  disabled={confirming || (scanType === 'outbound' ? ticket.scannedoutbound : ticket.scannedreturn)}
->
-  ✅ Confirm and Scan
-</Button>
-
+                fullWidth
+                onClick={confirmTicket}
+                sx={{ mt: 2 }}
+                variant="contained"
+                disabled={confirming || (scanType === 'outbound' ? ticket.scannedoutbound : ticket.scannedreturn)}
+              >
+                ✅ Confirm and Scan
+              </Button>
             </>
           ) : (
             <Typography align="center">Loading ticket…</Typography>
