@@ -49,14 +49,14 @@ export const calculateDropOff = (pickup, duration) => {
     const isPM = timeMatch[3].toUpperCase() === 'PM';
     const hour24 = (hour % 12) + (isPM ? 12 : 0);
 
-    let pickupDT = dayjs.tz('2000-01-01', CST).hour(hour24).minute(minute);
+    const pickupDT = dayjs.tz('2000-01-01', CST).hour(hour24).minute(minute);
 
     const hr = parseInt(duration.match(/\b(\d+)\s*hr\b/i)?.[1] || 0);
     const min = parseInt(duration.match(/\b(\d+)\s*min\b/i)?.[1] || 0);
 
     const dropoff = pickupDT.add(hr, 'hour').add(min, 'minute');
     return dropoff.format('h:mm A');
-  } catch (e) {
+  } catch {
     return 'N/A';
   }
 };
