@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideClaimTab.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   Box, Button, Typography, MenuItem, Select, FormControl, InputLabel,
   Snackbar, Alert, CircularProgress
@@ -42,7 +42,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     throw new Error(result.message || 'Claim failed');
   };
 
-  const loadRides = async () => {
+  const loadRides = useCallback(async () => {
     setLoadingRides(true);
     try {
       const data = await fetchLiveRides();
@@ -67,14 +67,14 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     } finally {
       setLoadingRides(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (driver && !isLockedOut && !hasLoadedRef.current) {
       hasLoadedRef.current = true;
       loadRides();
     }
-  }, [driver, isLockedOut]);
+  }, [driver, isLockedOut, loadRides]);
 
   return (
     <Box position="relative">

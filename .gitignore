@@ -5,3 +5,4 @@ dist
 
 # Build output
 dev-dist
+.env

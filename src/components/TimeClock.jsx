@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
   FormControlLabel, Tooltip, Snackbar, Alert, Chip
@@ -56,13 +56,13 @@ const TimeClock = ({ driver, setIsTracking }) => {
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
 
-  const loadSessions = () => {
+  const loadSessions = useCallback(() => {
     fetchTimeLogs(driver).then(setPreviousSessions);
-  };
+  }, [driver]);
 
   useEffect(() => {
     loadSessions();
-  }, [driver]);
+  }, [loadSessions]);
 
   const handleStart = () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {

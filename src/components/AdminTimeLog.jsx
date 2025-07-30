@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminTimeLog.jsx — God+1 Mode (Patched for Date Safety)
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Box, Paper, Typography, IconButton, TextField, InputAdornment, Tooltip,
   CircularProgress, FormControlLabel, Checkbox, Table, TableBody, TableCell, TableHead, TableRow,
@@ -41,7 +41,7 @@ export default function AdminTimeLog() {
   const isDark = theme.palette.mode === 'dark';
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setLoading(true);
     Papa.parse(SHEET_CSV_URL, {
       download: true,
@@ -80,7 +80,7 @@ export default function AdminTimeLog() {
         }
       },
     });
-  };
+  }, []);
 
   const aggregateWeekly = (entries) => {
     const grouped = {};
@@ -111,7 +111,7 @@ export default function AdminTimeLog() {
     setIssues(flagged);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const filteredRows = useMemo(() =>
     rows.filter((r) =>
