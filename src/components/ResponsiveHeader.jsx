@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { useState } from 'react';
 import {
   AppBar, Toolbar, IconButton, Typography, Box, Switch, Button,

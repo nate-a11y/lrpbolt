@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState } from 'react';
 
 export default function useDarkMode() {

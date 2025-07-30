@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/RideGroup.jsx
 import React, { useState, useRef, useMemo } from 'react';
 import {

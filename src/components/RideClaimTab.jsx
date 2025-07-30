@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/RideClaimTab.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import {

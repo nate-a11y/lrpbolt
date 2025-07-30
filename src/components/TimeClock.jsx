@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,

@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/firebase.js
 
 import { initializeApp } from "firebase/app";

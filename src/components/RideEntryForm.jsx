@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Button, TextField, Typography, MenuItem, Paper, Grid, Snackbar,

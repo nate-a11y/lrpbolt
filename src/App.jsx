@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/App.jsx
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {

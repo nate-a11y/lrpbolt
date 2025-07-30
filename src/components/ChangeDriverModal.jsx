@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,

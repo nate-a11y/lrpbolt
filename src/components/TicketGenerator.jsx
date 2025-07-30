@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/TicketGenerator.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import {

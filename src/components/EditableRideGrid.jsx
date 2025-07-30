@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   DataGrid, GridActionsCellItem, GridToolbarContainer, GridToolbarColumnsButton

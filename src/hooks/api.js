@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 const BASE_URL = 'https://lakeridepros.xyz/claim-proxy.php';
 const SECURE_KEY = 'a9eF12kQvB67xZsT30pL';
 const TIME_LOG_CSV =

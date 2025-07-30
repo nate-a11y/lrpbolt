@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 const LOCATIONS = [
   {
     name: "1932 Reserve",

@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // src/components/AdminTimeLog.jsx — God+1 Mode (Patched for Date Safety)
 import React, { useEffect, useState, useMemo } from 'react';
 import {

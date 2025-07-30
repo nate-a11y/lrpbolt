@@ -1,3 +1,4 @@
+/* Proprietary and confidential. See LICENSE. */
 // RideVehicleCalendar.jsx — Fully updated with vehicle chips, dynamic coloring, compact mode, summary, and improved light mode readability
 import React, { useEffect, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
