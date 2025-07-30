@@ -23,6 +23,7 @@ export default function TicketScanner() {
   const [torchOn, setTorchOn] = useState(false);
   const [scanType, setScanType] = useState('outbound');
   const html5QrCodeRef = useRef(null);
+  const handleScanRef = useRef(null);
   const audioRef = useRef(new Audio(beepSound));
   const isScanningRef = useRef(false);
   const cooldownRef = useRef(null);
@@ -49,7 +50,7 @@ export default function TicketScanner() {
       await html5QrCode.start(
         cameraId || { facingMode: "environment" },
         config,
-        handleScan,
+        text => handleScanRef.current?.(text),
         () => {}
       );
     } catch (err) {
@@ -57,11 +58,14 @@ export default function TicketScanner() {
         const fallbackCam = cameras.find(c => c.id !== cameraId);
         if (fallbackCam) {
           setCurrentCameraId(fallbackCam.id);
-          await html5QrCode.start(fallbackCam.id, config, handleScan, () => {});
+          await html5QrCode.start(fallbackCam.id, config, text => handleScanRef.current?.(text), () => {});
         }
       }
       setCameraError(true);
     }
+
+  }, [cameras]);
+
   }, [cameras, handleScan]);
 
   useEffect(() => {
@@ -133,6 +137,10 @@ export default function TicketScanner() {
         resetScanner();
       });
   }, [resetScanner]);
+ useEffect(() => {
+    handleScanRef.current = handleScan;
+  }, [handleScan]);
+
   
 
   const confirmTicket = () => {
