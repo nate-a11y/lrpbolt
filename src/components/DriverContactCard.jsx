@@ -1,11 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Link
-} from '@mui/material';
+import { Box, Typography, Paper, Link } from '@mui/material';
 
 export default function DriverContactCard({ name, phone, email, vehicles, lrpId }) {
   return (
@@ -17,7 +12,7 @@ export default function DriverContactCard({ name, phone, email, vehicles, lrpId 
         borderRadius: 2,
         display: 'flex',
         flexDirection: 'column',
-        gap: 1
+        gap: 1,
       }}
     >
       <Typography variant="h6" fontWeight="bold">
@@ -37,3 +32,10 @@ export default function DriverContactCard({ name, phone, email, vehicles, lrpId 
 
       <Box display="flex" alignItems="center" gap={1}>
         <Typography variant="body2">✉️</Typography>
+        <Link href={`mailto:${email}`} underline="hover">
+          {email}
+        </Link>
+      </Box>
+    </Paper>
+  );
+}

@@ -12,9 +12,9 @@ import {
   signOut
 } from "firebase/auth";
 
-// ⬇️ Replace these with your Firebase project's actual config
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "lrp---claim-portal.firebaseapp.com",
   projectId: "lrp---claim-portal",
   storageBucket: "lrp---claim-portal.firebasestorage.app",
