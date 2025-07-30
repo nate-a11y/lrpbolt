@@ -53,6 +53,14 @@ export default tseslint.config({
 })
 ```
 
+## Running Tests
+
+Run unit tests with:
+
+```bash
+npm test
+```
+
 ## License
 
 This project is provided under a proprietary license; no use is permitted. See the [LICENSE](LICENSE) file for details.
