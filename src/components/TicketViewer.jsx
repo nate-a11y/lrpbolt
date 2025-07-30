@@ -4,6 +4,7 @@ import {
   Box, Typography, Paper, Divider, Button, Alert, Snackbar
 } from '@mui/material';
 import dayjs from 'dayjs';
+import { fetchTicket, updateTicketScan } from '../hooks/api';
 
 export default function TicketViewer() {
   const { ticketId } = useParams();
@@ -14,8 +15,7 @@ export default function TicketViewer() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    fetch(`https://lakeridepros.xyz/claim-proxy.php?type=ticket&ticketId=${ticketId}`)
-      .then(res => res.json())
+    fetchTicket(ticketId)
       .then(data => {
         if (data.error) {
           setError(true);
@@ -36,17 +36,7 @@ export default function TicketViewer() {
   const updateScanStatus = (field) => {
     if (!ticket || ticket[field]) return;
 
-    fetch('https://lakeridepros.xyz/claim-proxy.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        key: 'a9eF12kQvB67xZsT30pL',
-        type: 'updateticket',
-        ticketId,
-        scanType: field === 'scannedOutbound' ? 'outbound' : 'return'
-      })
-    })
-      .then(res => res.json())
+    updateTicketScan(ticketId, field === 'scannedOutbound' ? 'outbound' : 'return')
       .then(result => {
         if (result.success) {
           setTicket(prev => ({ ...prev, [field]: true }));

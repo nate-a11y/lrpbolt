@@ -8,6 +8,7 @@ import QRCode from 'react-qr-code';
 import dayjs from 'dayjs';
 import { toPng } from 'html-to-image';
 import { v4 as uuidv4 } from 'uuid';
+import { addTicket as apiAddTicket, emailTicket as apiEmailTicket } from '../hooks/api';
 
 const getStoredLocations = (key) => JSON.parse(localStorage.getItem(key) || '[]');
 const storeLocation = (key, value) => {
@@ -79,13 +80,7 @@ export default function TicketGenerator() {
     };
 
     try {
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'a9eF12kQvB67xZsT30pL', type: 'addticket', ...newTicket })
-      });
-
-      const result = await res.json();
+      const result = await apiAddTicket(newTicket);
       if (result.success) {
         setTicket(newTicket);
         setFormData({ passenger: '', date: '', time: '', pickup: '', dropoff: '', passengerCount: '', notes: '' });
@@ -126,19 +121,7 @@ export default function TicketGenerator() {
       const dataUrl = await toPng(ticketRef.current, { backgroundColor: '#fff' });
       const base64 = dataUrl.split(',')[1];
   
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'a9eF12kQvB67xZsT30pL',
-          type: 'emailticket',
-          ticketId: ticket.ticketId,
-          email: emailAddress,
-          attachment: base64,
-        }),
-      });
-  
-      const result = await res.json();
+      const result = await apiEmailTicket(ticket.ticketId, emailAddress, base64);
       if (result.success) {
         setSnackbar({ open: true, message: '📧 Ticket emailed', severity: 'success' });
       } else throw new Error('Failed');

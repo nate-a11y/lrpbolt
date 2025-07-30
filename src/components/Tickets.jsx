@@ -16,6 +16,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
 import { motion } from 'framer-motion';
+import { fetchTickets, deleteTicket as apiDeleteTicket, emailTicket as apiEmailTicket } from '../hooks/api';
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -33,8 +34,7 @@ export default function Tickets() {
   const previewRef = useRef(null);
 
   const loadTickets = () => {
-    fetch('https://lakeridepros.xyz/claim-proxy.php?type=tickets')
-      .then((res) => res.json())
+    fetchTickets()
       .then((data) => Array.isArray(data) ? setTickets(data) : console.error('Invalid data format'))
       .catch((err) => console.error('Fetch error:', err));
   };
@@ -78,17 +78,7 @@ export default function Tickets() {
   
     setDeletingId(ticketId);
     try {
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'a9eF12kQvB67xZsT30pL',
-          type: 'deleteticket',
-          ticketId,
-        }),
-      });
-  
-      const data = await res.json();
+      const data = await apiDeleteTicket(ticketId);
       if (data.success) {
         setTickets((prev) => prev.filter((t) => t.ticketId !== ticketId));
         setSnackbar({ open: true, message: '🗑️ Ticket deleted', severity: 'success' });
@@ -155,20 +145,7 @@ export default function Tickets() {
     try {
       const dataUrl = await toPng(previewRef.current, { backgroundColor: '#fff' });
       const base64 = dataUrl.split(',')[1];
-
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'a9eF12kQvB67xZsT30pL',
-          type: 'emailticket',
-          ticketId: previewTicket.ticketId,
-          email: emailAddress,
-          attachment: base64,
-        })
-      });
-
-      const data = await res.json();
+      const data = await apiEmailTicket(previewTicket.ticketId, emailAddress, base64);
       if (data.success) {
         setSnackbar({ open: true, message: '📧 Ticket emailed', severity: 'success' });
       } else throw new Error('Email failed');
