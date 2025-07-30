@@ -81,9 +81,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     );
     setTimeout(async () => {
       try {
-        for (const id of selectedRows) {
-          await deleteRide(id, 'Sheet1');
-        }
+        await Promise.all(selectedRows.map(id => deleteRide(id, 'Sheet1')));
         setToast({ open: true, message: '✅ Selected rides deleted', severity: 'info', undoable: true });
         setSelectedRows([]);
         fetchClaimedRides();
@@ -101,12 +99,12 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     setLoading(true);
     const failed = [];
 
-    for (const ride of undoBuffer) {
-      const res = await restoreRide(ride);
-      if (!res.success) {
-        failed.push(ride.TripID);
-      }
-    }
+    const results = await Promise.all(
+      undoBuffer.map(ride => restoreRide(ride))
+    );
+    results.forEach((res, idx) => {
+      if (!res.success) failed.push(undoBuffer[idx].TripID);
+    });
 
     if (failed.length) {
       setToast({
