@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/TicketScanner.jsx — now with BEYOND GOD MODE ⚡
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Box, Typography, Paper, Snackbar, Alert, Modal, Divider, Button, Fade, CircularProgress, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
@@ -35,7 +35,7 @@ export default function TicketScanner() {
     }
   };
 
-  const initScanner = async (cameraId = null) => {
+  const initScanner = useCallback(async (cameraId = null) => {
     const config = {
       fps: 15,
       qrbox: { width: 250, height: 250 },
@@ -62,7 +62,7 @@ export default function TicketScanner() {
       }
       setCameraError(true);
     }
-  };
+  }, [cameras, handleScan]);
 
   useEffect(() => {
     Html5Qrcode.getCameras().then(devices => {
@@ -73,9 +73,9 @@ export default function TicketScanner() {
     }).catch(() => setCameraError(true));
 
     return () => { stopScanner(); };
-  }, []);
+  }, [initScanner]);
   
-  const resetScanner = () => {
+  const resetScanner = useCallback(() => {
     setScannedData(null);
     setTicket(null);
     setModalOpen(false);
@@ -88,9 +88,9 @@ export default function TicketScanner() {
         initScanner(currentCameraId);
       }
     }, 1200); // give enough time for user to move QR away
-  };
+  }, [currentCameraId, initScanner]);
   
-  const handleScan = async (text) => {
+  const handleScan = useCallback(async (text) => {
     const ticketId = text?.split("/").pop()?.trim();
   
     // prevent scanning same ticket back-to-back
@@ -132,7 +132,7 @@ export default function TicketScanner() {
         setSnackbar({ open: true, message: '🚨 Failed to fetch ticket', severity: 'error' });
         resetScanner();
       });
-  };
+  }, [resetScanner]);
   
 
   const confirmTicket = () => {
@@ -180,7 +180,7 @@ export default function TicketScanner() {
   };
   
 
-  const toggleTorch = async () => {
+  const toggleTorch = useCallback(async () => {
     try {
       const scanner = html5QrCodeRef.current;
       if (scanner && scanner.applyVideoConstraints) {
@@ -190,7 +190,7 @@ export default function TicketScanner() {
     } catch (e) {
       // ignore failure to toggle torch
     }
-  };
+  }, [torchOn]);
 
   return (
     <Box sx={{ maxWidth: 640, mx: 'auto', mt: 4 }}>
