@@ -66,7 +66,6 @@ export default function TicketScanner() {
 
   }, [cameras]);
 
-  }, [cameras, handleScan]);
 
   useEffect(() => {
     Html5Qrcode.getCameras().then(devices => {
