@@ -30,7 +30,7 @@ export default function CalendarUpdateTab() {
         </AccordionSummary>
         <AccordionDetails>
           <Typography variant="body2" gutterBottom>
-            Use Google Calendar to show you're unavailable to dispatch and managers:
+            Use Google Calendar to show you&apos;re unavailable to dispatch and managers:
           </Typography>
           <Box component="ul" sx={{ pl: 3, mb: 0 }}>
             <li><strong>Create</strong> → <strong>Event</strong></li>

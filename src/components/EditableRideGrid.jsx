@@ -127,7 +127,9 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
       setSnack({ open: true, message: '✅ Ride updated successfully.', severity: 'success' });
       setSelectedRow(null);
       setEditMode(false);
-      refreshRides && refreshRides();
+        if (refreshRides) {
+          refreshRides();
+        }
     } catch (err) {
       setSnack({ open: true, message: `❌ ${err.message}`, severity: 'error' });
     } finally {
@@ -162,13 +164,23 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
       field: 'actions',
       type: 'actions',
       width: 80,
-      getActions: (params) => [
-        <GridActionsCellItem icon={<EditIcon />} label="Edit" onClick={() => {
-          setSelectedRow(params.row);
-          handleStartEdit(params.row);
-        }} />,
-        <GridActionsCellItem icon={<DeleteIcon />} label="Delete" onClick={() => onDelete(params.row.TripID)} />
-      ]
+        getActions: (params) => [
+          <GridActionsCellItem
+            key="edit"
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => {
+              setSelectedRow(params.row);
+              handleStartEdit(params.row);
+            }}
+          />,
+          <GridActionsCellItem
+            key="delete"
+            icon={<DeleteIcon />}
+            label="Delete"
+            onClick={() => onDelete(params.row.TripID)}
+          />
+        ]
     }
   ], [setSelectedRow, handleStartEdit, onDelete]);
 

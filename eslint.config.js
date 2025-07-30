@@ -37,6 +37,9 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       'spaced-comment': 'off',
+      'react/prop-types': 'off',
+      'react/react-in-jsx-scope': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 )

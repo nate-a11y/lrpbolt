@@ -14,8 +14,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import Autocomplete from '@mui/material/Autocomplete';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 
-const API_KEY = 'AIzaSyC6lPYlKbvx3O3q-i0ckUXtwwmZJ4dBGSQ';
-const CALENDAR_ID = 'c_7869dda1daed131fa3d21a570e7290d121284fe6062c94c0efa9eac6c63afc65@group.calendar.google.com';
+const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
+const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
 
 dayjs.extend(utc);
