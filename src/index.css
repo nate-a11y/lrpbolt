@@ -1,0 +1,159 @@
+/* index.css — Lake Ride Pros: Claim Portal */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  transition: background-color 0.4s ease, color 0.4s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  --bg: #ffffff;
+  --text: #111111;
+  --card-selected-bg: #102c10;
+  --card-selected-text: #ffffff;
+  --card-selected-border: #4cbb17;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+}
+
+body.dark {
+  --bg: #121212;
+  --text: #e0e0e0;
+  --card-selected-bg: #183c18;
+  --card-selected-text: #ffffff;
+  --card-selected-border: #4cbb17;
+}
+
+/* Base Ride Card */
+.ride-card {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: 12px;
+  border-left: 6px solid var(--card-selected-border);
+  background: linear-gradient(145deg, #181818 0%, #1e1e1e 100%);
+  box-shadow: 0 0 10px rgba(76, 187, 23, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  color: #f1f1f1;
+}
+
+.ride-card:hover {
+  box-shadow: 0 0 12px rgba(76, 187, 23, 0.25);
+  transform: scale(1.01);
+}
+
+/* Selected Card */
+.ride-card-selected {
+  background: linear-gradient(
+    145deg,
+    var(--card-selected-bg),
+    var(--card-selected-bg)
+  );
+  border-left: 6px solid var(--card-selected-border);
+  box-shadow: 0 0 16px var(--card-selected-border);
+  color: var(--card-selected-text);
+}
+
+.ride-card-selected .MuiTypography-root,
+.ride-card-selected .MuiSvgIcon-root {
+  color: var(--card-selected-text);
+}
+
+.ride-card .MuiTypography-root {
+  margin-bottom: 0.25rem;
+  color: #f1f1f1;
+}
+
+/* Claim button */
+.claim-button {
+  margin-top: var(--space-sm);
+}
+
+.ride-card-selected .claim-button {
+  background-color: var(--card-selected-border);
+  color: var(--card-selected-text);
+  box-shadow: 0 0 6px var(--card-selected-border);
+}
+
+/* Accessibility */
+:focus-visible {
+  outline: 2px dashed var(--card-selected-border);
+  outline-offset: 4px;
+}
+
+/* Animations */
+@keyframes fadeout {
+  to {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseBg {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+  .ride-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+.dropoff-img img {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+  margin: 0 auto;
+  max-height: 80vh;
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+.fade-out {
+  animation: fadeOut 0.4s forwards;
+}
