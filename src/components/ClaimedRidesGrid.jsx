@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box, Typography, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, Button, Snackbar, Alert, Tooltip, CircularProgress,
@@ -24,7 +24,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
 
-  const fetchClaimedRides = async () => {
+  const fetchClaimedRides = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(CLAIMED_RIDES_URL);
@@ -43,11 +43,11 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchClaimedRides();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, fetchClaimedRides]);
 
   const handleDelete = async () => {
     if (!selectedRow?.TripID) return;
