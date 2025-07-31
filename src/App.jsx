@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/App.jsx
-import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
+import React, { useEffect, useMemo, useState, useRef, Suspense, lazy, useCallback } from 'react';
 import {
   ThemeProvider, createTheme, CssBaseline, Box, Typography, Button,
   Snackbar, Alert, Switch, Divider, TextField, Paper,
@@ -31,6 +31,7 @@ import {
   createUserWithEmailAndPassword, onAuthStateChanged
 } from './firebase';
 import { BASE_URL } from './hooks/api';
+import { fetchWithCache } from './utils/cache';
 import './index.css';
 import { TIMEZONE } from './constants';
 
@@ -53,16 +54,11 @@ const isInLockoutWindow = () => {
 };
 
 const preloadDriverList = async () => {
-  const cached = localStorage.getItem("lrp_driverList");
-  const expires = localStorage.getItem("lrp_driverList_exp");
-  const now = Date.now();
-  if (cached && expires && now < parseInt(expires, 10)) return;
-
   try {
-    const res = await fetch(`${BASE_URL}?type=driverEmails`);
-    const data = await res.json();
-    localStorage.setItem("lrp_driverList", JSON.stringify(data));
-    localStorage.setItem("lrp_driverList_exp", now + 86400000);
+    await fetchWithCache(
+      'lrp_driverList',
+      `${BASE_URL}?type=driverEmails`
+    );
   } catch {
     // ignore preload errors
   }
@@ -88,62 +84,37 @@ export default function App() {
   const isFullyReady = isAppReady && !!selectedDriver;
   const hasFetchedRef = useRef(false);
 
-  const fetchDrivers = async (userEmail) => {
-    const cached = localStorage.getItem("lrp_driverList");
-    const expires = localStorage.getItem("lrp_driverList_exp");
-    const now = Date.now();
-
-    let data;
-
-    if (cached && expires && now < parseInt(expires, 10)) {
-      data = JSON.parse(cached);
-    } else {
-      try {
-        const res = await fetch(`${BASE_URL}?type=driverEmails`);
-        data = await res.json();
-        localStorage.setItem("lrp_driverList", JSON.stringify(data));
-        localStorage.setItem("lrp_driverList_exp", now + 86400000);
-      } catch (err) {
-        console.error("Failed to fetch drivers:", err);
-        data = [];
-      }
-    }
-
-    const names = data.map(d => d.name);
-    setDrivers(names);
-
-    const match = data.find(d => d.email?.toLowerCase() === userEmail?.toLowerCase());
-    const resolvedName = match?.name || userEmail || '';
-
-    return resolvedName;
-  };
-
-  const fetchRole = async (email) => {
+  const fetchDrivers = useCallback(async (userEmail) => {
     try {
-      const cached = localStorage.getItem("lrp_roles");
-      const expires = localStorage.getItem("lrp_roles_exp");
-      const now = Date.now();
-      let data;
+      const data = await fetchWithCache(
+        'lrp_driverList',
+        `${BASE_URL}?type=driverEmails`
+      );
+      const names = data.map((d) => d.name);
+      setDrivers(names);
+      const match = data.find(
+        (d) => d.email?.toLowerCase() === userEmail?.toLowerCase()
+      );
+      return match?.name || userEmail || '';
+    } catch (err) {
+      console.error('Failed to fetch drivers:', err);
+      return userEmail || '';
+    }
+  }, []);
 
-      if (cached && expires && now < parseInt(expires, 10)) {
-        data = JSON.parse(cached);
-      } else {
-        const res = await fetch(`${BASE_URL}?type=access`);
-        data = await res.json();
-        localStorage.setItem("lrp_roles", JSON.stringify(data));
-        localStorage.setItem("lrp_roles_exp", now + 86400000);
-      }
-
-      const match = data.find(u => u.email.toLowerCase() === email.toLowerCase());
+  const fetchRole = useCallback(async (email) => {
+    try {
+      const data = await fetchWithCache('lrp_roles', `${BASE_URL}?type=access`);
+      const match = data.find((u) => u.email.toLowerCase() === email.toLowerCase());
       const access = match?.access || 'User';
       setRole(access);
-      localStorage.setItem("lrpRole", access);
+      localStorage.setItem('lrpRole', access);
     } catch (err) {
-      console.error("Failed to fetch role:", err);
+      console.error('Failed to fetch role:', err);
     }
-  };
+  }, []);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     try {
       await auth.signOut();
       localStorage.clear();
@@ -169,7 +140,7 @@ export default function App() {
     } catch (err) {
       setToast({ open: true, message: "Sign out failed", severity: "error" });
     }
-  };
+  }, [setToast]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -196,7 +167,7 @@ export default function App() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [fetchRole, fetchDrivers]);
 
   useEffect(() => {
     const interval = setInterval(() => setIsLockedOut(isInLockoutWindow()), 5000);
@@ -209,7 +180,7 @@ export default function App() {
       return () => clearTimeout(t);
     }
   }, [showEliteBadge]);
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = useCallback(async () => {
     setAuthLoading(true);
     try {
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -230,10 +201,10 @@ export default function App() {
     } finally {
       setAuthLoading(false);
     }
-  };
+  }, [fetchRole, fetchDrivers, setToast]);
   
   
-  const handleEmailAuth = async () => {
+  const handleEmailAuth = useCallback(async () => {
     setAuthLoading(true);
     try {
       const result = isRegistering
@@ -255,7 +226,7 @@ export default function App() {
     } finally {
       setAuthLoading(false);
     }
-  };
+  }, [isRegistering, email, password, fetchRole, fetchDrivers, setToast]);
   
   const theme = useMemo(() => createTheme({
     palette: { mode: darkMode ? 'dark' : 'light', primary: { main: '#4cbb17' } },
