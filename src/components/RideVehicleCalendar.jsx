@@ -33,28 +33,77 @@ export default function RideVehicleCalendar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const getVehicleColor = (vehicle) => {
-    const stored = JSON.parse(localStorage.getItem('vehicleColors') || '{}');
-    if (stored[vehicle]) return stored[vehicle];
-
-    // DJB2-style hash for better string distinction
-    let hash = 5381;
-    for (let i = 0; i < vehicle.length; i++) {
-      hash = (hash * 33) ^ vehicle.charCodeAt(i);
+  const BASE_COLORS = [
+    '#E6194B', '#3CB44B', '#FFE119', '#4363D8',
+    '#F58231', '#911EB4', '#46F0F0', '#F032E6',
+    '#BCF60C', '#FABEBE', '#008080', '#E6BEFF',
+    '#9A6324', '#FFFAC8', '#800000', '#AAFFC3',
+    '#808000', '#FFD8B1', '#000075', '#808080'
+  ];
+  
+  function adjustColor(hex, adjustment) {
+    // Convert HEX to HSL, tweak, and convert back
+    const rgb = hex.match(/\w\w/g).map(x => parseInt(x, 16) / 255);
+    const max = Math.max(...rgb), min = Math.min(...rgb);
+    let h, s, l = (max + min) / 2;
+    
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch(max) {
+        case rgb[0]: h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0); break;
+        case rgb[1]: h = (rgb[2] - rgb[0]) / d + 2; break;
+        case rgb[2]: h = (rgb[0] - rgb[1]) / d + 4; break;
+      }
+      h /= 6;
     }
-
-    // Spread hues using the golden angle for better distribution
-    const GOLDEN_ANGLE = 137.508; // degrees
-    const hue = (Math.abs(hash) * GOLDEN_ANGLE) % 360;
-
-    const saturation = theme.palette.mode === 'dark' ? '60%' : '65%';
-    const lightness = theme.palette.mode === 'dark' ? '40%' : '55%';
-
-    const color = `hsl(${hue}, ${saturation}, ${lightness})`;
-    stored[vehicle] = color;
-    localStorage.setItem('vehicleColors', JSON.stringify(stored));
+    
+    // Adjust hue slightly for uniqueness
+    h = (h + adjustment) % 1;
+    
+    // Convert back to RGB
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const r = hue2rgb(p, q, h + 1/3);
+    const g = hue2rgb(p, q, h);
+    const b = hue2rgb(p, q, h - 1/3);
+    
+    return `#${[r,g,b].map(x => Math.round(x*255).toString(16).padStart(2,'0')).join('')}`;
+  }
+  
+  const getVehicleColor = (vehicle) => {
+    const storedColors = JSON.parse(localStorage.getItem('vehicleColors') || '{}');
+    if (storedColors[vehicle]) return storedColors[vehicle];
+  
+    const vehicleList = JSON.parse(localStorage.getItem('vehicleList') || '[]');
+    if (!vehicleList.includes(vehicle)) {
+      vehicleList.push(vehicle);
+      localStorage.setItem('vehicleList', JSON.stringify(vehicleList));
+    }
+  
+    const index = vehicleList.indexOf(vehicle);
+    const baseColor = BASE_COLORS[index % BASE_COLORS.length];
+  
+    // Apply hue shift for vehicles beyond the base palette
+    const adjustment = Math.floor(index / BASE_COLORS.length) * 0.07; // ~25° hue shift
+    const color = index < BASE_COLORS.length ? baseColor : adjustColor(baseColor, adjustment);
+  
+    storedColors[vehicle] = color;
+    localStorage.setItem('vehicleColors', JSON.stringify(storedColors));
+  
     return color;
   };
+  
  
   useEffect(() => {
     const fetchEvents = async () => {
