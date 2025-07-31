@@ -96,17 +96,7 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html') // ✅ Ensures correct HTML entry
       },
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('firebase')) {
-              return 'firebase';
-            }
-            if (id.includes('@mui')) {
-              return 'mui';
-            }
-            return 'vendor';
-          }
-        }
+        // Use default chunk splitting to avoid runtime issues with manual chunks
       }
     }
   },
