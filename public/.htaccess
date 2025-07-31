@@ -1,5 +1,5 @@
 # Force correct MIME for JS and PWA files
-AddType application/javascript .js
+AddType application/javascript .js .jsx
 AddType application/json .webmanifest
 AddType image/png .png
 AddType image/x-icon .ico
