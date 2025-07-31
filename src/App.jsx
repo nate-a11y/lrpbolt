@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'rea
 import {
   ThemeProvider, createTheme, CssBaseline, Box, Typography, Button,
   Snackbar, Alert, Switch, Divider, TextField, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions, Toolbar, CircularProgress
+  Dialog, DialogTitle, DialogContent, DialogActions, Toolbar, CircularProgress,
+  Backdrop
 } from '@mui/material';
 import { ErrorBoundary } from 'react-error-boundary';
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -293,6 +294,12 @@ export default function App() {
             </Box>
           </Paper>
         </Box>
+        <Backdrop
+          sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+          open={authLoading}
+        >
+          <CircularProgress color="inherit" />
+        </Backdrop>
       </ThemeProvider>
     );
   }
