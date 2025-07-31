@@ -9,6 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { DataGrid } from '@mui/x-data-grid';
 import { deleteRide, restoreRide, BASE_URL } from '../hooks/api';
+import useToast from '../hooks/useToast';
 
 const CLAIMED_RIDES_URL = `${BASE_URL}?type=claimedRides`;
 
@@ -19,7 +20,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [multiConfirmOpen, setMultiConfirmOpen] = useState(false);
   const [confirmUndoOpen, setConfirmUndoOpen] = useState(false);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'info', undoable: false });
+  const { toast, showToast, closeToast } = useToast('info');
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
 
@@ -38,7 +39,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
       setRows(claimed);
     } catch (err) {
       console.error('Error loading claimed rides:', err);
-      setToast({ open: true, message: '❌ Failed to load claimed rides', severity: 'error' });
+      showToast('❌ Failed to load claimed rides', 'error');
     } finally {
       setLoading(false);
     }
@@ -60,10 +61,10 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     setTimeout(async () => {
       const res = await deleteRide(selectedRow.TripID, 'Sheet1');
       if (res.success) {
-        setToast({ open: true, message: '🗑️ Ride deleted', severity: 'info', undoable: true });
+        showToast('🗑️ Ride deleted', 'info');
         fetchClaimedRides();
       } else {
-        setToast({ open: true, message: `❌ ${res.message}`, severity: 'error' });
+        showToast(`❌ ${res.message}`, 'error');
       }
       setLoading(false);
       setConfirmOpen(false);
@@ -82,11 +83,11 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     setTimeout(async () => {
       try {
         await Promise.all(selectedRows.map(id => deleteRide(id, 'Sheet1')));
-        setToast({ open: true, message: '✅ Selected rides deleted', severity: 'info', undoable: true });
+        showToast('✅ Selected rides deleted', 'info');
         setSelectedRows([]);
         fetchClaimedRides();
       } catch (err) {
-        setToast({ open: true, message: `❌ Bulk delete failed: ${err.message}`, severity: 'error' });
+        showToast(`❌ Bulk delete failed: ${err.message}`, 'error');
       } finally {
         setLoading(false);
         setMultiConfirmOpen(false);
@@ -107,19 +108,9 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     });
 
     if (failed.length) {
-      setToast({
-        open: true,
-        message: `⚠️ Failed to restore: ${failed.join(', ')}`,
-        severity: 'warning',
-        undoable: false,
-      });
+      showToast(`⚠️ Failed to restore: ${failed.join(', ')}`, 'warning');
     } else {
-      setToast({
-        open: true,
-        message: '✅ Undo successful',
-        severity: 'success',
-        undoable: false,
-      });
+      showToast('✅ Undo successful', 'success');
       fetchClaimedRides();
     }
 
@@ -236,8 +227,8 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={toast.open} autoHideDuration={4000} onClose={() => setToast({ ...toast, open: false })}>
-        <Alert severity={toast.severity} onClose={() => setToast({ ...toast, open: false })}
+      <Snackbar open={toast.open} autoHideDuration={4000} onClose={closeToast}>
+        <Alert severity={toast.severity} onClose={closeToast}
           action={toast.undoable && (
             <Button color="inherit" size="small" onClick={() => setConfirmUndoOpen(true)}>
               UNDO
