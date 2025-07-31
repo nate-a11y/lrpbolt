@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { auth } from '../firebase';
 import { TIMEZONE } from '../constants';
+import { updateRide } from '../hooks/api';
 import {
   normalizeDate,
   normalizeTime,
@@ -109,19 +110,7 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
     }
 
     try {
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'a9eF12kQvB67xZsT30pL',
-          type: 'updateRide',
-          TripID: editedRow.TripID,
-          sheet: sheetName,
-          fields: payload
-        })
-      });
-
-      const result = await res.json();
+      const result = await updateRide(editedRow.TripID, payload, sheetName);
       if (!result.success) throw new Error(result.message || 'Update failed');
 
       setSnack({ open: true, message: '✅ Ride updated successfully.', severity: 'success' });

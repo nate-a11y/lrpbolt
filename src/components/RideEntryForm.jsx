@@ -15,7 +15,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { TIMEZONE } from '../constants';
-import {fetchLiveRides, fetchRideQueue} from '../hooks/api'
+import { fetchLiveRides, fetchRideQueue, BASE_URL, SECURE_KEY } from '../hooks/api';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -104,10 +104,10 @@ export default function RideEntryForm() {
   const handleDropDailyRides = async () => {
     setRefreshing(true);
     try {
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
+      const res = await fetch(BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'a9eF12kQvB67xZsT30pL', type: 'dropDailyRides' }),
+        body: JSON.stringify({ key: SECURE_KEY, type: 'dropDailyRides' }),
       });
       const result = await res.json();
       if (result.success) {
@@ -152,10 +152,10 @@ export default function RideEntryForm() {
         CreatedBy: currentUser,
         LastModifiedBy: currentUser
       };
-      const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
+      const res = await fetch(BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'a9eF12kQvB67xZsT30pL', type: 'addRide', sheet: 'RideQueue', data: payload })
+        body: JSON.stringify({ key: SECURE_KEY, type: 'addRide', sheet: 'RideQueue', data: payload })
       });
       const result = await res.json();
       if (result.success) {
@@ -228,11 +228,11 @@ export default function RideEntryForm() {
           CreatedBy: currentUser,
           LastModifiedBy: currentUser
         };
-        return fetch('https://lakeridepros.xyz/claim-proxy.php', {
+        return fetch(BASE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            key: 'a9eF12kQvB67xZsT30pL',
+            key: SECURE_KEY,
             type: 'addRide',
             sheet: 'RideQueue',
             data: payload

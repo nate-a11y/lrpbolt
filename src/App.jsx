@@ -29,6 +29,7 @@ import {
   auth, provider, signInWithPopup, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, onAuthStateChanged
 } from './firebase';
+import { BASE_URL } from './hooks/api';
 import './index.css';
 import { TIMEZONE } from './constants';
 
@@ -57,7 +58,7 @@ const preloadDriverList = async () => {
   if (cached && expires && now < parseInt(expires, 10)) return;
 
   try {
-    const res = await fetch("https://lakeridepros.xyz/claim-proxy.php?type=driverEmails");
+    const res = await fetch(`${BASE_URL}?type=driverEmails`);
     const data = await res.json();
     localStorage.setItem("lrp_driverList", JSON.stringify(data));
     localStorage.setItem("lrp_driverList_exp", now + 86400000);
@@ -96,7 +97,7 @@ export default function App() {
       data = JSON.parse(cached);
     } else {
       try {
-        const res = await fetch("https://lakeridepros.xyz/claim-proxy.php?type=driverEmails");
+        const res = await fetch(`${BASE_URL}?type=driverEmails`);
         data = await res.json();
         localStorage.setItem("lrp_driverList", JSON.stringify(data));
         localStorage.setItem("lrp_driverList_exp", now + 86400000);
@@ -125,7 +126,7 @@ export default function App() {
       if (cached && expires && now < parseInt(expires, 10)) {
         data = JSON.parse(cached);
       } else {
-        const res = await fetch("https://lakeridepros.xyz/claim-proxy.php?type=access");
+        const res = await fetch(`${BASE_URL}?type=access`);
         data = await res.json();
         localStorage.setItem("lrp_roles", JSON.stringify(data));
         localStorage.setItem("lrp_roles_exp", now + 86400000);

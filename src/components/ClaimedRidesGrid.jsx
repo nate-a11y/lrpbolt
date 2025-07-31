@@ -8,9 +8,9 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { DataGrid } from '@mui/x-data-grid';
-import { deleteRide, restoreRide } from '../hooks/api';
+import { deleteRide, restoreRide, BASE_URL } from '../hooks/api';
 
-const CLAIMED_RIDES_URL = 'https://lakeridepros.xyz/claim-proxy.php?type=claimedRides';
+const CLAIMED_RIDES_URL = `${BASE_URL}?type=claimedRides`;
 
 const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const [rows, setRows] = useState([]);
