@@ -21,7 +21,7 @@ const RideDetailRow = ({ icon, label, preserveLine = false, highlightColor }) =>
   );
 };
 
-export default function RideGroup({ groupKey, rides, onClaim, showToast }) {
+function RideGroup({ groupKey, rides, onClaim, showToast }) {
   const [selectedInGroup, setSelectedInGroup] = useState([]);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   const [vehicle, , date] = groupKey.split('___');
@@ -205,3 +205,5 @@ export default function RideGroup({ groupKey, rides, onClaim, showToast }) {
     </Paper>
   );
 }
+
+export default React.memo(RideGroup);
