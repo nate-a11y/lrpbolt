@@ -48,6 +48,7 @@ export default defineConfig({
         navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/\/$/, /\/index.html/, /\/claim-proxy\.php/],
         ignoreURLParametersMatching: [/./],
+        navigationPreload: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/lakeridepros\.xyz\/claim-proxy\.php/,
