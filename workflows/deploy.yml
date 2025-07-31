@@ -42,26 +42,29 @@ jobs:
           npm run build
           echo "✅ Build completed!"
 
-      # 6️⃣ Add .htaccess for Hostinger SPA & MIME Fix
+      # 6️⃣ Add Hostinger .htaccess
       - name: Add Hostinger .htaccess
         run: |
           echo "Adding .htaccess..."
           cat <<EOT > dist/.htaccess
           # Force correct MIME types
-          AddType application/javascript .js .jsx
-          AddType application/json .webmanifest
+          AddType application/javascript .js .mjs
+          AddType application/json .json .webmanifest
           AddType text/css .css
-          
+          AddType image/png .png
+          AddType image/svg+xml .svg
+          AddType image/webp .webp
+          AddType image/x-icon .ico
+
           # SPA Routing - redirect all to index.html
           RewriteEngine On
           RewriteBase /
-          RewriteRule ^index\.html$ - [L]
           RewriteCond %{REQUEST_FILENAME} !-f
           RewriteCond %{REQUEST_FILENAME} !-d
           RewriteRule . /index.html [L]
 
           # Cache busting for static assets
-          <FilesMatch "\.(js|css|png|jpg|jpeg|svg|webp|ico)$">
+          <FilesMatch "\\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
             Header set Cache-Control "max-age=31536000, public"
           </FilesMatch>
           EOT
