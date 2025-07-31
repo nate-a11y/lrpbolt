@@ -7,6 +7,9 @@ node_modules/
 # Local dev build (used by preview servers, not production)
 dev-dist/
 
+# Production build output
+dist/
+
 # Environment variables
 .env
 .env.*   # Covers .env.production, .env.local, etc.
@@ -19,4 +22,3 @@ yarn-error.log*
 # OS-specific files
 .DS_Store
 Thumbs.db
-
