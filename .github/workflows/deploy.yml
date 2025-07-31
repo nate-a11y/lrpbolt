@@ -53,12 +53,12 @@ jobs:
       - name: Verify build output
         run: |
           if [ ! -d "dist/assets" ]; then
-          echo "❌ ERROR: dist/assets folder is missing — build failed or output path incorrect."
-          exit 1
+            echo "❌ ERROR: dist/assets folder is missing — build failed or output path incorrect."
+            exit 1
           fi
           if ! ls dist/assets/main-*.js 1> /dev/null 2>&1; then
-          echo "❌ ERROR: No main-*.js file found in dist/assets — build hash may have failed."
-          exit 1
+            echo "❌ ERROR: No main-*.js file found in dist/assets — build hash may have failed."
+            exit 1
           fi
           echo "✅ Build verification passed — main JS found in dist/assets."
 
@@ -88,14 +88,18 @@ jobs:
           </FilesMatch>
           EOT
 
-      - name: Deploy to Hostinger via FTP
+      - name: Deploy to Hostinger via FTP (Incremental)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: 145.223.77.125
-          username: u400814892.lakeridepros.xyz
-          password: m;0C&RhL=AL10b!q
+          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/
           log-level: minimal
-          dangerous-clean-slate: true
+          exclude: |
+            **/.git*
+            **/.github*
+            **/node_modules/*
+            **/src/*
