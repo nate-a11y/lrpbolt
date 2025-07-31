@@ -90,9 +90,26 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html') // ✅ Ensures correct HTML entry
+      },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) {
+              return 'firebase';
+            }
+            if (id.includes('@mui')) {
+              return 'mui';
+            }
+            if (id.includes('react')) {
+              return 'react';
+            }
+            return 'vendor';
+          }
+        }
       }
     }
   },
