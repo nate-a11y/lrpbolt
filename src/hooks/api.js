@@ -6,159 +6,70 @@ export const TIME_LOG_CSV =
   import.meta.env.VITE_TIME_LOG_CSV ||
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNqJgbe9yGcjFht3qmwMnTIvq/pub?gid=888251608&single=true&output=csv';
 
-export const fetchRideQueue = async () => {
-  const res = await fetch(`${BASE_URL}?type=ridequeue`);
-  return await res.json();
+const get = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json();
 };
 
-export const fetchLiveRides = async () => {
-  const res = await fetch(`${BASE_URL}?type=rides`);
-  return await res.json();
-};
-
-export const updateRide = async (TripID, updates, sheet = 'RideQueue') => {
+const post = async (payload) => {
   const res = await fetch(BASE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: SECURE_KEY,
-      type: 'updateRide',
-      TripID,
-      fields: updates,
-      sheet
-    })
+    body: JSON.stringify({ key: SECURE_KEY, ...payload })
   });
-  return await res.json();
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.json();
 };
+
+export const fetchRideQueue = () => get(`${BASE_URL}?type=ridequeue`);
+
+export const fetchLiveRides = () => get(`${BASE_URL}?type=rides`);
+
+export const updateRide = (TripID, updates, sheet = 'RideQueue') =>
+  post({ type: 'updateRide', TripID, fields: updates, sheet });
 
 export const restoreRide = async (rideData) => {
   try {
-    const res = await fetch(BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        key: SECURE_KEY,
-        type: 'addRide',
-        sheet: 'Sheet1',
-        data: rideData,
-      }),
-    });
-    return await res.json();
+    return await post({ type: 'addRide', sheet: 'Sheet1', data: rideData });
   } catch (err) {
     return { success: false, message: err.message };
   }
 };
 
 
-export const deleteRide = async (TripID, sheet = 'RideQueue') => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: SECURE_KEY,
-      type: 'deleteRide',
-      TripID,
-      sheet
-    })
-  });
-  return await res.json();
-};
+export const deleteRide = (TripID, sheet = 'RideQueue') =>
+  post({ type: 'deleteRide', TripID, sheet });
 export const getAccessLevel = async (email) => {
-  const res = await fetch(`${BASE_URL}?type=access&email=${encodeURIComponent(email)}`);
-  const json = await res.json();
-  return json?.access || 'User'; // Fallback if not Admin
+  const json = await get(`${BASE_URL}?type=access&email=${encodeURIComponent(email)}`);
+  return json?.access || 'User';
 };
 
 // ----- Claim Operations -----
-export const claimRide = async (tripId, claimedBy) => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: SECURE_KEY,
-      type: 'claim',
-      tripId,
-      claimedBy,
-      claimedAt: new Date().toISOString()
-    })
-  });
-  return await res.json();
-};
+export const claimRide = (tripId, claimedBy) =>
+  post({ type: 'claim', tripId, claimedBy, claimedAt: new Date().toISOString() });
 
 // ----- Ticket Operations -----
-export const fetchTickets = async () => {
-  const res = await fetch(`${BASE_URL}?type=tickets`);
-  return await res.json();
-};
+export const fetchTickets = () => get(`${BASE_URL}?type=tickets`);
 
-export const fetchTicket = async (ticketId) => {
-  const res = await fetch(`${BASE_URL}?type=ticket&ticketId=${ticketId}`);
-  return await res.json();
-};
+export const fetchTicket = (ticketId) => get(`${BASE_URL}?type=ticket&ticketId=${ticketId}`);
 
-export const addTicket = async (ticketData) => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: SECURE_KEY, type: 'addticket', ...ticketData })
-  });
-  return await res.json();
-};
+export const addTicket = (ticketData) => post({ type: 'addticket', ...ticketData });
 
-export const deleteTicket = async (ticketId) => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: SECURE_KEY, type: 'deleteticket', ticketId })
-  });
-  return await res.json();
-};
+export const deleteTicket = (ticketId) => post({ type: 'deleteticket', ticketId });
 
-export const emailTicket = async (ticketId, email, attachment) => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: SECURE_KEY,
-      type: 'emailticket',
-      ticketId,
-      email,
-      attachment
-    })
-  });
-  return await res.json();
-};
+export const emailTicket = (ticketId, email, attachment) =>
+  post({ type: 'emailticket', ticketId, email, attachment });
 
-export const updateTicketScan = async (
+export const updateTicketScan = (
   ticketId,
   scanType,
   scannedAt = new Date().toISOString(),
   scannedBy = 'Unknown'
-) => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: SECURE_KEY,
-      type: 'updateticket',
-      ticketId,
-      scanType,
-      scannedAt,
-      scannedBy
-    })
-  });
-  return await res.json();
-};
+) => post({ type: 'updateticket', ticketId, scanType, scannedAt, scannedBy });
 
 // ----- Time Logging -----
-export const logTime = async (payload) => {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: SECURE_KEY, type: 'logtime', ...payload })
-  });
-  return await res.json();
-};
+export const logTime = (payload) => post({ type: 'logtime', ...payload });
 
 export const fetchTimeLogs = async (driver) => {
   const res = await fetch(TIME_LOG_CSV);

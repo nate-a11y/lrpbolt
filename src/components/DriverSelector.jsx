@@ -22,14 +22,12 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
     if (!isTracking && isAdmin) {
       const selected = e.target.value;
       setDriver(selected);
-      localStorage.setItem('lrp_driver', selected);
     }
   }, [isTracking, isAdmin, setDriver]);
 
   const handleClear = useCallback(() => {
     if (!isTracking && isAdmin) {
       setDriver('');
-      localStorage.removeItem('lrp_driver');
     }
   }, [isTracking, isAdmin, setDriver]);
 
