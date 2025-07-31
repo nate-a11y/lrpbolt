@@ -42,36 +42,48 @@ jobs:
         run: npm run lint
       - name: Run tests
         run: npm test
+- name: Verify Vite base path
+  run: |
+    if ! grep -q "base: './'" vite.config.js; then
+      echo "❌ ERROR: vite.config.js base must be './' for Hostinger deployment"
+      exit 1
+    else
+      echo "✅ Vite base path is correct"
+    fi
 
       # 6️⃣ Build Project
       - name: Build project
         run: npm run build
 
       # 7️⃣ Add .htaccess for Hostinger SPA & MIME Fix
-      - name: Add Hostinger .htaccess
-        run: |
-          cat <<EOT > dist/.htaccess
-          # Force correct MIME types
-          AddType application/javascript .js .mjs
-          AddType application/json .json .webmanifest
-          AddType text/css .css
-          AddType image/png .png
-          AddType image/svg+xml .svg
-          AddType image/webp .webp
-          AddType image/x-icon .ico
+- name: Add Hostinger .htaccess
+  run: |
+    cat <<EOT > dist/.htaccess
+    # ✅ MIME Types
+    AddType application/javascript .js .mjs
+    AddType application/json .json .webmanifest
+    AddType text/css .css
+    AddType image/png .png
+    AddType image/svg+xml .svg
+    AddType image/webp .webp
+    AddType image/x-icon .ico
 
-          # SPA Routing - redirect all to index.html
-          RewriteEngine On
-          RewriteBase /
-          RewriteCond %{REQUEST_FILENAME} !-f
-          RewriteCond %{REQUEST_FILENAME} !-d
-          RewriteRule . /index.html [L]
+    # ✅ SPA Routing (exclude assets folder)
+    RewriteEngine On
+    RewriteBase /
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !^/assets/
+    RewriteRule . /index.html [L]
 
-          # Cache busting for static assets
-          <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
-            Header set Cache-Control "max-age=31536000, public"
-          </FilesMatch>
-          EOT
+    # ✅ Cache Control
+    <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
+      Header set Cache-Control "max-age=31536000, public"
+    </FilesMatch>
+    <FilesMatch "\.(html)$">
+      Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+    EOT
 
       # 8️⃣ Deploy to Hostinger via FTP
       - name: Deploy to Hostinger via FTP
