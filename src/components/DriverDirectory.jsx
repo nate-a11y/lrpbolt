@@ -1,54 +1,44 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Box, Typography, Accordion, AccordionSummary, AccordionDetails,
-  TextField, Link, Divider, Chip, Tooltip
+  TextField, Link, Divider
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
+
+import VehicleChip from './VehicleChip';
 
 import DRIVER_LIST from '../data/driverDirectory';
 
 export default function DriverDirectory() {
   const [search, setSearch] = useState('');
 
-  const highlight = (text, keyword) => {
+  const highlight = useCallback((text, keyword) => {
     if (!keyword) return text;
     const parts = text.split(new RegExp(`(${keyword})`, 'gi'));
     return parts.map((part, i) =>
       part.toLowerCase() === keyword.toLowerCase() ? (
-        <Box key={i} component="span" sx={{ backgroundColor: 'yellow', fontWeight: 600 }}>
+        <Box key={i} component="span" sx={{ bgcolor: 'yellow', fontWeight: 600 }}>
           {part}
         </Box>
       ) : (
         <span key={i}>{part}</span>
       )
     );
-  };
+  }, []);
 
-  const filteredDrivers = DRIVER_LIST.filter(driver => {
+  const filteredDrivers = useMemo(() => {
     const s = search.toLowerCase();
-    return (
+    return DRIVER_LIST.filter(driver =>
       driver.name.toLowerCase().includes(s) ||
       driver.lrp.toLowerCase().includes(s) ||
       driver.email.toLowerCase().includes(s) ||
       driver.phone.toLowerCase().includes(s) ||
       driver.vehicles.join(', ').toLowerCase().includes(s)
     );
-  });
-
-  const vehicleColor = (v) => {
-    switch (v.toLowerCase()) {
-      case 'suburban': return 'default';
-      case 'suv': return 'primary';
-      case 'sprinter': return 'info';
-      case 'rescue squad': return 'warning';
-      case 'limo bus': return 'secondary';
-      case 'shuttle': return 'success';
-      default: return 'default';
-    }
-  };
+  }, [search]);
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -99,14 +89,7 @@ export default function DriverDirectory() {
 
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {driver.vehicles.map((v, i) => (
-                  <Tooltip title={v} key={i}>
-                    <Chip
-                      label={v}
-                      size="small"
-                      color={vehicleColor(v)}
-                      sx={{ mb: 0.5 }}
-                    />
-                  </Tooltip>
+                  <VehicleChip vehicle={v} key={i} />
                 ))}
               </Box>
             </Box>
