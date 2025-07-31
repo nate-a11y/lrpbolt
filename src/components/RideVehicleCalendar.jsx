@@ -51,6 +51,16 @@ export default function RideVehicleCalendar() {
     const lightness = theme.palette.mode === 'dark' ? '45%' : '55%';
 
     const color = `hsl(${hue.toFixed(0)}, ${saturation}, ${lightness})`;
+=======
+    const hue = Math.abs(hash) % 360;
+
+    // Quantize hue to spread colors farther apart
+    const quantizedHue = Math.round(hue / 20) * 20;
+    const saturation = theme.palette.mode === 'dark' ? '60%' : '65%';
+    const lightness = theme.palette.mode === 'dark' ? '40%' : '55%';
+
+    const color = `hsl(${quantizedHue}, ${saturation}, ${lightness})`;
+
     stored[vehicle] = color;
     localStorage.setItem('vehicleColors', JSON.stringify(stored));
     return color;
