@@ -42,14 +42,15 @@ export default function RideVehicleCalendar() {
     for (let i = 0; i < vehicle.length; i++) {
       hash = (hash * 33) ^ vehicle.charCodeAt(i);
     }
-    const hue = Math.abs(hash) % 360;
 
-    // Quantize hue to spread colors farther apart
-    const quantizedHue = Math.round(hue / 20) * 20;
+    // Spread hues using the golden angle for better distribution
+    const GOLDEN_ANGLE = 137.508; // degrees
+    const hue = (Math.abs(hash) * GOLDEN_ANGLE) % 360;
+
     const saturation = theme.palette.mode === 'dark' ? '60%' : '65%';
     const lightness = theme.palette.mode === 'dark' ? '40%' : '55%';
 
-    const color = `hsl(${quantizedHue}, ${saturation}, ${lightness})`;
+    const color = `hsl(${hue}, ${saturation}, ${lightness})`;
     stored[vehicle] = color;
     localStorage.setItem('vehicleColors', JSON.stringify(stored));
     return color;
