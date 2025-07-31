@@ -1,28 +1,29 @@
-name: Deploy to Hostinger
+name: CI + Deploy to Hostinger
 
 on:
   push:
     branches:
-      - main  # Deploy only from main branch
-  workflow_dispatch: # Manual trigger support
+      - main   # Run on pushes to main
+  pull_request:
+  workflow_dispatch:   # Allow manual trigger
 
 jobs:
-  build-deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout Code
+      # 1️⃣ Checkout Repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Node.js
+      # 2️⃣ Setup Node
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: 'npm'
 
-      # 3️⃣ Create .env from GitHub Secrets
+      # 3️⃣ Create .env from Secrets
       - name: Create .env file
         run: |
           echo "VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}" >> .env
@@ -36,16 +37,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 5️⃣ Build for Production
-      - name: Build project
-        run: |
-          npm run build
-          echo "✅ Build completed!"
+      # 5️⃣ Lint & Test
+      - name: Lint code
+        run: npm run lint
+      - name: Run tests
+        run: npm test
 
-      # 6️⃣ Add Hostinger .htaccess
+      # 6️⃣ Build Project
+      - name: Build project
+        run: npm run build
+
+      # 7️⃣ Add .htaccess for Hostinger SPA & MIME Fix
       - name: Add Hostinger .htaccess
         run: |
-          echo "Adding .htaccess..."
           cat <<EOT > dist/.htaccess
           # Force correct MIME types
           AddType application/javascript .js .mjs
@@ -64,24 +68,19 @@ jobs:
           RewriteRule . /index.html [L]
 
           # Cache busting for static assets
-          <FilesMatch "\\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
+          <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
             Header set Cache-Control "max-age=31536000, public"
           </FilesMatch>
           EOT
 
-      # 7️⃣ Deploy to Hostinger via FTP
+      # 8️⃣ Deploy to Hostinger via FTP
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          server: ${{ secrets.HOSTINGER_FTP_HOST }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          server-dir: ${{ secrets.HOSTINGER_REMOTE_PATH }}
           protocol: ftp
           local-dir: ./dist
-          server-dir: /public_html/
           log-level: minimal
-          exclude: |
-            **/.git*
-            **/.github*
-            **/node_modules/*
-            **/src/*
