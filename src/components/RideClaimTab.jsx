@@ -47,17 +47,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const showToast = (message, severity = 'success') =>
     setToast({ open: true, message, severity });
 
-  const claimRide = useCallback(async (tripId) => {
-    const result = await apiClaimRide(tripId, driver);
-    if (result.success) {
-      setClaimLog((prev) => [...prev, { tripId, time: new Date().toLocaleTimeString() }]);
-      hasLoadedRef.current = false;
-      loadRides();
-      return true;
-    }
-    throw new Error(result.message || 'Claim failed');
-  }, [driver, loadRides]);
-
   const loadRides = useCallback(async () => {
     setLoadingRides(true);
     try {
@@ -74,6 +63,17 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       setLoadingRides(false);
     }
   }, []);
+
+  const claimRide = useCallback(async (tripId) => {
+    const result = await apiClaimRide(tripId, driver);
+    if (result.success) {
+      setClaimLog((prev) => [...prev, { tripId, time: new Date().toLocaleTimeString() }]);
+      hasLoadedRef.current = false;
+      loadRides();
+      return true;
+    }
+    throw new Error(result.message || 'Claim failed');
+  }, [driver, loadRides]);
 
   useEffect(() => {
     if (driver && !isLockedOut && !hasLoadedRef.current) {
