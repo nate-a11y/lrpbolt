@@ -138,17 +138,22 @@ export default function RideVehicleCalendar() {
             filterSelectedOptions
             disableCloseOnSelect
             getOptionLabel={(option) => option === 'ALL' ? 'All Vehicles' : option}
-            renderOption={(props, option) => (
-              <Box component="li" key={option} {...props} sx={{
-                backgroundColor: option === 'ALL' ? undefined : getVehicleColor(option),
-                color: option === 'ALL' ? undefined : '#fff',
-                fontWeight: 500,
-                '&:hover': {
+            renderOption={(props, option) => {
+              const { key, ...rest } = props;
+              return (
+                <Box component="li" key={key} {...rest} sx={{
                   backgroundColor: option === 'ALL' ? undefined : getVehicleColor(option),
-                  opacity: 0.9
-                }
-              }}>{option === 'ALL' ? 'All Vehicles' : option}</Box>
-            )}
+                  color: option === 'ALL' ? undefined : '#fff',
+                  fontWeight: 500,
+                  '&:hover': {
+                    backgroundColor: option === 'ALL' ? undefined : getVehicleColor(option),
+                    opacity: 0.9
+                  }
+                }}>
+                  {option === 'ALL' ? 'All Vehicles' : option}
+                </Box>
+              );
+            }}
             renderInput={(params) => (
               <TextField {...params} label="Filter Vehicles" size="small" />
             )}
