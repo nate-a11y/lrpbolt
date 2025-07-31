@@ -39,7 +39,7 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
         showToast(`❌ Failed to load rides: ${err.message}`, 'error');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     refreshRides();
