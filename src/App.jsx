@@ -442,7 +442,7 @@ export default function App() {
                   gap: 1,
                 }}
               >
-                🚀 Version: <span style={{ fontFamily: 'monospace' }}>v2.2.5</span> • Lake Ride Pros © {new Date().getFullYear()}
+                🚀 Version: <span style={{ fontFamily: 'monospace' }}>v2.3.5</span> • Lake Ride Pros © {new Date().getFullYear()}
               </Typography>
   
               <Button
