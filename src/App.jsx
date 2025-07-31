@@ -83,6 +83,7 @@ export default function App() {
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
   const [isLockedOut, setIsLockedOut] = useState(isInLockoutWindow());
   const [isAppReady, setIsAppReady] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const isFullyReady = isAppReady && !!selectedDriver;
   const hasFetchedRef = useRef(false);
 
@@ -208,6 +209,7 @@ export default function App() {
     }
   }, [showEliteBadge]);
   const handleGoogleLogin = async () => {
+    setAuthLoading(true);
     try {
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
@@ -224,11 +226,14 @@ export default function App() {
       localStorage.setItem("lrp_driver", driverName);
     } catch (err) {
       setToast({ open: true, message: err.message, severity: 'error' });
+    } finally {
+      setAuthLoading(false);
     }
   };
   
   
   const handleEmailAuth = async () => {
+    setAuthLoading(true);
     try {
       const result = isRegistering
         ? await createUserWithEmailAndPassword(auth, email, password)
@@ -246,6 +251,8 @@ export default function App() {
       localStorage.setItem("lrp_driver", driverName);
     } catch (err) {
       setToast({ open: true, message: err.message, severity: 'error' });
+    } finally {
+      setAuthLoading(false);
     }
   };
   
@@ -268,12 +275,16 @@ export default function App() {
           <Paper elevation={6} sx={{ p: 4, maxWidth: 420, width: '100%', borderRadius: 3, textAlign: 'center' }}>
             <img src="https://lakeridepros.xyz/Color%20logo%20-%20no%20background.png" alt="Logo" style={{ height: 56, marginBottom: 16 }} />
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>🚀 Driver Portal – Elite Access</Typography>
-            <Button fullWidth variant="contained" onClick={handleGoogleLogin} sx={{ mb: 2 }}>SIGN IN WITH GOOGLE</Button>
+            <Button fullWidth variant="contained" onClick={handleGoogleLogin} sx={{ mb: 2 }} disabled={authLoading}>
+              SIGN IN WITH GOOGLE
+            </Button>
             <Divider sx={{ my: 2 }}>OR</Divider>
             <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth sx={{ mb: 2 }} />
             <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth sx={{ mb: 2 }} />
-            <Button fullWidth variant="outlined" onClick={handleEmailAuth}>{isRegistering ? 'REGISTER & SIGN IN' : 'SIGN IN WITH EMAIL'}</Button>
-            <Button fullWidth size="small" onClick={() => setIsRegistering(!isRegistering)} sx={{ mt: 1 }}>
+            <Button fullWidth variant="outlined" onClick={handleEmailAuth} disabled={authLoading}>
+              {isRegistering ? 'REGISTER & SIGN IN' : 'SIGN IN WITH EMAIL'}
+            </Button>
+            <Button fullWidth size="small" onClick={() => setIsRegistering(!isRegistering)} sx={{ mt: 1 }} disabled={authLoading}>
               {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
             </Button>
             <Box display="flex" justifyContent="center" mt={3}>
