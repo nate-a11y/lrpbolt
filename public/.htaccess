@@ -1,44 +1,13 @@
-# --------------------------------------------
-# ✅ MIME Types for JS & CSS
-# --------------------------------------------
+# Force correct MIME for JS and PWA files
 AddType application/javascript .js
-AddType text/javascript .mjs
-AddType text/css .css
-AddType application/manifest+json .webmanifest
+AddType application/json .webmanifest
+AddType image/png .png
+AddType image/x-icon .ico
 
-# --------------------------------------------
-# ✅ SPA Fallback (React Router)
-# --------------------------------------------
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /
-
-  # Don't rewrite for static assets or API
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ index.html [L]
-</IfModule>
-
-# --------------------------------------------
-# ✅ Cache Control for Performance
-# --------------------------------------------
-<IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType application/javascript "access plus 1 month"
-  ExpiresByType text/css "access plus 1 month"
-  ExpiresByType image/png "access plus 6 months"
-  ExpiresByType image/jpeg "access plus 6 months"
-  ExpiresByType image/webp "access plus 6 months"
-  ExpiresByType application/manifest+json "access plus 7 days"
-</IfModule>
-
-# --------------------------------------------
-# ✅ Security Headers
-# --------------------------------------------
-<IfModule mod_headers.c>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set X-XSS-Protection "1; mode=block"
-  Header set Referrer-Policy "strict-origin-when-cross-origin"
-  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
-</IfModule>
+# React SPA routing fix
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
