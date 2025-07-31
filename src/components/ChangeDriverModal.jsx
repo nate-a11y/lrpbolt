@@ -29,7 +29,6 @@ const ChangeDriverModal = ({ open, onClose, currentDriver, setDriver, drivers })
     setIsSubmitting(true);
     try {
       setDriver(selected);
-      localStorage.setItem('lrp_driver', selected);
       onClose();
     } finally {
       setIsSubmitting(false);

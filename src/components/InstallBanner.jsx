@@ -104,4 +104,4 @@ const InstallBanner = () => {
   );
 };
 
-export default InstallBanner;
+export default React.memo(InstallBanner);

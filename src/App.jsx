@@ -14,6 +14,7 @@ import InstallBanner from './components/InstallBanner';
 import ChangeDriverModal from './components/ChangeDriverModal';
 import SidebarNavigation from './components/SidebarNavigation';
 import useDarkMode from './hooks/useDarkMode';
+import usePersistentState from './hooks/usePersistentState';
 import DriverInfoTab from './components/DriverInfoTab';
 import CalendarUpdateTab from './components/CalendarUpdateTab';
 import VehicleDropGuides from './components/VehicleDropGuides';
@@ -67,8 +68,8 @@ preloadDriverList();
 export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const [drivers, setDrivers] = useState([]);
-  const [selectedDriver, setSelectedDriver] = useState(() => localStorage.getItem("lrp_driver") || '');
-  const [tabIndex, setTabIndex] = useState(() => parseInt(localStorage.getItem("lrp_tabIndex") || 0, 10));
+  const [selectedDriver, setSelectedDriver] = usePersistentState('lrp_driver', '');
+  const [tabIndex, setTabIndex] = usePersistentState('lrp_tabIndex', 0);
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("lrpUser")) || null);
   const [role, setRole] = useState(() => localStorage.getItem("lrpRole") || null);
   const [email, setEmail] = useState('');
@@ -153,7 +154,6 @@ export default function App() {
           await fetchRole(u.email);
           const driverName = await fetchDrivers(u.email);
           setSelectedDriver(driverName);
-          localStorage.setItem("lrp_driver", driverName);
           setTimeout(() => setIsAppReady(true), 50);
         } else {
           setUser(null);
@@ -161,7 +161,6 @@ export default function App() {
           setSelectedDriver('');
           localStorage.removeItem("lrpUser");
           localStorage.removeItem("lrpRole");
-          localStorage.removeItem("lrp_driver");
           setIsAppReady(true);
         }
       }
@@ -195,7 +194,6 @@ export default function App() {
       await fetchRole(u.email);
       const driverName = await fetchDrivers(u.email);
       setSelectedDriver(driverName);
-      localStorage.setItem("lrp_driver", driverName);
     } catch (err) {
       setToast({ open: true, message: err.message, severity: 'error' });
     } finally {
@@ -220,7 +218,6 @@ export default function App() {
       await fetchRole(u.email);
       const driverName = await fetchDrivers(u.email);
       setSelectedDriver(driverName);
-      localStorage.setItem("lrp_driver", driverName);
     } catch (err) {
       setToast({ open: true, message: err.message, severity: 'error' });
     } finally {
@@ -385,7 +382,6 @@ export default function App() {
             currentDriver={selectedDriver}
             setDriver={(d) => {
               setSelectedDriver(d);
-              localStorage.setItem("lrp_driver", d);
             }}
           />
   
