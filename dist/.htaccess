@@ -1,0 +1,13 @@
+# Force correct MIME for JS and PWA files
+AddType application/javascript .js .jsx
+AddType application/json .webmanifest
+AddType image/png .png
+AddType image/x-icon .ico
+
+# React SPA routing fix
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]

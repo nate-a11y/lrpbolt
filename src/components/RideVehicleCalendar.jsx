@@ -45,8 +45,7 @@ export default function RideVehicleCalendar() {
     // Convert HEX to HSL, tweak, and convert back
     const rgb = hex.match(/\w\w/g).map(x => parseInt(x, 16) / 255);
     const max = Math.max(...rgb), min = Math.min(...rgb);
-    let h, s;
-    const l = (max + min) / 2;
+    let h, s, l = (max + min) / 2;
     
     if (max === min) {
       h = s = 0;
