@@ -50,6 +50,18 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist/assets" ]; then
+          echo "❌ ERROR: dist/assets folder is missing — build failed or output path incorrect."
+          exit 1
+          fi
+          if ! ls dist/assets/main-*.js 1> /dev/null 2>&1; then
+          echo "❌ ERROR: No main-*.js file found in dist/assets — build hash may have failed."
+          exit 1
+          fi
+          echo "✅ Build verification passed — main JS found in dist/assets."
+
       - name: Add Hostinger .htaccess
         run: |
           cat <<EOT > dist/.htaccess
