@@ -3,27 +3,23 @@ name: CI + Deploy to Hostinger
 on:
   push:
     branches:
-      - main   # Run on pushes to main
-  pull_request:
-  workflow_dispatch:   # Allow manual trigger
+      - main
+  workflow_dispatch:
 
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout Repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Node
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: 'npm'
 
-      # 3️⃣ Create .env from Secrets
       - name: Create .env file
         run: |
           echo "VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}" >> .env
@@ -33,71 +29,61 @@ jobs:
           echo "VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}" >> .env
           echo "VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}" >> .env
 
-      # 4️⃣ Install Dependencies
       - name: Install dependencies
         run: npm ci
 
-      # 5️⃣ Lint & Test
+      - name: Verify Vite base path
+        run: |
+          if ! grep -q "base: './'" vite.config.js; then
+            echo "❌ ERROR: vite.config.js base must be './' for Hostinger deployment"
+            exit 1
+          else
+            echo "✅ Vite base path is correct"
+          fi
+
       - name: Lint code
         run: npm run lint
+
       - name: Run tests
         run: npm test
-- name: Verify Vite base path
-  run: |
-    if ! grep -q "base: './'" vite.config.js; then
-      echo "❌ ERROR: vite.config.js base must be './' for Hostinger deployment"
-      exit 1
-    else
-      echo "✅ Vite base path is correct"
-    fi
 
-      # 6️⃣ Build Project
       - name: Build project
         run: npm run build
 
-      # 7️⃣ Add .htaccess for Hostinger SPA & MIME Fix
-- name: Add Hostinger .htaccess
-  run: |
-    cat <<EOT > dist/.htaccess
-    # ✅ MIME Types
-    AddType application/javascript .js .mjs
-    AddType application/json .json .webmanifest
-    AddType text/css .css
-    AddType image/png .png
-    AddType image/svg+xml .svg
-    AddType image/webp .webp
-    AddType image/x-icon .ico
+      - name: Add Hostinger .htaccess
+        run: |
+          cat <<EOT > dist/.htaccess
+          AddType application/javascript .js .mjs
+          AddType application/json .json .webmanifest
+          AddType text/css .css
+          AddType image/png .png
+          AddType image/svg+xml .svg
+          AddType image/webp .webp
+          AddType image/x-icon .ico
 
-    # ✅ SPA Routing (exclude assets folder)
-    RewriteEngine On
-    RewriteBase /
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} !^/assets/
-    RewriteRule . /index.html [L]
+          RewriteEngine On
+          RewriteBase /
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteCond %{REQUEST_URI} !^/assets/
+          RewriteRule . /index.html [L]
 
-    # ✅ Cache Control
-    <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
-      Header set Cache-Control "max-age=31536000, public"
-    </FilesMatch>
-    <FilesMatch "\.(html)$">
-      Header set Cache-Control "no-cache, no-store, must-revalidate"
-    </FilesMatch>
-    EOT
+          <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
+            Header set Cache-Control "max-age=31536000, public"
+          </FilesMatch>
+          <FilesMatch "\.(html)$">
+            Header set Cache-Control "no-cache, no-store, must-revalidate"
+          </FilesMatch>
+          EOT
 
-      # 8️⃣ Deploy to Hostinger via FTP
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: 145.223.77.125
-          username: u400814892.lakeridepros.xyz
-          password: m;0C&RhL=AL10b!q
+          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/
           log-level: minimal
-          exclude: |
-            **/.git*
-            **/.github*
-            **/node_modules/*
-            **/src/*
+          dangerous-clean-slate: true
