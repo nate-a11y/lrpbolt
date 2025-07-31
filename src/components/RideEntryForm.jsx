@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Box, Button, TextField, Typography, MenuItem, Paper, Grid, Snackbar,
   Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -24,11 +24,36 @@ const defaultValues = {
 };
 const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/i;
 
+const rideTypeOptions = ['P2P', 'Round-Trip', 'Hourly'];
+const vehicleOptions = [
+  'LRPBus - Limo Bus',
+  'LRPSHU - Shuttle',
+  'LRPSPR - Sprinter',
+  'LRPSQD - Rescue Squad'
+];
+
+const fieldConfig = [
+  { name: 'TripID', label: 'Trip ID', sm: 6 },
+  { name: 'Date', label: 'Date', type: 'date', sm: 6, shrink: true },
+  { name: 'PickupTime', label: 'Pickup Time', type: 'time', sm: 6, shrink: true },
+  { name: 'DurationHours', label: 'Duration Hours', type: 'number', sm: 3 },
+  { name: 'DurationMinutes', label: 'Duration Minutes', type: 'number', sm: 3 },
+  { name: 'RideType', label: 'Ride Type', type: 'select', sm: 6 },
+  { name: 'Vehicle', label: 'Vehicle', type: 'select', sm: 6 }
+];
+
+const previewFields = [...fieldConfig.map(f => f.name), 'RideDuration', 'RideNotes'];
+
 export default function RideEntryForm() {
   const [formData, setFormData] = useState(defaultValues);
   const [csvBuilder, setCsvBuilder] = useState(defaultValues);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
-  const [preview, setPreview] = useState(null);
+  const preview = useMemo(() => {
+    const rideDuration = formatDuration(formData.DurationHours, formData.DurationMinutes);
+    const formattedDate = formData.Date ? dayjs(formData.Date).tz(TIMEZONE).format('M/D/YYYY') : 'N/A';
+    const formattedTime = toTimeString12Hr(formData.PickupTime);
+    return { ...formData, PickupTime: formattedTime, Date: formattedDate, RideDuration: rideDuration };
+  }, [formData]);
   const [rideTab, setRideTab] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -42,15 +67,7 @@ export default function RideEntryForm() {
   const [dataTab, setDataTab] = useState(0);
   const isMobile = useMediaQuery('(max-width:600px)');
   const currentUser = auth.currentUser?.email || 'Unknown';
-
   const errorFields = useRef({});
-
-  useEffect(() => {
-    const rideDuration = formatDuration(formData.DurationHours, formData.DurationMinutes);
-    const formattedDate = formData.Date ? dayjs(formData.Date).tz(TIMEZONE).format('M/D/YYYY') : 'N/A';
-    const formattedTime = toTimeString12Hr(formData.PickupTime);
-    setPreview({ ...formData, PickupTime: formattedTime, Date: formattedDate, RideDuration: rideDuration });
-  }, [formData]);
 
   useEffect(() => {
     const getLiveAndClaimed = async () => {
@@ -101,7 +118,7 @@ export default function RideEntryForm() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleDropDailyRides = async () => {
+  const handleDropDailyRides = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch(BASE_URL, {
@@ -122,9 +139,9 @@ export default function RideEntryForm() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const handleChange = (e, stateSetter = setFormData) => {
+  const handleChange = useCallback((e, stateSetter = setFormData) => {
     const { name, value } = e.target;
     let updatedValue = value;
     if (name === 'TripID') {
@@ -132,9 +149,9 @@ export default function RideEntryForm() {
       updatedValue = cleaned.length > 4 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}` : cleaned;
     }
     stateSetter(prev => ({ ...prev, [name]: updatedValue }));
-  };
+  }, []);
   
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (submitting || !validateSingle(formData)) {
       setToast({ open: true, message: '❌ Fix form errors before submitting.', severity: 'error' });
       return;
@@ -168,25 +185,13 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [formData, submitting, currentUser]);
 
-  const handleSingleChange = (e) => {
-    const { name, value } = e.target;
-    let updatedValue = value;
-    if (name === 'TripID') {
-      const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      updatedValue = cleaned.length > 4 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}` : cleaned;
-    }
-    setFormData(prev => ({ ...prev, [name]: updatedValue }));
-  };
-
-  const handleCsvBuilderChange = (e) => {
-    const { name, value } = e.target;
-    setCsvBuilder(prev => ({ ...prev, [name]: value }));
-  };
+  const handleSingleChange = (e) => handleChange(e, setFormData);
+  const handleCsvBuilderChange = (e) => handleChange(e, setCsvBuilder);
   
 
-  const handleCsvAppend = () => {
+  const handleCsvAppend = useCallback(() => {
     if (!validateSingle(csvBuilder)) {
       setToast({ open: true, message: '❌ CSV builder incomplete or invalid', severity: 'error' });
       return;
@@ -203,9 +208,9 @@ export default function RideEntryForm() {
     ].join(', ');
     setMultiInput(prev => (prev ? prev + '\n' + line : line));
     setCsvBuilder(defaultValues);
-  };
+  }, [csvBuilder]);
 
-  const handleMultiSubmit = async () => {
+  const handleMultiSubmit = useCallback(async () => {
     if (!multiInput.trim()) {
       setToast({ open: true, message: '❌ No rides to submit', severity: 'error' });
       return;
@@ -246,7 +251,7 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [multiInput, currentUser]);
  
 
   return (
@@ -265,15 +270,7 @@ export default function RideEntryForm() {
     </Typography>
 
     <Grid container rowSpacing={0.75} columnSpacing={1}>
-      {[
-        { name: 'TripID', label: 'Trip ID', sm: 6 },
-        { name: 'Date', label: 'Date', type: 'date', sm: 6, shrink: true },
-        { name: 'PickupTime', label: 'Pickup Time', type: 'time', sm: 6, shrink: true },
-        { name: 'DurationHours', label: 'Duration Hours', type: 'number', sm: 3 },
-        { name: 'DurationMinutes', label: 'Duration Minutes', type: 'number', sm: 3 },
-        { name: 'RideType', label: 'Ride Type', type: 'select', sm: 6 },
-        { name: 'Vehicle', label: 'Vehicle', type: 'select', sm: 6 },
-      ].map(({ name, label, type = 'text', sm, shrink }) => (
+      {fieldConfig.map(({ name, label, type = 'text', sm, shrink }) => (
         <Grid item xs={12} sm={sm} key={name}>
           <TextField
             name={name}
@@ -293,15 +290,10 @@ export default function RideEntryForm() {
               '& .MuiInputLabel-root': { top: -5 }
             }}
           >
-            {name === 'RideType' && ['P2P', 'Round-Trip', 'Hourly'].map(opt => (
+            {name === 'RideType' && rideTypeOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
             ))}
-            {name === 'Vehicle' && [
-              'LRPBus - Limo Bus',
-              'LRPSHU - Shuttle',
-              'LRPSPR - Sprinter',
-              'LRPSQD - Rescue Squad'
-            ].map(opt => (
+            {name === 'Vehicle' && vehicleOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
             ))}
           </TextField>
@@ -391,15 +383,7 @@ export default function RideEntryForm() {
       </Grid>
 
       {/* Builder Inputs */}
-      {[
-        { name: 'TripID', label: 'Trip ID', sm: 6 },
-        { name: 'Date', label: 'Date', type: 'date', sm: 6, shrink: true },
-        { name: 'PickupTime', label: 'Pickup Time', type: 'time', sm: 6, shrink: true },
-        { name: 'DurationHours', label: 'Duration Hours', type: 'number', sm: 3 },
-        { name: 'DurationMinutes', label: 'Duration Minutes', type: 'number', sm: 3 },
-        { name: 'RideType', label: 'Ride Type', type: 'select', sm: 6 },
-        { name: 'Vehicle', label: 'Vehicle', type: 'select', sm: 6 },
-      ].map(({ name, label, type = 'text', sm, shrink }) => (
+      {fieldConfig.map(({ name, label, type = 'text', sm, shrink }) => (
         <Grid item xs={12} sm={sm} key={name}>
           <TextField
             name={name}
@@ -417,15 +401,10 @@ export default function RideEntryForm() {
               '& .MuiInputLabel-root': { top: -5 }
             }}
           >
-            {name === 'RideType' && ['P2P', 'Round-Trip', 'Hourly'].map(opt => (
+            {name === 'RideType' && rideTypeOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
             ))}
-            {name === 'Vehicle' && [
-              'LRPBus - Limo Bus',
-              'LRPSHU - Shuttle',
-              'LRPSPR - Sprinter',
-              'LRPSQD - Rescue Squad'
-            ].map(opt => (
+            {name === 'Vehicle' && vehicleOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
             ))}
           </TextField>
@@ -568,7 +547,7 @@ export default function RideEntryForm() {
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirm Ride</DialogTitle>
         <DialogContent dividers>
-          {['TripID', 'Date', 'PickupTime', 'RideType', 'Vehicle', 'RideDuration', 'RideNotes'].map((key) => (
+          {previewFields.map((key) => (
             <Typography key={key}><strong>{key.replace(/([A-Z])/g, ' $1')}:</strong> {preview?.[key] || '—'}</Typography>
           ))}
         </DialogContent>
