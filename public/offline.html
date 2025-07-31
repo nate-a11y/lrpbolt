@@ -23,5 +23,15 @@
   <body>
     <h1>🚧 You're Offline</h1>
     <p>Please check your connection. Some features may not be available.</p>
+    <script>
+      // Auto-reload when connection is restored
+      const reloadWhenOnline = () => {
+        if (navigator.onLine) {
+          window.location.replace('/');
+        }
+      };
+      window.addEventListener('online', reloadWhenOnline);
+      setInterval(reloadWhenOnline, 5000);
+    </script>
   </body>
 </html>
