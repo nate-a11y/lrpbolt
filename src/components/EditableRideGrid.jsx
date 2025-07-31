@@ -202,7 +202,7 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
 
 <Box sx={{ width: '100%',  overflowX: 'auto' }}>
         <DataGrid
-          getRowId={(row) => row.TripID} // ← ADD THIS
+          getRowId={(row) => row.TripID}
           rows={rows}
           columns={columns}
           autoHeight

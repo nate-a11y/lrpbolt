@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideClaimTab.jsx
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   Box, Button, Typography, MenuItem, Select, FormControl, InputLabel,
   Snackbar, Alert, CircularProgress
@@ -20,7 +20,6 @@ const CST = TIMEZONE;
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const [rides, setRides] = useState([]);
-  const [groupedRides, setGroupedRides] = useState({});
   const [vehicleFilter, setVehicleFilter] = useState('');
   const [dayFilter, setDayFilter] = useState('');
   const [claimLog, setClaimLog] = useState([]);
@@ -28,10 +27,27 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   const hasLoadedRef = useRef(false);
 
+  const groupedRides = useMemo(() => {
+    const grouped = {};
+    rides.forEach((r) => {
+      const normalizedDate = normalizeDate(r.Date);
+      const day = new Date(normalizedDate).toLocaleDateString('en-US', { weekday: 'long' });
+      const key = `${r.Vehicle}___${day}___${normalizedDate}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(r);
+    });
+    return grouped;
+  }, [rides]);
+
+  const uniqueVehicles = useMemo(
+    () => Array.from(new Set(rides.map((r) => r.Vehicle))),
+    [rides]
+  );
+
   const showToast = (message, severity = 'success') =>
     setToast({ open: true, message, severity });
 
-  const claimRide = async (tripId) => {
+  const claimRide = useCallback(async (tripId) => {
     const result = await apiClaimRide(tripId, driver);
     if (result.success) {
       setClaimLog((prev) => [...prev, { tripId, time: new Date().toLocaleTimeString() }]);
@@ -40,7 +56,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       return true;
     }
     throw new Error(result.message || 'Claim failed');
-  };
+  }, [driver, loadRides]);
 
   const loadRides = useCallback(async () => {
     setLoadingRides(true);
@@ -52,16 +68,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       });
 
       setRides(unclaimed);
-
-      const grouped = {};
-      unclaimed.forEach((r) => {
-        const normalizedDate = normalizeDate(r.Date);
-        const day = new Date(normalizedDate).toLocaleDateString('en-US', { weekday: 'long' });
-        const key = `${r.Vehicle}___${day}___${normalizedDate}`;
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(r);
-      });
-      setGroupedRides(grouped);
     } catch (err) {
       showToast('❌ Failed to load rides. Try again later.', 'error');
     } finally {
@@ -104,7 +110,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           <InputLabel>Vehicle</InputLabel>
           <Select value={vehicleFilter} onChange={(e) => setVehicleFilter(e.target.value)} label="Vehicle">
             <MenuItem value="">All</MenuItem>
-            {Array.from(new Set(rides.map((r) => r.Vehicle))).map((v) => (
+            {uniqueVehicles.map((v) => (
               <MenuItem key={v} value={v}>{v}</MenuItem>
             ))}
           </Select>

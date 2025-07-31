@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box, IconButton, Snackbar, Alert, Tooltip
 } from '@mui/material';
@@ -22,7 +22,7 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
  
 
 
-  const refreshRides = () => {
+  const refreshRides = useCallback(() => {
     setLoading(true);
     fetchLiveRides()
       .then(data => {
@@ -38,11 +38,11 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
         setToast({ open: true, message: `❌ Failed to load rides: ${err.message}`, severity: 'error' });
       })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     refreshRides();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, refreshRides]);
   
 
   const handleDeleteConfirmed = async () => {

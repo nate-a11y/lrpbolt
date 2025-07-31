@@ -1,4 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
+import Papa from 'papaparse';
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lakeridepros.xyz/claim-proxy.php';
 export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
 export const TIME_LOG_CSV =
@@ -161,27 +162,16 @@ export const logTime = async (payload) => {
 
 export const fetchTimeLogs = async (driver) => {
   const res = await fetch(TIME_LOG_CSV);
-  const text = await res.text();
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',');
-  const idx = {
-    driver: headers.indexOf('Driver'),
-    start: headers.indexOf('StartTime'),
-    end: headers.indexOf('EndTime'),
-    duration: headers.indexOf('Duration'),
-    rideId: headers.indexOf('RideID')
-  };
-  return lines.slice(1)
-    .map((row) => {
-      const parts = row.split(',');
-      return {
-        driver: parts[idx.driver],
-        start: parts[idx.start],
-        end: parts[idx.end],
-        duration: parts[idx.duration],
-        rideId: parts[idx.rideId] || 'N/A'
-      };
-    })
+  const csvText = await res.text();
+  const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  return data
+    .map((row) => ({
+      driver: row.Driver,
+      start: row.StartTime,
+      end: row.EndTime,
+      duration: row.Duration,
+      rideId: row.RideID || 'N/A'
+    }))
     .filter((log) => (driver ? log.driver === driver : true));
 };
 
