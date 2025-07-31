@@ -48,7 +48,8 @@ jobs:
           echo "Adding .htaccess..."
           cat <<EOT > dist/.htaccess
           # Force correct MIME types
-          AddType application/javascript .js
+          AddType application/javascript .js .jsx
+          AddType application/json .webmanifest
           AddType text/css .css
           
           # SPA Routing - redirect all to index.html
