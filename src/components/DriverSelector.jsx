@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -18,22 +18,22 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
   const isDark = theme.palette.mode === 'dark';
   const isAdmin = role === 'Admin';
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     if (!isTracking && isAdmin) {
       const selected = e.target.value;
       setDriver(selected);
       localStorage.setItem('lrp_driver', selected);
     }
-  };
+  }, [isTracking, isAdmin, setDriver]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     if (!isTracking && isAdmin) {
       setDriver('');
       localStorage.removeItem('lrp_driver');
     }
-  };
+  }, [isTracking, isAdmin, setDriver]);
 
-  const sortedDrivers = [...drivers].sort((a, b) => a.localeCompare(b));
+  const sortedDrivers = useMemo(() => [...drivers].sort((a, b) => a.localeCompare(b)), [drivers]);
 
   return (
     <Box

@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
   FormControlLabel, Tooltip, Snackbar, Alert, Chip
@@ -153,11 +153,11 @@ const TimeClock = ({ driver, setIsTracking }) => {
     { field: 'duration', headerName: 'Duration (hrs)', flex: 1, type: 'number' },
   ];
 
-  const rows = previousSessions.map((s, i) => {
+  const rows = useMemo(() => previousSessions.map((s, i) => {
     const rawId = s.rideId || 'N/A';
-    const rideLabel = rawId === 'N/A' ? 'N/A' :
-                      rawId === 'MULTI' ? 'Multiple' :
-                      rawId;
+    const rideLabel = rawId === 'N/A' ? 'N/A'
+                      : rawId === 'MULTI' ? 'Multiple'
+                      : rawId;
 
     return {
       id: i,
@@ -167,7 +167,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
       end: dayjs(s.end).format('MM/DD/YYYY HH:mm'),
       duration: (parseInt(s.duration) / 60).toFixed(s.duration < 60 ? 1 : 0),
     };
-  });
+  }), [previousSessions]);
 
   return (
     <Box maxWidth={600} mx="auto">
