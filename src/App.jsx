@@ -166,7 +166,7 @@ export default function App() {
       }
     });
     return () => unsubscribe();
-  }, [fetchRole, fetchDrivers]);
+  }, [fetchRole, fetchDrivers, setSelectedDriver]);
 
   useEffect(() => {
     const interval = setInterval(() => setIsLockedOut(isInLockoutWindow()), 5000);
@@ -199,7 +199,7 @@ export default function App() {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchRole, fetchDrivers, setToast]);
+  }, [fetchRole, fetchDrivers, setToast, setSelectedDriver]);
   
   
   const handleEmailAuth = useCallback(async () => {
@@ -223,7 +223,7 @@ export default function App() {
     } finally {
       setAuthLoading(false);
     }
-  }, [isRegistering, email, password, fetchRole, fetchDrivers, setToast]);
+  }, [isRegistering, email, password, fetchRole, fetchDrivers, setToast, setSelectedDriver]);
   
   const theme = useMemo(() => createTheme({
     palette: { mode: darkMode ? 'dark' : 'light', primary: { main: '#4cbb17' } },
