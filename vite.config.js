@@ -104,9 +104,6 @@ export default defineConfig({
             if (id.includes('@mui')) {
               return 'mui';
             }
-            if (id.includes('react')) {
-              return 'react';
-            }
             return 'vendor';
           }
         }
