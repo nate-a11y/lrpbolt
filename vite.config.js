@@ -83,8 +83,19 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
       timeUtils: path.resolve(__dirname, 'src/timeUtils.js')
+    },
+    extensions: ['.js', '.jsx'] // ✅ Ensures JSX is always resolved to JS at build
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html') // ✅ Ensures correct HTML entry
+      }
     }
   },
+  base: './', // ✅ Relative paths (prevents absolute path issues on Hostinger)
   optimizeDeps: {
     include: [
       '@mui/material',
