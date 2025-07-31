@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/TicketScanner.jsx — BEYOND GOD MODE ⚡ DOM LOCK EDITION
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { sanitize } from '../utils/sanitize';
 import {
   Box, Typography, Paper, Snackbar, Alert, Modal, Divider, Button, Fade, CircularProgress, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
@@ -207,12 +208,12 @@ export default function TicketScanner() {
               </Box>
               <Typography variant="h6" align="center">🎟️ {ticket.ticketId}</Typography>
               <Divider sx={{ mb: 2 }} />
-              <Typography><strong>Passenger:</strong> {ticket.passenger}</Typography>
-              <Typography><strong>Passenger Count:</strong> {ticket.passengercount}</Typography>
+              <Typography><strong>Passenger:</strong> {sanitize(ticket.passenger)}</Typography>
+              <Typography><strong>Passenger Count:</strong> {sanitize(ticket.passengercount)}</Typography>
               <Typography><strong>Date:</strong> {formatDate(ticket.date)}</Typography>
               <Typography><strong>Time:</strong> {formatTime(ticket.time)}</Typography>
-              <Typography><strong>Pickup:</strong> {ticket.pickup}</Typography>
-              <Typography><strong>Dropoff:</strong> {ticket.dropoff}</Typography>
+              <Typography><strong>Pickup:</strong> {sanitize(ticket.pickup)}</Typography>
+              <Typography><strong>Dropoff:</strong> {sanitize(ticket.dropoff)}</Typography>
               <Button fullWidth onClick={confirmTicket} sx={{ mt: 2 }} variant="contained">
                 ✅ Confirm and Scan
               </Button>

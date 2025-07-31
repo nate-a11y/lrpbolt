@@ -1,7 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
-const BASE_URL = 'https://lakeridepros.xyz/claim-proxy.php';
-const SECURE_KEY = 'a9eF12kQvB67xZsT30pL';
-const TIME_LOG_CSV =
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lakeridepros.xyz/claim-proxy.php';
+export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
+export const TIME_LOG_CSV =
+  import.meta.env.VITE_TIME_LOG_CSV ||
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNqJgbe9yGcjFht3qmwMnTIvq/pub?gid=888251608&single=true&output=csv';
 
 export const fetchRideQueue = async () => {
@@ -14,7 +15,7 @@ export const fetchLiveRides = async () => {
   return await res.json();
 };
 
-export const updateRide = async (TripID, field, value, sheet = 'RideQueue') => {
+export const updateRide = async (TripID, updates, sheet = 'RideQueue') => {
   const res = await fetch(BASE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -22,8 +23,7 @@ export const updateRide = async (TripID, field, value, sheet = 'RideQueue') => {
       key: SECURE_KEY,
       type: 'updateRide',
       TripID,
-      field,
-      value,
+      fields: updates,
       sheet
     })
   });
@@ -32,11 +32,11 @@ export const updateRide = async (TripID, field, value, sheet = 'RideQueue') => {
 
 export const restoreRide = async (rideData) => {
   try {
-    const res = await fetch('https://lakeridepros.xyz/claim-proxy.php', {
+    const res = await fetch(BASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        key: 'a9eF12kQvB67xZsT30pL',
+        key: SECURE_KEY,
         type: 'addRide',
         sheet: 'Sheet1',
         data: rideData,
@@ -63,7 +63,7 @@ export const deleteRide = async (TripID, sheet = 'RideQueue') => {
   return await res.json();
 };
 export const getAccessLevel = async (email) => {
-  const res = await fetch(`https://lakeridepros.xyz/claim-proxy.php?type=access&email=${encodeURIComponent(email)}`);
+  const res = await fetch(`${BASE_URL}?type=access&email=${encodeURIComponent(email)}`);
   const json = await res.json();
   return json?.access || 'User'; // Fallback if not Admin
 };
