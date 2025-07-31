@@ -36,18 +36,20 @@ export default function RideVehicleCalendar() {
   const getVehicleColor = (vehicle) => {
     const stored = JSON.parse(localStorage.getItem('vehicleColors') || '{}');
     if (stored[vehicle]) return stored[vehicle];
-  
+
     // DJB2-style hash for better string distinction
     let hash = 5381;
     for (let i = 0; i < vehicle.length; i++) {
       hash = (hash * 33) ^ vehicle.charCodeAt(i);
     }
     const hue = Math.abs(hash) % 360;
-  
-    const saturation = '70%';
-    const lightness = theme.palette.mode === 'dark' ? '30%' : '45%';
-  
-    const color = `hsl(${hue}, ${saturation}, ${lightness})`;
+
+    // Quantize hue to spread colors farther apart
+    const quantizedHue = Math.round(hue / 20) * 20;
+    const saturation = theme.palette.mode === 'dark' ? '60%' : '65%';
+    const lightness = theme.palette.mode === 'dark' ? '40%' : '55%';
+
+    const color = `hsl(${quantizedHue}, ${saturation}, ${lightness})`;
     stored[vehicle] = color;
     localStorage.setItem('vehicleColors', JSON.stringify(stored));
     return color;
@@ -127,21 +129,31 @@ export default function RideVehicleCalendar() {
             multiple
             options={vehicleOptions}
             value={vehicleFilter}
-            onChange={(e, newVal) => setVehicleFilter(newVal.length === 0 ? ['ALL'] : newVal.includes('ALL') ? ['ALL'] : newVal)}
+            onChange={(e, newVal) => {
+              if (newVal.includes('ALL') && newVal.length > 1) {
+                newVal = newVal.filter(v => v !== 'ALL');
+              }
+              setVehicleFilter(newVal.length === 0 ? ['ALL'] : newVal);
+            }}
             filterSelectedOptions
             disableCloseOnSelect
             getOptionLabel={(option) => option === 'ALL' ? 'All Vehicles' : option}
-            renderOption={(props, option) => (
-              <Box component="li" key={option} {...props} sx={{
-                backgroundColor: option === 'ALL' ? undefined : getVehicleColor(option),
-                color: option === 'ALL' ? undefined : '#fff',
-                fontWeight: 500,
-                '&:hover': {
+            renderOption={(props, option) => {
+              const { key, ...rest } = props;
+              return (
+                <Box component="li" key={key} {...rest} sx={{
                   backgroundColor: option === 'ALL' ? undefined : getVehicleColor(option),
-                  opacity: 0.9
-                }
-              }}>{option === 'ALL' ? 'All Vehicles' : option}</Box>
-            )}
+                  color: option === 'ALL' ? undefined : '#fff',
+                  fontWeight: 500,
+                  '&:hover': {
+                    backgroundColor: option === 'ALL' ? undefined : getVehicleColor(option),
+                    opacity: 0.9
+                  }
+                }}>
+                  {option === 'ALL' ? 'All Vehicles' : option}
+                </Box>
+              );
+            }}
             renderInput={(params) => (
               <TextField {...params} label="Filter Vehicles" size="small" />
             )}
