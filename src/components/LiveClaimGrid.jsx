@@ -10,11 +10,12 @@ import { normalizeDate, normalizeTime } from '../timeUtils';
 import {
   Dialog, Typography, DialogTitle, DialogContent, DialogActions, Button
 } from '@mui/material';
+import useToast from '../hooks/useToast';
 
 
 const LiveClaimGrid = ({ refreshTrigger }) => {
   const [rows, setRows] = useState([]);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const { toast, showToast, closeToast } = useToast('success');
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingTripID, setDeletingTripID] = useState('');
@@ -35,7 +36,7 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
         setRows(mapped);
       })
       .catch(err => {
-        setToast({ open: true, message: `❌ Failed to load rides: ${err.message}`, severity: 'error' });
+        showToast(`❌ Failed to load rides: ${err.message}`, 'error');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -50,9 +51,9 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
     const res = await deleteRide(deletingTripID, 'Sheet1');
     if (res.success) {
       setRows(prev => prev.filter(row => row.TripID !== deletingTripID));
-      setToast({ open: true, message: `🗑️ Deleted Trip ${deletingTripID}`, severity: 'info' });
+      showToast(`🗑️ Deleted Trip ${deletingTripID}`, 'info');
     } else {
-      setToast({ open: true, message: `❌ ${res.message}`, severity: 'error' });
+      showToast(`❌ ${res.message}`, 'error');
     }
     setDeleting(false);
     setConfirmOpen(false);
@@ -103,9 +104,9 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
       <Snackbar
         open={toast.open}
         autoHideDuration={3000}
-        onClose={() => setToast({ ...toast, open: false })}
+        onClose={closeToast}
       >
-        <Alert onClose={() => setToast({ ...toast, open: false })} severity={toast.severity} variant="filled">
+        <Alert onClose={closeToast} severity={toast.severity} variant="filled">
           {toast.message}
         </Alert>
       </Snackbar>

@@ -2,7 +2,7 @@
 // src/App.jsx
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy, useCallback } from 'react';
 import {
-  ThemeProvider, createTheme, CssBaseline, Box, Typography, Button,
+  ThemeProvider, CssBaseline, Box, Typography, Button,
   Snackbar, Alert, Switch, Divider, TextField, Paper,
   Dialog, DialogTitle, DialogContent, DialogActions, Toolbar, CircularProgress,
   Backdrop
@@ -15,6 +15,9 @@ import ChangeDriverModal from './components/ChangeDriverModal';
 import SidebarNavigation from './components/SidebarNavigation';
 import useDarkMode from './hooks/useDarkMode';
 import usePersistentState from './hooks/usePersistentState';
+import useToast from './hooks/useToast';
+import useDrivers from './hooks/useDrivers';
+import getTheme from './theme';
 import DriverInfoTab from './components/DriverInfoTab';
 import CalendarUpdateTab from './components/CalendarUpdateTab';
 import VehicleDropGuides from './components/VehicleDropGuides';
@@ -67,7 +70,7 @@ const preloadDriverList = async () => {
 preloadDriverList();
 export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
-  const [drivers, setDrivers] = useState([]);
+  const { drivers, fetchDrivers } = useDrivers();
   const [selectedDriver, setSelectedDriver] = usePersistentState('lrp_driver', '');
   const [tabIndex, setTabIndex] = usePersistentState('lrp_tabIndex', 0);
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("lrpUser")) || null);
@@ -75,7 +78,7 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const { toast, showToast, closeToast } = useToast('success');
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
@@ -85,23 +88,6 @@ export default function App() {
   const isFullyReady = isAppReady && !!selectedDriver;
   const hasFetchedRef = useRef(false);
 
-  const fetchDrivers = useCallback(async (userEmail) => {
-    try {
-      const data = await fetchWithCache(
-        'lrp_driverList',
-        `${BASE_URL}?type=driverEmails`
-      );
-      const names = data.map((d) => d.name);
-      setDrivers(names);
-      const match = data.find(
-        (d) => d.email?.toLowerCase() === userEmail?.toLowerCase()
-      );
-      return match?.name || userEmail || '';
-    } catch (err) {
-      console.error('Failed to fetch drivers:', err);
-      return userEmail || '';
-    }
-  }, []);
 
   const fetchRole = useCallback(async (email) => {
     try {
@@ -139,9 +125,9 @@ export default function App() {
       }
       window.location.reload();
     } catch (err) {
-      setToast({ open: true, message: "Sign out failed", severity: "error" });
+      showToast("Sign out failed", 'error');
     }
-  }, [setToast]);
+  }, [showToast]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -195,11 +181,11 @@ export default function App() {
       const driverName = await fetchDrivers(u.email);
       setSelectedDriver(driverName);
     } catch (err) {
-      setToast({ open: true, message: err.message, severity: 'error' });
+      showToast(err.message, 'error');
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchRole, fetchDrivers, setToast, setSelectedDriver]);
+  }, [fetchRole, fetchDrivers, showToast, setSelectedDriver]);
   
   
   const handleEmailAuth = useCallback(async () => {
@@ -219,16 +205,13 @@ export default function App() {
       const driverName = await fetchDrivers(u.email);
       setSelectedDriver(driverName);
     } catch (err) {
-      setToast({ open: true, message: err.message, severity: 'error' });
+      showToast(err.message, 'error');
     } finally {
       setAuthLoading(false);
     }
-  }, [isRegistering, email, password, fetchRole, fetchDrivers, setToast, setSelectedDriver]);
+  }, [isRegistering, email, password, fetchRole, fetchDrivers, showToast, setSelectedDriver]);
   
-  const theme = useMemo(() => createTheme({
-    palette: { mode: darkMode ? 'dark' : 'light', primary: { main: '#4cbb17' } },
-    typography: { fontFamily: 'Inter, sans-serif' }
-  }), [darkMode]);
+  const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
   if (!user || !role) {
     return (
@@ -388,9 +371,11 @@ export default function App() {
           <Snackbar
             open={toast.open}
             autoHideDuration={3000}
-            onClose={() => setToast({ ...toast, open: false })}
+            onClose={closeToast}
           >
-            <Alert severity={toast.severity} variant="filled">{toast.message}</Alert>
+            <Alert severity={toast.severity} variant="filled" onClose={closeToast}>
+              {toast.message}
+            </Alert>
           </Snackbar>
   
           <motion.div
