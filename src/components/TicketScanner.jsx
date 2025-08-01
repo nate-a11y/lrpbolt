@@ -38,24 +38,9 @@ export default function TicketScanner() {
     }
   };
 
-  // 🔍 Wait until QR container exists in DOM
-  const waitForQrElement = async () => {
-    for (let i = 0; i < 15; i++) {
-      if (document.getElementById("qr-reader")) return true;
-      await new Promise(r => setTimeout(r, 200));
-    }
-    return false;
-  };
-
   // 🚀 Start scanner
   const initScanner = useCallback(async (cameraId = null) => {
-    if (scannerReadyRef.current) return;
-    const exists = await waitForQrElement();
-    if (!exists) {
-      console.error("❌ QR element not found after retries");
-      setCameraError(true);
-      return;
-    }
+    if (scannerReadyRef.current || !qrContainerRef.current) return;
     scannerReadyRef.current = true;
 
     if (!html5QrCodeRef.current) {
