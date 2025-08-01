@@ -269,7 +269,7 @@ export default function RideEntryForm() {
       📝 Single Ride Details
     </Typography>
 
-    <Grid container rowSpacing={0.75} columnSpacing={1}>
+    <Grid container rowSpacing={1} columnSpacing={1}>
       {fieldConfig.map(({ name, label, type = 'text', sm, shrink }) => (
         <Grid item xs={12} sm={sm} key={name}>
           <TextField
@@ -285,10 +285,6 @@ export default function RideEntryForm() {
             error={!!errorFields.current[name]}
             helperText={errorFields.current[name] && 'Required or Invalid'}
             InputLabelProps={shrink ? { shrink: true } : undefined}
-            sx={{
-              '& .MuiInputBase-root': { py: 0.5 },
-              '& .MuiInputLabel-root': { top: -5 }
-            }}
           >
             {name === 'RideType' && rideTypeOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
@@ -311,10 +307,6 @@ export default function RideEntryForm() {
           rows={2}
           margin="dense"
           size="small"
-          sx={{
-            '& .MuiInputBase-root': { py: 0.5 },
-            '& .MuiInputLabel-root': { top: -5 }
-          }}
         />
       </Grid>
 
@@ -361,7 +353,7 @@ export default function RideEntryForm() {
 
 {rideTab === 1 && (
   <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
-    <Grid container spacing={1}>
+    <Grid container rowSpacing={1} columnSpacing={1}>
       {/* Raw CSV Input */}
       <Grid item xs={12}>
         <TextField
@@ -377,7 +369,7 @@ export default function RideEntryForm() {
 
       {/* Divider Text */}
       <Grid item xs={12}>
-        <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2 }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 2 }} gutterBottom>
           Or Use Ride Builder
         </Typography>
       </Grid>
@@ -396,10 +388,6 @@ export default function RideEntryForm() {
             margin="dense"
             size="small"
             InputLabelProps={shrink ? { shrink: true } : undefined}
-            sx={{
-              '& .MuiInputBase-root': { py: 0.5 },
-              '& .MuiInputLabel-root': { top: -5 }
-            }}
           >
             {name === 'RideType' && rideTypeOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
@@ -423,10 +411,6 @@ export default function RideEntryForm() {
           rows={2}
           margin="dense"
           size="small"
-          sx={{
-            '& .MuiInputBase-root': { py: 0.5 },
-            '& .MuiInputLabel-root': { top: -5 }
-          }}
         />
       </Grid>
 
