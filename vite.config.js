@@ -11,6 +11,7 @@ export default defineConfig({
     VitePWA({
       cacheId: 'lrp-v2-2025-05-13',
       registerType: 'autoUpdate',
+      importWorkboxFrom: 'local',
       includeAssets: [
         'favicon.ico',
         'robots.txt',
