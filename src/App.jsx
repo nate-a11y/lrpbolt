@@ -30,6 +30,9 @@ import TicketGenerator from './components/TicketGenerator';
 import TicketViewer from './components/TicketViewer';
 import TicketScanner from './components/TicketScanner';
 import Tickets from './components/Tickets';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import {
   auth, provider, signInWithPopup, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, onAuthStateChanged
@@ -46,9 +49,8 @@ const RideEntryForm = lazy(() => import('./components/RideEntryForm'));
 const RideVehicleCalendar = lazy(() => import('./components/RideVehicleCalendar'));
 
 
-const dayjs = window.dayjs;
-dayjs.extend(window.dayjs_plugin_utc);
-dayjs.extend(window.dayjs_plugin_timezone);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 const CST = TIMEZONE;
 
 const isInLockoutWindow = () => {
