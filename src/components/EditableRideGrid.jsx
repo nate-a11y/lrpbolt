@@ -17,6 +17,12 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { auth } from '../firebase';
 import { TIMEZONE } from '../constants';
 import { updateRide } from '../hooks/api';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import {
   normalizeDate,
   normalizeTime,
@@ -45,9 +51,9 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
 
   const handleStartEdit = useCallback((row) => {
     const parsed = parseDuration(row?.RideDuration || '');
-    const rawTime = window.dayjs(`2000-01-01 ${row?.PickupTime}`, 'YYYY-MM-DD h:mm A');
+    const rawTime = dayjs(`2000-01-01 ${row?.PickupTime}`, 'YYYY-MM-DD h:mm A');
     const time24 = rawTime.isValid() ? rawTime.format('HH:mm') : '';
-    const rawDate = window.dayjs(row?.Date, ['MM/DD/YYYY', 'YYYY-MM-DD']);
+    const rawDate = dayjs(row?.Date, ['MM/DD/YYYY', 'YYYY-MM-DD']);
     const dateISO = rawDate.isValid() ? rawDate.format('YYYY-MM-DD') : '';
   
     setEditedRow({
@@ -81,10 +87,10 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
     setSaving(true);
 
     const finalDuration = formatDuration(editedRow.DurationHours, editedRow.DurationMinutes);
-    const formattedTime = window.dayjs(`2000-01-01 ${editedRow.PickupTime}`, 'YYYY-MM-DD HH:mm')
+    const formattedTime = dayjs(`2000-01-01 ${editedRow.PickupTime}`, 'YYYY-MM-DD HH:mm')
       .tz(TIMEZONE)
       .format('h:mm A');
-    const formattedDate = window.dayjs(editedRow.Date).format('MM/DD/YYYY');
+    const formattedDate = dayjs(editedRow.Date).format('MM/DD/YYYY');
 
     const payload = {
       Date: formattedDate,

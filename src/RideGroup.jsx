@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { calculateDropOff } from './timeUtils';
+import dayjs from 'dayjs';
 
 const RideDetailRow = ({ icon, label, preserveLine = false, highlightColor }) => {
   const [prefix, ...rest] = label.split(':');
@@ -30,7 +31,7 @@ function RideGroup({ groupKey, rides, onClaim, showToast }) {
   const groupRef = useRef(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimingIds, setClaimingIds] = useState([]);
-  const dayOfWeek = useMemo(() => window.dayjs(date).format('dddd'), [date]);
+  const dayOfWeek = useMemo(() => dayjs(date).format('dddd'), [date]);
   const vehicleIcon = useMemo(() => {
     if (vehicle.startsWith('LRPSQD')) return '🚒';
     if (vehicle.startsWith('LRPSPR')) return '🚐';
