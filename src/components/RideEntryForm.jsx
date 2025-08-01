@@ -285,10 +285,6 @@ export default function RideEntryForm() {
             error={!!errorFields.current[name]}
             helperText={errorFields.current[name] && 'Required or Invalid'}
             InputLabelProps={shrink ? { shrink: true } : undefined}
-            sx={{
-              '& .MuiInputBase-root': { py: 0.5 },
-              '& .MuiInputLabel-root': { top: -5 }
-            }}
           >
             {name === 'RideType' && rideTypeOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
@@ -311,10 +307,6 @@ export default function RideEntryForm() {
           rows={2}
           margin="dense"
           size="small"
-          sx={{
-            '& .MuiInputBase-root': { py: 0.5 },
-            '& .MuiInputLabel-root': { top: -5 }
-          }}
         />
       </Grid>
 
@@ -396,10 +388,6 @@ export default function RideEntryForm() {
             margin="dense"
             size="small"
             InputLabelProps={shrink ? { shrink: true } : undefined}
-            sx={{
-              '& .MuiInputBase-root': { py: 0.5 },
-              '& .MuiInputLabel-root': { top: -5 }
-            }}
           >
             {name === 'RideType' && rideTypeOptions.map(opt => (
               <MenuItem key={opt} value={opt}>{opt}</MenuItem>
@@ -423,10 +411,6 @@ export default function RideEntryForm() {
           rows={2}
           margin="dense"
           size="small"
-          sx={{
-            '& .MuiInputBase-root': { py: 0.5 },
-            '& .MuiInputLabel-root': { top: -5 }
-          }}
         />
       </Grid>
 
