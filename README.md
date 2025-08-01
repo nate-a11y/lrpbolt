@@ -76,3 +76,10 @@ export npm_config_https_proxy="http://proxy:8080"
 ## License
 
 This project is provided under a proprietary license; no use is permitted. See the [LICENSE](LICENSE) file for details.
+
+## Known npm warnings
+
+`npm install` emits deprecation warnings for `inflight@1.0.6` and `glob@7.2.3`.
+These packages are pulled in by `workbox-build`, a transient dependency of
+`vite-plugin-pwa`. The warnings can be safely ignored until newer versions of
+`workbox-build` are released.
