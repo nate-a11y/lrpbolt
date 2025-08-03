@@ -2,9 +2,21 @@
 // src/components/RideClaimTab.jsx
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
-  Box, Button, Typography, MenuItem, Select, FormControl, InputLabel,
-  Snackbar, Alert, CircularProgress
+  Box,
+  Button,
+  Typography,
+  MenuItem,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  TextField,
+  InputAdornment,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import RideGroup from '../RideGroup';
 import BlackoutOverlay from './BlackoutOverlay';
 import { normalizeDate } from '../timeUtils';
@@ -19,12 +31,15 @@ dayjs.extend(timezone);
 const CST = TIMEZONE;
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [rides, setRides] = useState([]);
   const [vehicleFilter, setVehicleFilter] = useState('');
   const [dayFilter, setDayFilter] = useState('');
   const [claimLog, setClaimLog] = useState([]);
   const [loadingRides, setLoadingRides] = useState(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  const [selectedRides, setSelectedRides] = useState(new Set());
   const hasLoadedRef = useRef(false);
 
   const groupedRides = useMemo(() => {
@@ -47,6 +62,35 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const showToast = (message, severity = 'success') =>
     setToast({ open: true, message, severity });
 
+  const toggleRideSelection = useCallback((id) => {
+    setSelectedRides((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleGroupSelection = useCallback((ids) => {
+    setSelectedRides((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.every((id) => next.has(id));
+      ids.forEach((id) => {
+        if (allSelected) next.delete(id);
+        else next.add(id);
+      });
+      return next;
+    });
+  }, []);
+
+  const clearSelections = useCallback((ids) => {
+    setSelectedRides((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, []);
+
   const loadRides = useCallback(async () => {
     setLoadingRides(true);
     try {
@@ -57,6 +101,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       });
 
       setRides(unclaimed);
+      setSelectedRides((prev) => new Set([...prev].filter((id) => unclaimed.some((r) => r.TripID === id))));
     } catch (err) {
       showToast('❌ Failed to load rides. Try again later.', 'error');
     } finally {
@@ -95,32 +140,66 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         />
       )}
 
-      <Box display="flex" gap={2} mb={3} flexWrap="wrap">
-        <FormControl sx={{ minWidth: 160 }}>
-          <InputLabel>Day</InputLabel>
-          <Select value={dayFilter} onChange={(e) => setDayFilter(e.target.value)} label="Day">
-            <MenuItem value="">All</MenuItem>
-            {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d) => (
-              <MenuItem key={d} value={d}>{d}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      <Box
+        display="flex"
+        gap={2}
+        mb={3}
+        flexDirection={isMobile ? 'column' : 'row'}
+        alignItems={isMobile ? 'stretch' : 'center'}
+      >
+        <TextField
+          select
+          label="Day"
+          size="small"
+          value={dayFilter}
+          onChange={(e) => setDayFilter(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <CalendarTodayIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: 160, flex: isMobile ? 1 : 'inherit' }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d) => (
+            <MenuItem key={d} value={d}>{d}</MenuItem>
+          ))}
+        </TextField>
 
-        <FormControl sx={{ minWidth: 160 }}>
-          <InputLabel>Vehicle</InputLabel>
-          <Select value={vehicleFilter} onChange={(e) => setVehicleFilter(e.target.value)} label="Vehicle">
-            <MenuItem value="">All</MenuItem>
-            {uniqueVehicles.map((v) => (
-              <MenuItem key={v} value={v}>{v}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <TextField
+          select
+          label="Vehicle"
+          size="small"
+          value={vehicleFilter}
+          onChange={(e) => setVehicleFilter(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <DirectionsCarIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: 160, flex: isMobile ? 1 : 'inherit' }}
+        >
+          <MenuItem value="">All</MenuItem>
+          {uniqueVehicles.map((v) => (
+            <MenuItem key={v} value={v}>{v}</MenuItem>
+          ))}
+        </TextField>
 
-        <Button variant="outlined" onClick={() => {
-          hasLoadedRef.current = false;
-          loadRides();
-        }}>
-          🔄 Refresh
+        <Button
+          variant="outlined"
+          startIcon={loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />}
+          onClick={() => {
+            hasLoadedRef.current = false;
+            loadRides();
+          }}
+          disabled={loadingRides}
+          sx={{ alignSelf: isMobile ? 'stretch' : 'center' }}
+        >
+          Refresh
         </Button>
       </Box>
 
@@ -135,13 +214,17 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             const [vehicle, day] = groupKey.split('___');
             if ((vehicleFilter && vehicle !== vehicleFilter) || (dayFilter && day !== dayFilter)) return null;
 
-            return (
+          return (
               <RideGroup
                 key={groupKey}
                 groupKey={groupKey}
                 rides={rides}
                 onClaim={claimRide}
                 showToast={showToast}
+                selectedRides={selectedRides}
+                onToggleSelect={toggleRideSelection}
+                onGroupToggle={toggleGroupSelection}
+                onClearSelected={clearSelections}
               />
             );
           })}

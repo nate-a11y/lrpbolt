@@ -2,10 +2,27 @@
 // src/components/RideGroup.jsx
 import React, { useState, useRef, useMemo } from 'react';
 import {
-  Box, Typography, Card, Button, Checkbox, Paper, Divider, Stack,
-  useTheme, Grid, Snackbar, Alert, CircularProgress, useMediaQuery,
+  Box,
+  Typography,
+  Card,
+  Button,
+  Paper,
+  Divider,
+  Stack,
+  useTheme,
+  Grid,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  useMediaQuery,
+  ButtonGroup,
+  ToggleButton,
+  Chip,
+  Grow,
 } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import NotesIcon from '@mui/icons-material/Notes';
 import { calculateDropOff } from './timeUtils';
 import dayjs from 'dayjs';
 
@@ -22,8 +39,7 @@ const RideDetailRow = ({ icon, label, preserveLine = false, highlightColor }) =>
   );
 };
 
-function RideGroup({ groupKey, rides, onClaim, showToast }) {
-  const [selectedInGroup, setSelectedInGroup] = useState([]);
+function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggleSelect, onGroupToggle, onClearSelected }) {
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   const [vehicle, , date] = groupKey.split('___');
   const theme = useTheme();
@@ -31,6 +47,10 @@ function RideGroup({ groupKey, rides, onClaim, showToast }) {
   const groupRef = useRef(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimingIds, setClaimingIds] = useState([]);
+  const selectedInGroup = useMemo(
+    () => rides.filter((r) => selectedRides.has(r.TripID)).map((r) => r.TripID),
+    [rides, selectedRides]
+  );
   const dayOfWeek = useMemo(() => dayjs(date).format('dddd'), [date]);
   const vehicleIcon = useMemo(() => {
     if (vehicle.startsWith('LRPSQD')) return '🚒';
@@ -40,15 +60,11 @@ function RideGroup({ groupKey, rides, onClaim, showToast }) {
     return '🚗';
   }, [vehicle]);
 
-  const handleToggle = (tripId) => {
-    setSelectedInGroup((prev) =>
-      prev.includes(tripId) ? prev.filter((id) => id !== tripId) : [...prev, tripId]
-    );
-  };
+  const handleToggle = (tripId) => onToggleSelect(tripId);
 
   const handleSelectAll = () => {
     const allIds = rides.map((r) => r.TripID);
-    setSelectedInGroup((prev) => (prev.length === allIds.length ? [] : allIds));
+    onGroupToggle(allIds);
   };
 
   const handleMultiClaim = async () => {
@@ -62,7 +78,7 @@ function RideGroup({ groupKey, rides, onClaim, showToast }) {
       } else {
         showToast(`✅ Successfully claimed all ${selectedInGroup.length} rides!`, 'success');
       }
-      setSelectedInGroup([]);
+      onClearSelected(selectedInGroup);
     } catch (error) {
       showToast('❌ One or more rides failed to claim.', 'error');
     } finally {
@@ -75,7 +91,7 @@ function RideGroup({ groupKey, rides, onClaim, showToast }) {
     setClaimingIds((prev) => [...prev, tripId]);
     try {
       await onClaim(tripId);
-      setSelectedInGroup((prev) => prev.filter((id) => id !== tripId));
+      onClearSelected([tripId]);
       showToast(`✅ Ride ${tripId} claimed!`, 'success');
       groupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
@@ -96,96 +112,154 @@ function RideGroup({ groupKey, rides, onClaim, showToast }) {
   }
 
   return (
-    <Paper variant="outlined" ref={groupRef} sx={{ p: 2, mb: 4, borderLeft: '6px solid #4cbb17', backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fefefe' }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+    <Paper
+      variant="outlined"
+      ref={groupRef}
+      sx={{ p: 2, mb: 4, borderLeft: '6px solid #4cbb17', backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fefefe' }}
+    >
+      <Box
+        sx={{
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(45deg, #1b5e20, #2e7d32)'
+            : 'linear-gradient(45deg, #e8f5e9, #c8e6c9)',
+          borderRadius: 1,
+          p: 1.5,
+          mb: 2,
+          boxShadow: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1,
+        }}
+      >
         <Typography variant="h6" fontWeight="bold">
           {vehicleIcon} {vehicle} – 📅 {dayOfWeek} ({date})
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Total: {rides.length} rides
-        </Typography>
-        <Button variant="outlined" size="small" color="primary" onClick={handleSelectAll} aria-label="Select all rides in group" disabled={isClaiming}>
-          {selectedInGroup.length === rides.length ? 'Deselect All' : 'Select All'}
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="body2" fontWeight="bold">
+            Total: {rides.length} rides
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            color="primary"
+            onClick={handleSelectAll}
+            aria-label="Select all rides in group"
+            disabled={isClaiming}
+          >
+            {selectedInGroup.length === rides.length ? 'Deselect All' : 'Select All'}
+          </Button>
+        </Box>
       </Box>
-
       <Divider sx={{ mb: 2, borderColor: theme.palette.mode === 'dark' ? '#4cbb17' : '#81c784', opacity: 0.75, borderBottomWidth: '2px' }} />
 
-      <Stack spacing={2}>
+      <Stack spacing={3}>
         {rides.map((ride) => {
           const isSelected = selectedInGroup.includes(ride.TripID);
           const isLoading = claimingIds.includes(ride.TripID);
           const dropoffTime = calculateDropOff(ride.PickupTime, ride.RideDuration);
 
           return (
-            <Card key={ride.TripID} variant="outlined" sx={{
-              p: 2,
-              backgroundColor: isSelected
-                ? theme.palette.mode === 'dark' ? '#324d28' : '#e8f5e9'
-                : theme.palette.mode === 'dark' ? '#2a2a2a' : '#ffffff',
-              border: isSelected ? '2px solid #4cbb17' : '1px solid',
-              borderColor: isSelected ? '#4cbb17' : theme.palette.divider,
-              transition: 'background 0.3s ease',
-              '&:hover': {
-                background: theme.palette.mode === 'dark'
-                  ? 'linear-gradient(145deg, #355d2e, #2e4727)'
-                  : 'linear-gradient(145deg, #e2fbe8, #d0f0d6)',
-              },
-            }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <RideDetailRow icon="🆔" label={`ID: ${ride.TripID}`} />
-                  <Box display="flex" alignItems="baseline" gap={1} mb={1}>
-                    <AccessTimeIcon fontSize="small" sx={{ mt: '2px', color: theme.palette.text.secondary }} />
-                    <Typography variant="body2" color="text.primary">
-                      Time: {ride.PickupTime} → {dropoffTime}
-                    </Typography>
-                    <Box sx={{
-                      display: 'inline-flex', alignItems: 'baseline', px: 1.25, py: 0.25,
-                      borderRadius: '20px', backgroundColor: theme.palette.mode === 'dark' ? '#19391d' : '#e6f4ea',
-                      color: theme.palette.mode === 'dark' ? '#60e421' : '#2e7d32',
-                      fontWeight: 700, fontSize: '0.75rem',
-                      border: '1px solid', borderColor: theme.palette.mode === 'dark' ? '#4cbb17' : '#a5d6a7',
-                      boxShadow: theme.palette.mode === 'dark' ? '0 0 4px rgba(76, 187, 23, 0.4)' : 'inset 0 0 0 1px #c8e6c9',
-                      textTransform: 'uppercase', letterSpacing: '0.5px',
-                    }}>
-                      {ride.RideDuration}
-                    </Box>
-                  </Box>
-
-                  <RideDetailRow icon="🔁" label={`Type: ${ride.RideType}`} highlightColor={ride.RideType === 'Hourly' ? '#4cbb17' : undefined} />
-                  {ride.RideNotes && (
-                    <RideDetailRow icon="📝" label={`Notes: ${ride.RideNotes}`} preserveLine />
-                  )}
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Stack direction="row" spacing={1} alignItems="center" justifyContent={isMobile ? 'flex-start' : 'flex-end'} flexWrap="wrap">
-                    <Box onClick={() => handleToggle(ride.TripID)} sx={{
-                      cursor: 'pointer', px: 1, py: 0.25, borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600,
-                      border: '1px solid', borderColor: isSelected ? '#4cbb17' : theme.palette.divider,
-                      backgroundColor: isSelected ? '#4cbb17' : theme.palette.mode === 'dark' ? '#2a2a2a' : '#f0f0f0',
-                      color: isSelected ? '#fff' : theme.palette.text.primary, textAlign: 'center', transition: 'all 0.2s ease',
-                      '&:hover': { backgroundColor: isSelected ? '#60e421' : '#ddd' },
-                    }}>
-                      {isSelected ? '✅ Selected' : 'Select'}
+            <Grow in key={ride.TripID} timeout={300}>
+              <Card
+                elevation={2}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  backgroundColor: isSelected
+                    ? theme.palette.mode === 'dark'
+                      ? '#324d28'
+                      : '#e8f5e9'
+                    : theme.palette.mode === 'dark'
+                      ? '#2a2a2a'
+                      : '#ffffff',
+                  border: isSelected ? '2px solid #4cbb17' : '1px solid',
+                  borderColor: isSelected ? '#4cbb17' : theme.palette.divider,
+                  transition: 'background 0.3s ease, transform 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Chip
+                      label={`ID ${ride.TripID}`}
+                      size="small"
+                      sx={{
+                        backgroundColor: theme.palette.mode === 'dark' ? '#6a1b9a' : '#ba68c8',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        mb: 1,
+                      }}
+                    />
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <AccessTimeIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+                      <Typography variant="body2" color="text.primary">
+                        {ride.PickupTime} → {dropoffTime}
+                      </Typography>
+                      <Chip
+                        label={ride.RideDuration}
+                        color="success"
+                        size="small"
+                        sx={{ fontWeight: 'bold' }}
+                      />
                     </Box>
 
-                    <Button variant="contained" color="success" size="small" sx={{
-                      fontWeight: 'bold', borderRadius: 2,
-                      boxShadow: theme.palette.mode === 'dark' ? '0 0 3px #60e421' : '0 0 2px #a5d6a7',
-                      '&:hover': {
-                        boxShadow: theme.palette.mode === 'dark'
-                          ? '0 0 5px rgba(96, 228, 33, 0.8)'
-                          : '0 0 4px rgba(76, 187, 23, 0.4)',
-                      },
-                    }} onClick={() => handleSingleClaim(ride.TripID)} disabled={isClaiming || isLoading}>
-                      {isLoading ? '⏳ Claiming...' : '✅ Claim'}
-                    </Button>
-                  </Stack>
+                    <Box mt={1}>
+                      <Typography variant="subtitle2" color="text.secondary" mb={0.5}>
+                        Details
+                      </Typography>
+                      <RideDetailRow
+                        icon={<SwapHorizIcon fontSize="small" />}
+                        label={`Type: ${ride.RideType}`}
+                        highlightColor={ride.RideType === 'Hourly' ? '#4cbb17' : undefined}
+                      />
+                      {ride.RideNotes && (
+                        <RideDetailRow
+                          icon={<NotesIcon fontSize="small" />}
+                          label={`Notes: ${ride.RideNotes}`}
+                          preserveLine
+                        />
+                      )}
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }} />
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent={isMobile ? 'flex-start' : 'flex-end'}
+                      flexWrap="wrap"
+                    >
+                      <ButtonGroup variant="outlined" size="small">
+                        <ToggleButton
+                          value="select"
+                          selected={isSelected}
+                          onChange={() => handleToggle(ride.TripID)}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          {isSelected ? 'Selected' : 'Select'}
+                        </ToggleButton>
+                        <Button
+                          color="success"
+                          variant="contained"
+                          onClick={() => handleSingleClaim(ride.TripID)}
+                          disabled={isClaiming || isLoading}
+                          sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                        >
+                          {isLoading ? <CircularProgress size={16} /> : 'Claim'}
+                        </Button>
+                      </ButtonGroup>
+                    </Stack>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Card>
+              </Card>
+            </Grow>
           );
         })}
       </Stack>
