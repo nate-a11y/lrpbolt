@@ -30,7 +30,7 @@ export default function CadillacTab() {
   const [passengers, setPassengers] = useState(0);
   const [history, setHistory] = useState([]);
 
-  // load from storage on mount
+  // Load from storage on mount
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem('cadillacClock') || '{}');
     if (stored.startTime) {
@@ -41,11 +41,14 @@ export default function CadillacTab() {
       setPassengers(stored.passengers || 0);
       setElapsed(dayjs().diff(start, 'second'));
     }
-    const storedHistory = JSON.parse(localStorage.getItem('cadillacHistory') || '[]');
+    const storedHistory = JSON.parse(localStorage.getItem('cadillacHistory') || '[]').map((h) => ({
+      ...h,
+      duration: h.duration ?? dayjs(h.endTime).diff(dayjs(h.startTime), 'second'),
+    }));
     setHistory(storedHistory);
   }, []);
 
-  // timer effect
+  // Timer effect
   useEffect(() => {
     let interval;
     if (isRunning && startTime) {
@@ -56,6 +59,20 @@ export default function CadillacTab() {
     return () => clearInterval(interval);
   }, [isRunning, startTime]);
 
+  // Persist clock details
+  useEffect(() => {
+    if (isRunning && startTime) {
+      localStorage.setItem(
+        'cadillacClock',
+        JSON.stringify({
+          startTime: startTime.toISOString(),
+          trips,
+          passengers,
+        })
+      );
+    }
+  }, [isRunning, startTime, trips, passengers]);
+
   const handleStart = () => {
     const now = dayjs();
     setStartTime(now);
@@ -63,10 +80,7 @@ export default function CadillacTab() {
     setTrips(0);
     setPassengers(0);
     setElapsed(0);
-    localStorage.setItem(
-      'cadillacClock',
-      JSON.stringify({ startTime: now.toISOString(), trips: 0, passengers: 0 })
-    );
+    localStorage.setItem('cadillacClock', JSON.stringify({ startTime: now.toISOString(), trips: 0, passengers: 0 }));
   };
 
   const handleEnd = () => {
@@ -103,10 +117,7 @@ export default function CadillacTab() {
     setPassengers((p) => {
       const next = Math.max(0, p + delta);
       const store = JSON.parse(localStorage.getItem('cadillacClock') || '{}');
-      localStorage.setItem(
-        'cadillacClock',
-        JSON.stringify({ ...store, passengers: next })
-      );
+      localStorage.setItem('cadillacClock', JSON.stringify({ ...store, passengers: next }));
       return next;
     });
   };
@@ -119,7 +130,12 @@ export default function CadillacTab() {
   };
 
   const historyRows = useMemo(
-    () => history.map((h, idx) => ({ id: idx, ...h })),
+    () =>
+      history.map((h) => ({
+        id: h.startTime,
+        ...h,
+        duration: h.duration ?? dayjs(h.endTime).diff(dayjs(h.startTime), 'second'),
+      })),
     [history]
   );
 
@@ -139,6 +155,10 @@ export default function CadillacTab() {
     { field: 'trips', headerName: 'Trips', width: 80 },
     { field: 'passengers', headerName: 'Passengers', width: 130 },
   ];
+
+  const totalTrips = useMemo(() => history.reduce((s, h) => s + h.trips, 0), [history]);
+  const totalPassengers = useMemo(() => history.reduce((s, h) => s + h.passengers, 0), [history]);
+  const avgPassengers = totalTrips ? (totalPassengers / totalTrips).toFixed(2) : 0;
 
   return (
     <Box maxWidth={500} mx="auto">
@@ -166,12 +186,7 @@ export default function CadillacTab() {
                 <IconButton color="primary" onClick={() => changeTrips(1)} size="small">
                   <AddIcon />
                 </IconButton>
-                <IconButton
-                  color="error"
-                  onClick={() => changeTrips(-1)}
-                  disabled={trips === 0}
-                  size="small"
-                >
+                <IconButton color="error" onClick={() => changeTrips(-1)} disabled={trips === 0} size="small">
                   <RemoveIcon />
                 </IconButton>
               </Stack>
@@ -180,15 +195,12 @@ export default function CadillacTab() {
                 <Typography>Passengers: {passengers}</Typography>
                 <ButtonGroup variant="outlined" size="small">
                   {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <Button key={n} onClick={() => changePassengers(n)}>+{n}</Button>
+                    <Button key={n} onClick={() => changePassengers(n)}>
+                      +{n}
+                    </Button>
                   ))}
                 </ButtonGroup>
-                <IconButton
-                  color="error"
-                  onClick={() => changePassengers(-1)}
-                  disabled={passengers === 0}
-                  size="small"
-                >
+                <IconButton color="error" onClick={() => changePassengers(-1)} disabled={passengers === 0} size="small">
                   <RemoveIcon />
                 </IconButton>
               </Stack>
@@ -200,16 +212,9 @@ export default function CadillacTab() {
               <Typography variant="h6" gutterBottom>
                 Recent Sessions
               </Typography>
-              <DataGrid
-                autoHeight
-                rows={historyRows}
-                columns={historyCols}
-                hideFooter
-                disableRowSelectionOnClick
-              />
+              <DataGrid autoHeight rows={historyRows} columns={historyCols} hideFooter disableRowSelectionOnClick />
               <Typography variant="subtitle1" mt={1}>
-                Total Trips: {history.reduce((s, h) => s + h.trips, 0)}, Total Passengers:{' '}
-                {history.reduce((s, h) => s + h.passengers, 0)}
+                Total Trips: {totalTrips}, Total Passengers: {totalPassengers}, Passengers/Trip: {avgPassengers}
               </Typography>
             </Box>
           )}
@@ -218,4 +223,3 @@ export default function CadillacTab() {
     </Box>
   );
 }
-
