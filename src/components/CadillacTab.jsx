@@ -9,7 +9,6 @@ import {
   Stack,
   IconButton,
   Button,
-  ButtonGroup,
   Fab,
   Divider,
 } from '@mui/material';
@@ -43,7 +42,12 @@ export default function CadillacTab() {
     }
     const storedHistory = JSON.parse(localStorage.getItem('cadillacHistory') || '[]').map((h) => ({
       ...h,
-      duration: h.duration ?? dayjs(h.endTime).diff(dayjs(h.startTime), 'second'),
+      duration:
+        Number.isFinite(h.duration)
+          ? h.duration
+          : h.endTime && h.startTime
+          ? dayjs(h.endTime).diff(dayjs(h.startTime), 'second')
+          : 0,
     }));
     setHistory(storedHistory);
   }, []);
@@ -123,6 +127,7 @@ export default function CadillacTab() {
   };
 
   const formatElapsed = (seconds) => {
+    if (!Number.isFinite(seconds)) return '0m 00s';
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -131,11 +136,12 @@ export default function CadillacTab() {
 
   const historyRows = useMemo(
     () =>
-      history.map((h) => ({
-        id: h.startTime,
-        ...h,
-        duration: h.duration ?? dayjs(h.endTime).diff(dayjs(h.startTime), 'second'),
-      })),
+      history.map((h) => {
+        const duration =
+          h.duration ??
+          (h.endTime && h.startTime ? dayjs(h.endTime).diff(dayjs(h.startTime), 'second') : 0);
+        return { id: h.startTime, ...h, duration };
+      }),
     [history]
   );
 
@@ -190,16 +196,21 @@ export default function CadillacTab() {
                   <RemoveIcon />
                 </IconButton>
               </Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                 <PeopleIcon />
                 <Typography>Passengers: {passengers}</Typography>
-                <ButtonGroup variant="outlined" size="small">
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <Button key={n} onClick={() => changePassengers(n)}>
+                    <Button
+                      key={n}
+                      variant="outlined"
+                      size="small"
+                      onClick={() => changePassengers(n)}
+                    >
                       +{n}
                     </Button>
                   ))}
-                </ButtonGroup>
+                </Box>
                 <IconButton color="error" onClick={() => changePassengers(-1)} disabled={passengers === 0} size="small">
                   <RemoveIcon />
                 </IconButton>
