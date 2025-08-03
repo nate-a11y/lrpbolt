@@ -21,7 +21,7 @@ import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import PeopleIcon from '@mui/icons-material/People';
 import dayjs from 'dayjs';
 
-export default function CadillacTab() {
+export default function ShootoutTab() {
   const [startTime, setStartTime] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -31,7 +31,7 @@ export default function CadillacTab() {
 
   // Load from storage on mount
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('cadillacClock') || '{}');
+    const stored = JSON.parse(localStorage.getItem('shootoutClock') || '{}');
     if (stored.startTime) {
       const start = dayjs(stored.startTime);
       setStartTime(start);
@@ -40,7 +40,7 @@ export default function CadillacTab() {
       setPassengers(stored.passengers || 0);
       setElapsed(dayjs().diff(start, 'second'));
     }
-    const storedHistory = JSON.parse(localStorage.getItem('cadillacHistory') || '[]').map((h) => ({
+    const storedHistory = JSON.parse(localStorage.getItem('shootoutHistory') || '[]').map((h) => ({
       ...h,
       duration:
         Number.isFinite(h.duration)
@@ -67,7 +67,7 @@ export default function CadillacTab() {
   useEffect(() => {
     if (isRunning && startTime) {
       localStorage.setItem(
-        'cadillacClock',
+        'shootoutClock',
         JSON.stringify({
           startTime: startTime.toISOString(),
           trips,
@@ -84,7 +84,7 @@ export default function CadillacTab() {
     setTrips(0);
     setPassengers(0);
     setElapsed(0);
-    localStorage.setItem('cadillacClock', JSON.stringify({ startTime: now.toISOString(), trips: 0, passengers: 0 }));
+    localStorage.setItem('shootoutClock', JSON.stringify({ startTime: now.toISOString(), trips: 0, passengers: 0 }));
   };
 
   const handleEnd = () => {
@@ -99,19 +99,19 @@ export default function CadillacTab() {
     };
     const updatedHistory = [newEntry, ...history];
     setHistory(updatedHistory);
-    localStorage.setItem('cadillacHistory', JSON.stringify(updatedHistory));
+    localStorage.setItem('shootoutHistory', JSON.stringify(updatedHistory));
     setIsRunning(false);
     setStartTime(null);
     setElapsed(0);
-    localStorage.removeItem('cadillacClock');
+    localStorage.removeItem('shootoutClock');
   };
 
   const changeTrips = (delta) => {
     if (!isRunning) return;
     setTrips((t) => {
       const next = Math.max(0, t + delta);
-      const store = JSON.parse(localStorage.getItem('cadillacClock') || '{}');
-      localStorage.setItem('cadillacClock', JSON.stringify({ ...store, trips: next }));
+      const store = JSON.parse(localStorage.getItem('shootoutClock') || '{}');
+      localStorage.setItem('shootoutClock', JSON.stringify({ ...store, trips: next }));
       return next;
     });
   };
@@ -120,10 +120,11 @@ export default function CadillacTab() {
     if (!isRunning) return;
     setPassengers((p) => {
       const next = Math.max(0, p + delta);
-      const store = JSON.parse(localStorage.getItem('cadillacClock') || '{}');
-      localStorage.setItem('cadillacClock', JSON.stringify({ ...store, passengers: next }));
+      const store = JSON.parse(localStorage.getItem('shootoutClock') || '{}');
+      localStorage.setItem('shootoutClock', JSON.stringify({ ...store, passengers: next }));
       return next;
     });
+    changeTrips(delta > 0 ? 1 : -1);
   };
 
   const formatElapsed = (seconds) => {
@@ -169,7 +170,24 @@ export default function CadillacTab() {
   return (
     <Box maxWidth={500} mx="auto">
       <Card sx={{ borderLeft: '5px solid #4cbb17' }}>
-        <CardHeader title="Cadillac Time Tracker" sx={{ textAlign: 'center' }} />
+        <CardHeader
+          title="Shootout Ride & Time Tracker"
+          subheader={
+            <Box display="flex" justifyContent="center" gap={1} mt={1}>
+              <img
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s"
+                alt="Shootout Logo"
+                style={{ height: 40 }}
+              />
+              <img
+                src="https://images.seeklogo.com/logo-png/52/2/cadillac-logo-png_seeklogo-520773.png"
+                alt="Cadillac Logo"
+                style={{ height: 40 }}
+              />
+            </Box>
+          }
+          sx={{ textAlign: 'center' }}
+        />
         <CardContent sx={{ textAlign: 'center' }}>
           <Typography variant="h3" gutterBottom>
             {formatElapsed(elapsed)}
