@@ -3,6 +3,9 @@ export async function fetchWithRetry(url, options = {}, retries = 3, retryDelay 
   let lastError;
   while (attempt <= retries) {
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await waitForOnline();
+      }
       const res = await fetch(url, options);
       return res;
     } catch (err) {
