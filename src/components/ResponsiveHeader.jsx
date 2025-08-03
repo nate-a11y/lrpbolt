@@ -16,6 +16,7 @@ import PersonIcon from '@mui/icons-material/Person';
 
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AirportShuttleIcon from '@mui/icons-material/AirportShuttle';
 import InfoIcon from '@mui/icons-material/Info';
 import PeopleIcon from '@mui/icons-material/People';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -30,6 +31,7 @@ import CropFreeIcon from '@mui/icons-material/CropFree';
 const NAV_ITEMS = [
   { label: 'Claim Rides', icon: <DirectionsCarIcon />, path: '/rides' },
   { label: 'Time Clock', icon: <AccessTimeIcon />, path: '/clock' },
+  { label: 'Cadillac', icon: <AirportShuttleIcon />, path: '/cadillac' },
   { label: 'Drop-Off Info', icon: <InfoIcon />, path: '/info' },
   { label: 'Vehicle Tips', icon: <DirectionsCarIcon />, path: '/drop-guides' },
   { label: 'Driver Directory', icon: <PeopleIcon />, path: '/directory' },

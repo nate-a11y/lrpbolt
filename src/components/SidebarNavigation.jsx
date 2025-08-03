@@ -27,10 +27,12 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import WarningIcon from '@mui/icons-material/Warning';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import AirportShuttleIcon from '@mui/icons-material/AirportShuttle';
 
 const NAV_ITEMS = [
   { label: 'Claim Rides', icon: <DirectionsCarIcon />, path: '/rides' },
   { label: 'Time Clock', icon: <AccessTimeIcon />, path: '/clock' },
+  { label: 'Cadillac', icon: <AirportShuttleIcon />, path: '/cadillac' },
   { label: 'Drop-Off Info', icon: <InfoIcon />, path: '/info' },
   { label: 'Vehicle Tips', icon: <DirectionsCarIcon />, path: '/drop-guides' },
   { label: 'Driver Directory', icon: <PeopleIcon />, path: '/directory' },

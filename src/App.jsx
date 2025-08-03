@@ -47,6 +47,7 @@ const TimeClock = lazy(() => import('./components/TimeClock'));
 const AdminTimeLog = lazy(() => import('./components/AdminTimeLog'));
 const RideEntryForm = lazy(() => import('./components/RideEntryForm'));
 const RideVehicleCalendar = lazy(() => import('./components/RideVehicleCalendar'));
+const CadillacTab = lazy(() => import('./components/CadillacTab'));
 
 
 dayjs.extend(utc);
@@ -319,6 +320,7 @@ export default function App() {
     />
   } />
   <Route path="/clock" element={<TimeClock driver={selectedDriver} setIsTracking={() => {}} />} />
+  <Route path="/cadillac" element={<CadillacTab />} />
   <Route path="/scan" element={<TicketScanner />} />
   <Route path="/info" element={<DriverInfoTab />} />
   <Route path="/drop-guides" element={<VehicleDropGuides />} />
