@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+const OFFLINE_DEBOUNCE_MS = 2500;
+const OFFLINE_MODAL_DELAY_MS = 5000;
+
 export default function useNetworkStatus(onReconnect) {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showOffline, setShowOffline] = useState(false);
@@ -31,9 +34,9 @@ export default function useNetworkStatus(onReconnect) {
         setIsOffline(true);
         displayTimer.current = setTimeout(() => {
           if (!navigator.onLine) setShowOffline(true);
-        }, 5000);
+        }, OFFLINE_MODAL_DELAY_MS - OFFLINE_DEBOUNCE_MS);
       }
-    }, 2000);
+    }, OFFLINE_DEBOUNCE_MS);
   }, []);
 
   useEffect(() => {
