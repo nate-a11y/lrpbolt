@@ -31,7 +31,7 @@ import CropFreeIcon from '@mui/icons-material/CropFree';
 const NAV_ITEMS = [
   { label: 'Claim Rides', icon: <DirectionsCarIcon />, path: '/rides' },
   { label: 'Time Clock', icon: <AccessTimeIcon />, path: '/clock' },
-  { label: 'Cadillac', icon: <AirportShuttleIcon />, path: '/cadillac' },
+  { label: 'Shootout Ride & Time Tracker', icon: <AirportShuttleIcon />, path: '/shootout' },
   { label: 'Drop-Off Info', icon: <InfoIcon />, path: '/info' },
   { label: 'Vehicle Tips', icon: <DirectionsCarIcon />, path: '/drop-guides' },
   { label: 'Driver Directory', icon: <PeopleIcon />, path: '/directory' },
