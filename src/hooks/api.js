@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import Papa from 'papaparse';
+import { fetchWithRetry } from '../utils/network';
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lakeridepros.xyz/claim-proxy.php';
 export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
 export const TIME_LOG_CSV =
@@ -7,13 +8,13 @@ export const TIME_LOG_CSV =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNqJgbe9yGcjFht3qmwMnTIvq/pub?gid=888251608&single=true&output=csv';
 
 const get = async (url) => {
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url);
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.json();
 };
 
 const post = async (payload) => {
-  const res = await fetch(BASE_URL, {
+  const res = await fetchWithRetry(BASE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key: SECURE_KEY, ...payload })
@@ -72,7 +73,7 @@ export const updateTicketScan = (
 export const logTime = (payload) => post({ type: 'logtime', ...payload });
 
 export const fetchTimeLogs = async (driver) => {
-  const res = await fetch(TIME_LOG_CSV);
+  const res = await fetchWithRetry(TIME_LOG_CSV);
   const csvText = await res.text();
   const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
   return data

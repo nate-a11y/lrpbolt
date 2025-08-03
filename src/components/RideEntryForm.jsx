@@ -16,6 +16,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { TIMEZONE } from '../constants';
 import { fetchLiveRides, fetchRideQueue, BASE_URL, SECURE_KEY } from '../hooks/api';
+import { fetchWithRetry } from '../utils/network';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -121,7 +122,7 @@ export default function RideEntryForm() {
   const handleDropDailyRides = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await fetch(BASE_URL, {
+        const res = await fetchWithRetry(BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: SECURE_KEY, type: 'dropDailyRides' }),
@@ -169,7 +170,7 @@ export default function RideEntryForm() {
         CreatedBy: currentUser,
         LastModifiedBy: currentUser
       };
-      const res = await fetch(BASE_URL, {
+        const res = await fetchWithRetry(BASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: SECURE_KEY, type: 'addRide', sheet: 'RideQueue', data: payload })
@@ -233,7 +234,7 @@ export default function RideEntryForm() {
           CreatedBy: currentUser,
           LastModifiedBy: currentUser
         };
-        return fetch(BASE_URL, {
+        return fetchWithRetry(BASE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

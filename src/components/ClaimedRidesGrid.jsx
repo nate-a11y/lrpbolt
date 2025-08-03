@@ -10,6 +10,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { DataGrid } from '@mui/x-data-grid';
 import { deleteRide, restoreRide, BASE_URL } from '../hooks/api';
 import useToast from '../hooks/useToast';
+import { fetchWithRetry } from '../utils/network';
 
 const CLAIMED_RIDES_URL = `${BASE_URL}?type=claimedRides`;
 
@@ -27,7 +28,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const fetchClaimedRides = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(CLAIMED_RIDES_URL);
+      const res = await fetchWithRetry(CLAIMED_RIDES_URL);
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error('Invalid data structure');
       const claimed = data.map((r) => ({

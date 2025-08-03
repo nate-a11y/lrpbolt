@@ -41,6 +41,8 @@ import { BASE_URL } from './hooks/api';
 import { fetchWithCache } from './utils/cache';
 import './index.css';
 import { TIMEZONE } from './constants';
+import useNetworkStatus from './hooks/useNetworkStatus';
+import OfflineNotice from './components/OfflineNotice';
 
 const RideClaimTab = lazy(() => import('./components/RideClaimTab'));
 const TimeClock = lazy(() => import('./components/TimeClock'));
@@ -90,6 +92,9 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const isFullyReady = isAppReady && !!selectedDriver;
   const hasFetchedRef = useRef(false);
+
+  const { showOffline, retry: retryConnection, dismiss: dismissOffline } =
+    useNetworkStatus(() => showToast('✅ Reconnected', 'success'));
 
 
   const fetchRole = useCallback(async (email) => {
@@ -381,6 +386,12 @@ export default function App() {
               {toast.message}
             </Alert>
           </Snackbar>
+
+          <OfflineNotice
+            open={showOffline}
+            onRetry={retryConnection}
+            onClose={dismissOffline}
+          />
   
           <motion.div
             initial={{ opacity: 0, y: 30 }}

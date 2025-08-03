@@ -13,6 +13,7 @@ import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import Autocomplete from '@mui/material/Autocomplete';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import { fetchWithRetry } from '../utils/network';
 
 const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
@@ -117,7 +118,7 @@ export default function RideVehicleCalendar() {
       )}/events?key=${API_KEY}&timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime`;
 
       try {
-        const res = await fetch(url);
+        const res = await fetchWithRetry(url);
         const data = await res.json();
 
         const parsed = (data.items || []).flatMap((item, i, all) => {
