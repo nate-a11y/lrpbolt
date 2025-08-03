@@ -151,7 +151,7 @@ export default function ShootoutTab() {
       field: 'startTime',
       headerName: 'Start',
       width: 150,
-      valueFormatter: ({ value }) => dayjs(value).format('M/D HH:mm'),
+      valueFormatter: ({ value }) => dayjs(value).format('MM/DD HH:mm'),
     },
     {
       field: 'duration',
@@ -159,7 +159,7 @@ export default function ShootoutTab() {
       width: 130,
       valueFormatter: ({ value }) => formatElapsed(value),
     },
-    { field: 'trips', headerName: 'Trips', width: 80 },
+    { field: 'trips', headerName: 'Trips', width: 80, align: 'right', headerAlign: 'right' },
     { field: 'passengers', headerName: 'Passengers', width: 130 },
   ];
 
@@ -173,31 +173,58 @@ export default function ShootoutTab() {
         <CardHeader
           title="Shootout Ride & Time Tracker"
           subheader={
-            <Box display="flex" justifyContent="center" gap={1} mt={1}>
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              flexWrap="wrap"
+              gap={1.5}
+              mt={2}
+            >
               <img
                 src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s"
                 alt="Shootout Logo"
-                style={{ height: 40 }}
+                style={{ height: 40, width: 'auto', objectFit: 'contain' }}
               />
               <img
-                src="https://images.seeklogo.com/logo-png/52/2/cadillac-logo-png_seeklogo-520773.png"
+                src="https://logos-world.net/wp-content/uploads/2021/05/Cadillac-Logo.png"
                 alt="Cadillac Logo"
-                style={{ height: 40 }}
+                style={{ height: 40, width: 'auto', objectFit: 'contain' }}
               />
             </Box>
           }
           sx={{ textAlign: 'center' }}
         />
         <CardContent sx={{ textAlign: 'center' }}>
-          <Typography variant="h3" gutterBottom>
-            {formatElapsed(elapsed)}
-          </Typography>
+          <Box
+            sx={{
+              display: 'inline-block',
+              px: 2,
+              py: 1,
+              mb: 2,
+              borderRadius: 1,
+              boxShadow: 1,
+              bgcolor: (theme) => theme.palette.background.paper,
+            }}
+          >
+            <Typography
+              variant="h3"
+              sx={{ fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' } }}
+            >
+              {formatElapsed(elapsed)}
+            </Typography>
+          </Box>
           {isRunning ? (
             <Fab color="error" onClick={handleEnd} sx={{ mb: 2 }}>
               <StopIcon />
             </Fab>
           ) : (
-            <Fab color="success" onClick={handleStart} sx={{ mb: 2 }}>
+            <Fab
+              color="success"
+              onClick={handleStart}
+              sx={{ mb: 2, '&:active': { transform: 'scale(0.95)' } }}
+              centerRipple
+            >
               <PlayArrowIcon />
             </Fab>
           )}
@@ -241,10 +268,30 @@ export default function ShootoutTab() {
               <Typography variant="h6" gutterBottom>
                 Recent Sessions
               </Typography>
-              <DataGrid autoHeight rows={historyRows} columns={historyCols} hideFooter disableRowSelectionOnClick />
-              <Typography variant="subtitle1" mt={1}>
-                Total Trips: {totalTrips}, Total Passengers: {totalPassengers}, Passengers/Trip: {avgPassengers}
-              </Typography>
+              <DataGrid
+                autoHeight
+                rows={historyRows}
+                columns={historyCols}
+                hideFooter
+                disableRowSelectionOnClick
+                sx={{
+                  '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 'bold' },
+                  '& .MuiDataGrid-row:nth-of-type(odd)': {
+                    backgroundColor: (theme) => theme.palette.action.hover,
+                  },
+                }}
+              />
+              <Stack spacing={0.5} mt={1}>
+                <Typography>
+                  <b>Total Trips:</b> {totalTrips}
+                </Typography>
+                <Typography>
+                  <b>Total Passengers:</b> {totalPassengers}
+                </Typography>
+                <Typography>
+                  <b>Passengers/Trip:</b> {avgPassengers}
+                </Typography>
+              </Stack>
             </Box>
           )}
         </CardContent>
