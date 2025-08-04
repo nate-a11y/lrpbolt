@@ -8,7 +8,8 @@ import { toPng } from 'html-to-image';
 import {
   Box, Typography, Paper, Divider, Button, Modal, TextField, IconButton,
   MenuItem, Select, InputLabel, FormControl, Snackbar, Alert, Tabs, Tab,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, InputAdornment,
+  OutlinedInput
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
@@ -16,6 +17,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
+import SearchIcon from '@mui/icons-material/Search';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { motion } from 'framer-motion';
 import { fetchTickets, deleteTicket as apiDeleteTicket, emailTicket as apiEmailTicket } from '../hooks/api';
 
@@ -159,61 +162,165 @@ export default function Tickets() {
   };
 
   const columns = [
+    { field: 'ticketId', headerName: 'Ticket ID', minWidth: 120 },
     {
-      field: 'actions', headerName: '', width: 160, sortable: false,
+      field: 'passenger',
+      headerName: 'Passenger',
+      minWidth: 130,
+      flex: 1,
       renderCell: (params) => (
-        <Box display="flex" alignItems="center" gap={1}>
-          <IconButton size="small" color="primary" onClick={() => setSelectedTicket(params.row)}><EditIcon fontSize="small" /></IconButton>
-          <IconButton size="small" color="error" onClick={() => handleDelete(params.row.ticketId)} disabled={deletingId === params.row.ticketId}><DeleteIcon fontSize="small" /></IconButton>
-          <IconButton size="small" color="success" onClick={() => setPreviewTicket(params.row)}><DownloadIcon fontSize="small" /></IconButton>
-        </Box>
-      ),
+        <Typography fontWeight="bold">{params.value}</Typography>
+      )
     },
-    { field: 'passenger', headerName: 'Passenger', minWidth: 130, flex: 1 },
     { field: 'date', headerName: 'Date', minWidth: 110 },
     { field: 'pickup', headerName: 'Pickup', minWidth: 110 },
     {
-      field: 'ticketId', headerName: 'Link', minWidth: 100, sortable: false,
-      renderCell: (params) => <a href={`/ticket/${params.value}`} target="_blank" rel="noopener noreferrer" style={{ color: '#00f' }}>View</a>
+      field: 'link',
+      headerName: 'Link',
+      minWidth: 100,
+      sortable: false,
+      valueGetter: (params) => params.row.ticketId,
+      renderCell: (params) => (
+        <a
+          href={`/ticket/${params.value}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#0af' }}
+        >
+          View
+        </a>
+      )
     },
     {
-      field: 'scanStatus', headerName: 'Scan', minWidth: 120,
+      field: 'scanStatus',
+      headerName: 'Scan',
+      minWidth: 120,
       renderCell: ({ row }) => {
         if (row.scannedReturn) return '✅ Return';
         if (row.scannedOutbound) return '↗️ Outbound';
         return '❌ Not Scanned';
       }
     },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 160,
+      sortable: false,
+      renderCell: (params) => (
+        <Box display="flex" alignItems="center" gap={1}>
+          <Tooltip title="Edit">
+            <IconButton size="small" color="primary" onClick={() => setSelectedTicket(params.row)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <span>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => handleDelete(params.row.ticketId)}
+                disabled={deletingId === params.row.ticketId}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Download">
+            <IconButton size="small" color="success" onClick={() => setPreviewTicket(params.row)}>
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
   ];
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto', mt: 4, px: { xs: 1, sm: 3 } }}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>🎟️ Shuttle Ticket Overview</Typography>
 
-      <Box display="flex" justifyContent="space-between" flexWrap="wrap" gap={2} mb={2}>
+      <Box
+        display="flex"
+        gap={2}
+        mb={2}
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+      >
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel>Date Filter</InputLabel>
-          <Select label="Date Filter" value={filteredDate} onChange={(e) => setFilteredDate(e.target.value)}>
+          <Select
+            label="Date Filter"
+            value={filteredDate}
+            onChange={(e) => setFilteredDate(e.target.value)}
+            input={
+              <OutlinedInput
+                label="Date Filter"
+                startAdornment={
+                  <InputAdornment position="start">
+                    <CalendarMonthIcon fontSize="small" />
+                  </InputAdornment>
+                }
+              />
+            }
+          >
             <MenuItem value="All Dates">All Dates</MenuItem>
-            {[...new Set(tickets.map((t) => dayjs(t.date).isValid() ? dayjs(t.date).format('MM-DD-YYYY') : t.date))].sort().map((date) => (
-              <MenuItem key={date} value={date}>{date}</MenuItem>
-            ))}
+            {[...new Set(tickets.map((t) => dayjs(t.date).isValid() ? dayjs(t.date).format('MM-DD-YYYY') : t.date))]
+              .sort()
+              .map((date) => (
+                <MenuItem key={date} value={date}>{date}</MenuItem>
+              ))}
           </Select>
         </FormControl>
 
         <TextField
-          label="Search by Passenger or Ticket ID"
+          placeholder="Search by Passenger or Ticket ID"
           variant="outlined"
           size="small"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
 
-        <Button onClick={loadTickets} variant="outlined" color="success" startIcon={<RefreshIcon />}>Refresh</Button>
-        <Button onClick={bulkDownload} variant="contained" color="secondary" disabled={!selectedIds.length}>Bulk Download</Button>
+        <Button
+          onClick={loadTickets}
+          variant="contained"
+          color="primary"
+          startIcon={<RefreshIcon />}
+        >
+          Refresh
+        </Button>
+        <Tooltip title={selectedIds.length ? 'Download selected tickets' : 'Select tickets to enable'}>
+          <span>
+            <Button
+              onClick={bulkDownload}
+              variant="contained"
+              color="success"
+              startIcon={<DownloadIcon />}
+              disabled={!selectedIds.length}
+            >
+              Bulk Download
+            </Button>
+          </span>
+        </Tooltip>
       </Box>
 
-      <Tabs value={tab} onChange={(_, val) => setTab(val)} sx={{ mb: 2 }}>
+      <Tabs
+        value={tab}
+        onChange={(_, val) => setTab(val)}
+        textColor="primary"
+        indicatorColor="primary"
+        sx={{
+          mb: 2,
+          '& .MuiTab-root.Mui-selected': { fontWeight: 'bold' },
+          '& .MuiTab-root:hover': { color: 'primary.main' }
+        }}
+      >
         <Tab label="Ticket List" />
         <Tab label="Passenger Summary" />
       </Tabs>
@@ -229,6 +336,29 @@ export default function Tickets() {
           disableRowSelectionOnClick
           onRowSelectionModelChange={(ids) => setSelectedIds(ids)}
           rowSelectionModel={selectedIds}
+          sx={{
+            '& .MuiDataGrid-row:nth-of-type(odd)': {
+              backgroundColor: 'rgba(255,255,255,0.04)'
+            },
+            '& .MuiDataGrid-row:hover': {
+              backgroundColor: 'rgba(76,187,23,0.1)'
+            },
+            '& .MuiDataGrid-row.Mui-selected': {
+              backgroundColor: 'rgba(76,187,23,0.2)'
+            },
+            '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': {
+              outline: 'none'
+            },
+            '& .MuiDataGrid-footerContainer': {
+              flexWrap: { xs: 'wrap', sm: 'nowrap' }
+            },
+            '& .MuiTablePagination-toolbar': {
+              flexWrap: { xs: 'wrap', sm: 'nowrap' }
+            }
+          }}
+          slotProps={{
+            pagination: { labelRowsPerPage: 'Rows' }
+          }}
         />
       )}
 
