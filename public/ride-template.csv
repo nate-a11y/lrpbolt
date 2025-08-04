@@ -1,0 +1,2 @@
+TripID,Date,PickupTime,DurationHours,DurationMinutes,RideType,Vehicle,RideNotes
+LRPBUS-01,2024-05-01,08:00,1,30,P2P,LRPSHU - Shuttle,Sample note

@@ -50,6 +50,11 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     fetchClaimedRides();
   }, [refreshTrigger, fetchClaimedRides]);
 
+  useEffect(() => {
+    const id = setInterval(fetchClaimedRides, 60000);
+    return () => clearInterval(id);
+  }, [fetchClaimedRides]);
+
   const handleDelete = async () => {
     if (!selectedRow?.TripID) return;
     setLoading(true);
