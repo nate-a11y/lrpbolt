@@ -111,59 +111,63 @@ export default function AdminTimeLog() {
     localStorage.setItem('logColumnVisibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    Papa.parse(SHEET_CSV_URL, {
-      download: true,
-      header: true,
-      complete: (results) => {
-        try {
-          const cleaned = results.data
-            .filter((row) => row.Driver && row.RideID)
-            .map((row, i) => {
-              const start = dayjs(row.StartTime);
-              const end = dayjs(row.EndTime);
-              let duration = null;
-              if (start.isValid() && end.isValid()) {
-                duration = end.diff(start, 'minute');
-                if (duration < 0) duration = 0;
-              }
+    try {
+      const res = await fetch(SHEET_CSV_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          try {
+            const cleaned = results.data
+              .filter((row) => row.Driver && row.RideID)
+              .map((row, i) => {
+                const start = dayjs(row.StartTime);
+                const end = dayjs(row.EndTime);
+                let duration = null;
+                if (start.isValid() && end.isValid()) {
+                  duration = end.diff(start, 'minute');
+                  if (duration < 0) duration = 0;
+                }
 
-              return {
-                id: i + 1,
-                Driver: row.Driver,
-                RideID: row.RideID,
-                StartTime: start.isValid() ? start.format('MM/DD/YYYY HH:mm') : 'Missing',
-                EndTime: end.isValid() ? end.format('MM/DD/YYYY HH:mm') : 'In Progress',
-                Duration: durationFormat(duration),
-                LoggedAt: dayjs(row.LoggedAt).isValid()
-                  ? dayjs(row.LoggedAt).format('MM/DD/YYYY HH:mm')
-                  : 'Missing',
-                rawStart: row.StartTime,
-                rawEnd: row.EndTime,
-                rawLogged: row.LoggedAt,
-                durationMin: duration,
-              };
-            });
+                return {
+                  id: i + 1,
+                  Driver: row.Driver,
+                  RideID: row.RideID,
+                  StartTime: start.isValid() ? start.format('MM/DD/YYYY HH:mm') : 'Missing',
+                  EndTime: end.isValid() ? end.format('MM/DD/YYYY HH:mm') : 'In Progress',
+                  Duration: durationFormat(duration),
+                  LoggedAt: dayjs(row.LoggedAt).isValid()
+                    ? dayjs(row.LoggedAt).format('MM/DD/YYYY HH:mm')
+                    : 'Missing',
+                  rawStart: row.StartTime,
+                  rawEnd: row.EndTime,
+                  rawLogged: row.LoggedAt,
+                  durationMin: duration,
+                };
+              });
 
-          setRows(cleaned);
-          detectIssues(cleaned);
-        } catch (err) {
-          console.error(err);
-          setError('Failed to process data.');
-        } finally {
-          setLoading(false);
-        }
-      },
-      error: (err) => {
-        console.error('Failed to load admin logs', err);
-        setRows([]);
-        setIssues([]);
-        setError('Failed to load data. Please try again later.');
-        setLoading(false);
-      },
-    });
+            setRows(cleaned);
+            detectIssues(cleaned);
+          } catch (err) {
+            console.error(err);
+            setError('Failed to process data.');
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+    } catch (err) {
+      console.error('Failed to load admin logs', err);
+      setRows([]);
+      setIssues([]);
+      setError('Failed to load data. Please try again later.');
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
