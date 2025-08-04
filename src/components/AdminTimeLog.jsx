@@ -82,6 +82,7 @@ export default function AdminTimeLog() {
   const [tab, setTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [dialogIssue, setDialogIssue] = useState(null);
+  const [error, setError] = useState(null);
 
   // table controls
   const [searchInput, setSearchInput] = useState('');
@@ -113,6 +114,7 @@ export default function AdminTimeLog() {
 
   const loadData = useCallback(() => {
     setLoading(true);
+    setError(null);
     Papa.parse(SHEET_CSV_URL, {
       download: true,
       header: true,
@@ -150,9 +152,17 @@ export default function AdminTimeLog() {
           detectIssues(cleaned);
         } catch (err) {
           console.error(err);
+          setError('Failed to process data.');
         } finally {
           setLoading(false);
         }
+      },
+      error: (err) => {
+        console.error('Failed to load admin logs', err);
+        setRows([]);
+        setIssues([]);
+        setError('Failed to load data. Please try again later.');
+        setLoading(false);
       },
     });
   }, []);
@@ -401,6 +411,10 @@ export default function AdminTimeLog() {
               {loading ? (
                 <Box display="flex" justifyContent="center" alignItems="center" height={360}>
                   <CircularProgress />
+                </Box>
+              ) : error ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height={360}>
+                  <Typography color="error">{error}</Typography>
                 </Box>
               ) : (
                 <DataGrid
