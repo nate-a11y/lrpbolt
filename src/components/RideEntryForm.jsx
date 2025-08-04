@@ -115,26 +115,30 @@ export default function RideEntryForm() {
     localStorage.setItem('dataTab', dataTab.toString());
   }, [dataTab]);
 
-  useEffect(() => {
-    const getLiveAndClaimed = async () => {
-      try {
-        const data = await fetchLiveRides();
-        if (!Array.isArray(data)) return;
-        setLiveCount(data.filter(r => !r.ClaimedBy).length);
-        setClaimedCount(data.filter(r => r.ClaimedBy).length);
-      } catch {}
-    };
-    const getQueue = async () => {
-      try {
-        const q = await fetchRideQueue();
-        if (!Array.isArray(q)) return;
-        setQueueCount(q.length);
-      } catch {}
-    };
-    getLiveAndClaimed();
-    getQueue();
-    setSyncTime(dayjs().format('hh:mm A'));
-  }, []);
+useEffect(() => {
+  const getLiveAndClaimed = async () => {
+    try {
+      const data = await fetchLiveRides();
+      if (!Array.isArray(data)) return;
+      setLiveCount(data.filter(r => !r.ClaimedBy).length);
+      setClaimedCount(data.filter(r => r.ClaimedBy).length);
+    } catch (err) {
+      // Silently ignore non-critical fetch errors
+    }
+  };
+  const getQueue = async () => {
+    try {
+      const q = await fetchRideQueue();
+      if (!Array.isArray(q)) return;
+      setQueueCount(q.length);
+    } catch (err) {
+      // Silently ignore non-critical fetch errors
+    }
+  };
+  getLiveAndClaimed();
+  getQueue();
+  setSyncTime(dayjs().format('hh:mm A'));
+}, [fetchLiveRides, fetchRideQueue]);
 
   const validateFields = useCallback((data, setErrors) => {
     const required = ['TripID', 'Date', 'PickupTime', 'DurationHours', 'DurationMinutes', 'RideType', 'Vehicle'];
@@ -307,15 +311,27 @@ export default function RideEntryForm() {
               <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <Button
-                      href="/ride-template.csv"
-                      variant="outlined"
-                      startIcon={<DownloadIcon />}
-                      download
-                      fullWidth
-                    >
-                      Download Template
-                    </Button>
+<Button
+  aria-label="Download ride template CSV"
+  href="/ride-template.csv"
+  variant="outlined"
+  startIcon={<DownloadIcon />}
+  download
+  fullWidth
+>
+  Download Template
+</Button>
+
+<Button
+  aria-label="Update daily rides from Google Sheets"
+  onClick={handleDropDailyRides}
+  variant="outlined"
+  color="secondary"
+  startIcon={<SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />}
+>
+  Update Daily Rides
+</Button>
+
                   </Grid>
 
                   <Grid item xs={12}>
@@ -685,3 +701,4 @@ export default function RideEntryForm() {
     </LocalizationProvider>
   );
 }
+
