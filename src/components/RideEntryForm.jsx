@@ -393,7 +393,7 @@ export default function RideEntryForm() {
             slotProps={{ textField: { fullWidth: true, required: true, error: !!errorFields.current.PickupTime, helperText: errorFields.current.PickupTime ? 'Required or invalid' : ' ' } }}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             name="DurationHours"
             label="Duration Hours"
@@ -402,12 +402,13 @@ export default function RideEntryForm() {
             onChange={handleSingleChange}
             InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
             required
-            fullWidth
+            size="small"
+            sx={{ maxWidth: 90 }}
             error={!!errorFields.current.DurationHours}
             helperText={errorFields.current.DurationHours ? 'Invalid' : ' '}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             name="DurationMinutes"
             label="Duration Minutes"
@@ -416,12 +417,13 @@ export default function RideEntryForm() {
             onChange={handleSingleChange}
             InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
             required
-            fullWidth
+            size="small"
+            sx={{ maxWidth: 90 }}
             error={!!errorFields.current.DurationMinutes}
             helperText={errorFields.current.DurationMinutes ? 'Invalid' : ' '}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             select
             name="RideType"
@@ -430,7 +432,6 @@ export default function RideEntryForm() {
             onChange={handleSingleChange}
             fullWidth
             required
-            sx={{ minWidth: 200 }}
             error={!!errorFields.current.RideType}
             helperText={errorFields.current.RideType ? 'Required' : ' '}
           >
@@ -439,7 +440,7 @@ export default function RideEntryForm() {
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             select
             name="Vehicle"
@@ -448,7 +449,6 @@ export default function RideEntryForm() {
             onChange={handleSingleChange}
             fullWidth
             required
-            sx={{ minWidth: 200 }}
             error={!!errorFields.current.Vehicle}
             helperText={errorFields.current.Vehicle ? 'Required' : ' '}
           >
@@ -586,7 +586,6 @@ export default function RideEntryForm() {
             fullWidth
             error={!!builderErrors.TripID}
             helperText={builderErrors.TripID ? 'Required or invalid' : ' '}
-            size="small"
           />
         </Grid>
         <Grid item xs={12} sm={4}>
@@ -595,7 +594,7 @@ export default function RideEntryForm() {
             value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
             onChange={(newVal) => handleCsvBuilderChange({ target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' } })}
             slots={{ openPickerIcon: CalendarMonthIcon }}
-            slotProps={{ textField: { fullWidth: true, required: true, error: !!builderErrors.Date, helperText: builderErrors.Date ? 'Required or invalid' : ' ', size: 'small' } }}
+            slotProps={{ textField: { fullWidth: true, required: true, error: !!builderErrors.Date, helperText: builderErrors.Date ? 'Required or invalid' : ' ' } }}
           />
         </Grid>
         <Grid item xs={12} sm={4}>
@@ -604,10 +603,10 @@ export default function RideEntryForm() {
             value={csvBuilder.PickupTime ? dayjs(`2000-01-01T${csvBuilder.PickupTime}`) : null}
             onChange={(newVal) => handleCsvBuilderChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' } })}
             slots={{ openPickerIcon: AccessTimeIcon }}
-            slotProps={{ textField: { fullWidth: true, required: true, error: !!builderErrors.PickupTime, helperText: builderErrors.PickupTime ? 'Required or invalid' : ' ', size: 'small' } }}
+            slotProps={{ textField: { fullWidth: true, required: true, error: !!builderErrors.PickupTime, helperText: builderErrors.PickupTime ? 'Required or invalid' : ' ' } }}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             name="DurationHours"
             label="Duration Hours"
@@ -616,13 +615,13 @@ export default function RideEntryForm() {
             onChange={handleCsvBuilderChange}
             InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
             required
-            fullWidth
             size="small"
+            sx={{ maxWidth: 90 }}
             error={!!builderErrors.DurationHours}
             helperText={builderErrors.DurationHours ? 'Invalid' : ' '}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             name="DurationMinutes"
             label="Duration Minutes"
@@ -631,13 +630,13 @@ export default function RideEntryForm() {
             onChange={handleCsvBuilderChange}
             InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
             required
-            fullWidth
             size="small"
+            sx={{ maxWidth: 90 }}
             error={!!builderErrors.DurationMinutes}
             helperText={builderErrors.DurationMinutes ? 'Invalid' : ' '}
           />
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             select
             name="RideType"
@@ -646,8 +645,6 @@ export default function RideEntryForm() {
             onChange={handleCsvBuilderChange}
             required
             fullWidth
-            sx={{ minWidth: 200 }}
-            size="small"
             error={!!builderErrors.RideType}
             helperText={builderErrors.RideType ? 'Required' : ' '}
           >
@@ -656,7 +653,7 @@ export default function RideEntryForm() {
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={6} sm={3}>
           <TextField
             select
             name="Vehicle"
@@ -665,8 +662,6 @@ export default function RideEntryForm() {
             onChange={handleCsvBuilderChange}
             required
             fullWidth
-            sx={{ minWidth: 200 }}
-            size="small"
             error={!!builderErrors.Vehicle}
             helperText={builderErrors.Vehicle ? 'Required' : ' '}
           >
@@ -684,7 +679,6 @@ export default function RideEntryForm() {
             fullWidth
             multiline
             rows={2}
-            size="small"
           />
         </Grid>
         <Grid item xs={12}>
