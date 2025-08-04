@@ -138,7 +138,7 @@ useEffect(() => {
   getLiveAndClaimed();
   getQueue();
   setSyncTime(dayjs().format('hh:mm A'));
-}, [fetchLiveRides, fetchRideQueue]);
+}, []); // ✅ No unnecessary dependencies
 
   const validateFields = useCallback((data, setErrors) => {
     const required = ['TripID', 'Date', 'PickupTime', 'DurationHours', 'DurationMinutes', 'RideType', 'Vehicle'];
@@ -724,5 +724,6 @@ const handleDropDailyRides = useCallback(async () => {
     </LocalizationProvider>
   );
 }
+
 
 
