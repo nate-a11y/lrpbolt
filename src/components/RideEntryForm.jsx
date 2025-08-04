@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Box, Button, TextField, Typography, MenuItem, Paper, Grid, Snackbar,
+  Box, Button, TextField, Typography, MenuItem, Paper, Snackbar,
   Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Badge, Tooltip, useMediaQuery, Fade,
   InputAdornment
@@ -28,6 +28,7 @@ import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-picker
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DataGrid } from '@mui/x-data-grid';
 import { useDropzone } from 'react-dropzone';
+import Grid from '@mui/material/Unstable_Grid2';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -306,378 +307,405 @@ const handleDropDailyRides = useCallback(async () => {
           </Tabs>
 
           {rideTab === 0 && (
-            <Fade in>
-              <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      name="TripID"
-                      label="Trip ID *"
-                      value={formData.TripID}
-                      onChange={handleSingleChange}
-                      fullWidth
-                      required
-                      error={!!errorFields.current.TripID}
-                      helperText={errorFields.current.TripID ? 'Required or invalid' : ' '}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <DatePicker
-                      label="Date *"
-                      value={formData.Date ? dayjs(formData.Date) : null}
-                      onChange={(newVal) =>
-                        handleSingleChange({ target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' } })
-                      }
-                      slots={{ openPickerIcon: CalendarMonthIcon }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          required: true,
-                          error: !!errorFields.current.Date,
-                          helperText: errorFields.current.Date ? 'Required or invalid' : ' '
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TimePicker
-                      label="Pickup Time *"
-                      value={formData.PickupTime ? dayjs(`2000-01-01T${formData.PickupTime}`) : null}
-                      onChange={(newVal) =>
-                        handleSingleChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' } })
-                      }
-                      slots={{ openPickerIcon: AccessTimeIcon }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          required: true,
-                          error: !!errorFields.current.PickupTime,
-                          helperText: errorFields.current.PickupTime ? 'Required or invalid' : ' '
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      name="DurationHours"
-                      label="Duration Hours *"
-                      type="number"
-                      value={formData.DurationHours}
-                      onChange={handleSingleChange}
-                      InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
-                      required
-                      fullWidth
-                      error={!!errorFields.current.DurationHours}
-                      helperText={errorFields.current.DurationHours ? 'Invalid' : ' '}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      name="DurationMinutes"
-                      label="Duration Minutes *"
-                      type="number"
-                      value={formData.DurationMinutes}
-                      onChange={handleSingleChange}
-                      InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
-                      required
-                      fullWidth
-                      error={!!errorFields.current.DurationMinutes}
-                      helperText={errorFields.current.DurationMinutes ? 'Invalid' : ' '}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      select
-                      name="RideType"
-                      label="Ride Type *"
-                      value={formData.RideType}
-                      onChange={handleSingleChange}
-                      fullWidth
-                      required
-                      error={!!errorFields.current.RideType}
-                      helperText={errorFields.current.RideType ? 'Required' : ' '}
-                    >
-                      {rideTypeOptions.map((opt) => (
-                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      select
-                      name="Vehicle"
-                      label="Vehicle *"
-                      value={formData.Vehicle}
-                      onChange={handleSingleChange}
-                      fullWidth
-                      required
-                      error={!!errorFields.current.Vehicle}
-                      helperText={errorFields.current.Vehicle ? 'Required' : ' '}
-                    >
-                      {vehicleOptions.map((opt) => (
-                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="RideNotes"
-                      label="Ride Notes"
-                      value={formData.RideNotes}
-                      onChange={handleSingleChange}
-                      fullWidth
-                      multiline
-                      rows={2}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            </Fade>
+  <Fade in>
+    <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
+      <Grid container spacing={2}>
+        {/* Trip ID */}
+        <Grid xs={12} sm={6}>
+          <TextField
+            name="TripID"
+            label="Trip ID *"
+            value={formData.TripID}
+            onChange={handleSingleChange}
+            fullWidth
+            required
+            error={!!errorFields.current.TripID}
+            helperText={errorFields.current.TripID ? 'Required or invalid' : ' '}
+          />
+        </Grid>
+
+        {/* Date */}
+        <Grid xs={12} sm={6}>
+          <DatePicker
+            label="Date *"
+            value={formData.Date ? dayjs(formData.Date) : null}
+            onChange={(newVal) =>
+              handleSingleChange({ target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' } })
+            }
+            slots={{ openPickerIcon: CalendarMonthIcon }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                required: true,
+                error: !!errorFields.current.Date,
+                helperText: errorFields.current.Date ? 'Required or invalid' : ' '
+              }
+            }}
+          />
+        </Grid>
+
+        {/* Pickup Time */}
+        <Grid xs={12} sm={6}>
+          <TimePicker
+            label="Pickup Time *"
+            value={formData.PickupTime ? dayjs(`2000-01-01T${formData.PickupTime}`) : null}
+            onChange={(newVal) =>
+              handleSingleChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' } })
+            }
+            slots={{ openPickerIcon: AccessTimeIcon }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                required: true,
+                error: !!errorFields.current.PickupTime,
+                helperText: errorFields.current.PickupTime ? 'Required or invalid' : ' '
+              }
+            }}
+          />
+        </Grid>
+
+        {/* Duration Hours + Minutes */}
+        <Grid xs={6} sm={3}>
+          <TextField
+            name="DurationHours"
+            label="Hours *"
+            type="number"
+            value={formData.DurationHours}
+            onChange={handleSingleChange}
+            InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
+            required
+            fullWidth
+            error={!!errorFields.current.DurationHours}
+            helperText={errorFields.current.DurationHours ? 'Invalid' : ' '}
+          />
+        </Grid>
+        <Grid xs={6} sm={3}>
+          <TextField
+            name="DurationMinutes"
+            label="Minutes *"
+            type="number"
+            value={formData.DurationMinutes}
+            onChange={handleSingleChange}
+            InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
+            required
+            fullWidth
+            error={!!errorFields.current.DurationMinutes}
+            helperText={errorFields.current.DurationMinutes ? 'Invalid' : ' '}
+          />
+        </Grid>
+
+        {/* Ride Type */}
+        <Grid xs={12} sm={6}>
+          <TextField
+            select
+            name="RideType"
+            label="Ride Type *"
+            value={formData.RideType}
+            onChange={handleSingleChange}
+            fullWidth
+            required
+            error={!!errorFields.current.RideType}
+            helperText={errorFields.current.RideType ? 'Required' : ' '}
+          >
+            {rideTypeOptions.map((opt) => (
+              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+
+        {/* Vehicle */}
+        <Grid xs={12} sm={6}>
+          <TextField
+            select
+            name="Vehicle"
+            label="Vehicle *"
+            value={formData.Vehicle}
+            onChange={handleSingleChange}
+            fullWidth
+            required
+            error={!!errorFields.current.Vehicle}
+            helperText={errorFields.current.Vehicle ? 'Required' : ' '}
+          >
+            {vehicleOptions.map((opt) => (
+              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+
+        {/* Ride Notes */}
+        <Grid xs={12}>
+          <TextField
+            name="RideNotes"
+            label="Ride Notes"
+            value={formData.RideNotes}
+            onChange={handleSingleChange}
+            fullWidth
+            multiline
+            rows={2}
+          />
+        </Grid>
+      </Grid>
+    </Box>
+  </Fade>
+)}
+
+{rideTab === 1 && (
+  <Fade in>
+    <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
+      <Grid container spacing={2}>
+        {/* CSV Template + Update Daily Rides */}
+        <Grid xs={12}>
+          <Button
+            aria-label="Download ride template CSV"
+            href="/ride-template.csv"
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            download
+            fullWidth
+          >
+            Download Template
+          </Button>
+
+          <Button
+            aria-label="Update daily rides from Google Sheets"
+            onClick={handleDropDailyRides}
+            variant="outlined"
+            color="secondary"
+            startIcon={<SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />}
+          >
+            Update Daily Rides
+          </Button>
+        </Grid>
+
+        {/* Drag & Drop Upload */}
+        <Grid xs={12}>
+          <Box
+            {...getRootProps()}
+            sx={{
+              border: '2px dashed',
+              borderColor: isDragActive ? 'success.main' : 'grey.500',
+              p: 4,
+              textAlign: 'center',
+              bgcolor: 'background.default',
+              borderRadius: 2
+            }}
+          >
+            <input {...getInputProps()} />
+            <UploadFileIcon sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
+            <Typography>
+              {isDragActive ? 'Drop file here' : 'Drag & drop CSV/XLS here or click to select'}
+            </Typography>
+          </Box>
+          {fileError && (
+            <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+              {fileError}
+            </Typography>
           )}
-          {rideTab === 1 && (
-            <Fade in>
-              <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-<Button
-  aria-label="Download ride template CSV"
-  href="/ride-template.csv"
-  variant="outlined"
-  startIcon={<DownloadIcon />}
-  download
-  fullWidth
->
-  Download Template
-</Button>
+        </Grid>
 
-<Button
-  aria-label="Update daily rides from Google Sheets"
-  onClick={handleDropDailyRides}
-  variant="outlined"
-  color="secondary"
-  startIcon={<SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />}
->
-  Update Daily Rides
-</Button>
+        {/* Uploaded Data Preview */}
+        {uploadedRows.length > 0 && (
+          <Grid xs={12}>
+            <Box sx={{ mt: 2 }}>
+              <DataGrid
+                autoHeight
+                density="compact"
+                rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
+                columns={[
+                  { field: 'TripID', headerName: 'Trip ID', flex: 1 },
+                  { field: 'Date', headerName: 'Date', flex: 1 },
+                  { field: 'PickupTime', headerName: 'Pickup Time', flex: 1 },
+                  { field: 'DurationHours', headerName: 'Dur H', flex: 1 },
+                  { field: 'DurationMinutes', headerName: 'Dur M', flex: 1 },
+                  { field: 'RideType', headerName: 'Ride Type', flex: 1 },
+                  { field: 'Vehicle', headerName: 'Vehicle', flex: 1 }
+                ]}
+                pageSizeOptions={[5]}
+              />
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleImportConfirm}
+                disabled={submitting}
+                sx={{ mt: 2, fontWeight: 600 }}
+                startIcon={
+                  submitting ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />
+                }
+              >
+                Import Rides
+              </Button>
+            </Box>
+          </Grid>
+        )}
 
-                  </Grid>
+        {/* Paste CSV */}
+        <Grid xs={12}>
+          <TextField
+            label="Paste CSV Rides"
+            fullWidth
+            multiline
+            rows={6}
+            value={multiInput}
+            onChange={(e) => setMultiInput(e.target.value)}
+          />
+        </Grid>
 
-                  <Grid item xs={12}>
-                    <Box
-                      {...getRootProps()}
-                      sx={{
-                        border: '2px dashed',
-                        borderColor: isDragActive ? 'success.main' : 'grey.500',
-                        p: 4,
-                        textAlign: 'center',
-                        bgcolor: 'background.default',
-                        borderRadius: 2
-                      }}
-                    >
-                      <input {...getInputProps()} />
-                      <UploadFileIcon sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
-                      <Typography>
-                        {isDragActive ? 'Drop file here' : 'Drag & drop CSV/XLS here or click to select'}
-                      </Typography>
-                    </Box>
-                    {fileError && (
-                      <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-                        {fileError}
-                      </Typography>
-                    )}
-                  </Grid>
+        {/* CSV Builder */}
+        <Grid xs={12} sm={4}>
+          <TextField
+            name="TripID"
+            label="Trip ID *"
+            value={csvBuilder.TripID}
+            onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+            required
+            fullWidth
+            error={!!builderErrors.TripID}
+            helperText={builderErrors.TripID ? 'Required or invalid' : ' '}
+          />
+        </Grid>
+        <Grid xs={12} sm={4}>
+          <DatePicker
+            label="Date *"
+            value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
+            onChange={(newVal) =>
+              handleChange({ target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' } }, setCsvBuilder, setBuilderErrors)
+            }
+            slots={{ openPickerIcon: CalendarMonthIcon }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                required: true,
+                error: !!builderErrors.Date,
+                helperText: builderErrors.Date ? 'Required or invalid' : ' '
+              }
+            }}
+          />
+        </Grid>
+        <Grid xs={12} sm={4}>
+          <TimePicker
+            label="Pickup Time *"
+            value={csvBuilder.PickupTime ? dayjs(`2000-01-01T${csvBuilder.PickupTime}`) : null}
+            onChange={(newVal) =>
+              handleChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' } }, setCsvBuilder, setBuilderErrors)
+            }
+            slots={{ openPickerIcon: AccessTimeIcon }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                required: true,
+                error: !!builderErrors.PickupTime,
+                helperText: builderErrors.PickupTime ? 'Required or invalid' : ' '
+              }
+            }}
+          />
+        </Grid>
 
-                  {uploadedRows.length > 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ mt: 2 }}>
-                        <DataGrid
-                          autoHeight
-                          density="compact"
-                          rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
-                          columns={[
-                            { field: 'TripID', headerName: 'Trip ID', flex: 1 },
-                            { field: 'Date', headerName: 'Date', flex: 1 },
-                            { field: 'PickupTime', headerName: 'Pickup Time', flex: 1 },
-                            { field: 'DurationHours', headerName: 'Dur H', flex: 1 },
-                            { field: 'DurationMinutes', headerName: 'Dur M', flex: 1 },
-                            { field: 'RideType', headerName: 'Ride Type', flex: 1 },
-                            { field: 'Vehicle', headerName: 'Vehicle', flex: 1 }
-                          ]}
-                          pageSizeOptions={[5]}
-                        />
-                        <Button
-                          variant="contained"
-                          color="success"
-                          onClick={handleImportConfirm}
-                          disabled={submitting}
-                          sx={{ mt: 2, fontWeight: 600 }}
-                          startIcon={
-                            submitting ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />
-                          }
-                        >
-                          Import Rides
-                        </Button>
-                      </Box>
-                    </Grid>
-                  )}
+        {/* Duration */}
+        <Grid xs={6} sm={3}>
+          <TextField
+            name="DurationHours"
+            label="Duration Hours *"
+            type="number"
+            value={csvBuilder.DurationHours}
+            onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+            InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
+            required
+            fullWidth
+            error={!!builderErrors.DurationHours}
+            helperText={builderErrors.DurationHours ? 'Invalid' : ' '}
+          />
+        </Grid>
+        <Grid xs={6} sm={3}>
+          <TextField
+            name="DurationMinutes"
+            label="Duration Minutes *"
+            type="number"
+            value={csvBuilder.DurationMinutes}
+            onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+            InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
+            required
+            fullWidth
+            error={!!builderErrors.DurationMinutes}
+            helperText={builderErrors.DurationMinutes ? 'Invalid' : ' '}
+          />
+        </Grid>
 
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Paste CSV Rides"
-                      fullWidth
-                      multiline
-                      rows={6}
-                      value={multiInput}
-                      onChange={(e) => setMultiInput(e.target.value)}
-                    />
-                  </Grid>
+        {/* Ride Type */}
+        <Grid xs={6} sm={3}>
+          <TextField
+            select
+            name="RideType"
+            label="Ride Type *"
+            value={csvBuilder.RideType}
+            onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+            required
+            fullWidth
+            error={!!builderErrors.RideType}
+            helperText={builderErrors.RideType ? 'Required' : ' '}
+          >
+            {rideTypeOptions.map(opt => (
+              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
 
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      name="TripID"
-                      label="Trip ID *"
-                      value={csvBuilder.TripID}
-                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
-                      required
-                      fullWidth
-                      error={!!builderErrors.TripID}
-                      helperText={builderErrors.TripID ? 'Required or invalid' : ' '}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <DatePicker
-                      label="Date *"
-                      value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
-                      onChange={(newVal) =>
-                        handleChange({ target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' } }, setCsvBuilder, setBuilderErrors)
-                      }
-                      slots={{ openPickerIcon: CalendarMonthIcon }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          required: true,
-                          error: !!builderErrors.Date,
-                          helperText: builderErrors.Date ? 'Required or invalid' : ' '
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TimePicker
-                      label="Pickup Time *"
-                      value={csvBuilder.PickupTime ? dayjs(`2000-01-01T${csvBuilder.PickupTime}`) : null}
-                      onChange={(newVal) =>
-                        handleChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' } }, setCsvBuilder, setBuilderErrors)
-                      }
-                      slots={{ openPickerIcon: AccessTimeIcon }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          required: true,
-                          error: !!builderErrors.PickupTime,
-                          helperText: builderErrors.PickupTime ? 'Required or invalid' : ' '
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      name="DurationHours"
-                      label="Duration Hours *"
-                      type="number"
-                      value={csvBuilder.DurationHours}
-                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
-                      InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
-                      required
-                      fullWidth
-                      error={!!builderErrors.DurationHours}
-                      helperText={builderErrors.DurationHours ? 'Invalid' : ' '}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      name="DurationMinutes"
-                      label="Duration Minutes *"
-                      type="number"
-                      value={csvBuilder.DurationMinutes}
-                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
-                      InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
-                      required
-                      fullWidth
-                      error={!!builderErrors.DurationMinutes}
-                      helperText={builderErrors.DurationMinutes ? 'Invalid' : ' '}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      select
-                      name="RideType"
-                      label="Ride Type *"
-                      value={csvBuilder.RideType}
-                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
-                      required
-                      fullWidth
-                      error={!!builderErrors.RideType}
-                      helperText={builderErrors.RideType ? 'Required' : ' '}
-                    >
-                      {rideTypeOptions.map(opt => (
-                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <TextField
-                      select
-                      name="Vehicle"
-                      label="Vehicle *"
-                      value={csvBuilder.Vehicle}
-                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
-                      required
-                      fullWidth
-                      error={!!builderErrors.Vehicle}
-                      helperText={builderErrors.Vehicle ? 'Required' : ' '}
-                    >
-                      {vehicleOptions.map(opt => (
-                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="RideNotes"
-                      label="Ride Notes"
-                      value={csvBuilder.RideNotes}
-                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
-                      fullWidth
-                      multiline
-                      rows={2}
-                    />
-                  </Grid>
+        {/* Vehicle */}
+        <Grid xs={6} sm={3}>
+          <TextField
+            select
+            name="Vehicle"
+            label="Vehicle *"
+            value={csvBuilder.Vehicle}
+            onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+            required
+            fullWidth
+            error={!!builderErrors.Vehicle}
+            helperText={builderErrors.Vehicle ? 'Required' : ' '}
+          >
+            {vehicleOptions.map(opt => (
+              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </TextField>
+        </Grid>
 
-                  <Grid item xs={12}>
-                    <Box display="flex" justifyContent="flex-end" gap={2}>
-                      <Button
-                        variant="contained"
-                        onClick={handleCsvAppend}
-                        sx={{ fontWeight: 600 }}
-                      >
-                        ➕ Add to List
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        onClick={handleMultiSubmit}
-                        disabled={submitting}
-                        sx={{ fontWeight: 600 }}
-                      >
-                        {submitting ? <CircularProgress size={20} color="inherit" /> : '🚀 Submit All Rides'}
-                      </Button>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Box>
-            </Fade>
-          )}
+        {/* Ride Notes */}
+        <Grid xs={12}>
+          <TextField
+            name="RideNotes"
+            label="Ride Notes"
+            value={csvBuilder.RideNotes}
+            onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+            fullWidth
+            multiline
+            rows={2}
+          />
+        </Grid>
+
+        {/* Actions */}
+        <Grid xs={12}>
+          <Box display="flex" justifyContent="flex-end" gap={2}>
+            <Button
+              variant="contained"
+              onClick={handleCsvAppend}
+              sx={{ fontWeight: 600 }}
+            >
+              ➕ Add to List
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleMultiSubmit}
+              disabled={submitting}
+              sx={{ fontWeight: 600 }}
+            >
+              {submitting ? <CircularProgress size={20} color="inherit" /> : '🚀 Submit All Rides'}
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
+  </Fade>
+)}
         </Paper>
 
         {/* Daily Rides Update Section */}
