@@ -4,7 +4,7 @@ import {
   Box, IconButton, Snackbar, Alert, Tooltip
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { fetchLiveRides, deleteRide } from '../hooks/api';
+import { fetchLiveRides, deleteRide, restoreRide } from '../hooks/api';
 import EditableRideGrid from '../components/EditableRideGrid';
 import { normalizeDate, normalizeTime } from '../timeUtils';
 import {
@@ -20,6 +20,7 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingTripID, setDeletingTripID] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [undoRow, setUndoRow] = useState(null);
  
 
 
@@ -44,19 +45,39 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
   useEffect(() => {
     refreshRides();
   }, [refreshTrigger, refreshRides]);
+
+  useEffect(() => {
+    const id = setInterval(refreshRides, 60000);
+    return () => clearInterval(id);
+  }, [refreshRides]);
   
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);
-    const res = await deleteRide(deletingTripID, 'Sheet1');
-    if (res.success) {
-      setRows(prev => prev.filter(row => row.TripID !== deletingTripID));
-      showToast(`🗑️ Deleted Trip ${deletingTripID}`, 'info');
-    } else {
-      showToast(`❌ ${res.message}`, 'error');
-    }
-    setDeleting(false);
-    setConfirmOpen(false);
+    const target = rows.find(r => r.TripID === deletingTripID);
+    setUndoRow(target);
+    setRows(prev => prev.map(row => row.TripID === deletingTripID ? { ...row, fading: true } : row));
+    setTimeout(async () => {
+      const res = await deleteRide(deletingTripID, 'Sheet1');
+      if (res.success) {
+        setRows(prev => prev.filter(row => row.TripID !== deletingTripID));
+        showToast(`🗑️ Deleted Trip ${deletingTripID}`, 'info');
+      } else {
+        setRows(prev => prev.map(row => row.TripID === deletingTripID ? { ...row, fading: false } : row));
+        setUndoRow(null);
+        showToast(`❌ ${res.message}`, 'error');
+      }
+      setDeleting(false);
+      setConfirmOpen(false);
+    }, 300);
+  };
+
+  const handleUndo = async () => {
+    if (!undoRow) return;
+    await restoreRide(undoRow);
+    setUndoRow(null);
+    refreshRides();
+    showToast('✅ Ride restored', 'success');
   };
 
 
@@ -106,7 +127,16 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
         autoHideDuration={3000}
         onClose={closeToast}
       >
-        <Alert onClose={closeToast} severity={toast.severity} variant="filled">
+        <Alert
+          onClose={closeToast}
+          severity={toast.severity}
+          variant="filled"
+          action={undoRow && (
+            <Button color="inherit" size="small" onClick={handleUndo}>
+              UNDO
+            </Button>
+          )}
+        >
           {toast.message}
         </Alert>
       </Snackbar>

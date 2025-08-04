@@ -139,12 +139,14 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
       minWidth: 120,
       flex: 1,
       renderCell: (params) => (
-        <Box display="flex" alignItems="center" gap={1}>
-          {params.value}
-          <Tooltip title="Click row to view ride details">
-            <InfoOutlinedIcon fontSize="small" color="action" />
-          </Tooltip>
-        </Box>
+        <Tooltip title={params.value}>
+          <Box display="flex" alignItems="center" gap={1}>
+            {params.value}
+            <Tooltip title="Click row to view ride details">
+              <InfoOutlinedIcon fontSize="small" color="action" />
+            </Tooltip>
+          </Box>
+        </Tooltip>
       )
     },
     { field: 'Date', headerName: 'Date', minWidth: 110, flex: 1 },
@@ -206,7 +208,7 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
         </Box>
       )}
 
-<Box sx={{ width: '100%',  overflowX: 'auto' }}>
+      <Box sx={{ width: '100%', overflowX: 'auto' }}>
         <DataGrid
           getRowId={(row) => row.TripID}
           rows={rows}
@@ -223,8 +225,29 @@ const EditableRideGrid = ({ rows, onDelete, loading = false, refreshRides, sheet
           columnVisibilityModel={columnVisibilityModel}
           onColumnVisibilityModelChange={setColumnVisibilityModel}
           components={{ Toolbar: CustomToolbar }}
+          getRowClassName={(params) => (params.row.fading ? 'fade-out' : '')}
+          sx={{
+            '& .MuiDataGrid-columnHeaders': {
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+              bgcolor: 'background.paper'
+            }
+          }}
         />
       </Box>
+
+      <style>
+        {`
+          @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: scale(0.98); }
+          }
+          .fade-out {
+            animation: fadeOut 0.4s ease-in-out forwards;
+          }
+        `}
+      </style>
 
       <Dialog
   open={editMode}
