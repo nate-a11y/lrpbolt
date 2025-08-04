@@ -2,11 +2,22 @@
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig({
   plugins: [
-    react()
+    react(),
+    VitePWA({
+      srcDir: '.',
+      filename: 'service-worker.js',
+      strategies: 'injectManifest',
+      registerType: 'autoUpdate',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024
+      }
+    })
   ],
   resolve: {
     alias: {
@@ -24,7 +35,9 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html') // ✅ Ensures correct HTML entry
       },
       output: {
-        // Use default chunk splitting to avoid runtime issues with manual chunks
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]'
       }
     }
   },
