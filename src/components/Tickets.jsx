@@ -179,7 +179,7 @@ export default function Tickets() {
       headerName: 'Link',
       minWidth: 100,
       sortable: false,
-      valueGetter: (params) => params.row.ticketId,
+      valueGetter: (params) => params?.row?.ticketId,
       renderCell: (params) => (
         <a
           href={`/ticket/${params.value}`}
@@ -195,9 +195,9 @@ export default function Tickets() {
       field: 'scanStatus',
       headerName: 'Scan',
       minWidth: 120,
-      renderCell: ({ row }) => {
-        if (row.scannedReturn) return '✅ Return';
-        if (row.scannedOutbound) return '↗️ Outbound';
+      renderCell: ({ row } = {}) => {
+        if (row?.scannedReturn) return '✅ Return';
+        if (row?.scannedOutbound) return '↗️ Outbound';
         return '❌ Not Scanned';
       }
     },
@@ -206,32 +206,36 @@ export default function Tickets() {
       headerName: 'Actions',
       width: 160,
       sortable: false,
-      renderCell: (params) => (
-        <Box display="flex" alignItems="center" gap={1}>
-          <Tooltip title="Edit">
-            <IconButton size="small" color="primary" onClick={() => setSelectedTicket(params.row)}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <span>
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => handleDelete(params.row.ticketId)}
-                disabled={deletingId === params.row.ticketId}
-              >
-                <DeleteIcon fontSize="small" />
+      renderCell: (params) => {
+        const row = params?.row;
+        if (!row) return null;
+        return (
+          <Box display="flex" alignItems="center" gap={1}>
+            <Tooltip title="Edit">
+              <IconButton size="small" color="primary" onClick={() => setSelectedTicket(row)}>
+                <EditIcon fontSize="small" />
               </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Download">
-            <IconButton size="small" color="success" onClick={() => setPreviewTicket(params.row)}>
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+            </Tooltip>
+            <Tooltip title="Delete">
+              <span>
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => handleDelete(row.ticketId)}
+                  disabled={deletingId === row.ticketId}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Download">
+              <IconButton size="small" color="success" onClick={() => setPreviewTicket(row)}>
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
     },
   ];
   return (
