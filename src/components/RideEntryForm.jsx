@@ -28,7 +28,7 @@ import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-picker
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DataGrid } from '@mui/x-data-grid';
 import { useDropzone } from 'react-dropzone';
-import Grid from '@mui/material/Unstable_Grid2';
+import Grid from '@mui/material/Grid';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -311,7 +311,7 @@ const handleDropDailyRides = useCallback(async () => {
     <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
       <Grid container spacing={2}>
         {/* Trip ID */}
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             name="TripID"
             label="Trip ID *"
@@ -325,12 +325,14 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Date */}
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <DatePicker
             label="Date *"
             value={formData.Date ? dayjs(formData.Date) : null}
             onChange={(newVal) =>
-              handleSingleChange({ target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' } })
+              handleSingleChange({
+                target: { name: 'Date', value: newVal ? newVal.format('YYYY-MM-DD') : '' }
+              })
             }
             slots={{ openPickerIcon: CalendarMonthIcon }}
             slotProps={{
@@ -345,12 +347,13 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Pickup Time */}
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TimePicker
             label="Pickup Time *"
             value={formData.PickupTime ? dayjs(`2000-01-01T${formData.PickupTime}`) : null}
             onChange={(newVal) =>
-              handleSingleChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' } })
+              handleSingleChange({ target: { name: 'PickupTime', value: newVal ? newVal.format('HH:mm') : '' }
+            })
             }
             slots={{ openPickerIcon: AccessTimeIcon }}
             slotProps={{
@@ -365,7 +368,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Duration Hours + Minutes */}
-        <Grid xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             name="DurationHours"
             label="Hours *"
@@ -379,7 +382,7 @@ const handleDropDailyRides = useCallback(async () => {
             helperText={errorFields.current.DurationHours ? 'Invalid' : ' '}
           />
         </Grid>
-        <Grid xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             name="DurationMinutes"
             label="Minutes *"
@@ -395,7 +398,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Ride Type */}
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             select
             name="RideType"
@@ -414,7 +417,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Vehicle */}
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             select
             name="Vehicle"
@@ -433,7 +436,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Ride Notes */}
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             name="RideNotes"
             label="Ride Notes"
@@ -443,6 +446,25 @@ const handleDropDailyRides = useCallback(async () => {
             multiline
             rows={2}
           />
+        </Grid>
+                {/* Action Buttons */}
+                <Grid item xs={12}>
+          <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => setFormData(defaultValues)}
+            >
+              Reset
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => setConfirmOpen(true)}
+            >
+              Submit
+            </Button>
+          </Box>
         </Grid>
       </Grid>
     </Box>
@@ -454,7 +476,7 @@ const handleDropDailyRides = useCallback(async () => {
     <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
       <Grid container spacing={2}>
         {/* CSV Template + Update Daily Rides */}
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Button
             aria-label="Download ride template CSV"
             href="/ride-template.csv"
@@ -465,20 +487,10 @@ const handleDropDailyRides = useCallback(async () => {
           >
             Download Template
           </Button>
-
-          <Button
-            aria-label="Update daily rides from Google Sheets"
-            onClick={handleDropDailyRides}
-            variant="outlined"
-            color="secondary"
-            startIcon={<SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />}
-          >
-            Update Daily Rides
-          </Button>
         </Grid>
 
         {/* Drag & Drop Upload */}
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Box
             {...getRootProps()}
             sx={{
@@ -505,7 +517,7 @@ const handleDropDailyRides = useCallback(async () => {
 
         {/* Uploaded Data Preview */}
         {uploadedRows.length > 0 && (
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Box sx={{ mt: 2 }}>
               <DataGrid
                 autoHeight
@@ -539,7 +551,7 @@ const handleDropDailyRides = useCallback(async () => {
         )}
 
         {/* Paste CSV */}
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             label="Paste CSV Rides"
             fullWidth
@@ -551,7 +563,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* CSV Builder */}
-        <Grid xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             name="TripID"
             label="Trip ID *"
@@ -563,7 +575,7 @@ const handleDropDailyRides = useCallback(async () => {
             helperText={builderErrors.TripID ? 'Required or invalid' : ' '}
           />
         </Grid>
-        <Grid xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <DatePicker
             label="Date *"
             value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
@@ -581,7 +593,7 @@ const handleDropDailyRides = useCallback(async () => {
             }}
           />
         </Grid>
-        <Grid xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TimePicker
             label="Pickup Time *"
             value={csvBuilder.PickupTime ? dayjs(`2000-01-01T${csvBuilder.PickupTime}`) : null}
@@ -601,7 +613,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Duration */}
-        <Grid xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             name="DurationHours"
             label="Duration Hours *"
@@ -615,7 +627,7 @@ const handleDropDailyRides = useCallback(async () => {
             helperText={builderErrors.DurationHours ? 'Invalid' : ' '}
           />
         </Grid>
-        <Grid xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             name="DurationMinutes"
             label="Duration Minutes *"
@@ -631,7 +643,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Ride Type */}
-        <Grid xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             select
             name="RideType"
@@ -650,7 +662,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Vehicle */}
-        <Grid xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <TextField
             select
             name="Vehicle"
@@ -669,7 +681,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Ride Notes */}
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             name="RideNotes"
             label="Ride Notes"
@@ -682,7 +694,7 @@ const handleDropDailyRides = useCallback(async () => {
         </Grid>
 
         {/* Actions */}
-        <Grid xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Box display="flex" justifyContent="flex-end" gap={2}>
             <Button
               variant="contained"
@@ -706,6 +718,7 @@ const handleDropDailyRides = useCallback(async () => {
     </Box>
   </Fade>
 )}
+
         </Paper>
 
         {/* Daily Rides Update Section */}
