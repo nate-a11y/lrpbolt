@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box, Snackbar, Alert, IconButton, Tooltip
 } from '@mui/material';
@@ -26,7 +26,7 @@ const RideQueueGrid = ({ refreshTrigger }) => {
   const [undoRow, setUndoRow] = useState(null);
 
 
-  const refreshRides = () => {
+  const refreshRides = useCallback(() => {
     setLoading(true);
     fetchRideQueue()
       .then(data => {
@@ -42,11 +42,11 @@ const RideQueueGrid = ({ refreshTrigger }) => {
         setToast({ open: true, message: `❌ Failed to load rides: ${err.message}`, severity: 'error' });
       })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     refreshRides();
-  }, [refreshTrigger]);
+  }, [refreshRides, refreshTrigger]);
 
   useEffect(() => {
     const id = setInterval(refreshRides, 60000);
