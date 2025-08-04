@@ -1,0 +1,22 @@
+diff --git a/node_modules/workbox-build/build/lib/get-file-details.js b/node_modules/workbox-build/build/lib/get-file-details.js
+index 0bee39d..e020acf 100644
+--- a/node_modules/workbox-build/build/lib/get-file-details.js
++++ b/node_modules/workbox-build/build/lib/get-file-details.js
+@@ -11,7 +11,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.getFileDetails = void 0;
+-const glob_1 = __importDefault(require("glob"));
++const glob = require("glob");
+ const upath_1 = __importDefault(require("upath"));
+ const errors_1 = require("./errors");
+ const get_file_size_1 = require("./get-file-size");
+@@ -20,7 +20,7 @@ function getFileDetails({ globDirectory, globFollow, globIgnores, globPattern, g
+     let globbedFiles;
+     let warning = '';
+     try {
+-        globbedFiles = glob_1.default.sync(globPattern, {
++        globbedFiles = glob.sync(globPattern, {
+             cwd: globDirectory,
+             follow: globFollow,
+             ignore: globIgnores,
