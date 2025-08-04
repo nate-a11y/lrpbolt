@@ -167,6 +167,29 @@ useEffect(() => {
 
   const handleSingleChange = (e) => handleChange(e, setFormData);
 
+const handleDropDailyRides = useCallback(async () => {
+  setRefreshing(true);
+  try {
+    const res = await fetchWithRetry(BASE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: SECURE_KEY, type: 'dropDailyRides' }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      setToast({ open: true, message: '✅ Live ride list updated!', severity: 'success' });
+      setSyncTime(dayjs().format('hh:mm A'));
+      setRefreshTrigger(prev => prev + 1);
+    } else {
+      throw new Error(result.message || 'Update failed');
+    }
+  } catch (err) {
+    setToast({ open: true, message: `❌ ${err.message}`, severity: 'error' });
+  } finally {
+    setRefreshing(false);
+  }
+}, []);
+  
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ maxWidth: 1100, mx: 'auto', p: 2 }}>
@@ -701,4 +724,5 @@ useEffect(() => {
     </LocalizationProvider>
   );
 }
+
 
