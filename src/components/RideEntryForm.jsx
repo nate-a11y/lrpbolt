@@ -261,7 +261,7 @@ const handleDropDailyRides = useCallback(async () => {
       return;
     }
 
-    let ridesToSubmit = [...uploadedRows];
+  const ridesToSubmit = [...uploadedRows];
     if (multiInput.trim()) {
       const parsed = Papa.parse(multiInput.trim(), { header: true, skipEmptyLines: true });
       if (parsed.data?.length) ridesToSubmit.push(...parsed.data);
@@ -829,6 +829,7 @@ const handleDropDailyRides = useCallback(async () => {
     </LocalizationProvider>
   );
 }
+
 
 
 
