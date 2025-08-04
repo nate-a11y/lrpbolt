@@ -98,7 +98,7 @@ jobs:
           local-dir: ./dist/
           server-dir: /public_html/
           log-level: minimal
-          dangerous-clean-slate: false
+          
           exclude: |
             **/.git*
             **/.github*
