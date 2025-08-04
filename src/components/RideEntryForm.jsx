@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Box, Button, TextField, Typography, MenuItem, Paper, Grid, Snackbar,
   Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
-  CircularProgress, Badge, Tooltip, useMediaQuery, Fade, IconButton,
+  CircularProgress, Badge, Tooltip, useMediaQuery, Fade,
   InputAdornment
 } from '@mui/material';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -642,14 +642,18 @@ export default function RideEntryForm() {
             <SyncIcon fontSize="small" sx={{ mr: 1 }} />
             Synced: {syncTime}
           </Typography>
-          <Button
-            onClick={handleDropDailyRides}
-            variant="outlined"
-            color="secondary"
-            startIcon={<SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />}
-          >
-            🔁 Refresh
-          </Button>
+          <Tooltip title="Runs Apps Script to update daily rides (not for refreshing tables)">
+            <span>
+              <Button
+                onClick={handleDropDailyRides}
+                variant="outlined"
+                color="secondary"
+                startIcon={<SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />}
+              >
+                Update Daily Rides
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
       </Paper>
 
@@ -715,13 +719,6 @@ export default function RideEntryForm() {
             }
           />
         </Tabs>
-        <Tooltip title="Refresh">
-          <span>
-            <IconButton onClick={handleDropDailyRides} disabled={refreshing} color="inherit">
-              <SyncIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-            </IconButton>
-          </span>
-        </Tooltip>
       </Box>
 
 
