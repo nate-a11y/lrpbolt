@@ -48,8 +48,7 @@ import { useTheme } from '@mui/material/styles';
 dayjs.extend(isoWeek);
 
 const SHEET_CSV_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNJgbe9yGcjFht3qmwMn' +
-  'TIvq/pub?gid=888251608&single=true&output=csv';
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNqJgbe9yGcjFht3qmwMnTIvq/pub?gid=888251608&single=true&output=csv';
 
 const baseColumns = [
   { field: 'id', headerName: '#', width: 60 },
