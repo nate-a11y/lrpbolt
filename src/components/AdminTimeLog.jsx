@@ -571,4 +571,37 @@ export default function AdminTimeLog() {
                 getRowId={(r) => `${r.Driver}-${r.RideID}-${r.type}`}
                 sortingOrder={['asc', 'desc']}
                 sx={{
-                  '& .MuiDataGrid-row:nth-of-t
+                  '& .MuiDataGrid-row:nth-of-type(odd)': {
+                    backgroundColor: isDark ? '#333' : 'grey.100',
+                  },
+                  '& .MuiDataGrid-row:hover': {
+                    backgroundColor: isDark ? '#444' : 'grey.200',
+                  },
+                  backgroundColor: isDark ? '#2a2a2a' : '#fafafa',
+                  fontSize: '0.85rem',
+                }}
+              />
+            )}
+
+            <Dialog open={Boolean(dialogIssue)} onClose={() => setDialogIssue(null)} fullWidth>
+              {dialogIssue && (
+                <>
+                  <DialogTitle>
+                    {dialogIssue.Driver} — {dialogIssue.type}
+                  </DialogTitle>
+                  <DialogContent>
+                    <Typography>Ride ID: {dialogIssue.RideID}</Typography>
+                    <Typography>Start: {dialogIssue.StartTime}</Typography>
+                    <Typography>End: {dialogIssue.EndTime}</Typography>
+                    <Typography>Duration: {dialogIssue.Duration}</Typography>
+                    <Typography color="text.secondary">{dialogIssue.details}</Typography>
+                  </DialogContent>
+                </>
+              )}
+            </Dialog>
+          </Paper>
+        )}
+      </Box>
+    </LocalizationProvider>
+  );
+}
