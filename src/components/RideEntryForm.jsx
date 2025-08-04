@@ -189,6 +189,111 @@ const handleDropDailyRides = useCallback(async () => {
     setRefreshing(false);
   }
 }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!validateFields(formData)) {
+      setToast({ open: true, message: '⚠️ Please correct required fields', severity: 'error' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetchWithRetry(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: SECURE_KEY, type: 'addRide', ride: formData }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setToast({ open: true, message: '✅ Ride submitted successfully', severity: 'success' });
+        setFormData(defaultValues);
+        setConfirmOpen(false);
+        setRefreshTrigger(prev => prev + 1);
+      } else {
+        throw new Error(result.message || 'Submission failed');
+      }
+    } catch (err) {
+      setToast({ open: true, message: `❌ ${err.message}`, severity: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [formData, validateFields]);
+
+  const handleImportConfirm = useCallback(async () => {
+    if (!uploadedRows.length) {
+      setToast({ open: true, message: '⚠️ No rows to import', severity: 'warning' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetchWithRetry(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: SECURE_KEY, type: 'importRides', rides: uploadedRows }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setToast({ open: true, message: '✅ CSV rides imported', severity: 'success' });
+        setUploadedRows([]);
+        setRefreshTrigger(prev => prev + 1);
+      } else {
+        throw new Error(result.message || 'Import failed');
+      }
+    } catch (err) {
+      setToast({ open: true, message: `❌ ${err.message}`, severity: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [uploadedRows]);
+
+  const handleCsvAppend = useCallback(() => {
+    if (!validateFields(csvBuilder, setBuilderErrors)) {
+      setToast({ open: true, message: '⚠️ Please correct CSV builder fields', severity: 'error' });
+      return;
+    }
+    setUploadedRows(prev => [...prev, csvBuilder]);
+    setCsvBuilder(defaultValues);
+    setBuilderErrors({});
+  }, [csvBuilder, validateFields]);
+
+  const handleMultiSubmit = useCallback(async () => {
+    if (!uploadedRows.length && !multiInput.trim()) {
+      setToast({ open: true, message: '⚠️ No rides to submit', severity: 'warning' });
+      return;
+    }
+
+    let ridesToSubmit = [...uploadedRows];
+    if (multiInput.trim()) {
+      const parsed = Papa.parse(multiInput.trim(), { header: true, skipEmptyLines: true });
+      if (parsed.data?.length) ridesToSubmit.push(...parsed.data);
+    }
+
+    if (!ridesToSubmit.length) {
+      setToast({ open: true, message: '⚠️ No valid rides found', severity: 'warning' });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetchWithRetry(BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: SECURE_KEY, type: 'importRides', rides: ridesToSubmit }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setToast({ open: true, message: '✅ All rides submitted successfully', severity: 'success' });
+        setUploadedRows([]);
+        setMultiInput('');
+        setRefreshTrigger(prev => prev + 1);
+      } else {
+        throw new Error(result.message || 'Multi submit failed');
+      }
+    } catch (err) {
+      setToast({ open: true, message: `❌ ${err.message}`, severity: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [uploadedRows, multiInput]);
   
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -724,6 +829,7 @@ const handleDropDailyRides = useCallback(async () => {
     </LocalizationProvider>
   );
 }
+
 
 
 
