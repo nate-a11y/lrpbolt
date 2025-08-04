@@ -63,6 +63,8 @@ npm test
 
 ## Environment Setup
 
+This project requires **Node.js 22** or later. If you're using [nvm](https://github.com/nvm-sh/nvm), run `nvm install 22`.
+
 On some systems `npm` warns about an unknown `http-proxy` environment
 variable. To avoid this warning, unset `HTTP_PROXY` and `http_proxy` and
 set the recognized `npm_config_proxy` and `npm_config_https_proxy` variables:
