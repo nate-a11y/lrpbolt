@@ -2,13 +2,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Tooltip, Snackbar, Alert, Chip
+  FormControlLabel, Tooltip, Snackbar, Alert, Chip,
+  Stack, CircularProgress
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import {
   Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useTheme } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import { logTime, fetchTimeLogs } from '../hooks/api';
@@ -27,6 +32,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
   const [previousSessions, setPreviousSessions] = useState([]);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const showSnack = (message, severity = 'success') =>
     setSnack({ open: true, message, severity });
@@ -57,7 +63,10 @@ const TimeClock = ({ driver, setIsTracking }) => {
   }, [isRunning, startTime]);
 
   const loadSessions = useCallback(() => {
-    fetchTimeLogs(driver).then(setPreviousSessions);
+    setIsRefreshing(true);
+    fetchTimeLogs(driver)
+      .then(setPreviousSessions)
+      .finally(() => setIsRefreshing(false));
   }, [driver]);
 
   useEffect(() => {
@@ -126,6 +135,13 @@ const TimeClock = ({ driver, setIsTracking }) => {
     return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
   };
 
+  const formatDuration = (minutes) => {
+    if (minutes < 60) return `${minutes}m`;
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hrs}h${mins ? ` ${mins}m` : ''}`;
+  };
+
   const columns = [
     {
       field: 'rideId',
@@ -150,7 +166,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
     },
     { field: 'start', headerName: 'Start Time', flex: 1.5 },
     { field: 'end', headerName: 'End Time', flex: 1.5 },
-    { field: 'duration', headerName: 'Duration (hrs)', flex: 1, type: 'number' },
+    { field: 'duration', headerName: 'Duration', flex: 1 },
   ];
 
   const rows = useMemo(() => previousSessions.map((s, i) => {
@@ -163,9 +179,9 @@ const TimeClock = ({ driver, setIsTracking }) => {
       id: i,
       rideIdRaw: rawId,
       rideId: rideLabel,
-      start: dayjs(s.start).format('MM/DD/YYYY HH:mm'),
-      end: dayjs(s.end).format('MM/DD/YYYY HH:mm'),
-      duration: (parseInt(s.duration) / 60).toFixed(s.duration < 60 ? 1 : 0),
+      start: dayjs(s.start).format('MM/DD/YYYY hh:mm A'),
+      end: dayjs(s.end).format('MM/DD/YYYY hh:mm A'),
+      duration: formatDuration(parseInt(s.duration)),
     };
   }), [previousSessions]);
 
@@ -179,15 +195,17 @@ const TimeClock = ({ driver, setIsTracking }) => {
         }
       `}</style>
 
-      <Paper sx={{ p: 3, borderLeft: '5px solid #4cbb17' }}>
+      <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #4cbb17', bgcolor: isDark ? '#1d1d1d' : '#fafafa' }}>
         <Accordion sx={{ mb: 2 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle1">📖 How to Use The Time Tracker & Moovs</Typography>
+            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <MenuBookIcon fontSize="small" /> How to Use The Time Tracker & Moovs
+            </Typography>
           </AccordionSummary>
           <AccordionDetails>
-              <Typography variant="body2" gutterBottom>
-                ⏱️ Use the <strong> 🚀 Start</strong> button when you begin working. If it&apos;s not for a ride, check <strong>N/A – Non-Ride Task</strong>.
-              </Typography>
+            <Typography variant="body2" gutterBottom>
+              ⏱️ Use the <strong>Start</strong> button when you begin working. If it&apos;s not for a ride, check <strong>N/A – Non-Ride Task</strong>.
+            </Typography>
             <Typography variant="body2" gutterBottom>
               ✨ Start the trip in Moovs when you are actually on the way to get the customer, instead of when you are starting the get-ready and washing the vehicle.
             </Typography>
@@ -197,68 +215,71 @@ const TimeClock = ({ driver, setIsTracking }) => {
             <Typography variant="body2" gutterBottom>
               📝 You can enter a <strong>Ride ID</strong> for ride-related work, or check <strong>N/A</strong> for meetings, cleaning, prep, etc.
             </Typography>
-              <Typography variant="body2" gutterBottom>
-                📋 View previous sessions below. Use <strong>🔄 Refresh</strong> if your recent entry isn&apos;t showing.
-              </Typography>
+            <Typography variant="body2" gutterBottom>
+              📋 View previous sessions below. Use <strong>Refresh</strong> if your recent entry isn&apos;t showing.
+            </Typography>
             <Typography variant="body2" gutterBottom>
               💡 Don’t close the tab while tracking — or it might pause your timer.
             </Typography>
-              <Typography variant="body2" gutterBottom>
-                🦒 If you&apos;re doing back-to-back rides with no meaningful break in between, you can now use the new <strong>Multiple Back-to-Back Rides</strong> option to track them all together.
-              </Typography>
+            <Typography variant="body2" gutterBottom>
+              🦒 If you&apos;re doing back-to-back rides with no meaningful break in between, you can now use the new <strong>Multiple Back-to-Back Rides</strong> option to track them all together.
+            </Typography>
           </AccordionDetails>
         </Accordion>
 
         <Typography variant="h6" mb={2}>⏱️ Time Clock</Typography>
 
-        <Tooltip title="Enter the Ride ID if this session relates to a specific trip.">
-          <span>
-            <TextField
-              label="Ride ID"
-              value={rideId}
-              onChange={(e) => setRideId(e.target.value.trimStart())}
-              fullWidth
-              margin="normal"
-              disabled={isRunning || isNA || isMulti}
-            />
-          </span>
-        </Tooltip>
+        <Stack spacing={1}>
+          <Tooltip title="Enter the Ride ID if this session relates to a specific trip.">
+            <span>
+              <TextField
+                label="Ride ID"
+                value={rideId}
+                onChange={(e) => setRideId(e.target.value.trimStart())}
+                fullWidth
+                margin="normal"
+                disabled={isRunning || isNA || isMulti}
+                helperText="Enter Ride ID or select a task type."
+              />
+            </span>
+          </Tooltip>
 
-        <Tooltip title="Use this for prep work, meetings, or anything not tied to a ride.">
-          <span>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isNA}
-                  onChange={(e) => {
-                    setIsNA(e.target.checked);
-                    if (e.target.checked) setIsMulti(false);
-                  }}
-                  disabled={isRunning}
-                />
-              }
-              label="N/A – Non-Ride Task"
-            />
-          </span>
-        </Tooltip>
+          <Tooltip title="For administrative or support tasks.">
+            <span>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isNA}
+                    onChange={(e) => {
+                      setIsNA(e.target.checked);
+                      if (e.target.checked) setIsMulti(false);
+                    }}
+                    disabled={isRunning}
+                  />
+                }
+                label="N/A – Non-Ride Task"
+              />
+            </span>
+          </Tooltip>
 
-        <Tooltip title="Use this when doing multiple rides back-to-back without breaks.">
-          <span>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isMulti}
-                  onChange={(e) => {
-                    setIsMulti(e.target.checked);
-                    if (e.target.checked) setIsNA(false);
-                  }}
-                  disabled={isRunning}
-                />
-              }
-              label="Multiple Back-to-Back Rides"
-            />
-          </span>
-        </Tooltip>
+          <Tooltip title="Clock in once for consecutive rides.">
+            <span>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={isMulti}
+                    onChange={(e) => {
+                      setIsMulti(e.target.checked);
+                      if (e.target.checked) setIsNA(false);
+                    }}
+                    disabled={isRunning}
+                  />
+                }
+                label="Multiple Back-to-Back Rides"
+              />
+            </span>
+          </Tooltip>
+        </Stack>
 
         <Box mt={2} display="flex" gap={2}>
           <Button
@@ -266,9 +287,10 @@ const TimeClock = ({ driver, setIsTracking }) => {
             disabled={isRunning || isSubmitting}
             onClick={handleStart}
             variant="contained"
-            sx={{ bgcolor: '#4cbb17' }}
+            color="success"
+            startIcon={<PlayArrowIcon />}
           >
-            {isSubmitting && !isRunning ? '⏳ Starting...' : '🚀 Start'}
+            {isSubmitting && !isRunning ? 'Starting...' : 'Start'}
           </Button>
           <Button
             fullWidth
@@ -276,8 +298,9 @@ const TimeClock = ({ driver, setIsTracking }) => {
             onClick={handleEnd}
             color="error"
             variant="contained"
+            startIcon={<StopIcon />}
           >
-            {isSubmitting && isRunning ? '⏳ Logging...' : '🛑 End'}
+            {isSubmitting && isRunning ? 'Logging...' : 'End'}
           </Button>
         </Box>
 
@@ -299,7 +322,15 @@ const TimeClock = ({ driver, setIsTracking }) => {
       <Box mt={4}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="subtitle1">📋 Previous Sessions</Typography>
-          <Button variant="outlined" size="small" onClick={loadSessions}>🔄 Refresh</Button>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={loadSessions}
+            startIcon={isRefreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
+            disabled={isRefreshing}
+          >
+            Refresh
+          </Button>
         </Box>
 
         <Paper elevation={2} sx={{ p: 1, backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
@@ -318,6 +349,9 @@ const TimeClock = ({ driver, setIsTracking }) => {
               '& .MuiDataGrid-overlay': {
                 textAlign: 'center',
                 pt: 4
+              },
+              '& .MuiDataGrid-row:nth-of-type(even)': {
+                backgroundColor: isDark ? '#1e1e1e' : '#f5f5f5'
               }
             }}
           />
