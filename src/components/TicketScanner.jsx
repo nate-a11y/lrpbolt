@@ -3,8 +3,30 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { sanitize } from '../utils/sanitize';
 import {
-  Box, Typography, Paper, Snackbar, Alert, Modal, Divider, Button, Fade, CircularProgress, ToggleButton, ToggleButtonGroup
+  Box,
+  Typography,
+  Paper,
+  Snackbar,
+  Alert,
+  Modal,
+  Divider,
+  Button,
+  Fade,
+  CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  IconButton,
+  Tooltip
 } from '@mui/material';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import FlashOffIcon from '@mui/icons-material/FlashOff';
+import PauseIcon from '@mui/icons-material/Pause';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import { keyframes } from '@mui/system';
+import { Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 import { Html5Qrcode } from 'html5-qrcode';
 import { normalizeDate, normalizeTime, formatDate, formatTime } from '../timeUtils';
@@ -21,6 +43,10 @@ export default function TicketScanner() {
   const [currentCameraId, setCurrentCameraId] = useState(null);
   const [torchOn, setTorchOn] = useState(false);
   const [scanType, setScanType] = useState('outbound');
+  const [scanFeedback, setScanFeedback] = useState(null);
+  const [lastScan, setLastScan] = useState(null);
+  const [cameraPaused, setCameraPaused] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
 
   const html5QrCodeRef = useRef(null);
   const qrContainerRef = useRef(null);
@@ -29,6 +55,18 @@ export default function TicketScanner() {
   const cooldownRef = useRef(null);
   const scannerReadyRef = useRef(false);
   const [confirming, setConfirming] = useState(false);
+
+  const shake = keyframes`
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  `;
+
+  const flash = keyframes`
+    from { opacity: 0.7; }
+    to { opacity: 0; }
+  `;
 
   const safeGetState = () => {
     try {
@@ -54,6 +92,8 @@ export default function TicketScanner() {
           { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.333 },
           text => handleScanRef.current?.(text)
         );
+        const capabilities = html5QrCodeRef.current.getRunningTrackCapabilities?.();
+        setTorchAvailable(!!capabilities?.torch);
       }
     } catch (err) {
       console.error("Scanner start error:", err.message);
@@ -93,7 +133,35 @@ export default function TicketScanner() {
     setTimeout(() => {
       html5QrCodeRef.current?.resume?.().catch(() => {});
     }, 800);
+    setCameraPaused(false);
   }, []);
+
+  const toggleTorch = async () => {
+    if (!torchAvailable) return;
+    try {
+      await html5QrCodeRef.current?.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
+      setTorchOn((prev) => !prev);
+      setSnackbar({ open: true, message: !torchOn ? '🔦 Torch on' : '🔦 Torch off', severity: 'info' });
+    } catch {
+      setSnackbar({ open: true, message: '❌ Torch not supported', severity: 'error' });
+    }
+  };
+
+  const toggleCamera = () => {
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) return;
+    if (cameraPaused) {
+      scanner.resume().then(() => {
+        setCameraPaused(false);
+        setSnackbar({ open: true, message: '▶️ Camera resumed', severity: 'info' });
+      }).catch(() => {});
+    } else {
+      scanner.pause().then(() => {
+        setCameraPaused(true);
+        setSnackbar({ open: true, message: '⏸️ Camera paused', severity: 'info' });
+      }).catch(() => {});
+    }
+  };
 
   const handleScan = useCallback(async (text) => {
     const ticketId = text?.split("/").pop()?.trim();
@@ -113,12 +181,16 @@ export default function TicketScanner() {
           navigator.vibrate?.([100]);
           setTimeout(() => cooldownRef.current = null, 3000);
         } else {
+          setScanFeedback('error');
+          setTimeout(() => setScanFeedback(null), 600);
           setSnackbar({ open: true, message: '❌ Ticket not found', severity: 'error' });
           resetScanner();
         }
       })
       .catch(() => {
         setLoading(false);
+        setScanFeedback('error');
+        setTimeout(() => setScanFeedback(null), 600);
         setSnackbar({ open: true, message: '🚨 Failed to fetch ticket', severity: 'error' });
         resetScanner();
       });
@@ -148,6 +220,9 @@ export default function TicketScanner() {
           : { scannedreturn: true, scannedreturnby: localStorage.getItem('lrp_driver') || 'Unknown' })
       }));
       setShowSuccess(true);
+      setScanFeedback('success');
+      setTimeout(() => setScanFeedback(null), 600);
+      setLastScan({ ticketId: ticket.ticketId, passenger: ticket.passenger });
       setSnackbar({ open: true, message: `✅ ${scanType} scanned!`, severity: 'success' });
 
       setTimeout(() => {
@@ -167,9 +242,20 @@ export default function TicketScanner() {
         🎯 Ticket Scanner
       </Typography>
 
-      <ToggleButtonGroup value={scanType} exclusive onChange={(e, val) => val && setScanType(val)} fullWidth sx={{ mb: 2 }}>
-        <ToggleButton value="outbound">⬅️ Outbound</ToggleButton>
-        <ToggleButton value="return">➡️ Return</ToggleButton>
+      <ToggleButtonGroup
+        value={scanType}
+        exclusive
+        onChange={(e, val) => val && setScanType(val)}
+        fullWidth
+        color="primary"
+        sx={{ mb: 2 }}
+      >
+        <ToggleButton value="outbound">
+          <ArrowForwardIcon fontSize="small" sx={{ mr: 1 }} /> Outbound
+        </ToggleButton>
+        <ToggleButton value="return">
+          <ArrowBackIcon fontSize="small" sx={{ mr: 1 }} /> Return
+        </ToggleButton>
       </ToggleButtonGroup>
 
       {cameraError ? (
@@ -177,9 +263,60 @@ export default function TicketScanner() {
           📵 Camera not ready. <Button onClick={() => window.location.reload()}>Reload</Button>
         </Alert>
       ) : (
-        <Paper sx={{ p: 2, mb: 2 }} elevation={4}>
-          <Box ref={qrContainerRef} id="qr-reader" sx={{ width: '100%', '& > video': { width: '100%', objectFit: 'cover' } }} />
+        <Paper sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'center' }} elevation={4}>
+          <Box position="relative">
+            <Box
+              ref={qrContainerRef}
+              id="qr-reader"
+              sx={{
+                width: 260,
+                height: 260,
+                borderRadius: 2,
+                overflow: 'hidden',
+                border: scanFeedback === 'error' ? '2px solid red' : '2px solid transparent',
+                animation: scanFeedback === 'error' ? `${shake} 0.4s` : undefined,
+                '& > video': { width: '100%', height: '100%', objectFit: 'cover' }
+              }}
+            />
+            {scanFeedback === 'success' && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(76,187,23,0.4)',
+                  animation: `${flash} 0.6s ease-out`
+                }}
+              />
+            )}
+          </Box>
         </Paper>
+      )}
+
+      <Box display="flex" justifyContent="center" gap={1} mb={2}>
+        {torchAvailable && (
+          <Tooltip title={torchOn ? 'Torch off' : 'Torch on'}>
+            <IconButton color="primary" onClick={toggleTorch}>
+              {torchOn ? <FlashOffIcon /> : <FlashOnIcon />}
+            </IconButton>
+          </Tooltip>
+        )}
+        <Tooltip title={cameraPaused ? 'Resume camera' : 'Pause camera'}>
+          <IconButton color="primary" onClick={toggleCamera}>
+            {cameraPaused ? <PlayArrowIcon /> : <PauseIcon />}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Ticket Overview">
+          <IconButton color="primary" component={Link} to="/tickets">
+            <ListAltIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      {lastScan && (
+        <Typography variant="body2" align="center" sx={{ mb: 2 }}>
+          Last scanned: {lastScan.ticketId} – {sanitize(lastScan.passenger)}
+        </Typography>
       )}
 
       {loading && <CircularProgress sx={{ display: 'block', mx: 'auto', mb: 2 }} />}
