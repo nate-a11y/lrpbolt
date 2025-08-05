@@ -28,6 +28,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import WarningIcon from "@mui/icons-material/Warning";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 const NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
@@ -53,6 +54,12 @@ const NAV_ITEMS = [
     label: "Admin Logs",
     icon: <AdminPanelSettingsIcon />,
     path: "/admin-time-log",
+    admin: true,
+  },
+  {
+    label: "User Manager",
+    icon: <ManageAccountsIcon />,
+    path: "/admin-user-manager",
     admin: true,
   },
   {

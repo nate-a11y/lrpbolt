@@ -72,6 +72,7 @@ import OfflineNotice from "./components/OfflineNotice";
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
 const AdminTimeLog = lazy(() => import("./components/AdminTimeLog"));
+const AdminUserManager = lazy(() => import("./components/AdminUserManager"));
 const RideEntryForm = lazy(() => import("./components/RideEntryForm"));
 const RideVehicleCalendar = lazy(
   () => import("./components/RideVehicleCalendar"),
@@ -454,6 +455,10 @@ export default function App() {
                   <Route
                     path="/admin-time-log"
                     element={<AdminTimeLog driver={selectedDriver} />}
+                  />
+                  <Route
+                    path="/admin-user-manager"
+                    element={<AdminUserManager />}
                   />
                   <Route path="/ride-entry" element={<RideEntryForm />} />
                   <Route path="/Tickets" element={<Tickets />} />
