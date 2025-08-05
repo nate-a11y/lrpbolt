@@ -9,6 +9,7 @@ import {
   Alert,
   Typography,
   Stack,
+  CircularProgress,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -17,11 +18,17 @@ import {
   onSnapshot,
   query,
   orderBy,
+  updateDoc,
+  doc,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { getUserAccess } from "../hooks/api"; // server-verified role
 
 export default function AdminUserManager() {
-  const role = (localStorage.getItem("lrpRole") || "").toLowerCase();
+  const [role, setRole] = useState(null); // server verified
+  const [loadingRole, setLoadingRole] = useState(true);
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
   const [snackbar, setSnackbar] = useState({
@@ -30,6 +37,21 @@ export default function AdminUserManager() {
     severity: "success",
   });
 
+  // 🔑 Load role from server (no localStorage spoofing)
+  useEffect(() => {
+    const email = localStorage.getItem("lrpEmail");
+    if (!email) {
+      setRole("user");
+      setLoadingRole(false);
+      return;
+    }
+    getUserAccess(email).then((res) => {
+      setRole(res?.access || "user");
+      setLoadingRole(false);
+    });
+  }, []);
+
+  // 🔄 Subscribe to Firestore
   useEffect(() => {
     const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -39,41 +61,92 @@ export default function AdminUserManager() {
     return () => unsubscribe();
   }, []);
 
+  // 🔍 Check for existing email before adding
+  async function emailExists(email) {
+    const q = query(collection(db, "userAccess"), where("email", "==", email));
+    const snap = await getDocs(q);
+    return !snap.empty;
+  }
+
+  // ➕ Add Users
   const handleAddUsers = async () => {
     const lines = input
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
-    if (!lines.length) return;
+
+    const invalids = [];
+    const validUsers = [];
+
+    // Validate CSV
+    lines.forEach((line, idx) => {
+      const [name, email, access = "user"] = line.split(",").map((s) => s.trim());
+      if (!name || !email || !email.includes("@")) {
+        invalids.push(`Line ${idx + 1}: Invalid name or email`);
+        return;
+      }
+      validUsers.push({ name, email, access: access.toLowerCase() });
+    });
+
+    if (invalids.length) {
+      setSnackbar({
+        open: true,
+        message: invalids.join(" • "),
+        severity: "error",
+      });
+      return;
+    }
 
     try {
-      await Promise.all(
-        lines.map((line) => {
-          const [name, email, access] = line.split(",");
-          return addDoc(collection(db, "userAccess"), {
-            name: (name || "").trim(),
-            email: (email || "").trim(),
-            access: (access || "user").trim().toLowerCase() || "user",
+      for (let user of validUsers) {
+        if (await emailExists(user.email)) {
+          setSnackbar({
+            open: true,
+            message: `⚠️ ${user.email} already exists, skipped`,
+            severity: "warning",
           });
-        }),
-      );
+          continue;
+        }
+        await addDoc(collection(db, "userAccess"), user);
+      }
       setInput("");
-      setSnackbar({ open: true, message: "Users added", severity: "success" });
+      setSnackbar({ open: true, message: "✅ Users processed", severity: "success" });
     } catch (err) {
       console.error(err);
       setSnackbar({
         open: true,
-        message: "Error adding users",
+        message: "❌ Error adding users",
         severity: "error",
       });
     }
   };
 
+  // ✏️ Edit user role directly in table
+  const handleProcessRowUpdate = async (newRow) => {
+    await updateDoc(doc(db, "userAccess", newRow.id), {
+      name: newRow.name,
+      email: newRow.email,
+      access: newRow.access,
+    });
+    return newRow;
+  };
+
   const columns = [
-    { field: "name", headerName: "Name", flex: 1, minWidth: 150 },
-    { field: "email", headerName: "Email", flex: 1, minWidth: 200 },
-    { field: "access", headerName: "Access", width: 120 },
+    { field: "name", headerName: "Name", flex: 1, minWidth: 150, editable: true },
+    { field: "email", headerName: "Email", flex: 1, minWidth: 200, editable: true },
+    {
+      field: "access",
+      headerName: "Access",
+      width: 120,
+      editable: true,
+      type: "singleSelect",
+      valueOptions: ["admin", "driver", "user"],
+    },
   ];
+
+  if (loadingRole) {
+    return <CircularProgress />;
+  }
 
   if (role !== "admin") {
     return <Typography>🚫 Admin access required</Typography>;
@@ -99,6 +172,7 @@ export default function AdminUserManager() {
             columns={columns}
             autoHeight
             disableRowSelectionOnClick
+            processRowUpdate={handleProcessRowUpdate}
             pageSizeOptions={[5, 10, 25]}
           />
         </div>
@@ -120,4 +194,3 @@ export default function AdminUserManager() {
     </Card>
   );
 }
-
