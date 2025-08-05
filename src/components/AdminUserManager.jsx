@@ -148,7 +148,7 @@ for (const user of validUsers) {
     return <CircularProgress />;
   }
 
-  if (role !== "admin") {
+  if (role !== "Admin") {
     return <Typography>🚫 Admin access required</Typography>;
   }
 
