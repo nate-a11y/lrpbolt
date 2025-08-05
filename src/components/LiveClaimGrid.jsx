@@ -2,11 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { Box, IconButton, Snackbar, Alert, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import {
-  subscribeClaimedRides,
-  deleteClaimedRide,
-  restoreRide,
-} from "../hooks/api";
+import { deleteClaimedRide, restoreRide } from "../hooks/api";
+import useClaimedRides from "../hooks/useClaimedRides";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { normalizeDate, normalizeTime } from "../timeUtils";
 import {
@@ -29,20 +26,19 @@ const LiveClaimGrid = () => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  // ✅ Subscribe to claimed rides
+  const claimedRides = useClaimedRides();
+
+  // ✅ Update rows from shared hook
   useEffect(() => {
-    const unsubscribe = subscribeClaimedRides((data) => {
-      const mapped = data.map((row) => ({
-        ...row,
-        TripID: row.tripId || row.TripID || row.id,
-        Date: normalizeDate(row.Date),
-        PickupTime: normalizeTime(row.PickupTime),
-      }));
-      setRows(mapped);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    const mapped = claimedRides.map((row) => ({
+      ...row,
+      TripID: row.tripId || row.TripID || row.id,
+      Date: normalizeDate(row.Date),
+      PickupTime: normalizeTime(row.PickupTime),
+    }));
+    setRows(mapped);
+    setLoading(false);
+  }, [claimedRides]);
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);

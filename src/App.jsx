@@ -108,6 +108,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const isFullyReady = isAppReady && !!driver;
   const hasFetchedRef = useRef(false);
+  const hadUserRef = useRef(!!localStorage.getItem("lrpUser"));
   const selectedDriver = driver?.name || "";
   const role = driver?.access || "";
   const isAdmin = role === "admin";
@@ -121,6 +122,7 @@ export default function App() {
 
   const handleSignOut = useCallback(async () => {
     try {
+      hadUserRef.current = false;
       await auth.signOut();
       setDriver(null);
       localStorage.clear();
@@ -155,6 +157,7 @@ export default function App() {
       if (u) {
         localStorage.setItem("lrpUser", JSON.stringify(u));
         setUser(u);
+        hadUserRef.current = true;
         const record = await getUserAccess(u.email);
         if (record) {
           const access = record.access?.toLowerCase() || "driver";
@@ -178,7 +181,9 @@ export default function App() {
         setUser(null);
         setDriver(null);
         localStorage.removeItem("lrpUser");
-        showToast("Session expired. Please log in again.", "error");
+        if (hadUserRef.current) {
+          showToast("Session expired. Please log in again.", "error");
+        }
         setIsAppReady(true);
       }
     });
