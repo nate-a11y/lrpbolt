@@ -23,7 +23,7 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import NotesIcon from "@mui/icons-material/Notes";
-import { calculateDropOff } from "./timeUtils";
+import { calculateDropOff } from "./utils/timeUtils";
 import dayjs from "dayjs";
 
 const RideDetailRow = ({

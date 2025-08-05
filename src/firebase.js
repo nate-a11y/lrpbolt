@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
 import { getFunctions } from "firebase/functions";
+import { formatAuthError } from "./utils/errorUtils";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -45,17 +46,5 @@ export {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
-};
-
-export const handleAuthError = (error) => {
-  switch (error.code) {
-    case "auth/wrong-password":
-      return "Incorrect password.";
-    case "auth/user-not-found":
-      return "No user found with this email.";
-    case "auth/email-already-in-use":
-      return "Email is already in use.";
-    default:
-      return "Authentication error occurred.";
-  }
+  formatAuthError,
 };

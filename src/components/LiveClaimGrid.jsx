@@ -5,7 +5,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { deleteLiveRide, restoreLiveRide } from "../hooks/api";
 import useRides from "../hooks/useRides";
 import EditableRideGrid from "../components/EditableRideGrid";
-import { normalizeDate, normalizeTime } from "../timeUtils";
+import { normalizeDate, normalizeTime } from "../utils/timeUtils";
 import {
   Dialog,
   Typography,

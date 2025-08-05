@@ -38,6 +38,7 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import FlagIcon from "@mui/icons-material/Flag";
 import { DataGrid } from "@mui/x-data-grid";
+import { logError } from "../utils/errorUtils";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
@@ -165,13 +166,13 @@ export default function AdminTimeLog() {
             setRows(cleaned);
             detectIssues(cleaned);
           } catch (err) {
-            console.error(err);
+            logError(err);
             setError("Failed to process data.");
           }
         },
       });
     } catch (err) {
-      console.error("Failed to load admin logs", err);
+      logError(err, "Failed to load admin logs");
       setRows([]);
       setIssues([]);
       setError("Failed to load data. Please try again later.");

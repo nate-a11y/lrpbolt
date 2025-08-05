@@ -7,11 +7,14 @@ import { auth } from "../firebase";
 // Manage shared auth listener
 const authCallbacks = new Set();
 let authUnsubscribe = null;
+let currentUser = null;
 
 export function subscribeAuth(callback) {
   authCallbacks.add(callback);
+  if (currentUser !== null) callback(currentUser);
   if (!authUnsubscribe) {
     authUnsubscribe = onAuthStateChanged(auth, (user) => {
+      currentUser = user;
       authCallbacks.forEach((cb) => cb(user));
     });
   }
@@ -20,6 +23,7 @@ export function subscribeAuth(callback) {
     if (!authCallbacks.size && authUnsubscribe) {
       authUnsubscribe();
       authUnsubscribe = null;
+      currentUser = null;
     }
   };
 }
@@ -31,13 +35,15 @@ export function subscribeFirestore(key, queryRef, callback) {
   let entry = fsRegistry.get(key);
   if (!entry) {
     const callbacks = new Set([callback]);
-    const unsubscribe = onSnapshot(queryRef, (snapshot) => {
+    entry = { callbacks, unsubscribe: null, snapshot: null };
+    entry.unsubscribe = onSnapshot(queryRef, (snapshot) => {
+      entry.snapshot = snapshot;
       callbacks.forEach((cb) => cb(snapshot));
     });
-    entry = { callbacks, unsubscribe };
     fsRegistry.set(key, entry);
   } else {
     entry.callbacks.add(callback);
+    if (entry.snapshot) callback(entry.snapshot);
   }
   return () => {
     const current = fsRegistry.get(key);

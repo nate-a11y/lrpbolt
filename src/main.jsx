@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
+import { logError } from "./utils/errorUtils";
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -26,6 +27,6 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker
       .register("/service-worker.js")
       .then((reg) => console.log("SW registered:", reg.scope))
-      .catch((err) => console.error("SW registration failed:", err));
+      .catch((err) => logError(err, "SW registration failed"));
   });
 }

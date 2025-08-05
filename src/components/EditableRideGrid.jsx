@@ -45,7 +45,7 @@ import {
   normalizeTime,
   parseDuration,
   formatDuration,
-} from "../timeUtils";
+} from "../utils/timeUtils";
 
 const vehicleOptions = [
   "LRPBus - Limo Bus",

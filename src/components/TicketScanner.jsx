@@ -40,9 +40,10 @@ import {
   normalizeTime,
   formatDate,
   formatTime,
-} from "../timeUtils";
+} from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import { auth } from "../firebase";
+import { logError } from "../utils/errorUtils";
 
 export default function TicketScanner() {
   const [ticket, setTicket] = useState(null);
@@ -113,7 +114,7 @@ export default function TicketScanner() {
         setTorchAvailable(!!capabilities?.torch);
       }
     } catch (err) {
-      console.error("Scanner start error:", err.message);
+      logError(err, "Scanner start error");
       setCameraError(true);
     }
   }, []);

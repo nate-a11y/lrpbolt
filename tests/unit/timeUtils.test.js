@@ -1,4 +1,4 @@
-import { normalizeTime } from "../../src/timeUtils.js";
+import { normalizeTime } from "../../src/utils/timeUtils.js";
 
 describe("timeUtils", () => {
   test("normalizeTime enforces AM/PM format", () => {

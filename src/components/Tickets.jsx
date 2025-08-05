@@ -45,6 +45,7 @@ import {
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
 import { Timestamp } from "firebase/firestore";
+import { logError } from "../utils/errorUtils";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -120,7 +121,7 @@ export default function Tickets() {
         severity: "success",
       });
     } catch (err) {
-      console.error("Download failed", err);
+      logError(err, "Download failed");
       setSnackbar({
         open: true,
         message: "❌ Failed to generate image",
@@ -147,7 +148,7 @@ export default function Tickets() {
         throw new Error("Delete failed");
       }
     } catch (err) {
-      console.error("Delete error:", err);
+      logError(err, "Delete error");
       setSnackbar({
         open: true,
         message: "❌ Failed to delete ticket",
@@ -230,7 +231,7 @@ export default function Tickets() {
         link.href = dataUrl;
         link.click();
       } catch (err) {
-        console.error("Bulk download failed", err);
+        logError(err, "Bulk download failed");
       } finally {
         root.unmount();
         document.body.removeChild(container);
@@ -263,7 +264,7 @@ export default function Tickets() {
         });
       } else throw new Error("Email failed");
     } catch (err) {
-      console.error("Email error:", err);
+      logError(err, "Email error");
       setSnackbar({
         open: true,
         message: "❌ Email failed",
