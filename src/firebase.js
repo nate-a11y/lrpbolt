@@ -11,6 +11,7 @@ import {
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
+import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
 
 // Firebase configuration
 const firebaseConfig = {
@@ -25,9 +26,15 @@ const firebaseConfig = {
 
 // 🔌 Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// ✅ Auth setup
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// ✅ Firestore setup
+export const db = getFirestore(app); // 👈 ADD THIS
+
+// 🔑 Export auth + helpers
 export {
   auth,
   provider,
@@ -37,6 +44,7 @@ export {
   onAuthStateChanged,
   signOut,
 };
+
 export const handleAuthError = (error) => {
   switch (error.code) {
     case "auth/wrong-password":

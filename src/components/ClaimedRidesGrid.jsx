@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -18,13 +18,14 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { DataGrid } from "@mui/x-data-grid";
-import { deleteRide, restoreRide, BASE_URL } from "../hooks/api";
+import {
+  subscribeClaimedRides,
+  deleteClaimedRide,
+  restoreRide,
+} from "../hooks/api";
 import useToast from "../hooks/useToast";
-import { fetchWithRetry } from "../utils/network";
 
-const CLAIMED_RIDES_URL = `${BASE_URL}?type=claimedRides`;
-
-const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
+const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -35,35 +36,22 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
 
-  const fetchClaimedRides = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetchWithRetry(CLAIMED_RIDES_URL);
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("Invalid data structure");
+  // ✅ Real-time claimed rides subscription
+  useEffect(() => {
+    const unsubscribe = subscribeClaimedRides((data) => {
       const claimed = data.map((r) => ({
         TripID: r.TripID,
         ClaimedBy: r.ClaimedBy,
-        ClaimedAt: r.ClaimedAt || "N/A",
+        ClaimedAt: r.claimedAt
+          ? r.claimedAt.toDate().toLocaleString()
+          : r.ClaimedAt || "N/A",
         fading: false,
       }));
       setRows(claimed);
-    } catch (err) {
-      console.error("Error loading claimed rides:", err);
-      showToast("❌ Failed to load claimed rides", "error");
-    } finally {
       setLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    fetchClaimedRides();
-  }, [refreshTrigger, fetchClaimedRides]);
-
-  useEffect(() => {
-    const id = setInterval(fetchClaimedRides, 60000);
-    return () => clearInterval(id);
-  }, [fetchClaimedRides]);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleDelete = async () => {
     if (!selectedRow?.TripID) return;
@@ -75,10 +63,9 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
       ),
     );
     setTimeout(async () => {
-      const res = await deleteRide(selectedRow.TripID, "Sheet1");
+      const res = await deleteClaimedRide(selectedRow.TripID);
       if (res.success) {
         showToast("🗑️ Ride deleted", "info");
-        fetchClaimedRides();
       } else {
         showToast(`❌ ${res.message}`, "error");
       }
@@ -98,10 +85,9 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     );
     setTimeout(async () => {
       try {
-        await Promise.all(selectedRows.map((id) => deleteRide(id, "Sheet1")));
+        await Promise.all(selectedRows.map((id) => deleteClaimedRide(id)));
         showToast("✅ Selected rides deleted", "info");
         setSelectedRows([]);
-        fetchClaimedRides();
       } catch (err) {
         showToast(`❌ Bulk delete failed: ${err.message}`, "error");
       } finally {
@@ -127,7 +113,6 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
       showToast(`⚠️ Failed to restore: ${failed.join(", ")}`, "warning");
     } else {
       showToast("✅ Undo successful", "success");
-      fetchClaimedRides();
     }
 
     setUndoBuffer([]);
@@ -192,9 +177,14 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
       )}
 
       <Box display="flex" justifyContent="flex-end" mb={1}>
-        <Tooltip title="Refresh Claimed Rides">
+        <Tooltip title="Real-time updates enabled">
           <span>
-            <IconButton onClick={fetchClaimedRides} disabled={loading}>
+            <IconButton
+              onClick={() =>
+                showToast("🔥 Real-time updates active", "info")
+              }
+              disabled={loading}
+            >
               <RefreshIcon
                 sx={{ animation: loading ? "spin 1s linear infinite" : "none" }}
               />

@@ -1,10 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Snackbar, Alert, IconButton, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { fetchRideQueue, deleteRide, restoreRide } from "../hooks/api";
+import { subscribeRideQueue, deleteRideFromQueue, addRideToQueue } from "../hooks/api";
 import EditableRideGrid from "../components/EditableRideGrid";
-import { normalizeDate, normalizeTime } from "../timeUtils";
 import {
   Dialog,
   DialogTitle,
@@ -14,108 +13,67 @@ import {
   Typography,
 } from "@mui/material";
 
-const RideQueueGrid = ({ refreshTrigger }) => {
+const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);
-  const [toast, setToast] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+  const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
-  const refreshRides = useCallback(() => {
-    setLoading(true);
-    fetchRideQueue()
-      .then((data) => {
-        const mapped = data.map((row, i) => ({
-          id: row.TripID,
-          ...row,
-          Date: normalizeDate(row.Date),
-          PickupTime: normalizeTime(row.PickupTime),
-        }));
-        setRows(mapped);
-      })
-      .catch((err) => {
-        setToast({
-          open: true,
-          message: `❌ Failed to load rides: ${err.message}`,
-          severity: "error",
-        });
-      })
-      .finally(() => setLoading(false));
+  // ✅ Real-time Firestore subscription
+  useEffect(() => {
+    const unsubscribe = subscribeRideQueue((data) => {
+      setRows(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    refreshRides();
-  }, [refreshRides, refreshTrigger]);
-
-  useEffect(() => {
-    const id = setInterval(refreshRides, 60000);
-    return () => clearInterval(id);
-  }, [refreshRides]);
-
+  // ✅ Delete ride (Firestore)
   const confirmDeleteRide = async () => {
     if (!deletingTripId) return;
-    const target = rows.find((r) => r.TripID === deletingTripId);
+    const target = rows.find((r) => r.tripId === deletingTripId);
     setUndoRow(target);
     setRows((prev) =>
       prev.map((row) =>
-        row.TripID === deletingTripId ? { ...row, fading: true } : row,
-      ),
+        row.tripId === deletingTripId ? { ...row, fading: true } : row
+      )
     );
+
     setTimeout(async () => {
-      const res = await deleteRide(deletingTripId, "RideQueue");
-      if (res.success) {
-        setRows((prev) => prev.filter((row) => row.TripID !== deletingTripId));
-        setToast({
-          open: true,
-          message: `🗑️ Deleted Trip ${deletingTripId}`,
-          severity: "info",
-        });
-      } else {
-        setRows((prev) =>
-          prev.map((row) =>
-            row.TripID === deletingTripId ? { ...row, fading: false } : row,
-          ),
-        );
+      try {
+        await deleteRideFromQueue(deletingTripId);
+        setRows((prev) => prev.filter((row) => row.tripId !== deletingTripId));
+        setToast({ open: true, message: `🗑️ Deleted Trip ${deletingTripId}`, severity: "info" });
+      } catch (err) {
+        setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
         setUndoRow(null);
-        setToast({
-          open: true,
-          message: `❌ ${res.message}`,
-          severity: "error",
-        });
       }
       setConfirmOpen(false);
       setDeletingTripId(null);
     }, 300);
   };
 
+  // ✅ Undo ride delete (Firestore)
   const handleUndo = async () => {
     if (!undoRow) return;
-    await restoreRide(undoRow);
+    await addRideToQueue(undoRow);
     setUndoRow(null);
-    refreshRides();
     setToast({ open: true, message: "✅ Ride restored", severity: "success" });
   };
 
   return (
     <Box>
       <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
-        <Tooltip title="Refresh Ride Queue">
+        <Tooltip title="Refresh Ride Queue (optional)">
           <span>
             <IconButton
-              onClick={refreshRides}
+              onClick={() => setToast({ open: true, message: "🔥 Real-time updates active", severity: "info" })}
               disabled={loading}
               aria-label="Refresh rides"
             >
-              <RefreshIcon
-                sx={{
-                  animation: loading ? "spin 1s linear infinite" : "none",
-                }}
-              />
+              <RefreshIcon sx={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
             </IconButton>
           </span>
         </Tooltip>
@@ -124,19 +82,18 @@ const RideQueueGrid = ({ refreshTrigger }) => {
       <EditableRideGrid
         rows={rows}
         loading={loading}
-        onDelete={(TripID) => {
-          setDeletingTripId(TripID);
+        onDelete={(tripId) => {
+          setDeletingTripId(tripId);
           setConfirmOpen(true);
         }}
-        refreshRides={refreshRides}
-        sheetName="RideQueue"
+        sheetName="rideQueue"
       />
+
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Delete Ride?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{deletingTripId}</strong>{" "}
-            from the Ride Queue?
+            Are you sure you want to delete <strong>{deletingTripId}</strong> from the Ride Queue?
           </Typography>
         </DialogContent>
         <DialogActions>

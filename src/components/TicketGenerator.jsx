@@ -101,53 +101,52 @@ export default function TicketGenerator() {
     e.preventDefault();
     if (!validate() || loading) return;
     setLoading(true);
+    
     const id = uuidv4().split("-")[0];
     const ticketId = `TICKET-${id.toUpperCase()}`;
-    const createdAt = dayjs().format("YYYY-MM-DD HH:mm");
-
+  
+    // ✅ Combine date & time into a single Date object for Firestore
+    const pickupDateTime = dayjs(`${formData.date} ${formData.time}`, "YYYY-MM-DD HH:mm").toDate();
+  
     const newTicket = {
-      ...formData,
       ticketId,
-      createdAt,
+      passenger: formData.passenger.trim(),
+      pickup: formData.pickup.trim(),
+      dropoff: formData.dropoff.trim(),
+      pickupTime: pickupDateTime, // Firestore conversion happens in api.js
+      passengercount: Number(formData.passengerCount),
+      notes: formData.notes.trim() || null,
       scannedOutbound: false,
       scannedReturn: false,
-      passengerCount: parseInt(formData.passengerCount, 10),
+      createdAt: new Date() // Firestore conversion happens in api.js
     };
-
+  
     try {
-      const result = await apiAddTicket(newTicket);
-      if (result.success) {
-        setTicket(newTicket);
-        setFormData({
-          passenger: "",
-          date: "",
-          time: "",
-          pickup: "",
-          dropoff: "",
-          passengerCount: "",
-          notes: "",
-        });
-        storeLocation("lrp_pickup", newTicket.pickup);
-        storeLocation("lrp_dropoff", newTicket.dropoff);
-        setOpenPreview(true);
-      } else {
-        setSnackbar({
-          open: true,
-          message: "❌ Failed to save ticket to Google Sheets",
-          severity: "error",
-        });
-      }
+      await apiAddTicket(newTicket);
+      setTicket(newTicket);
+      setFormData({
+        passenger: "",
+        date: "",
+        time: "",
+        pickup: "",
+        dropoff: "",
+        passengerCount: "",
+        notes: "",
+      });
+      storeLocation("lrp_pickup", newTicket.pickup);
+      storeLocation("lrp_dropoff", newTicket.dropoff);
+      setOpenPreview(true);
     } catch (err) {
       console.error(err);
       setSnackbar({
         open: true,
-        message: "🚨 Error communicating with ticket API",
+        message: "🚨 Error saving ticket to Firestore",
         severity: "error",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }; 
 
   const downloadTicket = async () => {
     if (!ticketRef.current || !ticket) return;

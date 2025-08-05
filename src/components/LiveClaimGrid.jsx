@@ -1,8 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, IconButton, Snackbar, Alert, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { fetchLiveRides, deleteRide, restoreRide } from "../hooks/api";
+import {
+  subscribeClaimedRides,
+  deleteClaimedRide,
+  restoreRide,
+} from "../hooks/api";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { normalizeDate, normalizeTime } from "../timeUtils";
 import {
@@ -15,7 +19,7 @@ import {
 } from "@mui/material";
 import useToast from "../hooks/useToast";
 
-const LiveClaimGrid = ({ refreshTrigger }) => {
+const LiveClaimGrid = () => {
   const [rows, setRows] = useState([]);
   const { toast, showToast, closeToast } = useToast("success");
   const [loading, setLoading] = useState(true);
@@ -24,32 +28,20 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  const refreshRides = useCallback(() => {
-    setLoading(true);
-    fetchLiveRides()
-      .then((data) => {
-        const mapped = data.map((row, i) => ({
-          id: row.TripID,
-          ...row,
-          Date: normalizeDate(row.Date),
-          PickupTime: normalizeTime(row.PickupTime),
-        }));
-        setRows(mapped);
-      })
-      .catch((err) => {
-        showToast(`❌ Failed to load rides: ${err.message}`, "error");
-      })
-      .finally(() => setLoading(false));
-  }, [showToast]);
-
+  // ✅ Subscribe to claimed rides
   useEffect(() => {
-    refreshRides();
-  }, [refreshTrigger, refreshRides]);
-
-  useEffect(() => {
-    const id = setInterval(refreshRides, 60000);
-    return () => clearInterval(id);
-  }, [refreshRides]);
+    const unsubscribe = subscribeClaimedRides((data) => {
+      const mapped = data.map((row) => ({
+        id: row.TripID,
+        ...row,
+        Date: normalizeDate(row.Date),
+        PickupTime: normalizeTime(row.PickupTime),
+      }));
+      setRows(mapped);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);
@@ -61,7 +53,7 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
       ),
     );
     setTimeout(async () => {
-      const res = await deleteRide(deletingTripID, "Sheet1");
+      const res = await deleteClaimedRide(deletingTripID);
       if (res.success) {
         setRows((prev) => prev.filter((row) => row.TripID !== deletingTripID));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
@@ -83,17 +75,16 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
     if (!undoRow) return;
     await restoreRide(undoRow);
     setUndoRow(null);
-    refreshRides();
     showToast("✅ Ride restored", "success");
   };
 
   return (
     <Box>
       <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
-        <Tooltip title="Refresh Ride List">
+        <Tooltip title="Real-time updates enabled">
           <span>
             <IconButton
-              onClick={refreshRides}
+              onClick={() => showToast("🔥 Real-time updates active", "info")}
               disabled={loading}
               aria-label="Refresh rides"
             >
@@ -114,7 +105,6 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
           setDeletingTripID(TripID);
           setConfirmOpen(true);
         }}
-        refreshRides={refreshRides}
         sheetName="Sheet1"
       />
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
