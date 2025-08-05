@@ -43,10 +43,12 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import { addRideToQueue, refreshDailyRides } from "../hooks/api";
+import { addRideToQueue } from "../hooks/api";
 import useRideQueue from "../hooks/useRideQueue";
 import useClaimedRides from "../hooks/useClaimedRides";
 import { Timestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../firebase";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -233,16 +235,13 @@ export default function RideEntryForm() {
   const handleDropDailyRides = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await refreshDailyRides();
-      if (res.success) {
-        setToast({
-          open: true,
-          message: `✅ Daily rides updated: ${res.imported} imported (${res.total} total)`,
-          severity: "success",
-        });
-      } else {
-        throw new Error(res.error || "Update failed");
-      }
+      const callable = httpsCallable(functions, "dropDailyRidesNow");
+      const { data } = await callable();
+      setToast({
+        open: true,
+        message: `${data.message}: ${data.imported} imported (${data.total} total)`,
+        severity: "success",
+      });
     } catch (err) {
       setToast({
         open: true,

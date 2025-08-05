@@ -89,19 +89,26 @@ export const dropDailyRides = functions.pubsub
     }
   });
 
-export const dropDailyRidesNow = functions.https.onCall(async () => {
-  try {
-    const { imported, total } = await runDailyDrop();
-    await sendEmail(
-      "✅ Daily Rides Updated",
-      `Imported from queue: ${imported}\nTotal rides active: ${total}`,
-    );
-    return { imported, total };
-  } catch (err) {
-    await sendEmail("❌ Daily Drop Error", err.message);
-    throw new functions.https.HttpsError("unknown", err.message);
-  }
-});
+export const dropDailyRidesNow = functions.https.onCall(
+  async (data, context) => {
+    try {
+      const { imported, total } = await runDailyDrop();
+      await sendEmail(
+        "✅ Daily Rides Updated",
+        `Imported from queue: ${imported}\nTotal rides active: ${total}`,
+      );
+      return {
+        success: true,
+        message: "✅ Daily drop executed",
+        imported,
+        total,
+      };
+    } catch (error) {
+      await sendEmail("❌ Daily Drop Error", error.message);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  },
+);
 
 // Helper to send Trigger Email
 async function sendEmail(subject, body) {
