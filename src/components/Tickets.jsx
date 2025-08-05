@@ -93,7 +93,7 @@ export default function Tickets() {
     const date = dayjs(t.date).isValid()
       ? dayjs(t.date).format("MM-DD-YYYY")
       : t.date || "Unknown";
-    const count = parseInt(t.passengercount || t.passengerCount || "0", 10);
+    const count = parseInt(t.passengercount ?? 0, 10);
     acc[date] = (acc[date] || 0) + count;
     return acc;
   }, {});

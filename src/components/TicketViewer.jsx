@@ -111,7 +111,7 @@ export default function TicketViewer() {
           <strong>Passenger:</strong> {ticket.passenger || "—"}
         </Typography>
         <Typography>
-          <strong>Passenger Count:</strong> {ticket.passengerCount || "—"}
+          <strong>Passenger Count:</strong> {ticket.passengercount || "—"}
         </Typography>
         <Typography>
           <strong>Date:</strong>{" "}
