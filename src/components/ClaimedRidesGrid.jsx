@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -19,7 +19,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { DataGrid } from "@mui/x-data-grid";
 import { deleteClaimedRide, restoreRide } from "../hooks/api";
-import useClaimedRides from "../hooks/useClaimedRides";
+import useRides from "../hooks/useRides";
 import useToast from "../hooks/useToast";
 
 const ClaimedRidesGrid = () => {
@@ -33,22 +33,27 @@ const ClaimedRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
 
-  const claimedRides = useClaimedRides();
+  const { claimedRides, fetchRides } = useRides();
+
+  const mapped = useMemo(
+    () =>
+      claimedRides.map((r) => ({
+        id: r.id,
+        TripID: r.tripId || r.TripID,
+        ClaimedBy: r.claimedBy || r.ClaimedBy,
+        ClaimedAt: r.claimedAt
+          ? r.claimedAt.toDate().toLocaleString()
+          : r.ClaimedAt || "N/A",
+        fading: false,
+      })),
+    [claimedRides],
+  );
 
   // ✅ Update rows from shared hook
   useEffect(() => {
-    const claimed = claimedRides.map((r) => ({
-      id: r.id,
-      TripID: r.tripId || r.TripID,
-      ClaimedBy: r.claimedBy || r.ClaimedBy,
-      ClaimedAt: r.claimedAt
-        ? r.claimedAt.toDate().toLocaleString()
-        : r.ClaimedAt || "N/A",
-      fading: false,
-    }));
-    setRows(claimed);
+    setRows(mapped);
     setLoading(false);
-  }, [claimedRides]);
+  }, [mapped]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;
@@ -63,6 +68,7 @@ const ClaimedRidesGrid = () => {
       const res = await deleteClaimedRide(selectedRow.id);
       if (res.success) {
         showToast("🗑️ Ride deleted", "info");
+        await fetchRides();
       } else {
         showToast(`❌ ${res.message}`, "error");
       }
@@ -85,6 +91,7 @@ const ClaimedRidesGrid = () => {
         await Promise.all(selectedRows.map((id) => deleteClaimedRide(id)));
         showToast("✅ Selected rides deleted", "info");
         setSelectedRows([]);
+        await fetchRides();
       } catch (err) {
         showToast(`❌ Bulk delete failed: ${err.message}`, "error");
       } finally {
@@ -114,6 +121,7 @@ const ClaimedRidesGrid = () => {
 
     setUndoBuffer([]);
     setLoading(false);
+    await fetchRides();
   };
 
   const columns = [
@@ -174,12 +182,15 @@ const ClaimedRidesGrid = () => {
       )}
 
       <Box display="flex" justifyContent="flex-end" mb={1}>
-        <Tooltip title="Real-time updates enabled">
+        <Tooltip title="Refresh Claimed Rides">
           <span>
             <IconButton
-              onClick={() =>
-                showToast("🔥 Real-time updates active", "info")
-              }
+              onClick={async () => {
+                setLoading(true);
+                await fetchRides();
+                setLoading(false);
+                showToast("🔄 Claimed rides refreshed", "success");
+              }}
               disabled={loading}
             >
               <RefreshIcon
@@ -318,4 +329,4 @@ const ClaimedRidesGrid = () => {
   );
 };
 
-export default ClaimedRidesGrid;
+export default React.memo(ClaimedRidesGrid);

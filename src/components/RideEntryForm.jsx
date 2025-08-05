@@ -38,16 +38,12 @@ import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import { formatDuration, toTimeString12Hr } from "../timeUtils";
 import { auth, db } from "../firebase";
+import useRides from "../hooks/useRides";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import {
-  Timestamp,
-  collection,
-  addDoc,
-  getDocs,
-} from "firebase/firestore";
+import { Timestamp, collection, addDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import Papa from "papaparse";
 import {
@@ -138,9 +134,8 @@ export default function RideEntryForm() {
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [liveCount, setLiveCount] = useState(0);
-  const [claimedCount, setClaimedCount] = useState(0);
-  const [queueCount, setQueueCount] = useState(0);
+  const { counts, fetchRides } = useRides();
+  const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
   const [syncTime, setSyncTime] = useState("");
   const [multiInput, setMultiInput] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -202,21 +197,9 @@ export default function RideEntryForm() {
     localStorage.setItem("dataTab", dataTab.toString());
   }, [dataTab]);
 
-  const fetchRides = useCallback(async () => {
-    const [queueSnap, liveSnap, claimedSnap] = await Promise.all([
-      getDocs(collection(db, "rideQueue")),
-      getDocs(collection(db, "liveRides")),
-      getDocs(collection(db, "claimedRides")),
-    ]);
-    setQueueCount(queueSnap.size);
-    setLiveCount(liveSnap.size);
-    setClaimedCount(claimedSnap.size);
-    setSyncTime(dayjs().format("hh:mm A"));
-  }, []);
-
   useEffect(() => {
-    fetchRides();
-  }, [fetchRides]);
+    setSyncTime(dayjs().format("hh:mm A"));
+  }, [counts]);
 
   const validateFields = useCallback((data, setErrors, skipRef = false) => {
     const required = [
@@ -315,7 +298,6 @@ export default function RideEntryForm() {
         if (doc) validDocs.push(doc);
         else skipped++;
       });
-      setQueueCount((c) => c + validDocs.length);
       for (const doc of validDocs)
         // sequential to surface any permission errors early
         await addDoc(collection(db, "rideQueue"), doc);
@@ -358,7 +340,6 @@ export default function RideEntryForm() {
     try {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
-      setQueueCount((c) => c + 1);
       await addDoc(collection(db, "rideQueue"), rideData);
       setToast({
         open: true,

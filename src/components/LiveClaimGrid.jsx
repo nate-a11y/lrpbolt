@@ -1,9 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Box, IconButton, Snackbar, Alert, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { deleteLiveRide, restoreLiveRide } from "../hooks/api";
-import useLiveRides from "../hooks/useLiveRides";
+import useRides from "../hooks/useRides";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { normalizeDate, normalizeTime } from "../timeUtils";
 import {
@@ -26,19 +26,24 @@ const LiveClaimGrid = () => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  const liveRides = useLiveRides();
+  const { liveRides, fetchRides } = useRides();
+
+  const mapped = useMemo(
+    () =>
+      liveRides.map((row) => ({
+        ...row,
+        TripID: row.tripId || row.TripID || row.id,
+        Date: normalizeDate(row.Date),
+        PickupTime: normalizeTime(row.PickupTime),
+      })),
+    [liveRides],
+  );
 
   // ✅ Update rows from shared hook
   useEffect(() => {
-    const mapped = liveRides.map((row) => ({
-      ...row,
-      TripID: row.tripId || row.TripID || row.id,
-      Date: normalizeDate(row.Date),
-      PickupTime: normalizeTime(row.PickupTime),
-    }));
     setRows(mapped);
     setLoading(false);
-  }, [liveRides]);
+  }, [mapped]);
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);
@@ -52,6 +57,7 @@ const LiveClaimGrid = () => {
       if (res.success) {
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
+        await fetchRides();
       } else {
         setRows((prev) =>
           prev.map((row) => (row.id === deletingId ? { ...row, fading: false } : row)),
@@ -67,6 +73,7 @@ const LiveClaimGrid = () => {
   const handleUndo = async () => {
     if (!undoRow) return;
     await restoreLiveRide(undoRow);
+    await fetchRides();
     setUndoRow(null);
     showToast("✅ Ride restored", "success");
   };
@@ -74,10 +81,15 @@ const LiveClaimGrid = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
-        <Tooltip title="Real-time updates enabled">
+        <Tooltip title="Refresh Live Rides">
           <span>
             <IconButton
-              onClick={() => showToast("🔥 Real-time updates active", "info")}
+              onClick={async () => {
+                setLoading(true);
+                await fetchRides();
+                setLoading(false);
+                showToast("🔄 Live rides refreshed", "success");
+              }}
               disabled={loading}
               aria-label="Refresh rides"
             >
@@ -151,4 +163,4 @@ const LiveClaimGrid = () => {
   );
 };
 
-export default LiveClaimGrid;
+export default React.memo(LiveClaimGrid);
