@@ -18,11 +18,8 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { DataGrid } from "@mui/x-data-grid";
-import { deleteRide, restoreRide, BASE_URL } from "../hooks/api";
+import { fetchLiveRides, deleteClaimedRide, restoreRide } from "../hooks/api";
 import useToast from "../hooks/useToast";
-import { fetchWithRetry } from "../utils/network";
-
-const CLAIMED_RIDES_URL = `${BASE_URL}?type=claimedRides`;
 
 const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const [rows, setRows] = useState([]);
@@ -38,9 +35,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
   const fetchClaimedRides = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchWithRetry(CLAIMED_RIDES_URL);
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("Invalid data structure");
+      const data = await fetchLiveRides();
       const claimed = data.map((r) => ({
         TripID: r.TripID,
         ClaimedBy: r.ClaimedBy,
@@ -75,7 +70,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
       ),
     );
     setTimeout(async () => {
-      const res = await deleteRide(selectedRow.TripID, "Sheet1");
+      const res = await deleteClaimedRide(selectedRow.TripID);
       if (res.success) {
         showToast("🗑️ Ride deleted", "info");
         fetchClaimedRides();
@@ -98,7 +93,7 @@ const ClaimedRidesGrid = ({ refreshTrigger = 0 }) => {
     );
     setTimeout(async () => {
       try {
-        await Promise.all(selectedRows.map((id) => deleteRide(id, "Sheet1")));
+        await Promise.all(selectedRows.map((id) => deleteClaimedRide(id)));
         showToast("✅ Selected rides deleted", "info");
         setSelectedRows([]);
         fetchClaimedRides();

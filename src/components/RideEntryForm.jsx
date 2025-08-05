@@ -43,13 +43,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import {
-  fetchLiveRides,
-  fetchRideQueue,
-  BASE_URL,
-  SECURE_KEY,
-} from "../hooks/api";
-import { fetchWithRetry } from "../utils/network";
+import { fetchLiveRides, subscribeRideQueue, addRideToQueue } from "../hooks/api";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -183,18 +177,12 @@ export default function RideEntryForm() {
         // Silently ignore non-critical fetch errors
       }
     };
-    const getQueue = async () => {
-      try {
-        const q = await fetchRideQueue();
-        if (!Array.isArray(q)) return;
-        setQueueCount(q.length);
-      } catch (err) {
-        // Silently ignore non-critical fetch errors
-      }
-    };
     getLiveAndClaimed();
-    getQueue();
+    const unsubQueue = subscribeRideQueue((data) => {
+      setQueueCount(data.length);
+    });
     setSyncTime(dayjs().format("hh:mm A"));
+    return () => unsubQueue();
   }, []); // ✅ No unnecessary dependencies
 
   const validateFields = useCallback((data, setErrors) => {
@@ -249,23 +237,14 @@ export default function RideEntryForm() {
   const handleDropDailyRides = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await fetchWithRetry(BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: SECURE_KEY, type: "dropDailyRides" }),
+      await fetchLiveRides();
+      setToast({
+        open: true,
+        message: "✅ Live ride list refreshed!",
+        severity: "success",
       });
-      const result = await res.json();
-      if (result.success) {
-        setToast({
-          open: true,
-          message: "✅ Live ride list updated!",
-          severity: "success",
-        });
-        setSyncTime(dayjs().format("hh:mm A"));
-        setRefreshTrigger((prev) => prev + 1);
-      } else {
-        throw new Error(result.message || "Update failed");
-      }
+      setSyncTime(dayjs().format("hh:mm A"));
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
     } finally {
@@ -284,27 +263,24 @@ export default function RideEntryForm() {
     }
     setSubmitting(true);
     try {
-      const res = await fetchWithRetry(BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: SECURE_KEY,
-          type: "addRide",
-          ride: formData,
-        }),
+      const durationMinutes =
+        Number(formData.DurationHours || 0) * 60 +
+        Number(formData.DurationMinutes || 0);
+      const pickupDateTime = dayjs(
+        `${formData.Date} ${formData.PickupTime}`,
+        "YYYY-MM-DD HH:mm"
+      ).toDate();
+      await addRideToQueue({
+        TripID: formData.TripID,
+        RideType: formData.RideType,
+        Vehicle: formData.Vehicle,
+        RideNotes: formData.RideNotes,
+        pickupTime: pickupDateTime,
+        rideDuration: durationMinutes,
       });
-      const result = await res.json();
-
-      if (!result?.success) {
-        throw new Error(result?.message || "Submission failed");
-      }
-
-      // ✅ Only destructure when data exists
-      const tripIdDisplay = result?.data?.TripID || "(No TripID returned)";
-
       setToast({
         open: true,
-        message: `✅ Ride ${tripIdDisplay} submitted successfully`,
+        message: `✅ Ride ${formData.TripID} submitted successfully`,
         severity: "success",
       });
       setFormData(defaultValues);
@@ -329,28 +305,25 @@ export default function RideEntryForm() {
 
     setSubmitting(true);
     try {
-      const res = await fetchWithRetry(BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: SECURE_KEY,
-          type: "importRides",
-          rides: uploadedRows,
-        }),
-      });
-      const result = await res.json();
-
-      if (!result?.success) {
-        throw new Error(result?.message || "Import failed");
+      for (const row of uploadedRows) {
+        const durationMinutes =
+          Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
+        const pickupDateTime = dayjs(
+          `${row.Date} ${row.PickupTime}`,
+          ["M/D/YYYY HH:mm", "YYYY-MM-DD HH:mm"]
+        ).toDate();
+        await addRideToQueue({
+          TripID: row.TripID,
+          RideType: row.RideType,
+          Vehicle: row.Vehicle,
+          RideNotes: row.RideNotes,
+          pickupTime: pickupDateTime,
+          rideDuration: durationMinutes,
+        });
       }
-
-      const tripIdDisplay = result?.data?.TripID
-        ? ` (TripID: ${result.data.TripID})`
-        : "";
-
       setToast({
         open: true,
-        message: `✅ CSV rides imported${tripIdDisplay}`,
+        message: `✅ CSV rides imported`,
         severity: "success",
       });
 
@@ -407,28 +380,25 @@ export default function RideEntryForm() {
 
     setSubmitting(true);
     try {
-      const res = await fetchWithRetry(BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: SECURE_KEY,
-          type: "importRides",
-          rides: ridesToSubmit,
-        }),
-      });
-      const result = await res.json();
-
-      if (!result?.success) {
-        throw new Error(result?.message || "Multi submit failed");
+      for (const row of ridesToSubmit) {
+        const durationMinutes =
+          Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
+        const pickupDateTime = dayjs(
+          `${row.Date} ${row.PickupTime}`,
+          ["M/D/YYYY HH:mm", "YYYY-MM-DD HH:mm"]
+        ).toDate();
+        await addRideToQueue({
+          TripID: row.TripID,
+          RideType: row.RideType,
+          Vehicle: row.Vehicle,
+          RideNotes: row.RideNotes,
+          pickupTime: pickupDateTime,
+          rideDuration: durationMinutes,
+        });
       }
-
-      const tripIdDisplay = result?.data?.TripID
-        ? ` (TripID: ${result.data.TripID})`
-        : "";
-
       setToast({
         open: true,
-        message: `✅ All rides submitted successfully${tripIdDisplay}`,
+        message: `✅ All rides submitted successfully`,
         severity: "success",
       });
 

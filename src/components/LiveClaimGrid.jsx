@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Box, IconButton, Snackbar, Alert, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { fetchLiveRides, deleteRide, restoreRide } from "../hooks/api";
+import { fetchLiveRides, deleteClaimedRide, restoreRide } from "../hooks/api";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { normalizeDate, normalizeTime } from "../timeUtils";
 import {
@@ -61,7 +61,7 @@ const LiveClaimGrid = ({ refreshTrigger }) => {
       ),
     );
     setTimeout(async () => {
-      const res = await deleteRide(deletingTripID, "Sheet1");
+      const res = await deleteClaimedRide(deletingTripID);
       if (res.success) {
         setRows((prev) => prev.filter((row) => row.TripID !== deletingTripID));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");

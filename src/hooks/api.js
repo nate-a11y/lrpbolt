@@ -152,6 +152,11 @@ export function subscribeDriverRotation(callback) {
   });
 }
 
+export async function fetchDrivers() {
+  const snapshot = await getDocs(collection(db, "driverRotation"));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
 export async function updateDriverRotation(driverId, updates) {
   return await updateDoc(doc(db, "driverRotation", driverId), updates);
 }

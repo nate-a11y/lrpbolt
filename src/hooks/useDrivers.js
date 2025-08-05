@@ -1,15 +1,12 @@
 import { useState, useCallback } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import { fetchDrivers as apiFetchDrivers } from "./api";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
 
   const fetchDrivers = useCallback(async (userEmail = "") => {
     try {
-      const snapshot = await getDocs(collection(db, "driverRotation"));
-      const data = snapshot.docs.map(doc => doc.data());
-
+      const data = await apiFetchDrivers();
       const names = data.map((d) => d.name);
       setDrivers(names);
 
