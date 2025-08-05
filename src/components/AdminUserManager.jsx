@@ -98,8 +98,8 @@ export default function AdminUserManager() {
     }
 
     try {
-      for (let user of validUsers) {
-        if (await emailExists(user.email)) {
+for (const user of validUsers) {
+  if (await emailExists(user.email)) {
           setSnackbar({
             open: true,
             message: `⚠️ ${user.email} already exists, skipped`,
