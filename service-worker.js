@@ -4,21 +4,22 @@ import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim, cacheNames } from "workbox-core";
 import { logError } from "./src/utils/errorUtils.js";
 
-// Manifest injected at build time.
-// Vite/Workbox sometimes inject both `manifest.webmanifest` and
-// `manifest.webmanifest?__WB_REVISION__=hash`, which causes the
-// `add-to-cache-list-conflicting-entries` error. Normalize each URL
-// (strip query parameters) and keep only the first occurrence so every
-// resource, especially `manifest.webmanifest`, is cached exactly once.
-const seen = new Set();
-const manifest = [];
-for (const entry of self.__WB_MANIFEST) {
-  const cleanUrl = entry.url.split("?")[0];
-  if (seen.has(cleanUrl)) continue;
-  seen.add(cleanUrl);
-  manifest.push({ ...entry, url: cleanUrl });
+// Normalize and dedupe entries injected by Workbox. Without this, assets such
+// as `manifest.webmanifest` may appear twice (with and without a revision query
+// string) which causes the `add-to-cache-list-conflicting-entries` error.
+function normalizeAndDedupe(entries) {
+  const seen = new Set();
+  const list = [];
+  for (const entry of entries) {
+    const cleanUrl = entry.url.split("?")[0];
+    if (seen.has(cleanUrl)) continue;
+    seen.add(cleanUrl);
+    list.push({ ...entry, url: cleanUrl });
+  }
+  return list;
 }
 
+const manifest = normalizeAndDedupe(self.__WB_MANIFEST);
 precacheAndRoute(manifest);
 
 // Remove any previously cached entries that differ only by query string.

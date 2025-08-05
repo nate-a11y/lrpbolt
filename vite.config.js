@@ -5,6 +5,21 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
+// Helper to mirror the runtime dedupe done in the service worker. This ensures
+// duplicate entries such as `manifest.webmanifest` are filtered out at build
+// time as well.
+const dedupeManifest = (entries) => {
+  const seen = new Set();
+  const manifest = entries.filter((e) => {
+    const url = e.url.split("?")[0];
+    if (seen.has(url)) return false;
+    e.url = url;
+    seen.add(url);
+    return true;
+  });
+  return { manifest };
+};
+
 export default defineConfig({
   plugins: [
     react(),
@@ -17,19 +32,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Deduplicate entries like manifest.webmanifest that may be injected twice
-        manifestTransforms: [
-          (entries) => {
-            const seen = new Set();
-            const manifest = entries.filter((e) => {
-              const url = e.url.split("?")[0];
-              if (seen.has(url)) return false;
-              e.url = url;
-              seen.add(url);
-              return true;
-            });
-            return { manifest };
-          },
-        ],
+        manifestTransforms: [dedupeManifest],
       },
     }),
   ],
