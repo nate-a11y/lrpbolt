@@ -19,7 +19,7 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
-import { normalizeDate } from "../timeUtils";
+import { normalizeDate } from "../utils/timeUtils";
 import {
   claimRide as firestoreClaimRide,
   deleteLiveRide,

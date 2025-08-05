@@ -36,7 +36,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import LiveClaimGrid from "./LiveClaimGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
-import { formatDuration, toTimeString12Hr } from "../timeUtils";
+import { formatDuration, toTimeString12Hr } from "../utils/timeUtils";
 import { auth, db } from "../firebase";
 import useRides from "../hooks/useRides";
 import dayjs from "dayjs";

@@ -36,7 +36,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
-      timeUtils: path.resolve(__dirname, "src/timeUtils.js"),
+      timeUtils: path.resolve(__dirname, "src/utils/timeUtils.js"),
     },
     extensions: [".js", ".jsx"], // ✅ Ensures JSX is always resolved to JS at build
   },

@@ -2,6 +2,7 @@ import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim, cacheNames } from "workbox-core";
+import { logError } from "./src/utils/errorUtils.js";
 
 // Manifest injected at build time.
 // Vite/Workbox sometimes inject both `manifest.webmanifest` and
@@ -50,10 +51,10 @@ self.addEventListener("install", (event) => {
         try {
           const resp = await fetch(url);
           if (!resp.ok) {
-            console.error("Precache failed for", url, resp.status);
+            logError(resp.status, `Precache failed for ${url}`);
           }
         } catch (err) {
-          console.error("Precache fetch error for", url, err);
+          logError(err, `Precache fetch error for ${url}`);
         }
       }
     })(),

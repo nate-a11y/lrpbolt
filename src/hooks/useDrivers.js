@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
+import { logError } from "../utils/errorUtils";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
@@ -16,7 +17,7 @@ export default function useDrivers() {
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setDrivers(list);
     } catch (err) {
-      console.error("Failed to fetch drivers:", err);
+      logError(err, "Failed to fetch drivers");
     }
   }, []);
 

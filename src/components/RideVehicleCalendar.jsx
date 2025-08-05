@@ -24,6 +24,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import { fetchWithRetry } from "../utils/network";
+import { logError } from "../utils/errorUtils";
 
 const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
@@ -193,7 +194,7 @@ export default function RideVehicleCalendar() {
 
         setEvents(parsed);
       } catch (err) {
-        console.error("Calendar fetch failed:", err);
+        logError(err, "Calendar fetch failed");
       } finally {
         setLoading(false);
       }
