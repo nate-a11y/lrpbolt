@@ -1,9 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Box, Snackbar, Alert, IconButton, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { deleteRideFromQueue, addRideToQueue } from "../hooks/api";
-import useRideQueue from "../hooks/useRideQueue";
+import useRides from "../hooks/useRides";
 import EditableRideGrid from "../components/EditableRideGrid";
 import {
   Dialog,
@@ -16,24 +16,33 @@ import {
 
 const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);
-  const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
+  const [toast, setToast] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
-  const rideQueue = useRideQueue();
+  const { rideQueue, fetchRides } = useRides();
+
+  const mapped = useMemo(
+    () =>
+      rideQueue.map((row) => ({
+        ...row,
+        TripID: row.tripId || row.TripID || row.id,
+      })),
+    [rideQueue],
+  );
 
   // ✅ Update rows from shared hook
   useEffect(() => {
-    const mapped = rideQueue.map((row) => ({
-      ...row,
-      TripID: row.tripId || row.TripID || row.id,
-    }));
     setRows(mapped);
     setLoading(false);
-  }, [rideQueue]);
+  }, [mapped]);
 
   // ✅ Delete ride (Firestore)
   const confirmDeleteRide = async () => {
@@ -48,7 +57,12 @@ const RideQueueGrid = () => {
       try {
         await deleteRideFromQueue(deletingId);
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
-        setToast({ open: true, message: `🗑️ Deleted Trip ${deletingTripId}`, severity: "info" });
+        setToast({
+          open: true,
+          message: `🗑️ Deleted Trip ${deletingTripId}`,
+          severity: "info",
+        });
+        await fetchRides();
       } catch (err) {
         setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
         setUndoRow(null);
@@ -63,6 +77,7 @@ const RideQueueGrid = () => {
   const handleUndo = async () => {
     if (!undoRow) return;
     await addRideToQueue(undoRow);
+    await fetchRides();
     setUndoRow(null);
     setToast({ open: true, message: "✅ Ride restored", severity: "success" });
   };
@@ -70,14 +85,25 @@ const RideQueueGrid = () => {
   return (
     <Box>
       <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
-        <Tooltip title="Refresh Ride Queue (optional)">
+        <Tooltip title="Refresh Ride Queue">
           <span>
             <IconButton
-              onClick={() => setToast({ open: true, message: "🔥 Real-time updates active", severity: "info" })}
+              onClick={async () => {
+                setLoading(true);
+                await fetchRides();
+                setLoading(false);
+                setToast({
+                  open: true,
+                  message: "🔄 Ride queue refreshed",
+                  severity: "success",
+                });
+              }}
               disabled={loading}
               aria-label="Refresh rides"
             >
-              <RefreshIcon sx={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
+              <RefreshIcon
+                sx={{ animation: loading ? "spin 1s linear infinite" : "none" }}
+              />
             </IconButton>
           </span>
         </Tooltip>
@@ -143,4 +169,4 @@ const RideQueueGrid = () => {
   );
 };
 
-export default RideQueueGrid;
+export default React.memo(RideQueueGrid);
