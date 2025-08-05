@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
+import { auth } from "../firebase";
 
 export default function TicketViewer() {
   const { ticketId } = useParams();
@@ -47,10 +48,11 @@ export default function TicketViewer() {
   const updateScanStatus = (field) => {
     if (!ticket || ticket[field]) return;
 
+    const driver = auth.currentUser?.email || "Unknown";
     updateTicketScan(
       ticketId,
       field === "scannedOutbound" ? "outbound" : "return",
-      localStorage.getItem("lrp_driver") || "Unknown",
+      driver,
     )
       .then((result) => {
         if (result.success) {
