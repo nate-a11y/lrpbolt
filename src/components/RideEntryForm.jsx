@@ -106,6 +106,8 @@ export default function RideEntryForm() {
     message: "",
     severity: "success",
   });
+  const errorFields = useRef({});
+  const [builderErrors, setBuilderErrors] = useState({});
 
   const preview = useMemo(() => {
     const rideDuration = formatDuration(
@@ -123,6 +125,37 @@ export default function RideEntryForm() {
       RideDuration: rideDuration,
     };
   }, [formData]);
+
+  const validateFields = useCallback((data, setErrors, skipRef = false) => {
+    const required = [
+      "TripID",
+      "Date",
+      "PickupTime",
+      "DurationHours",
+      "DurationMinutes",
+      "RideType",
+      "Vehicle",
+    ];
+    const errors = {};
+    for (const field of required)
+      if (!data[field]?.toString().trim()) errors[field] = true;
+    if (!tripIdPattern.test(data.TripID)) errors.TripID = true;
+    const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
+    if (!dateValid || dayjs(data.Date).isBefore(dayjs().startOf("day")))
+      errors.Date = true;
+    if (!timePattern.test(data.PickupTime)) errors.PickupTime = true;
+    if (
+      isNaN(+data.DurationMinutes) ||
+      +data.DurationMinutes < 0 ||
+      +data.DurationMinutes >= 60
+    )
+      errors.DurationMinutes = true;
+    if (isNaN(+data.DurationHours) || +data.DurationHours < 0)
+      errors.DurationHours = true;
+    if (setErrors) setErrors(errors);
+    else if (!skipRef) errorFields.current = errors;
+    return Object.keys(errors).length === 0;
+  }, []);
 
   const isFormValid = useMemo(
     () => validateFields(formData),
@@ -144,8 +177,6 @@ export default function RideEntryForm() {
   );
   const isMobile = useMediaQuery("(max-width:600px)");
   const currentUser = auth.currentUser?.email || "Unknown";
-  const errorFields = useRef({});
-  const [builderErrors, setBuilderErrors] = useState({});
   const functions = getFunctions();
   const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 
@@ -200,37 +231,6 @@ export default function RideEntryForm() {
   useEffect(() => {
     setSyncTime(dayjs().format("hh:mm A"));
   }, [counts]);
-
-  const validateFields = useCallback((data, setErrors, skipRef = false) => {
-    const required = [
-      "TripID",
-      "Date",
-      "PickupTime",
-      "DurationHours",
-      "DurationMinutes",
-      "RideType",
-      "Vehicle",
-    ];
-    const errors = {};
-    for (const field of required)
-      if (!data[field]?.toString().trim()) errors[field] = true;
-    if (!tripIdPattern.test(data.TripID)) errors.TripID = true;
-    const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
-    if (!dateValid || dayjs(data.Date).isBefore(dayjs().startOf("day")))
-      errors.Date = true;
-    if (!timePattern.test(data.PickupTime)) errors.PickupTime = true;
-    if (
-      isNaN(+data.DurationMinutes) ||
-      +data.DurationMinutes < 0 ||
-      +data.DurationMinutes >= 60
-    )
-      errors.DurationMinutes = true;
-    if (isNaN(+data.DurationHours) || +data.DurationHours < 0)
-      errors.DurationHours = true;
-    if (setErrors) setErrors(errors);
-    else if (!skipRef) errorFields.current = errors;
-    return Object.keys(errors).length === 0;
-  }, []);
 
   const handleChange = useCallback(
     (e, stateSetter = setFormData, errorSetter) => {
