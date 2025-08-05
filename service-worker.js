@@ -6,17 +6,21 @@ import { logError } from "./src/utils/errorUtils.js";
 
 // Normalize and dedupe entries injected by Workbox. Without this, assets such
 // as `manifest.webmanifest` may appear twice (with and without a revision query
-// string) which causes the `add-to-cache-list-conflicting-entries` error.
-function normalizeAndDedupe(entries) {
+// string) which triggers the
+// `add-to-cache-list-conflicting-entries` error.
+function normalizeAndDedupe(entries = []) {
   const seen = new Set();
-  const list = [];
-  for (const entry of entries) {
-    const cleanUrl = entry.url.split("?")[0];
-    if (seen.has(cleanUrl)) continue;
-    seen.add(cleanUrl);
-    list.push({ ...entry, url: cleanUrl });
-  }
-  return list;
+  return entries.reduce((acc, entry) => {
+    const url = new URL(entry.url, self.location);
+    // Strip any query params like ?__WB_REVISION__ that make the same asset
+    // appear twice in the precache manifest.
+    url.search = "";
+    const key = url.href;
+    if (seen.has(key)) return acc;
+    seen.add(key);
+    acc.push({ ...entry, url: key });
+    return acc;
+  }, []);
 }
 
 const manifest = normalizeAndDedupe(self.__WB_MANIFEST);

@@ -11,10 +11,12 @@ import path from "path";
 const dedupeManifest = (entries) => {
   const seen = new Set();
   const manifest = entries.filter((e) => {
-    const url = e.url.split("?")[0];
-    if (seen.has(url)) return false;
-    e.url = url;
-    seen.add(url);
+    const url = new URL(e.url, "http://dummy");
+    url.search = ""; // remove ?__WB_REVISION__ etc
+    const key = url.pathname + url.hash;
+    if (seen.has(key)) return false;
+    e.url = url.pathname + url.hash;
+    seen.add(key);
     return true;
   });
   return { manifest };

@@ -98,28 +98,23 @@ export function subscribeUserAccess(
  * RIDE QUEUE
  * -----------------------------
  */
-export function subscribeRideQueue(
-  callback,
-  fromTime = Timestamp.now(),
-) {
+export function subscribeRideQueue(callback, fromTime) {
+  const start = fromTime || Timestamp.now();
+  const key = fromTime ? `rideQueue:${fromTime.toMillis()}` : "rideQueue";
   const q = query(
     collection(db, "rideQueue"),
-    where("pickupTime", ">=", fromTime),
+    where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
   if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "rideQueue");
+    console.log("Listener started:", key);
   }
-  const unsub = subscribeFirestore(
-    `rideQueue:${fromTime.toMillis()}`,
-    q,
-    (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    },
-  );
+  const unsub = subscribeFirestore(key, q, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  });
   return () => {
     if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "rideQueue");
+      console.log("Listener cleaned up:", key);
     }
     unsub();
   };
@@ -165,28 +160,23 @@ export async function deleteRideFromQueue(rideId) {
  * CLAIMED RIDES
  * -----------------------------
  */
-export function subscribeClaimedRides(
-  callback,
-  fromTime = Timestamp.now(),
-) {
+export function subscribeClaimedRides(callback, fromTime) {
+  const start = fromTime || Timestamp.now();
+  const key = fromTime ? `claimedRides:${fromTime.toMillis()}` : "claimedRides";
   const q = query(
     collection(db, "claimedRides"),
-    where("pickupTime", ">=", fromTime),
+    where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
   if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "claimedRides");
+    console.log("Listener started:", key);
   }
-  const unsub = subscribeFirestore(
-    `claimedRides:${fromTime.toMillis()}`,
-    q,
-    (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))); 
-    },
-  );
+  const unsub = subscribeFirestore(key, q, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  });
   return () => {
     if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "claimedRides");
+      console.log("Listener cleaned up:", key);
     }
     unsub();
   };
@@ -496,28 +486,23 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-export function subscribeLiveRides(
-  callback,
-  fromTime = Timestamp.now(),
-) {
+export function subscribeLiveRides(callback, fromTime) {
+  const start = fromTime || Timestamp.now();
+  const key = fromTime ? `liveRides:${fromTime.toMillis()}` : "liveRides";
   const q = query(
     collection(db, "liveRides"),
-    where("pickupTime", ">=", fromTime),
+    where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
   if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "liveRides");
+    console.log("Listener started:", key);
   }
-  const unsub = subscribeFirestore(
-    `liveRides:${fromTime.toMillis()}`,
-    q,
-    (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))); 
-    },
-  );
+  const unsub = subscribeFirestore(key, q, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  });
   return () => {
     if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "liveRides");
+      console.log("Listener cleaned up:", key);
     }
     unsub();
   };
