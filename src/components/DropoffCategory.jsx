@@ -1,13 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from 'react';
+import React from "react";
 import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Typography
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import DropoffLocation from './DropoffLocation';
+  Typography,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DropoffLocation from "./DropoffLocation";
 
 export default function DropoffCategory({ title, locations, onSelect }) {
   return (

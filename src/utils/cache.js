@@ -1,4 +1,4 @@
-import { fetchWithRetry } from './network';
+import { fetchWithRetry } from "./network";
 
 export async function fetchWithCache(key, url, ttl = 86400000) {
   const cached = localStorage.getItem(key);

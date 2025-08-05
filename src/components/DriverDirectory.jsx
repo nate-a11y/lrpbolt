@@ -1,42 +1,53 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from "react";
 import {
-  Box, Typography, Accordion, AccordionSummary, AccordionDetails,
-  TextField, Link, Divider
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import PhoneIcon from '@mui/icons-material/Phone';
-import EmailIcon from '@mui/icons-material/Email';
+  Box,
+  Typography,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  TextField,
+  Link,
+  Divider,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import PhoneIcon from "@mui/icons-material/Phone";
+import EmailIcon from "@mui/icons-material/Email";
 
-import VehicleChip from './VehicleChip';
+import VehicleChip from "./VehicleChip";
 
-import DRIVER_LIST from '../data/driverDirectory';
+import DRIVER_LIST from "../data/driverDirectory";
 
 export default function DriverDirectory() {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   const highlight = useCallback((text, keyword) => {
     if (!keyword) return text;
-    const parts = text.split(new RegExp(`(${keyword})`, 'gi'));
+    const parts = text.split(new RegExp(`(${keyword})`, "gi"));
     return parts.map((part, i) =>
       part.toLowerCase() === keyword.toLowerCase() ? (
-        <Box key={i} component="span" sx={{ bgcolor: 'yellow', fontWeight: 600 }}>
+        <Box
+          key={i}
+          component="span"
+          sx={{ bgcolor: "yellow", fontWeight: 600 }}
+        >
           {part}
         </Box>
       ) : (
         <span key={i}>{part}</span>
-      )
+      ),
     );
   }, []);
 
   const filteredDrivers = useMemo(() => {
     const s = search.toLowerCase();
-    return DRIVER_LIST.filter(driver =>
-      driver.name.toLowerCase().includes(s) ||
-      driver.lrp.toLowerCase().includes(s) ||
-      driver.email.toLowerCase().includes(s) ||
-      driver.phone.toLowerCase().includes(s) ||
-      driver.vehicles.join(', ').toLowerCase().includes(s)
+    return DRIVER_LIST.filter(
+      (driver) =>
+        driver.name.toLowerCase().includes(s) ||
+        driver.lrp.toLowerCase().includes(s) ||
+        driver.email.toLowerCase().includes(s) ||
+        driver.phone.toLowerCase().includes(s) ||
+        driver.vehicles.join(", ").toLowerCase().includes(s),
     );
   }, [search]);
 
@@ -68,7 +79,7 @@ export default function DriverDirectory() {
           <AccordionDetails>
             <Box sx={{ mb: 1 }}>
               <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>Phone:</strong>{' '}
+                <strong>Phone:</strong>{" "}
                 <Link href={`tel:${driver.phone}`} underline="hover">
                   <PhoneIcon fontSize="small" sx={{ mr: 0.5 }} />
                   {highlight(driver.phone, search)}
@@ -76,7 +87,7 @@ export default function DriverDirectory() {
               </Typography>
 
               <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>Email:</strong>{' '}
+                <strong>Email:</strong>{" "}
                 <Link href={`mailto:${driver.email}`} underline="hover">
                   <EmailIcon fontSize="small" sx={{ mr: 0.5 }} />
                   {highlight(driver.email, search)}
@@ -87,7 +98,7 @@ export default function DriverDirectory() {
                 <strong>Vehicles:</strong>
               </Typography>
 
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                 {driver.vehicles.map((v, i) => (
                   <VehicleChip vehicle={v} key={i} />
                 ))}

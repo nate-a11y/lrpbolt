@@ -1,28 +1,36 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Box, Paper, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Tooltip, Snackbar, Alert, Chip,
-  Stack, CircularProgress
-} from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import {
-  Accordion, AccordionSummary, AccordionDetails
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import { useTheme } from '@mui/material/styles';
-import dayjs from 'dayjs';
-import { logTime, fetchTimeLogs } from '../hooks/api';
+  Box,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+  Tooltip,
+  Snackbar,
+  Alert,
+  Chip,
+  Stack,
+  CircularProgress,
+} from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
+import { Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import StopIcon from "@mui/icons-material/Stop";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import { useTheme } from "@mui/material/styles";
+import dayjs from "dayjs";
+import { logTime, fetchTimeLogs } from "../hooks/api";
 
 const TimeClock = ({ driver, setIsTracking }) => {
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
+  const isDark = theme.palette.mode === "dark";
 
-  const [rideId, setRideId] = useState('');
+  const [rideId, setRideId] = useState("");
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -30,17 +38,21 @@ const TimeClock = ({ driver, setIsTracking }) => {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [previousSessions, setPreviousSessions] = useState([]);
-  const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
+  const [snack, setSnack] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const showSnack = (message, severity = 'success') =>
+  const showSnack = (message, severity = "success") =>
     setSnack({ open: true, message, severity });
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('lrp_timeTrack') || '{}');
+    const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
     if (stored.driver === driver && stored.startTime) {
-      setRideId(stored.rideId || '');
+      setRideId(stored.rideId || "");
       setStartTime(dayjs(stored.startTime));
       setIsRunning(true);
       setIsNA(stored.isNA || false);
@@ -56,7 +68,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
     let timer;
     if (isRunning && startTime) {
       timer = setInterval(() => {
-        setElapsedTime(dayjs().diff(startTime, 'second'));
+        setElapsedTime(dayjs().diff(startTime, "second"));
       }, 1000);
     }
     return () => clearInterval(timer);
@@ -75,22 +87,28 @@ const TimeClock = ({ driver, setIsTracking }) => {
 
   const handleStart = () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {
-      return showSnack('Please enter a Ride ID or check N/A / Multiple', 'error');
+      return showSnack(
+        "Please enter a Ride ID or check N/A / Multiple",
+        "error",
+      );
     }
     const now = dayjs();
-    const idToTrack = isNA ? 'N/A' : isMulti ? 'MULTI' : rideId;
+    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId;
     setStartTime(now);
     setEndTime(null);
     setIsRunning(true);
     setIsSubmitting(true);
 
-    localStorage.setItem('lrp_timeTrack', JSON.stringify({
-      driver,
-      rideId: idToTrack,
-      isNA,
-      isMulti,
-      startTime: now.toISOString()
-    }));
+    localStorage.setItem(
+      "lrp_timeTrack",
+      JSON.stringify({
+        driver,
+        rideId: idToTrack,
+        isNA,
+        isMulti,
+        startTime: now.toISOString(),
+      }),
+    );
 
     setTimeout(() => setIsSubmitting(false), 1000);
   };
@@ -101,89 +119,96 @@ const TimeClock = ({ driver, setIsTracking }) => {
     setIsRunning(false);
     setIsSubmitting(true);
 
-    const duration = end.diff(startTime, 'minute');
+    const duration = end.diff(startTime, "minute");
     const payload = {
       driver,
-      rideId: isNA ? 'N/A' : isMulti ? 'MULTI' : rideId,
-      startTime: startTime.format('MM/DD/YYYY HH:mm'),
-      endTime: end.format('MM/DD/YYYY HH:mm'),
+      rideId: isNA ? "N/A" : isMulti ? "MULTI" : rideId,
+      startTime: startTime.format("MM/DD/YYYY HH:mm"),
+      endTime: end.format("MM/DD/YYYY HH:mm"),
       duration,
-      loggedAt: dayjs().format('MM/DD/YYYY HH:mm'),
+      loggedAt: dayjs().format("MM/DD/YYYY HH:mm"),
     };
 
     logTime(payload)
       .then((data) => {
         if (data.success) {
-          showSnack('✅ Time successfully logged!');
-          localStorage.removeItem('lrp_timeTrack');
-          setRideId('');
+          showSnack("✅ Time successfully logged!");
+          localStorage.removeItem("lrp_timeTrack");
+          setRideId("");
           setIsNA(false);
           setIsMulti(false);
           setElapsedTime(0);
           loadSessions();
         } else {
-          showSnack(`❌ Failed to log time: ${data.message}`, 'error');
+          showSnack(`❌ Failed to log time: ${data.message}`, "error");
         }
       })
-      .catch((err) => showSnack('❌ Network error: ' + err.message, 'error'))
+      .catch((err) => showSnack("❌ Network error: " + err.message, "error"))
       .finally(() => setIsSubmitting(false));
   };
 
   const formatElapsed = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+    return `${mins}m ${secs < 10 ? "0" : ""}${secs}s`;
   };
 
   const formatDuration = (minutes) => {
     if (minutes < 60) return `${minutes}m`;
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hrs}h${mins ? ` ${mins}m` : ''}`;
+    return `${hrs}h${mins ? ` ${mins}m` : ""}`;
   };
 
   const columns = [
     {
-      field: 'rideId',
-      headerName: 'Ride ID',
+      field: "rideId",
+      headerName: "Ride ID",
       flex: 1,
       renderCell: ({ row }) => {
-        let color = 'default';
-        if (row.rideIdRaw === 'N/A') color = 'warning';
-        else if (row.rideIdRaw === 'MULTI') color = 'info';
-        else color = 'success';
+        let color = "default";
+        if (row.rideIdRaw === "N/A") color = "warning";
+        else if (row.rideIdRaw === "MULTI") color = "info";
+        else color = "success";
 
         return (
-          <Tooltip title={
-            row.rideIdRaw === 'N/A' ? 'Non-Ride Task' :
-            row.rideIdRaw === 'MULTI' ? 'Multiple Back-to-Back Rides' :
-            `Ride ID: ${row.rideId}`
-          }>
+          <Tooltip
+            title={
+              row.rideIdRaw === "N/A"
+                ? "Non-Ride Task"
+                : row.rideIdRaw === "MULTI"
+                  ? "Multiple Back-to-Back Rides"
+                  : `Ride ID: ${row.rideId}`
+            }
+          >
             <Chip label={row.rideId} color={color} size="small" />
           </Tooltip>
         );
-      }
+      },
     },
-    { field: 'start', headerName: 'Start Time', flex: 1.5 },
-    { field: 'end', headerName: 'End Time', flex: 1.5 },
-    { field: 'duration', headerName: 'Duration', flex: 1 },
+    { field: "start", headerName: "Start Time", flex: 1.5 },
+    { field: "end", headerName: "End Time", flex: 1.5 },
+    { field: "duration", headerName: "Duration", flex: 1 },
   ];
 
-  const rows = useMemo(() => previousSessions.map((s, i) => {
-    const rawId = s.rideId || 'N/A';
-    const rideLabel = rawId === 'N/A' ? 'N/A'
-                      : rawId === 'MULTI' ? 'Multiple'
-                      : rawId;
+  const rows = useMemo(
+    () =>
+      previousSessions.map((s, i) => {
+        const rawId = s.rideId || "N/A";
+        const rideLabel =
+          rawId === "N/A" ? "N/A" : rawId === "MULTI" ? "Multiple" : rawId;
 
-    return {
-      id: i,
-      rideIdRaw: rawId,
-      rideId: rideLabel,
-      start: dayjs(s.start).format('MM/DD/YYYY hh:mm A'),
-      end: dayjs(s.end).format('MM/DD/YYYY hh:mm A'),
-      duration: formatDuration(parseInt(s.duration)),
-    };
-  }), [previousSessions]);
+        return {
+          id: i,
+          rideIdRaw: rawId,
+          rideId: rideLabel,
+          start: dayjs(s.start).format("MM/DD/YYYY hh:mm A"),
+          end: dayjs(s.end).format("MM/DD/YYYY hh:mm A"),
+          duration: formatDuration(parseInt(s.duration)),
+        };
+      }),
+    [previousSessions],
+  );
 
   return (
     <Box maxWidth={600} mx="auto">
@@ -195,39 +220,62 @@ const TimeClock = ({ driver, setIsTracking }) => {
         }
       `}</style>
 
-      <Paper elevation={3} sx={{ p: 3, borderLeft: '5px solid #4cbb17', bgcolor: isDark ? '#1d1d1d' : '#fafafa' }}>
+      <Paper
+        elevation={3}
+        sx={{
+          p: 3,
+          borderLeft: "5px solid #4cbb17",
+          bgcolor: isDark ? "#1d1d1d" : "#fafafa",
+        }}
+      >
         <Accordion sx={{ mb: 2 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <MenuBookIcon fontSize="small" /> How to Use The Time Tracker & Moovs
+            <Typography
+              variant="subtitle1"
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <MenuBookIcon fontSize="small" /> How to Use The Time Tracker &
+              Moovs
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
             <Typography variant="body2" gutterBottom>
-              ⏱️ Use the <strong>Start</strong> button when you begin working. If it&apos;s not for a ride, check <strong>N/A – Non-Ride Task</strong>.
+              ⏱️ Use the <strong>Start</strong> button when you begin working.
+              If it&apos;s not for a ride, check{" "}
+              <strong>N/A – Non-Ride Task</strong>.
             </Typography>
             <Typography variant="body2" gutterBottom>
-              ✨ Start the trip in Moovs when you are actually on the way to get the customer, instead of when you are starting the get-ready and washing the vehicle.
+              ✨ Start the trip in Moovs when you are actually on the way to get
+              the customer, instead of when you are starting the get-ready and
+              washing the vehicle.
             </Typography>
             <Typography variant="body2" gutterBottom>
               🛑 Press <strong>End</strong> when finished to log your time.
             </Typography>
             <Typography variant="body2" gutterBottom>
-              📝 You can enter a <strong>Ride ID</strong> for ride-related work, or check <strong>N/A</strong> for meetings, cleaning, prep, etc.
+              📝 You can enter a <strong>Ride ID</strong> for ride-related work,
+              or check <strong>N/A</strong> for meetings, cleaning, prep, etc.
             </Typography>
             <Typography variant="body2" gutterBottom>
-              📋 View previous sessions below. Use <strong>Refresh</strong> if your recent entry isn&apos;t showing.
+              📋 View previous sessions below. Use <strong>Refresh</strong> if
+              your recent entry isn&apos;t showing.
             </Typography>
             <Typography variant="body2" gutterBottom>
-              💡 Don’t close the tab while tracking — or it might pause your timer.
+              💡 Don’t close the tab while tracking — or it might pause your
+              timer.
             </Typography>
             <Typography variant="body2" gutterBottom>
-              🦒 If you&apos;re doing back-to-back rides with no meaningful break in between, you can now use the new <strong>Multiple Back-to-Back Rides</strong> option to track them all together.
+              🦒 If you&apos;re doing back-to-back rides with no meaningful
+              break in between, you can now use the new{" "}
+              <strong>Multiple Back-to-Back Rides</strong> option to track them
+              all together.
             </Typography>
           </AccordionDetails>
         </Accordion>
 
-        <Typography variant="h6" mb={2}>⏱️ Time Clock</Typography>
+        <Typography variant="h6" mb={2}>
+          ⏱️ Time Clock
+        </Typography>
 
         <Stack spacing={1}>
           <Tooltip title="Enter the Ride ID if this session relates to a specific trip.">
@@ -290,7 +338,7 @@ const TimeClock = ({ driver, setIsTracking }) => {
             color="success"
             startIcon={<PlayArrowIcon />}
           >
-            {isSubmitting && !isRunning ? 'Starting...' : 'Start'}
+            {isSubmitting && !isRunning ? "Starting..." : "Start"}
           </Button>
           <Button
             fullWidth
@@ -300,40 +348,58 @@ const TimeClock = ({ driver, setIsTracking }) => {
             variant="contained"
             startIcon={<StopIcon />}
           >
-            {isSubmitting && isRunning ? 'Logging...' : 'End'}
+            {isSubmitting && isRunning ? "Logging..." : "End"}
           </Button>
         </Box>
 
         <Box mt={2}>
           {isRunning && (
-            <Typography color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <span style={{ animation: 'pulse 1.5s infinite', fontSize: '1.2rem' }}>🟢</span>
-              Started at {startTime?.format('HH:mm')} — Elapsed: {formatElapsed(elapsedTime)}
+            <Typography
+              color="success.main"
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <span
+                style={{ animation: "pulse 1.5s infinite", fontSize: "1.2rem" }}
+              >
+                🟢
+              </span>
+              Started at {startTime?.format("HH:mm")} — Elapsed:{" "}
+              {formatElapsed(elapsedTime)}
             </Typography>
           )}
           {!isRunning && endTime && (
             <Typography color="primary.main">
-              Ended at {endTime?.format('HH:mm')}
+              Ended at {endTime?.format("HH:mm")}
             </Typography>
           )}
         </Box>
       </Paper>
 
       <Box mt={4}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={1}
+        >
           <Typography variant="subtitle1">📋 Previous Sessions</Typography>
           <Button
             variant="outlined"
             size="small"
             onClick={loadSessions}
-            startIcon={isRefreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
+            startIcon={
+              isRefreshing ? <CircularProgress size={16} /> : <RefreshIcon />
+            }
             disabled={isRefreshing}
           >
             Refresh
           </Button>
         </Box>
 
-        <Paper elevation={2} sx={{ p: 1, backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
+        <Paper
+          elevation={2}
+          sx={{ p: 1, backgroundColor: isDark ? "#1e1e1e" : "#fff" }}
+        >
           <DataGrid
             rows={rows}
             columns={columns}
@@ -344,15 +410,15 @@ const TimeClock = ({ driver, setIsTracking }) => {
             disableColumnMenu
             density="compact"
             sx={{
-              backgroundColor: isDark ? '#2a2a2a' : '#fafafa',
-              fontSize: '0.9rem',
-              '& .MuiDataGrid-overlay': {
-                textAlign: 'center',
-                pt: 4
+              backgroundColor: isDark ? "#2a2a2a" : "#fafafa",
+              fontSize: "0.9rem",
+              "& .MuiDataGrid-overlay": {
+                textAlign: "center",
+                pt: 4,
               },
-              '& .MuiDataGrid-row:nth-of-type(even)': {
-                backgroundColor: isDark ? '#1e1e1e' : '#f5f5f5'
-              }
+              "& .MuiDataGrid-row:nth-of-type(even)": {
+                backgroundColor: isDark ? "#1e1e1e" : "#f5f5f5",
+              },
             }}
           />
         </Paper>
@@ -362,9 +428,13 @@ const TimeClock = ({ driver, setIsTracking }) => {
         open={snack.open}
         autoHideDuration={4000}
         onClose={() => setSnack({ ...snack, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert onClose={() => setSnack({ ...snack, open: false })} severity={snack.severity} variant="filled">
+        <Alert
+          onClose={() => setSnack({ ...snack, open: false })}
+          severity={snack.severity}
+          variant="filled"
+        >
           {snack.message}
         </Alert>
       </Snackbar>

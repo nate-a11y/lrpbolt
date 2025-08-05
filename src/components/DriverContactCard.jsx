@@ -1,8 +1,14 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from 'react';
-import { Box, Typography, Paper, Link } from '@mui/material';
+import React from "react";
+import { Box, Typography, Paper, Link } from "@mui/material";
 
-export default function DriverContactCard({ name, phone, email, vehicles, lrpId }) {
+export default function DriverContactCard({
+  name,
+  phone,
+  email,
+  vehicles,
+  lrpId,
+}) {
   return (
     <Paper
       elevation={2}
@@ -10,8 +16,8 @@ export default function DriverContactCard({ name, phone, email, vehicles, lrpId 
         p: 2,
         mb: 2,
         borderRadius: 2,
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         gap: 1,
       }}
     >
@@ -20,7 +26,7 @@ export default function DriverContactCard({ name, phone, email, vehicles, lrpId 
       </Typography>
 
       <Typography variant="body2" color="text.secondary">
-        Vehicles: {vehicles || 'N/A'}
+        Vehicles: {vehicles || "N/A"}
       </Typography>
 
       <Box display="flex" alignItems="center" gap={1}>

@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideGroup.jsx
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -19,45 +19,68 @@ import {
   ToggleButton,
   Chip,
   Grow,
-} from '@mui/material';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import NotesIcon from '@mui/icons-material/Notes';
-import { calculateDropOff } from './timeUtils';
-import dayjs from 'dayjs';
+} from "@mui/material";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import NotesIcon from "@mui/icons-material/Notes";
+import { calculateDropOff } from "./timeUtils";
+import dayjs from "dayjs";
 
-const RideDetailRow = ({ icon, label, preserveLine = false, highlightColor }) => {
-  const [prefix, ...rest] = label.split(':');
+const RideDetailRow = ({
+  icon,
+  label,
+  preserveLine = false,
+  highlightColor,
+}) => {
+  const [prefix, ...rest] = label.split(":");
   return (
     <Box display="flex" alignItems="flex-start" mb={0.5}>
-      <Box sx={{ minWidth: '30px', pt: '2px' }}>{icon}</Box>
-      <Typography sx={{ whiteSpace: preserveLine ? 'pre-line' : 'normal', color: highlightColor || 'inherit' }}>
+      <Box sx={{ minWidth: "30px", pt: "2px" }}>{icon}</Box>
+      <Typography
+        sx={{
+          whiteSpace: preserveLine ? "pre-line" : "normal",
+          color: highlightColor || "inherit",
+        }}
+      >
         <strong>{prefix}:</strong>
-        {rest.length > 0 ? rest.join(':') : ''}
+        {rest.length > 0 ? rest.join(":") : ""}
       </Typography>
     </Box>
   );
 };
 
-function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggleSelect, onGroupToggle, onClearSelected }) {
-  const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
-  const [vehicle, , date] = groupKey.split('___');
+function RideGroup({
+  groupKey,
+  rides,
+  onClaim,
+  showToast,
+  selectedRides,
+  onToggleSelect,
+  onGroupToggle,
+  onClearSelected,
+}) {
+  const [snack, setSnack] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [vehicle, , date] = groupKey.split("___");
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const groupRef = useRef(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimingIds, setClaimingIds] = useState([]);
   const selectedInGroup = useMemo(
     () => rides.filter((r) => selectedRides.has(r.TripID)).map((r) => r.TripID),
-    [rides, selectedRides]
+    [rides, selectedRides],
   );
-  const dayOfWeek = useMemo(() => dayjs(date).format('dddd'), [date]);
+  const dayOfWeek = useMemo(() => dayjs(date).format("dddd"), [date]);
   const vehicleIcon = useMemo(() => {
-    if (vehicle.startsWith('LRPSQD')) return '🚒';
-    if (vehicle.startsWith('LRPSPR')) return '🚐';
-    if (vehicle.startsWith('LRPSHU')) return '🚌';
-    if (vehicle.startsWith('LRPBus')) return '🚌';
-    return '🚗';
+    if (vehicle.startsWith("LRPSQD")) return "🚒";
+    if (vehicle.startsWith("LRPSPR")) return "🚐";
+    if (vehicle.startsWith("LRPSHU")) return "🚌";
+    if (vehicle.startsWith("LRPBus")) return "🚌";
+    return "🚗";
   }, [vehicle]);
 
   const handleToggle = (tripId) => onToggleSelect(tripId);
@@ -71,16 +94,24 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
     setIsClaiming(true);
     setClaimingIds(selectedInGroup);
     try {
-      const results = await Promise.allSettled(selectedInGroup.map((tripId) => onClaim(tripId)));
-      const failures = results.filter((r) => r.status !== 'fulfilled');
+      const results = await Promise.allSettled(
+        selectedInGroup.map((tripId) => onClaim(tripId)),
+      );
+      const failures = results.filter((r) => r.status !== "fulfilled");
       if (failures.length > 0) {
-        showToast(`⚠️ ${failures.length} of ${selectedInGroup.length} rides failed to claim.`, 'warning');
+        showToast(
+          `⚠️ ${failures.length} of ${selectedInGroup.length} rides failed to claim.`,
+          "warning",
+        );
       } else {
-        showToast(`✅ Successfully claimed all ${selectedInGroup.length} rides!`, 'success');
+        showToast(
+          `✅ Successfully claimed all ${selectedInGroup.length} rides!`,
+          "success",
+        );
       }
       onClearSelected(selectedInGroup);
     } catch (error) {
-      showToast('❌ One or more rides failed to claim.', 'error');
+      showToast("❌ One or more rides failed to claim.", "error");
     } finally {
       setIsClaiming(false);
       setClaimingIds([]);
@@ -92,10 +123,10 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
     try {
       await onClaim(tripId);
       onClearSelected([tripId]);
-      showToast(`✅ Ride ${tripId} claimed!`, 'success');
-      groupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast(`✅ Ride ${tripId} claimed!`, "success");
+      groupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
-      showToast('❌ Failed to claim ride.', 'error');
+      showToast("❌ Failed to claim ride.", "error");
     } finally {
       setClaimingIds((prev) => prev.filter((id) => id !== tripId));
     }
@@ -103,7 +134,7 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
 
   if (!rides.length) {
     return (
-      <Paper variant="outlined" sx={{ p: 3, mb: 3, textAlign: 'center' }}>
+      <Paper variant="outlined" sx={{ p: 3, mb: 3, textAlign: "center" }}>
         <Typography variant="subtitle1" color="text.secondary">
           📭 No rides available in this group.
         </Typography>
@@ -115,21 +146,27 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
     <Paper
       variant="outlined"
       ref={groupRef}
-      sx={{ p: 2, mb: 4, borderLeft: '6px solid #4cbb17', backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fefefe' }}
+      sx={{
+        p: 2,
+        mb: 4,
+        borderLeft: "6px solid #4cbb17",
+        backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#fefefe",
+      }}
     >
       <Box
         sx={{
-          background: theme.palette.mode === 'dark'
-            ? 'linear-gradient(45deg, #1b5e20, #2e7d32)'
-            : 'linear-gradient(45deg, #e8f5e9, #c8e6c9)',
+          background:
+            theme.palette.mode === "dark"
+              ? "linear-gradient(45deg, #1b5e20, #2e7d32)"
+              : "linear-gradient(45deg, #e8f5e9, #c8e6c9)",
           borderRadius: 1,
           p: 1.5,
           mb: 2,
           boxShadow: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
           gap: 1,
         }}
       >
@@ -148,17 +185,29 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
             aria-label="Select all rides in group"
             disabled={isClaiming}
           >
-            {selectedInGroup.length === rides.length ? 'Deselect All' : 'Select All'}
+            {selectedInGroup.length === rides.length
+              ? "Deselect All"
+              : "Select All"}
           </Button>
         </Box>
       </Box>
-      <Divider sx={{ mb: 2, borderColor: theme.palette.mode === 'dark' ? '#4cbb17' : '#81c784', opacity: 0.75, borderBottomWidth: '2px' }} />
+      <Divider
+        sx={{
+          mb: 2,
+          borderColor: theme.palette.mode === "dark" ? "#4cbb17" : "#81c784",
+          opacity: 0.75,
+          borderBottomWidth: "2px",
+        }}
+      />
 
       <Stack spacing={3}>
         {rides.map((ride) => {
           const isSelected = selectedInGroup.includes(ride.TripID);
           const isLoading = claimingIds.includes(ride.TripID);
-          const dropoffTime = calculateDropOff(ride.PickupTime, ride.RideDuration);
+          const dropoffTime = calculateDropOff(
+            ride.PickupTime,
+            ride.RideDuration,
+          );
 
           return (
             <Grow in key={ride.TripID} timeout={300}>
@@ -168,17 +217,17 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
                   p: 2,
                   borderRadius: 2,
                   backgroundColor: isSelected
-                    ? theme.palette.mode === 'dark'
-                      ? '#324d28'
-                      : '#e8f5e9'
-                    : theme.palette.mode === 'dark'
-                      ? '#2a2a2a'
-                      : '#ffffff',
-                  border: isSelected ? '2px solid #4cbb17' : '1px solid',
-                  borderColor: isSelected ? '#4cbb17' : theme.palette.divider,
-                  transition: 'background 0.3s ease, transform 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
+                    ? theme.palette.mode === "dark"
+                      ? "#324d28"
+                      : "#e8f5e9"
+                    : theme.palette.mode === "dark"
+                      ? "#2a2a2a"
+                      : "#ffffff",
+                  border: isSelected ? "2px solid #4cbb17" : "1px solid",
+                  borderColor: isSelected ? "#4cbb17" : theme.palette.divider,
+                  transition: "background 0.3s ease, transform 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
                     boxShadow: 3,
                   },
                 }}
@@ -189,14 +238,18 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
                       label={`ID ${ride.TripID}`}
                       size="small"
                       sx={{
-                        backgroundColor: theme.palette.mode === 'dark' ? '#6a1b9a' : '#ba68c8',
-                        color: '#fff',
-                        fontWeight: 'bold',
+                        backgroundColor:
+                          theme.palette.mode === "dark" ? "#6a1b9a" : "#ba68c8",
+                        color: "#fff",
+                        fontWeight: "bold",
                         mb: 1,
                       }}
                     />
                     <Box display="flex" alignItems="center" gap={1} mb={1}>
-                      <AccessTimeIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+                      <AccessTimeIcon
+                        fontSize="small"
+                        sx={{ color: theme.palette.text.secondary }}
+                      />
                       <Typography variant="body2" color="text.primary">
                         {ride.PickupTime} → {dropoffTime}
                       </Typography>
@@ -204,18 +257,24 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
                         label={ride.RideDuration}
                         color="success"
                         size="small"
-                        sx={{ fontWeight: 'bold' }}
+                        sx={{ fontWeight: "bold" }}
                       />
                     </Box>
 
                     <Box mt={1}>
-                      <Typography variant="subtitle2" color="text.secondary" mb={0.5}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        mb={0.5}
+                      >
                         Details
                       </Typography>
                       <RideDetailRow
                         icon={<SwapHorizIcon fontSize="small" />}
                         label={`Type: ${ride.RideType}`}
-                        highlightColor={ride.RideType === 'Hourly' ? '#4cbb17' : undefined}
+                        highlightColor={
+                          ride.RideType === "Hourly" ? "#4cbb17" : undefined
+                        }
                       />
                       {ride.RideNotes && (
                         <RideDetailRow
@@ -233,7 +292,7 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
                       direction="row"
                       spacing={1}
                       alignItems="center"
-                      justifyContent={isMobile ? 'flex-start' : 'flex-end'}
+                      justifyContent={isMobile ? "flex-start" : "flex-end"}
                       flexWrap="wrap"
                     >
                       <ButtonGroup variant="outlined" size="small">
@@ -241,18 +300,18 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
                           value="select"
                           selected={isSelected}
                           onChange={() => handleToggle(ride.TripID)}
-                          sx={{ textTransform: 'none' }}
+                          sx={{ textTransform: "none" }}
                         >
-                          {isSelected ? 'Selected' : 'Select'}
+                          {isSelected ? "Selected" : "Select"}
                         </ToggleButton>
                         <Button
                           color="success"
                           variant="contained"
                           onClick={() => handleSingleClaim(ride.TripID)}
                           disabled={isClaiming || isLoading}
-                          sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                          sx={{ textTransform: "none", fontWeight: "bold" }}
                         >
-                          {isLoading ? <CircularProgress size={16} /> : 'Claim'}
+                          {isLoading ? <CircularProgress size={16} /> : "Claim"}
                         </Button>
                       </ButtonGroup>
                     </Stack>
@@ -266,14 +325,28 @@ function RideGroup({ groupKey, rides, onClaim, showToast, selectedRides, onToggl
 
       {selectedInGroup.length > 0 && (
         <Box textAlign="center" mt={3}>
-          <Button variant="contained" color="primary" onClick={handleMultiClaim} disabled={isClaiming}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleMultiClaim}
+            disabled={isClaiming}
+          >
             🛒 CLAIM {selectedInGroup.length} SELECTED RIDES
           </Button>
         </Box>
       )}
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack({ ...snack, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={snack.severity} variant="filled" onClose={() => setSnack({ ...snack, open: false })}>
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={4000}
+        onClose={() => setSnack({ ...snack, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={snack.severity}
+          variant="filled"
+          onClose={() => setSnack({ ...snack, open: false })}
+        >
           {snack.message}
         </Alert>
       </Snackbar>

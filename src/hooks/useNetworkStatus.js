@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const OFFLINE_DEBOUNCE_MS = 2500;
 const OFFLINE_MODAL_DELAY_MS = 5000;
@@ -40,12 +40,12 @@ export default function useNetworkStatus(onReconnect) {
   }, []);
 
   useEffect(() => {
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
     if (!navigator.onLine) goOffline();
     return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
       clearTimers();
     };
   }, [goOnline, goOffline]);

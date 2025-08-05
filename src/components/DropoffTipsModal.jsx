@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -9,63 +9,63 @@ import {
   DialogContent,
   Accordion,
   AccordionSummary,
-  AccordionDetails
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import DirectionsBusIcon from '@mui/icons-material/DirectionsBus';
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-import AirportShuttleIcon from '@mui/icons-material/AirportShuttle';
+  AccordionDetails,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
+import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 
 const VEHICLE_TIPS = [
   {
-    label: 'Limo Bus',
+    label: "Limo Bus",
     icon: <DirectionsBusIcon color="primary" />,
     tips: [
-      'Use flashers at every stop',
-      'Will fit in regular size parking space',
-      'Use mirrors and camera to back up',
-      'Ensure you have tablet after customers depart'
-    ]
+      "Use flashers at every stop",
+      "Will fit in regular size parking space",
+      "Use mirrors and camera to back up",
+      "Ensure you have tablet after customers depart",
+    ],
   },
   {
-    label: 'Rescue Squad',
+    label: "Rescue Squad",
     icon: <LocalHospitalIcon color="error" />,
     tips: [
-      'Use emergency flashers at all stops',
-      'Give room for lowering steps and find level ground',
-      'Avoid crowded lots if possible',
-      'Watch resort clearance heights',
-      'Watch for pedestrians',
-      'Ensure you have tablet after customers depart'
-    ]
+      "Use emergency flashers at all stops",
+      "Give room for lowering steps and find level ground",
+      "Avoid crowded lots if possible",
+      "Watch resort clearance heights",
+      "Watch for pedestrians",
+      "Ensure you have tablet after customers depart",
+    ],
   },
   {
-    label: 'Sprinter Van',
+    label: "Sprinter Van",
     icon: <DirectionsCarIcon color="success" />,
     tips: [
-      'Fits standard lots',
-      'Watch resort clearance heights',
-      'Will take 1.5 parking spaces in length',
-      'Use emergency flashers',
-      'ALWAYS open the sliding doors for customers',
-      'Ensure you have tablet after customers depart'
-    ]
+      "Fits standard lots",
+      "Watch resort clearance heights",
+      "Will take 1.5 parking spaces in length",
+      "Use emergency flashers",
+      "ALWAYS open the sliding doors for customers",
+      "Ensure you have tablet after customers depart",
+    ],
   },
   {
-    label: 'Shuttle Bus',
+    label: "Shuttle Bus",
     icon: <AirportShuttleIcon color="secondary" />,
     tips: [
-      'Use hotel loops or wide lanes',
-      'Communicate with valet/front desk',
-      'Allow extra time to unload',
-      'Use emergency flashers',
-      'Avoid tight and crowded lots',
-      'May need to unload away from drop-off location',
-      'Watch resort clearance heights',
-      'Ensure you have tablet after customers depart'
-    ]
-  }
+      "Use hotel loops or wide lanes",
+      "Communicate with valet/front desk",
+      "Allow extra time to unload",
+      "Use emergency flashers",
+      "Avoid tight and crowded lots",
+      "May need to unload away from drop-off location",
+      "Watch resort clearance heights",
+      "Ensure you have tablet after customers depart",
+    ],
+  },
 ];
 
 export default function DropoffTipsModal() {
@@ -88,7 +88,7 @@ export default function DropoffTipsModal() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ fontWeight: 'bold' }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>
           🚗 Drop-Off Tips by Vehicle
         </DialogTitle>
 

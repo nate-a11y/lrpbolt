@@ -1,53 +1,57 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from 'react';
+import React from "react";
 import {
-  Accordion, AccordionSummary, AccordionDetails,
-  Typography, Link, Box
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
-import LOCATIONS from '../driverLocations';
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Typography,
+  Link,
+  Box,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import LOCATIONS from "../driverLocations";
 
 const CATEGORIES = {
-  '🏨 Resorts & Golf': [
-    'Margaritaville',
-    'Camden on the Lake – Shady Gators',
-    'Lodge of the Four Seasons',
-    'Old Kinderhook',
-    'Osage National Golf Course'
+  "🏨 Resorts & Golf": [
+    "Margaritaville",
+    "Camden on the Lake – Shady Gators",
+    "Lodge of the Four Seasons",
+    "Old Kinderhook",
+    "Osage National Golf Course",
   ],
-  '🌙 Bars & Nightlife': [
-    'Shady Gators',
-    'Backwater Jacks',
-    'Dog Days',
-    'Redheads High Tide Performance Boat Center',
-    'Encore',
-    'LakeHouse 13',
-    'Bagnell Dam Strip Behind Tuckers',
-    'Bagnell Dam Strip Lower',
-    'Bagnell Dam Strip Mid'
+  "🌙 Bars & Nightlife": [
+    "Shady Gators",
+    "Backwater Jacks",
+    "Dog Days",
+    "Redheads High Tide Performance Boat Center",
+    "Encore",
+    "LakeHouse 13",
+    "Bagnell Dam Strip Behind Tuckers",
+    "Bagnell Dam Strip Lower",
+    "Bagnell Dam Strip Mid",
   ],
-  '🍽️ Restaurants': [
-    'Baxters and JB Hooks',
-    '1932 Reserve',
-    'Shorty Pants',
-    'H. Toad’s Bar & Grill',
-    'Fish and Co',
-    'The Cave',
-    'Coconuts',
-    'Franky and Louies'
+  "🍽️ Restaurants": [
+    "Baxters and JB Hooks",
+    "1932 Reserve",
+    "Shorty Pants",
+    "H. Toad’s Bar & Grill",
+    "Fish and Co",
+    "The Cave",
+    "Coconuts",
+    "Franky and Louies",
   ],
-  '🎯 Other Destinations': [
-    'Ozarks Amphitheater',
-    'Cypress Condos',
-    'Worldmark Lake of the Ozarks Condos'
-  ]
+  "🎯 Other Destinations": [
+    "Ozarks Amphitheater",
+    "Cypress Condos",
+    "Worldmark Lake of the Ozarks Condos",
+  ],
 };
 
 export default function DropoffAccordion({ onSelectImage }) {
   const categorized = Object.entries(CATEGORIES).map(([category, names]) => ({
     category,
-    places: LOCATIONS.filter(loc => names.includes(loc.name))
+    places: LOCATIONS.filter((loc) => names.includes(loc.name)),
   }));
 
   return (
@@ -62,10 +66,10 @@ export default function DropoffAccordion({ onSelectImage }) {
               <Box key={i} sx={{ mb: 3 }}>
                 <Typography
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
+                    display: "flex",
+                    alignItems: "center",
                     fontWeight: 500,
-                    mb: 0.5
+                    mb: 0.5,
                   }}
                 >
                   <DirectionsCarIcon fontSize="small" sx={{ mr: 1 }} />
@@ -74,7 +78,7 @@ export default function DropoffAccordion({ onSelectImage }) {
 
                 <Typography
                   variant="body2"
-                  sx={{ mb: 1, whiteSpace: 'pre-wrap' }}
+                  sx={{ mb: 1, whiteSpace: "pre-wrap" }}
                   color="text.secondary"
                 >
                   {loc.notes}
@@ -84,7 +88,7 @@ export default function DropoffAccordion({ onSelectImage }) {
                   component="button"
                   underline="hover"
                   onClick={() => onSelectImage(loc)}
-                  sx={{ fontSize: '0.875rem' }}
+                  sx={{ fontSize: "0.875rem" }}
                 >
                   View Map / Drop-off Image
                 </Link>

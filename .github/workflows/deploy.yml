@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 22.x
-          cache: 'npm'
+          cache: "npm"
 
       - name: Create .env file
         run: |
@@ -98,7 +98,7 @@ jobs:
           local-dir: ./dist/
           server-dir: /public_html/
           log-level: minimal
-          
+
           exclude: |
             **/.git*
             **/.github*

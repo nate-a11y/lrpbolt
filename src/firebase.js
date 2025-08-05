@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  signOut
+  signOut,
 } from "firebase/auth";
 
 // Firebase configuration
@@ -20,7 +20,7 @@ const firebaseConfig = {
   storageBucket: "lrp---claim-portal.firebasestorage.app",
   messagingSenderId: "799613895072",
   appId: "1:799613895072:web:1b41c28c6819198ce824c5",
-  measurementId: "G-9NM69MZN6B"
+  measurementId: "G-9NM69MZN6B",
 };
 
 // 🔌 Initialize Firebase
@@ -35,17 +35,17 @@ export {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  signOut
+  signOut,
 };
 export const handleAuthError = (error) => {
   switch (error.code) {
-    case 'auth/wrong-password':
-      return 'Incorrect password.';
-    case 'auth/user-not-found':
-      return 'No user found with this email.';
-    case 'auth/email-already-in-use':
-      return 'Email is already in use.';
+    case "auth/wrong-password":
+      return "Incorrect password.";
+    case "auth/user-not-found":
+      return "No user found with this email.";
+    case "auth/email-already-in-use":
+      return "Email is already in use.";
     default:
-      return 'Authentication error occurred.';
+      return "Authentication error occurred.";
   }
 };

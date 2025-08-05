@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -10,46 +10,58 @@ import {
   Select,
   Typography,
   useTheme,
-} from '@mui/material';
-import LockIcon from '@mui/icons-material/Lock';
+} from "@mui/material";
+import LockIcon from "@mui/icons-material/Lock";
 
-const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) => {
+const DriverSelector = ({
+  driver,
+  setDriver,
+  drivers = [],
+  isTracking,
+  role,
+}) => {
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
-  const isAdmin = role === 'Admin';
+  const isDark = theme.palette.mode === "dark";
+  const isAdmin = role === "Admin";
 
-  const handleChange = useCallback((e) => {
-    if (!isTracking && isAdmin) {
-      const selected = e.target.value;
-      setDriver(selected);
-    }
-  }, [isTracking, isAdmin, setDriver]);
+  const handleChange = useCallback(
+    (e) => {
+      if (!isTracking && isAdmin) {
+        const selected = e.target.value;
+        setDriver(selected);
+      }
+    },
+    [isTracking, isAdmin, setDriver],
+  );
 
   const handleClear = useCallback(() => {
     if (!isTracking && isAdmin) {
-      setDriver('');
+      setDriver("");
     }
   }, [isTracking, isAdmin, setDriver]);
 
-  const sortedDrivers = useMemo(() => [...drivers].sort((a, b) => a.localeCompare(b)), [drivers]);
+  const sortedDrivers = useMemo(
+    () => [...drivers].sort((a, b) => a.localeCompare(b)),
+    [drivers],
+  );
 
   return (
     <Box
       display="flex"
-      flexDirection={{ xs: 'column', sm: 'row' }}
+      flexDirection={{ xs: "column", sm: "row" }}
       alignItems="center"
       justifyContent="flex-start"
       gap={2}
       flexWrap="wrap"
       sx={{
         p: 2,
-        backgroundColor: isDark ? 'grey.900' : 'grey.100',
+        backgroundColor: isDark ? "grey.900" : "grey.100",
         borderRadius: 2,
-        border: `1px solid ${theme.palette.divider}`
+        border: `1px solid ${theme.palette.divider}`,
       }}
     >
       <Typography variant="body1" fontWeight="bold">
-        Driver: <span style={{ fontWeight: 600 }}>{driver || '—'}</span>
+        Driver: <span style={{ fontWeight: 600 }}>{driver || "—"}</span>
       </Typography>
 
       {isAdmin ? (
@@ -71,7 +83,7 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
               label="Select Driver"
               disabled={isTracking}
               sx={{
-                bgcolor: isDark ? 'grey.800' : 'background.paper',
+                bgcolor: isDark ? "grey.800" : "background.paper",
                 borderRadius: 1,
               }}
             >
@@ -89,8 +101,8 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
           label="Locked"
           size="small"
           sx={{
-            backgroundColor: isDark ? '#555' : '#888',
-            color: '#fff'
+            backgroundColor: isDark ? "#555" : "#888",
+            color: "#fff",
           }}
         />
       )}

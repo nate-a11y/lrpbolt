@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from 'react';
+import React from "react";
 import {
   Box,
   Typography,
@@ -10,10 +10,10 @@ import {
   Divider,
   IconButton,
   useTheme,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import EmailIcon from '@mui/icons-material/Email';
-import PhoneIcon from '@mui/icons-material/Phone';
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import EmailIcon from "@mui/icons-material/Email";
+import PhoneIcon from "@mui/icons-material/Phone";
 
 const contacts = [
   {
@@ -27,8 +27,8 @@ const contacts = [
       "Payroll (including direct deposit or deductions)",
       "Commercial insurance questions",
       "Permit questions (Lake Ozark, Osage Beach, Camdenton, Eldon, Jeff City)",
-      "Quote questions for larger vehicles"
-    ]
+      "Quote questions for larger vehicles",
+    ],
   },
   {
     name: "Nate Bullock (LRP2)",
@@ -41,8 +41,8 @@ const contacts = [
       "Schedule issues",
       "Passenger incident follow-ups",
       "Payment or closeout note issues",
-      "Quote questions for larger vehicles"
-    ]
+      "Quote questions for larger vehicles",
+    ],
   },
   {
     name: "Michael Brandt (LRP3)",
@@ -55,14 +55,14 @@ const contacts = [
       "Apparel, branding, and business cards",
       "Advertising partnerships or referrals",
       "Passenger experience issues",
-      "Quote questions for larger vehicles"
-    ]
-  }
+      "Quote questions for larger vehicles",
+    ],
+  },
 ];
 
 export default function ContactEscalation() {
   const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
+  const isDark = theme.palette.mode === "dark";
 
   return (
     <Box sx={{ px: { xs: 1, sm: 2 }, pb: 4 }}>
@@ -71,7 +71,8 @@ export default function ContactEscalation() {
       </Typography>
 
       <Typography variant="body1" sx={{ mb: 3 }}>
-        Use this guide to contact the right person based on the issue you’re having. Tap to call or email!
+        Use this guide to contact the right person based on the issue you’re
+        having. Tap to call or email!
       </Typography>
 
       <Divider sx={{ mb: 2 }} />
@@ -111,4 +112,3 @@ export default function ContactEscalation() {
     </Box>
   );
 }
-
