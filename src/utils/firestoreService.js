@@ -1,6 +1,16 @@
 // src/utils/firestoreService.js
 // Centralized Firestore API utilities with basic caching.
-import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  where,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { db } from "../firebase";
 
 let driverCache = null;
@@ -22,4 +32,23 @@ export async function getDrivers(force = false) {
   const snapshot = await getDocs(q);
   driverCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   return driverCache;
+}
+
+export async function createUser({ email, access, name }) {
+  const docId = email.toLowerCase();
+  const userRef = doc(db, "userAccess", docId);
+  const existing = await getDoc(userRef);
+  if (existing.exists()) throw new Error("User already exists");
+  await setDoc(userRef, {
+    access: access.toLowerCase(),
+    email: docId,
+    name: name.trim(),
+  });
+}
+
+export async function updateUser({ email, access, name }) {
+  await updateDoc(doc(db, "userAccess", email.toLowerCase()), {
+    access: access.toLowerCase(),
+    name: name.trim(),
+  });
 }

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged, auth, signOut, db } from "../firebase";
-import { doc, updateDoc, Timestamp } from "firebase/firestore";
+import { onAuthStateChanged, auth, signOut } from "../firebase";
 
 const DriverContext = createContext(null);
 
@@ -14,13 +13,6 @@ export const DriverProvider = ({ children }) => {
     if (data) {
       localStorage.setItem("lrpDriver", JSON.stringify(data));
       if (import.meta.env.DEV) console.log("Current driver:", data.name);
-      try {
-        await updateDoc(doc(db, "userAccess", data.id), {
-          lastActive: Timestamp.now(),
-        });
-      } catch (err) {
-        if (import.meta.env.DEV) console.error("Failed to persist driver", err);
-      }
     } else {
       localStorage.removeItem("lrpDriver");
       if (import.meta.env.DEV) console.log("Driver cleared");
