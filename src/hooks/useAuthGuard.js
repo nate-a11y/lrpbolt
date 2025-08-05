@@ -2,9 +2,8 @@
 // Simple authentication guard to ensure user is logged in and optionally has a role
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../firebase";
 import { getUserAccess } from "./api";
+import { subscribeAuth } from "../utils/listenerRegistry";
 
 /**
  * Redirects to "/" if user is not authenticated or lacks the required role.
@@ -13,7 +12,7 @@ import { getUserAccess } from "./api";
 export default function useAuthGuard(requiredRole) {
   const navigate = useNavigate();
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsub = subscribeAuth(async (user) => {
       if (!user) {
         navigate("/", { replace: true });
         return;

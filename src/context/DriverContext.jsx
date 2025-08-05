@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged, auth, signOut } from "../firebase";
+import React, { createContext, useContext, useState } from "react";
+import { auth, signOut } from "../firebase";
 
 const DriverContext = createContext(null);
 
@@ -19,15 +19,6 @@ export const DriverProvider = ({ children }) => {
     }
     setDriverState(data);
   };
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        setDriver(null);
-      }
-    });
-    return () => unsub();
-  }, []);
 
   const logout = async () => {
     await signOut(auth);

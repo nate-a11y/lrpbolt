@@ -15,6 +15,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { subscribeFirestore } from "../utils/listenerRegistry";
 import { callFunction } from "../api";
 
 // Helper to strip undefined values before sending to Firestore
@@ -32,11 +33,18 @@ export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
  * -----------------------------
  */
 export async function getUserAccess(email) {
+  if (!email) return null;
+  if (!getUserAccess.cache) getUserAccess.cache = new Map();
+  if (getUserAccess.cache.has(email)) return getUserAccess.cache.get(email);
+
   const q = query(collection(db, "userAccess"), where("email", "==", email));
   const snapshot = await getDocs(q);
-  return snapshot.docs.length > 0
-    ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() }
-    : null;
+  const record =
+    snapshot.docs.length > 0
+      ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() }
+      : null;
+  getUserAccess.cache.set(email, record);
+  return record;
 }
 
 export async function fetchUserAccess(activeOnly = false) {
@@ -61,7 +69,7 @@ export function subscribeUserAccess(
   if (process.env.NODE_ENV === "development") {
     console.log("Listener started:", "userAccess");
   }
-  const unsubscribe = onSnapshot(q, (snapshot) => {
+  const unsub = subscribeFirestore("userAccess", q, (snapshot) => {
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     callback(data);
   });
@@ -69,7 +77,7 @@ export function subscribeUserAccess(
     if (process.env.NODE_ENV === "development") {
       console.log("Listener cleaned up:", "userAccess");
     }
-    unsubscribe();
+    unsub();
   };
 }
 

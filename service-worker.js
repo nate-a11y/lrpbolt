@@ -1,7 +1,7 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
-import { clientsClaim } from "workbox-core";
+import { clientsClaim, cacheNames } from "workbox-core";
 
 // Manifest injected at build time.
 // Vite/Workbox sometimes inject both `manifest.webmanifest` and
@@ -19,6 +19,28 @@ for (const entry of self.__WB_MANIFEST) {
 }
 
 precacheAndRoute(manifest);
+
+// Remove any previously cached entries that differ only by query string.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(cacheNames.precache);
+      const requests = await cache.keys();
+      const normalized = new Set();
+      await Promise.all(
+        requests.map(async (req) => {
+          const url = new URL(req.url);
+          const key = url.origin + url.pathname;
+          if (normalized.has(key)) {
+            await cache.delete(req);
+          } else {
+            normalized.add(key);
+          }
+        }),
+      );
+    })(),
+  );
+});
 
 // Log any failed precache fetches to help diagnose missing chunks
 self.addEventListener("install", (event) => {
