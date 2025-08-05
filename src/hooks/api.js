@@ -19,9 +19,6 @@ export const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   "https://lakeridepros.xyz/claim-proxy.php";
 export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
-export const TIME_LOG_CSV =
-  import.meta.env.VITE_TIME_LOG_CSV ||
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSlmQyi2ohRZAyez3qMsO3E7aWWIYSDP3El4c3tyY1G-ztdjxnUHI6tNqJgbe9yGcjFht3qmwMnTIvq/pub?gid=888251608&single=true&output=csv";
 
 /**
  * -----------------------------
@@ -36,6 +33,18 @@ export async function getUserAccess(email) {
     : null;
 }
 
+export async function fetchUserAccess() {
+  const snapshot = await getDocs(collection(db, "userAccess"));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export function subscribeUserAccess(callback) {
+  const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
+}
+
 /**
  * -----------------------------
  * RIDE QUEUE
@@ -44,7 +53,7 @@ export async function getUserAccess(email) {
 export function subscribeRideQueue(callback) {
   const q = query(collection(db, "rideQueue"), orderBy("pickupTime", "asc"));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   });
 }
 
@@ -76,7 +85,7 @@ export async function deleteRideFromQueue(rideId) {
 export function subscribeClaimedRides(callback) {
   const q = query(collection(db, "claimedRides"), orderBy("pickupTime", "asc"));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   });
 }
 
@@ -109,7 +118,7 @@ export async function logClaim(claimData) {
 export function subscribeClaimLog(callback) {
   const q = query(collection(db, "claimLog"), orderBy("timestamp", "desc"));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   });
 }
 
@@ -125,8 +134,16 @@ export function subscribeTickets(callback) {
   });
 }
 
-export async function updateTicket(ticketId, updates) {
-  return await updateDoc(doc(db, "tickets", ticketId), updates);
+export async function fetchTickets() {
+  const snapshot = await getDocs(collection(db, "tickets"));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function fetchTicket(ticketId) {
+  const ref = doc(db, "tickets", ticketId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error(`Ticket ${ticketId} not found`);
+  return { id: snap.id, ...snap.data() };
 }
 
 export async function addTicket(ticketData) {
@@ -138,6 +155,57 @@ export async function addTicket(ticketData) {
     scannedReturn: !!ticketData.scannedReturn,
     createdAt: Timestamp.fromDate(new Date())
   });
+}
+
+export async function updateTicket(ticketId, updates) {
+  return await updateDoc(doc(db, "tickets", ticketId), updates);
+}
+
+export async function deleteTicket(ticketId) {
+  try {
+    await deleteDoc(doc(db, "tickets", ticketId));
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to delete ticket:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateTicketScan(ticketId, scanType, scannedBy) {
+  const updates = {};
+  if (scanType === "outbound") {
+    updates.scannedOutbound = true;
+    updates.scannedOutboundAt = Timestamp.fromDate(new Date());
+    updates.scannedOutboundBy = scannedBy;
+  }
+  if (scanType === "return") {
+    updates.scannedReturn = true;
+    updates.scannedReturnAt = Timestamp.fromDate(new Date());
+    updates.scannedReturnBy = scannedBy;
+  }
+  await updateTicket(ticketId, updates);
+  return { success: true };
+}
+
+// ---- Email Ticket (temporary - still uses old API) ----
+export async function emailTicket(ticketId, email, attachment) {
+  try {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key: SECURE_KEY,
+        type: "emailticket",
+        ticketId,
+        email,
+        attachment
+      }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("Email ticket failed", err);
+    return { success: false, error: err.message };
+  }
 }
 
 /**
@@ -173,77 +241,49 @@ export function subscribeTimeLogs(callback) {
   });
 }
 
+export async function fetchTimeLogs(driver) {
+  const snapshot = await getDocs(collection(db, "timeLogs"));
+  let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (driver) logs = logs.filter(log => log.driver === driver);
+  return logs;
+}
+
 export async function addTimeLog(logData) {
   return await addDoc(collection(db, "timeLogs"), {
     ...logData,
     startTime: Timestamp.fromDate(new Date(logData.startTime)),
-    endTime: Timestamp.fromDate(new Date(logData.endTime)),
+    endTime: logData.endTime ? Timestamp.fromDate(new Date(logData.endTime)) : null,
     duration: Number(logData.duration),
     loggedAt: Timestamp.fromDate(new Date())
   });
 }
 
-// ---- Email Ticket (temporary - still uses old API) ----
-export async function emailTicket(ticketId, email, attachment) {
-  try {
-    const res = await fetch(BASE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key: SECURE_KEY,
-        type: "emailticket",
-        ticketId,
-        email,
-        attachment
-      }),
-    });
-    return await res.json();
-  } catch (err) {
-    console.error("Email ticket failed", err);
-    return { success: false, error: err.message };
-  }
-}
-
-// ---- Log Time (Firestore replacement) ----
 export async function logTime(payload) {
   return await addTimeLog({
     driver: payload.driver,
     rideId: payload.rideId,
     startTime: new Date(payload.startTime),
-    endTime: new Date(payload.endTime),
+    endTime: payload.endTime ? new Date(payload.endTime) : null,
     duration: Number(payload.duration),
     loggedAt: new Date()
   });
 }
 
-// ✅ Firestore fetchTicket
-export async function fetchTicket(ticketId) {
-  const ref = doc(db, "tickets", ticketId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    throw new Error(`Ticket ${ticketId} not found`);
-  }
-  return { id: snap.id, ...snap.data() };
-}
-
-// ✅ Firestore deleteTicket
-export async function deleteTicket(ticketId) {
-  try {
-    await deleteDoc(doc(db, "tickets", ticketId));
-    return { success: true };
-  } catch (err) {
-    console.error("Failed to delete ticket:", err);
-    return { success: false, error: err.message };
-  }
-}
-// ---- Live Rides ----
+/**
+ * -----------------------------
+ * LIVE RIDES
+ * -----------------------------
+ */
 export async function fetchLiveRides() {
-  // Assuming claimedRides collection is your "live" rides
-  const snapshot = await getDocs(collection(db, "claimedRides"));
+  const snapshot = await getDocs(collection(db, "liveRides"));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-// ---- Restore Ride ----
+/**
+ * -----------------------------
+ * RESTORE RIDE
+ * -----------------------------
+ */
 export async function restoreRide(rideData) {
   try {
     await addRideToQueue(rideData);
@@ -253,46 +293,18 @@ export async function restoreRide(rideData) {
   }
 }
 
-// ---- Update Ride (compatibility) ----
 export async function updateRide(TripID, updates, sheet = "RideQueue") {
-  // Decide which collection to update based on "sheet"
   const collectionName = sheet === "RideQueue" ? "rideQueue" : "claimedRides";
   const ref = doc(db, collectionName, TripID);
   await updateDoc(ref, updates);
   return { success: true };
 }
 
-// ---- Update Ticket Scan ----
-export async function updateTicketScan(ticketId, scanType, scannedBy) {
-  const updates = {};
-  if (scanType === "outbound") {
-    updates.scannedOutbound = true;
-    updates.scannedOutboundAt = new Date();
-    updates.scannedOutboundBy = scannedBy;
-  }
-  if (scanType === "return") {
-    updates.scannedReturn = true;
-    updates.scannedReturnAt = new Date();
-    updates.scannedReturnBy = scannedBy;
-  }
-  await updateTicket(ticketId, updates);
-  return { success: true };
-}
-
-// ---- Fetch Time Logs ----
-export async function fetchTimeLogs(driver) {
-  const snapshot = await getDocs(collection(db, "timeLogs"));
-  let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  if (driver) logs = logs.filter(log => log.driver === driver);
-  return logs;
-}
-
-export async function fetchTickets() {
-  const snapshot = await getDocs(collection(db, "tickets"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
-
-// ---- Shootout Stats ----
+/**
+ * -----------------------------
+ * SHOOTOUT STATS
+ * -----------------------------
+ */
 export async function startShootoutSession(data) {
   return await addDoc(collection(db, "shootoutStats"), {
     ...data,
@@ -305,7 +317,7 @@ export async function startShootoutSession(data) {
 export async function endShootoutSession(sessionId, data) {
   const ref = doc(db, "shootoutStats", sessionId);
   return await updateDoc(ref, {
-    endTime: Timestamp.fromDate(new Date(data.endTime)),
+    endTime: data.endTime ? Timestamp.fromDate(new Date(data.endTime)) : null,
     duration: data.duration,
     trips: data.trips,
     passengers: data.passengers,
