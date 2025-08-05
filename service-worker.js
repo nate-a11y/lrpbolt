@@ -6,12 +6,6 @@ import { clientsClaim } from "workbox-core";
 // Manifest injected at build time
 const manifest = self.__WB_MANIFEST;
 
-// Precache files injected at build time
-precacheAndRoute([
-  ...manifest,
-  { url: "manifest.webmanifest", revision: null },
-]);
-
 // Log any failed precache fetches to help diagnose missing chunks
 self.addEventListener("install", (event) => {
   event.waitUntil(
