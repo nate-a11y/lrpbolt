@@ -88,24 +88,6 @@ This document defines the expected structure, required fields, and field types f
 | scannedOutboundBy    | string\|null | Optional | Outbound scan user email.                    |
 | scannedReturnAt      | timestamp\|null | Optional | Return scan timestamp.                       |
 | scannedReturnBy      | string\|null | Optional | Return scan user email.                      |
-
----
-
-### **`driverRotation`**
-**Purpose:** Manages driver claim order.
-
-| Field           | Type         | Required | Notes                                        |
-| --------------- | ------------ | -------- | -------------------------------------------- |
-| name            | string       | ✅       | Driver name.                                 |
-| email           | string       | ✅       | Driver email.                                |
-| access          | string       | ✅       | `"admin"` or `"driver"`.                     |
-| lastClaimed     | timestamp\|null | Optional | Timestamp of last claim.                     |
-| claimsThisWeek  | number       | ✅       | Number of claims in current week.            |
-| priority        | number       | ✅       | Rotation priority.                           |
-| notes           | string\|null | Optional | Admin notes.                                 |
-
----
-
 ### **`timeLogs`**
 **Purpose:** Tracks driver time logging.
 

@@ -1,6 +1,14 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  Typography,
+} from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useDriver } from "../context/DriverContext.jsx";
 import DriverSelect from "./DriverSelect";
@@ -51,6 +59,14 @@ const ChangeDriverModal = ({ open, onClose }) => {
           disabled={isSubmitting}
           label="Select Driver"
         />
+        {selected && (
+          <Box mt={2}>
+            <Typography variant="body2">{selected.email}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {selected.access}
+            </Typography>
+          </Box>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={isSubmitting}>
