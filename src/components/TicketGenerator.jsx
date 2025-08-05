@@ -27,6 +27,7 @@ import {
   addTicket as apiAddTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
+import { Timestamp } from "firebase/firestore";
 
 const getStoredLocations = (key) =>
   JSON.parse(localStorage.getItem(key) || "[]");
@@ -105,20 +106,22 @@ export default function TicketGenerator() {
     const id = uuidv4().split("-")[0];
     const ticketId = `TICKET-${id.toUpperCase()}`;
   
-    // ✅ Combine date & time into a single Date object for Firestore
-    const pickupDateTime = dayjs(`${formData.date} ${formData.time}`, "YYYY-MM-DD HH:mm").toDate();
-  
+    // ✅ Combine date & time into a Firestore Timestamp
+    const pickupTimestamp = Timestamp.fromDate(
+      dayjs(`${formData.date} ${formData.time}`, "YYYY-MM-DD HH:mm").toDate(),
+    );
+
     const newTicket = {
       ticketId,
       passenger: formData.passenger.trim(),
       pickup: formData.pickup.trim(),
       dropoff: formData.dropoff.trim(),
-      pickupTime: pickupDateTime, // Firestore conversion happens in api.js
+      pickupTime: pickupTimestamp,
       passengercount: Number(formData.passengerCount),
       notes: formData.notes.trim() || null,
       scannedOutbound: false,
       scannedReturn: false,
-      createdAt: new Date() // Firestore conversion happens in api.js
+      createdAt: Timestamp.now(),
     };
   
     try {

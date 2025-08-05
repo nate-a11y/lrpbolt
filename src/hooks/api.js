@@ -10,10 +10,10 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy
+  orderBy,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { Timestamp } from "firebase/firestore";
 
 export const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
@@ -50,19 +50,33 @@ export function subscribeUserAccess(callback) {
  * RIDE QUEUE
  * -----------------------------
  */
-export function subscribeRideQueue(callback) {
-  const q = query(collection(db, "rideQueue"), orderBy("pickupTime", "asc"));
+export function subscribeRideQueue(
+  callback,
+  fromTime = Timestamp.now(),
+) {
+  const q = query(
+    collection(db, "rideQueue"),
+    where("pickupTime", ">=", fromTime),
+    orderBy("pickupTime", "asc"),
+  );
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
 }
 
 export async function addRideToQueue(rideData) {
   return await addDoc(collection(db, "rideQueue"), {
     ...rideData,
-    pickupTime: Timestamp.fromDate(new Date(rideData.pickupTime)),
+    pickupTime:
+      rideData.pickupTime instanceof Timestamp
+        ? rideData.pickupTime
+        : Timestamp.fromDate(new Date(rideData.pickupTime)),
     rideDuration: Number(rideData.rideDuration),
-    claimedAt: rideData.claimedAt ? Timestamp.fromDate(new Date(rideData.claimedAt)) : null
+    claimedAt: rideData.claimedAt
+      ? rideData.claimedAt instanceof Timestamp
+        ? rideData.claimedAt
+        : Timestamp.fromDate(new Date(rideData.claimedAt))
+      : null,
   });
 }
 
@@ -71,8 +85,10 @@ export async function updateRideInQueue(rideId, updates) {
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error(`Ride ${rideId} not found`);
   const data = { ...updates };
-  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
-  if (data.claimedAt) data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
+  if (data.pickupTime && !(data.pickupTime instanceof Timestamp))
+    data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.claimedAt && !(data.claimedAt instanceof Timestamp))
+    data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
   if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
   return await updateDoc(ref, data);
 }
@@ -86,26 +102,38 @@ export async function deleteRideFromQueue(rideId) {
  * CLAIMED RIDES
  * -----------------------------
  */
-export function subscribeClaimedRides(callback) {
-  const q = query(collection(db, "claimedRides"), orderBy("pickupTime", "asc"));
+export function subscribeClaimedRides(
+  callback,
+  fromTime = Timestamp.now(),
+) {
+  const q = query(
+    collection(db, "claimedRides"),
+    where("pickupTime", ">=", fromTime),
+    orderBy("pickupTime", "asc"),
+  );
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
 }
 
 export async function claimRide(rideData) {
   return await addDoc(collection(db, "claimedRides"), {
     ...rideData,
-    pickupTime: Timestamp.fromDate(new Date(rideData.pickupTime)),
+    pickupTime:
+      rideData.pickupTime instanceof Timestamp
+        ? rideData.pickupTime
+        : Timestamp.fromDate(new Date(rideData.pickupTime)),
     rideDuration: Number(rideData.rideDuration),
-    claimedAt: Timestamp.fromDate(new Date())
+    claimedAt: Timestamp.now(),
   });
 }
 
 export async function updateClaimedRide(rideId, updates) {
   const data = { ...updates };
-  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
-  if (data.claimedAt) data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
+  if (data.pickupTime && !(data.pickupTime instanceof Timestamp))
+    data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.claimedAt && !(data.claimedAt instanceof Timestamp))
+    data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
   if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
   return await updateDoc(doc(db, "claimedRides", rideId), data);
 }
@@ -122,7 +150,10 @@ export async function deleteClaimedRide(rideId) {
 export async function logClaim(claimData) {
   return await addDoc(collection(db, "claimLog"), {
     ...claimData,
-    timestamp: Timestamp.fromDate(new Date(claimData.timestamp || Date.now())),
+    timestamp:
+      claimData.timestamp instanceof Timestamp
+        ? claimData.timestamp
+        : Timestamp.fromMillis(claimData.timestamp || Date.now()),
   });
 }
 
@@ -138,16 +169,41 @@ export function subscribeClaimLog(callback) {
  * TICKETS
  * -----------------------------
  */
-export function subscribeTickets(callback) {
-  const q = query(collection(db, "tickets"), orderBy("pickupTime", "asc"));
+export function subscribeTickets(
+  callback,
+  { passenger, pickupTime } = {},
+) {
+  const constraints = [];
+  if (passenger) constraints.push(where("passenger", "==", passenger));
+  if (pickupTime) {
+    const ts =
+      pickupTime instanceof Timestamp
+        ? pickupTime
+        : Timestamp.fromDate(new Date(pickupTime));
+    constraints.push(where("pickupTime", "==", ts));
+  }
+  constraints.push(orderBy("pickupTime", "asc"));
+  const q = query(collection(db, "tickets"), ...constraints);
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
 }
 
-export async function fetchTickets() {
-  const snapshot = await getDocs(collection(db, "tickets"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+export async function fetchTickets(filters = {}) {
+  const { passenger, pickupTime } = filters;
+  const constraints = [];
+  if (passenger) constraints.push(where("passenger", "==", passenger));
+  if (pickupTime) {
+    const ts =
+      pickupTime instanceof Timestamp
+        ? pickupTime
+        : Timestamp.fromDate(new Date(pickupTime));
+    constraints.push(where("pickupTime", "==", ts));
+  }
+  constraints.push(orderBy("pickupTime", "asc"));
+  const q = query(collection(db, "tickets"), ...constraints);
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function fetchTicket(ticketId) {
@@ -160,20 +216,27 @@ export async function fetchTicket(ticketId) {
 export async function addTicket(ticketData) {
   return await addDoc(collection(db, "tickets"), {
     ...ticketData,
-    pickupTime: Timestamp.fromDate(new Date(ticketData.pickupTime)),
+    pickupTime:
+      ticketData.pickupTime instanceof Timestamp
+        ? ticketData.pickupTime
+        : Timestamp.fromDate(new Date(ticketData.pickupTime)),
     passengercount: Number(ticketData.passengercount),
     scannedOutbound: !!ticketData.scannedOutbound,
     scannedReturn: !!ticketData.scannedReturn,
-    createdAt: Timestamp.fromDate(new Date())
+    createdAt: Timestamp.now(),
   });
 }
 
 export async function updateTicket(ticketId, updates) {
   const data = { ...updates };
-  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
-  if (data.scannedOutboundAt) data.scannedOutboundAt = Timestamp.fromDate(new Date(data.scannedOutboundAt));
-  if (data.scannedReturnAt) data.scannedReturnAt = Timestamp.fromDate(new Date(data.scannedReturnAt));
-  if (data.createdAt) data.createdAt = Timestamp.fromDate(new Date(data.createdAt));
+  if (data.pickupTime && !(data.pickupTime instanceof Timestamp))
+    data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.scannedOutboundAt && !(data.scannedOutboundAt instanceof Timestamp))
+    data.scannedOutboundAt = Timestamp.fromDate(new Date(data.scannedOutboundAt));
+  if (data.scannedReturnAt && !(data.scannedReturnAt instanceof Timestamp))
+    data.scannedReturnAt = Timestamp.fromDate(new Date(data.scannedReturnAt));
+  if (data.createdAt && !(data.createdAt instanceof Timestamp))
+    data.createdAt = Timestamp.fromDate(new Date(data.createdAt));
   if (data.passengercount) data.passengercount = Number(data.passengercount);
   return await updateDoc(doc(db, "tickets", ticketId), data);
 }
@@ -192,12 +255,12 @@ export async function updateTicketScan(ticketId, scanType, scannedBy) {
   const updates = {};
   if (scanType === "outbound") {
     updates.scannedOutbound = true;
-    updates.scannedOutboundAt = Timestamp.fromDate(new Date());
+    updates.scannedOutboundAt = Timestamp.now();
     updates.scannedOutboundBy = scannedBy;
   }
   if (scanType === "return") {
     updates.scannedReturn = true;
-    updates.scannedReturnAt = Timestamp.fromDate(new Date());
+    updates.scannedReturnAt = Timestamp.now();
     updates.scannedReturnBy = scannedBy;
   }
   await updateTicket(ticketId, updates);
@@ -231,14 +294,23 @@ export async function emailTicket(ticketId, email, attachment) {
  * -----------------------------
  */
 export function subscribeDriverRotation(callback) {
-  const q = query(collection(db, "driverRotation"), orderBy("priority", "asc"));
+  const q = query(
+    collection(db, "driverRotation"),
+    orderBy("priority", "asc"),
+    orderBy("lastClaimed", "asc"),
+  );
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
 }
 
 export async function fetchDrivers() {
-  const snapshot = await getDocs(collection(db, "driverRotation"));
+  const q = query(
+    collection(db, "driverRotation"),
+    orderBy("priority", "asc"),
+    orderBy("lastClaimed", "asc"),
+  );
+  const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
@@ -260,18 +332,25 @@ export function subscribeTimeLogs(callback) {
 
 export async function fetchTimeLogs(driver) {
   const snapshot = await getDocs(collection(db, "timeLogs"));
-  let logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  if (driver) logs = logs.filter(log => log.driver === driver);
+  let logs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  if (driver) logs = logs.filter((log) => log.driver === driver);
   return logs;
 }
 
 export async function addTimeLog(logData) {
   return await addDoc(collection(db, "timeLogs"), {
     ...logData,
-    startTime: Timestamp.fromDate(new Date(logData.startTime)),
-    endTime: logData.endTime ? Timestamp.fromDate(new Date(logData.endTime)) : null,
+    startTime:
+      logData.startTime instanceof Timestamp
+        ? logData.startTime
+        : Timestamp.fromDate(new Date(logData.startTime)),
+    endTime: logData.endTime
+      ? logData.endTime instanceof Timestamp
+        ? logData.endTime
+        : Timestamp.fromDate(new Date(logData.endTime))
+      : null,
     duration: Number(logData.duration),
-    loggedAt: Timestamp.fromDate(new Date())
+    loggedAt: logData.loggedAt instanceof Timestamp ? logData.loggedAt : Timestamp.now(),
   });
 }
 
@@ -279,10 +358,10 @@ export async function logTime(payload) {
   return await addTimeLog({
     driver: payload.driver,
     rideId: payload.rideId,
-    startTime: new Date(payload.startTime),
-    endTime: payload.endTime ? new Date(payload.endTime) : null,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
     duration: Number(payload.duration),
-    loggedAt: new Date()
+    loggedAt: Timestamp.now(),
   });
 }
 
@@ -291,9 +370,14 @@ export async function logTime(payload) {
  * LIVE RIDES
  * -----------------------------
  */
-export async function fetchLiveRides() {
-  const snapshot = await getDocs(collection(db, "liveRides"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+export async function fetchLiveRides(fromTime = Timestamp.now()) {
+  const q = query(
+    collection(db, "liveRides"),
+    where("pickupTime", ">=", fromTime),
+    orderBy("pickupTime", "asc"),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 /**
@@ -314,8 +398,10 @@ export async function updateRide(TripID, updates, sheet = "RideQueue") {
   const collectionName = sheet === "RideQueue" ? "rideQueue" : "claimedRides";
   const ref = doc(db, collectionName, TripID);
   const data = { ...updates };
-  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
-  if (data.claimedAt) data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
+  if (data.pickupTime && !(data.pickupTime instanceof Timestamp))
+    data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.claimedAt && !(data.claimedAt instanceof Timestamp))
+    data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
   if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
   await updateDoc(ref, data);
   return { success: true };
@@ -329,26 +415,36 @@ export async function updateRide(TripID, updates, sheet = "RideQueue") {
 export async function startShootoutSession(data) {
   return await addDoc(collection(db, "shootoutStats"), {
     ...data,
-    startTime: Timestamp.fromDate(new Date(data.startTime)),
-    createdAt: Timestamp.fromDate(new Date()),
-    status: "running"
+    startTime:
+      data.startTime instanceof Timestamp
+        ? data.startTime
+        : Timestamp.fromDate(new Date(data.startTime)),
+    createdAt: Timestamp.now(),
+    status: "running",
   });
 }
 
 export async function endShootoutSession(sessionId, data) {
   const ref = doc(db, "shootoutStats", sessionId);
   return await updateDoc(ref, {
-    endTime: data.endTime ? Timestamp.fromDate(new Date(data.endTime)) : null,
+    endTime: data.endTime
+      ? data.endTime instanceof Timestamp
+        ? data.endTime
+        : Timestamp.fromDate(new Date(data.endTime))
+      : null,
     duration: data.duration,
     trips: data.trips,
     passengers: data.passengers,
-    status: "completed"
+    status: "completed",
   });
 }
 
-export function subscribeShootoutHistory(callback) {
-  const q = query(collection(db, "shootoutStats"), orderBy("startTime", "desc"));
+export function subscribeShootoutHistory(callback, status) {
+  const constraints = status
+    ? [where("status", "==", status), orderBy("startTime", "desc")]
+    : [orderBy("startTime", "desc")];
+  const q = query(collection(db, "shootoutStats"), ...constraints);
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
 }

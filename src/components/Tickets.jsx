@@ -44,6 +44,7 @@ import {
   deleteTicket as apiDeleteTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
+import { Timestamp } from "firebase/firestore";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -68,11 +69,18 @@ export default function Tickets() {
   const [emailAddress, setEmailAddress] = useState("");
   const previewRef = useRef(null);
 
-  // ✅ Real-time ticket subscription
+  // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
-    const unsubscribe = subscribeTickets((data) => setTickets(data));
+    const filters = {};
+    if (searchQuery.trim()) filters.passenger = searchQuery.trim();
+    if (filteredDate !== "All Dates") {
+      filters.pickupTime = Timestamp.fromDate(
+        dayjs(filteredDate, "MM-DD-YYYY").toDate(),
+      );
+    }
+    const unsubscribe = subscribeTickets((data) => setTickets(data), filters);
     return () => unsubscribe();
-  }, []);
+  }, [searchQuery, filteredDate]);
 
   const filteredTickets = tickets.filter((t) => {
     const matchDate =
@@ -81,8 +89,7 @@ export default function Tickets() {
         ? dayjs(t.date).format("MM-DD-YYYY") === filteredDate
         : t.date === filteredDate);
 
-    const matchSearch = [t.passenger, t.ticketId]
-      .join(" ")
+    const matchSearch = t.ticketId
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
 

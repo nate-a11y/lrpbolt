@@ -48,6 +48,7 @@ import {
   subscribeClaimedRides,
   addRideToQueue,
 } from "../hooks/api";
+import { Timestamp } from "firebase/firestore";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -258,16 +259,18 @@ export default function RideEntryForm() {
       const durationMinutes =
         Number(formData.DurationHours || 0) * 60 +
         Number(formData.DurationMinutes || 0);
-      const pickupDateTime = dayjs(
-        `${formData.Date} ${formData.PickupTime}`,
-        "YYYY-MM-DD HH:mm"
-      ).toDate();
+      const pickupTimestamp = Timestamp.fromDate(
+        dayjs(
+          `${formData.Date} ${formData.PickupTime}`,
+          "YYYY-MM-DD HH:mm",
+        ).toDate(),
+      );
       await addRideToQueue({
         TripID: formData.TripID,
         RideType: formData.RideType,
         Vehicle: formData.Vehicle,
         RideNotes: formData.RideNotes,
-        pickupTime: pickupDateTime,
+        pickupTime: pickupTimestamp,
         rideDuration: durationMinutes,
       });
       setToast({
@@ -300,16 +303,18 @@ export default function RideEntryForm() {
       for (const row of uploadedRows) {
         const durationMinutes =
           Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
-        const pickupDateTime = dayjs(
-          `${row.Date} ${row.PickupTime}`,
-          ["M/D/YYYY HH:mm", "YYYY-MM-DD HH:mm"]
-        ).toDate();
+        const pickupTimestamp = Timestamp.fromDate(
+          dayjs(
+            `${row.Date} ${row.PickupTime}`,
+            ["M/D/YYYY HH:mm", "YYYY-MM-DD HH:mm"],
+          ).toDate(),
+        );
         await addRideToQueue({
           TripID: row.TripID,
           RideType: row.RideType,
           Vehicle: row.Vehicle,
           RideNotes: row.RideNotes,
-          pickupTime: pickupDateTime,
+          pickupTime: pickupTimestamp,
           rideDuration: durationMinutes,
         });
       }
