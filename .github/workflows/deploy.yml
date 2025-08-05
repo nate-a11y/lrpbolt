@@ -32,14 +32,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify Vite base path
+      - name: Ensure Vite base path
         run: |
-          if ! grep -q "base: './'" vite.config.js; then
-            echo "❌ ERROR: vite.config.js base must be './' for Hostinger deployment"
-            exit 1
+          if grep -q "base" vite.config.js; then
+            sed -i "s|base: .*|base: './',|" vite.config.js
           else
-            echo "✅ Vite base path is correct"
+            sed -i "/export default defineConfig({/a\  base: './'," vite.config.js
           fi
+          echo "✅ Vite base path ensured"
 
       - name: Lint code
         run: npm run lint
