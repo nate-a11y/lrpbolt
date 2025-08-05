@@ -29,6 +29,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
+import { Timestamp } from "firebase/firestore";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -118,9 +119,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       await firestoreClaimRide({
         ...ride,
         ClaimedBy: driver,
-        pickupTime: ride.pickupTime?.toDate
-          ? ride.pickupTime.toDate()
-          : new Date(ride.pickupTime),
+        pickupTime:
+          ride.pickupTime instanceof Timestamp
+            ? ride.pickupTime
+            : Timestamp.fromDate(new Date(ride.pickupTime)),
         rideDuration: Number(ride.rideDuration),
       });
       if (ride.id) await deleteRideFromQueue(ride.id);

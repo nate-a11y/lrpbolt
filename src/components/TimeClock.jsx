@@ -25,6 +25,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import { logTime, subscribeTimeLogs } from "../hooks/api";
+import { Timestamp } from "firebase/firestore";
 
 const TimeClock = ({ driver, setIsTracking }) => {
   const theme = useTheme();
@@ -124,8 +125,8 @@ const TimeClock = ({ driver, setIsTracking }) => {
     const payload = {
       driver,
       rideId: isNA ? "N/A" : isMulti ? "MULTI" : rideId,
-      startTime: startTime.toDate(),
-      endTime: end.toDate(),
+      startTime: Timestamp.fromDate(startTime.toDate()),
+      endTime: Timestamp.fromDate(end.toDate()),
       duration,
     };
 
