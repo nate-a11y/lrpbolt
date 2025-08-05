@@ -310,37 +310,6 @@ export async function emailTicket(ticketId, email, attachment) {
 
 /**
  * -----------------------------
- * DRIVER ROTATION
- * -----------------------------
- */
-export function subscribeDriverRotation(callback) {
-  const q = query(
-    collection(db, "driverRotation"),
-    orderBy("priority", "asc"),
-    orderBy("lastClaimed", "asc"),
-  );
-  return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-}
-
-export async function fetchDrivers() {
-  const q = query(
-    collection(db, "driverRotation"),
-    orderBy("priority", "asc"),
-    orderBy("lastClaimed", "asc"),
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-}
-
-export async function updateDriverRotation(driverId, updates) {
-  const data = cleanData({ ...updates });
-  return await updateDoc(doc(db, "driverRotation", driverId), data);
-}
-
-/**
- * -----------------------------
  * TIME LOGS
  * -----------------------------
  */

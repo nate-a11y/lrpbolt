@@ -36,6 +36,11 @@ export default function DriverSelect({ value, onChange, label = "Select Driver",
       isOptionEqualToValue={(opt, val) => opt.id === val.id}
       loading={loading}
       disabled={disabled}
+      renderOption={(props, option) => (
+        <li {...props}>
+          {option.name} ({option.email})
+        </li>
+      )}
       renderInput={(params) => (
         <TextField
           {...params}

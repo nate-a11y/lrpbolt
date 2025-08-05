@@ -33,14 +33,6 @@
       ]
     },
     {
-      "collectionGroup": "driverRotation",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "priority", "order": "ASCENDING" },
-        { "fieldPath": "lastClaimed", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "timeLogs",
       "queryScope": "COLLECTION",
       "fields": [
@@ -62,6 +54,14 @@
       "fields": [
         { "fieldPath": "email", "order": "ASCENDING" },
         { "fieldPath": "access", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userAccess",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "access", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
       ]
     }
   ],
