@@ -29,7 +29,6 @@ import {
   InputAdornment,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DownloadIcon from "@mui/icons-material/Download";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -74,7 +73,18 @@ const defaultValues = {
   Vehicle: "",
   RideNotes: "",
 };
-const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/i;
+const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/;
+const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const expectedCsvCols = [
+  "TripID",
+  "Date",
+  "PickupTime",
+  "DurationHours",
+  "DurationMinutes",
+  "RideType",
+  "Vehicle",
+  "RideNotes",
+];
 
 const rideTypeOptions = ["P2P", "Round-Trip", "Hourly"];
 const vehicleOptions = [
@@ -118,6 +128,11 @@ export default function RideEntryForm() {
     };
   }, [formData]);
 
+  const isFormValid = useMemo(
+    () => validateFields(formData),
+    [formData, validateFields],
+  );
+
   const [rideTab, setRideTab] = useState(() =>
     Number(localStorage.getItem("rideTab") || 0),
   );
@@ -139,28 +154,42 @@ export default function RideEntryForm() {
   const functions = getFunctions();
   const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 
-  const onDrop = useCallback((accepted) => {
-    setFileError("");
-    const file = accepted[0];
-    if (!file) return;
-    const ext = file.name.split(".").pop().toLowerCase();
-    if (!["csv", "xls", "xlsx"].includes(ext)) {
-      setFileError("Unsupported file type");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      Papa.parse(reader.result, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          setUploadedRows(results.data);
-        },
-        error: (err) => setFileError(err.message),
-      });
-    };
-    reader.readAsText(file);
-  }, []);
+  const onDrop = useCallback(
+    (accepted) => {
+      setFileError("");
+      const file = accepted[0];
+      if (!file) return;
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!["csv", "xls", "xlsx"].includes(ext)) {
+        setFileError("Unsupported file type");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        Papa.parse(reader.result, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const missing = expectedCsvCols.filter(
+              (c) => !results.meta.fields?.includes(c),
+            );
+            if (missing.length) {
+              setToast({
+                open: true,
+                message: `⚠️ Missing columns: ${missing.join(", ")}`,
+                severity: "warning",
+              });
+              return;
+            }
+            setUploadedRows(results.data);
+          },
+          error: (err) => setFileError(err.message),
+        });
+      };
+      reader.readAsText(file);
+    },
+    [setToast],
+  );
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   useEffect(() => {
@@ -189,7 +218,7 @@ export default function RideEntryForm() {
     fetchRides();
   }, [fetchRides]);
 
-  const validateFields = useCallback((data, setErrors) => {
+  const validateFields = useCallback((data, setErrors, skipRef = false) => {
     const required = [
       "TripID",
       "Date",
@@ -203,16 +232,20 @@ export default function RideEntryForm() {
     for (const field of required)
       if (!data[field]?.toString().trim()) errors[field] = true;
     if (!tripIdPattern.test(data.TripID)) errors.TripID = true;
+    const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
+    if (!dateValid || dayjs(data.Date).isBefore(dayjs().startOf("day")))
+      errors.Date = true;
+    if (!timePattern.test(data.PickupTime)) errors.PickupTime = true;
     if (
       isNaN(+data.DurationMinutes) ||
       +data.DurationMinutes < 0 ||
-      +data.DurationMinutes > 59
+      +data.DurationMinutes >= 60
     )
       errors.DurationMinutes = true;
     if (isNaN(+data.DurationHours) || +data.DurationHours < 0)
       errors.DurationHours = true;
     if (setErrors) setErrors(errors);
-    else errorFields.current = errors;
+    else if (!skipRef) errorFields.current = errors;
     return Object.keys(errors).length === 0;
   }, []);
 
@@ -237,6 +270,59 @@ export default function RideEntryForm() {
   );
 
   const handleSingleChange = (e) => handleChange(e, setFormData);
+
+  const toRideDoc = useCallback(
+    (row) => {
+      const clean = {
+        TripID: row.TripID?.toString().trim() || "",
+        Date: row.Date?.toString().trim() || "",
+        PickupTime: row.PickupTime?.toString().trim() || "",
+        DurationHours: row.DurationHours?.toString().trim() || "",
+        DurationMinutes: row.DurationMinutes?.toString().trim() || "",
+        RideType: row.RideType?.toString().trim() || "",
+        Vehicle: row.Vehicle?.toString().trim() || "",
+        RideNotes: row.RideNotes?.toString().trim() || "",
+      };
+      if (!validateFields(clean, null, true)) return null;
+      const rideDuration =
+        Number(clean.DurationHours || 0) * 60 +
+        Number(clean.DurationMinutes || 0);
+      const pickupTimestamp = Timestamp.fromDate(
+        new Date(`${clean.Date}T${clean.PickupTime}`),
+      );
+      return {
+        tripId: clean.TripID,
+        pickupTime: pickupTimestamp,
+        rideDuration,
+        rideType: clean.RideType,
+        vehicle: clean.Vehicle,
+        rideNotes: clean.RideNotes || null,
+        claimedBy: null,
+        claimedAt: null,
+        createdBy: currentUser,
+        lastModifiedBy: currentUser,
+      };
+    },
+    [validateFields, currentUser],
+  );
+
+  const processRideRows = useCallback(
+    async (rows) => {
+      const validDocs = [];
+      let skipped = 0;
+      rows.forEach((row) => {
+        const doc = toRideDoc(row);
+        if (doc) validDocs.push(doc);
+        else skipped++;
+      });
+      setQueueCount((c) => c + validDocs.length);
+      for (const doc of validDocs)
+        // sequential to surface any permission errors early
+        await addDoc(collection(db, "rideQueue"), doc);
+      return { added: validDocs.length, skipped };
+    },
+    [toRideDoc],
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -270,24 +356,8 @@ export default function RideEntryForm() {
     }
     setSubmitting(true);
     try {
-      const rideDuration =
-        Number(formData.DurationHours || 0) * 60 +
-        Number(formData.DurationMinutes || 0);
-      const pickupTimestamp = Timestamp.fromDate(
-        new Date(`${formData.Date}T${formData.PickupTime}`),
-      );
-      const rideData = {
-        tripId: formData.TripID,
-        pickupTime: pickupTimestamp,
-        rideDuration,
-        rideType: formData.RideType,
-        vehicle: formData.Vehicle,
-        rideNotes: formData.RideNotes || null,
-        claimedBy: null,
-        claimedAt: null,
-        createdBy: currentUser,
-        lastModifiedBy: currentUser,
-      };
+      const rideData = toRideDoc(formData);
+      if (!rideData) throw new Error("Invalid form data");
       setQueueCount((c) => c + 1);
       await addDoc(collection(db, "rideQueue"), rideData);
       setToast({
@@ -303,7 +373,7 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateFields, currentUser, fetchRides]);
+  }, [formData, validateFields, toRideDoc, fetchRides]);
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
@@ -317,29 +387,11 @@ export default function RideEntryForm() {
 
     setSubmitting(true);
     try {
-      for (const row of uploadedRows) {
-        const rideDuration =
-          Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
-        const pickupTimestamp = Timestamp.fromDate(
-          new Date(`${row.Date}T${row.PickupTime}`),
-        );
-        const rideData = {
-          tripId: row.TripID,
-          pickupTime: pickupTimestamp,
-          rideDuration,
-          rideType: row.RideType,
-          vehicle: row.Vehicle,
-          rideNotes: row.RideNotes || null,
-          claimedBy: null,
-          claimedAt: null,
-          createdBy: currentUser,
-          lastModifiedBy: currentUser,
-        };
-        await addDoc(collection(db, "rideQueue"), rideData);
-      }
+      const { added, skipped } = await processRideRows(uploadedRows);
       setToast({
         open: true,
-        message: `✅ CSV rides imported`,
+        message: `✅ CSV rides imported (${added} added${
+          skipped ? `, ${skipped} skipped` : ""})`,
         severity: "success",
       });
 
@@ -350,7 +402,7 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [uploadedRows, currentUser, fetchRides]);
+  }, [uploadedRows, processRideRows, fetchRides]);
 
   const handleCsvAppend = useCallback(() => {
     if (!validateFields(csvBuilder, setBuilderErrors)) {
@@ -382,7 +434,18 @@ export default function RideEntryForm() {
         header: true,
         skipEmptyLines: true,
       });
-      if (parsed.data?.length) ridesToSubmit.push(...parsed.data);
+      const missing = expectedCsvCols.filter(
+        (c) => !parsed.meta.fields?.includes(c),
+      );
+      if (missing.length) {
+        setToast({
+          open: true,
+          message: `⚠️ Missing columns: ${missing.join(", ")}`,
+          severity: "warning",
+        });
+      } else if (parsed.data?.length) {
+        ridesToSubmit.push(...parsed.data);
+      }
     }
 
     if (!ridesToSubmit.length) {
@@ -396,29 +459,11 @@ export default function RideEntryForm() {
 
     setSubmitting(true);
     try {
-      for (const row of ridesToSubmit) {
-        const rideDuration =
-          Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
-        const pickupTimestamp = Timestamp.fromDate(
-          new Date(`${row.Date}T${row.PickupTime}`),
-        );
-        const rideData = {
-          tripId: row.TripID,
-          pickupTime: pickupTimestamp,
-          rideDuration,
-          rideType: row.RideType,
-          vehicle: row.Vehicle,
-          rideNotes: row.RideNotes || null,
-          claimedBy: null,
-          claimedAt: null,
-          createdBy: currentUser,
-          lastModifiedBy: currentUser,
-        };
-        await addDoc(collection(db, "rideQueue"), rideData);
-      }
+      const { added, skipped } = await processRideRows(ridesToSubmit);
       setToast({
         open: true,
-        message: `✅ All rides submitted successfully`,
+        message: `✅ All rides submitted (${added} added${
+          skipped ? `, ${skipped} skipped` : ""})`,
         severity: "success",
       });
 
@@ -430,7 +475,7 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [uploadedRows, multiInput, currentUser, fetchRides]);
+  }, [uploadedRows, multiInput, processRideRows, fetchRides]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -645,6 +690,7 @@ export default function RideEntryForm() {
                         variant="contained"
                         color="success"
                         onClick={() => setConfirmOpen(true)}
+                        disabled={submitting || !isFormValid}
                       >
                         Submit
                       </Button>
@@ -1145,7 +1191,12 @@ export default function RideEntryForm() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} variant="contained" color="success">
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              color="success"
+              disabled={submitting}
+            >
               Submit
             </Button>
           </DialogActions>
