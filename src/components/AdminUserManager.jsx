@@ -31,7 +31,7 @@ export default function AdminUserManager() {
   });
 
   useEffect(() => {
-    const q = query(collection(db, "userAccess"), orderBy("Name", "asc"));
+    const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setRows(data);
@@ -51,7 +51,7 @@ export default function AdminUserManager() {
         lines.map((line) => {
           const [name, email, access] = line.split(",");
           return addDoc(collection(db, "userAccess"), {
-            Name: (name || "").trim(),
+            name: (name || "").trim(),
             email: (email || "").trim(),
             access: (access || "user").trim().toLowerCase() || "user",
           });
@@ -70,7 +70,7 @@ export default function AdminUserManager() {
   };
 
   const columns = [
-    { field: "Name", headerName: "Name", flex: 1, minWidth: 150 },
+    { field: "name", headerName: "Name", flex: 1, minWidth: 150 },
     { field: "email", headerName: "Email", flex: 1, minWidth: 200 },
     { field: "access", headerName: "Access", width: 120 },
   ];
