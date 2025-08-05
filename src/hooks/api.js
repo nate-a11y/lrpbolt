@@ -13,7 +13,8 @@ import {
   orderBy,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, functions } from "../firebase";
+import { httpsCallable } from "firebase/functions";
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -355,6 +356,22 @@ export async function logTime(payload) {
     duration: Number(payload.duration),
     loggedAt: Timestamp.now(),
   });
+}
+
+/**
+ * -----------------------------
+ * DAILY RIDE DROP
+ * -----------------------------
+ */
+export async function refreshDailyRides() {
+  try {
+    const callable = httpsCallable(functions, "dropDailyRidesNow");
+    const { data } = await callable();
+    return { success: true, ...data };
+  } catch (err) {
+    console.error("Daily drop failed", err);
+    return { success: false, error: err.message };
+  }
 }
 
 /**
