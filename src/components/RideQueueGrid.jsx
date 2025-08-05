@@ -18,13 +18,18 @@ const RideQueueGrid = () => {
   const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
   // ✅ Real-time Firestore subscription
   useEffect(() => {
     const unsubscribe = subscribeRideQueue((data) => {
-      setRows(data);
+      const mapped = data.map((row) => ({
+        ...row,
+        TripID: row.tripId || row.TripID || row.id,
+      }));
+      setRows(mapped);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -32,25 +37,24 @@ const RideQueueGrid = () => {
 
   // ✅ Delete ride (Firestore)
   const confirmDeleteRide = async () => {
-    if (!deletingTripId) return;
-    const target = rows.find((r) => r.tripId === deletingTripId);
+    if (!deletingId) return;
+    const target = rows.find((r) => r.id === deletingId);
     setUndoRow(target);
     setRows((prev) =>
-      prev.map((row) =>
-        row.tripId === deletingTripId ? { ...row, fading: true } : row
-      )
+      prev.map((row) => (row.id === deletingId ? { ...row, fading: true } : row))
     );
 
     setTimeout(async () => {
       try {
-        await deleteRideFromQueue(deletingTripId);
-        setRows((prev) => prev.filter((row) => row.tripId !== deletingTripId));
+        await deleteRideFromQueue(deletingId);
+        setRows((prev) => prev.filter((row) => row.id !== deletingId));
         setToast({ open: true, message: `🗑️ Deleted Trip ${deletingTripId}`, severity: "info" });
       } catch (err) {
         setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
         setUndoRow(null);
       }
       setConfirmOpen(false);
+      setDeletingId(null);
       setDeletingTripId(null);
     }, 300);
   };
@@ -82,8 +86,10 @@ const RideQueueGrid = () => {
       <EditableRideGrid
         rows={rows}
         loading={loading}
-        onDelete={(tripId) => {
-          setDeletingTripId(tripId);
+        onDelete={(id) => {
+          const row = rows.find((r) => r.id === id);
+          setDeletingId(id);
+          setDeletingTripId(row?.TripID || "");
           setConfirmOpen(true);
         }}
         sheetName="rideQueue"
