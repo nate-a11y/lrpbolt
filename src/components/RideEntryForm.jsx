@@ -38,17 +38,18 @@ import LiveClaimGrid from "./LiveClaimGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import { formatDuration, toTimeString12Hr } from "../timeUtils";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import { addRideToQueue } from "../hooks/api";
-import useRideQueue from "../hooks/useRideQueue";
-import useClaimedRides from "../hooks/useClaimedRides";
-import useLiveRides from "../hooks/useLiveRides";
-import { Timestamp } from "firebase/firestore";
-import { callFunction } from "../api";
+import {
+  Timestamp,
+  collection,
+  addDoc,
+  getDocs,
+} from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -135,6 +136,8 @@ export default function RideEntryForm() {
   const currentUser = auth.currentUser?.email || "Unknown";
   const errorFields = useRef({});
   const [builderErrors, setBuilderErrors] = useState({});
+  const functions = getFunctions();
+  const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 
   const onDrop = useCallback((accepted) => {
     setFileError("");
@@ -170,22 +173,21 @@ export default function RideEntryForm() {
     localStorage.setItem("dataTab", dataTab.toString());
   }, [dataTab]);
 
-  const rideQueue = useRideQueue();
-  const claimedRides = useClaimedRides();
-  const liveRides = useLiveRides();
-
-  useEffect(() => {
-    setQueueCount(rideQueue.length);
+  const fetchRides = useCallback(async () => {
+    const [queueSnap, liveSnap, claimedSnap] = await Promise.all([
+      getDocs(collection(db, "rideQueue")),
+      getDocs(collection(db, "liveRides")),
+      getDocs(collection(db, "claimedRides")),
+    ]);
+    setQueueCount(queueSnap.size);
+    setLiveCount(liveSnap.size);
+    setClaimedCount(claimedSnap.size);
     setSyncTime(dayjs().format("hh:mm A"));
-  }, [rideQueue]);
+  }, []);
 
   useEffect(() => {
-    setLiveCount(liveRides.length);
-  }, [liveRides]);
-
-  useEffect(() => {
-    setClaimedCount(claimedRides.length);
-  }, [claimedRides]);
+    fetchRides();
+  }, [fetchRides]);
 
   const validateFields = useCallback((data, setErrors) => {
     const required = [
@@ -236,26 +238,26 @@ export default function RideEntryForm() {
 
   const handleSingleChange = (e) => handleChange(e, setFormData);
 
-  const handleDropDailyRides = useCallback(async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const data = await callFunction("dropDailyRidesNow");
+      await refreshDrop();
       setToast({
         open: true,
-        message: `${data.message}: ${data.imported} imported (${data.total} total)`,
+        message: "✅ Daily drop executed",
         severity: "success",
       });
-    } catch (err) {
+      await fetchRides();
+    } catch (error) {
       setToast({
         open: true,
-        message: `❌ ${err.message}`,
+        message: `❌ Refresh failed: ${error.message}`,
         severity: "error",
       });
     } finally {
-      setSyncTime(dayjs().format("hh:mm A"));
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchRides, refreshDrop]);
 
   const handleSubmit = useCallback(async () => {
     if (!validateFields(formData)) {
@@ -268,23 +270,26 @@ export default function RideEntryForm() {
     }
     setSubmitting(true);
     try {
-      const durationMinutes =
+      const rideDuration =
         Number(formData.DurationHours || 0) * 60 +
         Number(formData.DurationMinutes || 0);
       const pickupTimestamp = Timestamp.fromDate(
-        dayjs(
-          `${formData.Date} ${formData.PickupTime}`,
-          "YYYY-MM-DD HH:mm",
-        ).toDate(),
+        new Date(`${formData.Date}T${formData.PickupTime}`),
       );
-      await addRideToQueue({
-        TripID: formData.TripID,
-        RideType: formData.RideType,
-        Vehicle: formData.Vehicle,
-        RideNotes: formData.RideNotes,
+      const rideData = {
+        tripId: formData.TripID,
         pickupTime: pickupTimestamp,
-        rideDuration: durationMinutes,
-      });
+        rideDuration,
+        rideType: formData.RideType,
+        vehicle: formData.Vehicle,
+        rideNotes: formData.RideNotes || null,
+        claimedBy: null,
+        claimedAt: null,
+        createdBy: currentUser,
+        lastModifiedBy: currentUser,
+      };
+      setQueueCount((c) => c + 1);
+      await addDoc(collection(db, "rideQueue"), rideData);
       setToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,
@@ -292,13 +297,13 @@ export default function RideEntryForm() {
       });
       setFormData(defaultValues);
       setConfirmOpen(false);
-      setRefreshTrigger((prev) => prev + 1);
+      await fetchRides();
     } catch (err) {
       setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateFields]);
+  }, [formData, validateFields, currentUser, fetchRides]);
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
@@ -313,22 +318,24 @@ export default function RideEntryForm() {
     setSubmitting(true);
     try {
       for (const row of uploadedRows) {
-        const durationMinutes =
+        const rideDuration =
           Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
         const pickupTimestamp = Timestamp.fromDate(
-          dayjs(
-            `${row.Date} ${row.PickupTime}`,
-            ["M/D/YYYY HH:mm", "YYYY-MM-DD HH:mm"],
-          ).toDate(),
+          new Date(`${row.Date}T${row.PickupTime}`),
         );
-        await addRideToQueue({
-          TripID: row.TripID,
-          RideType: row.RideType,
-          Vehicle: row.Vehicle,
-          RideNotes: row.RideNotes,
+        const rideData = {
+          tripId: row.TripID,
           pickupTime: pickupTimestamp,
-          rideDuration: durationMinutes,
-        });
+          rideDuration,
+          rideType: row.RideType,
+          vehicle: row.Vehicle,
+          rideNotes: row.RideNotes || null,
+          claimedBy: null,
+          claimedAt: null,
+          createdBy: currentUser,
+          lastModifiedBy: currentUser,
+        };
+        await addDoc(collection(db, "rideQueue"), rideData);
       }
       setToast({
         open: true,
@@ -337,13 +344,13 @@ export default function RideEntryForm() {
       });
 
       setUploadedRows([]);
-      setRefreshTrigger((prev) => prev + 1);
+      await fetchRides();
     } catch (err) {
       setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
     } finally {
       setSubmitting(false);
     }
-  }, [uploadedRows]);
+  }, [uploadedRows, currentUser, fetchRides]);
 
   const handleCsvAppend = useCallback(() => {
     if (!validateFields(csvBuilder, setBuilderErrors)) {
@@ -390,20 +397,24 @@ export default function RideEntryForm() {
     setSubmitting(true);
     try {
       for (const row of ridesToSubmit) {
-        const durationMinutes =
+        const rideDuration =
           Number(row.DurationHours || 0) * 60 + Number(row.DurationMinutes || 0);
-        const pickupDateTime = dayjs(
-          `${row.Date} ${row.PickupTime}`,
-          ["M/D/YYYY HH:mm", "YYYY-MM-DD HH:mm"]
-        ).toDate();
-        await addRideToQueue({
-          TripID: row.TripID,
-          RideType: row.RideType,
-          Vehicle: row.Vehicle,
-          RideNotes: row.RideNotes,
-          pickupTime: pickupDateTime,
-          rideDuration: durationMinutes,
-        });
+        const pickupTimestamp = Timestamp.fromDate(
+          new Date(`${row.Date}T${row.PickupTime}`),
+        );
+        const rideData = {
+          tripId: row.TripID,
+          pickupTime: pickupTimestamp,
+          rideDuration,
+          rideType: row.RideType,
+          vehicle: row.Vehicle,
+          rideNotes: row.RideNotes || null,
+          claimedBy: null,
+          claimedAt: null,
+          createdBy: currentUser,
+          lastModifiedBy: currentUser,
+        };
+        await addDoc(collection(db, "rideQueue"), rideData);
       }
       setToast({
         open: true,
@@ -413,13 +424,13 @@ export default function RideEntryForm() {
 
       setUploadedRows([]);
       setMultiInput("");
-      setRefreshTrigger((prev) => prev + 1);
+      await fetchRides();
     } catch (err) {
       setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
     } finally {
       setSubmitting(false);
     }
-  }, [uploadedRows, multiInput]);
+  }, [uploadedRows, multiInput, currentUser, fetchRides]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -993,7 +1004,7 @@ export default function RideEntryForm() {
             <Tooltip title="Runs Firebase function to refresh daily rides and email admins">
               <span>
                 <Button
-                  onClick={handleDropDailyRides}
+                  onClick={handleRefresh}
                   disabled={refreshing}
                   variant="outlined"
                   color="secondary"
