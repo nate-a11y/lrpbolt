@@ -40,6 +40,7 @@ import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import AppShortcutIcon from "@mui/icons-material/AppShortcut";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
+import { useDriver } from "../context/DriverContext.jsx";
 
 const NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
@@ -92,14 +93,10 @@ const isActiveStyle = {
   backgroundColor: "rgba(76, 187, 23, 0.1)",
 };
 
-const ResponsiveHeader = ({
-  darkMode,
-  setDarkMode,
-  selectedDriver,
-  role,
-  onChangeDriver,
-  onSignOut,
-}) => {
+const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) => {
+  const { driver } = useDriver();
+  const selectedDriver = driver?.name || "";
+  const role = driver?.access || "";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);

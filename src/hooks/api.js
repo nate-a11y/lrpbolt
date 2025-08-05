@@ -33,15 +33,24 @@ export async function getUserAccess(email) {
     : null;
 }
 
-export async function fetchUserAccess() {
+export async function fetchUserAccess(activeOnly = false) {
   const snapshot = await getDocs(collection(db, "userAccess"));
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  if (activeOnly) {
+    data = data.filter(
+      (d) => d.access?.toLowerCase() !== "user" && d.active !== false,
+    );
+  }
+  return data;
 }
 
 export function subscribeUserAccess(callback) {
   const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const data = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((d) => d.access?.toLowerCase() !== "user" && d.active !== false);
+    callback(data);
   });
 }
 

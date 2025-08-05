@@ -5,14 +5,17 @@ import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
+import { DriverProvider } from "./context/DriverContext.jsx";
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Suspense fallback={<LoadingScreen />}>
-        <App />
-      </Suspense>
+      <DriverProvider>
+        <Suspense fallback={<LoadingScreen />}>
+          <App />
+        </Suspense>
+      </DriverProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

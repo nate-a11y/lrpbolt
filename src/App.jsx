@@ -36,9 +36,9 @@ import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
 import SidebarNavigation from "./components/SidebarNavigation";
 import useDarkMode from "./hooks/useDarkMode";
-import usePersistentState from "./hooks/usePersistentState";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
+import { useDriver } from "./context/DriverContext.jsx";
 import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
@@ -47,7 +47,7 @@ import DriverDirectory from "./components/DriverDirectory";
 import ContactEscalation from "./components/ContactEscalation";
 import ResponsiveHeader from "./components/ResponsiveHeader";
 import { motion } from "framer-motion";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import TicketGenerator from "./components/TicketGenerator";
 import TicketViewer from "./components/TicketViewer";
 import TicketScanner from "./components/TicketScanner";
@@ -63,7 +63,6 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
 } from "./firebase";
-import { getUserAccess } from "./hooks/api";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
@@ -91,17 +90,10 @@ const isInLockoutWindow = () => {
 
 export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
+  const { driver, setDriver } = useDriver();
   const { drivers, fetchDrivers } = useDrivers();
-  const [selectedDriver, setSelectedDriver] = usePersistentState(
-    "lrp_driver",
-    "",
-  );
-  const [tabIndex, setTabIndex] = usePersistentState("lrp_tabIndex", 0);
   const [user, setUser] = useState(
     () => JSON.parse(localStorage.getItem("lrpUser")) || null,
-  );
-  const [role, setRole] = useState(
-    () => localStorage.getItem("lrpRole") || null,
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -113,8 +105,11 @@ export default function App() {
   const [isLockedOut, setIsLockedOut] = useState(isInLockoutWindow());
   const [isAppReady, setIsAppReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const isFullyReady = isAppReady && !!selectedDriver;
+  const isFullyReady = isAppReady && !!driver;
   const hasFetchedRef = useRef(false);
+  const selectedDriver = driver?.name || "";
+  const role = driver?.access || "";
+  const isAdmin = role === "Admin";
   const APP_VERSION = import.meta.env.VITE_APP_VERSION;
   
   const {
@@ -123,20 +118,10 @@ export default function App() {
     dismiss: dismissOffline,
   } = useNetworkStatus(() => showToast("✅ Reconnected", "success"));
 
-  const fetchRole = useCallback(async (email) => {
-    try {
-      const data = await getUserAccess(email);
-      const access = data?.access || "User";
-      setRole(access);
-      localStorage.setItem("lrpRole", access);
-    } catch (err) {
-      console.error("Failed to fetch role:", err);
-    }
-  }, []);
-
   const handleSignOut = useCallback(async () => {
     try {
       await auth.signOut();
+      setDriver(null);
       localStorage.clear();
       sessionStorage.clear();
       document.cookie.split(";").forEach((cookie) => {
@@ -161,32 +146,31 @@ export default function App() {
     } catch (err) {
       showToast("Sign out failed", "error");
     }
-  }, [showToast]);
+  }, [showToast, setDriver]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (!hasFetchedRef.current) {
-        hasFetchedRef.current = true;
-
-        if (u) {
-          localStorage.setItem("lrpUser", JSON.stringify(u));
-          setUser(u);
-          await fetchRole(u.email);
-          const driverName = await fetchDrivers(u.email);
-          setSelectedDriver(driverName);
-          setTimeout(() => setIsAppReady(true), 50);
-        } else {
-          setUser(null);
-          setRole(null);
-          setSelectedDriver("");
-          localStorage.removeItem("lrpUser");
-          localStorage.removeItem("lrpRole");
-          setIsAppReady(true);
+      if (!hasFetchedRef.current) hasFetchedRef.current = true;
+      if (u) {
+        localStorage.setItem("lrpUser", JSON.stringify(u));
+        setUser(u);
+        const record = await fetchDrivers(u.email);
+        if (record) setDriver(record);
+        else {
+          await auth.signOut();
+          setDriver(null);
         }
+        setTimeout(() => setIsAppReady(true), 50);
+      } else {
+        setUser(null);
+        setDriver(null);
+        localStorage.removeItem("lrpUser");
+        showToast("Session expired. Please log in again.", "error");
+        setIsAppReady(true);
       }
     });
     return () => unsubscribe();
-  }, [fetchRole, fetchDrivers, setSelectedDriver]);
+  }, [fetchDrivers, setDriver, showToast]);
 
   useEffect(() => {
     const interval = setInterval(
@@ -214,15 +198,18 @@ export default function App() {
 
       setShowEliteBadge(true);
 
-      await fetchRole(u.email);
-      const driverName = await fetchDrivers(u.email);
-      setSelectedDriver(driverName);
+      const record = await fetchDrivers(u.email);
+      if (record) setDriver(record);
+      else {
+        showToast("Access denied", "error");
+        await auth.signOut();
+      }
     } catch (err) {
       showToast(err.message, "error");
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchRole, fetchDrivers, showToast, setSelectedDriver]);
+  }, [fetchDrivers, showToast, setDriver]);
 
   const handleEmailAuth = useCallback(async () => {
     setAuthLoading(true);
@@ -237,9 +224,12 @@ export default function App() {
 
       setShowEliteBadge(true);
 
-      await fetchRole(u.email);
-      const driverName = await fetchDrivers(u.email);
-      setSelectedDriver(driverName);
+      const record = await fetchDrivers(u.email);
+      if (record) setDriver(record);
+      else {
+        showToast("Access denied", "error");
+        await auth.signOut();
+      }
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -249,15 +239,14 @@ export default function App() {
     isRegistering,
     email,
     password,
-    fetchRole,
     fetchDrivers,
     showToast,
-    setSelectedDriver,
+    setDriver,
   ]);
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  if (!user || !role) {
+  if (!user || !driver) {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
@@ -381,18 +370,11 @@ export default function App() {
         <ResponsiveHeader
           darkMode={darkMode}
           setDarkMode={setDarkMode}
-          selectedDriver={selectedDriver}
-          role={role}
           onChangeDriver={() => setChangeDriverOpen(true)}
           onSignOut={() => setSignOutConfirmOpen(true)}
-          setTabIndex={setTabIndex}
         />
         <Box sx={{ display: "flex" }}>
-          <SidebarNavigation
-            tabIndex={tabIndex}
-            setTabIndex={setTabIndex}
-            role={role}
-          />
+          <SidebarNavigation />
           <Box
             component="main"
             sx={{
@@ -418,8 +400,8 @@ export default function App() {
                     element={
                       <RideClaimTab
                         driver={selectedDriver}
-                        isAdmin={role === "Admin"}
-                        isLockedOut={role !== "Admin" && isLockedOut}
+                        isAdmin={isAdmin}
+                        isLockedOut={!isAdmin && isLockedOut}
                       />
                     }
                   />
@@ -428,8 +410,8 @@ export default function App() {
                     element={
                       <RideClaimTab
                         driver={selectedDriver}
-                        isAdmin={role === "Admin"}
-                        isLockedOut={role !== "Admin" && isLockedOut}
+                        isAdmin={isAdmin}
+                        isLockedOut={!isAdmin && isLockedOut}
                       />
                     }
                   />
@@ -455,17 +437,22 @@ export default function App() {
                   />
                   <Route
                     path="/admin-time-log"
-                    element={<AdminTimeLog driver={selectedDriver} />}
+                    element={
+                      isAdmin ? <AdminTimeLog driver={selectedDriver} /> : <Navigate to="/" />
+                    }
                   />
                   <Route
                     path="/admin-user-manager"
-                    element={<AdminUserManager />}
+                    element={isAdmin ? <AdminUserManager /> : <Navigate to="/" />}
                   />
-                  <Route path="/ride-entry" element={<RideEntryForm />} />
+                  <Route
+                    path="/ride-entry"
+                    element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
+                  />
                   <Route path="/Tickets" element={<Tickets />} />
                   <Route
                     path="/generate-ticket"
-                    element={<TicketGenerator />}
+                    element={isAdmin ? <TicketGenerator /> : <Navigate to="/" />}
                   />
                   <Route path="/ticket/:ticketId" element={<TicketViewer />} />
                   <Route
@@ -509,15 +496,13 @@ export default function App() {
               </DialogActions>
             </Dialog>
 
-            <ChangeDriverModal
-              open={changeDriverOpen}
-              onClose={() => setChangeDriverOpen(false)}
-              drivers={drivers}
-              currentDriver={selectedDriver}
-              setDriver={(d) => {
-                setSelectedDriver(d);
-              }}
-            />
+            {isAdmin && (
+              <ChangeDriverModal
+                open={changeDriverOpen}
+                onClose={() => setChangeDriverOpen(false)}
+                drivers={drivers}
+              />
+            )}
 
             <Snackbar
               open={toast.open}
