@@ -20,27 +20,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   </React.StrictMode>,
 );
 
-// ✅ Register service worker for PWA support
+// Register service worker with basic error logging
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
     navigator.serviceWorker
-      .register(swUrl)
-      .then((reg) => {
-        reg.onupdatefound = () => {
-          const installingWorker = reg.installing;
-          installingWorker.onstatechange = () => {
-            if (
-              installingWorker.state === "installed" &&
-              navigator.serviceWorker.controller
-            ) {
-              window.location.reload(); // Force reload if update
-            }
-          };
-        };
-      })
-      .catch(() => {
-        // Service worker registration failed
-      });
+      .register("/service-worker.js")
+      .then((reg) => console.log("SW registered:", reg.scope))
+      .catch((err) => console.error("SW registration failed:", err));
   });
 }

@@ -4,10 +4,13 @@ import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim } from "workbox-core";
 
 // Manifest injected at build time
-// Remove duplicate entries (strip query params before comparison)
-const manifest = self.__WB_MANIFEST.filter((entry, index, arr) => {
-  const url = entry.url.split("?")[0];
-  return index === arr.findIndex((e) => e.url.split("?")[0] === url);
+// Deduplicate entries, keeping the first occurrence of each URL (ignore query params)
+const seen = new Set();
+const manifest = self.__WB_MANIFEST.filter(({ url }) => {
+  const cleanUrl = url.split("?")[0];
+  if (seen.has(cleanUrl)) return false;
+  seen.add(cleanUrl);
+  return true;
 });
 
 precacheAndRoute(manifest);

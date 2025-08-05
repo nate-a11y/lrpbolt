@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/service-worker.js", "destination": "/service-worker.js" },
+      { "source": "/manifest.webmanifest", "destination": "/manifest.webmanifest" },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}
