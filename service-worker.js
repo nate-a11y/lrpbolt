@@ -3,15 +3,20 @@ import { registerRoute } from "workbox-routing";
 import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim } from "workbox-core";
 
-// Manifest injected at build time
-// Deduplicate entries, keeping the first occurrence of each URL (ignore query params)
+// Manifest injected at build time.
+// Vite/Workbox sometimes inject both `manifest.webmanifest` and
+// `manifest.webmanifest?__WB_REVISION__=hash`, which causes the
+// `add-to-cache-list-conflicting-entries` error. Normalize each URL
+// (strip query parameters) and keep only the first occurrence so every
+// resource, especially `manifest.webmanifest`, is cached exactly once.
 const seen = new Set();
-const manifest = self.__WB_MANIFEST.filter(({ url }) => {
-  const cleanUrl = url.split("?")[0];
-  if (seen.has(cleanUrl)) return false;
+const manifest = [];
+for (const entry of self.__WB_MANIFEST) {
+  const cleanUrl = entry.url.split("?")[0];
+  if (seen.has(cleanUrl)) continue;
   seen.add(cleanUrl);
-  return true;
-});
+  manifest.push({ ...entry, url: cleanUrl });
+}
 
 precacheAndRoute(manifest);
 
