@@ -58,7 +58,7 @@ export function subscribeFirestore(key, queryRef, callback) {
 
 // Remove all active listeners. Useful on global sign-out to ensure
 // no dangling network connections remain.
-export function clearAllListeners() {
+export function unsubscribeAll() {
   // Auth listener
   authCallbacks.clear();
   if (authUnsubscribe) {
@@ -71,3 +71,6 @@ export function clearAllListeners() {
   fsRegistry.forEach(({ unsubscribe }) => unsubscribe());
   fsRegistry.clear();
 }
+
+// Backward compatibility for older imports
+export const clearAllListeners = unsubscribeAll;
