@@ -50,6 +50,7 @@ export default function TicketViewer() {
     updateTicketScan(
       ticketId,
       field === "scannedOutbound" ? "outbound" : "return",
+      localStorage.getItem("lrp_driver") || "Unknown",
     )
       .then((result) => {
         if (result.success) {

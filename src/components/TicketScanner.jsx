@@ -262,7 +262,7 @@ export default function TicketScanner() {
     if (!ticket || !scanType || confirming) return;
     setConfirming(true);
     const alreadyScanned =
-      scanType === "outbound" ? ticket.scannedoutbound : ticket.scannedreturn;
+      scanType === "outbound" ? ticket.scannedOutbound : ticket.scannedReturn;
 
     if (alreadyScanned) {
       setSnackbar({
@@ -277,7 +277,6 @@ export default function TicketScanner() {
     const result = await updateTicketScan(
       ticket.ticketId,
       scanType,
-      new Date().toISOString(),
       localStorage.getItem("lrp_driver") || "Unknown",
     );
     if (result.success) {
@@ -285,13 +284,13 @@ export default function TicketScanner() {
         ...prev,
         ...(scanType === "outbound"
           ? {
-              scannedoutbound: true,
-              scannedoutboundby:
+              scannedOutbound: true,
+              scannedOutboundBy:
                 localStorage.getItem("lrp_driver") || "Unknown",
             }
           : {
-              scannedreturn: true,
-              scannedreturnby: localStorage.getItem("lrp_driver") || "Unknown",
+              scannedReturn: true,
+              scannedReturnBy: localStorage.getItem("lrp_driver") || "Unknown",
             }),
       }));
       setShowSuccess(true);

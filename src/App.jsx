@@ -63,8 +63,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
 } from "./firebase";
-import { BASE_URL } from "./hooks/api";
-import { fetchWithCache } from "./utils/cache";
+import { getUserAccess } from "./hooks/api";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
@@ -89,14 +88,6 @@ const isInLockoutWindow = () => {
   return hour >= 18 && hour < 20;
 };
 
-const preloadDriverList = async () => {
-  try {
-    await fetchWithCache("lrp_driverList", `${BASE_URL}?type=driverEmails`);
-  } catch {
-    // ignore preload errors
-  }
-};
-preloadDriverList();
 export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { drivers, fetchDrivers } = useDrivers();
@@ -132,11 +123,8 @@ export default function App() {
 
   const fetchRole = useCallback(async (email) => {
     try {
-      const data = await fetchWithCache("lrp_roles", `${BASE_URL}?type=access`);
-      const match = data.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase(),
-      );
-      const access = match?.access || "User";
+      const data = await getUserAccess(email);
+      const access = data?.access || "User";
       setRole(access);
       localStorage.setItem("lrpRole", access);
     } catch (err) {

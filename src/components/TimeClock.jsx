@@ -123,10 +123,9 @@ const TimeClock = ({ driver, setIsTracking }) => {
     const payload = {
       driver,
       rideId: isNA ? "N/A" : isMulti ? "MULTI" : rideId,
-      startTime: startTime.format("MM/DD/YYYY HH:mm"),
-      endTime: end.format("MM/DD/YYYY HH:mm"),
+      startTime: startTime.toDate(),
+      endTime: end.toDate(),
       duration,
-      loggedAt: dayjs().format("MM/DD/YYYY HH:mm"),
     };
 
     logTime(payload)
