@@ -14,8 +14,8 @@ import {
   limit,
   Timestamp,
 } from "firebase/firestore";
-import { db, functions } from "../firebase";
-import { httpsCallable } from "firebase/functions";
+import { db } from "../firebase";
+import { callFunction } from "../api";
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -50,17 +50,27 @@ export async function fetchUserAccess(activeOnly = false) {
   return data;
 }
 
-export function subscribeUserAccess(callback) {
-  const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
+export function subscribeUserAccess(
+  callback,
+  { activeOnly = false, roles = ["admin", "driver"], max = 100 } = {},
+) {
+  const constraints = [orderBy("name", "asc"), limit(max)];
+  if (activeOnly) constraints.push(where("active", "==", true));
+  if (roles) constraints.push(where("access", "in", roles));
+  const q = query(collection(db, "userAccess"), ...constraints);
   if (process.env.NODE_ENV === "development") {
-    console.log("Subscribed to userAccess");
+    console.log("Listener started:", "userAccess");
   }
-  return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((d) => d.access?.toLowerCase() !== "user" && d.active !== false);
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     callback(data);
   });
+  return () => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("Listener cleaned up:", "userAccess");
+    }
+    unsubscribe();
+  };
 }
 
 /**
@@ -392,8 +402,7 @@ export async function logTime(payload) {
  */
 export async function refreshDailyRides() {
   try {
-    const callable = httpsCallable(functions, "dropDailyRidesNow");
-    const { data } = await callable();
+    const data = await callFunction("dropDailyRidesNow");
     return { success: true, ...data };
   } catch (err) {
     console.error("Daily drop failed", err);
