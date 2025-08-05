@@ -425,6 +425,53 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
+export function subscribeLiveRides(
+  callback,
+  fromTime = Timestamp.now(),
+) {
+  const q = query(
+    collection(db, "liveRides"),
+    where("pickupTime", ">=", fromTime),
+    orderBy("pickupTime", "asc"),
+  );
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to liveRides");
+  }
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  });
+}
+
+export async function addLiveRide(rideData) {
+  const data = cleanData({
+    ...rideData,
+    pickupTime:
+      rideData.pickupTime instanceof Timestamp
+        ? rideData.pickupTime
+        : Timestamp.fromDate(new Date(rideData.pickupTime)),
+    rideDuration: Number(rideData.rideDuration),
+    claimedAt: rideData.claimedAt
+      ? rideData.claimedAt instanceof Timestamp
+        ? rideData.claimedAt
+        : Timestamp.fromDate(new Date(rideData.claimedAt))
+      : null,
+  });
+  return await addDoc(collection(db, "liveRides"), data);
+}
+
+export async function deleteLiveRide(rideId) {
+  return await deleteDoc(doc(db, "liveRides", rideId));
+}
+
+export async function restoreLiveRide(rideData) {
+  try {
+    await addLiveRide(rideData);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 /**
  * -----------------------------
  * RESTORE RIDE

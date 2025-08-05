@@ -22,9 +22,9 @@ import BlackoutOverlay from "./BlackoutOverlay";
 import { normalizeDate } from "../timeUtils";
 import {
   claimRide as firestoreClaimRide,
-  deleteRideFromQueue,
+  deleteLiveRide,
 } from "../hooks/api";
-import useRideQueue from "../hooks/useRideQueue";
+import useLiveRides from "../hooks/useLiveRides";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -101,15 +101,15 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     });
   }, []);
 
-  const rideQueue = useRideQueue();
+  const liveRides = useLiveRides();
 
   // ✅ Update rides from shared hook
   useEffect(() => {
     if (driver && !isLockedOut) {
-      setRides(rideQueue);
+      setRides(liveRides);
       setLoadingRides(false);
     }
-  }, [driver, isLockedOut, rideQueue]);
+  }, [driver, isLockedOut, liveRides]);
 
   const claimRide = useCallback(
     async (tripId) => {
@@ -124,7 +124,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             : Timestamp.fromDate(new Date(ride.pickupTime)),
         rideDuration: Number(ride.rideDuration),
       });
-      if (ride.id) await deleteRideFromQueue(ride.id);
+      if (ride.id) await deleteLiveRide(ride.id);
       setClaimLog((prev) => [
         ...prev,
         { tripId, time: new Date().toLocaleTimeString() },

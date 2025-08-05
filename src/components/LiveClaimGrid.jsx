@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { Box, IconButton, Snackbar, Alert, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { deleteClaimedRide, restoreRide } from "../hooks/api";
-import useClaimedRides from "../hooks/useClaimedRides";
+import { deleteLiveRide, restoreLiveRide } from "../hooks/api";
+import useLiveRides from "../hooks/useLiveRides";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { normalizeDate, normalizeTime } from "../timeUtils";
 import {
@@ -26,11 +26,11 @@ const LiveClaimGrid = () => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  const claimedRides = useClaimedRides();
+  const liveRides = useLiveRides();
 
   // ✅ Update rows from shared hook
   useEffect(() => {
-    const mapped = claimedRides.map((row) => ({
+    const mapped = liveRides.map((row) => ({
       ...row,
       TripID: row.tripId || row.TripID || row.id,
       Date: normalizeDate(row.Date),
@@ -38,7 +38,7 @@ const LiveClaimGrid = () => {
     }));
     setRows(mapped);
     setLoading(false);
-  }, [claimedRides]);
+  }, [liveRides]);
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);
@@ -48,7 +48,7 @@ const LiveClaimGrid = () => {
       prev.map((row) => (row.id === deletingId ? { ...row, fading: true } : row)),
     );
     setTimeout(async () => {
-      const res = await deleteClaimedRide(deletingId);
+      const res = await deleteLiveRide(deletingId);
       if (res.success) {
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
@@ -66,7 +66,7 @@ const LiveClaimGrid = () => {
 
   const handleUndo = async () => {
     if (!undoRow) return;
-    await restoreRide(undoRow);
+    await restoreLiveRide(undoRow);
     setUndoRow(null);
     showToast("✅ Ride restored", "success");
   };

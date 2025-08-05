@@ -46,6 +46,7 @@ import { TIMEZONE } from "../constants";
 import { addRideToQueue } from "../hooks/api";
 import useRideQueue from "../hooks/useRideQueue";
 import useClaimedRides from "../hooks/useClaimedRides";
+import useLiveRides from "../hooks/useLiveRides";
 import { Timestamp } from "firebase/firestore";
 import { callFunction } from "../api";
 import Papa from "papaparse";
@@ -171,12 +172,16 @@ export default function RideEntryForm() {
 
   const rideQueue = useRideQueue();
   const claimedRides = useClaimedRides();
+  const liveRides = useLiveRides();
 
   useEffect(() => {
     setQueueCount(rideQueue.length);
-    setLiveCount(rideQueue.length);
     setSyncTime(dayjs().format("hh:mm A"));
   }, [rideQueue]);
+
+  useEffect(() => {
+    setLiveCount(liveRides.length);
+  }, [liveRides]);
 
   useEffect(() => {
     setClaimedCount(claimedRides.length);
