@@ -29,6 +29,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
+import { useDriver } from "../context/DriverContext.jsx";
 
 const NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
@@ -76,7 +77,9 @@ const NAV_ITEMS = [
   },
 ];
 
-export default function SidebarNavigation({ role }) {
+export default function SidebarNavigation() {
+  const { driver } = useDriver();
+  const role = driver?.access || "";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileOpen, setMobileOpen] = useState(false);

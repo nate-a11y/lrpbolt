@@ -13,29 +13,24 @@ import {
   Box,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useDriver } from "../context/DriverContext.jsx";
 
-const ChangeDriverModal = ({
-  open,
-  onClose,
-  currentDriver,
-  setDriver,
-  drivers,
-}) => {
+const ChangeDriverModal = ({ open, onClose, drivers }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-
-  const [selected, setSelected] = useState(currentDriver || "");
+  const { driver, setDriver } = useDriver();
+  const [selected, setSelected] = useState(driver?.id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setSelected(currentDriver || "");
+    setSelected(driver?.id || "");
     setIsSubmitting(false); // reset when reopened
-  }, [currentDriver, open]);
+  }, [driver, open]);
 
   const safeDriverList = useMemo(
     () =>
       Array.isArray(drivers)
-        ? [...drivers].sort((a, b) => a.localeCompare(b))
+        ? [...drivers].sort((a, b) => a.name.localeCompare(b.name))
         : [],
     [drivers],
   );
@@ -46,7 +41,8 @@ const ChangeDriverModal = ({
     if (!selected) return;
     setIsSubmitting(true);
     try {
-      setDriver(selected);
+      const newDriver = safeDriverList.find((d) => d.id === selected);
+      if (newDriver) setDriver(newDriver);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -82,9 +78,9 @@ const ChangeDriverModal = ({
             }}
             disabled={isSubmitting}
           >
-            {safeDriverList.map((name, idx) => (
-              <MenuItem key={idx} value={name}>
-                {name}
+            {safeDriverList.map((d) => (
+              <MenuItem key={d.id} value={d.id}>
+                {d.name}
               </MenuItem>
             ))}
           </Select>
