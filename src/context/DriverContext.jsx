@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged, auth, signOut } from "../firebase";
-import { getUserAccess } from "../hooks/api";
+import { onAuthStateChanged, auth, signOut, db } from "../firebase";
+import { doc, updateDoc, Timestamp } from "firebase/firestore";
 
 const DriverContext = createContext(null);
 
@@ -10,11 +10,20 @@ export const DriverProvider = ({ children }) => {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const setDriver = (data) => {
+  const setDriver = async (data) => {
     if (data) {
       localStorage.setItem("lrpDriver", JSON.stringify(data));
+      if (import.meta.env.DEV) console.log("Current driver:", data.name);
+      try {
+        await updateDoc(doc(db, "userAccess", data.id), {
+          lastActive: Timestamp.now(),
+        });
+      } catch (err) {
+        if (import.meta.env.DEV) console.error("Failed to persist driver", err);
+      }
     } else {
       localStorage.removeItem("lrpDriver");
+      if (import.meta.env.DEV) console.log("Driver cleared");
     }
     setDriverState(data);
   };
@@ -33,15 +42,8 @@ export const DriverProvider = ({ children }) => {
     setDriver(null);
   };
 
-  const login = async (firebaseUser) => {
-    const data = await getUserAccess(firebaseUser.email);
-    if (!data) throw new Error("Access denied");
-    const access = data.access?.toLowerCase() === "admin" ? "Admin" : "Driver";
-    setDriver({ id: data.id, name: data.name, email: firebaseUser.email, access });
-  };
-
   return (
-    <DriverContext.Provider value={{ driver, setDriver, login, logout }}>
+    <DriverContext.Provider value={{ driver, setDriver, logout }}>
       {children}
     </DriverContext.Provider>
   );

@@ -39,6 +39,7 @@ import useDarkMode from "./hooks/useDarkMode";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
+import { getUserAccess } from "./hooks/api";
 import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
@@ -109,7 +110,7 @@ export default function App() {
   const hasFetchedRef = useRef(false);
   const selectedDriver = driver?.name || "";
   const role = driver?.access || "";
-  const isAdmin = role === "Admin";
+  const isAdmin = role === "admin";
   const APP_VERSION = import.meta.env.VITE_APP_VERSION;
   
   const {
@@ -154,9 +155,21 @@ export default function App() {
       if (u) {
         localStorage.setItem("lrpUser", JSON.stringify(u));
         setUser(u);
-        const record = await fetchDrivers(u.email);
-        if (record) setDriver(record);
-        else {
+        const record = await getUserAccess(u.email);
+        if (record) {
+          const access = record.access?.toLowerCase() || "driver";
+          await setDriver({
+            id: record.id,
+            name: record.name,
+            email: u.email,
+            access,
+          });
+          if (import.meta.env.DEV) {
+            console.log("Authenticated:", u.email, "role:", access);
+            if (access === "admin") console.log("Admin role detected");
+          }
+          fetchDrivers();
+        } else {
           await auth.signOut();
           setDriver(null);
         }
@@ -198,9 +211,21 @@ export default function App() {
 
       setShowEliteBadge(true);
 
-      const record = await fetchDrivers(u.email);
-      if (record) setDriver(record);
-      else {
+      const record = await getUserAccess(u.email);
+      if (record) {
+        const access = record.access?.toLowerCase() || "driver";
+        await setDriver({
+          id: record.id,
+          name: record.name,
+          email: u.email,
+          access,
+        });
+        if (import.meta.env.DEV) {
+          console.log("Authenticated:", u.email, "role:", access);
+          if (access === "admin") console.log("Admin role detected");
+        }
+        fetchDrivers();
+      } else {
         showToast("Access denied", "error");
         await auth.signOut();
       }
@@ -224,9 +249,21 @@ export default function App() {
 
       setShowEliteBadge(true);
 
-      const record = await fetchDrivers(u.email);
-      if (record) setDriver(record);
-      else {
+      const record = await getUserAccess(u.email);
+      if (record) {
+        const access = record.access?.toLowerCase() || "driver";
+        await setDriver({
+          id: record.id,
+          name: record.name,
+          email: u.email,
+          access,
+        });
+        if (import.meta.env.DEV) {
+          console.log("Authenticated:", u.email, "role:", access);
+          if (access === "admin") console.log("Admin role detected");
+        }
+        fetchDrivers();
+      } else {
         showToast("Access denied", "error");
         await auth.signOut();
       }

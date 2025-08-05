@@ -42,7 +42,7 @@ const ChangeDriverModal = ({ open, onClose, drivers }) => {
     setIsSubmitting(true);
     try {
       const newDriver = safeDriverList.find((d) => d.id === selected);
-      if (newDriver) setDriver(newDriver);
+      if (newDriver) await setDriver(newDriver);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -80,7 +80,7 @@ const ChangeDriverModal = ({ open, onClose, drivers }) => {
           >
             {safeDriverList.map((d) => (
               <MenuItem key={d.id} value={d.id}>
-                {d.name}
+                {d.name} ({d.email})
               </MenuItem>
             ))}
           </Select>

@@ -97,9 +97,15 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
   const { driver } = useDriver();
   const selectedDriver = driver?.name || "";
   const role = driver?.access || "";
+  const isAdmin = role === "admin";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (import.meta.env.DEV && selectedDriver)
+      console.log("Header driver:", selectedDriver);
+  }, [selectedDriver]);
 
   return (
     <>
@@ -151,7 +157,7 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
               <Typography variant="body2">
                 <strong>Driver:</strong> {selectedDriver}
               </Typography>
-              {role === "Admin" && (
+              {isAdmin && (
                 <Tooltip title="Change Driver">
                   <IconButton
                     onClick={onChangeDriver}
@@ -188,7 +194,7 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
           >
             <List>
               {NAV_ITEMS.map((item) =>
-                item.admin && role !== "Admin" ? null : (
+                item.admin && !isAdmin ? null : (
                   <NavLink
                     key={item.path}
                     to={item.path}
@@ -224,7 +230,7 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
                 />
                 <ListItemText primary="Dark Mode" sx={{ ml: 1 }} />
               </ListItemButton>
-              {role === "Admin" && (
+              {isAdmin && (
                 <ListItemButton onClick={onChangeDriver}>
                   <ListItemIcon>
                     <LoopIcon />

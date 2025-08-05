@@ -1,24 +1,25 @@
 import { useState, useCallback } from "react";
-import { fetchUserAccess } from "./api";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
 
-  const fetchDrivers = useCallback(async (userEmail = "") => {
+  const fetchDrivers = useCallback(async () => {
     try {
-      const data = (await fetchUserAccess(true)).map((d) => ({
-        ...d,
-        access: d.access?.toLowerCase() === "admin" ? "Admin" : "Driver",
-      }));
-      setDrivers(data);
-      return (
-        data.find(
-          (d) => d.email?.toLowerCase() === userEmail.toLowerCase(),
-        ) || null
+      const q = query(
+        collection(db, "userAccess"),
+        where("access", "==", "driver"),
       );
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        access: "driver",
+      }));
+      setDrivers(list);
     } catch (err) {
       console.error("Failed to fetch drivers:", err);
-      return null;
     }
   }, []);
 
