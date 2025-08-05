@@ -34,17 +34,29 @@ export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
  */
 export async function getUserAccess(email) {
   if (!email) return null;
+  // Initialize caches on first use
   if (!getUserAccess.cache) getUserAccess.cache = new Map();
+  if (!getUserAccess.pending) getUserAccess.pending = new Map();
+
+  // Serve from cache if available
   if (getUserAccess.cache.has(email)) return getUserAccess.cache.get(email);
+  // Reuse pending request to avoid duplicate network calls
+  if (getUserAccess.pending.has(email))
+    return await getUserAccess.pending.get(email);
 
   const q = query(collection(db, "userAccess"), where("email", "==", email));
-  const snapshot = await getDocs(q);
-  const record =
-    snapshot.docs.length > 0
-      ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() }
-      : null;
-  getUserAccess.cache.set(email, record);
-  return record;
+  const fetchPromise = getDocs(q).then((snapshot) => {
+    const record =
+      snapshot.docs.length > 0
+        ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() }
+        : null;
+    getUserAccess.cache.set(email, record);
+    getUserAccess.pending.delete(email);
+    return record;
+  });
+
+  getUserAccess.pending.set(email, fetchPromise);
+  return await fetchPromise;
 }
 
 export async function fetchUserAccess(activeOnly = false) {

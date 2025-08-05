@@ -63,7 +63,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "./firebase";
-import { subscribeAuth } from "./utils/listenerRegistry";
+import { subscribeAuth, clearAllListeners } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
@@ -124,6 +124,8 @@ export default function App() {
     try {
       hadUserRef.current = false;
       await auth.signOut();
+      // Tear down any shared listeners to prevent duplicate subscriptions
+      clearAllListeners();
       setDriver(null);
       localStorage.clear();
       sessionStorage.clear();

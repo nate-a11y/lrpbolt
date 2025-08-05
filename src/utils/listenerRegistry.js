@@ -55,3 +55,19 @@ export function subscribeFirestore(key, queryRef, callback) {
     }
   };
 }
+
+// Remove all active listeners. Useful on global sign-out to ensure
+// no dangling network connections remain.
+export function clearAllListeners() {
+  // Auth listener
+  authCallbacks.clear();
+  if (authUnsubscribe) {
+    authUnsubscribe();
+    authUnsubscribe = null;
+  }
+  currentUser = null;
+
+  // Firestore listeners
+  fsRegistry.forEach(({ unsubscribe }) => unsubscribe());
+  fsRegistry.clear();
+}
