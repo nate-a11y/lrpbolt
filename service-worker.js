@@ -6,6 +6,13 @@ import { clientsClaim } from "workbox-core";
 // Manifest injected at build time
 const manifest = self.__WB_MANIFEST;
 
+// Remove duplicate manifest.webmanifest entry to avoid cache conflicts
+const filteredManifest = manifest.filter((entry, index, selfArr) =>
+  index === selfArr.findIndex(e => e.url.split('?')[0] === entry.url.split('?')[0])
+);
+
+precacheAndRoute(filteredManifest);
+
 // Log any failed precache fetches to help diagnose missing chunks
 self.addEventListener("install", (event) => {
   event.waitUntil(
