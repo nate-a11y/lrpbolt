@@ -92,7 +92,7 @@ const isInLockoutWindow = () => {
 export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
-  const { drivers, fetchDrivers } = useDrivers();
+  const { fetchDrivers } = useDrivers();
   const [user, setUser] = useState(
     () => JSON.parse(localStorage.getItem("lrpUser")) || null,
   );
@@ -537,7 +537,6 @@ export default function App() {
               <ChangeDriverModal
                 open={changeDriverOpen}
                 onClose={() => setChangeDriverOpen(false)}
-                drivers={drivers}
               />
             )}
 
