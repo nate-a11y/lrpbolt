@@ -3,7 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { Card, TextField, Button, Snackbar, Alert, Typography, Stack } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  where,
+  limit,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { useDriver } from "../context/DriverContext.jsx";
 import { createUser, updateUser } from "../utils/firestoreService.js";
@@ -22,9 +29,20 @@ export default function AdminUserManager() {
 
   // 🔄 Subscribe to Firestore
   useEffect(() => {
-    const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
+    const q = query(
+      collection(db, "userAccess"),
+      where("active", "==", true),
+      where("access", "in", ["admin", "driver"]),
+      orderBy("name", "asc"),
+      limit(100),
+    );
+    if (process.env.NODE_ENV === "development") {
+      console.log("Subscribed to userAccess");
+    }
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((d) => d.access?.toLowerCase() !== "user" && d.active !== false);
       setRows(data);
     });
     return () => unsubscribe();

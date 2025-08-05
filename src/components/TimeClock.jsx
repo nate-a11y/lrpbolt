@@ -78,12 +78,9 @@ const TimeClock = ({ driver, setIsTracking }) => {
   // ✅ Subscribe to time logs
   useEffect(() => {
     const unsubscribe = subscribeTimeLogs((logs) => {
-      const filtered = driver
-        ? logs.filter((log) => log.driver === driver)
-        : logs;
-      setPreviousSessions(filtered);
+      setPreviousSessions(logs);
       setIsRefreshing(false);
-    });
+    }, driver);
     return () => unsubscribe();
   }, [driver]);
 

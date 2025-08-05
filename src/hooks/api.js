@@ -11,6 +11,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   Timestamp,
 } from "firebase/firestore";
 import { db, functions } from "../firebase";
@@ -51,6 +52,9 @@ export async function fetchUserAccess(activeOnly = false) {
 
 export function subscribeUserAccess(callback) {
   const q = query(collection(db, "userAccess"), orderBy("name", "asc"));
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to userAccess");
+  }
   return onSnapshot(q, (snapshot) => {
     const data = snapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -73,6 +77,9 @@ export function subscribeRideQueue(
     where("pickupTime", ">=", fromTime),
     orderBy("pickupTime", "asc"),
   );
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to rideQueue");
+  }
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
@@ -127,6 +134,9 @@ export function subscribeClaimedRides(
     where("pickupTime", ">=", fromTime),
     orderBy("pickupTime", "asc"),
   );
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to claimedRides");
+  }
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
@@ -176,10 +186,17 @@ export async function logClaim(claimData) {
   return await addDoc(collection(db, "claimLog"), data);
 }
 
-export function subscribeClaimLog(callback) {
-  const q = query(collection(db, "claimLog"), orderBy("timestamp", "desc"));
+export function subscribeClaimLog(callback, max = 100) {
+  const q = query(
+    collection(db, "claimLog"),
+    orderBy("timestamp", "desc"),
+    limit(max),
+  );
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to claimLog");
+  }
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
 }
 
@@ -203,6 +220,9 @@ export function subscribeTickets(
   }
   constraints.push(orderBy("pickupTime", "asc"));
   const q = query(collection(db, "tickets"), ...constraints);
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to tickets");
+  }
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
@@ -314,8 +334,15 @@ export async function emailTicket(ticketId, email, attachment) {
  * TIME LOGS
  * -----------------------------
  */
-export function subscribeTimeLogs(callback) {
-  const q = query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+export function subscribeTimeLogs(callback, driver, max = 100) {
+  const constraints = [orderBy("loggedAt", "desc"), limit(max)];
+  if (driver) constraints.push(where("driver", "==", driver));
+  const q = query(collection(db, "timeLogs"), ...constraints);
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `Subscribed to timeLogs${driver ? ` for ${driver}` : ""}`,
+    );
+  }
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
@@ -451,11 +478,18 @@ export async function endShootoutSession(sessionId, data) {
   return await updateDoc(ref, payload);
 }
 
-export function subscribeShootoutHistory(callback, status) {
+export function subscribeShootoutHistory(callback, status, max = 100) {
   const constraints = status
-    ? [where("status", "==", status), orderBy("startTime", "desc")]
-    : [orderBy("startTime", "desc")];
+    ? [
+        where("status", "==", status),
+        orderBy("startTime", "desc"),
+        limit(max),
+      ]
+    : [orderBy("startTime", "desc"), limit(max)];
   const q = query(collection(db, "shootoutStats"), ...constraints);
+  if (process.env.NODE_ENV === "development") {
+    console.log("Subscribed to shootoutStats");
+  }
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   });
