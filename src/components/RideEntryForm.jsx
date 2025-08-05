@@ -47,8 +47,7 @@ import { addRideToQueue } from "../hooks/api";
 import useRideQueue from "../hooks/useRideQueue";
 import useClaimedRides from "../hooks/useClaimedRides";
 import { Timestamp } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../firebase";
+import { callFunction } from "../api";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -235,8 +234,7 @@ export default function RideEntryForm() {
   const handleDropDailyRides = useCallback(async () => {
     setRefreshing(true);
     try {
-      const callable = httpsCallable(functions, "dropDailyRidesNow");
-      const { data } = await callable();
+      const data = await callFunction("dropDailyRidesNow");
       setToast({
         open: true,
         message: `${data.message}: ${data.imported} imported (${data.total} total)`,
@@ -991,6 +989,7 @@ export default function RideEntryForm() {
               <span>
                 <Button
                   onClick={handleDropDailyRides}
+                  disabled={refreshing}
                   variant="outlined"
                   color="secondary"
                   startIcon={

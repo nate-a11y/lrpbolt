@@ -44,6 +44,7 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import Papa from "papaparse";
 import { useTheme } from "@mui/material/styles";
+import { apiFetch } from "../api";
 
 dayjs.extend(isoWeek);
 
@@ -120,9 +121,10 @@ export default function AdminTimeLog() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(SHEET_CSV_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
+      const text = await apiFetch(SHEET_CSV_URL, {
+        responseType: "text",
+        retries: 1,
+      });
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -165,8 +167,6 @@ export default function AdminTimeLog() {
           } catch (err) {
             console.error(err);
             setError("Failed to process data.");
-          } finally {
-            setLoading(false);
           }
         },
       });
@@ -175,6 +175,7 @@ export default function AdminTimeLog() {
       setRows([]);
       setIssues([]);
       setError("Failed to load data. Please try again later.");
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -414,6 +415,7 @@ export default function AdminTimeLog() {
                 <Tooltip title="Reload Data">
                   <IconButton
                     onClick={loadData}
+                    disabled={loading}
                     sx={{
                       animation: loading ? "spin 2s linear infinite" : "none",
                       "@keyframes spin": {
@@ -534,6 +536,7 @@ export default function AdminTimeLog() {
               <Tooltip title="Reload Data">
                 <IconButton
                   onClick={loadData}
+                  disabled={loading}
                   sx={{
                     animation: loading ? "spin 2s linear infinite" : "none",
                     "@keyframes spin": {
@@ -647,6 +650,7 @@ export default function AdminTimeLog() {
               <Tooltip title="Reload Data">
                 <IconButton
                   onClick={loadData}
+                  disabled={loading}
                   sx={{
                     animation: loading ? "spin 2s linear infinite" : "none",
                     "@keyframes spin": {
