@@ -115,7 +115,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const isFullyReady = isAppReady && !!selectedDriver;
   const hasFetchedRef = useRef(false);
-
+  const APP_VERSION = import.meta.env.VITE_APP_VERSION;
+  
   const {
     showOffline,
     retry: retryConnection,
@@ -562,20 +563,23 @@ export default function App() {
                   textAlign: "center",
                 }}
               >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: "success.main",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
-                >
-                  🚀 Version:{" "}
-                  <span style={{ fontFamily: "monospace" }}>v2.6.5</span> • Lake
-                  Ride Pros © {new Date().getFullYear()}
-                </Typography>
+<Typography
+  variant="caption"
+  sx={{
+    color: "success.main",
+    fontWeight: "bold",
+    display: "flex",
+    alignItems: "center",
+    gap: 1,
+  }}
+>
+  🚀 Version:{" "}
+  <span style={{ fontFamily: "monospace" }}>
+    v{import.meta.env.VITE_APP_VERSION || "dev"}
+  </span>{" "}
+  • Lake Ride Pros © {new Date().getFullYear()}
+</Typography>
+
 
                 <Button
                   size="small"
