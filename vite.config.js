@@ -16,6 +16,20 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // Deduplicate entries like manifest.webmanifest that may be injected twice
+        manifestTransforms: [
+          (entries) => {
+            const seen = new Set();
+            const manifest = entries.filter((e) => {
+              const url = e.url.split("?")[0];
+              if (seen.has(url)) return false;
+              e.url = url;
+              seen.add(url);
+              return true;
+            });
+            return { manifest };
+          },
+        ],
       },
     }),
   ],

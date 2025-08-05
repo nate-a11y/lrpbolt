@@ -62,8 +62,8 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  onAuthStateChanged,
 } from "./firebase";
+import { subscribeAuth } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
@@ -152,7 +152,7 @@ export default function App() {
   }, [showToast, setDriver]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const unsubscribe = subscribeAuth(async (u) => {
       if (!hasFetchedRef.current) hasFetchedRef.current = true;
       if (u) {
         localStorage.setItem("lrpUser", JSON.stringify(u));
