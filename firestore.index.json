@@ -1,0 +1,80 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "rideQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pickupTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "claimedRides",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pickupTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "claimLog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pickupTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "driverRotation",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "priority", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timeLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "loggedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shootoutStats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "startTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userAccess",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "email", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "rideQueue",
+      "fieldPath": "rideNotes",
+      "indexes": [
+        {
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "claimedRides",
+      "fieldPath": "rideNotes",
+      "indexes": [
+        {
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
+}
