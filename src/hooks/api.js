@@ -70,7 +70,11 @@ export async function updateRideInQueue(rideId, updates) {
   const ref = doc(db, "rideQueue", rideId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error(`Ride ${rideId} not found`);
-  return await updateDoc(ref, updates);
+  const data = { ...updates };
+  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.claimedAt) data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
+  if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
+  return await updateDoc(ref, data);
 }
 
 export async function deleteRideFromQueue(rideId) {
@@ -99,7 +103,11 @@ export async function claimRide(rideData) {
 }
 
 export async function updateClaimedRide(rideId, updates) {
-  return await updateDoc(doc(db, "claimedRides", rideId), updates);
+  const data = { ...updates };
+  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.claimedAt) data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
+  if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
+  return await updateDoc(doc(db, "claimedRides", rideId), data);
 }
 
 export async function deleteClaimedRide(rideId) {
@@ -112,7 +120,10 @@ export async function deleteClaimedRide(rideId) {
  * -----------------------------
  */
 export async function logClaim(claimData) {
-  return await addDoc(collection(db, "claimLog"), claimData);
+  return await addDoc(collection(db, "claimLog"), {
+    ...claimData,
+    timestamp: Timestamp.fromDate(new Date(claimData.timestamp || Date.now())),
+  });
 }
 
 export function subscribeClaimLog(callback) {
@@ -158,7 +169,13 @@ export async function addTicket(ticketData) {
 }
 
 export async function updateTicket(ticketId, updates) {
-  return await updateDoc(doc(db, "tickets", ticketId), updates);
+  const data = { ...updates };
+  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.scannedOutboundAt) data.scannedOutboundAt = Timestamp.fromDate(new Date(data.scannedOutboundAt));
+  if (data.scannedReturnAt) data.scannedReturnAt = Timestamp.fromDate(new Date(data.scannedReturnAt));
+  if (data.createdAt) data.createdAt = Timestamp.fromDate(new Date(data.createdAt));
+  if (data.passengercount) data.passengercount = Number(data.passengercount);
+  return await updateDoc(doc(db, "tickets", ticketId), data);
 }
 
 export async function deleteTicket(ticketId) {
@@ -296,7 +313,11 @@ export async function restoreRide(rideData) {
 export async function updateRide(TripID, updates, sheet = "RideQueue") {
   const collectionName = sheet === "RideQueue" ? "rideQueue" : "claimedRides";
   const ref = doc(db, collectionName, TripID);
-  await updateDoc(ref, updates);
+  const data = { ...updates };
+  if (data.pickupTime) data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
+  if (data.claimedAt) data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
+  if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
+  await updateDoc(ref, data);
   return { success: true };
 }
 
