@@ -40,8 +40,9 @@ const ClaimedRidesGrid = () => {
   useEffect(() => {
     const unsubscribe = subscribeClaimedRides((data) => {
       const claimed = data.map((r) => ({
-        TripID: r.TripID,
-        ClaimedBy: r.ClaimedBy,
+        id: r.id,
+        TripID: r.tripId || r.TripID,
+        ClaimedBy: r.claimedBy || r.ClaimedBy,
         ClaimedAt: r.claimedAt
           ? r.claimedAt.toDate().toLocaleString()
           : r.ClaimedAt || "N/A",
@@ -54,16 +55,16 @@ const ClaimedRidesGrid = () => {
   }, []);
 
   const handleDelete = async () => {
-    if (!selectedRow?.TripID) return;
+    if (!selectedRow?.id) return;
     setLoading(true);
     setUndoBuffer([selectedRow]);
     setRows((prev) =>
       prev.map((row) =>
-        row.TripID === selectedRow.TripID ? { ...row, fading: true } : row,
+        row.id === selectedRow.id ? { ...row, fading: true } : row,
       ),
     );
     setTimeout(async () => {
-      const res = await deleteClaimedRide(selectedRow.TripID);
+      const res = await deleteClaimedRide(selectedRow.id);
       if (res.success) {
         showToast("🗑️ Ride deleted", "info");
       } else {
@@ -76,11 +77,11 @@ const ClaimedRidesGrid = () => {
 
   const handleBulkDelete = async () => {
     setLoading(true);
-    const toDelete = rows.filter((row) => selectedRows.includes(row.TripID));
+    const toDelete = rows.filter((row) => selectedRows.includes(row.id));
     setUndoBuffer(toDelete);
     setRows((prev) =>
       prev.map((row) =>
-        selectedRows.includes(row.TripID) ? { ...row, fading: true } : row,
+        selectedRows.includes(row.id) ? { ...row, fading: true } : row,
       ),
     );
     setTimeout(async () => {
@@ -194,7 +195,6 @@ const ClaimedRidesGrid = () => {
       </Box>
 
       <DataGrid
-        getRowId={(row) => row.TripID}
         rows={rows}
         columns={columns}
         autoHeight
@@ -202,8 +202,7 @@ const ClaimedRidesGrid = () => {
         disableRowSelectionOnClick
         getRowClassName={(params) => (params.row.fading ? "fade-out" : "")}
         onRowSelectionModelChange={(model) => {
-          const selected = Array.from(model.ids);
-          setSelectedRows(selected);
+          setSelectedRows(model);
         }}
         loading={loading}
         sx={{ bgcolor: "background.paper" }}
