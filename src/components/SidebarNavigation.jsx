@@ -80,6 +80,7 @@ const NAV_ITEMS = [
 export default function SidebarNavigation() {
   const { driver } = useDriver();
   const role = driver?.access || "";
+  const isAdmin = role === "admin";
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -90,7 +91,7 @@ export default function SidebarNavigation() {
       <Divider />
       <List>
         {NAV_ITEMS.map((item) => {
-          if (item.admin && role !== "Admin") return null;
+          if (item.admin && !isAdmin) return null;
           return (
             <NavLink
               key={item.path}

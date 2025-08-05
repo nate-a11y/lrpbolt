@@ -4,14 +4,13 @@ import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim } from "workbox-core";
 
 // Manifest injected at build time
-const manifest = self.__WB_MANIFEST;
+// Remove duplicate entries (strip query params before comparison)
+const manifest = self.__WB_MANIFEST.filter((entry, index, arr) => {
+  const url = entry.url.split("?")[0];
+  return index === arr.findIndex((e) => e.url.split("?")[0] === url);
+});
 
-// Remove duplicate manifest.webmanifest entry to avoid cache conflicts
-const filteredManifest = manifest.filter((entry, index, selfArr) =>
-  index === selfArr.findIndex(e => e.url.split('?')[0] === entry.url.split('?')[0])
-);
-
-precacheAndRoute(filteredManifest);
+precacheAndRoute(manifest);
 
 // Log any failed precache fetches to help diagnose missing chunks
 self.addEventListener("install", (event) => {
@@ -35,7 +34,7 @@ cleanupOutdatedCaches();
 self.skipWaiting();
 clientsClaim();
 
-// Runtime cache for built assets
+// Runtime cache for built assets with CacheFirst and fallback
 registerRoute(
   ({ url }) => url.pathname.startsWith("/assets/"),
   async (options) => {
@@ -49,21 +48,4 @@ registerRoute(
       );
     }
   },
-);
-
-// Cache manifest.webmanifest and serve cached version if network fails
-registerRoute(
-  ({ url }) => url.pathname.endsWith("manifest.webmanifest"),
-  new StaleWhileRevalidate({
-    cacheName: "manifest-cache",
-    plugins: [
-      {
-        handlerDidError: async () => {
-          const cache = await caches.open("manifest-cache");
-          const cached = await cache.match("manifest.webmanifest");
-          return cached || Response.error();
-        },
-      },
-    ],
-  }),
 );

@@ -22,7 +22,7 @@ const DriverSelector = ({
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const isAdmin = role === "Admin";
+  const isAdmin = role === "admin";
 
   const handleChange = useCallback(
     (e) => {

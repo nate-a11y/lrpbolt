@@ -1,16 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminUserManager.jsx
 import React, { useEffect, useState } from "react";
-import {
-  Card,
-  TextField,
-  Button,
-  Snackbar,
-  Alert,
-  Typography,
-  Stack,
-  CircularProgress,
-} from "@mui/material";
+import { Card, TextField, Button, Snackbar, Alert, Typography, Stack } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   collection,
@@ -24,11 +15,11 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { getUserAccess } from "../hooks/api"; // server-verified role
+import { useDriver } from "../context/DriverContext.jsx";
 
 export default function AdminUserManager() {
-  const [role, setRole] = useState(null); // server verified
-  const [loadingRole, setLoadingRole] = useState(true);
+  const { driver } = useDriver();
+  const role = driver?.access || "user";
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
   const [snackbar, setSnackbar] = useState({
@@ -36,20 +27,6 @@ export default function AdminUserManager() {
     message: "",
     severity: "success",
   });
-
-  // 🔑 Load role from server (no localStorage spoofing)
-  useEffect(() => {
-    const email = localStorage.getItem("lrpEmail");
-    if (!email) {
-      setRole("user");
-      setLoadingRole(false);
-      return;
-    }
-    getUserAccess(email).then((res) => {
-      setRole(res?.access || "user");
-      setLoadingRole(false);
-    });
-  }, []);
 
   // 🔄 Subscribe to Firestore
   useEffect(() => {
@@ -144,11 +121,7 @@ for (const user of validUsers) {
     },
   ];
 
-  if (loadingRole) {
-    return <CircularProgress />;
-  }
-
-  if (role !== "Admin") {
+  if (role !== "admin") {
     return <Typography>🚫 Admin access required</Typography>;
   }
 
