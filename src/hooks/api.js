@@ -291,3 +291,31 @@ export async function fetchTickets() {
   const snapshot = await getDocs(collection(db, "tickets"));
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
+
+// ---- Shootout Stats ----
+export async function startShootoutSession(data) {
+  return await addDoc(collection(db, "shootoutStats"), {
+    ...data,
+    startTime: Timestamp.fromDate(new Date(data.startTime)),
+    createdAt: Timestamp.fromDate(new Date()),
+    status: "running"
+  });
+}
+
+export async function endShootoutSession(sessionId, data) {
+  const ref = doc(db, "shootoutStats", sessionId);
+  return await updateDoc(ref, {
+    endTime: Timestamp.fromDate(new Date(data.endTime)),
+    duration: data.duration,
+    trips: data.trips,
+    passengers: data.passengers,
+    status: "completed"
+  });
+}
+
+export function subscribeShootoutHistory(callback) {
+  const q = query(collection(db, "shootoutStats"), orderBy("startTime", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
+}
