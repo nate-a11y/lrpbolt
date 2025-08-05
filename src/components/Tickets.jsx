@@ -58,7 +58,11 @@ export default function Tickets() {
   const [deletingId, setDeletingId] = useState(null);
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [rowSelectionModel, setRowSelectionModel] = useState({
+    type: "include",
+    ids: new Set(),
+  });
+  const selectedIds = Array.from(rowSelectionModel.ids);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
@@ -474,8 +478,8 @@ export default function Tickets() {
           pageSizeOptions={[5, 10, 25, 100]}
           density="compact"
           disableRowSelectionOnClick
-          onRowSelectionModelChange={(ids) => setSelectedIds(ids)}
-          rowSelectionModel={selectedIds}
+          onRowSelectionModelChange={(model) => setRowSelectionModel(model)}
+          rowSelectionModel={rowSelectionModel}
           sx={{
             "& .MuiDataGrid-row:nth-of-type(odd)": {
               backgroundColor: "rgba(255,255,255,0.04)",
