@@ -42,6 +42,7 @@ import {
   formatTime,
 } from "../timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
+import { auth } from "../firebase";
 
 export default function TicketScanner() {
   const [ticket, setTicket] = useState(null);
@@ -274,10 +275,11 @@ export default function TicketScanner() {
       return;
     }
 
+    const driver = auth.currentUser?.email || "Unknown";
     const result = await updateTicketScan(
       ticket.ticketId,
       scanType,
-      localStorage.getItem("lrp_driver") || "Unknown",
+      driver,
     );
     if (result.success) {
       setTicket((prev) => ({
@@ -285,12 +287,11 @@ export default function TicketScanner() {
         ...(scanType === "outbound"
           ? {
               scannedOutbound: true,
-              scannedOutboundBy:
-                localStorage.getItem("lrp_driver") || "Unknown",
+              scannedOutboundBy: driver,
             }
           : {
               scannedReturn: true,
-              scannedReturnBy: localStorage.getItem("lrp_driver") || "Unknown",
+              scannedReturnBy: driver,
             }),
       }));
       setShowSuccess(true);
