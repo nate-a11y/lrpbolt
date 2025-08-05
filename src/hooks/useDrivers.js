@@ -1,20 +1,20 @@
 import { useState, useCallback } from "react";
-import { BASE_URL } from "./api";
-import { fetchWithCache } from "../utils/cache";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
 
   const fetchDrivers = useCallback(async (userEmail = "") => {
     try {
-      const data = await fetchWithCache(
-        "lrp_driverList",
-        `${BASE_URL}?type=driverEmails`,
-      );
+      const snapshot = await getDocs(collection(db, "driverRotation"));
+      const data = snapshot.docs.map(doc => doc.data());
+
       const names = data.map((d) => d.name);
       setDrivers(names);
+
       const match = data.find(
-        (d) => d.email?.toLowerCase() === userEmail.toLowerCase(),
+        (d) => d.email?.toLowerCase() === userEmail.toLowerCase()
       );
       return match?.name || userEmail || "";
     } catch (err) {
