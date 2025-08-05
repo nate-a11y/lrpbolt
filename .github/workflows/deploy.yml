@@ -29,6 +29,12 @@ jobs:
           echo "VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}" >> .env
           echo "VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}" >> .env
 
+      - name: Set build version
+        run: |
+          VERSION=$(date +"%Y.%m.%d")+${GITHUB_SHA::7}
+          echo "VITE_APP_VERSION=$VERSION" >> .env
+          echo "📦 Version set to $VERSION"
+
       - name: Install dependencies
         run: npm ci
 
