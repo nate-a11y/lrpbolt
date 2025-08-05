@@ -15,13 +15,13 @@ import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
   authDomain: "lrp---claim-portal.firebaseapp.com",
   projectId: "lrp---claim-portal",
   storageBucket: "lrp---claim-portal.firebasestorage.app",
   messagingSenderId: "799613895072",
   appId: "1:799613895072:web:1b41c28c6819198ce824c5",
-  measurementId: "G-9NM69MZN6B",
+  measurementId: "G-9NM69MZN6B"
 };
 
 // 🔌 Initialize Firebase
