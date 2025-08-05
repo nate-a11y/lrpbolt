@@ -1,7 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/TicketScanner.jsx — BEYOND GOD MODE ⚡ DOM LOCK EDITION
-import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
-import { sanitize } from '../utils/sanitize';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { sanitize } from "../utils/sanitize";
 import {
   Box,
   Typography,
@@ -16,33 +22,42 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   IconButton,
-  Tooltip
-} from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
-import FlashOffIcon from '@mui/icons-material/FlashOff';
-import PauseIcon from '@mui/icons-material/Pause';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import { keyframes } from '@mui/system';
-import { Link } from 'react-router-dom';
-import QRCode from 'react-qr-code';
-import { Html5Qrcode } from 'html5-qrcode';
-import { normalizeDate, normalizeTime, formatDate, formatTime } from '../timeUtils';
-import { fetchTicket, updateTicketScan } from '../hooks/api';
+  Tooltip,
+} from "@mui/material";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import FlashOnIcon from "@mui/icons-material/FlashOn";
+import FlashOffIcon from "@mui/icons-material/FlashOff";
+import PauseIcon from "@mui/icons-material/Pause";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import ListAltIcon from "@mui/icons-material/ListAlt";
+import { keyframes } from "@mui/system";
+import { Link } from "react-router-dom";
+import QRCode from "react-qr-code";
+import { Html5Qrcode } from "html5-qrcode";
+import {
+  normalizeDate,
+  normalizeTime,
+  formatDate,
+  formatTime,
+} from "../timeUtils";
+import { fetchTicket, updateTicketScan } from "../hooks/api";
 
 export default function TicketScanner() {
   const [ticket, setTicket] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
   const [cameraError, setCameraError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cameras, setCameras] = useState([]);
   const [currentCameraId, setCurrentCameraId] = useState(null);
   const [torchOn, setTorchOn] = useState(false);
-  const [scanType, setScanType] = useState('outbound');
+  const [scanType, setScanType] = useState("outbound");
   const [scanFeedback, setScanFeedback] = useState(null);
   const [lastScan, setLastScan] = useState(null);
   const [cameraPaused, setCameraPaused] = useState(false);
@@ -90,9 +105,10 @@ export default function TicketScanner() {
         await html5QrCodeRef.current.start(
           cameraId || { facingMode: "environment" },
           { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.333 },
-          text => handleScanRef.current?.(text)
+          (text) => handleScanRef.current?.(text),
         );
-        const capabilities = html5QrCodeRef.current.getRunningTrackCapabilities?.();
+        const capabilities =
+          html5QrCodeRef.current.getRunningTrackCapabilities?.();
         setTorchAvailable(!!capabilities?.torch);
       }
     } catch (err) {
@@ -104,8 +120,10 @@ export default function TicketScanner() {
   // 🎯 Fetch cameras first
   useEffect(() => {
     Html5Qrcode.getCameras()
-      .then(devices => {
-        const rearCamera = devices.find(d => d.label.toLowerCase().includes('back')) || devices[0];
+      .then((devices) => {
+        const rearCamera =
+          devices.find((d) => d.label.toLowerCase().includes("back")) ||
+          devices[0];
         setCameras(devices);
         setCurrentCameraId(rearCamera?.id || null);
       })
@@ -139,11 +157,21 @@ export default function TicketScanner() {
   const toggleTorch = async () => {
     if (!torchAvailable) return;
     try {
-      await html5QrCodeRef.current?.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
+      await html5QrCodeRef.current?.applyVideoConstraints({
+        advanced: [{ torch: !torchOn }],
+      });
       setTorchOn((prev) => !prev);
-      setSnackbar({ open: true, message: !torchOn ? '🔦 Torch on' : '🔦 Torch off', severity: 'info' });
+      setSnackbar({
+        open: true,
+        message: !torchOn ? "🔦 Torch on" : "🔦 Torch off",
+        severity: "info",
+      });
     } catch {
-      setSnackbar({ open: true, message: '❌ Torch not supported', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "❌ Torch not supported",
+        severity: "error",
+      });
     }
   };
 
@@ -151,50 +179,80 @@ export default function TicketScanner() {
     const scanner = html5QrCodeRef.current;
     if (!scanner) return;
     if (cameraPaused) {
-      scanner.resume().then(() => {
-        setCameraPaused(false);
-        setSnackbar({ open: true, message: '▶️ Camera resumed', severity: 'info' });
-      }).catch(() => {});
+      scanner
+        .resume()
+        .then(() => {
+          setCameraPaused(false);
+          setSnackbar({
+            open: true,
+            message: "▶️ Camera resumed",
+            severity: "info",
+          });
+        })
+        .catch(() => {});
     } else {
-      scanner.pause().then(() => {
-        setCameraPaused(true);
-        setSnackbar({ open: true, message: '⏸️ Camera paused', severity: 'info' });
-      }).catch(() => {});
+      scanner
+        .pause()
+        .then(() => {
+          setCameraPaused(true);
+          setSnackbar({
+            open: true,
+            message: "⏸️ Camera paused",
+            severity: "info",
+          });
+        })
+        .catch(() => {});
     }
   };
 
-  const handleScan = useCallback(async (text) => {
-    const ticketId = text?.split("/").pop()?.trim();
-    if (!ticketId || isScanningRef.current || cooldownRef.current === ticketId) return;
-    isScanningRef.current = true;
-    cooldownRef.current = ticketId;
+  const handleScan = useCallback(
+    async (text) => {
+      const ticketId = text?.split("/").pop()?.trim();
+      if (
+        !ticketId ||
+        isScanningRef.current ||
+        cooldownRef.current === ticketId
+      )
+        return;
+      isScanningRef.current = true;
+      cooldownRef.current = ticketId;
 
-    html5QrCodeRef.current?.pause?.().catch(() => {});
-    setLoading(true);
+      html5QrCodeRef.current?.pause?.().catch(() => {});
+      setLoading(true);
 
-    fetchTicket(ticketId)
-      .then(data => {
-        setLoading(false);
-        if (data?.ticketId) {
-          setTicket(data);
-          setModalOpen(true);
-          navigator.vibrate?.([100]);
-          setTimeout(() => cooldownRef.current = null, 3000);
-        } else {
-          setScanFeedback('error');
+      fetchTicket(ticketId)
+        .then((data) => {
+          setLoading(false);
+          if (data?.ticketId) {
+            setTicket(data);
+            setModalOpen(true);
+            navigator.vibrate?.([100]);
+            setTimeout(() => (cooldownRef.current = null), 3000);
+          } else {
+            setScanFeedback("error");
+            setTimeout(() => setScanFeedback(null), 600);
+            setSnackbar({
+              open: true,
+              message: "❌ Ticket not found",
+              severity: "error",
+            });
+            resetScanner();
+          }
+        })
+        .catch(() => {
+          setLoading(false);
+          setScanFeedback("error");
           setTimeout(() => setScanFeedback(null), 600);
-          setSnackbar({ open: true, message: '❌ Ticket not found', severity: 'error' });
+          setSnackbar({
+            open: true,
+            message: "🚨 Failed to fetch ticket",
+            severity: "error",
+          });
           resetScanner();
-        }
-      })
-      .catch(() => {
-        setLoading(false);
-        setScanFeedback('error');
-        setTimeout(() => setScanFeedback(null), 600);
-        setSnackbar({ open: true, message: '🚨 Failed to fetch ticket', severity: 'error' });
-        resetScanner();
-      });
-  }, [resetScanner]);
+        });
+    },
+    [resetScanner],
+  );
 
   useEffect(() => {
     handleScanRef.current = handleScan;
@@ -203,41 +261,66 @@ export default function TicketScanner() {
   const confirmTicket = async () => {
     if (!ticket || !scanType || confirming) return;
     setConfirming(true);
-    const alreadyScanned = scanType === 'outbound' ? ticket.scannedoutbound : ticket.scannedreturn;
+    const alreadyScanned =
+      scanType === "outbound" ? ticket.scannedoutbound : ticket.scannedreturn;
 
     if (alreadyScanned) {
-      setSnackbar({ open: true, message: `⚠️ Ticket already scanned for ${scanType}`, severity: 'warning' });
+      setSnackbar({
+        open: true,
+        message: `⚠️ Ticket already scanned for ${scanType}`,
+        severity: "warning",
+      });
       resetScanner();
       return;
     }
 
-    const result = await updateTicketScan(ticket.ticketId, scanType, new Date().toISOString(), localStorage.getItem('lrp_driver') || 'Unknown');
+    const result = await updateTicketScan(
+      ticket.ticketId,
+      scanType,
+      new Date().toISOString(),
+      localStorage.getItem("lrp_driver") || "Unknown",
+    );
     if (result.success) {
-      setTicket(prev => ({
+      setTicket((prev) => ({
         ...prev,
-        ...(scanType === 'outbound'
-          ? { scannedoutbound: true, scannedoutboundby: localStorage.getItem('lrp_driver') || 'Unknown' }
-          : { scannedreturn: true, scannedreturnby: localStorage.getItem('lrp_driver') || 'Unknown' })
+        ...(scanType === "outbound"
+          ? {
+              scannedoutbound: true,
+              scannedoutboundby:
+                localStorage.getItem("lrp_driver") || "Unknown",
+            }
+          : {
+              scannedreturn: true,
+              scannedreturnby: localStorage.getItem("lrp_driver") || "Unknown",
+            }),
       }));
       setShowSuccess(true);
-      setScanFeedback('success');
+      setScanFeedback("success");
       setTimeout(() => setScanFeedback(null), 600);
       setLastScan({ ticketId: ticket.ticketId, passenger: ticket.passenger });
-      setSnackbar({ open: true, message: `✅ ${scanType} scanned!`, severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: `✅ ${scanType} scanned!`,
+        severity: "success",
+      });
 
       setTimeout(() => {
         setModalOpen(false);
         resetScanner();
       }, 300);
     } else {
-      setSnackbar({ open: true, message: '❌ Failed to update scan', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "❌ Failed to update scan",
+        severity: "error",
+      });
       resetScanner();
     }
     setConfirming(false);
   };
 
   return (
-    <Box sx={{ maxWidth: 640, mx: 'auto', mt: 4 }}>
+    <Box sx={{ maxWidth: 640, mx: "auto", mt: 4 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         🎯 Ticket Scanner
       </Typography>
@@ -260,10 +343,14 @@ export default function TicketScanner() {
 
       {cameraError ? (
         <Alert severity="error">
-          📵 Camera not ready. <Button onClick={() => window.location.reload()}>Reload</Button>
+          📵 Camera not ready.{" "}
+          <Button onClick={() => window.location.reload()}>Reload</Button>
         </Alert>
       ) : (
-        <Paper sx={{ p: 2, mb: 2, display: 'flex', justifyContent: 'center' }} elevation={4}>
+        <Paper
+          sx={{ p: 2, mb: 2, display: "flex", justifyContent: "center" }}
+          elevation={4}
+        >
           <Box position="relative">
             <Box
               ref={qrContainerRef}
@@ -272,20 +359,28 @@ export default function TicketScanner() {
                 width: 260,
                 height: 260,
                 borderRadius: 2,
-                overflow: 'hidden',
-                border: scanFeedback === 'error' ? '2px solid red' : '2px solid transparent',
-                animation: scanFeedback === 'error' ? `${shake} 0.4s` : undefined,
-                '& > video': { width: '100%', height: '100%', objectFit: 'cover' }
+                overflow: "hidden",
+                border:
+                  scanFeedback === "error"
+                    ? "2px solid red"
+                    : "2px solid transparent",
+                animation:
+                  scanFeedback === "error" ? `${shake} 0.4s` : undefined,
+                "& > video": {
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                },
               }}
             />
-            {scanFeedback === 'success' && (
+            {scanFeedback === "success" && (
               <Box
                 sx={{
-                  position: 'absolute',
+                  position: "absolute",
                   inset: 0,
                   borderRadius: 2,
-                  bgcolor: 'rgba(76,187,23,0.4)',
-                  animation: `${flash} 0.6s ease-out`
+                  bgcolor: "rgba(76,187,23,0.4)",
+                  animation: `${flash} 0.6s ease-out`,
                 }}
               />
             )}
@@ -295,13 +390,13 @@ export default function TicketScanner() {
 
       <Box display="flex" justifyContent="center" gap={1} mb={2}>
         {torchAvailable && (
-          <Tooltip title={torchOn ? 'Torch off' : 'Torch on'}>
+          <Tooltip title={torchOn ? "Torch off" : "Torch on"}>
             <IconButton color="primary" onClick={toggleTorch}>
               {torchOn ? <FlashOffIcon /> : <FlashOnIcon />}
             </IconButton>
           </Tooltip>
         )}
-        <Tooltip title={cameraPaused ? 'Resume camera' : 'Pause camera'}>
+        <Tooltip title={cameraPaused ? "Resume camera" : "Pause camera"}>
           <IconButton color="primary" onClick={toggleCamera}>
             {cameraPaused ? <PlayArrowIcon /> : <PauseIcon />}
           </IconButton>
@@ -319,39 +414,98 @@ export default function TicketScanner() {
         </Typography>
       )}
 
-      {loading && <CircularProgress sx={{ display: 'block', mx: 'auto', mb: 2 }} />}
+      {loading && (
+        <CircularProgress sx={{ display: "block", mx: "auto", mb: 2 }} />
+      )}
 
-      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setTimeout(() => resetScanner(), 200); }}>
-        <Box sx={{ backgroundColor: 'background.paper', borderRadius: 2, p: 4, width: 360, mx: 'auto', mt: '10vh' }}>
+      <Modal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setTimeout(() => resetScanner(), 200);
+        }}
+      >
+        <Box
+          sx={{
+            backgroundColor: "background.paper",
+            borderRadius: 2,
+            p: 4,
+            width: 360,
+            mx: "auto",
+            mt: "10vh",
+          }}
+        >
           {ticket ? (
             <>
               <Box display="flex" justifyContent="center" mb={2}>
-                <QRCode value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`} size={120} />
+                <QRCode
+                  value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
+                  size={120}
+                />
               </Box>
-              <Typography variant="h6" align="center">🎟️ {ticket.ticketId}</Typography>
+              <Typography variant="h6" align="center">
+                🎟️ {ticket.ticketId}
+              </Typography>
               <Divider sx={{ mb: 2 }} />
-              <Typography><strong>Passenger:</strong> {sanitize(ticket.passenger)}</Typography>
-              <Typography><strong>Passenger Count:</strong> {sanitize(ticket.passengercount)}</Typography>
-              <Typography><strong>Date:</strong> {formatDate(ticket.date)}</Typography>
-              <Typography><strong>Time:</strong> {formatTime(ticket.time)}</Typography>
-              <Typography><strong>Pickup:</strong> {sanitize(ticket.pickup)}</Typography>
-              <Typography><strong>Dropoff:</strong> {sanitize(ticket.dropoff)}</Typography>
-              <Button fullWidth onClick={confirmTicket} sx={{ mt: 2 }} variant="contained">
+              <Typography>
+                <strong>Passenger:</strong> {sanitize(ticket.passenger)}
+              </Typography>
+              <Typography>
+                <strong>Passenger Count:</strong>{" "}
+                {sanitize(ticket.passengercount)}
+              </Typography>
+              <Typography>
+                <strong>Date:</strong> {formatDate(ticket.date)}
+              </Typography>
+              <Typography>
+                <strong>Time:</strong> {formatTime(ticket.time)}
+              </Typography>
+              <Typography>
+                <strong>Pickup:</strong> {sanitize(ticket.pickup)}
+              </Typography>
+              <Typography>
+                <strong>Dropoff:</strong> {sanitize(ticket.dropoff)}
+              </Typography>
+              <Button
+                fullWidth
+                onClick={confirmTicket}
+                sx={{ mt: 2 }}
+                variant="contained"
+              >
                 ✅ Confirm and Scan
               </Button>
             </>
-          ) : <Typography align="center">Loading ticket…</Typography>}
+          ) : (
+            <Typography align="center">Loading ticket…</Typography>
+          )}
         </Box>
       </Modal>
 
       <Fade in={showSuccess}>
-        <Box sx={{ position: 'fixed', top: 0, width: '100vw', height: '100vh', bgcolor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Typography variant="h2" color="success.main">✅ Scanned</Typography>
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            width: "100vw",
+            height: "100vh",
+            bgcolor: "rgba(0,0,0,0.85)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="h2" color="success.main">
+            ✅ Scanned
+          </Typography>
         </Box>
       </Fade>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>

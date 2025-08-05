@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from 'react';
-import { Box, Typography, Paper } from '@mui/material';
+import React from "react";
+import { Box, Typography, Paper } from "@mui/material";
 
 export default function VehicleDropTipCard({ title, tips, icon }) {
   return (
@@ -11,11 +11,15 @@ export default function VehicleDropTipCard({ title, tips, icon }) {
         mb: 2,
         borderRadius: 2,
         backgroundColor: (theme) =>
-          theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[50],
+          theme.palette.mode === "dark"
+            ? theme.palette.grey[900]
+            : theme.palette.grey[50],
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-        <Box component="span" sx={{ mr: 1 }}>{icon}</Box>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+        <Box component="span" sx={{ mr: 1 }}>
+          {icon}
+        </Box>
         <Typography variant="subtitle1" fontWeight="bold">
           {title}
         </Typography>
@@ -26,12 +30,12 @@ export default function VehicleDropTipCard({ title, tips, icon }) {
         sx={{
           pl: 3,
           m: 0,
-          listStyleType: 'disc',
-          '& li': {
+          listStyleType: "disc",
+          "& li": {
             mt: 0.5,
-            fontSize: '0.9rem',
-            color: 'text.secondary'
-          }
+            fontSize: "0.9rem",
+            color: "text.secondary",
+          },
         }}
       >
         {tips.map((tip, idx) => (
