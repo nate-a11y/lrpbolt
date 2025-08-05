@@ -43,7 +43,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import { addRideToQueue } from "../hooks/api";
+import { addRideToQueue, refreshDailyRides } from "../hooks/api";
 import useRideQueue from "../hooks/useRideQueue";
 import useClaimedRides from "../hooks/useClaimedRides";
 import { Timestamp } from "firebase/firestore";
@@ -230,15 +230,29 @@ export default function RideEntryForm() {
 
   const handleSingleChange = (e) => handleChange(e, setFormData);
 
-  const handleDropDailyRides = useCallback(() => {
+  const handleDropDailyRides = useCallback(async () => {
     setRefreshing(true);
-    setToast({
-      open: true,
-      message: "🔥 Real-time updates active",
-      severity: "info",
-    });
-    setSyncTime(dayjs().format("hh:mm A"));
-    setTimeout(() => setRefreshing(false), 500);
+    try {
+      const res = await refreshDailyRides();
+      if (res.success) {
+        setToast({
+          open: true,
+          message: `✅ Daily rides updated: ${res.imported} imported (${res.total} total)`,
+          severity: "success",
+        });
+      } else {
+        throw new Error(res.error || "Update failed");
+      }
+    } catch (err) {
+      setToast({
+        open: true,
+        message: `❌ ${err.message}`,
+        severity: "error",
+      });
+    } finally {
+      setSyncTime(dayjs().format("hh:mm A"));
+      setRefreshing(false);
+    }
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -974,7 +988,7 @@ export default function RideEntryForm() {
               <SyncIcon fontSize="small" sx={{ mr: 1 }} />
               Synced: {syncTime}
             </Typography>
-            <Tooltip title="Runs Apps Script to update daily rides (not for refreshing tables)">
+            <Tooltip title="Runs Firebase function to refresh daily rides and email admins">
               <span>
                 <Button
                   onClick={handleDropDailyRides}

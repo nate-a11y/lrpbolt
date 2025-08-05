@@ -12,6 +12,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
+import { getFunctions } from "firebase/functions";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -31,8 +32,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// ✅ Firestore setup
+// ✅ Firestore & Functions setup
 export const db = getFirestore(app); // 👈 ADD THIS
+export const functions = getFunctions(app);
 
 // 🔑 Export auth + helpers
 export {
