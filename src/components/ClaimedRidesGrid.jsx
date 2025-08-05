@@ -18,11 +18,8 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { DataGrid } from "@mui/x-data-grid";
-import {
-  subscribeClaimedRides,
-  deleteClaimedRide,
-  restoreRide,
-} from "../hooks/api";
+import { deleteClaimedRide, restoreRide } from "../hooks/api";
+import useClaimedRides from "../hooks/useClaimedRides";
 import useToast from "../hooks/useToast";
 
 const ClaimedRidesGrid = () => {
@@ -36,23 +33,22 @@ const ClaimedRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
 
-  // ✅ Real-time claimed rides subscription
+  const claimedRides = useClaimedRides();
+
+  // ✅ Update rows from shared hook
   useEffect(() => {
-    const unsubscribe = subscribeClaimedRides((data) => {
-      const claimed = data.map((r) => ({
-        id: r.id,
-        TripID: r.tripId || r.TripID,
-        ClaimedBy: r.claimedBy || r.ClaimedBy,
-        ClaimedAt: r.claimedAt
-          ? r.claimedAt.toDate().toLocaleString()
-          : r.ClaimedAt || "N/A",
-        fading: false,
-      }));
-      setRows(claimed);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    const claimed = claimedRides.map((r) => ({
+      id: r.id,
+      TripID: r.tripId || r.TripID,
+      ClaimedBy: r.claimedBy || r.ClaimedBy,
+      ClaimedAt: r.claimedAt
+        ? r.claimedAt.toDate().toLocaleString()
+        : r.ClaimedAt || "N/A",
+      fading: false,
+    }));
+    setRows(claimed);
+    setLoading(false);
+  }, [claimedRides]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;

@@ -21,10 +21,10 @@ import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { normalizeDate } from "../timeUtils";
 import {
-  subscribeRideQueue,
   claimRide as firestoreClaimRide,
   deleteRideFromQueue,
 } from "../hooks/api";
+import useRideQueue from "../hooks/useRideQueue";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -101,16 +101,15 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     });
   }, []);
 
-  // ✅ Subscribe to ride queue for live rides
+  const rideQueue = useRideQueue();
+
+  // ✅ Update rides from shared hook
   useEffect(() => {
     if (driver && !isLockedOut) {
-      const unsubscribe = subscribeRideQueue((data) => {
-        setRides(data);
-        setLoadingRides(false);
-      });
-      return () => unsubscribe();
+      setRides(rideQueue);
+      setLoadingRides(false);
     }
-  }, [driver, isLockedOut]);
+  }, [driver, isLockedOut, rideQueue]);
 
   const claimRide = useCallback(
     async (tripId) => {

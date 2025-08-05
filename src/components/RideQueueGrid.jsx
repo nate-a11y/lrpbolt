@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { Box, Snackbar, Alert, IconButton, Tooltip } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { subscribeRideQueue, deleteRideFromQueue, addRideToQueue } from "../hooks/api";
+import { deleteRideFromQueue, addRideToQueue } from "../hooks/api";
+import useRideQueue from "../hooks/useRideQueue";
 import EditableRideGrid from "../components/EditableRideGrid";
 import {
   Dialog,
@@ -22,18 +23,17 @@ const RideQueueGrid = () => {
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
-  // ✅ Real-time Firestore subscription
+  const rideQueue = useRideQueue();
+
+  // ✅ Update rows from shared hook
   useEffect(() => {
-    const unsubscribe = subscribeRideQueue((data) => {
-      const mapped = data.map((row) => ({
-        ...row,
-        TripID: row.tripId || row.TripID || row.id,
-      }));
-      setRows(mapped);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    const mapped = rideQueue.map((row) => ({
+      ...row,
+      TripID: row.tripId || row.TripID || row.id,
+    }));
+    setRows(mapped);
+    setLoading(false);
+  }, [rideQueue]);
 
   // ✅ Delete ride (Firestore)
   const confirmDeleteRide = async () => {

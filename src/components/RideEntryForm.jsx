@@ -43,11 +43,9 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import {
-  subscribeRideQueue,
-  subscribeClaimedRides,
-  addRideToQueue,
-} from "../hooks/api";
+import { addRideToQueue } from "../hooks/api";
+import useRideQueue from "../hooks/useRideQueue";
+import useClaimedRides from "../hooks/useClaimedRides";
 import { Timestamp } from "firebase/firestore";
 import Papa from "papaparse";
 import {
@@ -170,20 +168,18 @@ export default function RideEntryForm() {
     localStorage.setItem("dataTab", dataTab.toString());
   }, [dataTab]);
 
+  const rideQueue = useRideQueue();
+  const claimedRides = useClaimedRides();
+
   useEffect(() => {
-    const unsubQueue = subscribeRideQueue((data) => {
-      setQueueCount(data.length);
-      setLiveCount(data.length);
-    });
-    const unsubClaimed = subscribeClaimedRides((data) => {
-      setClaimedCount(data.length);
-    });
+    setQueueCount(rideQueue.length);
+    setLiveCount(rideQueue.length);
     setSyncTime(dayjs().format("hh:mm A"));
-    return () => {
-      unsubQueue();
-      unsubClaimed();
-    };
-  }, []); // ✅ No unnecessary dependencies
+  }, [rideQueue]);
+
+  useEffect(() => {
+    setClaimedCount(claimedRides.length);
+  }, [claimedRides]);
 
   const validateFields = useCallback((data, setErrors) => {
     const required = [
