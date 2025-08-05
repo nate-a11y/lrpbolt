@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Paper,
@@ -24,7 +24,7 @@ import StopIcon from "@mui/icons-material/Stop";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
-import { logTime, fetchTimeLogs } from "../hooks/api";
+import { logTime, subscribeTimeLogs } from "../hooks/api";
 
 const TimeClock = ({ driver, setIsTracking }) => {
   const theme = useTheme();
@@ -74,16 +74,17 @@ const TimeClock = ({ driver, setIsTracking }) => {
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
 
-  const loadSessions = useCallback(() => {
-    setIsRefreshing(true);
-    fetchTimeLogs(driver)
-      .then(setPreviousSessions)
-      .finally(() => setIsRefreshing(false));
-  }, [driver]);
-
+  // ✅ Subscribe to time logs
   useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+    const unsubscribe = subscribeTimeLogs((logs) => {
+      const filtered = driver
+        ? logs.filter((log) => log.driver === driver)
+        : logs;
+      setPreviousSessions(filtered);
+      setIsRefreshing(false);
+    });
+    return () => unsubscribe();
+  }, [driver]);
 
   const handleStart = () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {
@@ -137,7 +138,6 @@ const TimeClock = ({ driver, setIsTracking }) => {
           setIsNA(false);
           setIsMulti(false);
           setElapsedTime(0);
-          loadSessions();
         } else {
           showSnack(`❌ Failed to log time: ${data.message}`, "error");
         }
@@ -385,7 +385,11 @@ const TimeClock = ({ driver, setIsTracking }) => {
           <Button
             variant="outlined"
             size="small"
-            onClick={loadSessions}
+            onClick={() => {
+              setIsRefreshing(true);
+              showSnack("🔥 Real-time updates active", "info");
+              setTimeout(() => setIsRefreshing(false), 500);
+            }}
             startIcon={
               isRefreshing ? <CircularProgress size={16} /> : <RefreshIcon />
             }

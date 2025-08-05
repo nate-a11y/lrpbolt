@@ -40,7 +40,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { motion } from "framer-motion";
 import {
-  fetchTickets,
+  subscribeTickets,
   deleteTicket as apiDeleteTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
@@ -68,18 +68,10 @@ export default function Tickets() {
   const [emailAddress, setEmailAddress] = useState("");
   const previewRef = useRef(null);
 
-  const loadTickets = () => {
-    fetchTickets()
-      .then((data) =>
-        Array.isArray(data)
-          ? setTickets(data)
-          : console.error("Invalid data format"),
-      )
-      .catch((err) => console.error("Fetch error:", err));
-  };
-
+  // ✅ Real-time ticket subscription
   useEffect(() => {
-    loadTickets();
+    const unsubscribe = subscribeTickets((data) => setTickets(data));
+    return () => unsubscribe();
   }, []);
 
   const filteredTickets = tickets.filter((t) => {
@@ -426,7 +418,13 @@ export default function Tickets() {
         />
 
         <Button
-          onClick={loadTickets}
+          onClick={() =>
+            setSnackbar({
+              open: true,
+              message: "🔥 Real-time updates active",
+              severity: "info",
+            })
+          }
           variant="contained"
           color="primary"
           startIcon={<RefreshIcon />}
