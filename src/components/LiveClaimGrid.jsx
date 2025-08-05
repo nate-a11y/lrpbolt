@@ -24,6 +24,7 @@ const LiveClaimGrid = () => {
   const { toast, showToast, closeToast } = useToast("success");
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [deletingTripID, setDeletingTripID] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
@@ -32,8 +33,8 @@ const LiveClaimGrid = () => {
   useEffect(() => {
     const unsubscribe = subscribeClaimedRides((data) => {
       const mapped = data.map((row) => ({
-        id: row.TripID,
         ...row,
+        TripID: row.tripId || row.TripID || row.id,
         Date: normalizeDate(row.Date),
         PickupTime: normalizeTime(row.PickupTime),
       }));
@@ -45,23 +46,19 @@ const LiveClaimGrid = () => {
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);
-    const target = rows.find((r) => r.TripID === deletingTripID);
+    const target = rows.find((r) => r.id === deletingId);
     setUndoRow(target);
     setRows((prev) =>
-      prev.map((row) =>
-        row.TripID === deletingTripID ? { ...row, fading: true } : row,
-      ),
+      prev.map((row) => (row.id === deletingId ? { ...row, fading: true } : row)),
     );
     setTimeout(async () => {
-      const res = await deleteClaimedRide(deletingTripID);
+      const res = await deleteClaimedRide(deletingId);
       if (res.success) {
-        setRows((prev) => prev.filter((row) => row.TripID !== deletingTripID));
+        setRows((prev) => prev.filter((row) => row.id !== deletingId));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
       } else {
         setRows((prev) =>
-          prev.map((row) =>
-            row.TripID === deletingTripID ? { ...row, fading: false } : row,
-          ),
+          prev.map((row) => (row.id === deletingId ? { ...row, fading: false } : row)),
         );
         setUndoRow(null);
         showToast(`❌ ${res.message}`, "error");
@@ -101,8 +98,10 @@ const LiveClaimGrid = () => {
       <EditableRideGrid
         rows={rows}
         loading={loading}
-        onDelete={(TripID) => {
-          setDeletingTripID(TripID);
+        onDelete={(id) => {
+          const row = rows.find((r) => r.id === id);
+          setDeletingId(id);
+          setDeletingTripID(row?.TripID || "");
           setConfirmOpen(true);
         }}
         sheetName="Sheet1"

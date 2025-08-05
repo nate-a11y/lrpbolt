@@ -161,7 +161,7 @@ const EditableRideGrid = ({
     }
 
     try {
-      const result = await updateRide(editedRow.TripID, payload, sheetName);
+      const result = await updateRide(editedRow.id, payload, sheetName);
       if (!result.success) throw new Error(result.message || "Update failed");
 
       setSnack({
@@ -235,7 +235,7 @@ const EditableRideGrid = ({
             key="delete"
             icon={<DeleteIcon />}
             label="Delete"
-            onClick={() => onDelete(params.row.TripID)}
+            onClick={() => onDelete(params.row.id)}
           />,
         ],
       },
@@ -278,7 +278,7 @@ const EditableRideGrid = ({
 
       <Box sx={{ width: "100%", overflowX: "auto" }}>
         <DataGrid
-          getRowId={(row) => row.TripID}
+          getRowId={(row) => row.id}
           rows={rows}
           columns={columns}
           autoHeight
