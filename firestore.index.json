@@ -4,56 +4,64 @@
       "collectionGroup": "rideQueue",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "pickupTime", "order": "ASCENDING" }
+        { "fieldPath": "pickupTime", "order": "ASCENDING" },
+        { "fieldPath": "claimedBy", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "claimedRides",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "pickupTime", "order": "ASCENDING" }
+        { "fieldPath": "pickupTime", "order": "ASCENDING" },
+        { "fieldPath": "claimedBy", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "claimLog",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        { "fieldPath": "timestamp", "order": "DESCENDING" },
+        { "fieldPath": "driver", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "tickets",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "pickupTime", "order": "ASCENDING" }
+        { "fieldPath": "pickupTime", "order": "ASCENDING" },
+        { "fieldPath": "passenger", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "driverRotation",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "priority", "order": "ASCENDING" }
+        { "fieldPath": "priority", "order": "ASCENDING" },
+        { "fieldPath": "lastClaimed", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "timeLogs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "loggedAt", "order": "DESCENDING" }
+        { "fieldPath": "loggedAt", "order": "DESCENDING" },
+        { "fieldPath": "driver", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "shootoutStats",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "startTime", "order": "DESCENDING" }
+        { "fieldPath": "startTime", "order": "DESCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "userAccess",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "email", "order": "ASCENDING" }
+        { "fieldPath": "email", "order": "ASCENDING" },
+        { "fieldPath": "access", "order": "ASCENDING" }
       ]
     }
   ],
@@ -61,20 +69,17 @@
     {
       "collectionGroup": "rideQueue",
       "fieldPath": "rideNotes",
-      "indexes": [
-        {
-          "order": "ASCENDING"
-        }
-      ]
+      "indexes": []
     },
     {
       "collectionGroup": "claimedRides",
       "fieldPath": "rideNotes",
-      "indexes": [
-        {
-          "order": "ASCENDING"
-        }
-      ]
+      "indexes": []
+    },
+    {
+      "collectionGroup": "tickets",
+      "fieldPath": "notes",
+      "indexes": []
     }
   ]
 }
