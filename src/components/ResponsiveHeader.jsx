@@ -39,6 +39,7 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import AppShortcutIcon from "@mui/icons-material/AppShortcut";
 import CropFreeIcon from "@mui/icons-material/CropFree";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 const NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
@@ -64,6 +65,12 @@ const NAV_ITEMS = [
     label: "Admin Logs",
     icon: <AdminPanelSettingsIcon />,
     path: "/admin-time-log",
+    admin: true,
+  },
+  {
+    label: "User Manager",
+    icon: <ManageAccountsIcon />,
+    path: "/admin-user-manager",
     admin: true,
   },
   {
