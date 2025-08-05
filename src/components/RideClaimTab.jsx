@@ -1,12 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideClaimTab.jsx
-import React, {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box,
   Button,
@@ -26,7 +20,11 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { normalizeDate } from "../timeUtils";
-import { fetchLiveRides, claimRide as apiClaimRide } from "../hooks/api";
+import {
+  subscribeRideQueue,
+  claimRide as firestoreClaimRide,
+  deleteRideFromQueue,
+} from "../hooks/api";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -50,7 +48,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     severity: "success",
   });
   const [selectedRides, setSelectedRides] = useState(new Set());
-  const hasLoadedRef = useRef(false);
 
   const groupedRides = useMemo(() => {
     const grouped = {};
@@ -103,57 +100,38 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     });
   }, []);
 
-  const loadRides = useCallback(async () => {
-    setLoadingRides(true);
-    try {
-      const data = await fetchLiveRides();
-      const unclaimed = data.filter((r) => {
-        const claimed = (r.ClaimedBy || "").toString().trim().toLowerCase();
-        return (
-          claimed === "" ||
-          claimed === "unclaimed" ||
-          claimed === "null" ||
-          claimed === "none"
-        );
+  // ✅ Subscribe to ride queue for live rides
+  useEffect(() => {
+    if (driver && !isLockedOut) {
+      const unsubscribe = subscribeRideQueue((data) => {
+        setRides(data);
+        setLoadingRides(false);
       });
-
-      setRides(unclaimed);
-      setSelectedRides(
-        (prev) =>
-          new Set(
-            [...prev].filter((id) => unclaimed.some((r) => r.TripID === id)),
-          ),
-      );
-    } catch (err) {
-      showToast("❌ Failed to load rides. Try again later.", "error");
-    } finally {
-      setLoadingRides(false);
+      return () => unsubscribe();
     }
-  }, []);
+  }, [driver, isLockedOut]);
 
   const claimRide = useCallback(
     async (tripId) => {
-      const result = await apiClaimRide(tripId, driver);
-      if (result.success) {
-        setClaimLog((prev) => [
-          ...prev,
-          { tripId, time: new Date().toLocaleTimeString() },
-        ]);
-        hasLoadedRef.current = false;
-        loadRides();
-        return true;
-      }
-      throw new Error(result.message || "Claim failed");
+      const ride = rides.find((r) => r.TripID === tripId);
+      if (!ride) throw new Error("Ride not found");
+      await firestoreClaimRide({
+        ...ride,
+        ClaimedBy: driver,
+        pickupTime: ride.pickupTime?.toDate
+          ? ride.pickupTime.toDate()
+          : new Date(ride.pickupTime),
+        rideDuration: Number(ride.rideDuration),
+      });
+      if (ride.id) await deleteRideFromQueue(ride.id);
+      setClaimLog((prev) => [
+        ...prev,
+        { tripId, time: new Date().toLocaleTimeString() },
+      ]);
+      return true;
     },
-    [driver, loadRides],
+    [rides, driver],
   );
-
-  useEffect(() => {
-    if (driver && !isLockedOut && !hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      loadRides();
-    }
-  }, [driver, isLockedOut, loadRides]);
 
   return (
     <Box position="relative">
@@ -161,10 +139,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         <BlackoutOverlay
           isAdmin={isAdmin}
           isLocked={isLockedOut}
-          onUnlock={() => {
-            hasLoadedRef.current = false;
-            loadRides();
-          }}
+          onUnlock={() => showToast("🔥 Real-time updates active", "info")}
         />
       )}
 
@@ -232,12 +207,11 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         <Button
           variant="outlined"
           startIcon={
-            loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />
+        loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />
           }
-          onClick={() => {
-            hasLoadedRef.current = false;
-            loadRides();
-          }}
+          onClick={() =>
+            showToast("🔥 Real-time updates active", "info")
+          }
           disabled={loadingRides}
           sx={{ alignSelf: isMobile ? "stretch" : "center" }}
         >
