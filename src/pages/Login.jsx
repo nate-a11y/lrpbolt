@@ -70,7 +70,7 @@ export default function Login() {
           client_id: clientId,
           callback: handleCredentialResponse,
           auto_select: true,
-          use_fedcm_for_prompt: true,
+          useFedCM: true,
         });
         window.google.accounts.id.prompt(() => {
           console.log("[Google One Tap] Prompt displayed.");
