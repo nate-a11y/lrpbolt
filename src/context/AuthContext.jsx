@@ -14,6 +14,7 @@ import {
   signInWithCredential,
 } from "firebase/auth";
 import { auth } from "../firebase";
+import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
 
@@ -21,43 +22,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const oneTapInitRef = useRef(false);
+  const navigate = useNavigate();
 
   const handleCredentialResponse = useCallback(async ({ credential }) => {
     if (!credential) return;
     try {
-      const result = await signInWithCredential(
+      await signInWithCredential(
         auth,
         GoogleAuthProvider.credential(credential),
       );
-      console.log("[AuthProvider] One Tap login:", result.user.email);
+      navigate("/rides");
     } catch (err) {
-      console.error(
-        "[AuthProvider] One Tap error:",
-        err?.message || JSON.stringify(err),
-      );
+      console.error(err?.message || JSON.stringify(err));
     }
-  }, []);
+  }, [navigate]);
 
   const initOneTap = useCallback(() => {
     if (oneTapInitRef.current) return;
     oneTapInitRef.current = true;
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || !window.google?.accounts?.id) return;
-
+    if (!window.google?.accounts?.id) return;
     try {
       window.google.accounts.id.initialize({
-        client_id: clientId,
+        client_id:
+          "799613895072-obt66rah27n1saqfodrflt0memgn3k6p.apps.googleusercontent.com",
         callback: handleCredentialResponse,
-        auto_select: true,
         use_fedcm_for_prompt: true,
       });
       window.google.accounts.id.prompt();
     } catch (err) {
-      console.error(
-        "[AuthProvider] One Tap init failed:",
-        err?.message || JSON.stringify(err),
-      );
+      console.error(err?.message || JSON.stringify(err));
     }
   }, [handleCredentialResponse]);
 
@@ -67,25 +61,24 @@ export function AuthProvider({ children }) {
       try {
         await setPersistence(auth, browserLocalPersistence);
       } catch (err) {
-        console.error(
-          "[AuthProvider] Persistence error:",
-          err?.message || JSON.stringify(err),
-        );
+        console.error(err?.message || JSON.stringify(err));
       }
 
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        console.log(
-          "[AuthProvider] Auth state:",
-          currentUser?.email || "No user",
-        );
+        if (currentUser) {
+          console.log(`Authenticated as: ${currentUser.email}`);
+          navigate("/rides");
+        } else {
+          console.log("No user");
+          initOneTap();
+        }
         setUser(currentUser);
         setLoading(false);
-        if (!currentUser) initOneTap();
       });
     })();
 
     return () => unsubscribe();
-  }, [initOneTap]);
+  }, [initOneTap, navigate]);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>

@@ -5,8 +5,8 @@ import { getUserAccess } from "./api";
 import { useAuth } from "../context/AuthContext.jsx";
 
 /**
- * Redirects unauthenticated users or users without the required role to
- * "/login".
+ * Redirects unauthenticated users to "/login" and users without the
+ * required role to "/rides".
  * @param {string} [requiredRole]
  */
 export default function useAuthGuard(requiredRole) {
@@ -30,16 +30,14 @@ export default function useAuthGuard(requiredRole) {
       .then((access) => {
         if (cancelled) return;
         if (!access || access.access !== requiredRole) {
-          if (location.pathname !== "/login") navigate("/login", { replace: true });
+          if (location.pathname !== "/rides")
+            navigate("/rides", { replace: true });
         }
       })
       .catch((err) => {
         if (cancelled) return;
-        console.error(
-          "[AuthGuard] access check failed:",
-          err?.message || JSON.stringify(err),
-        );
-        if (location.pathname !== "/login") navigate("/login", { replace: true });
+        console.error(err?.message || JSON.stringify(err));
+        if (location.pathname !== "/rides") navigate("/rides", { replace: true });
       });
 
     return () => {
