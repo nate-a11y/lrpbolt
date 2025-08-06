@@ -1,5 +1,4 @@
 // vite.config.js
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -13,13 +12,13 @@ export default defineConfig({
       injectRegister: "auto",
       workbox: {
         cleanupOutdatedCaches: true,
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest,json}"],
       },
-      strategies: "injectManifest",
-      srcDir: ".",
+      strategy: "injectManifest",
+      srcDir: ".", // ✅ root since SW is in project root
       filename: "service-worker.js",
       devOptions: {
-        enabled: false,
+        enabled: true,
       },
     }),
   ],
@@ -28,7 +27,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
       timeUtils: path.resolve(__dirname, "src/utils/timeUtils.js"),
     },
-    extensions: [".js", ".jsx"], // ✅ Ensures JSX is always resolved to JS at build
+    extensions: [".js", ".jsx"],
   },
   build: {
     outDir: "dist",
@@ -36,16 +35,19 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, "index.html"), // ✅ Ensures correct HTML entry
+        main: path.resolve(__dirname, "index.html"),
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash][extname]",
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'service-worker.js') return '[name].[ext]';
+          return 'assets/[name]-[hash][extname]';
+        },
       },
     },
   },
-  base: "./", // ✅ Relative paths (prevents absolute path issues on Hostinger)
+  base: "./",
   optimizeDeps: {
     include: [
       "@mui/material",
