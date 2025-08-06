@@ -223,26 +223,17 @@ export default function App() {
         client_id: clientId,
         callback: async (response) => {
           if (!response || !response.credential) {
-            console.error(
-              "🚨 No credential received from Google One Tap:",
-              response,
-            );
+            console.error("🚨 One Tap returned no credential", response);
             return;
           }
-
           try {
             const credential = GoogleAuthProvider.credential(
               response.credential,
             );
-            const result = await signInWithCredential(auth, credential);
-            console.log("✅ One Tap Login Successful:", result.user.email);
-            // Optionally redirect or update UI
-          } catch (error) {
-            console.error("❌ Firebase signInWithCredential failed.");
-            console.error("Full error:", error);
-            if (error?.message) console.error("Error message:", error.message);
-            if (typeof error !== "object")
-              console.warn("Error was not an object:", error);
+            await signInWithCredential(auth, credential);
+          } catch (err) {
+            console.error("🚨 Firebase sign-in failed", err);
+            if (err && err.message) console.error("Error message:", err.message);
           }
         },
         auto_select: true,
