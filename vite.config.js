@@ -10,6 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: "auto",
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest}"],
@@ -17,7 +18,6 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: ".",
       filename: "service-worker.js",
-      injectRegister: "script",
       devOptions: {
         enabled: false,
       },
