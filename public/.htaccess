@@ -13,11 +13,10 @@ AddType image/webp .webp
 RewriteEngine On
 RewriteBase /
 
-# Allow service worker files to bypass SPA fallback
-RewriteRule ^(service-worker\.js|registerSW\.js)$ - [L]
-
-# Allow Firebase Auth redirect handler to bypass SPA fallback
-RewriteRule ^__/auth/handler$ - [L]
+# Exclude service worker files from SPA fallback
+RewriteCond %{REQUEST_URI} !^/registerSW\.js$
+RewriteCond %{REQUEST_URI} !^/service-worker\.js$
+RewriteCond %{REQUEST_URI} !^/__/auth/handler$
 
 # Don't rewrite actual files or directories
 RewriteCond %{REQUEST_FILENAME} !-f
