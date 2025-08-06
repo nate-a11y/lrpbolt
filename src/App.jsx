@@ -39,6 +39,7 @@ import useDarkMode from "./hooks/useDarkMode";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
 import { getUserAccess } from "./hooks/api";
 import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
@@ -63,7 +64,7 @@ import {
   createUserWithEmailAndPassword,
   browserPopupRedirectResolver,
 } from "firebase/auth";
-import { subscribeAuth, unsubscribeAll } from "./utils/listenerRegistry";
+import { unsubscribeAll } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
@@ -94,9 +95,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
-  const [user, setUser] = useState(
-    () => JSON.parse(localStorage.getItem("lrpUser")) || null,
-  );
+  const { user, setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -162,23 +161,21 @@ export default function App() {
   }, [showToast, setDriver]);
 
   useEffect(() => {
-    const unsubscribe = subscribeAuth(async (u) => {
-      if (!hasFetchedRef.current) hasFetchedRef.current = true;
-      if (u) {
-        localStorage.setItem("lrpUser", JSON.stringify(u));
-        setUser(u);
-        hadUserRef.current = true;
-        const record = await getUserAccess(u.email);
+    if (!hasFetchedRef.current) hasFetchedRef.current = true;
+    if (user) {
+      hadUserRef.current = true;
+      (async () => {
+        const record = await getUserAccess(user.email);
         if (record) {
           const access = record.access?.toLowerCase() || "driver";
           await setDriver({
             id: record.id,
             name: record.name,
-            email: u.email,
+            email: user.email,
             access,
           });
           if (import.meta.env.DEV) {
-            console.log("Authenticated:", u.email, "role:", access);
+            console.log("Authenticated:", user.email, "role:", access);
             if (access === "admin") console.log("Admin role detected");
           }
           fetchDrivers();
@@ -187,18 +184,15 @@ export default function App() {
           setDriver(null);
         }
         setTimeout(() => setIsAppReady(true), 50);
-      } else {
-        setUser(null);
-        setDriver(null);
-        localStorage.removeItem("lrpUser");
-        if (hadUserRef.current) {
-          showToast("Session expired. Please log in again.", "error");
-        }
-        setIsAppReady(true);
+      })();
+    } else {
+      setDriver(null);
+      if (hadUserRef.current) {
+        showToast("Session expired. Please log in again.", "error");
       }
-    });
-    return () => unsubscribe();
-  }, [fetchDrivers, setDriver, showToast]);
+      setIsAppReady(true);
+    }
+  }, [user, fetchDrivers, setDriver, showToast]);
 
   useEffect(() => {
     const interval = setInterval(
@@ -224,8 +218,6 @@ export default function App() {
         browserPopupRedirectResolver,
       );
       const u = result.user;
-
-      localStorage.setItem("lrpUser", JSON.stringify(u));
       setUser(u);
 
       setShowEliteBadge(true);
@@ -253,7 +245,7 @@ export default function App() {
     } finally {
       setAuthLoading(false);
     }
-  }, [fetchDrivers, showToast, setDriver]);
+  }, [fetchDrivers, showToast, setDriver, setUser]);
 
   const handleEmailAuth = useCallback(async () => {
     setAuthLoading(true);
@@ -263,7 +255,6 @@ export default function App() {
         : await signInWithEmailAndPassword(auth, email, password);
 
       const u = result.user;
-      localStorage.setItem("lrpUser", JSON.stringify(u));
       setUser(u);
 
       setShowEliteBadge(true);
@@ -298,6 +289,7 @@ export default function App() {
     fetchDrivers,
     showToast,
     setDriver,
+    setUser,
   ]);
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);

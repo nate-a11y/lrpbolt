@@ -6,18 +6,20 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
 import { logError } from "./utils/errorUtils";
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <React.StrictMode>
-      <DriverProvider>
-      
-        <Suspense fallback={<LoadingScreen />}>
-          <App />
-        </Suspense>
-      </DriverProvider>
+      <AuthProvider>
+        <DriverProvider>
+          <Suspense fallback={<LoadingScreen />}>
+            <App />
+          </Suspense>
+        </DriverProvider>
+      </AuthProvider>
     </React.StrictMode>
   </BrowserRouter>,
 );
