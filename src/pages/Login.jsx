@@ -48,9 +48,11 @@ export default function Login() {
       .then((res) =>
         console.log("[Google One Tap] Sign in success:", res.user),
       )
-      .catch((err) =>
-        console.error("[Google One Tap] Sign in error:", err),
-      );
+      .catch((err) => {
+        console.error("Google One Tap error:", err);
+        if (err && err.message)
+          console.error("Error message:", err.message);
+      });
   }, []);
 
   useEffect(() => {
@@ -63,14 +65,21 @@ export default function Login() {
       return;
     }
     if (window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleCredentialResponse,
-        auto_select: false,
-      });
-      window.google.accounts.id.prompt(() => {
-        console.log("[Google One Tap] Prompt displayed.");
-      });
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleCredentialResponse,
+          auto_select: true,
+          use_fedcm_for_prompt: true,
+        });
+        window.google.accounts.id.prompt(() => {
+          console.log("[Google One Tap] Prompt displayed.");
+        });
+      } catch (err) {
+        console.error("Google One Tap error:", err);
+        if (err && err.message)
+          console.error("Error message:", err.message);
+      }
     }
   }, [handleCredentialResponse]);
 
