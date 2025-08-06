@@ -68,6 +68,7 @@ import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
+import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
 
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
@@ -113,12 +114,19 @@ export default function App() {
   const role = driver?.access || "";
   const isAdmin = role === "admin";
   const APP_VERSION = import.meta.env.VITE_APP_VERSION;
-  
+
   const {
     showOffline,
     retry: retryConnection,
     dismiss: dismissOffline,
   } = useNetworkStatus(() => showToast("✅ Reconnected", "success"));
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      startMonitoring();
+      return () => stopMonitoring();
+    }
+  }, []);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -493,7 +501,7 @@ export default function App() {
                     path="/ride-entry"
                     element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
                   />
-                  <Route path="/Tickets" element={<Tickets />} />
+                  <Route path="/tickets" element={<Tickets />} />
                   <Route
                     path="/generate-ticket"
                     element={isAdmin ? <TicketGenerator /> : <Navigate to="/" />}

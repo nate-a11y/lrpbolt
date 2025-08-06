@@ -151,6 +151,7 @@ export default function RideVehicleCalendar() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchEvents = async () => {
       setLoading(true);
       const start = dayjs(date).startOf("day").toISOString();
@@ -161,8 +162,9 @@ export default function RideVehicleCalendar() {
       )}/events?key=${API_KEY}&timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime`;
 
       try {
-        const res = await fetchWithRetry(url);
+        const res = await fetchWithRetry(url, { signal: controller.signal });
         const data = await res.json();
+        if (controller.signal.aborted) return;
 
         const parsed = (data.items || []).flatMap((item, i, all) => {
           if (/Driver:\s*-/.test(item.description)) return [];
@@ -194,13 +196,15 @@ export default function RideVehicleCalendar() {
 
         setEvents(parsed);
       } catch (err) {
-        logError(err, "Calendar fetch failed");
+        if (!controller.signal.aborted)
+          logError(err, "Calendar fetch failed");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchEvents();
+    return () => controller.abort();
   }, [date]);
 
   const vehicleOptions = useMemo(

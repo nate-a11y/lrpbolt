@@ -1,3 +1,5 @@
+import { logRequest } from "./apiMonitor";
+
 export async function fetchWithRetry(
   url,
   options = {},
@@ -11,6 +13,7 @@ export async function fetchWithRetry(
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         await waitForOnline();
       }
+      logRequest(options?.method || "GET", url);
       const res = await fetch(url, options);
       return res;
     } catch (err) {

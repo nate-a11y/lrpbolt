@@ -118,14 +118,16 @@ export default function AdminTimeLog() {
     );
   }, [columnVisibility]);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal) => {
     setLoading(true);
     setError(null);
     try {
       const text = await apiFetch(SHEET_CSV_URL, {
         responseType: "text",
         retries: 1,
+        signal,
       });
+      if (signal?.aborted) return;
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -172,17 +174,21 @@ export default function AdminTimeLog() {
         },
       });
     } catch (err) {
-      logError(err, "Failed to load admin logs");
-      setRows([]);
-      setIssues([]);
-      setError("Failed to load data. Please try again later.");
+      if (!signal?.aborted) {
+        logError(err, "Failed to load admin logs");
+        setRows([]);
+        setIssues([]);
+        setError("Failed to load data. Please try again later.");
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => controller.abort();
   }, [loadData]);
 
   // filter rows
