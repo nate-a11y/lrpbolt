@@ -12,13 +12,19 @@ import {
   Backdrop,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
 import useToast from "../hooks/useToast";
 import getTheme from "../theme";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { useAuth } from "../context/AuthContext.jsx";
+import LoadingScreen from "../components/LoadingScreen.jsx";
 
 export default function Login() {
   const { user, loading } = useAuth();
@@ -37,8 +43,8 @@ export default function Login() {
     if (!loading && user) navigate("/dashboard", { replace: true });
   }, [user, loading, navigate]);
 
-  const handleCredentialResponse = useCallback(
-    async (response) => {
+    const handleCredentialResponse = useCallback(
+      async (response) => {
       if (!response?.credential) {
         console.error("🚨 One Tap returned no credential", response);
         return;
@@ -46,8 +52,7 @@ export default function Login() {
       try {
         const credential = GoogleAuthProvider.credential(response.credential);
         await signInWithCredential(auth, credential);
-        console.log("✅ One Tap Sign-In success:", auth.currentUser);
-        navigate("/dashboard");
+          navigate("/dashboard");
       } catch (err) {
         console.error("🚨 Firebase sign-in failed", err);
       }
@@ -56,24 +61,24 @@ export default function Login() {
   );
 
   useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      console.error("🚨 VITE_GOOGLE_CLIENT_ID is missing from environment variables.");
-      return;
-    }
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: false,
-        prompt_parent_id: "one-tap-container",
-      });
-      window.google.accounts.id.prompt();
-    }
-  }, [handleCredentialResponse]);
+      if (initRef.current) return;
+      initRef.current = true;
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        console.error(
+          "🚨 VITE_GOOGLE_CLIENT_ID is missing from environment variables.",
+        );
+        return;
+      }
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleCredentialResponse,
+          auto_select: false,
+        });
+        window.google.accounts.id.prompt();
+      }
+    }, [handleCredentialResponse]);
 
   const handleGoogleLogin = useCallback(() => {
     window.google?.accounts?.id?.prompt();
@@ -94,7 +99,7 @@ export default function Login() {
     }
   }, [isRegistering, email, password, showToast, navigate]);
 
-  if (loading) return null;
+    if (loading) return <LoadingScreen />;
 
   return (
     <ThemeProvider theme={theme}>

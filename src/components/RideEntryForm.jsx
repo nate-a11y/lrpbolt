@@ -37,7 +37,8 @@ import LiveClaimGrid from "./LiveClaimGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import { formatDuration, toTimeString12Hr } from "../utils/timeUtils";
-import { auth, db } from "../firebase";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext.jsx";
 import useRides from "../hooks/useRides";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -175,8 +176,9 @@ export default function RideEntryForm() {
   const [dataTab, setDataTab] = useState(() =>
     Number(localStorage.getItem("dataTab") || 0),
   );
-  const isMobile = useMediaQuery("(max-width:600px)");
-  const currentUser = auth.currentUser?.email || "Unknown";
+    const isMobile = useMediaQuery("(max-width:600px)");
+    const { user } = useAuth();
+    const currentUser = user?.email || "Unknown";
   const functions = getFunctions();
   const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 

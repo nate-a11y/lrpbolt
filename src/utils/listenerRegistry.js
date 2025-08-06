@@ -1,32 +1,6 @@
 // src/utils/listenerRegistry.js
 // Simple registry to share Firebase listeners across components.
-import { onAuthStateChanged } from "firebase/auth";
 import { onSnapshot } from "firebase/firestore";
-import { auth } from "../firebase";
-
-// Manage shared auth listener
-const authCallbacks = new Set();
-let authUnsubscribe = null;
-let currentUser = null;
-
-export function subscribeAuth(callback) {
-  authCallbacks.add(callback);
-  if (currentUser !== null) callback(currentUser);
-  if (!authUnsubscribe) {
-    authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      currentUser = user;
-      authCallbacks.forEach((cb) => cb(user));
-    });
-  }
-  return () => {
-    authCallbacks.delete(callback);
-    if (!authCallbacks.size && authUnsubscribe) {
-      authUnsubscribe();
-      authUnsubscribe = null;
-      currentUser = null;
-    }
-  };
-}
 
 // Generic Firestore snapshot registry keyed by a unique string.
 const fsRegistry = new Map();
@@ -59,15 +33,6 @@ export function subscribeFirestore(key, queryRef, callback) {
 // Remove all active listeners. Useful on global sign-out to ensure
 // no dangling network connections remain.
 export function unsubscribeAll() {
-  // Auth listener
-  authCallbacks.clear();
-  if (authUnsubscribe) {
-    authUnsubscribe();
-    authUnsubscribe = null;
-  }
-  currentUser = null;
-
-  // Firestore listeners
   fsRegistry.forEach(({ unsubscribe }) => unsubscribe());
   fsRegistry.clear();
 }
