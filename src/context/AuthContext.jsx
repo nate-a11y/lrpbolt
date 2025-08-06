@@ -1,36 +1,35 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth, logout, handleRedirectResult } from "../firebase";
+import React, { createContext, useState, useEffect, useContext } from "react";
+import {
+  handleRedirectResult,
+  subscribeAuth
+} from "../services/auth";
 
-const AuthContext = createContext({
-  user: null,
-  loading: true,
-  logout: () => {},
-});
+const AuthContext = createContext({ user: null, loading: true });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsub = () => {};
-    handleRedirectResult()
-      .catch(() => {})
-      .finally(() => {
-        unsub = onAuthStateChanged(auth, (u) => {
-          setUser(u);
-          setLoading(false);
-        });
+    // Process redirect login first
+    handleRedirectResult().finally(() => {
+      // Then subscribe to auth state
+      const unsubscribe = subscribeAuth((u) => {
+        setUser(u);
+        setLoading(false);
       });
-    return () => unsub();
+      return unsubscribe;
+    });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  return useContext(AuthContext);
+}
+

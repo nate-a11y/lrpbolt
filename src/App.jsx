@@ -49,7 +49,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { auth } from "./firebase";
+import { logout } from "./services/auth";
 import { unsubscribeAll } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
@@ -117,7 +117,7 @@ export default function App() {
   const handleSignOut = useCallback(async () => {
     try {
       hadUserRef.current = false;
-      await auth.signOut();
+      await logout();
       // Tear down any shared listeners to prevent duplicate subscriptions
       unsubscribeAll();
       setDriver(null);
@@ -169,7 +169,7 @@ export default function App() {
           fetchDrivers();
         } else {
           showToast("Access denied", "error");
-          await auth.signOut();
+          await logout();
           setDriver(null);
         }
         setTimeout(() => setIsAppReady(true), 50);
@@ -442,7 +442,7 @@ export default function App() {
                     ) {
                       localStorage.clear();
                       sessionStorage.clear();
-                      if (auth?.signOut) auth.signOut();
+                      logout();
                       if ("caches" in window)
                         caches
                           .keys()

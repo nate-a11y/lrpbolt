@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button, Stack } from "@mui/material";
-import { loginWithPopup, loginWithRedirect } from "../firebase";
+import { loginWithPopup, loginWithRedirect } from "../services/auth";
 import { logError } from "../utils/logError";
 
 export default function LoginPopup() {
@@ -38,3 +38,4 @@ export default function LoginPopup() {
     </Stack>
   );
 }
+

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
-import { auth } from "../firebase";
-import { signOut } from "firebase/auth";
+import { logout as authLogout } from "../services/auth";
 
 const DriverContext = createContext(null);
 
@@ -11,16 +10,16 @@ export const DriverProvider = ({ children }) => {
   });
 
   const setDriver = async (data) => {
-      if (data) {
-        localStorage.setItem("lrpDriver", JSON.stringify(data));
-      } else {
-        localStorage.removeItem("lrpDriver");
-      }
-      setDriverState(data);
-    };
+    if (data) {
+      localStorage.setItem("lrpDriver", JSON.stringify(data));
+    } else {
+      localStorage.removeItem("lrpDriver");
+    }
+    setDriverState(data);
+  };
 
   const logout = async () => {
-    await signOut(auth);
+    await authLogout();
     setDriver(null);
   };
 
@@ -33,3 +32,4 @@ export const DriverProvider = ({ children }) => {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useDriver = () => useContext(DriverContext);
+
