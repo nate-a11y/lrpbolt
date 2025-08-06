@@ -15,7 +15,11 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { Visibility, VisibilityOff, Mail, Key, Sun, Moon } from "@mui/icons-material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import MailIcon from "@mui/icons-material/Mail";
+import KeyIcon from "@mui/icons-material/Key";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -36,7 +40,7 @@ export default function Login() {
   const theme = getTheme(darkMode);
   const navigate = useNavigate();
 
-  // restore last-used email
+  // Restore last-used email
   useEffect(() => {
     const last = localStorage.getItem("lrp:lastEmail");
     if (last) setEmail(last);
@@ -80,13 +84,14 @@ export default function Login() {
               onClick={toggleDarkMode}
               sx={{ position: "absolute", top: 8, right: 8 }}
             >
-              {darkMode ? <Sun /> : <Moon />}
+              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
 
             <CardContent sx={{ p: 4 }}>
               <Typography variant="h4" align="center" gutterBottom>
                 Driver Portal Login
               </Typography>
+
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {error}
@@ -129,7 +134,10 @@ export default function Login() {
                 noValidate
                 onSubmit={(e) => {
                   e.preventDefault();
-                  authAndRedirect(() => loginWithEmail(email, password), true);
+                  authAndRedirect(
+                    () => loginWithEmail(email, password),
+                    true
+                  );
                 }}
               >
                 <TextField
@@ -144,7 +152,7 @@ export default function Login() {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Mail />
+                        <MailIcon />
                       </InputAdornment>
                     ),
                   }}
@@ -162,7 +170,7 @@ export default function Login() {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Key />
+                        <KeyIcon />
                       </InputAdornment>
                     ),
                     endAdornment: (
