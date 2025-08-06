@@ -14,8 +14,9 @@ import {
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
@@ -31,36 +32,53 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authInProgress, setAuthInProgress] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
   const { toast, showToast, closeToast } = useToast("success");
   const [darkMode] = useDarkMode();
   const navigate = useNavigate();
 
-    const theme = useMemo(() => getTheme(darkMode), [darkMode]);
+  const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-    const manualGoogleSignIn = useCallback(async () => {
-      setAuthInProgress(true);
-      try {
-        await signInWithPopup(auth, new GoogleAuthProvider());
-        navigate("/rides", { replace: true });
-      } catch (err) {
-        logError(err, "Login:Popup");
-        showToast(err?.message || "Google sign-in failed", "error");
-      } finally {
-        setAuthInProgress(false);
-      }
-    }, [navigate, showToast]);
+  const manualGoogleSignIn = useCallback(async () => {
+    setAuthInProgress(true);
+    try {
+      await signInWithRedirect(auth, new GoogleAuthProvider());
+    } catch (err) {
+      logError(err, "Login:Redirect");
+      showToast(err?.message || "Google sign-in failed", "error");
+      setAuthInProgress(false);
+    }
+  }, [showToast]);
 
-    const handleEmailAuth = useCallback(async () => {
-      setAuthInProgress(true);
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        navigate("/rides", { replace: true });
-      } catch (err) {
-        logError(err, "Login");
-        showToast(err?.message || "Login failed", "error");
-        setAuthInProgress(false);
-      }
-    }, [email, password, showToast, navigate]);
+  const handleEmailAuth = useCallback(async () => {
+    setAuthInProgress(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate("/rides", { replace: true });
+    } catch (err) {
+      logError(err, "Login");
+      showToast(err?.message || "Login failed", "error");
+      setAuthInProgress(false);
+    }
+  }, [email, password, showToast, navigate]);
+
+  const handleRegister = useCallback(async () => {
+    if (password !== confirmPassword) {
+      showToast("Passwords do not match", "error");
+      return;
+    }
+    setAuthInProgress(true);
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      navigate("/rides", { replace: true });
+    } catch (err) {
+      logError(err, "Register");
+      showToast(err?.message || "Registration failed", "error");
+    } finally {
+      setAuthInProgress(false);
+    }
+  }, [email, password, confirmPassword, navigate, showToast]);
 
   if (loading) return <LoadingScreen />;
   if (user) return <Navigate to="/rides" replace />;
@@ -128,14 +146,35 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             disabled={authInProgress}
           />
+          {isRegistering && (
+            <TextField
+              fullWidth
+              margin="dense"
+              type="password"
+              label="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={authInProgress}
+            />
+          )}
           <Button
             fullWidth
             sx={{ mt: 2 }}
             variant="outlined"
-            onClick={handleEmailAuth}
+            onClick={isRegistering ? handleRegister : handleEmailAuth}
             disabled={authInProgress}
           >
-            Login
+            {isRegistering ? "Register" : "Login"}
+          </Button>
+          <Button
+            fullWidth
+            sx={{ mt: 1 }}
+            onClick={() => {
+              setIsRegistering((prev) => !prev);
+            }}
+            disabled={authInProgress}
+          >
+            {isRegistering ? "Already have an account? Login" : "Need an account? Register"}
           </Button>
         </Paper>
         <Snackbar open={toast.open} autoHideDuration={3000} onClose={closeToast}>
