@@ -5,8 +5,7 @@ import { getUserAccess } from "./api";
 import { useAuth } from "../context/AuthContext.jsx";
 
 /**
- * Redirects unauthenticated users to "/login" and users without the
- * required role to "/rides".
+ * Redirects unauthenticated users to "/login" and unauthorized users to "/rides".
  * @param {string} [requiredRole]
  */
 export default function useAuthGuard(requiredRole) {

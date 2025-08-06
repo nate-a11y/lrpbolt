@@ -39,7 +39,7 @@ export default function Login() {
   const manualGoogleSignIn = useCallback(async () => {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
-      navigate("/rides");
+      navigate("/rides", { replace: true });
     } catch (err) {
       console.error(err?.message || JSON.stringify(err));
     }
