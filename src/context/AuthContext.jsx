@@ -1,34 +1,33 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import {
+  browserLocalPersistence,
   onAuthStateChanged,
   setPersistence,
-  browserLocalPersistence,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const initialized = useRef(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    console.log("[AuthProvider] Initializing auth listener...");
     let unsubscribe = () => {};
-    (async () => {
-      try {
-        await setPersistence(auth, browserLocalPersistence);
-      } catch (err) {
-        console.error("Failed to set auth persistence", err);
-      }
-      unsubscribe = onAuthStateChanged(auth, (u) => {
-        console.log("Auth state changed:", u);
-        setUser(u);
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        console.log("[AuthProvider] Persistence set to local.");
+        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          console.log("[AuthProvider] Auth state changed:", currentUser);
+          setUser(currentUser);
+          setLoading(false);
+        });
+      })
+      .catch((err) => {
+        console.error("[AuthProvider] Persistence error:", err);
         setLoading(false);
       });
-    })();
     return () => unsubscribe();
   }, []);
 

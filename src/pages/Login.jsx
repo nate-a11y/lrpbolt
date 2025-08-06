@@ -11,12 +11,12 @@ import {
   CircularProgress,
   Backdrop,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithCredential,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
+  signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
@@ -28,10 +28,8 @@ import LoadingScreen from "../components/LoadingScreen.jsx";
 
 export default function Login() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isRegistering, setIsRegistering] = useState(false);
   const [authInProgress, setAuthInProgress] = useState(false);
   const { toast, showToast, closeToast } = useToast("success");
   const [darkMode] = useDarkMode();
@@ -39,67 +37,66 @@ export default function Login() {
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  useEffect(() => {
-    if (!loading && user) navigate("/dashboard", { replace: true });
-  }, [user, loading, navigate]);
-
-    const handleCredentialResponse = useCallback(
-      async (response) => {
-      if (!response?.credential) {
-        console.error("🚨 One Tap returned no credential", response);
-        return;
-      }
-      try {
-        const credential = GoogleAuthProvider.credential(response.credential);
-        await signInWithCredential(auth, credential);
-          navigate("/dashboard");
-      } catch (err) {
-        console.error("🚨 Firebase sign-in failed", err);
-      }
-    },
-    [navigate],
-  );
+  const handleCredentialResponse = useCallback((response) => {
+    console.log("[Google One Tap] Credential received:", response);
+    if (!response?.credential) {
+      console.error("[Google One Tap] No credential returned", response);
+      return;
+    }
+    const credential = GoogleAuthProvider.credential(response.credential);
+    signInWithCredential(auth, credential)
+      .then((res) =>
+        console.log("[Google One Tap] Sign in success:", res.user),
+      )
+      .catch((err) =>
+        console.error("[Google One Tap] Sign in error:", err),
+      );
+  }, []);
 
   useEffect(() => {
-      if (initRef.current) return;
-      initRef.current = true;
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      if (!clientId) {
-        console.error(
-          "🚨 VITE_GOOGLE_CLIENT_ID is missing from environment variables.",
-        );
-        return;
-      }
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleCredentialResponse,
-          auto_select: false,
-        });
-        window.google.accounts.id.prompt();
-      }
-    }, [handleCredentialResponse]);
+    if (initRef.current) return;
+    initRef.current = true;
+    console.log("[Google One Tap] Initializing...");
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("[Google One Tap] Missing client ID.");
+      return;
+    }
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleCredentialResponse,
+        auto_select: false,
+      });
+      window.google.accounts.id.prompt(() => {
+        console.log("[Google One Tap] Prompt displayed.");
+      });
+    }
+  }, [handleCredentialResponse]);
 
-  const handleGoogleLogin = useCallback(() => {
-    window.google?.accounts?.id?.prompt();
+  const manualGoogleSignIn = useCallback(() => {
+    console.log("[Google Button] Clicked.");
+    signInWithPopup(auth, new GoogleAuthProvider()).catch((err) =>
+      console.error("[Google Button] Sign in error:", err),
+    );
   }, []);
 
   const handleEmailAuth = useCallback(async () => {
     setAuthInProgress(true);
     try {
-      if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-      navigate("/dashboard");
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log("[Email/Password Login] Attempt complete.");
     } catch (err) {
       showToast(err.message, "error");
       setAuthInProgress(false);
     }
-  }, [isRegistering, email, password, showToast, navigate]);
+  }, [email, password, showToast]);
 
-    if (loading) return <LoadingScreen />;
+  if (loading) return <LoadingScreen />;
+  if (user) {
+    console.log("[Login] User authenticated. Redirecting to dashboard.");
+    return <Navigate to="/dashboard" />;
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -141,11 +138,11 @@ export default function Login() {
           <Button
             fullWidth
             variant="contained"
-            onClick={handleGoogleLogin}
+            onClick={manualGoogleSignIn}
             sx={{ mb: 2 }}
             disabled={authInProgress}
           >
-            SIGN IN WITH GOOGLE
+            Sign in with Google
           </Button>
           <Divider sx={{ my: 2 }}>OR</Divider>
           <TextField
@@ -172,16 +169,7 @@ export default function Login() {
             onClick={handleEmailAuth}
             disabled={authInProgress}
           >
-            {isRegistering ? "REGISTER" : "LOGIN"}
-          </Button>
-          <Button
-            fullWidth
-            color="secondary"
-            sx={{ mt: 1 }}
-            onClick={() => setIsRegistering(!isRegistering)}
-            disabled={authInProgress}
-          >
-            {isRegistering ? "Have an account? Login" : "Need an account? Register"}
+            Login
           </Button>
         </Paper>
         <Snackbar open={toast.open} autoHideDuration={3000} onClose={closeToast}>

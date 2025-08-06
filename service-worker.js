@@ -1,14 +1,19 @@
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
-import { clientsClaim } from 'workbox-core';
-import { registerRoute } from 'workbox-routing';
-import { NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies';
+import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
+import { clientsClaim } from "workbox-core";
+import { registerRoute } from "workbox-routing";
+import { NetworkOnly, StaleWhileRevalidate } from "workbox-strategies";
 
 self.skipWaiting();
 clientsClaim();
-cleanupOutdatedCaches();
+
+self.addEventListener("activate", (event) => {
+  console.log("[Service Worker] Activating and clearing old caches...");
+  event.waitUntil(cleanupOutdatedCaches());
+});
+
 const precacheManifest = self.__WB_MANIFEST.filter(
   (entry) =>
-    entry.url !== '/login' && !entry.url.includes('/__/auth/handler'),
+    entry.url !== "/login" && !entry.url.includes("/__/auth/handler"),
 );
 precacheAndRoute(precacheManifest);
 
