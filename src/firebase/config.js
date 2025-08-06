@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+  authDomain: "lrp---claim-portal.firebaseapp.com",
+  projectId: "lrp---claim-portal",
+  storageBucket: "lrp---claim-portal.firebasestorage.app",
+  messagingSenderId: "799613895072",
+  appId:"1:799613895072:web:1b41c28c6819198ce824c5",
 };
 
 export const app = initializeApp(firebaseConfig);
