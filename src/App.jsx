@@ -50,10 +50,6 @@ import ContactEscalation from "./components/ContactEscalation";
 import ResponsiveHeader from "./components/ResponsiveHeader";
 import { motion } from "framer-motion";
 import { Routes, Route, Navigate } from "react-router-dom";
-import TicketGenerator from "./components/TicketGenerator";
-import TicketViewer from "./components/TicketViewer";
-import TicketScanner from "./components/TicketScanner";
-import Tickets from "./components/Tickets";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -80,6 +76,10 @@ const RideVehicleCalendar = lazy(
   () => import("./components/RideVehicleCalendar"),
 );
 const ShootoutTab = lazy(() => import("./components/ShootoutTab"));
+const TicketGenerator = lazy(() => import("./components/TicketGenerator"));
+const TicketViewer = lazy(() => import("./components/TicketViewer"));
+const TicketScanner = lazy(() => import("./components/TicketScanner"));
+const Tickets = lazy(() => import("./components/Tickets"));
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

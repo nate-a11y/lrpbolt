@@ -7,11 +7,10 @@ import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
-import { logError } from "./utils/errorUtils";
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <React.StrictMode>
       <AuthProvider>
         <DriverProvider>
@@ -23,14 +22,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </React.StrictMode>
   </BrowserRouter>,
 );
-
-// Register service worker with basic error logging
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    const swUrl = `${import.meta.env.BASE_URL}service-worker.js`;
-    navigator.serviceWorker
-      .register(swUrl)
-      .then((reg) => console.log("SW registered:", reg.scope))
-      .catch((err) => logError(err, "SW registration failed"));
-  });
-}
