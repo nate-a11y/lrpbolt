@@ -17,17 +17,12 @@ import {
   Button,
   Snackbar,
   Alert,
-  Switch,
-  Divider,
-  TextField,
-  Paper,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Toolbar,
   CircularProgress,
-  Backdrop,
 } from "@mui/material";
 import { ErrorBoundary } from "react-error-boundary";
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -53,20 +48,14 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { auth, provider } from "./firebase";
-import {
-  GoogleAuthProvider,
-  signInWithCredential,
-  signInWithRedirect,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
+import { auth } from "./firebase";
 import { unsubscribeAll } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
 import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
+import LoadingScreen from "./components/LoadingScreen.jsx";
 
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
@@ -96,10 +85,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
-  const { user, authInProgress, setAuthInProgress } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isRegistering, setIsRegistering] = useState(false);
+  const { user, loading } = useAuth();
   const { toast, showToast, closeToast } = useToast("success");
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
@@ -211,164 +197,10 @@ export default function App() {
     }
   }, [showEliteBadge]);
 
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-    if (!clientId) {
-      console.error(
-        "🚨 VITE_GOOGLE_CLIENT_ID is missing from environment variables.",
-      );
-    } else {
-      window.google?.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response) => {
-          if (!response || !response.credential) {
-            console.error("🚨 One Tap returned no credential", response);
-            return;
-          }
-          try {
-            const credential = GoogleAuthProvider.credential(
-              response.credential,
-            );
-            await signInWithCredential(auth, credential);
-          } catch (err) {
-            console.error("🚨 Firebase sign-in failed", err);
-            if (err && err.message) console.error("Error message:", err.message);
-          }
-        },
-        auto_select: true,
-        cancel_on_tap_outside: false,
-      });
-
-      window.google.accounts.id.prompt(); // show One Tap
-    }
-  }, []);
-  const handleGoogleLogin = useCallback(async () => {
-    setAuthInProgress(true);
-    try {
-      provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
-    } catch (err) {
-      showToast(err.message, "error");
-      setAuthInProgress(false);
-    }
-  }, [showToast, setAuthInProgress]);
-
-  const handleEmailAuth = useCallback(async () => {
-    setAuthInProgress(true);
-    try {
-      if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-    } catch (err) {
-      showToast(err.message, "error");
-      setAuthInProgress(false);
-    }
-  }, [isRegistering, email, password, showToast, setAuthInProgress]);
-
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  if (!user || !driver) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Box
-          sx={{
-            minHeight: "100vh",
-            background: darkMode
-              ? "linear-gradient(135deg, #111, #1e1e1e)"
-              : "linear-gradient(135deg, #e0ffe7, #ffffff)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            p: 2,
-          }}
-        >
-          <Paper
-            elevation={6}
-            sx={{
-              p: 4,
-              maxWidth: 420,
-              width: "100%",
-              borderRadius: 3,
-              textAlign: "center",
-            }}
-          >
-            <img
-              src="https://lakeridepros.xyz/Color%20logo%20-%20no%20background.png"
-              alt="Logo"
-              style={{ height: 56, marginBottom: 16 }}
-            />
-            <Typography
-              variant="h6"
-              sx={{ mb: 2, fontWeight: "bold", color: "primary.main" }}
-            >
-              🚀 Driver Portal – Elite Access
-            </Typography>
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={handleGoogleLogin}
-              sx={{ mb: 2 }}
-              disabled={authInProgress}
-            >
-              SIGN IN WITH GOOGLE
-            </Button>
-            <Divider sx={{ my: 2 }}>OR</Divider>
-            <TextField
-              label="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              fullWidth
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              fullWidth
-              sx={{ mb: 2 }}
-            />
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleEmailAuth}
-              disabled={authInProgress}
-            >
-              {isRegistering ? "REGISTER & SIGN IN" : "SIGN IN WITH EMAIL"}
-            </Button>
-            <Button
-              fullWidth
-              size="small"
-              onClick={() => setIsRegistering(!isRegistering)}
-              sx={{ mt: 1 }}
-              disabled={authInProgress}
-            >
-              {isRegistering
-                ? "Already have an account? Sign In"
-                : "Need an account? Register"}
-            </Button>
-            <Box display="flex" justifyContent="center" mt={3}>
-              <Typography variant="caption">🌙 Dark Mode</Typography>
-              <Switch
-                checked={darkMode}
-                onChange={() => setDarkMode(!darkMode)}
-                size="small"
-              />
-            </Box>
-          </Paper>
-        </Box>
-        <Backdrop
-          sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
-          open={authInProgress}
-        >
-          <CircularProgress color="inherit" />
-        </Backdrop>
-      </ThemeProvider>
-    );
+  if (loading || !driver) {
+    return <LoadingScreen />;
   }
 
   if (!isFullyReady) {

@@ -1,38 +1,35 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { subscribeAuth } from "../utils/listenerRegistry";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebase";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("lrpUser")) || null;
-    } catch {
-      return null;
-    }
-  });
-  const [authInProgress, setAuthInProgress] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    const unsub = subscribeAuth((u) => {
-      setUser(u);
-      if (u) {
-        localStorage.setItem("lrpUser", JSON.stringify(u));
-      } else {
-        localStorage.removeItem("lrpUser");
+    if (initialized.current) return;
+    initialized.current = true;
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (import.meta.env.DEV) {
+        console.log(
+          "🔐 Auth state",
+          u ? `${u.email} (${u.uid})` : "signed out",
+        );
       }
-      setAuthInProgress(false);
+      setUser(u);
+      setLoading(false);
     });
     return () => unsub();
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{ user, setUser, authInProgress, setAuthInProgress }}
-    >
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const useAuth = () => useContext(AuthContext);

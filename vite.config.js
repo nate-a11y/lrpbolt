@@ -18,6 +18,9 @@ export default defineConfig({
       srcDir: ".",
       filename: "service-worker.js",
       injectRegister: "script",
+      devOptions: {
+        enabled: false,
+      },
     }),
   ],
   resolve: {
