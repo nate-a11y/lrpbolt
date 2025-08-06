@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+} from "firebase/auth";
 import { auth } from "../firebase";
+import LoadingScreen from "../components/LoadingScreen.jsx";
 
 const AuthContext = createContext(null);
 
@@ -12,6 +17,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
+    setPersistence(auth, browserLocalPersistence).catch((err) =>
+      console.error("Failed to set auth persistence", err),
+    );
     const unsub = onAuthStateChanged(auth, (u) => {
       if (import.meta.env.DEV) {
         console.log(
@@ -25,6 +33,7 @@ export function AuthProvider({ children }) {
     return () => unsub();
   }, []);
 
+  if (loading) return <LoadingScreen />;
   return (
     <AuthContext.Provider value={{ user, loading }}>
       {children}
