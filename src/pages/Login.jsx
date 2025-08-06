@@ -4,7 +4,6 @@ import {
   ThemeProvider,
   CssBaseline,
   Container,
-  Box,
   Card,
   CardContent,
   Typography,
@@ -14,6 +13,8 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Divider,
+  Box
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import MailIcon from "@mui/icons-material/Mail";
@@ -40,21 +41,21 @@ export default function Login() {
   const theme = getTheme(darkMode);
   const navigate = useNavigate();
 
-  // Restore last-used email
+  // Restore last-used email for convenience
   useEffect(() => {
     const last = localStorage.getItem("lrp:lastEmail");
     if (last) setEmail(last);
   }, []);
 
-  const authAndRedirect = async (fn, storeEmail = false) => {
+  const authAndRedirect = async (fn, saveEmail = false) => {
     setLoading(true);
     setError("");
     try {
       await fn();
-      if (storeEmail) localStorage.setItem("lrp:lastEmail", email);
+      if (saveEmail) localStorage.setItem("lrp:lastEmail", email);
       navigate("/", { replace: true });
     } catch (e) {
-      setError(e.message || "Something went wrong");
+      setError(e.message || "Something went wrong, please try again.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,7 @@ export default function Login() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Container
-        maxWidth="sm"
+        maxWidth="xs"
         sx={{
           height: "100vh",
           display: "flex",
@@ -78,19 +79,29 @@ export default function Login() {
           transition={{ type: "spring", stiffness: 120 }}
           style={{ width: "100%" }}
         >
-          <Card elevation={8} sx={{ borderRadius: 2, position: "relative" }}>
+          <Card elevation={6} sx={{ borderRadius: 2, position: "relative" }}>
             {/* Dark Mode Toggle */}
             <IconButton
               onClick={toggleDarkMode}
               sx={{ position: "absolute", top: 8, right: 8 }}
+              size="large"
             >
               {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
 
             <CardContent sx={{ p: 4 }}>
-              <Typography variant="h4" align="center" gutterBottom>
-                Driver Portal Login
-              </Typography>
+              {/* Logo + Title */}
+              <Box sx={{ textAlign: "center", mb: 2 }}>
+                <img
+                  src="/logo192.png" // replace with your LRP logo path
+                  alt="Lake Ride Pros"
+                  width={48}
+                  style={{ marginBottom: 8 }}
+                />
+                <Typography variant="h5" component="h1">
+                  Driver Portal – Elite Access
+                </Typography>
+              </Box>
 
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
@@ -104,29 +115,17 @@ export default function Login() {
                 variant="contained"
                 onClick={() => authAndRedirect(loginWithPopup)}
                 disabled={loading}
-                sx={{ py: 1.5, mb: 1 }}
+                sx={{ py: 1.5 }}
               >
                 {loading ? (
                   <CircularProgress size={24} color="inherit" />
                 ) : (
-                  "Continue with Google"
+                  "Sign in with Google"
                 )}
               </Button>
 
-              {/* Google Redirect */}
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => authAndRedirect(loginWithRedirect)}
-                disabled={loading}
-                sx={{ py: 1.5, mb: 3 }}
-              >
-                {loading ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  "Google (Redirect)"
-                )}
-              </Button>
+              {/* OR Divider */}
+              <Divider sx={{ my: 3 }}>OR</Divider>
 
               {/* Email Form */}
               <Box
@@ -134,10 +133,7 @@ export default function Login() {
                 noValidate
                 onSubmit={(e) => {
                   e.preventDefault();
-                  authAndRedirect(
-                    () => loginWithEmail(email, password),
-                    true
-                  );
+                  authAndRedirect(() => loginWithEmail(email, password), true);
                 }}
               >
                 <TextField
@@ -178,6 +174,7 @@ export default function Login() {
                         <IconButton
                           onClick={() => setShowPw((s) => !s)}
                           edge="end"
+                          size="large"
                         >
                           {showPw ? <VisibilityOff /> : <Visibility />}
                         </IconButton>
@@ -201,6 +198,21 @@ export default function Login() {
                   )}
                 </Button>
               </Box>
+
+              {/* Optional: Redirect-based Google in case popup is blocked */}
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => authAndRedirect(loginWithRedirect)}
+                disabled={loading}
+                sx={{ mt: 2, py: 1.5 }}
+              >
+                {loading ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  "Google (Redirect)"
+                )}
+              </Button>
             </CardContent>
           </Card>
         </motion.div>
