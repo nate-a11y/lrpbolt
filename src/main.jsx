@@ -2,7 +2,9 @@
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
-import { BrowserRouter } from "react-router-dom";
+import Login from "./pages/Login.jsx";
+import PrivateRoute from "./components/PrivateRoute.jsx";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
@@ -15,7 +17,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <DriverProvider>
           <Suspense fallback={<LoadingScreen />}>
-            <App />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route element={<PrivateRoute />}>
+                <Route path="/dashboard/*" element={<App />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              </Route>
+            </Routes>
           </Suspense>
         </DriverProvider>
       </AuthProvider>
