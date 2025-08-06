@@ -121,7 +121,7 @@ jobs:
 
       - name: Verify SW exists
         run: |
-          if [ ! -f "dist/registerSW.js" ]; then
+          if [ ! -f "src/registerSW.js" ]; then
             echo "❌ ERROR: registerSW.js missing — service worker will fail."
             exit 1
           fi
