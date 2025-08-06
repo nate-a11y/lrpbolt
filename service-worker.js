@@ -7,13 +7,15 @@ clientsClaim();
 self.skipWaiting();
 cleanupOutdatedCaches();
 const precacheManifest = self.__WB_MANIFEST.filter(
-  (entry) => entry.url !== '/login',
+  (entry) =>
+    entry.url !== '/login' && !entry.url.includes('/__/auth/handler'),
 );
 precacheAndRoute(precacheManifest);
 
-// Avoid caching login page so users always see fresh auth UI
+// Avoid caching login page and Firebase auth handler so users always see fresh auth UI
 registerRoute(
-  ({ url }) => url.pathname === '/login',
+  ({ url }) =>
+    url.pathname.includes('/__/auth/handler') || url.pathname === '/login',
   new NetworkOnly(),
 );
 
