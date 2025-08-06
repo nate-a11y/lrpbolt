@@ -30,7 +30,8 @@ export default defineConfig({
       filename: "service-worker.js",
       strategies: "injectManifest",
       registerType: "autoUpdate",
-      injectRegister: false,
+      // Emit registerSW.js to the root and inject the registration script
+      injectRegister: "script",
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
