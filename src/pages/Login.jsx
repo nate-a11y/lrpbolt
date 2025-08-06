@@ -15,7 +15,8 @@ import { Navigate, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
-  } from "firebase/auth";
+  signInWithPopup,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
 import useToast from "../hooks/useToast";
@@ -36,13 +37,18 @@ export default function Login() {
 
     const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-    const manualGoogleSignIn = useCallback(() => {
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.prompt();
-      } else {
-        logError(new Error("GSI library not loaded"), "Login:OneTap");
+    const manualGoogleSignIn = useCallback(async () => {
+      setAuthInProgress(true);
+      try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+        navigate("/rides", { replace: true });
+      } catch (err) {
+        logError(err, "Login:Popup");
+        showToast(err?.message || "Google sign-in failed", "error");
+      } finally {
+        setAuthInProgress(false);
       }
-    }, []);
+    }, [navigate, showToast]);
 
     const handleEmailAuth = useCallback(async () => {
       setAuthInProgress(true);
