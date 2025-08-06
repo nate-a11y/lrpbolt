@@ -15,8 +15,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
-  signInWithPopup,
-} from "firebase/auth";
+  } from "firebase/auth";
 import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
 import useToast from "../hooks/useToast";
