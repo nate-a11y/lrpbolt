@@ -1,4 +1,4 @@
-name: CI + Deploy to Hostinger
+name: CI + Deploy to Hostinger v2
 
 on:
   push:
