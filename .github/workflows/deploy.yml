@@ -28,6 +28,7 @@ jobs:
           echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
           echo "VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}" >> .env
           echo "VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}" >> .env
+          echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" >> .env
 
       - name: Set build version
         run: |
