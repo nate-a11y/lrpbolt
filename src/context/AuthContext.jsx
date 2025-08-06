@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
+  const [authInProgress, setAuthInProgress] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeAuth((u) => {
@@ -20,12 +21,15 @@ export function AuthProvider({ children }) {
       } else {
         localStorage.removeItem("lrpUser");
       }
+      setAuthInProgress(false);
     });
     return () => unsub();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider
+      value={{ user, setUser, authInProgress, setAuthInProgress }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -55,10 +55,11 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { auth, provider } from "./firebase";
 import {
-  signInWithPopup,
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { unsubscribeAll } from "./utils/listenerRegistry";
 import "./index.css";
@@ -95,7 +96,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
-  const { user, setUser } = useAuth();
+  const { user, authInProgress, setAuthInProgress } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -105,7 +106,6 @@ export default function App() {
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
   const [isLockedOut, setIsLockedOut] = useState(isInLockoutWindow());
   const [isAppReady, setIsAppReady] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
   const isFullyReady = isAppReady && !!driver;
   const hasFetchedRef = useRef(false);
   const hadUserRef = useRef(!!localStorage.getItem("lrpUser"));
@@ -164,6 +164,7 @@ export default function App() {
     if (!hasFetchedRef.current) hasFetchedRef.current = true;
     if (user) {
       hadUserRef.current = true;
+      setShowEliteBadge(true);
       (async () => {
         const record = await getUserAccess(user.email);
         if (record) {
@@ -178,11 +179,12 @@ export default function App() {
             console.log("Authenticated:", user.email, "role:", access);
             if (access === "admin") console.log("Admin role detected");
           }
-          fetchDrivers();
-        } else {
+        fetchDrivers();
+      } else {
+          showToast("Access denied", "error");
           await auth.signOut();
           setDriver(null);
-        }
+      }
         setTimeout(() => setIsAppReady(true), 50);
       })();
     } else {
@@ -208,93 +210,51 @@ export default function App() {
       return () => clearTimeout(t);
     }
   }, [showEliteBadge]);
+
+  useEffect(() => {
+    if (user) return;
+    if (typeof window !== "undefined" && window.google && window.google.accounts.id) {
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          try {
+            setAuthInProgress(true);
+            const credential = GoogleAuthProvider.credential(response.credential);
+            await signInWithCredential(auth, credential);
+          } catch (err) {
+            console.error("One Tap error:", err);
+            setAuthInProgress(false);
+          }
+        },
+        auto_select: true,
+      });
+      window.google.accounts.id.prompt();
+    }
+  }, [user, setAuthInProgress]);
   const handleGoogleLogin = useCallback(async () => {
-    setAuthLoading(true);
+    setAuthInProgress(true);
     try {
       provider.setCustomParameters({ prompt: "select_account" });
-      const result = await signInWithPopup(
-        auth,
-        provider,
-        browserPopupRedirectResolver,
-      );
-      const u = result.user;
-      setUser(u);
-
-      setShowEliteBadge(true);
-
-      const record = await getUserAccess(u.email);
-      if (record) {
-        const access = record.access?.toLowerCase() || "driver";
-        await setDriver({
-          id: record.id,
-          name: record.name,
-          email: u.email,
-          access,
-        });
-        if (import.meta.env.DEV) {
-          console.log("Authenticated:", u.email, "role:", access);
-          if (access === "admin") console.log("Admin role detected");
-        }
-        fetchDrivers();
-      } else {
-        showToast("Access denied", "error");
-        await auth.signOut();
-      }
+      await signInWithRedirect(auth, provider);
     } catch (err) {
-      if (err.code === "auth/popup-blocked") {
-        showToast("Popup blocked. Please enable pop-ups and try again.", "error");
-      } else {
-        showToast(err.message, "error");
-      }
-    } finally {
-      setAuthLoading(false);
+      showToast(err.message, "error");
+      setAuthInProgress(false);
     }
-  }, [fetchDrivers, showToast, setDriver, setUser]);
+  }, [showToast, setAuthInProgress]);
 
   const handleEmailAuth = useCallback(async () => {
-    setAuthLoading(true);
+    setAuthInProgress(true);
     try {
-      const result = isRegistering
-        ? await createUserWithEmailAndPassword(auth, email, password)
-        : await signInWithEmailAndPassword(auth, email, password);
-
-      const u = result.user;
-      setUser(u);
-
-      setShowEliteBadge(true);
-
-      const record = await getUserAccess(u.email);
-      if (record) {
-        const access = record.access?.toLowerCase() || "driver";
-        await setDriver({
-          id: record.id,
-          name: record.name,
-          email: u.email,
-          access,
-        });
-        if (import.meta.env.DEV) {
-          console.log("Authenticated:", u.email, "role:", access);
-          if (access === "admin") console.log("Admin role detected");
-        }
-        fetchDrivers();
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        showToast("Access denied", "error");
-        await auth.signOut();
+        await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
       showToast(err.message, "error");
-    } finally {
-      setAuthLoading(false);
+      setAuthInProgress(false);
     }
-  }, [
-    isRegistering,
-    email,
-    password,
-    fetchDrivers,
-    showToast,
-    setDriver,
-    setUser,
-  ]);
+  }, [isRegistering, email, password, showToast, setAuthInProgress]);
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
@@ -340,7 +300,7 @@ export default function App() {
               variant="contained"
               onClick={handleGoogleLogin}
               sx={{ mb: 2 }}
-              disabled={authLoading}
+              disabled={authInProgress}
             >
               SIGN IN WITH GOOGLE
             </Button>
@@ -364,7 +324,7 @@ export default function App() {
               fullWidth
               variant="outlined"
               onClick={handleEmailAuth}
-              disabled={authLoading}
+              disabled={authInProgress}
             >
               {isRegistering ? "REGISTER & SIGN IN" : "SIGN IN WITH EMAIL"}
             </Button>
@@ -373,7 +333,7 @@ export default function App() {
               size="small"
               onClick={() => setIsRegistering(!isRegistering)}
               sx={{ mt: 1 }}
-              disabled={authLoading}
+              disabled={authInProgress}
             >
               {isRegistering
                 ? "Already have an account? Sign In"
@@ -391,7 +351,7 @@ export default function App() {
         </Box>
         <Backdrop
           sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
-          open={authLoading}
+          open={authInProgress}
         >
           <CircularProgress color="inherit" />
         </Backdrop>
