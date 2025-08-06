@@ -41,9 +41,9 @@ jobs:
       - name: Ensure Vite base path
         run: |
           if grep -q "base" vite.config.js; then
-            sed -i "s|base: .*|base: './',|" vite.config.js
+            sed -i "s|base: .*|base: '/',|" vite.config.js
           else
-            sed -i "/export default defineConfig({/a\  base: './'," vite.config.js
+            sed -i "/export default defineConfig({/a\  base: '/'," vite.config.js
           fi
           echo "✅ Vite base path ensured"
 
