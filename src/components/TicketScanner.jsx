@@ -42,7 +42,7 @@ import {
   formatTime,
 } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../context/AuthProvider.jsx";
 import { logError } from "../utils/logError";
 
 export default function TicketScanner() {
