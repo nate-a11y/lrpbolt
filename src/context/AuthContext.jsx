@@ -22,15 +22,15 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const oneTapInitRef = useRef(false);
+  const prevUserRef = useRef(undefined);
   const navigate = useNavigate();
 
   const handleCredentialResponse = useCallback(async ({ credential }) => {
     if (!credential) return;
     try {
-      await signInWithCredential(
-        auth,
-        GoogleAuthProvider.credential(credential),
-      );
+      const firebaseCredential = GoogleAuthProvider.credential(credential);
+      const result = await signInWithCredential(auth, firebaseCredential);
+      console.log(`Authenticated as: ${result.user?.email}`);
       navigate("/rides", { replace: true });
     } catch (err) {
       console.error(err?.message || JSON.stringify(err));
@@ -66,12 +66,14 @@ export function AuthProvider({ children }) {
 
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         if (currentUser) {
-          console.log(`Authenticated as: ${currentUser.email}`);
+          if (prevUserRef.current?.email !== currentUser.email)
+            console.log(`Authenticated as: ${currentUser.email}`);
           navigate("/rides", { replace: true });
-        } else {
+        } else if (prevUserRef.current !== null) {
           console.log("No user");
           initOneTap();
         }
+        prevUserRef.current = currentUser;
         setUser(currentUser);
         setLoading(false);
       });
