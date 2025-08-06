@@ -124,18 +124,25 @@ export default function TicketScanner() {
 
   // 🎯 Fetch cameras first
   useEffect(() => {
-    Html5Qrcode.getCameras()
-      .then((devices) => {
+    let alive = true;
+    async function load() {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (!alive) return;
         const rearCamera =
           devices.find((d) => d.label.toLowerCase().includes("back")) ||
           devices[0];
         setCameras(devices);
         setCurrentCameraId(rearCamera?.id || null);
-      })
-      .catch((err) => {
+      } catch (err) {
         logError(err, "TicketScanner:getCameras");
-        setCameraError(true);
-      });
+        if (alive) setCameraError(true);
+      }
+    }
+    load();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   // 🎬 Start scanner after DOM is painted

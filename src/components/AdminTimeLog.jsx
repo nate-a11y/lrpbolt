@@ -118,7 +118,8 @@ export default function AdminTimeLog() {
     );
   }, [columnVisibility]);
 
-  const loadData = useCallback(async (signal) => {
+  const loadData = useCallback(async (signal, alive = true) => {
+    if (!alive) return;
     setLoading(true);
     setError(null);
     try {
@@ -127,7 +128,7 @@ export default function AdminTimeLog() {
         retries: 1,
         signal,
       });
-      if (signal?.aborted) return;
+      if (signal?.aborted || !alive) return;
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -165,30 +166,38 @@ export default function AdminTimeLog() {
                 };
               });
 
+            if (!alive) return;
             setRows(cleaned);
             detectIssues(cleaned);
           } catch (err) {
             logError(err, "AdminTimeLog:processData");
-            setError("Failed to process data.");
+            if (alive) setError("Failed to process data.");
           }
         },
       });
     } catch (err) {
-      if (!signal?.aborted) {
+      if (!signal?.aborted && alive) {
         logError(err, "AdminTimeLog:loadData");
         setRows([]);
         setIssues([]);
         setError("Failed to load data. Please try again later.");
       }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted && alive) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    let alive = true;
     const controller = new AbortController();
-    loadData(controller.signal);
-    return () => controller.abort();
+    async function load() {
+      await loadData(controller.signal, alive);
+    }
+    load();
+    return () => {
+      alive = false;
+      controller.abort();
+    };
   }, [loadData]);
 
   // filter rows
@@ -421,7 +430,7 @@ export default function AdminTimeLog() {
                 <Typography variant="h6">Log Table</Typography>
                 <Tooltip title="Reload Data">
                   <IconButton
-                    onClick={loadData}
+                    onClick={() => loadData()}
                     disabled={loading}
                     sx={{
                       animation: loading ? "spin 2s linear infinite" : "none",
@@ -542,7 +551,7 @@ export default function AdminTimeLog() {
               <Typography variant="h6">Weekly Summary</Typography>
               <Tooltip title="Reload Data">
                 <IconButton
-                  onClick={loadData}
+                  onClick={() => loadData()}
                   disabled={loading}
                   sx={{
                     animation: loading ? "spin 2s linear infinite" : "none",
@@ -656,7 +665,7 @@ export default function AdminTimeLog() {
               <Typography variant="h6">Flagged Issues</Typography>
               <Tooltip title="Reload Data">
                 <IconButton
-                  onClick={loadData}
+                  onClick={() => loadData()}
                   disabled={loading}
                   sx={{
                     animation: loading ? "spin 2s linear infinite" : "none",
