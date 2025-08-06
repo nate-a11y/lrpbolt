@@ -1,12 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from "react";
-import { Box, IconButton, Snackbar, Alert, Tooltip } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import { deleteLiveRide, restoreLiveRide } from "../hooks/api";
-import useRides from "../hooks/useRides";
-import EditableRideGrid from "../components/EditableRideGrid";
-import { normalizeDate, normalizeTime } from "../utils/timeUtils";
 import {
+  Box,
+  Snackbar,
+  Alert,
   Dialog,
   Typography,
   DialogTitle,
@@ -14,6 +11,11 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
+import { orderBy } from "firebase/firestore";
+import { deleteLiveRide, restoreLiveRide } from "../hooks/api";
+import useFirestoreListener from "../hooks/useFirestoreListener";
+import EditableRideGrid from "../components/EditableRideGrid";
+import { normalizeDate, normalizeTime } from "../utils/timeUtils";
 import useToast from "../hooks/useToast";
 
 const LiveClaimGrid = () => {
@@ -26,7 +28,9 @@ const LiveClaimGrid = () => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  const { liveRides, fetchRides } = useRides();
+  const liveRides = useFirestoreListener("liveRides", [
+    orderBy("pickupTime", "asc"),
+  ]);
 
   const mapped = useMemo(
     () =>
@@ -57,7 +61,6 @@ const LiveClaimGrid = () => {
       if (res.success) {
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
-        await fetchRides();
       } else {
         setRows((prev) =>
           prev.map((row) => (row.id === deletingId ? { ...row, fading: false } : row)),
@@ -73,36 +76,12 @@ const LiveClaimGrid = () => {
   const handleUndo = async () => {
     if (!undoRow) return;
     await restoreLiveRide(undoRow);
-    await fetchRides();
     setUndoRow(null);
     showToast("✅ Ride restored", "success");
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
-        <Tooltip title="Refresh Live Rides">
-          <span>
-            <IconButton
-              onClick={async () => {
-                setLoading(true);
-                await fetchRides();
-                setLoading(false);
-                showToast("🔄 Live rides refreshed", "success");
-              }}
-              disabled={loading}
-              aria-label="Refresh rides"
-            >
-              <RefreshIcon
-                sx={{
-                  animation: loading ? "spin 1s linear infinite" : "none",
-                }}
-              />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-
       <EditableRideGrid
         rows={rows}
         loading={loading}

@@ -1,9 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from "react";
-import { Box, Snackbar, Alert, IconButton, Tooltip } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import { Box, Snackbar, Alert } from "@mui/material";
+import { orderBy } from "firebase/firestore";
 import { deleteRideFromQueue, addRideToQueue } from "../hooks/api";
-import useRides from "../hooks/useRides";
+import useFirestoreListener from "../hooks/useFirestoreListener";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
 import {
@@ -28,7 +28,9 @@ const RideQueueGrid = () => {
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
-  const { rideQueue, fetchRides } = useRides();
+  const rideQueue = useFirestoreListener("rideQueue", [
+    orderBy("pickupTime", "asc"),
+  ]);
 
   const mapped = useMemo(
     () =>
@@ -63,7 +65,6 @@ const RideQueueGrid = () => {
           message: `🗑️ Deleted Trip ${deletingTripId}`,
           severity: "info",
         });
-        await fetchRides();
       } catch (err) {
         logError(err, "RideQueueGrid:delete");
         setToast({
@@ -83,38 +84,12 @@ const RideQueueGrid = () => {
   const handleUndo = async () => {
     if (!undoRow) return;
     await addRideToQueue(undoRow);
-    await fetchRides();
     setUndoRow(null);
     setToast({ open: true, message: "✅ Ride restored", severity: "success" });
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="flex-end" alignItems="center" mb={1}>
-        <Tooltip title="Refresh Ride Queue">
-          <span>
-            <IconButton
-              onClick={async () => {
-                setLoading(true);
-                await fetchRides();
-                setLoading(false);
-                setToast({
-                  open: true,
-                  message: "🔄 Ride queue refreshed",
-                  severity: "success",
-                });
-              }}
-              disabled={loading}
-              aria-label="Refresh rides"
-            >
-              <RefreshIcon
-                sx={{ animation: loading ? "spin 1s linear infinite" : "none" }}
-              />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-
       <EditableRideGrid
         rows={rows}
         loading={loading}
