@@ -3,6 +3,7 @@
 
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
+import { logRequest } from "../utils/apiMonitor";
 
 /**
  * Fetch wrapper with timeout and optional retries.
@@ -20,6 +21,7 @@ export async function apiFetch(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
     try {
+      logRequest(options.method || "GET", url);
       const res = await fetch(url, { ...options, signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return responseType === "text" ? await res.text() : await res.json();
@@ -37,6 +39,7 @@ export async function apiFetch(
  * @param {any} data
  */
 export async function callFunction(name, data) {
+  logRequest("POST", `function:${name}`);
   const callable = httpsCallable(functions, name);
   const result = await callable(data);
   return result.data;

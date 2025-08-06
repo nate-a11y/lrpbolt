@@ -213,11 +213,16 @@ export default function TicketScanner() {
       if (
         !ticketId ||
         isScanningRef.current ||
-        cooldownRef.current === ticketId
+        cooldownRef.current?.id === ticketId
       )
         return;
       isScanningRef.current = true;
-      cooldownRef.current = ticketId;
+      cooldownRef.current = {
+        id: ticketId,
+        timer: setTimeout(() => {
+          cooldownRef.current = null;
+        }, 3000),
+      };
 
       html5QrCodeRef.current?.pause?.().catch(() => {});
       setLoading(true);
@@ -229,7 +234,6 @@ export default function TicketScanner() {
             setTicket(data);
             setModalOpen(true);
             navigator.vibrate?.([100]);
-            setTimeout(() => (cooldownRef.current = null), 3000);
           } else {
             setScanFeedback("error");
             setTimeout(() => setScanFeedback(null), 600);
@@ -259,6 +263,12 @@ export default function TicketScanner() {
   useEffect(() => {
     handleScanRef.current = handleScan;
   }, [handleScan]);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current?.timer) clearTimeout(cooldownRef.current.timer);
+    };
+  }, []);
 
   const confirmTicket = async () => {
     if (!ticket || !scanType || confirming) return;

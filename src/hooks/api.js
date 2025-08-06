@@ -16,7 +16,7 @@ import {
 import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/errorUtils";
-import { callFunction } from "../api";
+import { callFunction, apiFetch } from "../api";
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -373,7 +373,7 @@ export async function updateTicketScan(ticketId, scanType, scannedBy) {
 // ---- Email Ticket (temporary - still uses old API) ----
 export async function emailTicket(ticketId, email, attachment) {
   try {
-    const res = await fetch(BASE_URL, {
+    return await apiFetch(BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -381,10 +381,9 @@ export async function emailTicket(ticketId, email, attachment) {
         type: "emailticket",
         ticketId,
         email,
-        attachment
+        attachment,
       }),
     });
-    return await res.json();
   } catch (err) {
     logError(err, "Email ticket failed");
     return { success: false, error: err.message };
