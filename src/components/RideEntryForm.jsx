@@ -39,7 +39,7 @@ import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import { formatDuration, toTimeString12Hr } from "../utils/timeUtils";
 import { db } from "../firebase";
 import { logError } from "../utils/logError";
-import { useAuth } from "../context/AuthContext.jsx";
+import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
