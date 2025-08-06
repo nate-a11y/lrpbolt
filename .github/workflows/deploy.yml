@@ -57,6 +57,27 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Validate precache manifest
+        run: |
+          echo "🔍 Checking precache manifest..."
+          MANIFEST_FILE="dist/service-worker.js"
+          if [ ! -f "$MANIFEST_FILE" ]; then
+            echo "❌ ERROR: service-worker.js missing."
+            exit 1
+          fi
+          MISSING=false
+          for FILE in $(grep -oP "(?<=url:\s')[^']+" $MANIFEST_FILE); do
+            if [ ! -f "dist/$FILE" ]; then
+              echo "❌ Missing file in dist: $FILE"
+              MISSING=true
+            fi
+          done
+          if [ "$MISSING" = true ]; then
+            echo "❌ ERROR: One or more precache files missing."
+            exit 1
+          fi
+          echo "✅ Precache validation passed."
+
       - name: Verify build output
         run: |
           if [ ! -d "dist/assets" ]; then

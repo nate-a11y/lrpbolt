@@ -5,39 +5,19 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
-// Helper to mirror the runtime dedupe done in the service worker. This ensures
-// duplicate entries such as `manifest.webmanifest` are filtered out at build
-// time as well.
-const dedupeManifest = (entries) => {
-  const seen = new Set();
-  const manifest = entries.filter((e) => {
-    const url = new URL(e.url, "http://dummy");
-    url.search = ""; // remove ?__WB_REVISION__ etc
-    const key = url.pathname + url.hash;
-    if (seen.has(key)) return false;
-    e.url = url.pathname + url.hash;
-    seen.add(key);
-    return true;
-  });
-  return { manifest };
-};
-
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      registerType: "autoUpdate",
+      workbox: {
+        cleanupOutdatedCaches: true,
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest}"],
+      },
+      strategies: "injectManifest",
       srcDir: ".",
       filename: "service-worker.js",
-      strategies: "injectManifest",
-      registerType: "autoUpdate",
-      // Emit registerSW.js to the root and inject the registration script
       injectRegister: "script",
-      injectManifest: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // Deduplicate entries like manifest.webmanifest that may be injected twice
-        manifestTransforms: [dedupeManifest],
-      },
     }),
   ],
   resolve: {
