@@ -86,7 +86,7 @@ export default function SidebarNavigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const drawerContent = (
-    <Box role="presentation" onClick={() => isMobile && setMobileOpen(false)}>
+    <Box role="presentation">
       <Toolbar sx={{ minHeight: 64 }} />
       <Divider />
       <List>
@@ -107,6 +107,7 @@ export default function SidebarNavigation() {
                       backgroundColor: theme.palette.action.selected,
                     }),
                   }}
+                  onClick={() => isMobile && setMobileOpen(false)}
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.label} />
