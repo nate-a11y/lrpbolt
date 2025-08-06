@@ -13,6 +13,9 @@ AddType image/webp .webp
 RewriteEngine On
 RewriteBase /
 
+# Allow service worker files to bypass SPA fallback
+RewriteRule ^(service-worker\.js|registerSW\.js)$ - [L]
+
 # Don't rewrite actual files or directories
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
