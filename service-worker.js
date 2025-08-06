@@ -6,7 +6,10 @@ import { NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies';
 clientsClaim();
 self.skipWaiting();
 cleanupOutdatedCaches();
-precacheAndRoute(self.__WB_MANIFEST);
+const precacheManifest = self.__WB_MANIFEST.filter(
+  (entry) => entry.url !== '/login',
+);
+precacheAndRoute(precacheManifest);
 
 // Avoid caching login page so users always see fresh auth UI
 registerRoute(

@@ -6,5 +6,6 @@ import LoadingScreen from "./LoadingScreen.jsx";
 export default function PrivateRoute() {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <Outlet />;
 }
