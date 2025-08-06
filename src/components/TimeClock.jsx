@@ -140,7 +140,12 @@ const TimeClock = ({ driver, setIsTracking }) => {
           showSnack(`❌ Failed to log time: ${data.message}`, "error");
         }
       })
-      .catch((err) => showSnack("❌ Network error: " + err.message, "error"))
+      .catch((err) =>
+        showSnack(
+          "❌ Network error: " + (err?.message || JSON.stringify(err)),
+          "error",
+        ),
+      )
       .finally(() => setIsSubmitting(false));
   };
 

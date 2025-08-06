@@ -64,7 +64,11 @@ const RideQueueGrid = () => {
         });
         await fetchRides();
       } catch (err) {
-        setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
+        setToast({
+          open: true,
+          message: `❌ ${err?.message || JSON.stringify(err)}`,
+          severity: "error",
+        });
         setUndoRow(null);
       }
       setConfirmOpen(false);

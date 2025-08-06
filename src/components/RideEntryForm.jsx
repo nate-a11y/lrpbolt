@@ -211,7 +211,7 @@ export default function RideEntryForm() {
             }
             setUploadedRows(results.data);
           },
-          error: (err) => setFileError(err.message),
+          error: (err) => setFileError(err?.message || JSON.stringify(err)),
         });
       };
       reader.readAsText(file);
@@ -321,7 +321,7 @@ export default function RideEntryForm() {
     } catch (error) {
       setToast({
         open: true,
-        message: `❌ Refresh failed: ${error.message}`,
+        message: `❌ Refresh failed: ${error?.message || JSON.stringify(error)}`,
         severity: "error",
       });
     } finally {
@@ -352,7 +352,11 @@ export default function RideEntryForm() {
       setConfirmOpen(false);
       await fetchRides();
     } catch (err) {
-      setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
+      setToast({
+        open: true,
+        message: `❌ ${err?.message || JSON.stringify(err)}`,
+        severity: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -381,7 +385,11 @@ export default function RideEntryForm() {
       setUploadedRows([]);
       await fetchRides();
     } catch (err) {
-      setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
+      setToast({
+        open: true,
+        message: `❌ ${err?.message || JSON.stringify(err)}`,
+        severity: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -454,7 +462,11 @@ export default function RideEntryForm() {
       setMultiInput("");
       await fetchRides();
     } catch (err) {
-      setToast({ open: true, message: `❌ ${err.message}`, severity: "error" });
+      setToast({
+        open: true,
+        message: `❌ ${err?.message || JSON.stringify(err)}`,
+        severity: "error",
+      });
     } finally {
       setSubmitting(false);
     }

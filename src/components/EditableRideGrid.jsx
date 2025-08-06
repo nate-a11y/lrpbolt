@@ -176,7 +176,11 @@ const EditableRideGrid = ({
         refreshRides();
       }
     } catch (err) {
-      setSnack({ open: true, message: `❌ ${err.message}`, severity: "error" });
+      setSnack({
+        open: true,
+        message: `❌ ${err?.message || JSON.stringify(err)}`,
+        severity: "error",
+      });
     } finally {
       setSaving(false);
     }

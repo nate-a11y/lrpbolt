@@ -246,7 +246,7 @@ export default function App() {
               <ErrorBoundary
                 fallbackRender={({ error }) => (
                   <Typography color="error" sx={{ mt: 4 }}>
-                    🚨 Something went wrong: {error.message}
+                    🚨 Something went wrong: {error?.message || JSON.stringify(error)}
                   </Typography>
                 )}
               >
@@ -265,6 +265,7 @@ export default function App() {
                       />
                     }
                   />
+                  <Route path="/__/auth/iframe" element={<div />} />
                   <Route
                     path="/clock"
                     element={

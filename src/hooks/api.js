@@ -350,7 +350,7 @@ export async function deleteTicket(ticketId) {
     return { success: true };
   } catch (err) {
     logError(err, "Failed to delete ticket");
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }
 
@@ -386,7 +386,7 @@ export async function emailTicket(ticketId, email, attachment) {
     });
   } catch (err) {
     logError(err, "Email ticket failed");
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }
 
@@ -466,7 +466,7 @@ export async function refreshDailyRides() {
     return { success: true, ...data };
   } catch (err) {
     logError(err, "Daily drop failed");
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }
 
@@ -533,7 +533,7 @@ export async function restoreLiveRide(rideData) {
     await addLiveRide(rideData);
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }
 
@@ -547,7 +547,7 @@ export async function restoreRide(rideData) {
     await addRideToQueue(rideData);
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }
 

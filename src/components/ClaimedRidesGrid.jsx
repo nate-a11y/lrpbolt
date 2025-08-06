@@ -93,7 +93,10 @@ const ClaimedRidesGrid = () => {
         setSelectedRows([]);
         await fetchRides();
       } catch (err) {
-        showToast(`❌ Bulk delete failed: ${err.message}`, "error");
+        showToast(
+          `❌ Bulk delete failed: ${err?.message || JSON.stringify(err)}`,
+          "error",
+        );
       } finally {
         setLoading(false);
         setMultiConfirmOpen(false);

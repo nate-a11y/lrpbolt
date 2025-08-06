@@ -77,7 +77,7 @@ export default function AdminUserManager() {
       try {
         await createUser(user);
       } catch (err) {
-        errors.push(`${user.email}: ${err.message}`);
+        errors.push(`${user.email}: ${err?.message || JSON.stringify(err)}`);
       }
     }
     setInput("");
