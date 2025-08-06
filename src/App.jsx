@@ -56,13 +56,13 @@ import Tickets from "./components/Tickets";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { auth, provider } from "./firebase";
 import {
-  auth,
-  provider,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-} from "./firebase";
+  browserPopupRedirectResolver,
+} from "firebase/auth";
 import { subscribeAuth, unsubscribeAll } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
@@ -218,7 +218,11 @@ export default function App() {
     setAuthLoading(true);
     try {
       provider.setCustomParameters({ prompt: "select_account" });
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(
+        auth,
+        provider,
+        browserPopupRedirectResolver,
+      );
       const u = result.user;
 
       localStorage.setItem("lrpUser", JSON.stringify(u));
