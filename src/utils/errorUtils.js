@@ -1,18 +1,6 @@
 /* Shared error handling utilities */
 
-/**
- * Log an error with optional context.
- * @param {unknown} error
- * @param {string} [context]
- */
-export function logError(error, context) {
-  const msg = error?.message || JSON.stringify(error);
-  if (context) {
-    console.error(context, msg);
-  } else {
-    console.error(msg);
-  }
-}
+export { logError } from "./logError";
 
 /**
  * Convert Firebase auth error codes to human friendly messages.

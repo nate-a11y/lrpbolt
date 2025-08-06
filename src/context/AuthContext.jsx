@@ -6,15 +6,16 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import {
-  browserLocalPersistence,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  setPersistence,
-  signInWithCredential,
-} from "firebase/auth";
-import { auth } from "../firebase";
-import { useNavigate } from "react-router-dom";
+  import {
+    browserLocalPersistence,
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    setPersistence,
+    signInWithCredential,
+  } from "firebase/auth";
+  import { auth } from "../firebase";
+  import { useNavigate } from "react-router-dom";
+  import { logError } from "../utils/logError";
 
 const AuthContext = createContext(null);
 
@@ -27,42 +28,42 @@ export function AuthProvider({ children }) {
 
   const handleCredentialResponse = useCallback(async ({ credential }) => {
     if (!credential) return;
-    try {
-      const firebaseCredential = GoogleAuthProvider.credential(credential);
-      const result = await signInWithCredential(auth, firebaseCredential);
-      console.log(`Authenticated as: ${result.user?.email}`);
-      navigate("/rides", { replace: true });
-    } catch (err) {
-      console.error(err?.message || JSON.stringify(err));
-    }
-  }, [navigate]);
+      try {
+        const firebaseCredential = GoogleAuthProvider.credential(credential);
+        const result = await signInWithCredential(auth, firebaseCredential);
+        console.log(`Authenticated as: ${result.user?.email}`);
+        navigate("/rides", { replace: true });
+      } catch (err) {
+        logError(err, "AuthContext");
+      }
+    }, [navigate]);
 
   const initOneTap = useCallback(() => {
     if (oneTapInitRef.current) return;
     oneTapInitRef.current = true;
 
     if (!window.google?.accounts?.id) return;
-    try {
-      window.google.accounts.id.initialize({
-        client_id:
-          "799613895072-obt66rah27n1saqfodrflt0memgn3k6p.apps.googleusercontent.com",
-        callback: handleCredentialResponse,
-        use_fedcm_for_prompt: true,
-      });
-      window.google.accounts.id.prompt();
-    } catch (err) {
-      console.error(err?.message || JSON.stringify(err));
-    }
-  }, [handleCredentialResponse]);
+      try {
+        window.google.accounts.id.initialize({
+          client_id:
+            "799613895072-obt66rah27n1saqfodrflt0memgn3k6p.apps.googleusercontent.com",
+          callback: handleCredentialResponse,
+          use_fedcm_for_prompt: true,
+        });
+        window.google.accounts.id.prompt();
+      } catch (err) {
+        logError(err, "AuthContext");
+      }
+    }, [handleCredentialResponse]);
 
   useEffect(() => {
     let unsubscribe = () => {};
     (async () => {
-      try {
-        await setPersistence(auth, browserLocalPersistence);
-      } catch (err) {
-        console.error(err?.message || JSON.stringify(err));
-      }
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+        } catch (err) {
+          logError(err, "AuthContext");
+        }
 
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         if (currentUser) {

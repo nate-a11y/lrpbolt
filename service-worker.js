@@ -7,7 +7,6 @@ self.skipWaiting();
 clientsClaim();
 
 self.addEventListener("activate", (event) => {
-  console.log("[Service Worker] Activating and clearing old caches...");
   event.waitUntil(cleanupOutdatedCaches());
 });
 

@@ -153,26 +153,25 @@ export default function App() {
       setShowEliteBadge(true);
       (async () => {
         const record = await getUserAccess(user.email);
-        if (record) {
-          const access = record.access?.toLowerCase() || "driver";
-          await setDriver({
-            id: record.id,
-            name: record.name,
-            email: user.email,
-            access,
-          });
-          if (import.meta.env.DEV) {
-            console.log("Authenticated:", user.email, "role:", access);
-            if (access === "admin") console.log("Admin role detected");
+          if (record) {
+            const access = record.access?.toLowerCase() || "driver";
+            await setDriver({
+              id: record.id,
+              name: record.name,
+              email: user.email,
+              access,
+            });
+            if (import.meta.env.DEV) {
+              console.log("Authenticated:", user.email, "role:", access);
+            }
+            fetchDrivers();
+          } else {
+            showToast("Access denied", "error");
+            await auth.signOut();
+            setDriver(null);
           }
-        fetchDrivers();
-      } else {
-          showToast("Access denied", "error");
-          await auth.signOut();
-          setDriver(null);
-      }
-        setTimeout(() => setIsAppReady(true), 50);
-      })();
+          setTimeout(() => setIsAppReady(true), 50);
+        })();
     } else {
       setDriver(null);
       if (hadUserRef.current) {

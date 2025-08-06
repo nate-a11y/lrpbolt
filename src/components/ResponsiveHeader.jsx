@@ -102,10 +102,6 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  React.useEffect(() => {
-    if (import.meta.env.DEV && selectedDriver)
-      console.log("Header driver:", selectedDriver);
-  }, [selectedDriver]);
 
   return (
     <>

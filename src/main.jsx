@@ -10,6 +10,11 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import "./registerSW.js";
+import { logError } from "./utils/logError";
+
+window.addEventListener("unhandledrejection", (event) => {
+  logError(event.reason, "Unhandled Promise Rejection");
+});
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
