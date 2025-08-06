@@ -9,13 +9,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      injectRegister: null,
       workbox: {
         cleanupOutdatedCaches: true,
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest,json}"],
+        globPatterns: ["**/*.{js,css,html,webmanifest,json}"],
       },
       strategy: "injectManifest",
-      srcDir: ".", // ✅ root since SW is in project root
+      srcDir: ".", // service worker lives at project root
       filename: "service-worker.js",
       devOptions: {
         enabled: true,

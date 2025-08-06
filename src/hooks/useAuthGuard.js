@@ -1,33 +1,48 @@
 // src/hooks/useAuthGuard.js
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getUserAccess } from "./api";
 import { useAuth } from "../context/AuthContext.jsx";
 
 /**
- * Redirects to "/" if user is not authenticated or lacks the required role.
+ * Redirects unauthenticated users to "/login" and users without the
+ * required role back to "/dashboard".
  * @param {string} [requiredRole]
  */
 export default function useAuthGuard(requiredRole) {
   const navigate = useNavigate();
-  const { user, loading } = useAuth(); // ✅ Grab loading state
+  const location = useLocation();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (loading) return; // ✅ Don't check until auth is ready
+    if (loading) return;
 
     if (!user) {
-      navigate("/", { replace: true });
+      if (location.pathname !== "/login") navigate("/login", { replace: true });
       return;
     }
 
-    if (requiredRole) {
-      getUserAccess(user.email)
-        .then((access) => {
-          if (!access || access.access !== requiredRole) {
-            navigate("/", { replace: true });
-          }
-        })
-        .catch(() => navigate("/", { replace: true }));
-    }
-  }, [user, loading, requiredRole, navigate]); // ✅ Added loading to deps
+    if (!requiredRole) return;
+
+    let cancelled = false;
+
+    getUserAccess(user.email)
+      .then((access) => {
+        if (cancelled) return;
+        if (!access || access.access !== requiredRole) {
+          if (location.pathname !== "/dashboard")
+            navigate("/dashboard", { replace: true });
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[AuthGuard] access check failed:", err);
+        if (location.pathname !== "/dashboard")
+          navigate("/dashboard", { replace: true });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading, requiredRole, navigate, location.pathname]);
 }

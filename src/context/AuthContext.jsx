@@ -1,8 +1,17 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import {
   browserLocalPersistence,
+  GoogleAuthProvider,
   onAuthStateChanged,
   setPersistence,
+  signInWithCredential,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
@@ -11,33 +20,59 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const oneTapInitRef = useRef(false);
+
+  const initOneTap = useCallback(() => {
+    if (oneTapInitRef.current) return;
+    oneTapInitRef.current = true;
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google?.accounts?.id) return;
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async ({ credential }) => {
+          if (!credential) return;
+          try {
+            const result = await signInWithCredential(
+              auth,
+              GoogleAuthProvider.credential(credential),
+            );
+            console.log("[AuthProvider] One Tap login:", result.user.email);
+          } catch (err) {
+            console.error("[AuthProvider] One Tap error:", err.message);
+          }
+        },
+        auto_select: true,
+        useFedCM: true,
+      });
+      window.google.accounts.id.prompt();
+    } catch (err) {
+      console.error("[AuthProvider] One Tap init failed:", err.message);
+    }
+  }, []);
 
   useEffect(() => {
-    console.log("[AuthProvider] Initializing auth listener...");
-
     let unsubscribe = () => {};
-
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => {
+    (async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
         console.log("[AuthProvider] Persistence set to local.");
-
-        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          if (currentUser) {
-            console.log(`[AuthProvider] Authenticated as: ${currentUser.email}`);
-          } else {
-            console.log("[AuthProvider] No user signed in.");
-          }
-          setUser(currentUser);
-          setLoading(false); // ✅ Prevent redirect until auth resolves
-        });
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("[AuthProvider] Persistence error:", err.message);
+      }
+
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        console.log("[AuthProvider] Auth state:", currentUser?.email || null);
+        setUser(currentUser);
         setLoading(false);
+        if (!currentUser) initOneTap();
       });
+    })();
 
     return () => unsubscribe();
-  }, []);
+  }, [initOneTap]);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>

@@ -9,6 +9,7 @@ import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import "./registerSW.js";
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
