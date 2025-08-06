@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { logout as authLogout } from "../services/auth";
 
 const DriverContext = createContext(null);
@@ -9,27 +15,29 @@ export const DriverProvider = ({ children }) => {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const setDriver = async (data) => {
+  const setDriver = useCallback(async (data) => {
     if (data) {
       localStorage.setItem("lrpDriver", JSON.stringify(data));
     } else {
       localStorage.removeItem("lrpDriver");
     }
     setDriverState(data);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await authLogout();
     setDriver(null);
-  };
+  }, [setDriver]);
+
+  const value = useMemo(
+    () => ({ driver, setDriver, logout }),
+    [driver, setDriver, logout],
+  );
 
   return (
-    <DriverContext.Provider value={{ driver, setDriver, logout }}>
-      {children}
-    </DriverContext.Provider>
+    <DriverContext.Provider value={value}>{children}</DriverContext.Provider>
   );
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useDriver = () => useContext(DriverContext);
-
