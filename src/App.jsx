@@ -59,6 +59,7 @@ import timezone from "dayjs/plugin/timezone";
 import { auth, provider } from "./firebase";
 import {
   signInWithPopup,
+  signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   browserPopupRedirectResolver,
@@ -249,6 +250,11 @@ export default function App() {
         await auth.signOut();
       }
     } catch (err) {
+      if (err.code === "auth/popup-blocked") {
+        setAuthLoading(false);
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       showToast(err.message, "error");
     } finally {
       setAuthLoading(false);
