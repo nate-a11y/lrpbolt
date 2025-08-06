@@ -20,7 +20,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Suspense fallback={<LoadingScreen />}>
             <Routes>
               <Route path="/login" element={<Login />} />
-              <Route path="/__/auth/iframe" element={<div />} />
+              <Route
+                path="/__/auth/iframe"
+                element={<></>}
+              />
               <Route element={<PrivateRoute />}>
                 <Route path="/*" element={<App />} />
               </Route>

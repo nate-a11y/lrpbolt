@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Box,
   Paper,
@@ -11,10 +11,9 @@ import {
   CircularProgress,
   Backdrop,
 } from "@mui/material";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
-  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
@@ -33,50 +32,18 @@ export default function Login() {
   const [authInProgress, setAuthInProgress] = useState(false);
   const { toast, showToast, closeToast } = useToast("success");
   const [darkMode] = useDarkMode();
-  const initRef = useRef(false);
+  const navigate = useNavigate();
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  const handleCredentialResponse = useCallback((response) => {
-    if (!response?.credential) return;
-    const credential = GoogleAuthProvider.credential(response.credential);
-    signInWithCredential(auth, credential).catch((err) =>
-      console.error(
-        "[Google One Tap] error:",
-        err?.message || JSON.stringify(err),
-      ),
-    );
-  }, []);
-
-  useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || !window.google?.accounts?.id) return;
+  const manualGoogleSignIn = useCallback(async () => {
     try {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleCredentialResponse,
-        auto_select: true,
-        use_fedcm_for_prompt: true,
-      });
-      window.google.accounts.id.prompt();
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      navigate("/rides");
     } catch (err) {
-      console.error(
-        "[Google One Tap] init failed:",
-        err?.message || JSON.stringify(err),
-      );
+      console.error(err?.message || JSON.stringify(err));
     }
-  }, [handleCredentialResponse]);
-
-  const manualGoogleSignIn = useCallback(() => {
-    signInWithPopup(auth, new GoogleAuthProvider()).catch((err) =>
-      console.error(
-        "[Google Button] Sign in error:",
-        err?.message || JSON.stringify(err),
-      ),
-    );
-  }, []);
+  }, [navigate]);
 
   const handleEmailAuth = useCallback(async () => {
     setAuthInProgress(true);
@@ -94,7 +61,6 @@ export default function Login() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div id="one-tap-container" />
       <Box
         sx={{
           minHeight: "100vh",
