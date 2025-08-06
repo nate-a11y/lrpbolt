@@ -54,17 +54,24 @@ export default function Login() {
             return;
           }
           try {
-            const credential = GoogleAuthProvider.credential(response.credential);
+            const credential = GoogleAuthProvider.credential(
+              response.credential,
+            );
             const result = await signInWithCredential(auth, credential);
+            console.log("Current user:", auth.currentUser);
             if (import.meta.env.DEV && result.user) {
-              console.log("✅ One Tap signed in", result.user.email, result.user.uid);
+              console.log(
+                "✅ One Tap signed in",
+                result.user.email,
+                result.user.uid,
+              );
             }
             navigate("/dashboard");
           } catch (err) {
             console.error("🚨 Firebase sign-in failed", err);
           }
         },
-        auto_select: true,
+        auto_select: false,
         cancel_on_tap_outside: false,
       });
       window.google.accounts.id.prompt();

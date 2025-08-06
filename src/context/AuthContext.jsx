@@ -20,17 +20,12 @@ export function AuthProvider({ children }) {
     setPersistence(auth, browserLocalPersistence).catch((err) =>
       console.error("Failed to set auth persistence", err),
     );
-    const unsub = onAuthStateChanged(auth, (u) => {
-      if (import.meta.env.DEV) {
-        console.log(
-          "🔐 Auth state",
-          u ? `${u.email} (${u.uid})` : "signed out",
-        );
-      }
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      console.log("Auth state changed:", u);
       setUser(u);
       setLoading(false);
     });
-    return () => unsub();
+    return () => unsubscribe();
   }, []);
 
   if (loading) return <LoadingScreen />;
