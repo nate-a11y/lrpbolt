@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Paper,
@@ -6,92 +6,66 @@ import {
   Button,
   Divider,
   TextField,
-  Snackbar,
   Alert,
   CircularProgress,
   Backdrop,
 } from "@mui/material";
 import { Navigate, useNavigate } from "react-router-dom";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-import { auth, loginWithPopup, loginWithRedirect } from "../firebase";
+import { loginWithPopup, loginWithRedirect, loginWithEmail } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
-import useToast from "../hooks/useToast";
 import getTheme from "../theme";
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { useAuth } from "../components/AuthProvider.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
-import { logError } from "../utils/logError";
 
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [authInProgress, setAuthInProgress] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const { toast, showToast, closeToast } = useToast("success");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [darkMode] = useDarkMode();
   const navigate = useNavigate();
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  const handlePopupLogin = async () => {
-    setAuthInProgress(true);
+  const handlePopup = async () => {
+    setLoading(true);
     try {
       await loginWithPopup();
-    } catch (err) {
-      logError(err, "Login:Popup");
-      showToast(err?.message || "Google sign-in failed", "error");
+      navigate("/");
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setAuthInProgress(false);
+      setLoading(false);
     }
   };
 
-  const handleRedirectLogin = async () => {
-    setAuthInProgress(true);
+  const handleRedirect = async () => {
+    setLoading(true);
     try {
       await loginWithRedirect();
-    } catch (err) {
-      logError(err, "Login:Redirect");
-      showToast(err?.message || "Google sign-in failed", "error");
-      setAuthInProgress(false);
+    } catch (e) {
+      setError(e.message);
+      setLoading(false);
     }
   };
 
-  const handleEmailAuth = useCallback(async () => {
-    setAuthInProgress(true);
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate("/rides", { replace: true });
-    } catch (err) {
-      logError(err, "Login");
-      showToast(err?.message || "Login failed", "error");
-      setAuthInProgress(false);
-    }
-  }, [email, password, showToast, navigate]);
-
-  const handleRegister = useCallback(async () => {
-    if (password !== confirmPassword) {
-      showToast("Passwords do not match", "error");
-      return;
-    }
-    setAuthInProgress(true);
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      navigate("/rides", { replace: true });
-    } catch (err) {
-      logError(err, "Register");
-      showToast(err?.message || "Registration failed", "error");
+      await loginWithEmail(email, password);
+      navigate("/");
+    } catch (e) {
+      setError(e.message);
     } finally {
-      setAuthInProgress(false);
+      setLoading(false);
     }
-  }, [email, password, confirmPassword, navigate, showToast]);
+  };
 
-  if (loading) return <LoadingScreen />;
-  if (user) return <Navigate to="/rides" replace />;
+  if (authLoading) return <LoadingScreen />;
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <ThemeProvider theme={theme}>
@@ -132,76 +106,57 @@ export default function Login() {
           <Button
             fullWidth
             variant="contained"
-            onClick={handlePopupLogin}
+            onClick={handlePopup}
             sx={{ mb: 2 }}
-            disabled={authInProgress}
+            disabled={loading}
           >
             Sign in with Google (Popup)
           </Button>
           <Button
             fullWidth
             variant="contained"
-            onClick={handleRedirectLogin}
+            onClick={handleRedirect}
             sx={{ mb: 2 }}
-            disabled={authInProgress}
+            disabled={loading}
           >
             Sign in with Google (Redirect)
           </Button>
           <Divider sx={{ my: 2 }}>OR</Divider>
-          <TextField
-            fullWidth
-            margin="dense"
-            label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={authInProgress}
-          />
-          <TextField
-            fullWidth
-            margin="dense"
-            type="password"
-            label="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={authInProgress}
-          />
-          {isRegistering && (
+          <Box component="form" onSubmit={handleEmailLogin}>
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
             <TextField
               fullWidth
               margin="dense"
               type="password"
-              label="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={authInProgress}
+              label="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
             />
+            <Button
+              fullWidth
+              sx={{ mt: 2 }}
+              variant="outlined"
+              type="submit"
+              disabled={loading}
+            >
+              Login
+            </Button>
+          </Box>
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
           )}
-          <Button
-            fullWidth
-            sx={{ mt: 2 }}
-            variant="outlined"
-            onClick={isRegistering ? handleRegister : handleEmailAuth}
-            disabled={authInProgress}
-          >
-            {isRegistering ? "Register" : "Login"}
-          </Button>
-          <Button
-            fullWidth
-            sx={{ mt: 1 }}
-            onClick={() => {
-              setIsRegistering((prev) => !prev);
-            }}
-            disabled={authInProgress}
-          >
-            {isRegistering ? "Already have an account? Login" : "Need an account? Register"}
-          </Button>
         </Paper>
-        <Snackbar open={toast.open} autoHideDuration={3000} onClose={closeToast}>
-          <Alert severity={toast.severity} variant="filled" onClose={closeToast}>
-            {toast.message}
-          </Alert>
-        </Snackbar>
-        <Backdrop open={authInProgress} sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
+        <Backdrop open={loading} sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
           <CircularProgress color="inherit" />
         </Backdrop>
       </Box>

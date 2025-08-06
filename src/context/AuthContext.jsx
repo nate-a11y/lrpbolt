@@ -1,19 +1,28 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, logout } from "../firebase";
+import { auth, logout, handleRedirectResult } from "../firebase";
 
-const AuthContext = createContext({ user: null, loading: true, logout: () => {} });
+const AuthContext = createContext({
+  user: null,
+  loading: true,
+  logout: () => {},
+});
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsub;
+    let unsub = () => {};
+    handleRedirectResult()
+      .catch(() => {})
+      .finally(() => {
+        unsub = onAuthStateChanged(auth, (u) => {
+          setUser(u);
+          setLoading(false);
+        });
+      });
+    return () => unsub();
   }, []);
 
   return (

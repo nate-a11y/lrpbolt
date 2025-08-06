@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getUserAccess } from "./api";
-import { useAuth } from "../components/AuthProvider.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { logError } from "../utils/logError";
 
 /**
@@ -26,19 +26,20 @@ export default function useAuthGuard(requiredRole) {
 
     let cancelled = false;
 
-      getUserAccess(user.email)
-        .then((access) => {
-          if (cancelled) return;
-          if (!access || access.access !== requiredRole) {
-            if (location.pathname !== "/rides")
-              navigate("/rides", { replace: true });
-          }
-        })
-        .catch((err) => {
-          if (cancelled) return;
-          logError(err, "useAuthGuard");
-          if (location.pathname !== "/rides") navigate("/rides", { replace: true });
-        });
+    getUserAccess(user.email)
+      .then((access) => {
+        if (cancelled) return;
+        if (!access || access.access !== requiredRole) {
+          if (location.pathname !== "/rides")
+            navigate("/rides", { replace: true });
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        logError(err, "useAuthGuard");
+        if (location.pathname !== "/rides")
+          navigate("/rides", { replace: true });
+      });
 
     return () => {
       cancelled = true;

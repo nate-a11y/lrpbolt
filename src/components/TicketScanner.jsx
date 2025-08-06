@@ -42,7 +42,7 @@ import {
   formatTime,
 } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
-import { useAuth } from "./AuthProvider.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { logError } from "../utils/logError";
 
 export default function TicketScanner() {
@@ -298,12 +298,8 @@ export default function TicketScanner() {
       return;
     }
 
-      const driver = user?.email || "Unknown";
-    const result = await updateTicketScan(
-      ticket.ticketId,
-      scanType,
-      driver,
-    );
+    const driver = user?.email || "Unknown";
+    const result = await updateTicketScan(ticket.ticketId, scanType, driver);
     if (result.success) {
       setTicket((prev) => ({
         ...prev,

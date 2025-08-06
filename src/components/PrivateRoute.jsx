@@ -1,11 +1,11 @@
 import React from "react";
-import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "./AuthProvider.jsx";
-import LoadingScreen from "./LoadingScreen.jsx";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
+import Spinner from "./Spinner.jsx";
 
-export default function PrivateRoute() {
+export default function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <LoadingScreen />;
+  if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Outlet />;
+  return children;
 }
