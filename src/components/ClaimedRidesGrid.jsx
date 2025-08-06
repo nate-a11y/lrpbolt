@@ -21,6 +21,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { deleteClaimedRide, restoreRide } from "../hooks/api";
 import useRides from "../hooks/useRides";
 import useToast from "../hooks/useToast";
+import { logError } from "../utils/logError";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -93,6 +94,7 @@ const ClaimedRidesGrid = () => {
         setSelectedRows([]);
         await fetchRides();
       } catch (err) {
+        logError(err, "ClaimedRidesGrid:bulkDelete");
         showToast(
           `❌ Bulk delete failed: ${err?.message || JSON.stringify(err)}`,
           "error",

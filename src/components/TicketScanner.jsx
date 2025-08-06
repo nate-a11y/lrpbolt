@@ -43,7 +43,7 @@ import {
 } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import { useAuth } from "../context/AuthContext.jsx";
-import { logError } from "../utils/errorUtils";
+import { logError } from "../utils/logError";
 
 export default function TicketScanner() {
   const [ticket, setTicket] = useState(null);
@@ -90,7 +90,8 @@ export default function TicketScanner() {
   const safeGetState = () => {
     try {
       return html5QrCodeRef.current?.getState?.();
-    } catch {
+    } catch (err) {
+      logError(err, "TicketScanner:getState");
       return null;
     }
   };
@@ -131,7 +132,10 @@ export default function TicketScanner() {
         setCameras(devices);
         setCurrentCameraId(rearCamera?.id || null);
       })
-      .catch(() => setCameraError(true));
+      .catch((err) => {
+        logError(err, "TicketScanner:getCameras");
+        setCameraError(true);
+      });
   }, []);
 
   // 🎬 Start scanner after DOM is painted
@@ -142,7 +146,7 @@ export default function TicketScanner() {
     return () => {
       const scanner = html5QrCodeRef.current;
       if (scanner && (safeGetState() === 2 || safeGetState() === 3)) {
-        scanner.stop().catch(() => {});
+        scanner.stop().catch((err) => logError(err, "TicketScanner:stop"));
       }
     };
   }, [currentCameraId, initScanner]);
@@ -153,7 +157,9 @@ export default function TicketScanner() {
     setShowSuccess(false);
     isScanningRef.current = false;
     setTimeout(() => {
-      html5QrCodeRef.current?.resume?.().catch(() => {});
+      html5QrCodeRef.current
+        ?.resume?.()
+        .catch((err) => logError(err, "TicketScanner:resume"));
     }, 800);
     setCameraPaused(false);
   }, []);
@@ -170,7 +176,8 @@ export default function TicketScanner() {
         message: !torchOn ? "🔦 Torch on" : "🔦 Torch off",
         severity: "info",
       });
-    } catch {
+    } catch (err) {
+      logError(err, "TicketScanner:toggleTorch");
       setSnackbar({
         open: true,
         message: "❌ Torch not supported",
@@ -193,7 +200,7 @@ export default function TicketScanner() {
             severity: "info",
           });
         })
-        .catch(() => {});
+        .catch((err) => logError(err, "TicketScanner:toggleCamera"));
     } else {
       scanner
         .pause()
@@ -205,7 +212,7 @@ export default function TicketScanner() {
             severity: "info",
           });
         })
-        .catch(() => {});
+        .catch((err) => logError(err, "TicketScanner:toggleCamera"));
     }
   };
 
@@ -226,7 +233,9 @@ export default function TicketScanner() {
         }, 3000),
       };
 
-      html5QrCodeRef.current?.pause?.().catch(() => {});
+      html5QrCodeRef.current
+        ?.pause?.()
+        .catch((err) => logError(err, "TicketScanner:pause"));
       setLoading(true);
 
       fetchTicket(ticketId)
@@ -247,7 +256,8 @@ export default function TicketScanner() {
             resetScanner();
           }
         })
-        .catch(() => {
+        .catch((err) => {
+          logError(err, "TicketScanner:fetchTicket");
           setLoading(false);
           setScanFeedback("error");
           setTimeout(() => setScanFeedback(null), 600);

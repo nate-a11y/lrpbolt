@@ -28,7 +28,7 @@ import {
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
 import { Timestamp } from "firebase/firestore";
-import { logError } from "../utils/errorUtils";
+import { logError } from "../utils/logError";
 
 const getStoredLocations = (key) =>
   JSON.parse(localStorage.getItem(key) || "[]");
@@ -141,7 +141,7 @@ export default function TicketGenerator() {
       storeLocation("lrp_dropoff", newTicket.dropoff);
       setOpenPreview(true);
     } catch (err) {
-      logError(err);
+      logError(err, "TicketGenerator:save");
       setSnackbar({
         open: true,
         message: "🚨 Error saving ticket to Firestore",
@@ -168,7 +168,7 @@ export default function TicketGenerator() {
         severity: "success",
       });
     } catch (err) {
-      logError(err);
+      logError(err, "TicketGenerator:download");
       setSnackbar({
         open: true,
         message: "❌ Failed to generate image",
@@ -200,7 +200,7 @@ export default function TicketGenerator() {
         });
       } else throw new Error("Failed");
     } catch (err) {
-      logError(err);
+      logError(err, "TicketGenerator:email");
       setSnackbar({
         open: true,
         message: "❌ Email failed",

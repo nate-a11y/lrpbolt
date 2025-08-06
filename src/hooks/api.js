@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
-import { logError } from "../utils/errorUtils";
+import { logError } from "../utils/logError";
 import { callFunction, apiFetch } from "../api";
 
 // Helper to strip undefined values before sending to Firestore
@@ -487,6 +487,7 @@ export async function restoreLiveRide(rideData) {
     await addLiveRide(rideData);
     return { success: true };
   } catch (err) {
+    logError(err, "restoreLiveRide");
     return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }
@@ -501,6 +502,7 @@ export async function restoreRide(rideData) {
     await addRideToQueue(rideData);
     return { success: true };
   } catch (err) {
+    logError(err, "restoreRide");
     return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }

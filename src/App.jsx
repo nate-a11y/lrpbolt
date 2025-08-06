@@ -38,6 +38,7 @@ import { useAuth } from "./context/AuthContext.jsx";
 import { getUserAccess } from "./hooks/api";
 import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
+import { logError } from "./utils/logError";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
@@ -142,6 +143,7 @@ export default function App() {
       }
       window.location.reload();
     } catch (err) {
+      logError(err, "App:signOut");
       showToast("Sign out failed", "error");
     }
   }, [showToast, setDriver]);

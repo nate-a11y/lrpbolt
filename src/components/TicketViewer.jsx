@@ -13,7 +13,7 @@ import {
 import dayjs from "dayjs";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import { useAuth } from "../context/AuthContext.jsx";
-import { logError } from "../utils/errorUtils";
+import { logError } from "../utils/logError";
 
 export default function TicketViewer() {
   const { ticketId } = useParams();
@@ -40,7 +40,7 @@ export default function TicketViewer() {
         }
       })
       .catch((err) => {
-        logError(err);
+        logError(err, "TicketViewer:fetch");
         setError(true);
         setTicket(null);
       })
@@ -73,7 +73,7 @@ export default function TicketViewer() {
         }
       })
       .catch((err) => {
-        logError(err);
+        logError(err, "TicketViewer:updateScan");
         setSnackbar({
           open: true,
           message: "🚨 Error updating scan status",

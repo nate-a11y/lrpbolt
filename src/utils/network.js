@@ -1,4 +1,5 @@
 import { logRequest } from "./apiMonitor";
+import { logError } from "./logError";
 
 export async function fetchWithRetry(
   url,
@@ -18,6 +19,7 @@ export async function fetchWithRetry(
       return res;
     } catch (err) {
       lastError = err;
+      logError(err, "fetchWithRetry");
       attempt += 1;
       if (attempt > retries) break;
       await waitForOnline();

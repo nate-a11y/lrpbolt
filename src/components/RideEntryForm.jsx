@@ -38,6 +38,7 @@ import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import { formatDuration, toTimeString12Hr } from "../utils/timeUtils";
 import { db } from "../firebase";
+import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import useRides from "../hooks/useRides";
 import dayjs from "dayjs";
@@ -95,7 +96,8 @@ export default function RideEntryForm() {
   const [formData, setFormData] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("rideForm")) || defaultValues;
-    } catch {
+    } catch (err) {
+      logError(err, "RideEntryForm:init");
       return defaultValues;
     }
   });
@@ -319,6 +321,7 @@ export default function RideEntryForm() {
       });
       await fetchRides();
     } catch (error) {
+      logError(error, "RideEntryForm:refresh");
       setToast({
         open: true,
         message: `❌ Refresh failed: ${error?.message || JSON.stringify(error)}`,
@@ -352,6 +355,7 @@ export default function RideEntryForm() {
       setConfirmOpen(false);
       await fetchRides();
     } catch (err) {
+      logError(err, "RideEntryForm:submit");
       setToast({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,
@@ -385,6 +389,7 @@ export default function RideEntryForm() {
       setUploadedRows([]);
       await fetchRides();
     } catch (err) {
+      logError(err, "RideEntryForm:import");
       setToast({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,
@@ -462,6 +467,7 @@ export default function RideEntryForm() {
       setMultiInput("");
       await fetchRides();
     } catch (err) {
+      logError(err, "RideEntryForm:bulkSubmit");
       setToast({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,

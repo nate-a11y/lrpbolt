@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
+import { logError } from "./logError";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -57,7 +58,8 @@ export const calculateDropOff = (pickup, duration) => {
 
     const dropoff = pickupDT.add(hr, "hour").add(min, "minute");
     return dropoff.format("h:mm A");
-  } catch {
+  } catch (err) {
+    logError(err, "timeUtils:calculateDropOff");
     return "N/A";
   }
 };

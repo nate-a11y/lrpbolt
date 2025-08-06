@@ -1,9 +1,9 @@
 export function logError(err, context = "") {
-  let safeMessage;
+  let msg;
   try {
-    safeMessage = err?.message || JSON.stringify(err) || "Unknown error";
+    msg = err?.message ?? JSON.stringify(err) ?? "Unknown error";
   } catch {
-    safeMessage = "Unknown error (circular)";
+    msg = "Error serializing error object";
   }
-  console.error(`[Error] ${context}:`, safeMessage);
+  console.error(`[${context}]`, msg);
 }
