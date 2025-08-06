@@ -38,55 +38,43 @@ export default function Login() {
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
   const handleCredentialResponse = useCallback((response) => {
-    console.log("[Google One Tap] Credential received:", response);
-    if (!response?.credential) {
-      console.error("[Google One Tap] No credential returned", response);
-      return;
-    }
+    if (!response?.credential) return;
     const credential = GoogleAuthProvider.credential(response.credential);
-    signInWithCredential(auth, credential)
-      .then((res) =>
-        console.log("[Google One Tap] Sign in success:", res.user),
-      )
-      .catch((err) => {
-        console.error("Google One Tap error:", err);
-        if (err && err.message)
-          console.error("Error message:", err.message);
-      });
+    signInWithCredential(auth, credential).catch((err) =>
+      console.error(
+        "[Google One Tap] error:",
+        err?.message || JSON.stringify(err),
+      ),
+    );
   }, []);
 
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
-    console.log("[Google One Tap] Initializing...");
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      console.error("[Google One Tap] Missing client ID.");
-      return;
-    }
-    if (window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleCredentialResponse,
-          auto_select: true,
-          useFedCM: true,
-        });
-        window.google.accounts.id.prompt(() => {
-          console.log("[Google One Tap] Prompt displayed.");
-        });
-      } catch (err) {
-        console.error("Google One Tap error:", err);
-        if (err && err.message)
-          console.error("Error message:", err.message);
-      }
+    if (!clientId || !window.google?.accounts?.id) return;
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleCredentialResponse,
+        auto_select: true,
+        use_fedcm_for_prompt: true,
+      });
+      window.google.accounts.id.prompt();
+    } catch (err) {
+      console.error(
+        "[Google One Tap] init failed:",
+        err?.message || JSON.stringify(err),
+      );
     }
   }, [handleCredentialResponse]);
 
   const manualGoogleSignIn = useCallback(() => {
-    console.log("[Google Button] Clicked.");
     signInWithPopup(auth, new GoogleAuthProvider()).catch((err) =>
-      console.error("[Google Button] Sign in error:", err),
+      console.error(
+        "[Google Button] Sign in error:",
+        err?.message || JSON.stringify(err),
+      ),
     );
   }, []);
 
@@ -94,18 +82,14 @@ export default function Login() {
     setAuthInProgress(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      console.log("[Email/Password Login] Attempt complete.");
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(err?.message || "Login failed", "error");
       setAuthInProgress(false);
     }
   }, [email, password, showToast]);
 
   if (loading) return <LoadingScreen />;
-  if (user) {
-    console.log("[Login] User authenticated. Redirecting to dashboard.");
-    return <Navigate to="/dashboard" />;
-  }
+  if (user) return <Navigate to="/rides" replace />;
 
   return (
     <ThemeProvider theme={theme}>

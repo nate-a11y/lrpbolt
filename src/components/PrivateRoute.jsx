@@ -5,14 +5,7 @@ import LoadingScreen from "./LoadingScreen.jsx";
 
 export default function PrivateRoute() {
   const { user, loading } = useAuth();
-  if (loading) {
-    console.log("[PrivateRoute] Waiting for auth...");
-    return <LoadingScreen />;
-  }
-  if (!user) {
-    console.log("[PrivateRoute] No user found. Redirecting to /login");
-    return <Navigate to="/login" replace />;
-  }
-  console.log("[PrivateRoute] Authenticated user:", user.email);
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
   return <Outlet />;
 }

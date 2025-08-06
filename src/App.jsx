@@ -253,13 +253,7 @@ export default function App() {
                 <Routes>
                   <Route
                     path="/"
-                    element={
-                      <RideClaimTab
-                        driver={selectedDriver}
-                        isAdmin={isAdmin}
-                        isLockedOut={!isAdmin && isLockedOut}
-                      />
-                    }
+                    element={<Navigate to="/rides" replace />}
                   />
                   <Route
                     path="/rides"
