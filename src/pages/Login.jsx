@@ -38,7 +38,7 @@ export default function Login() {
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  const handlePopupLogin = useCallback(async () => {
+  const handlePopupLogin = async () => {
     setAuthInProgress(true);
     try {
       await loginWithPopup();
@@ -48,9 +48,9 @@ export default function Login() {
     } finally {
       setAuthInProgress(false);
     }
-  }, [loginWithPopup, showToast]);
+  };
 
-  const handleRedirectLogin = useCallback(async () => {
+  const handleRedirectLogin = async () => {
     setAuthInProgress(true);
     try {
       await loginWithRedirect();
@@ -59,7 +59,7 @@ export default function Login() {
       showToast(err?.message || "Google sign-in failed", "error");
       setAuthInProgress(false);
     }
-  }, [loginWithRedirect, showToast]);
+  };
 
   const handleEmailAuth = useCallback(async () => {
     setAuthInProgress(true);
