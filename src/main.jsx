@@ -10,15 +10,16 @@ import { logError } from "./utils/errorUtils";
 
 // Mount the app
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BrowserRouter>
+  <BrowserRouter>
+    <React.StrictMode>
       <DriverProvider>
+      
         <Suspense fallback={<LoadingScreen />}>
           <App />
         </Suspense>
       </DriverProvider>
-    </BrowserRouter>
-  </React.StrictMode>,
+    </React.StrictMode>
+  </BrowserRouter>,
 );
 
 // Register service worker with basic error logging
