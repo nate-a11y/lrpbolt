@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
-import { auth } from "../firebase";
+import { useAuth } from "../context/AuthContext.jsx";
 import { logError } from "../utils/errorUtils";
 
 export default function TicketViewer() {
@@ -26,6 +26,7 @@ export default function TicketViewer() {
     message: "",
     severity: "success",
   });
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchTicket(ticketId)
@@ -49,7 +50,7 @@ export default function TicketViewer() {
   const updateScanStatus = (field) => {
     if (!ticket || ticket[field]) return;
 
-    const driver = auth.currentUser?.email || "Unknown";
+    const driver = user?.email || "Unknown";
     updateTicketScan(
       ticketId,
       field === "scannedOutbound" ? "outbound" : "return",

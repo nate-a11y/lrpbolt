@@ -42,7 +42,7 @@ import {
   formatTime,
 } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
-import { auth } from "../firebase";
+import { useAuth } from "../context/AuthContext.jsx";
 import { logError } from "../utils/errorUtils";
 
 export default function TicketScanner() {
@@ -72,6 +72,8 @@ export default function TicketScanner() {
   const cooldownRef = useRef(null);
   const scannerReadyRef = useRef(false);
   const [confirming, setConfirming] = useState(false);
+
+  const { user } = useAuth();
 
   const shake = keyframes`
     10%, 90% { transform: translateX(-1px); }
@@ -286,7 +288,7 @@ export default function TicketScanner() {
       return;
     }
 
-    const driver = auth.currentUser?.email || "Unknown";
+      const driver = user?.email || "Unknown";
     const result = await updateTicketScan(
       ticket.ticketId,
       scanType,

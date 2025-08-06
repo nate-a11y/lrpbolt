@@ -2,7 +2,7 @@
 // src/firebase.js
 
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
 import { getFunctions } from "firebase/functions";
 import { formatAuthError } from "./utils/errorUtils";
@@ -31,4 +31,4 @@ export const db = getFirestore(app); // 👈 ADD THIS
 export const functions = getFunctions(app);
 
 // 🔑 Export auth + helpers
-export { auth, onAuthStateChanged, signOut, formatAuthError };
+export { auth, signOut, formatAuthError };
