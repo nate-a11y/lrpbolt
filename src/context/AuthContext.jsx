@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
         auth,
         GoogleAuthProvider.credential(credential),
       );
-      navigate("/rides");
+      navigate("/rides", { replace: true });
     } catch (err) {
       console.error(err?.message || JSON.stringify(err));
     }
@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         if (currentUser) {
           console.log(`Authenticated as: ${currentUser.email}`);
-          navigate("/rides");
+          navigate("/rides", { replace: true });
         } else {
           console.log("No user");
           initOneTap();
