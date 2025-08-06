@@ -4,7 +4,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -12,14 +11,14 @@ import {
   Button,
   Snackbar,
   Alert,
-  Tooltip,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import { orderBy } from "firebase/firestore";
 import { DataGrid } from "@mui/x-data-grid";
 import { deleteClaimedRide, restoreRide } from "../hooks/api";
-import useRides from "../hooks/useRides";
+import useFirestoreListener from "../hooks/useFirestoreListener";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 
@@ -34,7 +33,9 @@ const ClaimedRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
 
-  const { claimedRides, fetchRides } = useRides();
+  const claimedRides = useFirestoreListener("claimedRides", [
+    orderBy("pickupTime", "asc"),
+  ]);
 
   const mapped = useMemo(
     () =>
@@ -69,7 +70,6 @@ const ClaimedRidesGrid = () => {
       const res = await deleteClaimedRide(selectedRow.id);
       if (res.success) {
         showToast("🗑️ Ride deleted", "info");
-        await fetchRides();
       } else {
         showToast(`❌ ${res.message}`, "error");
       }
@@ -92,7 +92,6 @@ const ClaimedRidesGrid = () => {
         await Promise.all(selectedRows.map((id) => deleteClaimedRide(id)));
         showToast("✅ Selected rides deleted", "info");
         setSelectedRows([]);
-        await fetchRides();
       } catch (err) {
         logError(err, "ClaimedRidesGrid:bulkDelete");
         showToast(
@@ -126,7 +125,6 @@ const ClaimedRidesGrid = () => {
 
     setUndoBuffer([]);
     setLoading(false);
-    await fetchRides();
   };
 
   const columns = [
@@ -185,26 +183,6 @@ const ClaimedRidesGrid = () => {
           </Button>
         </Box>
       )}
-
-      <Box display="flex" justifyContent="flex-end" mb={1}>
-        <Tooltip title="Refresh Claimed Rides">
-          <span>
-            <IconButton
-              onClick={async () => {
-                setLoading(true);
-                await fetchRides();
-                setLoading(false);
-                showToast("🔄 Claimed rides refreshed", "success");
-              }}
-              disabled={loading}
-            >
-              <RefreshIcon
-                sx={{ animation: loading ? "spin 1s linear infinite" : "none" }}
-              />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
 
       <DataGrid
         rows={rows}

@@ -24,12 +24,12 @@ import {
   claimRide as firestoreClaimRide,
   deleteLiveRide,
 } from "../hooks/api";
-import useLiveRides from "../hooks/useLiveRides";
+import useFirestoreListener from "../hooks/useFirestoreListener";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE } from "../constants";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, orderBy } from "firebase/firestore";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -101,7 +101,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     });
   }, []);
 
-  const liveRides = useLiveRides();
+  const liveRides = useFirestoreListener("liveRides", [
+    orderBy("pickupTime", "asc"),
+  ]);
 
   // ✅ Update rides from shared hook
   useEffect(() => {
