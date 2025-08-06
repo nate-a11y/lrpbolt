@@ -22,6 +22,22 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const oneTapInitRef = useRef(false);
 
+  const handleCredentialResponse = useCallback(async ({ credential }) => {
+    if (!credential) return;
+    try {
+      const result = await signInWithCredential(
+        auth,
+        GoogleAuthProvider.credential(credential),
+      );
+      console.log("[AuthProvider] One Tap login:", result.user.email);
+    } catch (err) {
+      console.error(
+        "[AuthProvider] One Tap error:",
+        err?.message || JSON.stringify(err),
+      );
+    }
+  }, []);
+
   const initOneTap = useCallback(() => {
     if (oneTapInitRef.current) return;
     oneTapInitRef.current = true;
@@ -32,39 +48,36 @@ export function AuthProvider({ children }) {
     try {
       window.google.accounts.id.initialize({
         client_id: clientId,
-        callback: async ({ credential }) => {
-          if (!credential) return;
-          try {
-            const result = await signInWithCredential(
-              auth,
-              GoogleAuthProvider.credential(credential),
-            );
-            console.log("[AuthProvider] One Tap login:", result.user.email);
-          } catch (err) {
-            console.error("[AuthProvider] One Tap error:", err.message);
-          }
-        },
+        callback: handleCredentialResponse,
         auto_select: true,
-        useFedCM: true,
+        use_fedcm_for_prompt: true,
       });
       window.google.accounts.id.prompt();
     } catch (err) {
-      console.error("[AuthProvider] One Tap init failed:", err.message);
+      console.error(
+        "[AuthProvider] One Tap init failed:",
+        err?.message || JSON.stringify(err),
+      );
     }
-  }, []);
+  }, [handleCredentialResponse]);
 
   useEffect(() => {
     let unsubscribe = () => {};
     (async () => {
       try {
         await setPersistence(auth, browserLocalPersistence);
-        console.log("[AuthProvider] Persistence set to local.");
       } catch (err) {
-        console.error("[AuthProvider] Persistence error:", err.message);
+        console.error(
+          "[AuthProvider] Persistence error:",
+          err?.message || JSON.stringify(err),
+        );
       }
 
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        console.log("[AuthProvider] Auth state:", currentUser?.email || null);
+        console.log(
+          "[AuthProvider] Auth state:",
+          currentUser?.email || "No user",
+        );
         setUser(currentUser);
         setLoading(false);
         if (!currentUser) initOneTap();
