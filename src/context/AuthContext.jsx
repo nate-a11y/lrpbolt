@@ -44,16 +44,16 @@ export function AuthProvider({ children }) {
 
     if (!window.google?.accounts?.id) return;
       try {
-        window.google.accounts.id.initialize({
-          client_id:
-            "799613895072-obt66rah27n1saqfodrflt0memgn3k6p.apps.googleusercontent.com",
-          callback: handleCredentialResponse,
-          use_fedcm_for_prompt: true,
-        });
-        window.google.accounts.id.prompt();
-      } catch (err) {
-        logError(err, "AuthContext");
-      }
+      window.google.accounts.id.initialize({
+        client_id:
+          "799613895072-obt66rah27n1saqfodrflt0memgn3k6p.apps.googleusercontent.com",
+        callback: handleCredentialResponse,
+        use_fedcm_for_prompt: true,
+      });
+      // NOTE: we no longer auto-prompt here; login button will trigger prompt
+    } catch (err) {
+      logError(err, "AuthContext:initOneTap");
+    }
     }, [handleCredentialResponse]);
 
   useEffect(() => {
