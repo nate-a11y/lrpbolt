@@ -212,25 +212,46 @@ export default function App() {
   }, [showEliteBadge]);
 
   useEffect(() => {
-    if (user) return;
-    if (typeof window !== "undefined" && window.google && window.google.accounts.id) {
-      window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (!clientId) {
+      console.error(
+        "🚨 VITE_GOOGLE_CLIENT_ID is missing from environment variables.",
+      );
+    } else {
+      window.google?.accounts.id.initialize({
+        client_id: clientId,
         callback: async (response) => {
+          if (!response || !response.credential) {
+            console.error(
+              "🚨 No credential received from Google One Tap:",
+              response,
+            );
+            return;
+          }
+
           try {
-            setAuthInProgress(true);
-            const credential = GoogleAuthProvider.credential(response.credential);
-            await signInWithCredential(auth, credential);
-          } catch (err) {
-            console.error("One Tap error:", err);
-            setAuthInProgress(false);
+            const credential = GoogleAuthProvider.credential(
+              response.credential,
+            );
+            const result = await signInWithCredential(auth, credential);
+            console.log("✅ One Tap Login Successful:", result.user.email);
+            // Optionally redirect or update UI
+          } catch (error) {
+            console.error("❌ Firebase signInWithCredential failed.");
+            console.error("Full error:", error);
+            if (error?.message) console.error("Error message:", error.message);
+            if (typeof error !== "object")
+              console.warn("Error was not an object:", error);
           }
         },
         auto_select: true,
+        cancel_on_tap_outside: false,
       });
-      window.google.accounts.id.prompt();
+
+      window.google.accounts.id.prompt(); // show One Tap
     }
-  }, [user, setAuthInProgress]);
+  }, []);
   const handleGoogleLogin = useCallback(async () => {
     setAuthInProgress(true);
     try {
