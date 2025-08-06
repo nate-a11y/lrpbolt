@@ -2,7 +2,7 @@
 // src/firebase.js
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
 import { getFunctions } from "firebase/functions";
 import { formatAuthError } from "./utils/errorUtils";
@@ -25,11 +25,10 @@ const app = initializeApp(firebaseConfig);
 
 // ✅ Auth setup
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
 // ✅ Firestore & Functions setup
 export const db = getFirestore(app); // 👈 ADD THIS
 export const functions = getFunctions(app);
 
 // 🔑 Export auth + helpers
-export { auth, provider, onAuthStateChanged, signOut, formatAuthError };
+export { auth, onAuthStateChanged, signOut, formatAuthError };

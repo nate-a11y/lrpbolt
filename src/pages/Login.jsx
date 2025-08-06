@@ -12,8 +12,8 @@ import {
   Backdrop,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { GoogleAuthProvider, signInWithCredential, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, provider } from "../firebase";
+import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
 import useToast from "../hooks/useToast";
 import getTheme from "../theme";
@@ -37,6 +37,24 @@ export default function Login() {
     if (!loading && user) navigate("/dashboard", { replace: true });
   }, [user, loading, navigate]);
 
+  const handleCredentialResponse = useCallback(
+    async (response) => {
+      if (!response?.credential) {
+        console.error("🚨 One Tap returned no credential", response);
+        return;
+      }
+      try {
+        const credential = GoogleAuthProvider.credential(response.credential);
+        await signInWithCredential(auth, credential);
+        console.log("✅ One Tap Sign-In success:", auth.currentUser);
+        navigate("/dashboard");
+      } catch (err) {
+        console.error("🚨 Firebase sign-in failed", err);
+      }
+    },
+    [navigate],
+  );
+
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
@@ -48,46 +66,18 @@ export default function Login() {
     if (window.google?.accounts?.id) {
       window.google.accounts.id.initialize({
         client_id: clientId,
-        callback: async (response) => {
-          if (!response?.credential) {
-            console.error("🚨 One Tap returned no credential", response);
-            return;
-          }
-          try {
-            const credential = GoogleAuthProvider.credential(
-              response.credential,
-            );
-            const result = await signInWithCredential(auth, credential);
-            console.log("Current user:", auth.currentUser);
-            if (import.meta.env.DEV && result.user) {
-              console.log(
-                "✅ One Tap signed in",
-                result.user.email,
-                result.user.uid,
-              );
-            }
-            navigate("/dashboard");
-          } catch (err) {
-            console.error("🚨 Firebase sign-in failed", err);
-          }
-        },
+        callback: handleCredentialResponse,
         auto_select: false,
         cancel_on_tap_outside: false,
+        prompt_parent_id: "one-tap-container",
       });
       window.google.accounts.id.prompt();
     }
-  }, [navigate, loading]);
+  }, [handleCredentialResponse]);
 
-  const handleGoogleLogin = useCallback(async () => {
-    setAuthInProgress(true);
-    try {
-      provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithRedirect(auth, provider);
-    } catch (err) {
-      showToast(err.message, "error");
-      setAuthInProgress(false);
-    }
-  }, [showToast]);
+  const handleGoogleLogin = useCallback(() => {
+    window.google?.accounts?.id?.prompt();
+  }, []);
 
   const handleEmailAuth = useCallback(async () => {
     setAuthInProgress(true);
@@ -109,6 +99,7 @@ export default function Login() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <div id="one-tap-container" />
       <Box
         sx={{
           minHeight: "100vh",
