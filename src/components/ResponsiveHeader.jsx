@@ -187,11 +187,7 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         >
-          <Box
-            sx={{ width: 250 }}
-            role="presentation"
-            onClick={() => setDrawerOpen(false)}
-          >
+          <Box sx={{ width: 250 }} role="presentation">
             <List>
               {NAV_ITEMS.map((item) =>
                 item.admin && !isAdmin ? null : (
@@ -204,6 +200,7 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
                       <ListItemButton
                         selected={isActive}
                         sx={isActive ? isActiveStyle : {}}
+                        onClick={() => setDrawerOpen(false)}
                       >
                         <ListItemIcon>{item.icon}</ListItemIcon>
                         <ListItemText primary={item.label} />
@@ -231,14 +228,24 @@ const ResponsiveHeader = ({ darkMode, setDarkMode, onChangeDriver, onSignOut }) 
                 <ListItemText primary="Dark Mode" sx={{ ml: 1 }} />
               </ListItemButton>
               {isAdmin && (
-                <ListItemButton onClick={onChangeDriver}>
+                <ListItemButton
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    onChangeDriver();
+                  }}
+                >
                   <ListItemIcon>
                     <LoopIcon />
                   </ListItemIcon>
                   <ListItemText primary="Change Driver" />
                 </ListItemButton>
               )}
-              <ListItemButton onClick={onSignOut}>
+              <ListItemButton
+                onClick={() => {
+                  setDrawerOpen(false);
+                  onSignOut();
+                }}
+              >
                 <ListItemIcon>
                   <ExitToAppIcon color="error" />
                 </ListItemIcon>
