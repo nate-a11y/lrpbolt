@@ -9,6 +9,9 @@ registerSW({
     console.log('[PWA] App ready to work offline.');
   },
   onRegisterError(error) {
-    console.error('[PWA] Service worker registration failed:', error);
+    console.error(
+      '[PWA] Service worker registration failed:',
+      error?.message || JSON.stringify(error),
+    );
   },
 });

@@ -70,7 +70,6 @@ export function AuthProvider({ children }) {
             console.log(`Authenticated as: ${currentUser.email}`);
           navigate("/rides", { replace: true });
         } else if (prevUserRef.current !== null) {
-          console.log("No user");
           initOneTap();
         }
         prevUserRef.current = currentUser;
