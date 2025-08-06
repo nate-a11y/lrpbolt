@@ -14,20 +14,28 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     console.log("[AuthProvider] Initializing auth listener...");
+
     let unsubscribe = () => {};
+
     setPersistence(auth, browserLocalPersistence)
       .then(() => {
         console.log("[AuthProvider] Persistence set to local.");
+
         unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          console.log("[AuthProvider] Auth state changed:", currentUser);
+          if (currentUser) {
+            console.log(`[AuthProvider] Authenticated as: ${currentUser.email}`);
+          } else {
+            console.log("[AuthProvider] No user signed in.");
+          }
           setUser(currentUser);
-          setLoading(false);
+          setLoading(false); // ✅ Prevent redirect until auth resolves
         });
       })
       .catch((err) => {
-        console.error("[AuthProvider] Persistence error:", err);
+        console.error("[AuthProvider] Persistence error:", err.message);
         setLoading(false);
       });
+
     return () => unsubscribe();
   }, []);
 
@@ -37,5 +45,6 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
