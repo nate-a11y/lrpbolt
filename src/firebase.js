@@ -2,7 +2,15 @@
 // src/firebase.js
 
 import { initializeApp } from "firebase/app";
-import { getAuth, signOut } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // 👈 ADD THIS
 import { getFunctions } from "firebase/functions";
 import { formatAuthError } from "./utils/errorUtils";
@@ -24,11 +32,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // ✅ Auth setup
-const auth = getAuth(app);
+export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence);
+
+const provider = new GoogleAuthProvider();
+
+export const loginWithPopup = () => signInWithPopup(auth, provider);
+export const loginWithRedirect = () => signInWithRedirect(auth, provider);
+export const logout = () => signOut(auth);
 
 // ✅ Firestore & Functions setup
 export const db = getFirestore(app); // 👈 ADD THIS
 export const functions = getFunctions(app);
 
-// 🔑 Export auth + helpers
-export { auth, signOut, formatAuthError };
+// 🔑 Export helpers
+export { formatAuthError };

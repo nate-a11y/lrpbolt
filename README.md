@@ -61,6 +61,15 @@ Run unit tests with:
 npm test
 ```
 
+## Firebase Setup
+
+Authorized Domains: In the Firebase Console → Authentication → Sign-in Method → Authorized Domains, add:
+
+- localhost (for development)
+- lakeridepros.xyz (production)
+
+Persistence: We use browserLocalPersistence so redirect sign-in survives full reloads.
+
 ## Environment Setup
 
 This project requires **Node.js 22** or later. If you're using [nvm](https://github.com/nvm-sh/nvm), run `nvm install 22`.
