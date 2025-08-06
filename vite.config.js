@@ -56,6 +56,9 @@ export default defineConfig({
       "@emotion/styled",
     ],
   },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   server: {
     open: true,
     hmr: {
