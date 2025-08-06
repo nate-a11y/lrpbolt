@@ -121,8 +121,8 @@ jobs:
 
       - name: Verify SW exists
         run: |
-          if [ ! -f "src/service-worker.js" ]; then
-            echo "❌ ERROR: service-worker.js missing — service worker will fail."
+          if [ ! -f "src/registerSW.js" ]; then
+            echo "❌ ERROR: registerSW.js missing — service worker will fail."
             exit 1
           fi
           echo "✅ Service worker found."
