@@ -7,6 +7,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  getRedirectResult,
+  signInWithEmailAndPassword,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -37,8 +39,22 @@ setPersistence(auth, browserLocalPersistence);
 
 const provider = new GoogleAuthProvider();
 
-export const loginWithPopup = () => signInWithPopup(auth, provider);
-export const loginWithRedirect = () => signInWithRedirect(auth, provider);
+export function loginWithPopup() {
+  return signInWithPopup(auth, provider);
+}
+
+export function loginWithRedirect() {
+  return signInWithRedirect(auth, provider);
+}
+
+export function handleRedirectResult() {
+  return getRedirectResult(auth);
+}
+
+export function loginWithEmail(email, password) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
 export const logout = () => signOut(auth);
 
 // ✅ Firestore & Functions setup
@@ -46,4 +62,4 @@ export const db = getFirestore(app); // 👈 ADD THIS
 export const functions = getFunctions(app);
 
 // 🔑 Export helpers
-export { signOut, formatAuthError };
+export { formatAuthError };

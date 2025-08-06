@@ -34,7 +34,7 @@ import useDarkMode from "./hooks/useDarkMode";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
-import { useAuth } from "./components/AuthProvider.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
 import { getUserAccess } from "./hooks/api";
 import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
@@ -155,25 +155,25 @@ export default function App() {
       setShowEliteBadge(true);
       (async () => {
         const record = await getUserAccess(user.email);
-          if (record) {
-            const access = record.access?.toLowerCase() || "driver";
-            await setDriver({
-              id: record.id,
-              name: record.name,
-              email: user.email,
-              access,
-            });
-            if (import.meta.env.DEV) {
-              console.log("Authenticated:", user.email, "role:", access);
-            }
-            fetchDrivers();
-          } else {
-            showToast("Access denied", "error");
-            await auth.signOut();
-            setDriver(null);
+        if (record) {
+          const access = record.access?.toLowerCase() || "driver";
+          await setDriver({
+            id: record.id,
+            name: record.name,
+            email: user.email,
+            access,
+          });
+          if (import.meta.env.DEV) {
+            console.log("Authenticated:", user.email, "role:", access);
           }
-          setTimeout(() => setIsAppReady(true), 50);
-        })();
+          fetchDrivers();
+        } else {
+          showToast("Access denied", "error");
+          await auth.signOut();
+          setDriver(null);
+        }
+        setTimeout(() => setIsAppReady(true), 50);
+      })();
     } else {
       setDriver(null);
       if (hadUserRef.current) {
@@ -247,15 +247,13 @@ export default function App() {
               <ErrorBoundary
                 fallbackRender={({ error }) => (
                   <Typography color="error" sx={{ mt: 4 }}>
-                    🚨 Something went wrong: {error?.message || JSON.stringify(error)}
+                    🚨 Something went wrong:{" "}
+                    {error?.message || JSON.stringify(error)}
                   </Typography>
                 )}
               >
                 <Routes>
-                  <Route
-                    path="/"
-                    element={<Navigate to="/rides" replace />}
-                  />
+                  <Route path="/" element={<Navigate to="/rides" replace />} />
                   <Route
                     path="/rides"
                     element={
@@ -290,12 +288,18 @@ export default function App() {
                   <Route
                     path="/admin-time-log"
                     element={
-                      isAdmin ? <AdminTimeLog driver={selectedDriver} /> : <Navigate to="/" />
+                      isAdmin ? (
+                        <AdminTimeLog driver={selectedDriver} />
+                      ) : (
+                        <Navigate to="/" />
+                      )
                     }
                   />
                   <Route
                     path="/admin-user-manager"
-                    element={isAdmin ? <AdminUserManager /> : <Navigate to="/" />}
+                    element={
+                      isAdmin ? <AdminUserManager /> : <Navigate to="/" />
+                    }
                   />
                   <Route
                     path="/ride-entry"
@@ -304,7 +308,9 @@ export default function App() {
                   <Route path="/tickets" element={<Tickets />} />
                   <Route
                     path="/generate-ticket"
-                    element={isAdmin ? <TicketGenerator /> : <Navigate to="/" />}
+                    element={
+                      isAdmin ? <TicketGenerator /> : <Navigate to="/" />
+                    }
                   />
                   <Route path="/ticket/:ticketId" element={<TicketViewer />} />
                   <Route
@@ -399,23 +405,22 @@ export default function App() {
                   textAlign: "center",
                 }}
               >
-<Typography
-  variant="caption"
-  sx={{
-    color: "success.main",
-    fontWeight: "bold",
-    display: "flex",
-    alignItems: "center",
-    gap: 1,
-  }}
->
-  🚀 Version:{" "}
-  <span style={{ fontFamily: "monospace" }}>
-    v{import.meta.env.VITE_APP_VERSION || "dev"}
-  </span>{" "}
-  • Lake Ride Pros © {new Date().getFullYear()}
-</Typography>
-
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "success.main",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  🚀 Version:{" "}
+                  <span style={{ fontFamily: "monospace" }}>
+                    v{import.meta.env.VITE_APP_VERSION || "dev"}
+                  </span>{" "}
+                  • Lake Ride Pros © {new Date().getFullYear()}
+                </Typography>
 
                 <Button
                   size="small"
