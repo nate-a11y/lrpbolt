@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
-import { auth, signOut } from "../firebase";
+import { auth } from "../firebase";
+import { signOut } from "firebase/auth";
 
 const DriverContext = createContext(null);
 

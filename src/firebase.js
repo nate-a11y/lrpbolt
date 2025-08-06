@@ -46,4 +46,4 @@ export const db = getFirestore(app); // 👈 ADD THIS
 export const functions = getFunctions(app);
 
 // 🔑 Export helpers
-export { formatAuthError };
+export { signOut, formatAuthError };
