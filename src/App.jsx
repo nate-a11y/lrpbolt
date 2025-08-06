@@ -34,7 +34,7 @@ import useDarkMode from "./hooks/useDarkMode";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
-import { useAuth } from "./context/AuthContext.jsx";
+import useAuth from "./hooks/useAuth.js";
 import { getUserAccess } from "./hooks/api";
 import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
