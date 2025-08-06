@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from "react";
-import {
-  handleRedirectResult,
-  subscribeAuth
-} from "../services/auth";
+import React, { useState, useEffect, useMemo } from "react";
+import { handleRedirectResult, subscribeAuth } from "../services/auth";
 import { AuthContext } from "./AuthContext.js";
 
 export function AuthProvider({ children }) {
@@ -21,10 +18,7 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+  const value = useMemo(() => ({ user, loading }), [user, loading]);
 
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

@@ -107,6 +107,30 @@ export default function App() {
     dismiss: dismissOffline,
   } = useNetworkStatus(() => showToast("✅ Reconnected", "success"));
 
+  const openChangeDriver = useCallback(() => setChangeDriverOpen(true), []);
+
+  const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
+
+  const openSignOutConfirm = useCallback(() => setSignOutConfirmOpen(true), []);
+
+  const closeSignOutConfirm = useCallback(
+    () => setSignOutConfirmOpen(false),
+    [],
+  );
+
+  const noop = useCallback(() => {}, []);
+
+  const handleClearCache = useCallback(() => {
+    if (window.confirm("Clear cache and reload? You'll be signed out.")) {
+      localStorage.clear();
+      sessionStorage.clear();
+      logout();
+      if ("caches" in window)
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+      window.location.href = window.location.origin;
+    }
+  }, []);
+
   useEffect(() => {
     if (import.meta.env.DEV) {
       startMonitoring();
@@ -227,8 +251,8 @@ export default function App() {
         <ResponsiveHeader
           darkMode={darkMode}
           setDarkMode={setDarkMode}
-          onChangeDriver={() => setChangeDriverOpen(true)}
-          onSignOut={() => setSignOutConfirmOpen(true)}
+          onChangeDriver={openChangeDriver}
+          onSignOut={openSignOutConfirm}
         />
         <Box sx={{ display: "flex" }}>
           <SidebarNavigation />
@@ -268,10 +292,7 @@ export default function App() {
                   <Route
                     path="/clock"
                     element={
-                      <TimeClock
-                        driver={selectedDriver}
-                        setIsTracking={() => {}}
-                      />
+                      <TimeClock driver={selectedDriver} setIsTracking={noop} />
                     }
                   />
                   <Route path="/shootout" element={<ShootoutTab />} />
@@ -327,10 +348,7 @@ export default function App() {
               </ErrorBoundary>
             </Suspense>
 
-            <Dialog
-              open={signOutConfirmOpen}
-              onClose={() => setSignOutConfirmOpen(false)}
-            >
+            <Dialog open={signOutConfirmOpen} onClose={closeSignOutConfirm}>
               <DialogTitle sx={{ fontWeight: "bold", color: "#d32f2f" }}>
                 💥 Confirm Sign Out
               </DialogTitle>
@@ -341,9 +359,7 @@ export default function App() {
                 </Typography>
               </DialogContent>
               <DialogActions>
-                <Button onClick={() => setSignOutConfirmOpen(false)}>
-                  Cancel
-                </Button>
+                <Button onClick={closeSignOutConfirm}>Cancel</Button>
                 <Button
                   onClick={handleSignOut}
                   variant="contained"
@@ -357,7 +373,7 @@ export default function App() {
             {isAdmin && (
               <ChangeDriverModal
                 open={changeDriverOpen}
-                onClose={() => setChangeDriverOpen(false)}
+                onClose={closeChangeDriver}
               />
             )}
 
@@ -434,24 +450,7 @@ export default function App() {
                       color: "#fff",
                     },
                   }}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Clear cache and reload? You'll be signed out.",
-                      )
-                    ) {
-                      localStorage.clear();
-                      sessionStorage.clear();
-                      logout();
-                      if ("caches" in window)
-                        caches
-                          .keys()
-                          .then((keys) =>
-                            keys.forEach((k) => caches.delete(k)),
-                          );
-                      window.location.href = window.location.origin;
-                    }
-                  }}
+                  onClick={handleClearCache}
                 >
                   🧹 CLEAR CACHE & RELOAD
                 </Button>

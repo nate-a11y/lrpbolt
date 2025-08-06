@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ThemeProvider,
   CssBaseline,
@@ -14,7 +14,7 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Box
+  Box,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import MailIcon from "@mui/icons-material/Mail";
@@ -38,7 +38,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [darkMode, toggleDarkMode] = useDarkMode();
-  const theme = getTheme(darkMode);
+  const theme = useMemo(() => getTheme(darkMode), [darkMode]);
   const navigate = useNavigate();
 
   // Restore last-used email for convenience
@@ -47,19 +47,54 @@ export default function Login() {
     if (last) setEmail(last);
   }, []);
 
-  const authAndRedirect = async (fn, saveEmail = false) => {
-    setLoading(true);
-    setError("");
-    try {
-      await fn();
-      if (saveEmail) localStorage.setItem("lrp:lastEmail", email);
-      navigate("/", { replace: true });
-    } catch (e) {
-      setError(e.message || "Something went wrong, please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const authAndRedirect = useCallback(
+    async (fn, saveEmail = false) => {
+      setLoading(true);
+      setError("");
+      try {
+        await fn();
+        if (saveEmail) localStorage.setItem("lrp:lastEmail", email);
+        navigate("/", { replace: true });
+      } catch (e) {
+        setError(e.message || "Something went wrong, please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [email, navigate],
+  );
+
+  const handleGooglePopup = useCallback(
+    () => authAndRedirect(loginWithPopup),
+    [authAndRedirect],
+  );
+
+  const handleGoogleRedirect = useCallback(
+    () => authAndRedirect(loginWithRedirect),
+    [authAndRedirect],
+  );
+
+  const emailPasswordLogin = useCallback(
+    () => loginWithEmail(email, password),
+    [email, password],
+  );
+
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      authAndRedirect(emailPasswordLogin, true);
+    },
+    [authAndRedirect, emailPasswordLogin],
+  );
+
+  const handleEmailChange = useCallback((e) => setEmail(e.target.value), []);
+
+  const handlePasswordChange = useCallback(
+    (e) => setPassword(e.target.value),
+    [],
+  );
+
+  const handleTogglePw = useCallback(() => setShowPw((s) => !s), []);
 
   return (
     <ThemeProvider theme={theme}>
@@ -113,7 +148,7 @@ export default function Login() {
               <Button
                 fullWidth
                 variant="contained"
-                onClick={() => authAndRedirect(loginWithPopup)}
+                onClick={handleGooglePopup}
                 disabled={loading}
                 sx={{ py: 1.5 }}
               >
@@ -128,14 +163,7 @@ export default function Login() {
               <Divider sx={{ my: 3 }}>OR</Divider>
 
               {/* Email Form */}
-              <Box
-                component="form"
-                noValidate
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  authAndRedirect(() => loginWithEmail(email, password), true);
-                }}
-              >
+              <Box component="form" noValidate onSubmit={handleSubmit}>
                 <TextField
                   label="Email"
                   type="email"
@@ -143,7 +171,7 @@ export default function Login() {
                   fullWidth
                   autoFocus
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
                   disabled={loading}
                   InputProps={{
                     startAdornment: (
@@ -161,7 +189,7 @@ export default function Login() {
                   required
                   fullWidth
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   disabled={loading}
                   InputProps={{
                     startAdornment: (
@@ -172,7 +200,7 @@ export default function Login() {
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
-                          onClick={() => setShowPw((s) => !s)}
+                          onClick={handleTogglePw}
                           edge="end"
                           size="large"
                         >
@@ -203,15 +231,11 @@ export default function Login() {
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={() => authAndRedirect(loginWithRedirect)}
+                onClick={handleGoogleRedirect}
                 disabled={loading}
                 sx={{ mt: 2, py: 1.5 }}
               >
-                {loading ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  "Google (Redirect)"
-                )}
+                {loading ? <CircularProgress size={24} /> : "Google (Redirect)"}
               </Button>
             </CardContent>
           </Card>
