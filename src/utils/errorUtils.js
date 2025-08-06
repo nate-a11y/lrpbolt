@@ -6,10 +6,11 @@
  * @param {string} [context]
  */
 export function logError(error, context) {
+  const msg = error?.message || JSON.stringify(error);
   if (context) {
-    console.error(context, error);
+    console.error(context, msg);
   } else {
-    console.error(error);
+    console.error(msg);
   }
 }
 
