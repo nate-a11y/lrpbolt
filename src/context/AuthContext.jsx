@@ -58,25 +58,34 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubscribe = () => {};
-    (async () => {
-        try {
-          await setPersistence(auth, browserLocalPersistence);
-        } catch (err) {
-          logError(err, "AuthContext");
-        }
 
-      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        if (currentUser) {
-          if (prevUserRef.current?.email !== currentUser.email)
-            console.log(`Authenticated as: ${currentUser.email}`);
-          navigate("/rides", { replace: true });
-        } else if (prevUserRef.current !== null) {
-          initOneTap();
-        }
-        prevUserRef.current = currentUser;
-        setUser(currentUser);
+    (async () => {
+      try {
+        // ensure local persistence
+        await setPersistence(auth, browserLocalPersistence);
+
+        // listen for changes
+        unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+          try {
+            // your existing logic…
+            if (currentUser) {
+              // navigate, console.log, etc.
+              navigate("/rides", { replace: true });
+            } else if (prevUserRef.current !== null) {
+              initOneTap();
+            }
+            prevUserRef.current = currentUser;
+            setUser(currentUser);
+          } catch (innerErr) {
+            logError(innerErr, "AuthContext:onAuthStateChanged");
+          } finally {
+            setLoading(false);
+          }
+        });
+      } catch (err) {
+        logError(err, "AuthContext:setup");
         setLoading(false);
-      });
+      }
     })();
 
     return () => unsubscribe();
