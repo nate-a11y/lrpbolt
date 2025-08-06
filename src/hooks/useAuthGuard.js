@@ -1,52 +1,33 @@
 // src/hooks/useAuthGuard.js
-// Simple authentication guard to ensure user is logged in and optionally has a role
-import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  browserLocalPersistence,
-  onAuthStateChanged,
-  setPersistence,
-} from "firebase/auth";
-import { auth } from "../firebase";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getUserAccess } from "./api";
+import { useAuth } from "../context/AuthContext.jsx";
 
-const AuthContext = createContext(null);
-
-export function AuthProvider({ children }) {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+/**
+ * Redirects to "/" if user is not authenticated or lacks the required role.
+ * @param {string} [requiredRole]
+ */
+export default function useAuthGuard(requiredRole) {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth(); // ✅ Grab loading state
 
   useEffect(() => {
-    console.log("[AuthProvider] Initializing auth listener...");
+    if (loading) return; // ✅ Don't check until auth is ready
 
-    let unsubscribe = () => {};
+    if (!user) {
+      navigate("/", { replace: true });
+      return;
+    }
 
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => {
-        console.log("[AuthProvider] Persistence set to local.");
-
-        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          if (currentUser) {
-            console.log(`[AuthProvider] Authenticated as: ${currentUser.email}`);
-          } else {
-            console.log("[AuthProvider] No user signed in.");
+    if (requiredRole) {
+      getUserAccess(user.email)
+        .then((access) => {
+          if (!access || access.access !== requiredRole) {
+            navigate("/", { replace: true });
           }
-          setUser(currentUser);
-          setLoading(false); // ✅ Prevent redirect until auth resolves
-        });
-      })
-      .catch((err) => {
-        console.error("[AuthProvider] Persistence error:", err.message);
-        setLoading(false);
-      });
-
-    return () => unsubscribe();
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+        })
+        .catch(() => navigate("/", { replace: true }));
+    }
+  }, [user, loading, requiredRole, navigate]); // ✅ Added loading to deps
 }
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useAuth = () => useContext(AuthContext);
