@@ -65,25 +65,22 @@ export function AuthProvider({ children }) {
         await setPersistence(auth, browserLocalPersistence);
 
         // listen for changes
-        unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
           try {
-            // your existing logic…
             if (currentUser) {
-              // navigate, console.log, etc.
               navigate("/rides", { replace: true });
             } else if (prevUserRef.current !== null) {
               initOneTap();
             }
             prevUserRef.current = currentUser;
             setUser(currentUser);
-          } catch (innerErr) {
-            logError(innerErr, "AuthContext:onAuthStateChanged");
-          } finally {
-            setLoading(false);
+          } catch (inner) {
+            logError(inner, "AuthContext:onAuthStateChanged");
           }
         });
       } catch (err) {
         logError(err, "AuthContext:setup");
+      } finally {
         setLoading(false);
       }
     })();

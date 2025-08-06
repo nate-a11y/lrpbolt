@@ -4,6 +4,7 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
 import { logRequest } from "../utils/apiMonitor";
+import { logError } from "../utils/logError";
 
 /**
  * Fetch wrapper with timeout and optional retries.
@@ -26,7 +27,10 @@ export async function apiFetch(
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return responseType === "text" ? await res.text() : await res.json();
     } catch (err) {
-      if (attempt === retries) throw err;
+      if (attempt === retries) {
+        logError(err, "apiFetch");
+        throw err;
+      }
     } finally {
       clearTimeout(timer);
     }

@@ -25,6 +25,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import { logTime, subscribeTimeLogs } from "../hooks/api";
+import { logError } from "../utils/logError";
 import { Timestamp } from "firebase/firestore";
 
 const TimeClock = ({ driver, setIsTracking }) => {
@@ -140,12 +141,13 @@ const TimeClock = ({ driver, setIsTracking }) => {
           showSnack(`❌ Failed to log time: ${data.message}`, "error");
         }
       })
-      .catch((err) =>
+      .catch((err) => {
+        logError(err, "TimeClock:logTime");
         showSnack(
           "❌ Network error: " + (err?.message || JSON.stringify(err)),
           "error",
-        ),
-      )
+        );
+      })
       .finally(() => setIsSubmitting(false));
   };
 

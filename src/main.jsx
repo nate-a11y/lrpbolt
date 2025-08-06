@@ -13,7 +13,7 @@ import "./registerSW.js";
 import { logError } from "./utils/logError";
 
 window.addEventListener("unhandledrejection", (event) => {
-  logError(event.reason, "Unhandled Promise Rejection");
+  logError(event.reason, "UnhandledPromiseRejection");
 });
 
 // Mount the app

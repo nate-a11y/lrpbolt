@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { logError } from "../utils/logError";
 
 export default function usePersistentState(key, defaultValue) {
   const [state, setState] = useState(() => {
     try {
       const stored = localStorage.getItem(key);
       return stored !== null ? JSON.parse(stored) : defaultValue;
-    } catch {
+    } catch (err) {
+      logError(err, "usePersistentState:read");
       return defaultValue;
     }
   });
@@ -13,7 +15,8 @@ export default function usePersistentState(key, defaultValue) {
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(state));
-    } catch {
+    } catch (err) {
+      logError(err, "usePersistentState:write");
       // ignore write errors
     }
   }, [key, state]);

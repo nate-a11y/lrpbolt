@@ -6,6 +6,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
 import { createUser, updateUser } from "../utils/firestoreService.js";
+import { logError } from "../utils/logError";
 
 export default function AdminUserManager() {
   const { driver } = useDriver();
@@ -77,6 +78,7 @@ export default function AdminUserManager() {
       try {
         await createUser(user);
       } catch (err) {
+        logError(err, "AdminUserManager:createUser");
         errors.push(`${user.email}: ${err?.message || JSON.stringify(err)}`);
       }
     }

@@ -5,6 +5,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { deleteRideFromQueue, addRideToQueue } from "../hooks/api";
 import useRides from "../hooks/useRides";
 import EditableRideGrid from "../components/EditableRideGrid";
+import { logError } from "../utils/logError";
 import {
   Dialog,
   DialogTitle,
@@ -64,6 +65,7 @@ const RideQueueGrid = () => {
         });
         await fetchRides();
       } catch (err) {
+        logError(err, "RideQueueGrid:delete");
         setToast({
           open: true,
           message: `❌ ${err?.message || JSON.stringify(err)}`,

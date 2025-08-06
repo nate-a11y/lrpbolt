@@ -45,7 +45,7 @@ import {
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
 import { Timestamp } from "firebase/firestore";
-import { logError } from "../utils/errorUtils";
+import { logError } from "../utils/logError";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);

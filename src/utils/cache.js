@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./network";
+import { logError } from "./logError";
 
 export async function fetchWithCache(key, url, ttl = 86400000) {
   const cached = localStorage.getItem(key);
@@ -7,7 +8,8 @@ export async function fetchWithCache(key, url, ttl = 86400000) {
   if (cached && expires && now < parseInt(expires, 10)) {
     try {
       return JSON.parse(cached);
-    } catch {
+    } catch (err) {
+      logError(err, "fetchWithCache:parse");
       // fall through to fetch on parse error
     }
   }

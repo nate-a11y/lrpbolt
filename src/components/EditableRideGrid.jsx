@@ -37,6 +37,7 @@ import { updateRide } from "../hooks/api";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { logError } from "../utils/logError";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -176,6 +177,7 @@ const EditableRideGrid = ({
         refreshRides();
       }
     } catch (err) {
+      logError(err, "EditableRideGrid:updateRide");
       setSnack({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,

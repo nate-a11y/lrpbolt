@@ -25,6 +25,7 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import NotesIcon from "@mui/icons-material/Notes";
 import { calculateDropOff } from "./utils/timeUtils";
 import dayjs from "dayjs";
+import { logError } from "./utils/logError";
 
 const RideDetailRow = ({
   icon,
@@ -111,6 +112,7 @@ function RideGroup({
       }
       onClearSelected(selectedInGroup);
     } catch (error) {
+      logError(error, "RideGroup:multiClaim");
       showToast("❌ One or more rides failed to claim.", "error");
     } finally {
       setIsClaiming(false);
@@ -126,6 +128,7 @@ function RideGroup({
       showToast(`✅ Ride ${tripId} claimed!`, "success");
       groupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
+      logError(error, "RideGroup:singleClaim");
       showToast("❌ Failed to claim ride.", "error");
     } finally {
       setClaimingIds((prev) => prev.filter((id) => id !== tripId));
