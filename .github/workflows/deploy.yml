@@ -81,9 +81,12 @@ jobs:
 
           RewriteEngine On
           RewriteBase /
+          # Exclude assets & SW from SPA fallback
+          RewriteCond %{REQUEST_URI} !^/assets/
+          RewriteCond %{REQUEST_URI} !^/registerSW\.js$
+          RewriteCond %{REQUEST_URI} !^/service-worker\.js$
           RewriteCond %{REQUEST_FILENAME} !-f
           RewriteCond %{REQUEST_FILENAME} !-d
-          RewriteCond %{REQUEST_URI} !^/assets/
           RewriteRule . /index.html [L]
 
           <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
@@ -93,6 +96,15 @@ jobs:
             Header set Cache-Control "no-cache, no-store, must-revalidate"
           </FilesMatch>
           EOT
+
+      - name: Verify SW exists
+        run: |
+          if [ ! -f "dist/registerSW.js" ]; then
+            echo "❌ ERROR: registerSW.js missing — service worker will fail."
+            exit 1
+          fi
+          echo "✅ Service worker found."
+
 
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
