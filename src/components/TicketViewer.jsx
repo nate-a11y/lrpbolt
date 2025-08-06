@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import dayjs from "dayjs";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
-import { useAuth } from "../context/AuthProvider.jsx";
+import { useAuth } from "./AuthProvider.jsx";
 import { logError } from "../utils/logError";
 
 export default function TicketViewer() {

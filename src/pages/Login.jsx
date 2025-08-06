@@ -16,17 +16,17 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, loginWithPopup, loginWithRedirect } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
 import useToast from "../hooks/useToast";
 import getTheme from "../theme";
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { useAuth } from "../context/AuthProvider.jsx";
+import { useAuth } from "../components/AuthProvider.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import { logError } from "../utils/logError";
 
 export default function Login() {
-  const { user, loading, loginWithPopup, loginWithRedirect } = useAuth();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authInProgress, setAuthInProgress] = useState(false);

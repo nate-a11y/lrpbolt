@@ -31,7 +31,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { motion } from "framer-motion";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useAuth } from "../context/AuthProvider.jsx";
+import { useAuth } from "./AuthProvider.jsx";
 import { TIMEZONE } from "../constants";
 import { updateRide } from "../hooks/api";
 import dayjs from "dayjs";
