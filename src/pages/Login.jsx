@@ -36,14 +36,13 @@ export default function Login() {
 
     const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-    const manualGoogleSignIn = useCallback(async () => {
-      try {
-        await signInWithPopup(auth, new GoogleAuthProvider());
-        navigate("/rides", { replace: true });
-      } catch (err) {
-        logError(err, "Login");
+    const manualGoogleSignIn = useCallback(() => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.prompt();
+      } else {
+        logError(new Error("GSI library not loaded"), "Login:OneTap");
       }
-    }, [navigate]);
+    }, []);
 
     const handleEmailAuth = useCallback(async () => {
       setAuthInProgress(true);
