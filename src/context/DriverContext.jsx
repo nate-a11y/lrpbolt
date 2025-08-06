@@ -10,15 +10,13 @@ export const DriverProvider = ({ children }) => {
   });
 
   const setDriver = async (data) => {
-    if (data) {
-      localStorage.setItem("lrpDriver", JSON.stringify(data));
-      if (import.meta.env.DEV) console.log("Current driver:", data.name);
-    } else {
-      localStorage.removeItem("lrpDriver");
-      if (import.meta.env.DEV) console.log("Driver cleared");
-    }
-    setDriverState(data);
-  };
+      if (data) {
+        localStorage.setItem("lrpDriver", JSON.stringify(data));
+      } else {
+        localStorage.removeItem("lrpDriver");
+      }
+      setDriverState(data);
+    };
 
   const logout = async () => {
     await signOut(auth);

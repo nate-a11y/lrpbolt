@@ -24,6 +24,7 @@ import getTheme from "../theme";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { useAuth } from "../context/AuthContext.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
+import { logError } from "../utils/logError";
 
 export default function Login() {
   const { user, loading } = useAuth();
@@ -34,26 +35,28 @@ export default function Login() {
   const [darkMode] = useDarkMode();
   const navigate = useNavigate();
 
-  const theme = useMemo(() => getTheme(darkMode), [darkMode]);
+    const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  const manualGoogleSignIn = useCallback(async () => {
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      navigate("/rides", { replace: true });
-    } catch (err) {
-      console.error(err?.message || JSON.stringify(err));
-    }
-  }, [navigate]);
+    const manualGoogleSignIn = useCallback(async () => {
+      try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+        navigate("/rides", { replace: true });
+      } catch (err) {
+        logError(err, "Login");
+      }
+    }, [navigate]);
 
-  const handleEmailAuth = useCallback(async () => {
-    setAuthInProgress(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err) {
-      showToast(err?.message || "Login failed", "error");
-      setAuthInProgress(false);
-    }
-  }, [email, password, showToast]);
+    const handleEmailAuth = useCallback(async () => {
+      setAuthInProgress(true);
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        navigate("/rides", { replace: true });
+      } catch (err) {
+        logError(err, "Login");
+        showToast(err?.message || "Login failed", "error");
+        setAuthInProgress(false);
+      }
+    }, [email, password, showToast, navigate]);
 
   if (loading) return <LoadingScreen />;
   if (user) return <Navigate to="/rides" replace />;

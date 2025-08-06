@@ -78,20 +78,14 @@ export function subscribeUserAccess(
   if (activeOnly) constraints.push(where("active", "==", true));
   if (roles) constraints.push(where("access", "in", roles));
   const q = query(collection(db, "userAccess"), ...constraints);
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "userAccess");
-  }
-  const unsub = subscribeFirestore("userAccess", q, (snapshot) => {
+    const unsub = subscribeFirestore("userAccess", q, (snapshot) => {
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     callback(data);
   });
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "userAccess");
-    }
-    unsub();
-  };
-}
+    return () => {
+      unsub();
+    };
+  }
 
 /**
  * -----------------------------
@@ -106,19 +100,13 @@ export function subscribeRideQueue(callback, fromTime) {
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", key);
+    const unsub = subscribeFirestore(key, q, (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsub();
+    };
   }
-  const unsub = subscribeFirestore(key, q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", key);
-    }
-    unsub();
-  };
-}
 
 export async function addRideToQueue(rideData) {
   const data = cleanData({
@@ -168,19 +156,13 @@ export function subscribeClaimedRides(callback, fromTime) {
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", key);
+    const unsub = subscribeFirestore(key, q, (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsub();
+    };
   }
-  const unsub = subscribeFirestore(key, q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", key);
-    }
-    unsub();
-  };
-}
 
 export async function claimRide(rideData) {
   const data = cleanData({
@@ -232,23 +214,17 @@ export function subscribeClaimLog(callback, max = 100) {
     orderBy("timestamp", "desc"),
     limit(max),
   );
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "claimLog");
+    const unsub = subscribeFirestore(
+      `claimLog:${max}`,
+      q,
+      (snapshot) => {
+        callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      },
+    );
+    return () => {
+      unsub();
+    };
   }
-  const unsub = subscribeFirestore(
-    `claimLog:${max}`,
-    q,
-    (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    },
-  );
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "claimLog");
-    }
-    unsub();
-  };
-}
 
 /**
  * -----------------------------
@@ -272,23 +248,17 @@ export function subscribeTickets(
   }
   constraints.push(orderBy("pickupTime", "asc"));
   const q = query(collection(db, "tickets"), ...constraints);
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "tickets");
+    const unsub = subscribeFirestore(
+      keyParts.join(":"),
+      q,
+      (snapshot) => {
+        callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      },
+    );
+    return () => {
+      unsub();
+    };
   }
-  const unsub = subscribeFirestore(
-    keyParts.join(":"),
-    q,
-    (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    },
-  );
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "tickets");
-    }
-    unsub();
-  };
-}
 
 export async function fetchTickets(filters = {}) {
   const { passenger, pickupTime } = filters;
@@ -399,24 +369,14 @@ export function subscribeTimeLogs(callback, driver, max = 100) {
   const constraints = [orderBy("loggedAt", "desc"), limit(max)];
   if (driver) constraints.push(where("driver", "==", driver));
   const q = query(collection(db, "timeLogs"), ...constraints);
-  if (process.env.NODE_ENV === "development") {
-    console.log(
-      `Listener started: timeLogs${driver ? ` for ${driver}` : ""}`,
-    );
+    const key = `timeLogs:${driver || "all"}:${max}`;
+    const unsub = subscribeFirestore(key, q, (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsub();
+    };
   }
-  const key = `timeLogs:${driver || "all"}:${max}`;
-  const unsub = subscribeFirestore(key, q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `Listener cleaned up: timeLogs${driver ? ` for ${driver}` : ""}`,
-      );
-    }
-    unsub();
-  };
-}
 
 export async function fetchTimeLogs(driver) {
   const snapshot = await getDocs(collection(db, "timeLogs"));
@@ -493,19 +453,13 @@ export function subscribeLiveRides(callback, fromTime) {
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", key);
+    const unsub = subscribeFirestore(key, q, (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsub();
+    };
   }
-  const unsub = subscribeFirestore(key, q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", key);
-    }
-    unsub();
-  };
-}
 
 export async function addLiveRide(rideData) {
   const data = cleanData({
@@ -608,17 +562,11 @@ export function subscribeShootoutHistory(callback, status, max = 100) {
       ]
     : [orderBy("startTime", "desc"), limit(max)];
   const q = query(collection(db, "shootoutStats"), ...constraints);
-  if (process.env.NODE_ENV === "development") {
-    console.log("Listener started:", "shootoutStats");
+    const key = `shootoutStats:${status || "all"}:${max}`;
+    const unsub = subscribeFirestore(key, q, (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => {
+      unsub();
+    };
   }
-  const key = `shootoutStats:${status || "all"}:${max}`;
-  const unsub = subscribeFirestore(key, q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-  return () => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Listener cleaned up:", "shootoutStats");
-    }
-    unsub();
-  };
-}
