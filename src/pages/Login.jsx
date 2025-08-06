@@ -13,22 +13,20 @@ import {
 } from "@mui/material";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithRedirect,
 } from "firebase/auth";
 import { auth } from "../firebase";
 import useDarkMode from "../hooks/useDarkMode";
 import useToast from "../hooks/useToast";
 import getTheme from "../theme";
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../context/AuthProvider.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import { logError } from "../utils/logError";
 
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, loading, loginWithPopup, loginWithRedirect } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authInProgress, setAuthInProgress] = useState(false);
@@ -40,16 +38,28 @@ export default function Login() {
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  const manualGoogleSignIn = useCallback(async () => {
+  const handlePopupLogin = useCallback(async () => {
     setAuthInProgress(true);
     try {
-      await signInWithRedirect(auth, new GoogleAuthProvider());
+      await loginWithPopup();
+    } catch (err) {
+      logError(err, "Login:Popup");
+      showToast(err?.message || "Google sign-in failed", "error");
+    } finally {
+      setAuthInProgress(false);
+    }
+  }, [loginWithPopup, showToast]);
+
+  const handleRedirectLogin = useCallback(async () => {
+    setAuthInProgress(true);
+    try {
+      await loginWithRedirect();
     } catch (err) {
       logError(err, "Login:Redirect");
       showToast(err?.message || "Google sign-in failed", "error");
       setAuthInProgress(false);
     }
-  }, [showToast]);
+  }, [loginWithRedirect, showToast]);
 
   const handleEmailAuth = useCallback(async () => {
     setAuthInProgress(true);
@@ -122,11 +132,20 @@ export default function Login() {
           <Button
             fullWidth
             variant="contained"
-            onClick={manualGoogleSignIn}
+            onClick={handlePopupLogin}
             sx={{ mb: 2 }}
             disabled={authInProgress}
           >
-            Sign in with Google
+            Sign in with Google (Popup)
+          </Button>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={handleRedirectLogin}
+            sx={{ mb: 2 }}
+            disabled={authInProgress}
+          >
+            Sign in with Google (Redirect)
           </Button>
           <Divider sx={{ my: 2 }}>OR</Divider>
           <TextField
