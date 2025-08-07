@@ -1,9 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from "react";
 import { Box, Snackbar, Alert } from "@mui/material";
-import { orderBy } from "firebase/firestore";
-import { deleteRideFromQueue, addRideToQueue } from "../hooks/api";
-import useFirestoreListener from "../hooks/useFirestoreListener";
+import {
+  subscribeRideQueue,
+  deleteRideFromQueue,
+  addRideToQueue,
+} from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
 import {
@@ -27,10 +29,15 @@ const RideQueueGrid = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
+  const [rideQueue, setRideQueue] = useState([]);
 
-  const rideQueue = useFirestoreListener("rideQueue", [
-    orderBy("pickupTime", "asc"),
-  ]);
+  useEffect(() => {
+    const unsub = subscribeRideQueue((data) => {
+      setRideQueue(data);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const mapped = useMemo(
     () =>
@@ -41,10 +48,8 @@ const RideQueueGrid = () => {
     [rideQueue],
   );
 
-  // ✅ Update rows from shared hook
   useEffect(() => {
     setRows(mapped);
-    setLoading(false);
   }, [mapped]);
 
   // ✅ Delete ride (Firestore)
@@ -83,9 +88,22 @@ const RideQueueGrid = () => {
   // ✅ Undo ride delete (Firestore)
   const handleUndo = async () => {
     if (!undoRow) return;
-    await addRideToQueue(undoRow);
-    setUndoRow(null);
-    setToast({ open: true, message: "✅ Ride restored", severity: "success" });
+    try {
+      await addRideToQueue(undoRow);
+      setUndoRow(null);
+      setToast({
+        open: true,
+        message: "✅ Ride restored",
+        severity: "success",
+      });
+    } catch (err) {
+      logError(err, "RideQueueGrid:undo");
+      setToast({
+        open: true,
+        message: `❌ ${err?.message || JSON.stringify(err)}`,
+        severity: "error",
+      });
+    }
   };
 
   return (

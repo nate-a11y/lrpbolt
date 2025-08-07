@@ -15,10 +15,12 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { orderBy } from "firebase/firestore";
 import { DataGrid } from "@mui/x-data-grid";
-import { deleteClaimedRide, restoreRide } from "../hooks/api";
-import useFirestoreListener from "../hooks/useFirestoreListener";
+import {
+  subscribeClaimedRides,
+  deleteClaimedRide,
+  restoreRide,
+} from "../services/firestoreService";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 
@@ -32,10 +34,15 @@ const ClaimedRidesGrid = () => {
   const { toast, showToast, closeToast } = useToast("info");
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
+  const [claimedRides, setClaimedRides] = useState([]);
 
-  const claimedRides = useFirestoreListener("claimedRides", [
-    orderBy("pickupTime", "asc"),
-  ]);
+  useEffect(() => {
+    const unsub = subscribeClaimedRides((data) => {
+      setClaimedRides(data);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const mapped = useMemo(
     () =>
@@ -51,10 +58,8 @@ const ClaimedRidesGrid = () => {
     [claimedRides],
   );
 
-  // ✅ Update rows from shared hook
   useEffect(() => {
     setRows(mapped);
-    setLoading(false);
   }, [mapped]);
 
   const handleDelete = async () => {
@@ -67,11 +72,11 @@ const ClaimedRidesGrid = () => {
       ),
     );
     setTimeout(async () => {
-      const res = await deleteClaimedRide(selectedRow.id);
-      if (res.success) {
+      try {
+        await deleteClaimedRide(selectedRow.id);
         showToast("🗑️ Ride deleted", "info");
-      } else {
-        showToast(`❌ ${res.message}`, "error");
+      } catch (err) {
+        showToast(`❌ ${err?.message || "Delete failed"}`, "error");
       }
       setLoading(false);
       setConfirmOpen(false);
@@ -110,12 +115,15 @@ const ClaimedRidesGrid = () => {
     setLoading(true);
     const failed = [];
 
-    const results = await Promise.all(
-      undoBuffer.map((ride) => restoreRide(ride)),
+    await Promise.all(
+      undoBuffer.map(async (ride) => {
+        try {
+          await restoreRide(ride);
+        } catch (err) {
+          failed.push(ride.TripID);
+        }
+      }),
     );
-    results.forEach((res, idx) => {
-      if (!res.success) failed.push(undoBuffer[idx].TripID);
-    });
 
     if (failed.length) {
       showToast(`⚠️ Failed to restore: ${failed.join(", ")}`, "warning");

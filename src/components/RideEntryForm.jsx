@@ -33,7 +33,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import LiveClaimGrid from "./LiveClaimGrid";
+import LiveRidesGrid from "./LiveRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import { formatDuration, toTimeString12Hr } from "../utils/timeUtils";
@@ -1156,7 +1156,7 @@ export default function RideEntryForm() {
           {dataTab === 0 && (
             <Fade in>
               <Box>
-                <LiveClaimGrid />
+                <LiveRidesGrid />
               </Box>
             </Fade>
           )}
