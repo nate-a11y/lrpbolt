@@ -128,7 +128,7 @@ export default function Login() {
               {/* Logo + Title */}
               <Box sx={{ textAlign: "center", mb: 2 }}>
                 <img
-                  src="/logo192.png" // replace with your LRP logo path
+                  src="/android-chrome-192x192.png" // replace with your LRP logo path
                   alt="Lake Ride Pros"
                   width={48}
                   style={{ marginBottom: 8 }}
