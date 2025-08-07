@@ -27,12 +27,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
       timeUtils: path.resolve(__dirname, "src/utils/timeUtils.js"),
     },
+    dedupe: ["react", "react-dom"],
     extensions: [".js", ".jsx"],
   },
   build: {
     outDir: "dist",
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
+    sourcemap: true,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
