@@ -11,14 +11,16 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { orderBy } from "firebase/firestore";
-import { deleteLiveRide, restoreLiveRide } from "../hooks/api";
-import useFirestoreListener from "../hooks/useFirestoreListener";
+import {
+  subscribeLiveRides,
+  deleteLiveRide,
+  restoreLiveRide,
+} from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { normalizeDate, normalizeTime } from "../utils/timeUtils";
 import useToast from "../hooks/useToast";
 
-const LiveClaimGrid = () => {
+const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
   const { toast, showToast, closeToast } = useToast("success");
   const [loading, setLoading] = useState(true);
@@ -28,9 +30,15 @@ const LiveClaimGrid = () => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  const liveRides = useFirestoreListener("liveRides", [
-    orderBy("pickupTime", "asc"),
-  ]);
+  const [liveRides, setLiveRides] = useState([]);
+
+  useEffect(() => {
+    const unsub = subscribeLiveRides((data) => {
+      setLiveRides(data);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const mapped = useMemo(
     () =>
@@ -43,10 +51,8 @@ const LiveClaimGrid = () => {
     [liveRides],
   );
 
-  // ✅ Update rows from shared hook
   useEffect(() => {
     setRows(mapped);
-    setLoading(false);
   }, [mapped]);
 
   const handleDeleteConfirmed = async () => {
@@ -57,16 +63,19 @@ const LiveClaimGrid = () => {
       prev.map((row) => (row.id === deletingId ? { ...row, fading: true } : row)),
     );
     setTimeout(async () => {
-      const res = await deleteLiveRide(deletingId);
-      if (res.success) {
+      try {
+        await deleteLiveRide(deletingId);
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
-      } else {
+      } catch (err) {
         setRows((prev) =>
           prev.map((row) => (row.id === deletingId ? { ...row, fading: false } : row)),
         );
         setUndoRow(null);
-        showToast(`❌ ${res.message}`, "error");
+        showToast(
+          `❌ ${err?.message || "Failed to delete ride"}`,
+          "error",
+        );
       }
       setDeleting(false);
       setConfirmOpen(false);
@@ -75,9 +84,13 @@ const LiveClaimGrid = () => {
 
   const handleUndo = async () => {
     if (!undoRow) return;
-    await restoreLiveRide(undoRow);
-    setUndoRow(null);
-    showToast("✅ Ride restored", "success");
+    try {
+      await restoreLiveRide(undoRow);
+      setUndoRow(null);
+      showToast("✅ Ride restored", "success");
+    } catch (err) {
+      showToast(`❌ ${err?.message || "Restore failed"}`, "error");
+    }
   };
 
   return (
@@ -142,4 +155,4 @@ const LiveClaimGrid = () => {
   );
 };
 
-export default React.memo(LiveClaimGrid);
+export default React.memo(LiveRidesGrid);
