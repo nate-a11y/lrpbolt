@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Snackbar,
@@ -15,9 +15,9 @@ import {
   subscribeLiveRides,
   deleteLiveRide,
   restoreLiveRide,
+  getLiveRides,
 } from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
-import { normalizeDate, normalizeTime } from "../utils/timeUtils";
 import useToast from "../hooks/useToast";
 
 const LiveRidesGrid = () => {
@@ -30,30 +30,20 @@ const LiveRidesGrid = () => {
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
-  const [liveRides, setLiveRides] = useState([]);
-
   useEffect(() => {
     const unsub = subscribeLiveRides((data) => {
-      setLiveRides(data);
+      setRows(data);
       setLoading(false);
     });
     return unsub;
   }, []);
 
-  const mapped = useMemo(
-    () =>
-      liveRides.map((row) => ({
-        ...row,
-        TripID: row.tripId || row.TripID || row.id,
-        Date: normalizeDate(row.Date),
-        PickupTime: normalizeTime(row.PickupTime),
-      })),
-    [liveRides],
-  );
-
-  useEffect(() => {
-    setRows(mapped);
-  }, [mapped]);
+  const refreshRides = async () => {
+    setLoading(true);
+    const data = await getLiveRides();
+    setRows(data);
+    setLoading(false);
+  };
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);
@@ -104,6 +94,7 @@ const LiveRidesGrid = () => {
           setDeletingTripID(row?.TripID || "");
           setConfirmOpen(true);
         }}
+        refreshRides={refreshRides}
         sheetName="Sheet1"
       />
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>

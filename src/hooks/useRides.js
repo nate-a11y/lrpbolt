@@ -1,7 +1,10 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
-import { db } from "../firebase";
+import {
+  getRideQueue,
+  getLiveRides,
+  getClaimedRides,
+} from "../services/firestoreService";
 
 let ridesCache = {
   rideQueue: [],
@@ -13,21 +16,21 @@ const listeners = new Set();
 let initialized = false;
 
 export async function fetchRides() {
-  const [queueSnap, liveSnap, claimedSnap] = await Promise.all([
-    getDocs(query(collection(db, "rideQueue"), orderBy("pickupTime", "asc"))),
-    getDocs(query(collection(db, "liveRides"), orderBy("pickupTime", "asc"))),
-    getDocs(query(collection(db, "claimedRides"), orderBy("pickupTime", "asc"))),
+  const [queue, live, claimed] = await Promise.all([
+    getRideQueue(),
+    getLiveRides(),
+    getClaimedRides(),
   ]);
 
   ridesCache = {
-    rideQueue: queueSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-    liveRides: liveSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-    claimedRides: claimedSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    rideQueue: queue,
+    liveRides: live,
+    claimedRides: claimed,
   };
   countsCache = {
-    queue: ridesCache.rideQueue.length,
-    live: ridesCache.liveRides.length,
-    claimed: ridesCache.claimedRides.length,
+    queue: queue.length,
+    live: live.length,
+    claimed: claimed.length,
   };
   listeners.forEach((cb) => cb({ ...ridesCache, counts: countsCache }));
 }

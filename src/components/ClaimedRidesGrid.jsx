@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -34,33 +34,14 @@ const ClaimedRidesGrid = () => {
   const { toast, showToast, closeToast } = useToast("info");
   const [loading, setLoading] = useState(true);
   const [undoBuffer, setUndoBuffer] = useState([]);
-  const [claimedRides, setClaimedRides] = useState([]);
 
   useEffect(() => {
     const unsub = subscribeClaimedRides((data) => {
-      setClaimedRides(data);
+      setRows(data.map((r) => ({ ...r, fading: false })));
       setLoading(false);
     });
     return unsub;
   }, []);
-
-  const mapped = useMemo(
-    () =>
-      claimedRides.map((r) => ({
-        id: r.id,
-        TripID: r.tripId || r.TripID,
-        ClaimedBy: r.claimedBy || r.ClaimedBy,
-        ClaimedAt: r.claimedAt
-          ? r.claimedAt.toDate().toLocaleString()
-          : r.ClaimedAt || "N/A",
-        fading: false,
-      })),
-    [claimedRides],
-  );
-
-  useEffect(() => {
-    setRows(mapped);
-  }, [mapped]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;
@@ -137,6 +118,13 @@ const ClaimedRidesGrid = () => {
 
   const columns = [
     { field: "TripID", headerName: "Trip ID", flex: 1 },
+    { field: "PickupTime", headerName: "Pickup Time", flex: 1 },
+    { field: "RideDuration", headerName: "Duration", flex: 1 },
+    { field: "RideType", headerName: "Ride Type", flex: 1 },
+    { field: "Vehicle", headerName: "Vehicle", flex: 1 },
+    { field: "RideNotes", headerName: "Notes", flex: 1 },
+    { field: "CreatedBy", headerName: "Created By", flex: 1 },
+    { field: "LastModifiedBy", headerName: "Modified By", flex: 1 },
     { field: "ClaimedBy", headerName: "Claimed By", flex: 1 },
     { field: "ClaimedAt", headerName: "Claimed At", flex: 1 },
     {

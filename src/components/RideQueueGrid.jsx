@@ -1,10 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Snackbar, Alert } from "@mui/material";
 import {
   subscribeRideQueue,
   deleteRideFromQueue,
   addRideToQueue,
+  getRideQueue,
 } from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
@@ -29,28 +30,21 @@ const RideQueueGrid = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
-  const [rideQueue, setRideQueue] = useState([]);
 
   useEffect(() => {
     const unsub = subscribeRideQueue((data) => {
-      setRideQueue(data);
+      setRows(data);
       setLoading(false);
     });
     return unsub;
   }, []);
 
-  const mapped = useMemo(
-    () =>
-      rideQueue.map((row) => ({
-        ...row,
-        TripID: row.tripId || row.TripID || row.id,
-      })),
-    [rideQueue],
-  );
-
-  useEffect(() => {
-    setRows(mapped);
-  }, [mapped]);
+  const refreshRides = async () => {
+    setLoading(true);
+    const data = await getRideQueue();
+    setRows(data);
+    setLoading(false);
+  };
 
   // ✅ Delete ride (Firestore)
   const confirmDeleteRide = async () => {
@@ -117,6 +111,7 @@ const RideQueueGrid = () => {
           setDeletingTripId(row?.TripID || "");
           setConfirmOpen(true);
         }}
+        refreshRides={refreshRides}
         sheetName="rideQueue"
       />
 
