@@ -429,15 +429,22 @@ export async function addTimeLog(logData) {
 }
 
 export async function logTime(payload) {
-  return await addTimeLog({
-    driver: payload.driver,
-    rideId: payload.rideId,
-    startTime: payload.startTime,
-    endTime: payload.endTime,
-    duration: Number(payload.duration),
-    loggedAt: Timestamp.now(),
-  });
+  try {
+    await addTimeLog({
+      driver: payload.driver,
+      rideId: payload.rideId,
+      startTime: payload.startTime,
+      endTime: payload.endTime,
+      duration: Number(payload.duration),
+      loggedAt: Timestamp.now(),
+    });
+    return { success: true }; // ✅ Required for TimeClock to show success
+  } catch (err) {
+    console.error("logTime failed:", err);
+    return { success: false, message: err?.message || "Unknown Firestore error" };
+  }
 }
+
 
 /**
  * -----------------------------
