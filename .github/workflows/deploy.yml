@@ -146,7 +146,7 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
         run: |
-          firebase deploy --only functions
+          firebase deploy --only functions --force
 
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
