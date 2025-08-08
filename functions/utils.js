@@ -1,11 +1,11 @@
 // functions/utils.js
 /* Proprietary and confidential. See LICENSE. */
 import { admin, db } from "./firebase.js";
-import { COLLECTIONS } from "../src/constants.js";
+import { COLLECTIONS, TIMEZONE } from "./constants.js";
 
 export function formatDate(dateObject) {
   return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Chicago",
+    timeZone: TIMEZONE,
     hour12: true,
     month: "2-digit",
     day: "2-digit",
@@ -24,7 +24,7 @@ export function normalizeHeader(header) {
 }
 
 export async function logClaimFailure(tripId, driverName, reason) {
-  await db.collection(COLLECTIONS.CLAIM_FAILURES).add({
+  await db.collection("claim_failures").add({
     tripId,
     driverName,
     reason,
