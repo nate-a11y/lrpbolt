@@ -1,8 +1,7 @@
 // functions/utils.js
 /* Proprietary and confidential. See LICENSE. */
-import admin from "firebase-admin";
+import { admin, db } from "./firebase.js";
 import { COLLECTIONS } from "../src/constants.js";
-const db = admin.firestore();
 
 export function formatDate(dateObject) {
   return new Intl.DateTimeFormat("en-US", {

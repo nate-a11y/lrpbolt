@@ -2,13 +2,10 @@
 // functions/index.js
 
 import * as functions from "firebase-functions";
-import admin from "firebase-admin";
 import cors from "cors";
+import { admin, db } from "./firebase.js";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "../src/constants.js";
-
-admin.initializeApp();
-const db = admin.firestore();
 const corsHandler = cors({ origin: "https://lakeridepros.xyz" });
 
 async function getUser(context) {
