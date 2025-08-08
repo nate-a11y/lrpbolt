@@ -14,6 +14,7 @@ import {
   Tab,
   Dialog,
   DialogTitle,
+  Stack,
   DialogContent,
   CircularProgress,
   Badge,
