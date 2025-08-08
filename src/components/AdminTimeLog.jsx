@@ -1,5 +1,5 @@
 // src/components/AdminTimeLog.jsx
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Paper,
@@ -14,10 +14,6 @@ import {
   MenuItem,
   Checkbox,
   FormControlLabel,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
   useMediaQuery,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -27,14 +23,13 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import FlagIcon from "@mui/icons-material/Flag";
 import SportsScoreIcon from "@mui/icons-material/SportsScore";
 import { DataGrid } from "@mui/x-data-grid";
-import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
+import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/firestore";
 import { durationFormat } from "../utils/timeUtils";
-import { logError } from "../utils/logError";
 
 dayjs.extend(isoWeek);
 
@@ -56,6 +51,7 @@ const shootoutColumns = [
   { field: "elapsedMin", headerName: "Duration", width: 120 },
   { field: "createdAt", headerName: "Created", flex: 1 },
 ];
+
 export default function AdminTimeLog() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -64,11 +60,9 @@ export default function AdminTimeLog() {
   const [tab, setTab] = useState(0);
   const [logs, setLogs] = useState([]);
   const [shootoutStats, setShootoutStats] = useState([]);
-  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-
   const [columnVisibility, setColumnVisibility] = useState(() => {
     const saved = localStorage.getItem("logColumnVisibility");
     return saved
@@ -76,14 +70,13 @@ export default function AdminTimeLog() {
       : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
   });
 
-  // Subscribe to timeLogs + shootoutStats from Firestore
   useEffect(() => {
     const unsub1 = subscribeTimeLogs((data) => {
       setLogs(
         data.map((entry, i) => {
-          const start = dayjs(entry.startTime?.toDate?.?.() || entry.startTime);
-          const end = dayjs(entry.endTime?.toDate?.?.() || entry.endTime);
-          const logged = dayjs(entry.createdAt?.toDate?.?.() || entry.createdAt);
+          const start = dayjs(entry.startTime?.toDate?.() || entry.startTime);
+          const end = dayjs(entry.endTime?.toDate?.() || entry.endTime);
+          const logged = dayjs(entry.createdAt?.toDate?.() || entry.createdAt);
           const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
           return {
             id: i + 1,
@@ -104,9 +97,9 @@ export default function AdminTimeLog() {
     const unsub2 = subscribeShootoutStats((data) => {
       setShootoutStats(
         data.map((entry, i) => {
-          const start = dayjs(entry.startTime?.toDate?.?.());
-          const end = dayjs(entry.endTime?.toDate?.?.());
-          const created = dayjs(entry.createdAt?.toDate?.?.());
+          const start = dayjs(entry.startTime?.toDate?.());
+          const end = dayjs(entry.endTime?.toDate?.());
+          const created = dayjs(entry.createdAt?.toDate?.());
           const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
           return {
             id: i + 1,
@@ -125,7 +118,7 @@ export default function AdminTimeLog() {
       unsub2();
     };
   }, []);
-  // debounce search input
+
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
@@ -140,12 +133,28 @@ export default function AdminTimeLog() {
     );
   }, [logs, search]);
 
-  // UI
-  const handleColumnToggle = (field) =>
-    setColumnVisibility((prev) => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+  const groupedWeekly = useMemo(() => {
+    const byDriver = {};
+    for (const log of logs) {
+      const week = dayjs(log.raw.startTime?.toDate?.() || log.raw.startTime).isoWeek();
+      const driver = log.Driver;
+      if (!byDriver[driver]) byDriver[driver] = {};
+      if (!byDriver[driver][week]) byDriver[driver][week] = 0;
+      byDriver[driver][week] += log.durationMin;
+    }
+    return byDriver;
+  }, [logs]);
+
+  const flaggedLogs = useMemo(() => {
+    return logs.filter((log) => {
+      return (
+        log.StartTime === "—" ||
+        log.EndTime === "—" ||
+        log.durationMin < 0 ||
+        log.durationMin > 720
+      );
+    });
+  }, [logs]);
 
   const renderTopBar = (
     <Paper sx={{ p: 2, mb: 2, borderLeft: "5px solid #4cbb17" }}>
@@ -178,26 +187,6 @@ export default function AdminTimeLog() {
             <RefreshIcon />
           </IconButton>
         </Tooltip>
-        <Menu
-          open={false}
-          onClose={() => {}}
-          anchorEl={null}
-          slotProps={{ paper: { sx: { p: 1 } } }}
-        >
-          {baseColumns.map((col) => (
-            <MenuItem key={col.field}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={columnVisibility[col.field]}
-                    onChange={() => handleColumnToggle(col.field)}
-                  />
-                }
-                label={col.headerName}
-              />
-            </MenuItem>
-          ))}
-        </Menu>
       </Stack>
     </Paper>
   );
@@ -246,6 +235,47 @@ export default function AdminTimeLog() {
               />
             </Paper>
           </>
+        )}
+
+        {tab === 1 && (
+          <Paper sx={{ p: 2, borderLeft: "5px solid #4cbb17" }}>
+            <Typography variant="h6" mb={2}>
+              Weekly Summary
+            </Typography>
+            {Object.entries(groupedWeekly).map(([driver, weeks]) => (
+              <Box key={driver} mb={2}>
+                <Typography fontWeight={600}>{driver}</Typography>
+                {Object.entries(weeks).map(([week, total]) => (
+                  <Typography key={week} ml={2}>
+                    Week {week}: {durationFormat(total)}
+                  </Typography>
+                ))}
+              </Box>
+            ))}
+          </Paper>
+        )}
+
+        {tab === 2 && (
+          <Paper sx={{ p: 2, borderLeft: "5px solid red" }}>
+            <Typography variant="h6" mb={2}>
+              Flagged Entries (Missing or Suspicious Durations)
+            </Typography>
+            <DataGrid
+              autoHeight
+              rows={flaggedLogs}
+              columns={baseColumns}
+              pageSizeOptions={[5, 10, 20]}
+              sx={{
+                backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                "& .MuiDataGrid-row:nth-of-type(odd)": {
+                  backgroundColor: isDark ? "#333" : "grey.100",
+                },
+                "& .MuiDataGrid-row:hover": {
+                  backgroundColor: isDark ? "#444" : "grey.200",
+                },
+              }}
+            />
+          </Paper>
         )}
 
         {tab === 3 && (
