@@ -15,8 +15,8 @@ async function getUser(context) {
       "Authentication required",
     );
   }
-  const email = context.auth.token.email;
-  const doc = await db.collection("userAccess").doc(email).get();
+ const email = (context.auth.token.email || "").toLowerCase();
+ const doc = await db.collection("userAccess").doc(email).get();
   if (!doc.exists) {
     throw new functions.https.HttpsError(
       "permission-denied",
@@ -39,7 +39,7 @@ async function requireAdmin(context) {
 
 export const getRides = functions.https.onCall(async (data, context) => {
   await getUser(context);
-  const snap = await db.collection("RidesLive").get();
+  const snap = await db.collection("liveRides").get();
   const rides = snap.docs
     .filter((d) => !d.data().claimedBy)
     .map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -55,7 +55,7 @@ export const getRideQueue = functions.https.onCall(async (data, context) => {
 
 export const getClaimedRides = functions.https.onCall(async (data, context) => {
   const user = await getUser(context);
-  const snap = await db.collection("RidesLive").get();
+  const snap = await db.collection("liveRides").get();
   let rides = snap.docs.filter((d) => d.data().claimedBy);
   if (user.role !== "admin") {
     rides = rides.filter((d) => d.data().claimedBy === user.email);
@@ -67,29 +67,43 @@ export const getClaimedRides = functions.https.onCall(async (data, context) => {
 export const claimRide = functions.https.onCall(async (data, context) => {
   const user = await getUser(context);
   const { tripId, driverName } = data;
-  if (!tripId) {
-    return { success: false, message: "tripId required" };
+  if (!tripId) return { success: false, message: "tripId required" };
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const q = await tx.get(
+        db.collection("liveRides").where("tripId", "==", tripId).limit(1)
+      );
+      if (q.empty) {
+        throw new functions.https.HttpsError("not-found", "Ride not found");
+      }
+
+      const docSnap = q.docs[0];
+      const ref = docSnap.ref;
+      const ride = docSnap.data();
+
+      if (ride.claimedBy) {
+        await logClaimFailure(tripId, user.email, "Ride already claimed");
+        throw new functions.https.HttpsError("failed-precondition", "Ride already claimed");
+      }
+
+      tx.update(ref, {
+        claimedBy: driverName || user.email,
+        claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    return { success: true };
+  } catch (err) {
+    // If we threw an HttpsError in the txn, surface the right message
+    if (err instanceof functions.https.HttpsError) {
+      return { success: false, message: err.message };
+    }
+    console.error("[claimRide] unexpected error", err);
+    return { success: false, message: "Unexpected error" };
   }
-  const rideSnap = await db
-    .collection("RidesLive")
-    .where("tripId", "==", tripId)
-    .limit(1)
-    .get();
-  if (rideSnap.empty) {
-    return { success: false, message: "Ride not found" };
-  }
-  const doc = rideSnap.docs[0];
-  const ride = doc.data();
-  if (ride.claimedBy) {
-    await logClaimFailure(tripId, user.email, "Ride already claimed");
-    return { success: false, message: "Ride already claimed" };
-  }
-  await doc.ref.update({
-    claimedBy: driverName || user.email,
-    claimedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  return { success: true };
 });
+
 
 export const addRideToQueue = functions.https.onCall(async (data, context) => {
   await requireAdmin(context);

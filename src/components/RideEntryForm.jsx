@@ -1,11 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+// src/components/RideEntryForm.jsx
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Box,
   Button,
@@ -55,8 +50,8 @@ import {
 } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DataGrid } from "@mui/x-data-grid";
-import { useDropzone } from "react-dropzone";
 import Grid from "@mui/material/Grid";
+import { useDropzone } from "react-dropzone";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -71,6 +66,7 @@ const defaultValues = {
   Vehicle: "",
   RideNotes: "",
 };
+
 const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/;
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const expectedCsvCols = [
@@ -115,7 +111,7 @@ export default function RideEntryForm() {
   const preview = useMemo(() => {
     const rideDuration = formatDuration(
       formData.DurationHours,
-      formData.DurationMinutes,
+      formData.DurationMinutes
     );
     const formattedDate = formData.Date
       ? dayjs(formData.Date).tz(TIMEZONE).format("M/D/YYYY")
@@ -142,19 +138,25 @@ export default function RideEntryForm() {
     const errors = {};
     for (const field of required)
       if (!data[field]?.toString().trim()) errors[field] = true;
+
     if (!tripIdPattern.test(data.TripID)) errors.TripID = true;
+
     const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
     if (!dateValid || dayjs(data.Date).isBefore(dayjs().startOf("day")))
       errors.Date = true;
+
     if (!timePattern.test(data.PickupTime)) errors.PickupTime = true;
+
     if (
       isNaN(+data.DurationMinutes) ||
       +data.DurationMinutes < 0 ||
       +data.DurationMinutes >= 60
     )
       errors.DurationMinutes = true;
+
     if (isNaN(+data.DurationHours) || +data.DurationHours < 0)
       errors.DurationHours = true;
+
     if (setErrors) setErrors(errors);
     else if (!skipRef) errorFields.current = errors;
     return Object.keys(errors).length === 0;
@@ -162,11 +164,11 @@ export default function RideEntryForm() {
 
   const isFormValid = useMemo(
     () => validateFields(formData),
-    [formData, validateFields],
+    [formData, validateFields]
   );
 
-  const [rideTab, setRideTab] = useState(() =>
-    Number(localStorage.getItem("rideTab") || 0),
+  const [rideTab, setRideTab] = useState(
+    () => Number(localStorage.getItem("rideTab") || 0)
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -175,52 +177,56 @@ export default function RideEntryForm() {
   const [syncTime, setSyncTime] = useState("");
   const [multiInput, setMultiInput] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [dataTab, setDataTab] = useState(() =>
-    Number(localStorage.getItem("dataTab") || 0),
+  const [dataTab, setDataTab] = useState(
+    () => Number(localStorage.getItem("dataTab") || 0)
   );
   const isMobile = useMediaQuery("(max-width:600px)");
   const { user } = useAuth();
   const currentUser = user?.email || "Unknown";
+
+  // Cloud Functions callable
+  // If deployed to a different region, use: getFunctions(undefined, "YOUR_REGION")
   const functions = getFunctions();
   const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 
-  const onDrop = useCallback(
-    (accepted) => {
-      setFileError("");
-      const file = accepted[0];
-      if (!file) return;
-      const ext = file.name.split(".").pop().toLowerCase();
-      if (!["csv", "xls", "xlsx"].includes(ext)) {
-        setFileError("Unsupported file type");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        Papa.parse(reader.result, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const missing = expectedCsvCols.filter(
-              (c) => !results.meta.fields?.includes(c),
-            );
-            if (missing.length) {
-              setToast({
-                open: true,
-                message: `⚠️ Missing columns: ${missing.join(", ")}`,
-                severity: "warning",
-              });
-              return;
-            }
-            setUploadedRows(results.data);
-          },
-          error: (err) => setFileError(err?.message || JSON.stringify(err)),
-        });
-      };
-      reader.readAsText(file);
-    },
-    [setToast],
-  );
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: useCallback(
+      (accepted) => {
+        setFileError("");
+        const file = accepted[0];
+        if (!file) return;
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!["csv", "xls", "xlsx"].includes(ext)) {
+          setFileError("Unsupported file type");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          Papa.parse(reader.result, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              const missing = expectedCsvCols.filter(
+                (c) => !results.meta.fields?.includes(c)
+              );
+              if (missing.length) {
+                setToast({
+                  open: true,
+                  message: `⚠️ Missing columns: ${missing.join(", ")}`,
+                  severity: "warning",
+                });
+                return;
+              }
+              setUploadedRows(results.data);
+            },
+            error: (err) => setFileError(err?.message || JSON.stringify(err)),
+          });
+        };
+        reader.readAsText(file);
+      },
+      [setToast]
+    ),
+  });
 
   useEffect(() => {
     localStorage.setItem("rideForm", JSON.stringify(formData));
@@ -231,7 +237,6 @@ export default function RideEntryForm() {
   useEffect(() => {
     localStorage.setItem("dataTab", dataTab.toString());
   }, [dataTab]);
-
   useEffect(() => {
     setSyncTime(dayjs().format("hh:mm A"));
   }, [counts]);
@@ -253,7 +258,7 @@ export default function RideEntryForm() {
         return next;
       });
     },
-    [validateFields],
+    [validateFields]
   );
 
   const handleSingleChange = (e) => handleChange(e, setFormData);
@@ -271,12 +276,14 @@ export default function RideEntryForm() {
         RideNotes: row.RideNotes?.toString().trim() || "",
       };
       if (!validateFields(clean, null, true)) return null;
+
       const rideDuration =
         Number(clean.DurationHours || 0) * 60 +
         Number(clean.DurationMinutes || 0);
       const pickupTimestamp = Timestamp.fromDate(
-        new Date(`${clean.Date}T${clean.PickupTime}`),
+        new Date(`${clean.Date}T${clean.PickupTime}`)
       );
+
       return {
         tripId: clean.TripID,
         pickupTime: pickupTimestamp,
@@ -290,7 +297,7 @@ export default function RideEntryForm() {
         lastModifiedBy: currentUser,
       };
     },
-    [validateFields, currentUser],
+    [validateFields, currentUser]
   );
 
   const processRideRows = useCallback(
@@ -303,20 +310,25 @@ export default function RideEntryForm() {
         else skipped++;
       });
       // sequential to surface any permission errors early
-      for (const doc of validDocs)
-        await addDoc(collection(db, "rideQueue"), doc);
+      for (const doc of validDocs) {
+        await addDoc(collection(db, "RideQueue"), doc); // <-- case-sensitive
+      }
       return { added: validDocs.length, skipped };
     },
-    [toRideDoc],
+    [toRideDoc]
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refreshDrop();
+      const { data } = await refreshDrop({}); // pass empty payload
+      const msg =
+        data && typeof data.imported === "number"
+          ? `✅ Daily drop executed — added ${data.imported} ride(s)`
+          : "✅ Daily drop executed";
       setToast({
         open: true,
-        message: "✅ Daily drop executed",
+        message: msg,
         severity: "success",
       });
       await fetchRides();
@@ -345,7 +357,7 @@ export default function RideEntryForm() {
     try {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
-      await addDoc(collection(db, "rideQueue"), rideData);
+      await addDoc(collection(db, "RideQueue"), rideData); // <-- case-sensitive
       setToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,
@@ -432,7 +444,7 @@ export default function RideEntryForm() {
         skipEmptyLines: true,
       });
       const missing = expectedCsvCols.filter(
-        (c) => !parsed.meta.fields?.includes(c),
+        (c) => !parsed.meta.fields?.includes(c)
       );
       if (missing.length) {
         setToast({
@@ -487,11 +499,7 @@ export default function RideEntryForm() {
           <Typography variant="h6" fontWeight={600} mb={2}>
             🚐 Ride Entry
           </Typography>
-          <Tabs
-            value={rideTab}
-            onChange={(e, v) => setRideTab(v)}
-            sx={{ mb: 3 }}
-          >
+          <Tabs value={rideTab} onChange={(e, v) => setRideTab(v)} sx={{ mb: 3 }}>
             <Tab label="SINGLE RIDE" />
             <Tab label="MULTI RIDE UPLOAD" />
           </Tabs>
@@ -501,7 +509,7 @@ export default function RideEntryForm() {
               <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
                 <Grid container spacing={2}>
                   {/* Trip ID */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid item xs={12} sm={6}>
                     <TextField
                       name="TripID"
                       label="Trip ID *"
@@ -517,7 +525,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Date */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid item xs={12} sm={6}>
                     <DatePicker
                       label="Date *"
                       value={formData.Date ? dayjs(formData.Date) : null}
@@ -544,7 +552,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Pickup Time */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid item xs={12} sm={6}>
                     <TimePicker
                       label="Pickup Time *"
                       value={
@@ -575,7 +583,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Duration Hours + Minutes */}
-                  <Grid size={{ xs: 6, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
                     <TextField
                       name="DurationHours"
                       label="Hours *"
@@ -595,7 +603,7 @@ export default function RideEntryForm() {
                       }
                     />
                   </Grid>
-                  <Grid size={{ xs: 6, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
                     <TextField
                       name="DurationMinutes"
                       label="Minutes *"
@@ -617,7 +625,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Ride Type */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid item xs={12} sm={6}>
                     <TextField
                       select
                       name="RideType"
@@ -640,7 +648,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Vehicle */}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid item xs={12} sm={6}>
                     <TextField
                       select
                       name="Vehicle"
@@ -663,7 +671,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Ride Notes */}
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <TextField
                       name="RideNotes"
                       label="Ride Notes"
@@ -674,14 +682,10 @@ export default function RideEntryForm() {
                       rows={2}
                     />
                   </Grid>
+
                   {/* Action Buttons */}
                   <Grid item xs={12}>
-                    <Box
-                      display="flex"
-                      justifyContent="flex-end"
-                      gap={2}
-                      mt={2}
-                    >
+                    <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
                       <Button
                         variant="outlined"
                         color="secondary"
@@ -708,8 +712,8 @@ export default function RideEntryForm() {
             <Fade in>
               <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
                 <Grid container spacing={2}>
-                  {/* CSV Template + Update Daily Rides */}
-                  <Grid size={{ xs: 12 }}>
+                  {/* CSV Template */}
+                  <Grid item xs={12}>
                     <Button
                       aria-label="Download ride template CSV"
                       href="/ride-template.csv"
@@ -723,7 +727,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Drag & Drop Upload */}
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <Box
                       {...getRootProps()}
                       sx={{
@@ -754,7 +758,7 @@ export default function RideEntryForm() {
 
                   {/* Uploaded Data Preview */}
                   {uploadedRows.length > 0 && (
-                    <Grid size={{ xs: 12 }}>
+                    <Grid item xs={12}>
                       <Box sx={{ mt: 2 }}>
                         <DataGrid
                           autoHeight
@@ -763,31 +767,11 @@ export default function RideEntryForm() {
                           columns={[
                             { field: "TripID", headerName: "Trip ID", flex: 1 },
                             { field: "Date", headerName: "Date", flex: 1 },
-                            {
-                              field: "PickupTime",
-                              headerName: "Pickup Time",
-                              flex: 1,
-                            },
-                            {
-                              field: "DurationHours",
-                              headerName: "Dur H",
-                              flex: 1,
-                            },
-                            {
-                              field: "DurationMinutes",
-                              headerName: "Dur M",
-                              flex: 1,
-                            },
-                            {
-                              field: "RideType",
-                              headerName: "Ride Type",
-                              flex: 1,
-                            },
-                            {
-                              field: "Vehicle",
-                              headerName: "Vehicle",
-                              flex: 1,
-                            },
+                            { field: "PickupTime", headerName: "Pickup Time", flex: 1 },
+                            { field: "DurationHours", headerName: "Dur H", flex: 1 },
+                            { field: "DurationMinutes", headerName: "Dur M", flex: 1 },
+                            { field: "RideType", headerName: "Ride Type", flex: 1 },
+                            { field: "Vehicle", headerName: "Vehicle", flex: 1 },
                           ]}
                           pageSizeOptions={[5]}
                         />
@@ -812,7 +796,7 @@ export default function RideEntryForm() {
                   )}
 
                   {/* Paste CSV */}
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <TextField
                       label="Paste CSV Rides"
                       fullWidth
@@ -824,7 +808,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* CSV Builder */}
-                  <Grid size={{ xs: 12, sm: 4 }}>
+                  <Grid item xs={12} sm={4}>
                     <TextField
                       name="TripID"
                       label="Trip ID *"
@@ -840,7 +824,7 @@ export default function RideEntryForm() {
                       }
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
+                  <Grid item xs={12} sm={4}>
                     <DatePicker
                       label="Date *"
                       value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
@@ -853,7 +837,7 @@ export default function RideEntryForm() {
                             },
                           },
                           setCsvBuilder,
-                          setBuilderErrors,
+                          setBuilderErrors
                         )
                       }
                       slots={{ openPickerIcon: CalendarMonthIcon }}
@@ -869,7 +853,7 @@ export default function RideEntryForm() {
                       }}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 4 }}>
+                  <Grid item xs={12} sm={4}>
                     <TimePicker
                       label="Pickup Time *"
                       value={
@@ -886,7 +870,7 @@ export default function RideEntryForm() {
                             },
                           },
                           setCsvBuilder,
-                          setBuilderErrors,
+                          setBuilderErrors
                         )
                       }
                       slots={{ openPickerIcon: AccessTimeIcon }}
@@ -904,7 +888,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Duration */}
-                  <Grid size={{ xs: 6, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
                     <TextField
                       name="DurationHours"
                       label="Duration Hours *"
@@ -924,7 +908,7 @@ export default function RideEntryForm() {
                       helperText={builderErrors.DurationHours ? "Invalid" : " "}
                     />
                   </Grid>
-                  <Grid size={{ xs: 6, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
                     <TextField
                       name="DurationMinutes"
                       label="Duration Minutes *"
@@ -941,14 +925,12 @@ export default function RideEntryForm() {
                       required
                       fullWidth
                       error={!!builderErrors.DurationMinutes}
-                      helperText={
-                        builderErrors.DurationMinutes ? "Invalid" : " "
-                      }
+                      helperText={builderErrors.DurationMinutes ? "Invalid" : " "}
                     />
                   </Grid>
 
                   {/* Ride Type */}
-                  <Grid size={{ xs: 6, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
                     <TextField
                       select
                       name="RideType"
@@ -971,7 +953,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Vehicle */}
-                  <Grid size={{ xs: 6, sm: 3 }}>
+                  <Grid item xs={6} sm={3}>
                     <TextField
                       select
                       name="Vehicle"
@@ -994,7 +976,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Ride Notes */}
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <TextField
                       name="RideNotes"
                       label="Ride Notes"
@@ -1009,7 +991,7 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Actions */}
-                  <Grid size={{ xs: 12 }}>
+                  <Grid item xs={12}>
                     <Box display="flex" justifyContent="flex-end" gap={2}>
                       <Button
                         variant="contained"
@@ -1041,16 +1023,12 @@ export default function RideEntryForm() {
 
         {/* Daily Rides Update Section */}
         <Paper sx={{ p: 2, mb: 3 }}>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-          >
+          <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="caption" color="text.secondary">
               <SyncIcon fontSize="small" sx={{ mr: 1 }} />
               Synced: {syncTime}
             </Typography>
-            <Tooltip title="Runs Firebase function to refresh daily rides and email admins">
+            <Tooltip title="Runs Firebase function to refresh daily rides">
               <span>
                 <Button
                   onClick={handleRefresh}
@@ -1060,9 +1038,7 @@ export default function RideEntryForm() {
                   startIcon={
                     <SyncIcon
                       sx={{
-                        animation: refreshing
-                          ? "spin 1s linear infinite"
-                          : "none",
+                        animation: refreshing ? "spin 1s linear infinite" : "none",
                       }}
                     />
                   }
@@ -1187,22 +1163,10 @@ export default function RideEntryForm() {
           <DialogContent dividers>
             {Object.entries(preview).map(([key, value]) => (
               <Typography key={key}>
-                <strong>{key.replace(/([A-Z])/g, " $1")}:</strong>{" "}
-                {value || "—"}
+                <strong>{key.replace(/([A-Z])/g, " $1")}:</strong> {value || "—"}
               </Typography>
             ))}
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button
-              onClick={handleSubmit}
-              variant="contained"
-              color="success"
-              disabled={submitting}
-            >
-              Submit
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Snackbar */}

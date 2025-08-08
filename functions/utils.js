@@ -1,7 +1,7 @@
-/* Proprietary and confidential. See LICENSE. */
 // functions/utils.js
-
+/* Proprietary and confidential. See LICENSE. */
 import admin from "firebase-admin";
+const db = admin.firestore();
 
 export function formatDate(dateObject) {
   return new Intl.DateTimeFormat("en-US", {
@@ -24,7 +24,6 @@ export function normalizeHeader(header) {
 }
 
 export async function logClaimFailure(tripId, driverName, reason) {
-  const db = admin.firestore();
   await db.collection("FailedClaims").add({
     tripId,
     driverName,
@@ -33,60 +32,93 @@ export async function logClaimFailure(tripId, driverName, reason) {
   });
 }
 
+const truthy = (v) => {
+  if (v === undefined || v === null) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  return Boolean(v);
+};
+const norm = (v) => (v == null ? "" : String(v).trim().toLowerCase());
+
 export async function runDailyDrop() {
-  const db = admin.firestore();
-  const normalize = (val) => val?.toString().trim().toLowerCase() || "";
+  const SRC = "RideQueue";   // source queue (matches index.js)
+  const DST = "liveRides";   // destination used by the client
 
-  const queueSnap = await db.collection("RideQueue").get();
-  const liveSnap = await db.collection("RidesLive").get();
+  // Read both collections
+  const [queueSnap, liveSnap] = await Promise.all([
+    db.collection(SRC).get(),
+    db.collection(DST).get(),
+  ]);
 
-  if (queueSnap.empty || liveSnap.empty) {
-    throw new Error("Missing RideQueue or RidesLive collection");
+  // Nothing to do
+  if (queueSnap.empty) {
+    await db.collection("AdminMeta").doc("DailyDrop").set(
+      { lastUpdated: formatDate(new Date()), imported: 0 },
+      { merge: true }
+    );
+    return { imported: 0, total: liveSnap.size };
   }
 
-  const queueRides = queueSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const liveRides = liveSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-  const claimedLive = liveRides.filter(
-    (r) => normalize(r.claimedBy) && normalize(r.claimedAt),
+  const liveDocs = liveSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const unclaimedLive = liveDocs.filter(
+    (r) => !truthy(r.claimedBy) && !truthy(r.claimedAt)
   );
-  const unclaimedLive = liveRides.filter(
-    (r) => !normalize(r.claimedBy) && !normalize(r.claimedAt),
-  );
-  const existingTripIDs = unclaimedLive.map((r) => normalize(r.tripId));
-
-  const newQueueRides = queueRides.filter(
-    (r) =>
-      !normalize(r.claimedBy) &&
-      !normalize(r.claimedAt) &&
-      !existingTripIDs.includes(normalize(r.tripId)),
+  const existingTripIds = new Set(
+    unclaimedLive.map((r) => norm(r.tripId || r.id))
   );
 
-  const maxId = Math.max(
+  // Determine starting rideNumber
+  let maxRideNum = Math.max(
     0,
-    ...unclaimedLive.map((r) => parseInt(r.rideNumber) || 0),
-  );
-  newQueueRides.forEach((r, idx) => (r.rideNumber = maxId + idx + 1));
-
-  const combined = [...unclaimedLive, ...claimedLive, ...newQueueRides].sort(
-    (a, b) => new Date(a.date) - new Date(b.date),
+    ...unclaimedLive.map((r) => Number(r.rideNumber) || 0)
   );
 
-  const batch = db.batch();
-  liveSnap.docs.forEach((doc) => batch.delete(doc.ref));
-  combined.forEach((r) => {
-    const ref = db.collection("RidesLive").doc();
-    batch.set(ref, r);
-  });
+  // Batch in chunks
+  let batch = db.batch();
+  let ops = 0;
+  let imported = 0;
 
-  queueSnap.docs.forEach((doc) => batch.delete(doc.ref));
+  for (const qDoc of queueSnap.docs) {
+    const q = { id: qDoc.id, ...qDoc.data() };
 
-  batch.set(db.collection("AdminMeta").doc("DailyDrop"), {
-    lastUpdated: formatDate(new Date()),
-  });
+    // Skip already-claimed queue entries (defensive)
+    if (truthy(q.claimedBy) || truthy(q.claimedAt)) continue;
 
-  await batch.commit();
+    const key = norm(q.tripId || q.id);
+    if (existingTripIds.has(key)) continue; // Already present & unclaimed
 
-  return { imported: newQueueRides.length, total: combined.length };
+    // Upsert into liveRides with same ID; assign rideNumber if missing
+    maxRideNum += 1;
+    const dstRef = db.collection(DST).doc(qDoc.id);
+    batch.set(
+      dstRef,
+      {
+        ...q,
+        rideNumber: q.rideNumber ?? maxRideNum,
+        status: q.status || "open",
+        promotedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // Remove from RideQueue
+    batch.delete(qDoc.ref);
+
+    ops += 2;
+    imported += 1;
+
+    if (ops >= 480) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+
+  if (ops > 0) await batch.commit();
+
+  await db.collection("AdminMeta").doc("DailyDrop").set(
+    { lastUpdated: formatDate(new Date()), imported },
+    { merge: true }
+  );
+
+  return { imported, total: imported + liveSnap.size };
 }
-
