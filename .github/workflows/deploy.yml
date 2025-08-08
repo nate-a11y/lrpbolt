@@ -136,17 +136,20 @@ jobs:
 
       - name: Install Cloud Functions dependencies
         run: |
-          if [ -d "functions" ]; then
-          cd functions
-              if [ -f package-lock.json ]; then
-            echo "🔹 Installing with npm ci (lockfile found)..."
-          npm ci --no-audit --no-fund
+         if [ -d "functions" ]; then
+            cd functions
+            if [ -f package-lock.json ]; then
+              echo "🔹 Installing with npm ci (lockfile found)..."
+              npm ci --no-audit --no-fund
+            else
+             echo "🔹 No lockfile found — using npm install..."
+              npm install --no-audit --no-fund
+            fi
+            cd ..
           else
-          echo "🔹 No lockfile found — using npm install..."
-          npm install --no-audit --no-fund
+            echo "ℹ️ No functions directory found — skipping Cloud Functions install"
           fi
-          cd ..
-          fi
+
 
       - name: Deploy Firebase Cloud Functions
         env:
