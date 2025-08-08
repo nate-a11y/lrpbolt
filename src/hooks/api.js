@@ -47,7 +47,10 @@ export async function getUserAccess(email) {
   if (getUserAccess.pending.has(email))
     return await getUserAccess.pending.get(email);
 
-  const q = query(collection(db, "userAccess"), where("email", "==", email));
+  const q = query(
+    collection(db, COLLECTIONS.USER_ACCESS),
+    where("email", "==", email),
+  );
   const fetchPromise = getDocs(q).then((snapshot) => {
     const record =
       snapshot.docs.length > 0
@@ -63,7 +66,7 @@ export async function getUserAccess(email) {
 }
 
 export async function fetchUserAccess(activeOnly = false) {
-  const snapshot = await getDocs(collection(db, "userAccess"));
+  const snapshot = await getDocs(collection(db, COLLECTIONS.USER_ACCESS));
   let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   if (activeOnly) {
     data = data.filter(
@@ -80,11 +83,15 @@ export function subscribeUserAccess(
   const constraints = [orderBy("name", "asc"), limit(max)];
   if (activeOnly) constraints.push(where("active", "==", true));
   if (roles) constraints.push(where("access", "in", roles));
-  const q = query(collection(db, "userAccess"), ...constraints);
-    const unsub = subscribeFirestore("userAccess", q, (snapshot) => {
+  const q = query(collection(db, COLLECTIONS.USER_ACCESS), ...constraints);
+    const unsub = subscribeFirestore(
+      COLLECTIONS.USER_ACCESS,
+      q,
+      (snapshot) => {
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     callback(data);
-  });
+  },
+    );
     return () => {
       unsub();
     };
@@ -97,9 +104,11 @@ export function subscribeUserAccess(
  */
 export function subscribeRideQueue(callback, fromTime) {
   const start = fromTime || Timestamp.now();
-  const key = fromTime ? `rideQueue:${fromTime.toMillis()}` : "rideQueue";
+  const key = fromTime
+    ? `${COLLECTIONS.RIDE_QUEUE}:${fromTime.toMillis()}`
+    : COLLECTIONS.RIDE_QUEUE;
   const q = query(
-    collection(db, "rideQueue"),
+    collection(db, COLLECTIONS.RIDE_QUEUE),
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
@@ -125,11 +134,11 @@ export async function addRideToQueue(rideData) {
         : Timestamp.fromDate(new Date(rideData.claimedAt))
       : null,
   });
-  return await addDoc(collection(db, "rideQueue"), data);
+  return await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), data);
 }
 
 export async function updateRideInQueue(rideId, updates) {
-  const ref = doc(db, "rideQueue", rideId);
+  const ref = doc(db, COLLECTIONS.RIDE_QUEUE, rideId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error(`Ride ${rideId} not found`);
   let data = { ...updates };
@@ -143,7 +152,7 @@ export async function updateRideInQueue(rideId, updates) {
 }
 
 export async function deleteRideFromQueue(rideId) {
-  return await deleteDoc(doc(db, "rideQueue", rideId));
+  return await deleteDoc(doc(db, COLLECTIONS.RIDE_QUEUE, rideId));
 }
 
 /**
@@ -244,7 +253,7 @@ export function subscribeTickets(
   { passenger, pickupTime } = {},
 ) {
   const constraints = [];
-  const keyParts = ["tickets", passenger || "all"];
+  const keyParts = [COLLECTIONS.TICKETS, passenger || "all"];
   if (passenger) constraints.push(where("passenger", "==", passenger));
   if (pickupTime) {
     const ts =
@@ -255,7 +264,7 @@ export function subscribeTickets(
     keyParts.push(ts.toMillis());
   }
   constraints.push(orderBy("pickupTime", "asc"));
-  const q = query(collection(db, "tickets"), ...constraints);
+  const q = query(collection(db, COLLECTIONS.TICKETS), ...constraints);
     const unsub = subscribeFirestore(
       keyParts.join(":"),
       q,
@@ -280,13 +289,13 @@ export async function fetchTickets(filters = {}) {
     constraints.push(where("pickupTime", "==", ts));
   }
   constraints.push(orderBy("pickupTime", "asc"));
-  const q = query(collection(db, "tickets"), ...constraints);
+  const q = query(collection(db, COLLECTIONS.TICKETS), ...constraints);
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function fetchTicket(ticketId) {
-  const ref = doc(db, "tickets", ticketId);
+  const ref = doc(db, COLLECTIONS.TICKETS, ticketId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error(`Ticket ${ticketId} not found`);
   return { id: snap.id, ...snap.data() };
@@ -304,7 +313,7 @@ export async function addTicket(ticketData) {
     scannedReturn: !!ticketData.scannedReturn,
     createdAt: Timestamp.now(),
   });
-  return await addDoc(collection(db, "tickets"), data);
+  return await addDoc(collection(db, COLLECTIONS.TICKETS), data);
 }
 
 export async function updateTicket(ticketId, updates) {
@@ -319,12 +328,12 @@ export async function updateTicket(ticketId, updates) {
     data.createdAt = Timestamp.fromDate(new Date(data.createdAt));
   if (data.passengercount) data.passengercount = Number(data.passengercount);
   data = cleanData(data);
-  return await updateDoc(doc(db, "tickets", ticketId), data);
+  return await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), data);
 }
 
 export async function deleteTicket(ticketId) {
   try {
-    await deleteDoc(doc(db, "tickets", ticketId));
+    await deleteDoc(doc(db, COLLECTIONS.TICKETS, ticketId));
     return { success: true };
   } catch (err) {
     logError(err, "Failed to delete ticket");
@@ -376,8 +385,8 @@ export async function emailTicket(ticketId, email, attachment) {
 export function subscribeTimeLogs(callback, driver, max = 100) {
   const constraints = [orderBy("loggedAt", "desc"), limit(max)];
   if (driver) constraints.push(where("driver", "==", driver));
-  const q = query(collection(db, "timeLogs"), ...constraints);
-    const key = `timeLogs:${driver || "all"}:${max}`;
+  const q = query(collection(db, COLLECTIONS.TIME_LOGS), ...constraints);
+    const key = `${COLLECTIONS.TIME_LOGS}:${driver || "all"}:${max}`;
     const unsub = subscribeFirestore(key, q, (snapshot) => {
       callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
@@ -387,7 +396,7 @@ export function subscribeTimeLogs(callback, driver, max = 100) {
   }
 
 export async function fetchTimeLogs(driver) {
-  const snapshot = await getDocs(collection(db, "timeLogs"));
+  const snapshot = await getDocs(collection(db, COLLECTIONS.TIME_LOGS));
   let logs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   if (driver) logs = logs.filter((log) => log.driver === driver);
   return logs;
@@ -409,7 +418,7 @@ export async function addTimeLog(logData) {
     loggedAt:
       logData.loggedAt instanceof Timestamp ? logData.loggedAt : Timestamp.now(),
   });
-  return await addDoc(collection(db, "timeLogs"), data);
+  return await addDoc(collection(db, COLLECTIONS.TIME_LOGS), data);
 }
 
 export async function logTime(payload) {
@@ -430,7 +439,7 @@ export async function logTime(payload) {
  */
 export async function refreshDailyRides() {
   try {
-    const data = await callFunction("dropDailyRidesNow");
+    const data = await callFunction("dropDailyRidesNow", {});
     return { success: true, ...data };
   } catch (err) {
     logError(err, "Daily drop failed");
@@ -546,9 +555,15 @@ export async function restoreRide(rideData) {
   }
 }
 
-export async function updateRide(TripID, updates, sheet = "RideQueue") {
+export async function updateRide(
+  TripID,
+  updates,
+  sheet = COLLECTIONS.RIDE_QUEUE,
+) {
   const collectionName =
-    sheet === "RideQueue" ? "rideQueue" : COLLECTIONS.CLAIMED_RIDES;
+    sheet === COLLECTIONS.RIDE_QUEUE
+      ? COLLECTIONS.RIDE_QUEUE
+      : COLLECTIONS.CLAIMED_RIDES;
   const ref = doc(db, collectionName, TripID);
   let data = { ...updates };
   if (data.pickupTime && !(data.pickupTime instanceof Timestamp))

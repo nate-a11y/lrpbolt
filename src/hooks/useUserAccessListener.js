@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
+import { COLLECTIONS } from "../constants";
 
 function getKey({ activeOnly, roles, max }) {
   return JSON.stringify({ activeOnly, roles, max });
@@ -22,7 +23,7 @@ export default function useUserAccessListener(
     const constraints = [orderBy("name", "asc"), limit(max)];
     if (activeOnly) constraints.push(where("active", "==", true));
     if (roles) constraints.push(where("access", "in", roles));
-    const q = query(collection(db, "userAccess"), ...constraints);
+    const q = query(collection(db, COLLECTIONS.USER_ACCESS), ...constraints);
 
     return subscribeFirestore(key, q, (snapshot) => {
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));

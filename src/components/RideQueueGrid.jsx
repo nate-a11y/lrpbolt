@@ -9,6 +9,7 @@ import {
 } from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
+import { COLLECTIONS } from "../constants";
 import {
   Dialog,
   DialogTitle,
@@ -112,7 +113,7 @@ const RideQueueGrid = () => {
           setConfirmOpen(true);
         }}
         refreshRides={refreshRides}
-        sheetName="rideQueue"
+        sheetName={COLLECTIONS.RIDE_QUEUE}
       />
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>

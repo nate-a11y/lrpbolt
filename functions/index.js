@@ -4,6 +4,7 @@
 import functions from "firebase-functions";
 import admin from "firebase-admin";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
+import { COLLECTIONS } from "../src/constants.js";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -16,7 +17,7 @@ async function getUser(context) {
     );
   }
  const email = (context.auth.token.email || "").toLowerCase();
- const doc = await db.collection("userAccess").doc(email).get();
+ const doc = await db.collection(COLLECTIONS.USER_ACCESS).doc(email).get();
   if (!doc.exists) {
     throw new functions.https.HttpsError(
       "permission-denied",
@@ -39,7 +40,7 @@ async function requireAdmin(context) {
 
 export const getRides = functions.https.onCall(async (data, context) => {
   await getUser(context);
-  const snap = await db.collection("liveRides").get();
+  const snap = await db.collection(COLLECTIONS.LIVE_RIDES).get();
   const rides = snap.docs
     .filter((d) => !d.data().claimedBy)
     .map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -48,14 +49,14 @@ export const getRides = functions.https.onCall(async (data, context) => {
 
 export const getRideQueue = functions.https.onCall(async (data, context) => {
   await requireAdmin(context);
-  const snap = await db.collection("rideQueue").get();
+  const snap = await db.collection(COLLECTIONS.RIDE_QUEUE).get();
   const rides = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   return { success: true, rides };
 });
 
 export const getClaimedRides = functions.https.onCall(async (data, context) => {
   const user = await getUser(context);
-  const snap = await db.collection("liveRides").get();
+  const snap = await db.collection(COLLECTIONS.LIVE_RIDES).get();
   let rides = snap.docs.filter((d) => d.data().claimedBy);
   if (user.role !== "admin") {
     rides = rides.filter((d) => d.data().claimedBy === user.email);
@@ -72,7 +73,10 @@ export const claimRide = functions.https.onCall(async (data, context) => {
   try {
     await db.runTransaction(async (tx) => {
       const q = await tx.get(
-        db.collection("liveRides").where("tripId", "==", tripId).limit(1)
+        db
+          .collection(COLLECTIONS.LIVE_RIDES)
+          .where("tripId", "==", tripId)
+          .limit(1)
       );
       if (q.empty) {
         throw new functions.https.HttpsError("not-found", "Ride not found");
@@ -111,7 +115,10 @@ export const addRideToQueue = functions.https.onCall(async (data, context) => {
   if (!ride.tripId) {
     return { success: false, message: "tripId required" };
   }
-  await db.collection("rideQueue").doc(ride.tripId.toString()).set(ride);
+  await db
+    .collection(COLLECTIONS.RIDE_QUEUE)
+    .doc(ride.tripId.toString())
+    .set(ride);
   return { success: true };
 });
 
@@ -125,7 +132,10 @@ export const updateRide = functions.https.onCall(async (data, context) => {
   for (const [k, v] of Object.entries(fields)) {
     updates[normalizeHeader(k)] = v;
   }
-  await db.collection("rideQueue").doc(tripId.toString()).update(updates);
+  await db
+    .collection(COLLECTIONS.RIDE_QUEUE)
+    .doc(tripId.toString())
+    .update(updates);
   return { success: true };
 });
 
@@ -135,7 +145,10 @@ export const deleteRide = functions.https.onCall(async (data, context) => {
   if (!tripId) {
     return { success: false, message: "tripId required" };
   }
-  await db.collection("rideQueue").doc(tripId.toString()).delete();
+  await db
+    .collection(COLLECTIONS.RIDE_QUEUE)
+    .doc(tripId.toString())
+    .delete();
   return { success: true };
 });
 
@@ -158,7 +171,7 @@ export const dropDailyRidesNow = functions.https.onCall(
 export const getTicketById = functions.https.onCall(async (data, context) => {
   await getUser(context);
   const { ticketId } = data;
-  const doc = await db.collection("ShuttleTickets").doc(ticketId).get();
+  const doc = await db.collection(COLLECTIONS.TICKETS).doc(ticketId).get();
   if (!doc.exists) {
     return { success: false, message: "Ticket not found" };
   }
@@ -167,7 +180,7 @@ export const getTicketById = functions.https.onCall(async (data, context) => {
 
 export const getAllTickets = functions.https.onCall(async (data, context) => {
   await requireAdmin(context);
-  const snap = await db.collection("ShuttleTickets").get();
+  const snap = await db.collection(COLLECTIONS.TICKETS).get();
   const tickets = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return { success: true, tickets };
 });
@@ -180,7 +193,7 @@ export const addTicket = functions.https.onCall(async (data, context) => {
   }
   ticket.createdAt = admin.firestore.FieldValue.serverTimestamp();
   await db
-    .collection("ShuttleTickets")
+    .collection(COLLECTIONS.TICKETS)
     .doc(ticket.ticketId.toString())
     .set(ticket);
   return { success: true };
@@ -198,7 +211,7 @@ export const updateTicketFields = functions.https.onCall(
       updates[normalizeHeader(k)] = v;
     }
     await db
-      .collection("ShuttleTickets")
+      .collection(COLLECTIONS.TICKETS)
       .doc(ticketId.toString())
       .update(updates);
     return { success: true };
@@ -211,7 +224,10 @@ export const deleteTicket = functions.https.onCall(async (data, context) => {
   if (!ticketId) {
     return { success: false, message: "ticketId required" };
   }
-  await db.collection("ShuttleTickets").doc(ticketId.toString()).delete();
+  await db
+    .collection(COLLECTIONS.TICKETS)
+    .doc(ticketId.toString())
+    .delete();
   return { success: true };
 });
 
@@ -235,7 +251,10 @@ export const updateTicketScanStatus = functions.https.onCall(
     } else {
       return { success: false, message: "Invalid scanType" };
     }
-    await db.collection("ShuttleTickets").doc(ticketId.toString()).update(update);
+    await db
+      .collection(COLLECTIONS.TICKETS)
+      .doc(ticketId.toString())
+      .update(update);
     return { success: true };
   },
 );
@@ -270,7 +289,7 @@ export const sendTicketEmail = functions.https.onCall(
 export const logTimeEntry = functions.https.onCall(async (data, context) => {
   const user = await getUser(context);
   const { driver, rideId, startTime, endTime, duration } = data;
-  await db.collection("TimeTracking").add({
+  await db.collection(COLLECTIONS.TIME_LOGS).add({
     driver: driver || user.email,
     rideId: rideId || null,
     startTime,

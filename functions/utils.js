@@ -1,6 +1,7 @@
 // functions/utils.js
 /* Proprietary and confidential. See LICENSE. */
 import admin from "firebase-admin";
+import { COLLECTIONS } from "../src/constants.js";
 const db = admin.firestore();
 
 export function formatDate(dateObject) {
@@ -24,7 +25,7 @@ export function normalizeHeader(header) {
 }
 
 export async function logClaimFailure(tripId, driverName, reason) {
-  await db.collection("FailedClaims").add({
+  await db.collection(COLLECTIONS.CLAIM_FAILURES).add({
     tripId,
     driverName,
     reason,
@@ -40,8 +41,8 @@ const truthy = (v) => {
 const norm = (v) => (v == null ? "" : String(v).trim().toLowerCase());
 
 export async function runDailyDrop() {
-  const SRC = "rideQueue";   // source queue (matches index.js)
-  const DST = "liveRides";   // destination used by the client
+  const SRC = COLLECTIONS.RIDE_QUEUE;   // source queue (matches index.js)
+  const DST = COLLECTIONS.LIVE_RIDES;   // destination used by the client
 
   // Read both collections
   const [queueSnap, liveSnap] = await Promise.all([

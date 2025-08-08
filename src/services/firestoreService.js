@@ -159,21 +159,21 @@ export const restoreLiveRide = async (ride) => addLiveRide(ride);
 // ---------- Ride Queue ----------
 export const subscribeRideQueue = (callback, filters) =>
   subscribeFirestore(
-    buildKey("rideQueue", filters),
-    buildRideQuery("rideQueue", filters),
+    buildKey(COLLECTIONS.RIDE_QUEUE, filters),
+    buildRideQuery(COLLECTIONS.RIDE_QUEUE, filters),
     (snap) => callback(snap.docs.map(mapDoc)),
   );
 
 export const getRideQueue = async (filters) => {
-  const snap = await getDocs(buildRideQuery("rideQueue", filters));
+  const snap = await getDocs(buildRideQuery(COLLECTIONS.RIDE_QUEUE, filters));
   return snap.docs.map(mapDoc);
 };
 
 export const addRideToQueue = async (ride) =>
-  addDoc(collection(db, "rideQueue"), prepareRideData(ride));
+  addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), prepareRideData(ride));
 
 export const deleteRideFromQueue = async (id) =>
-  deleteDoc(doc(db, "rideQueue", id));
+  deleteDoc(doc(db, COLLECTIONS.RIDE_QUEUE, id));
 
 // ---------- Claimed Rides ----------
 export const subscribeClaimedRides = (callback, filters) =>

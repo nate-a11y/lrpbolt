@@ -39,7 +39,7 @@ import useRides from "../hooks/useRides";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { TIMEZONE } from "../constants";
+import { TIMEZONE, COLLECTIONS } from "../constants";
 import { Timestamp, collection, addDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import Papa from "papaparse";
@@ -311,7 +311,10 @@ export default function RideEntryForm() {
       });
       // sequential to surface any permission errors early
       for (const doc of validDocs) {
-        await addDoc(collection(db, "rideQueue"), doc); // <-- case-sensitive
+        await addDoc(
+          collection(db, COLLECTIONS.RIDE_QUEUE),
+          doc,
+        ); // <-- case-sensitive
       }
       return { added: validDocs.length, skipped };
     },
@@ -357,7 +360,10 @@ export default function RideEntryForm() {
     try {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
-      await addDoc(collection(db, "rideQueue"), rideData); // <-- case-sensitive
+      await addDoc(
+        collection(db, COLLECTIONS.RIDE_QUEUE),
+        rideData,
+      ); // <-- case-sensitive
       setToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,
