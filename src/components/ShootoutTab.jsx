@@ -19,7 +19,15 @@ import dayjs from "dayjs";
 
 import { db } from "../firebase";
 import {
-  collection, doc, setDoc, onSnapshot, query, orderBy, limit, Timestamp
+  collection,
+  doc,
+  setDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  Timestamp,
+  where,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
@@ -36,7 +44,7 @@ function safeParse(json, fallback = {}) {
   }
 }
 
-function normalizeSession(entry) {
+function normalizeSession(entry = {}) {
   const { startTime, endTime } = entry;
   let duration = 0;
   try {
@@ -115,11 +123,29 @@ export default function ShootoutTab() {
   }, [isRunning, startTime]);
 
   useEffect(() => {
-    const q = query(collection(db, SHOOTOUT_COL), orderBy("startTime", "desc"), limit(50));
-    const unsub = onSnapshot(q, (snap) => {
-      const parsed = snap.docs.map(doc => normalizeSession({ id: doc.id, ...doc.data() }));
-      setHistory(parsed);
-    });
+    const q = query(
+      collection(db, SHOOTOUT_COL),
+      where("startTime", "!=", null),
+      where("endTime", "!=", null),
+      orderBy("startTime", "desc"),
+      limit(50),
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const parsed = snap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((d) => {
+            const valid = d.startTime && d.endTime;
+            if (!valid) {
+              console.warn("Skipping invalid session", d.id, d);
+            }
+            return valid;
+          });
+        setHistory(parsed);
+      },
+      (err) => console.error("Shootout snapshot error:", err),
+    );
     return unsub;
   }, []);
 
@@ -256,7 +282,10 @@ export default function ShootoutTab() {
     },
   ], [formatElapsed]);
 
-  const historyRows = useMemo(() => history.map(normalizeSession), [history]);
+  const historyRows = useMemo(
+    () => history.filter((h) => h.startTime && h.endTime).map(normalizeSession),
+    [history],
+  );
   const totalTrips = useMemo(() => history.reduce((s, h) => s + (h.trips || 0), 0), [history]);
   const totalPassengers = useMemo(() => history.reduce((s, h) => s + (h.passengers || 0), 0), [history]);
   const avgPassengers = totalTrips ? (totalPassengers / totalTrips).toFixed(2) : "0.00";
