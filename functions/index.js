@@ -3,11 +3,13 @@
 
 import functions from "firebase-functions";
 import admin from "firebase-admin";
+import cors from "cors";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "../src/constants.js";
 
 admin.initializeApp();
 const db = admin.firestore();
+const corsHandler = cors({ origin: "https://lakeridepros.xyz" });
 
 async function getUser(context) {
   if (!context.auth) {
@@ -160,13 +162,19 @@ export const dropDailyRides = functions.pubsub
     return null;
   });
 
-export const dropDailyRidesNow = functions.https.onCall(
-  async (data, context) => {
-    await requireAdmin(context);
+export const dropDailyRidesNow = functions.https.onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    res.set("Access-Control-Allow-Origin", "https://lakeridepros.xyz");
+    if (req.method === "OPTIONS") {
+      res.set("Access-Control-Allow-Methods", "POST");
+      res.set("Access-Control-Allow-Headers", "Content-Type");
+      res.status(204).send("");
+      return;
+    }
     const result = await runDailyDrop();
-    return { success: true, ...result };
-  },
-);
+    res.status(200).json({ success: true, ...result });
+  });
+});
 
 export const getTicketById = functions.https.onCall(async (data, context) => {
   await getUser(context);
