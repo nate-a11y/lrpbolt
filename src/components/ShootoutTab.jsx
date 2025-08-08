@@ -34,15 +34,27 @@ function safeParse(json, fallback) {
 }
 
 function normalizeSession(entry) {
+  const { startTime, endTime } = entry;
+
+  let duration = 0;
+
+  try {
+    const start = startTime?.toMillis?.() || new Date(startTime).getTime();
+    const end = endTime?.toMillis?.() || new Date(endTime).getTime();
+
+    if (!isNaN(start) && !isNaN(end)) {
+      duration = end - start;
+    }
+  } catch {
+    duration = 0;
+  }
+
   return {
     ...entry,
-    duration: Number.isFinite(entry.duration)
-      ? entry.duration
-      : (entry.endTime && entry.startTime)
-        ? entry.endTime.toMillis() - entry.startTime.toMillis()
-        : 0
+    duration,
   };
 }
+
 
 export default function ShootoutTab() {
   const [startTime, setStartTime] = useState(null);
