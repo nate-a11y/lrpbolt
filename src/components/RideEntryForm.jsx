@@ -510,371 +510,374 @@ export default function RideEntryForm() {
   }, [uploadedRows, multiInput, processRideRows, fetchRides]);
 
   // ---------- Render ----------
-  return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 1.5, sm: 2 } }}>
-        <Paper
+return (
+  <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 2, sm: 3 } }}>
+      <Paper
+        elevation={3}
+        sx={{
+          p: { xs: 2, sm: 3 },
+          mb: 4,
+          bgcolor: (t) =>
+            t.palette.mode === "dark" ? "background.paper" : "background.default",
+          borderRadius: 3,
+        }}
+      >
+        <Typography variant="h6" fontWeight={700} gutterBottom>
+          🚐 Ride Entry
+        </Typography>
+
+        {/* Tabs */}
+        <Tabs
+          value={rideTab}
+          onChange={(e, v) => setRideTab(v)}
           sx={{
-            p: { xs: 2, sm: 3 },
-            mb: 4,
-            bgcolor: (t) =>
-              t.palette.mode === "dark" ? "background.paper" : "background.default",
-            borderRadius: 2,
-            boxShadow: (t) => t.shadows[3],
+            mb: 3,
+            "& .MuiTab-root": { minWidth: 150, fontWeight: 600 },
           }}
         >
-          <Typography variant="h6" fontWeight={700} mb={2}>
-            🚐 Ride Entry
-          </Typography>
+          <Tab label="SINGLE RIDE" />
+          <Tab label="MULTI RIDE UPLOAD" />
+        </Tabs>
 
-          <Tabs
-            value={rideTab}
-            onChange={(e, v) => setRideTab(v)}
-            sx={{ mb: 3, "& .MuiTab-root": { minWidth: 140 } }}
-          >
-            <Tab label="SINGLE RIDE" />
-            <Tab label="MULTI RIDE UPLOAD" />
-          </Tabs>
-
-          {/* ========================= SINGLE RIDE ========================= */}
-          {rideTab === 0 && (
-            <Fade in>
-              <Box sx={{ px: { xs: 0, sm: 2 }, py: 1 }}>
-                <Grid
-                  container
-                  spacing={2}
-                  key={shakeKey}
-                  className={!isFormValid && submitAttempted ? "shake" : undefined}
-                  sx={{
-                    "&.shake": { animation: "shake 0.25s linear 1" },
-                    "@keyframes shake": {
-                      "0%": { transform: "translateX(0)" },
-                      "25%": { transform: "translateX(-4px)" },
-                      "50%": { transform: "translateX(4px)" },
-                      "75%": { transform: "translateX(-2px)" },
-                      "100%": { transform: "translateX(0)" },
-                    },
-                  }}
-                >
-                  {/* Trip ID */}
-                  <Grid item xs={12} sm={6} md={4}>
-                    <TextField
-                      name="TripID"
-                      label="Trip ID *"
-                      value={formData.TripID}
-                      onChange={handleSingleChange}
-                      onBlur={handleBlur}
-                      size="small"
-                      fullWidth
-                      required
-                      inputProps={{ maxLength: 7 }}
-                      error={showErr("TripID")}
-                      helperText={showErr("TripID") ? "Required or invalid" : " "}
-                    />
-                  </Grid>
-
-                  {/* Date (no past dates) */}
-                  <Grid item xs={12} sm={6} md={4}>
-                    <DatePicker
-                      label="Date *"
-                      value={formData.Date ? dayjs(formData.Date) : null}
-                      onChange={(newVal) =>
-                        handleSingleChange({
-                          target: {
-                            name: "Date",
-                            value: newVal ? newVal.format("YYYY-MM-DD") : "",
-                          },
-                        })
-                      }
-                      minDate={dayjs().startOf("day")}
-                      slots={{ openPickerIcon: CalendarMonthIcon }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          size: "small",
-                          required: true,
-                          onBlur: handleBlur,
-                          name: "Date",
-                          error: showErr("Date"),
-                          helperText: showErr("Date") ? "Required or invalid" : " ",
-                        },
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Pickup Time */}
-                  <Grid item xs={12} sm={6} md={4}>
-                    <TimePicker
-                      label="Pickup Time *"
-                      value={
-                        formData.PickupTime
-                          ? dayjs(`2000-01-01T${formData.PickupTime}`)
-                          : null
-                      }
-                      onChange={(newVal) =>
-                        handleSingleChange({
-                          target: {
-                            name: "PickupTime",
-                            value: newVal ? newVal.format("HH:mm") : "",
-                          },
-                        })
-                      }
-                      slots={{ openPickerIcon: AccessTimeIcon }}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          size: "small",
-                          required: true,
-                          onBlur: handleBlur,
-                          name: "PickupTime",
-                          error: showErr("PickupTime"),
-                          helperText: showErr("PickupTime") ? "Required or invalid" : " ",
-                        },
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Duration */}
-                  <Grid item xs={6} sm={3} md={2.5}>
-                    <TextField
-                      name="DurationHours"
-                      label="Hours *"
-                      type="number"
-                      size="small"
-                      value={formData.DurationHours}
-                      onChange={handleSingleChange}
-                      onBlur={handleBlur}
-                      inputProps={{ min: 0, max: 24 }}
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">h</InputAdornment>,
-                      }}
-                      required
-                      fullWidth
-                      error={showErr("DurationHours")}
-                      helperText={showErr("DurationHours") ? "Invalid" : " "}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3} md={2.5}>
-                    <TextField
-                      name="DurationMinutes"
-                      label="Minutes *"
-                      type="number"
-                      size="small"
-                      value={formData.DurationMinutes}
-                      onChange={handleSingleChange}
-                      onBlur={handleBlur}
-                      inputProps={{ min: 0, max: 59 }}
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">m</InputAdornment>,
-                      }}
-                      required
-                      fullWidth
-                      error={showErr("DurationMinutes")}
-                      helperText={showErr("DurationMinutes") ? "Invalid" : " "}
-                    />
-                  </Grid>
-
-                  {/* Ride Type */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <TextField
-                      select
-                      name="RideType"
-                      label="Ride Type *"
-                      size="small"
-                      value={formData.RideType}
-                      onChange={handleSingleChange}
-                      onBlur={handleBlur}
-                      fullWidth
-                      required
-                      error={showErr("RideType")}
-                      helperText={showErr("RideType") ? "Required" : " "}
-                    >
-                      {rideTypeOptions.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-
-                  {/* Vehicle */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <TextField
-                      select
-                      name="Vehicle"
-                      label="Vehicle *"
-                      size="small"
-                      value={formData.Vehicle}
-                      onChange={handleSingleChange}
-                      onBlur={handleBlur}
-                      fullWidth
-                      required
-                      error={showErr("Vehicle")}
-                      helperText={showErr("Vehicle") ? "Required" : " "}
-                    >
-                      {vehicleOptions.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-
-                  {/* Ride Notes */}
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      name="RideNotes"
-                      label="Ride Notes"
-                      value={formData.RideNotes}
-                      onChange={handleSingleChange}
-                      onBlur={handleBlur}
-                      fullWidth
-                      size="small"
-                      multiline
-                      minRows={2}
-                    />
-                  </Grid>
-
-                  {/* Actions */}
-                  <Grid item xs={12}>
-                    <Box display="flex" justifyContent="flex-end" gap={1.5} mt={0.5}>
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() => {
-                          setFormData(defaultValues);
-                          setTouched({});
-                          setSubmitAttempted(false);
-                          errorFields.current = {};
-                        }}
-                      >
-                        Reset
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        onClick={() => setConfirmOpen(true)}
-                        disabled={submitting || !isFormValid}
-                      >
-                        Submit
-                      </Button>
-                    </Box>
-                  </Grid>
+        {/* -------------------- SINGLE RIDE TAB -------------------- */}
+        {rideTab === 0 && (
+          <Fade in>
+            <Box component="form" noValidate autoComplete="off">
+              <Grid
+                container
+                spacing={2}
+                key={shakeKey}
+                className={!isFormValid && submitAttempted ? "shake" : undefined}
+                sx={{
+                  "&.shake": { animation: "shake 0.25s linear 1" },
+                  "@keyframes shake": {
+                    "0%": { transform: "translateX(0)" },
+                    "25%": { transform: "translateX(-4px)" },
+                    "50%": { transform: "translateX(4px)" },
+                    "75%": { transform: "translateX(-2px)" },
+                    "100%": { transform: "translateX(0)" },
+                  },
+                }}
+              >
+                {/* Trip ID */}
+                <Grid item xs={12} sm={6} md={4}>
+                  <TextField
+                    name="TripID"
+                    label="Trip ID *"
+                    value={formData.TripID}
+                    onChange={handleSingleChange}
+                    onBlur={handleBlur}
+                    fullWidth
+                    size="small"
+                    required
+                    inputProps={{ maxLength: 7 }}
+                    error={showErr("TripID")}
+                    helperText={showErr("TripID") ? "Required or invalid" : " "}
+                  />
                 </Grid>
-              </Box>
-            </Fade>
-          )}
 
-          {/* ========================= MULTI RIDE UPLOAD ========================= */}
-          {rideTab === 1 && (
-            <Fade in>
-              <Box sx={{ px: { xs: 0, sm: 2 }, py: 1 }}>
-                {/* Top row: template | dropzone | paste */}
-                <Grid container spacing={2} alignItems="stretch">
-                  <Grid item xs={12} md={3}>
-                    <Box
-                      sx={{
-                        height: DROPZONE_MIN_H,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1.25,
+                {/* Date */}
+                <Grid item xs={12} sm={6} md={4}>
+                  <DatePicker
+                    label="Date *"
+                    value={formData.Date ? dayjs(formData.Date) : null}
+                    onChange={(newVal) =>
+                      handleSingleChange({
+                        target: {
+                          name: "Date",
+                          value: newVal ? newVal.format("YYYY-MM-DD") : "",
+                        },
+                      })
+                    }
+                    minDate={dayjs().startOf("day")}
+                    slots={{ openPickerIcon: CalendarMonthIcon }}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        size: "small",
+                        required: true,
+                        onBlur: handleBlur,
+                        name: "Date",
+                        error: showErr("Date"),
+                        helperText: showErr("Date") ? "Required or invalid" : " ",
+                      },
+                    }}
+                  />
+                </Grid>
+
+                {/* Pickup Time */}
+                <Grid item xs={12} sm={6} md={4}>
+                  <TimePicker
+                    label="Pickup Time *"
+                    value={
+                      formData.PickupTime
+                        ? dayjs(`2000-01-01T${formData.PickupTime}`)
+                        : null
+                    }
+                    onChange={(newVal) =>
+                      handleSingleChange({
+                        target: {
+                          name: "PickupTime",
+                          value: newVal ? newVal.format("HH:mm") : "",
+                        },
+                      })
+                    }
+                    slots={{ openPickerIcon: AccessTimeIcon }}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        size: "small",
+                        required: true,
+                        onBlur: handleBlur,
+                        name: "PickupTime",
+                        error: showErr("PickupTime"),
+                        helperText: showErr("PickupTime") ? "Required or invalid" : " ",
+                      },
+                    }}
+                  />
+                </Grid>
+
+                {/* Duration */}
+                <Grid item xs={6} sm={3} md={2.5}>
+                  <TextField
+                    name="DurationHours"
+                    label="Hours *"
+                    type="number"
+                    size="small"
+                    value={formData.DurationHours}
+                    onChange={handleSingleChange}
+                    onBlur={handleBlur}
+                    inputProps={{ min: 0, max: 24 }}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">h</InputAdornment>,
+                    }}
+                    required
+                    fullWidth
+                    error={showErr("DurationHours")}
+                    helperText={showErr("DurationHours") ? "Invalid" : " "}
+                  />
+                </Grid>
+
+                <Grid item xs={6} sm={3} md={2.5}>
+                  <TextField
+                    name="DurationMinutes"
+                    label="Minutes *"
+                    type="number"
+                    size="small"
+                    value={formData.DurationMinutes}
+                    onChange={handleSingleChange}
+                    onBlur={handleBlur}
+                    inputProps={{ min: 0, max: 59 }}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">m</InputAdornment>,
+                    }}
+                    required
+                    fullWidth
+                    error={showErr("DurationMinutes")}
+                    helperText={showErr("DurationMinutes") ? "Invalid" : " "}
+                  />
+                </Grid>
+
+                {/* Ride Type */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    select
+                    name="RideType"
+                    label="Ride Type *"
+                    size="small"
+                    value={formData.RideType}
+                    onChange={handleSingleChange}
+                    onBlur={handleBlur}
+                    fullWidth
+                    required
+                    error={showErr("RideType")}
+                    helperText={showErr("RideType") ? "Required" : " "}
+                  >
+                    {rideTypeOptions.map((opt) => (
+                      <MenuItem key={opt} value={opt}>
+                        {opt}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                {/* Vehicle */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    select
+                    name="Vehicle"
+                    label="Vehicle *"
+                    size="small"
+                    value={formData.Vehicle}
+                    onChange={handleSingleChange}
+                    onBlur={handleBlur}
+                    fullWidth
+                    required
+                    error={showErr("Vehicle")}
+                    helperText={showErr("Vehicle") ? "Required" : " "}
+                  >
+                    {vehicleOptions.map((opt) => (
+                      <MenuItem key={opt} value={opt}>
+                        {opt}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                {/* Ride Notes */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    name="RideNotes"
+                    label="Ride Notes"
+                    value={formData.RideNotes}
+                    onChange={handleSingleChange}
+                    onBlur={handleBlur}
+                    fullWidth
+                    size="small"
+                    multiline
+                    minRows={2}
+                  />
+                </Grid>
+
+                {/* Buttons */}
+                <Grid item xs={12}>
+                  <Box display="flex" justifyContent="flex-end" gap={2}>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      onClick={() => {
+                        setFormData(defaultValues);
+                        setTouched({});
+                        setSubmitAttempted(false);
+                        errorFields.current = {};
                       }}
                     >
-                      <Button
-                        aria-label="Download ride template CSV"
-                        href="/ride-template.csv"
-                        variant="outlined"
-                        startIcon={<DownloadIcon />}
-                        download
-                        fullWidth
-                        sx={{ height: 42 }}
-                      >
-                        Download Template
-                      </Button>
-                      <Box
-                        {...getRootProps()}
-                        sx={{
-                          flex: 1,
-                          border: "2px dashed",
-                          borderColor: isDragActive ? "success.main" : "divider",
-                          color: "text.secondary",
-                          borderRadius: 2,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          textAlign: "center",
-                          p: 2,
-                          bgcolor: "background.default",
-                          cursor: "pointer",
-                          transition: "border-color 120ms",
-                        }}
-                      >
-                        <input {...getInputProps()} />
-                        <Box>
-                          <UploadFileIcon sx={{ fontSize: 36, mb: 0.5 }} />
-                          <Typography variant="body2">
-                            {isDragActive
-                              ? "Drop file here"
-                              : "Drag & drop CSV/XLS here or click to select"}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      {fileError && (
-                        <Typography color="error" variant="caption">
-                          {fileError}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Grid>
+                      Reset
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      disabled={submitting || !isFormValid}
+                      onClick={() => setConfirmOpen(true)}
+                    >
+                      Submit
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          </Fade>
+        )}
+        {/* -------------------- MULTI RIDE UPLOAD TAB -------------------- */}
+        {rideTab === 1 && (
+          <Fade in>
+            <Box>
+              <Grid container spacing={3}>
+                {/* Template download + Dropzone */}
+                <Grid item xs={12} md={3}>
+                  <Stack spacing={2}>
+                    <Button
+                      aria-label="Download ride template CSV"
+                      href="/ride-template.csv"
+                      download
+                      fullWidth
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
+                    >
+                      Download Template
+                    </Button>
 
-                  <Grid item xs={12} md={6}>
                     <Box
+                      {...getRootProps()}
                       sx={{
                         border: "2px dashed",
-                        borderColor: "divider",
                         borderRadius: 2,
-                        minHeight: DROPZONE_MIN_H,
+                        borderColor: isDragActive ? "success.main" : "divider",
+                        bgcolor: "background.default",
+                        color: "text.secondary",
+                        textAlign: "center",
+                        px: 2,
+                        py: 3,
+                        cursor: "pointer",
+                        height: 168,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        textAlign: "center",
-                        p: 2,
-                        color: "text.secondary",
                       }}
                     >
-                      <Typography variant="body2">
-                        Rides you add below will show here after you click <b>Add to List</b>.
-                        You can also preview uploaded CSV rows further down.
-                      </Typography>
+                      <input {...getInputProps()} />
+                      <Box>
+                        <UploadFileIcon sx={{ fontSize: 36, mb: 0.5 }} />
+                        <Typography variant="body2">
+                          {isDragActive
+                            ? "Drop file here"
+                            : "Drag & drop CSV/XLS here or click to select"}
+                        </Typography>
+                      </Box>
                     </Box>
-                  </Grid>
 
-                  <Grid item xs={12} md={3}>
-                    <TextField
-                      label="Paste CSV Rides"
-                      fullWidth
-                      multiline
-                      minRows={6}
-                      value={multiInput}
-                      onChange={(e) => setMultiInput(e.target.value)}
-                      sx={{ height: "100%" }}
-                    />
-                  </Grid>
+                    {fileError && (
+                      <Typography variant="caption" color="error">
+                        {fileError}
+                      </Typography>
+                    )}
+                  </Stack>
                 </Grid>
 
-                {/* Builder row */}
-                <Grid container spacing={2} mt={0.5}>
-                  <Grid item xs={12} sm={4} md={3}>
+                {/* Instruction box */}
+                <Grid item xs={12} md={6}>
+                  <Box
+                    sx={{
+                      border: "2px dashed",
+                      borderColor: "divider",
+                      borderRadius: 2,
+                      minHeight: 168,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textAlign: "center",
+                      p: 3,
+                      color: "text.secondary",
+                    }}
+                  >
+                    <Typography variant="body2">
+                      Rides added using the form below will appear in a preview.
+                      You can also paste CSV text or upload a file.
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                {/* CSV paste box */}
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    label="Paste CSV Rides"
+                    fullWidth
+                    multiline
+                    minRows={6}
+                    value={multiInput}
+                    onChange={(e) => setMultiInput(e.target.value)}
+                    sx={{ height: "100%" }}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* CSV Builder */}
+              <Box mt={4}>
+                <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                  Or Use Ride Builder
+                </Typography>
+                <Grid container spacing={2}>
+                  {/* TripID */}
+                  <Grid item xs={12} sm={6} md={3}>
                     <TextField
                       name="TripID"
                       label="Trip ID *"
                       value={csvBuilder.TripID}
                       onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
                       onBlur={handleBuilderBlur}
-                      size="small"
-                      required
                       fullWidth
-                      inputProps={{ maxLength: 7 }}
+                      size="small"
                       error={!!builderErrors.TripID && (builderTouched.TripID || builderSubmitAttempted)}
                       helperText={
                         !!builderErrors.TripID && (builderTouched.TripID || builderSubmitAttempted)
@@ -884,7 +887,8 @@ export default function RideEntryForm() {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={4} md={3}>
+                  {/* Date */}
+                  <Grid item xs={12} sm={6} md={3}>
                     <DatePicker
                       label="Date *"
                       value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
@@ -906,15 +910,12 @@ export default function RideEntryForm() {
                         textField: {
                           fullWidth: true,
                           size: "small",
-                          required: true,
                           name: "Date",
+                          required: true,
                           onBlur: handleBuilderBlur,
-                          error:
-                            !!builderErrors.Date &&
-                            (builderTouched.Date || builderSubmitAttempted),
+                          error: !!builderErrors.Date && (builderTouched.Date || builderSubmitAttempted),
                           helperText:
-                            !!builderErrors.Date &&
-                            (builderTouched.Date || builderSubmitAttempted)
+                            !!builderErrors.Date && (builderTouched.Date || builderSubmitAttempted)
                               ? "Required or invalid"
                               : " ",
                         },
@@ -922,7 +923,8 @@ export default function RideEntryForm() {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={4} md={3}>
+                  {/* Pickup Time */}
+                  <Grid item xs={12} sm={6} md={3}>
                     <TimePicker
                       label="Pickup Time *"
                       value={
@@ -947,8 +949,8 @@ export default function RideEntryForm() {
                         textField: {
                           fullWidth: true,
                           size: "small",
-                          required: true,
                           name: "PickupTime",
+                          required: true,
                           onBlur: handleBuilderBlur,
                           error:
                             !!builderErrors.PickupTime &&
@@ -962,11 +964,11 @@ export default function RideEntryForm() {
                       }}
                     />
                   </Grid>
-
+                  {/* Duration */}
                   <Grid item xs={6} sm={3} md={2}>
                     <TextField
                       name="DurationHours"
-                      label="Duration Hours *"
+                      label="Hours *"
                       type="number"
                       size="small"
                       value={csvBuilder.DurationHours}
@@ -992,7 +994,7 @@ export default function RideEntryForm() {
                   <Grid item xs={6} sm={3} md={2}>
                     <TextField
                       name="DurationMinutes"
-                      label="Duration Minutes *"
+                      label="Minutes *"
                       type="number"
                       size="small"
                       value={csvBuilder.DurationMinutes}
@@ -1015,6 +1017,7 @@ export default function RideEntryForm() {
                     />
                   </Grid>
 
+                  {/* Ride Type */}
                   <Grid item xs={6} sm={3} md={2.5}>
                     <TextField
                       select
@@ -1045,6 +1048,7 @@ export default function RideEntryForm() {
                     </TextField>
                   </Grid>
 
+                  {/* Vehicle */}
                   <Grid item xs={6} sm={3} md={2.5}>
                     <TextField
                       select
@@ -1075,6 +1079,7 @@ export default function RideEntryForm() {
                     </TextField>
                   </Grid>
 
+                  {/* Notes */}
                   <Grid item xs={12} md={6}>
                     <TextField
                       name="RideNotes"
@@ -1091,8 +1096,12 @@ export default function RideEntryForm() {
 
                   {/* Actions */}
                   <Grid item xs={12}>
-                    <Box display="flex" justifyContent="flex-start" gap={1.5} mt={0.5} flexWrap="wrap">
-                      <Button variant="contained" onClick={handleCsvAppend} sx={{ fontWeight: 600 }}>
+                    <Box display="flex" gap={2} flexWrap="wrap">
+                      <Button
+                        variant="contained"
+                        onClick={handleCsvAppend}
+                        sx={{ fontWeight: 600 }}
+                      >
                         ➕ Add to List
                       </Button>
                       <Button
@@ -1101,206 +1110,218 @@ export default function RideEntryForm() {
                         onClick={handleMultiSubmit}
                         disabled={submitting}
                         sx={{ fontWeight: 600 }}
-                        startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+                        startIcon={
+                          submitting ? <CircularProgress size={18} color="inherit" /> : null
+                        }
                       >
                         {submitting ? "Submitting…" : "🚀 Submit All Rides"}
                       </Button>
                     </Box>
                   </Grid>
                 </Grid>
-
-                {/* Uploaded Data Preview */}
-                {uploadedRows.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <DataGrid
-                      autoHeight
-                      density="compact"
-                      rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
-                      columns={[
-                        { field: "TripID", headerName: "Trip ID", flex: 1 },
-                        { field: "Date", headerName: "Date", flex: 1 },
-                        { field: "PickupTime", headerName: "Pickup Time", flex: 1 },
-                        { field: "DurationHours", headerName: "Dur H", flex: 1 },
-                        { field: "DurationMinutes", headerName: "Dur M", flex: 1 },
-                        { field: "RideType", headerName: "Ride Type", flex: 1 },
-                        { field: "Vehicle", headerName: "Vehicle", flex: 1 },
-                      ]}
-                      pageSizeOptions={[5]}
-                    />
-                    <Button
-                      variant="outlined"
-                      color="success"
-                      onClick={handleImportConfirm}
-                      disabled={submitting}
-                      sx={{ mt: 1.5, fontWeight: 600 }}
-                      startIcon={
-                        submitting ? (
-                          <CircularProgress size={20} color="inherit" />
-                        ) : (
-                          <UploadFileIcon />
-                        )
-                      }
-                    >
-                      Import Rides
-                    </Button>
-                  </Box>
-                )}
               </Box>
-            </Fade>
-          )}
-        </Paper>
 
-        {/* Daily Rides Update Section */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="caption" color="text.secondary">
-              <SyncIcon fontSize="small" sx={{ mr: 1 }} />
-              Synced: {syncTime}
-            </Typography>
-            <Tooltip title="Runs Firebase function to refresh daily rides">
-              <span>
-                <Button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  variant="outlined"
-                  color="secondary"
-                  startIcon={
-                    <SyncIcon
-                      sx={{ animation: refreshing ? "spin 1s linear infinite" : "none" }}
-                    />
-                  }
-                >
-                  Update Daily Rides
-                </Button>
-              </span>
-            </Tooltip>
-          </Box>
-        </Paper>
-
-        {/* Live / Queue / Claimed Tabs */}
-        <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
-          <Tabs
-            value={dataTab}
-            onChange={(e, val) => setDataTab(val)}
-            TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
-            sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
-          >
-            <Tab
-              label={
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography fontWeight={600} color={dataTab === 0 ? "success.main" : "inherit"}>
-                    LIVE
+              {/* Preview Table */}
+              {uploadedRows.length > 0 && (
+                <Box mt={4}>
+                  <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                    Preview Rides ({uploadedRows.length})
                   </Typography>
-                  <Badge
-                    badgeContent={liveCount}
+                  <DataGrid
+                    autoHeight
+                    density="compact"
+                    rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
+                    columns={[
+                      { field: "TripID", headerName: "Trip ID", flex: 1 },
+                      { field: "Date", headerName: "Date", flex: 1 },
+                      { field: "PickupTime", headerName: "Time", flex: 1 },
+                      { field: "DurationHours", headerName: "Hr", flex: 0.5 },
+                      { field: "DurationMinutes", headerName: "Min", flex: 0.5 },
+                      { field: "RideType", headerName: "Type", flex: 1 },
+                      { field: "Vehicle", headerName: "Vehicle", flex: 1 },
+                    ]}
+                    pageSizeOptions={[5]}
+                  />
+                  <Button
+                    variant="outlined"
                     color="success"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(0.8) translate(60%, -40%)",
-                        transformOrigin: "top right",
-                      },
-                    }}
-                  />
+                    onClick={handleImportConfirm}
+                    disabled={submitting}
+                    sx={{ mt: 2, fontWeight: 600 }}
+                    startIcon={
+                      submitting ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        <UploadFileIcon />
+                      )
+                    }
+                  >
+                    Import Rides
+                  </Button>
                 </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography fontWeight={600} color={dataTab === 1 ? "success.main" : "inherit"}>
-                    QUEUE
-                  </Typography>
-                  <Badge
-                    badgeContent={queueCount}
-                    color="primary"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(0.8) translate(60%, -40%)",
-                        transformOrigin: "top right",
-                      },
-                    }}
-                  />
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography fontWeight={600} color={dataTab === 2 ? "success.main" : "inherit"}>
-                    CLAIMED
-                  </Typography>
-                  <Badge
-                    badgeContent={claimedCount}
-                    color="secondary"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(0.8) translate(60%, -40%)",
-                        transformOrigin: "top right",
-                      },
-                    }}
-                  />
-                </Box>
-              }
-            />
-          </Tabs>
-        </Box>
-
-        {/* Tab Content */}
-        <Box sx={{ width: "100%", overflowX: "hidden" }}>
-          {dataTab === 0 && (
-            <Fade in>
-              <Box>
-                <LiveRidesGrid />
-              </Box>
-            </Fade>
-          )}
-          {dataTab === 1 && (
-            <Fade in>
-              <Box>
-                <RideQueueGrid />
-              </Box>
-            </Fade>
-          )}
-          {dataTab === 2 && (
-            <Fade in>
-              <Box>
-                <ClaimedRidesGrid />
-              </Box>
-            </Fade>
-          )}
-        </Box>
-
-        {/* Confirm Dialog */}
-        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Confirm Ride</DialogTitle>
-          <DialogContent dividers>
-            {Object.entries(preview).map(([key, value]) => (
-              <Typography key={key} sx={{ mb: 0.5 }}>
-                <strong>{key.replace(/([A-Z])/g, " $1")}:</strong> {value || "—"}
-              </Typography>
-            ))}
-            <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
-              <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleSubmit}
-                disabled={submitting}
-                startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
-              >
-                Confirm & Submit
-              </Button>
+              )}
             </Box>
-          </DialogContent>
-        </Dialog>
+          </Fade>
+        )}
 
-        {/* Snackbar */}
-        <Snackbar open={toast.open} autoHideDuration={4000} onClose={() => setToast({ ...toast, open: false })}>
-          <Alert severity={toast.severity} variant="filled">
-            {toast.message}
-          </Alert>
-        </Snackbar>
+      </Paper>
+
+      {/* Daily Rides Update Section */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="caption" color="text.secondary">
+            <SyncIcon fontSize="small" sx={{ mr: 1 }} />
+            Synced: {syncTime}
+          </Typography>
+          <Tooltip title="Runs Firebase function to refresh daily rides">
+            <span>
+              <Button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                variant="outlined"
+                color="secondary"
+                startIcon={
+                  <SyncIcon
+                    sx={{
+                      animation: refreshing ? "spin 1s linear infinite" : "none",
+                    }}
+                  />
+                }
+              >
+                Update Daily Rides
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
+      </Paper>
+
+      {/* Live / Queue / Claimed Tabs */}
+      <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+        <Tabs
+          value={dataTab}
+          onChange={(e, val) => setDataTab(val)}
+          TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
+          sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
+        >
+          <Tab
+            label={
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Typography fontWeight={600} color={dataTab === 0 ? "success.main" : "inherit"}>
+                  LIVE
+                </Typography>
+                <Badge
+                  badgeContent={liveCount}
+                  color="success"
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      transform: "scale(0.8) translate(60%, -40%)",
+                      transformOrigin: "top right",
+                    },
+                  }}
+                />
+              </Box>
+            }
+          />
+          <Tab
+            label={
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Typography fontWeight={600} color={dataTab === 1 ? "success.main" : "inherit"}>
+                  QUEUE
+                </Typography>
+                <Badge
+                  badgeContent={queueCount}
+                  color="primary"
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      transform: "scale(0.8) translate(60%, -40%)",
+                      transformOrigin: "top right",
+                    },
+                  }}
+                />
+              </Box>
+            }
+          />
+          <Tab
+            label={
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <Typography fontWeight={600} color={dataTab === 2 ? "success.main" : "inherit"}>
+                  CLAIMED
+                </Typography>
+                <Badge
+                  badgeContent={claimedCount}
+                  color="secondary"
+                  sx={{
+                    "& .MuiBadge-badge": {
+                      transform: "scale(0.8) translate(60%, -40%)",
+                      transformOrigin: "top right",
+                    },
+                  }}
+                />
+              </Box>
+            }
+          />
+        </Tabs>
       </Box>
-    </LocalizationProvider>
-  );
-}
+
+      <Box sx={{ width: "100%", overflowX: "hidden" }}>
+        {dataTab === 0 && (
+          <Fade in>
+            <Box>
+              <LiveRidesGrid />
+            </Box>
+          </Fade>
+        )}
+        {dataTab === 1 && (
+          <Fade in>
+            <Box>
+              <RideQueueGrid />
+            </Box>
+          </Fade>
+        )}
+        {dataTab === 2 && (
+          <Fade in>
+            <Box>
+              <ClaimedRidesGrid />
+            </Box>
+          </Fade>
+        )}
+      </Box>
+
+      {/* Confirm Dialog */}
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Confirm Ride</DialogTitle>
+        <DialogContent dividers>
+          {Object.entries(preview).map(([key, value]) => (
+            <Typography key={key} sx={{ mb: 0.5 }}>
+              <strong>{key.replace(/([A-Z])/g, " $1")}:</strong> {value || "—"}
+            </Typography>
+          ))}
+          <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSubmit}
+              disabled={submitting}
+              startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+            >
+              Confirm & Submit
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={() => setToast({ ...toast, open: false })}
+      >
+        <Alert severity={toast.severity} variant="filled">
+          {toast.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  </LocalizationProvider>
+);
+
