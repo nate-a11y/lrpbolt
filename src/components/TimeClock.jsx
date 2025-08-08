@@ -31,7 +31,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const unsubRef = useRef(null);
   const bcRef = useRef(null);
 
-  // Restore session
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
     if (stored.driver === driver && stored.startTime) {
@@ -43,7 +42,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     }
   }, [driver]);
 
-  // BroadcastChannel session lock
   useEffect(() => {
     const bc = new BroadcastChannel(bcName);
     bcRef.current = bc;
@@ -73,7 +71,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     setIsTracking(isRunning);
   }, [isRunning, setIsTracking]);
 
-  // Track elapsed time
   useEffect(() => {
     if (!isRunning || !startTime) return;
     const timer = setInterval(() => {
@@ -82,16 +79,23 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
 
-  // Firestore subscription
   useEffect(() => {
     if (unsubRef.current) {
-      try { unsubRef.current(); } catch (err) {}
+      try {
+        unsubRef.current();
+      } catch (err) {
+        // noop
+      }
       unsubRef.current = null;
     }
     unsubRef.current = subscribeTimeLogs(setLogs, driver);
     return () => {
       if (unsubRef.current) {
-        try { unsubRef.current(); } catch (err) {}
+        try {
+          unsubRef.current();
+        } catch (err) {
+          // noop
+        }
       }
     };
   }, [driver]);
