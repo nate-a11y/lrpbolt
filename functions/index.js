@@ -5,7 +5,7 @@ import * as functions from "firebase-functions";
 import cors from "cors";
 import { admin, db } from "./firebase.js";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
-import { COLLECTIONS } from "../src/constants.js";
+import { COLLECTIONS } from "./constants.js";
 const corsHandler = cors({ origin: "https://lakeridepros.xyz" });
 
 async function getUser(context) {
@@ -162,9 +162,10 @@ export const dropDailyRides = functions.pubsub
 export const dropDailyRidesNow = functions.https.onRequest((req, res) => {
   corsHandler(req, res, async () => {
     res.set("Access-Control-Allow-Origin", "https://lakeridepros.xyz");
+    res.set("Vary", "Origin");
     if (req.method === "OPTIONS") {
-      res.set("Access-Control-Allow-Methods", "POST");
-      res.set("Access-Control-Allow-Headers", "Content-Type");
+      res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
       res.status(204).send("");
       return;
     }

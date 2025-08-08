@@ -3,8 +3,7 @@
 
 import admin from "firebase-admin";
 
-// Initialize the Firebase admin SDK only once in cold starts
-const app = admin.apps.length > 0 ? admin.app() : admin.initializeApp();
+const app = admin.apps.length ? admin.app() : admin.initializeApp();
 
 // Access Firestore through the initialized app
 const db = admin.firestore();
