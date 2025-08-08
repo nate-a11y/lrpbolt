@@ -532,7 +532,6 @@ return (
           🚐 Ride Entry
         </Typography>
 
-        {/* Tabs */}
         <Tabs
           value={rideTab}
           onChange={(e, v) => setRideTab(v)}
@@ -545,311 +544,261 @@ return (
           <Tab label="MULTI RIDE UPLOAD" />
         </Tabs>
 
-{/* -------------------- SINGLE RIDE TAB -------------------- */}
-{rideTab === 0 && (
-  <Box sx={{ p: 3, mb: 3 }}>
-    <Grid container spacing={2}>
-      {/* Trip ID */}
-      <Grid item xs={12} md={3}>
-        <TextField
-          label="Trip ID **"
-          value={ride.tripId}
-          onChange={(e) => setRide({ ...ride, tripId: e.target.value })}
-          fullWidth
-        />
-      </Grid>
-
-      {/* Date */}
-      <Grid item xs={12} md={3}>
-        <DatePicker
-          label="Date **"
-          value={ride.date}
-          onChange={(newVal) => setRide({ ...ride, date: newVal })}
-          renderInput={(params) => <TextField {...params} fullWidth />}
-        />
-      </Grid>
-
-      {/* Pickup Time */}
-      <Grid item xs={12} md={3}>
-        <TimePicker
-          label="Pickup Time **"
-          value={ride.time}
-          onChange={(newVal) => setRide({ ...ride, time: newVal })}
-          renderInput={(params) => <TextField {...params} fullWidth />}
-        />
-      </Grid>
-
-      {/* Duration - Hours */}
-      <Grid item xs={6} md={1.5}>
-        <TextField
-          label="Hours **"
-          value={ride.hours}
-          onChange={(e) => setRide({ ...ride, hours: e.target.value })}
-          fullWidth
-        />
-      </Grid>
-
-      {/* Duration - Minutes */}
-      <Grid item xs={6} md={1.5}>
-        <TextField
-          label="Minutes **"
-          value={ride.minutes}
-          onChange={(e) => setRide({ ...ride, minutes: e.target.value })}
-          fullWidth
-        />
-      </Grid>
-
-      {/* Reset Duration Button */}
-      <Grid item xs={12} md={0.5}>
-        <IconButton onClick={handleResetDuration} edge="end">
-          <ReplayIcon />
-        </IconButton>
-      </Grid>
-
-      {/* Ride Notes */}
-      <Grid item xs={12} md={9}>
-        <TextField
-          label="Ride Notes"
-          value={ride.notes}
-          onChange={(e) => setRide({ ...ride, notes: e.target.value })}
-          multiline
-          rows={2}
-          fullWidth
-        />
-      </Grid>
-
-      {/* Reset + Submit Buttons */}
-      <Grid item xs={12} md={3} container spacing={1} justifyContent="flex-end">
-        <Grid item>
-          <Button onClick={handleResetForm} variant="outlined" color="secondary">
-            RESET
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            disabled={submitting || !isFormValid}
-          >
-            {submitting ? <CircularProgress size={20} /> : "SUBMIT"}
-          </Button>
-        </Grid>
-      </Grid>
-    </Grid>
-  </Box>
-)}
-</Paper>
-
-        {/* -------------------- MULTI RIDE UPLOAD TAB -------------------- */}
-{rideTab === 1 && (
-  <Paper sx={{ p: 3, mb: 3 }}>
-    <Grid container spacing={2}>
-      {/* Download Template Button */}
-      <Grid item xs={12} md={4}>
-        <Button
-          variant="outlined"
-          fullWidth
-          startIcon={<DownloadIcon />}
-          onClick={handleDownloadTemplate}
-        >
-          Download Template
-        </Button>
-      </Grid>
-
-      {/* Drag & Drop Area */}
-      <Grid item xs={12} md={8}>
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 2,
-            borderStyle: "dashed",
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-          onClick={handleUploadClick}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-        >
-          <CloudUploadIcon fontSize="large" />
-          <Typography variant="body2" mt={1}>
-            Drag & drop CSV/XLS here or click to select
-          </Typography>
-        </Paper>
-      </Grid>
-
-      {/* Paste CSV Rides */}
-      <Grid item xs={12} md={6}>
-        <TextField
-          label="Paste CSV Rides"
-          multiline
-          minRows={4}
-          maxRows={10}
-          value={csvInput}
-          onChange={(e) => setCsvInput(e.target.value)}
-          fullWidth
-        />
-      </Grid>
-
-      {/* Manual Ride Builder Fields */}
-      <Grid item xs={12} md={6}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Trip ID **"
-              value={ride.tripId}
-              onChange={(e) => setRide({ ...ride, tripId: e.target.value })}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <DatePicker
-              label="Date **"
-              value={ride.date}
-              onChange={(val) => setRide({ ...ride, date: val })}
-              renderInput={(params) => <TextField {...params} fullWidth />}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TimePicker
-              label="Pickup Time **"
-              value={ride.time}
-              onChange={(val) => setRide({ ...ride, time: val })}
-              renderInput={(params) => <TextField {...params} fullWidth />}
-            />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <TextField
-              label="Duration .h"
-              value={ride.hours}
-              onChange={(e) => setRide({ ...ride, hours: e.target.value })}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <TextField
-              label="Duration .m"
-              value={ride.minutes}
-              onChange={(e) => setRide({ ...ride, minutes: e.target.value })}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Ride Type</InputLabel>
-              <Select
-                value={ride.rideType}
-                label="Ride Type"
-                onChange={(e) => setRide({ ...ride, rideType: e.target.value })}
-              >
-                <MenuItem value="One-Way">One-Way</MenuItem>
-                <MenuItem value="Round-Trip">Round-Trip</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Vehicle</InputLabel>
-              <Select
-                value={ride.vehicle}
-                label="Vehicle"
-                onChange={(e) => setRide({ ...ride, vehicle: e.target.value })}
-              >
-                <MenuItem value="LRPBus - Limo Bus">LRPBus - Limo Bus</MenuItem>
-                <MenuItem value="LRPVAN - Shuttle Van">LRPVAN - Shuttle Van</MenuItem>
-                {/* Add more as needed */}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Ride Notes"
-              value={ride.notes}
-              onChange={(e) => setRide({ ...ride, notes: e.target.value })}
-              multiline
-              rows={2}
-              fullWidth
-            />
-          </Grid>
-        </Grid>
-      </Grid>
-
-      {/* Add to List + Submit All */}
-      <Grid item xs={12} container spacing={2} justifyContent="flex-end">
-        <Grid item>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<AddIcon />}
-            onClick={handleAddToList}
-          >
-            Add to List
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<RocketLaunchIcon />}
-            onClick={handleSubmitAll}
-          >
-            Submit All Rides
-          </Button>
-        </Grid>
-      </Grid>
-    </Grid>
-  </Paper>
-)}
-
-
-              {/* Preview Table */}
-              {uploadedRows.length > 0 && (
-                <Box mt={4}>
-                  <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                    Preview Rides ({uploadedRows.length})
-                  </Typography>
-                  <DataGrid
-                    autoHeight
-                    density="compact"
-                    rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
-                    columns={[
-                      { field: "TripID", headerName: "Trip ID", flex: 1 },
-                      { field: "Date", headerName: "Date", flex: 1 },
-                      { field: "PickupTime", headerName: "Time", flex: 1 },
-                      { field: "DurationHours", headerName: "Hr", flex: 0.5 },
-                      { field: "DurationMinutes", headerName: "Min", flex: 0.5 },
-                      { field: "RideType", headerName: "Type", flex: 1 },
-                      { field: "Vehicle", headerName: "Vehicle", flex: 1 },
-                    ]}
-                    pageSizeOptions={[5]}
-                  />
+        {/* SINGLE RIDE TAB */}
+        {rideTab === 0 && (
+          <Box sx={{ p: 3, mb: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  label="Trip ID **"
+                  name="TripID"
+                  value={formData.TripID}
+                  onChange={handleSingleChange}
+                  onBlur={handleBlur}
+                  error={showErr("TripID")}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <DatePicker
+                  label="Date **"
+                  value={formData.Date}
+                  onChange={(val) => setFormData(fd => ({ ...fd, Date: val ? dayjs(val).format("YYYY-MM-DD") : "" }))}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      name="Date"
+                      onBlur={handleBlur}
+                      error={showErr("Date")}
+                      fullWidth
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TimePicker
+                  label="Pickup Time **"
+                  value={formData.PickupTime}
+                  onChange={(val) => setFormData(fd => ({ ...fd, PickupTime: val ? dayjs(val).format("HH:mm") : "" }))}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      name="PickupTime"
+                      onBlur={handleBlur}
+                      error={showErr("PickupTime")}
+                      fullWidth
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={6} md={1.5}>
+                <TextField
+                  label="Hours **"
+                  name="DurationHours"
+                  value={formData.DurationHours}
+                  onChange={handleSingleChange}
+                  onBlur={handleBlur}
+                  error={showErr("DurationHours")}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={6} md={1.5}>
+                <TextField
+                  label="Minutes **"
+                  name="DurationMinutes"
+                  value={formData.DurationMinutes}
+                  onChange={handleSingleChange}
+                  onBlur={handleBlur}
+                  error={showErr("DurationMinutes")}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} md={0.5}>
+                <IconButton onClick={() => setFormData(fd => ({ ...fd, DurationHours: "", DurationMinutes: "" }))} edge="end">
+                  <ReplayIcon />
+                </IconButton>
+              </Grid>
+              <Grid item xs={12} md={9}>
+                <TextField
+                  label="Ride Notes"
+                  name="RideNotes"
+                  value={formData.RideNotes}
+                  onChange={handleSingleChange}
+                  fullWidth
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              <Grid item xs={12} md={3} container spacing={1} justifyContent="flex-end">
+                <Grid item>
                   <Button
+                    onClick={() => setFormData(defaultValues)}
                     variant="outlined"
-                    color="success"
-                    onClick={handleImportConfirm}
-                    disabled={submitting}
-                    sx={{ mt: 2, fontWeight: 600 }}
-                    startIcon={
-                      submitting ? (
-                        <CircularProgress size={20} color="inherit" />
-                      ) : (
-                        <UploadFileIcon />
-                      )
-                    }
+                    color="secondary"
                   >
-                    Import Rides
+                    RESET
                   </Button>
-                </Box>
-              )}
-            </Box>
-          </Fade>
+                </Grid>
+                <Grid item>
+                  <Button
+                    onClick={() => setConfirmOpen(true)}
+                    variant="contained"
+                    disabled={submitting || !isFormValid}
+                  >
+                    {submitting ? <CircularProgress size={20} /> : "SUBMIT"}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Grid>
+          </Box>
         )}
 
+        {/* MULTI RIDE UPLOAD TAB */}
+        {rideTab === 1 && (
+          <Box sx={{ p: 3, mb: 3 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadTemplate}
+                >
+                  Download Template
+                </Button>
+              </Grid>
+              <Grid item xs={12} md={8}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderStyle: "dashed",
+                    textAlign: "center",
+                    cursor: "pointer",
+                  }}
+                  {...getRootProps()}
+                >
+                  <input {...getInputProps()} />
+                  <CloudUploadIcon fontSize="large" />
+                  <Typography variant="body2" mt={1}>
+                    Drag & drop CSV/XLS here or click to select
+                  </Typography>
+                  {fileError && (
+                    <Typography color="error" variant="caption">
+                      {fileError}
+                    </Typography>
+                  )}
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Paste CSV Rides"
+                  multiline
+                  minRows={4}
+                  maxRows={10}
+                  value={multiInput}
+                  onChange={(e) => setMultiInput(e.target.value)}
+                  fullWidth
+                />
+              </Grid>
+              {/* CSV Builder fields */}
+              <Grid item xs={12} md={6}>
+                <Grid container spacing={2}>
+                  {expectedCsvCols
+                    .filter(f => f !== "RideNotes") // RideNotes last
+                    .map(field => (
+                      <Grid item xs={12} sm={6} key={field}>
+                        <TextField
+                          label={field.replace(/([A-Z])/g, " $1")}
+                          name={field}
+                          value={csvBuilder[field]}
+                          onChange={e => setCsvBuilder(b => ({ ...b, [field]: e.target.value }))}
+                          onBlur={handleBuilderBlur}
+                          error={!!builderErrors[field] && (builderTouched[field] || builderSubmitAttempted)}
+                          fullWidth
+                        />
+                      </Grid>
+                    ))}
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Ride Notes"
+                      name="RideNotes"
+                      value={csvBuilder.RideNotes}
+                      onChange={e => setCsvBuilder(b => ({ ...b, RideNotes: e.target.value }))}
+                      multiline
+                      rows={2}
+                      fullWidth
+                    />
+                  </Grid>
+                  <Grid item xs={12} container spacing={1} justifyContent="flex-end">
+                    <Grid item>
+                      <Button
+                        onClick={handleCsvAppend}
+                        variant="contained"
+                        color="success"
+                        startIcon={<AddIcon />}
+                      >
+                        Add to List
+                      </Button>
+                    </Grid>
+                    <Grid item>
+                      <Button
+                        onClick={handleMultiSubmit}
+                        variant="contained"
+                        color="success"
+                        startIcon={<RocketLaunchIcon />}
+                        disabled={submitting}
+                      >
+                        Submit All Rides
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Grid>
+            {/* Preview Table */}
+            {uploadedRows.length > 0 && (
+              <Box mt={4}>
+                <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                  Preview Rides ({uploadedRows.length})
+                </Typography>
+                <DataGrid
+                  autoHeight
+                  density="compact"
+                  rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
+                  columns={expectedCsvCols.map(col => ({
+                    field: col,
+                    headerName: col.replace(/([A-Z])/g, " $1"),
+                    flex: 1,
+                  }))}
+                  pageSizeOptions={[5]}
+                />
+                <Button
+                  variant="outlined"
+                  color="success"
+                  onClick={handleImportConfirm}
+                  disabled={submitting}
+                  sx={{ mt: 2, fontWeight: 600 }}
+                  startIcon={
+                    submitting ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <UploadFileIcon />
+                    )
+                  }
+                >
+                  Import Rides
+                </Button>
+              </Box>
+            )}
+          </Box>
+        )}
       </Paper>
 
       {/* Daily Rides Update Section */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center" }}>
             <SyncIcon fontSize="small" sx={{ mr: 1 }} />
             Synced: {syncTime}
           </Typography>
@@ -1004,4 +953,3 @@ return (
     </Box>
   </LocalizationProvider>
 );
-}
