@@ -1,9 +1,8 @@
 // src/components/TimeClockGodMode.jsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Tooltip, Snackbar, Alert, Stack,
-  CircularProgress
+  FormControlLabel, Snackbar, Alert, Stack, CircularProgress
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -11,9 +10,9 @@ import {
   Stop as StopIcon,
   Refresh as RefreshIcon
 } from "@mui/icons-material";
+import { Timestamp } from "firebase/firestore";
 import dayjs from "dayjs";
 import { logTime, subscribeTimeLogs } from "../hooks/api";
-import { Timestamp } from "firebase/firestore";
 
 const bcName = "lrp-timeclock-lock";
 
@@ -37,14 +36,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
     if (stored.driver === driver && stored.startTime) {
       setRideId(stored.rideId || "");
-      setStartTime(dayjs(stored.startTime));
+      setStartTime(Timestamp.fromMillis(stored.startTime));
       setIsRunning(true);
       setIsNA(stored.isNA || false);
       setIsMulti(stored.isMulti || false);
     }
   }, [driver]);
 
-  // BroadcastChannel for locking
+  // BroadcastChannel session lock
   useEffect(() => {
     const bc = new BroadcastChannel(bcName);
     bcRef.current = bc;
@@ -54,7 +53,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         if (!isRunning) {
           const s = e.data.payload;
           setRideId(s.rideId || "");
-          setStartTime(dayjs(s.startTime));
+          setStartTime(Timestamp.fromMillis(s.startTime));
           setIsNA(s.isNA);
           setIsMulti(s.isMulti);
           setIsRunning(true);
@@ -62,42 +61,39 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       }
       if (e?.data?.type === "timeclock:ended" && e.data.driver === driver) {
         setIsRunning(false);
-        setEndTime(dayjs(e.data.payload.endTime));
+        setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
         localStorage.removeItem("lrp_timeTrack");
       }
     };
 
-    return () => {
-      bc.close();
-    };
+    return () => bc.close();
   }, [driver, isRunning]);
 
-  // Update tracking state globally
   useEffect(() => {
     setIsTracking(isRunning);
   }, [isRunning, setIsTracking]);
 
-  // Elapsed time
+  // Track elapsed time
   useEffect(() => {
     if (!isRunning || !startTime) return;
     const timer = setInterval(() => {
-      setElapsed(dayjs().diff(startTime, "second"));
+      setElapsed(Math.floor((Timestamp.now().toMillis() - startTime.toMillis()) / 1000));
     }, 1000);
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
 
-  // Subscribe to logs
+  // Firestore subscription
   useEffect(() => {
-if (unsubRef.current) {
-  try { unsubRef.current(); } catch (err) { /* already cleaned up */ }
-  unsubRef.current = null;
-}
+    if (unsubRef.current) {
+      try { unsubRef.current(); } catch (err) {}
+      unsubRef.current = null;
+    }
     unsubRef.current = subscribeTimeLogs(setLogs, driver);
-return () => {
-  if (unsubRef.current) {
-    try { unsubRef.current(); } catch (err) { /* already cleaned up */ }
-  }
-};
+    return () => {
+      if (unsubRef.current) {
+        try { unsubRef.current(); } catch (err) {}
+      }
+    };
   }, [driver]);
 
   const formatElapsed = (seconds) => {
@@ -110,9 +106,9 @@ return () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {
       return setSnack({ open: true, message: "Enter Ride ID or select a mode", severity: "error" });
     }
-
     if (isRunning) return;
-    const now = dayjs();
+
+    const now = Timestamp.now();
     const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
 
     setStartTime(now);
@@ -125,13 +121,18 @@ return () => {
       rideId: idToTrack,
       isNA,
       isMulti,
-      startTime: now.toISOString()
+      startTime: now.toMillis()
     }));
 
     bcRef.current?.postMessage({
       type: "timeclock:started",
       driver,
-      payload: { rideId: idToTrack, isNA, isMulti, startTime: now.toISOString() }
+      payload: {
+        rideId: idToTrack,
+        isNA,
+        isMulti,
+        startTime: now.toMillis()
+      }
     });
 
     setTimeout(() => setSubmitting(false), 600);
@@ -140,7 +141,7 @@ return () => {
   const handleEnd = async () => {
     if (!isRunning || !startTime) return;
 
-    const end = dayjs();
+    const end = Timestamp.now();
     setEndTime(end);
     setIsRunning(false);
     setSubmitting(true);
@@ -148,9 +149,9 @@ return () => {
     const payload = {
       driver,
       rideId: isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase(),
-      startTime: Timestamp.fromDate(startTime.toDate()),
-      endTime: Timestamp.fromDate(end.toDate()),
-      duration: Math.max(1, end.diff(startTime, "minute")),
+      startTime,
+      endTime: end,
+      duration: Math.max(1, Math.round((end.toMillis() - startTime.toMillis()) / 60000)),
       createdAt: Timestamp.now()
     };
 
@@ -163,14 +164,19 @@ return () => {
         setIsNA(false);
         setIsMulti(false);
         setElapsed(0);
-        bcRef.current?.postMessage({ type: "timeclock:ended", driver, payload: { endTime: end.toISOString() } });
+        bcRef.current?.postMessage({
+          type: "timeclock:ended",
+          driver,
+          payload: { endTime: end.toMillis() }
+        });
       } else {
         throw new Error(res?.message || "Unknown error");
       }
     } catch (err) {
       setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
-      setIsRunning(true); // visually restore running state if failed
+      setIsRunning(true);
     }
+
     setSubmitting(false);
   };
 
@@ -195,7 +201,6 @@ return () => {
     <Box maxWidth={600} mx="auto" p={2}>
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Time Clock</Typography>
-
         <TextField
           label="Ride ID"
           fullWidth
@@ -204,54 +209,36 @@ return () => {
           onChange={(e) => setRideId(e.target.value.trimStart())}
           helperText="Enter Ride ID or select a task type"
         />
-
         <FormControlLabel
           control={<Checkbox checked={isNA} onChange={(e) => {
-            setIsNA(e.target.checked);
-            if (e.target.checked) setIsMulti(false);
+            setIsNA(e.target.checked); if (e.target.checked) setIsMulti(false);
           }} disabled={isRunning} />}
           label="N/A – Non-Ride Task"
         />
-
         <FormControlLabel
           control={<Checkbox checked={isMulti} onChange={(e) => {
-            setIsMulti(e.target.checked);
-            if (e.target.checked) setIsNA(false);
+            setIsMulti(e.target.checked); if (e.target.checked) setIsNA(false);
           }} disabled={isRunning} />}
           label="Multiple Back-to-Back Rides"
         />
-
         <Stack direction="row" spacing={2} mt={2}>
-          <Button
-            fullWidth
-            onClick={handleStart}
-            disabled={isRunning || submitting}
-            startIcon={<PlayArrowIcon />}
-            variant="contained"
-            color="success"
-          >
+          <Button fullWidth onClick={handleStart} disabled={isRunning || submitting}
+            startIcon={<PlayArrowIcon />} variant="contained" color="success">
             {submitting && !isRunning ? "Starting…" : "Start"}
           </Button>
-          <Button
-            fullWidth
-            onClick={handleEnd}
-            disabled={!isRunning || submitting}
-            startIcon={<StopIcon />}
-            variant="contained"
-            color="error"
-          >
+          <Button fullWidth onClick={handleEnd} disabled={!isRunning || submitting}
+            startIcon={<StopIcon />} variant="contained" color="error">
             {submitting && isRunning ? "Logging…" : "End"}
           </Button>
         </Stack>
-
         {isRunning && (
           <Typography mt={2} color="success.main">
-            🟢 Started at {startTime?.format("HH:mm")} — Elapsed: {formatElapsed(elapsed)}
+            🟢 Started — Elapsed: {formatElapsed(elapsed)}
           </Typography>
         )}
         {!isRunning && endTime && (
           <Typography mt={2} color="text.secondary">
-            Ended at {endTime?.format("HH:mm")}
+            Ended at {dayjs(endTime.toDate()).format("HH:mm")}
           </Typography>
         )}
       </Paper>
@@ -275,7 +262,6 @@ return () => {
             Refresh
           </Button>
         </Box>
-
         <DataGrid
           autoHeight
           rows={rows}
