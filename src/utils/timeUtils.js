@@ -64,6 +64,14 @@ export const calculateDropOff = (pickup, duration) => {
   }
 };
 
+export function durationFormat(minutes) {
+  if (!minutes || isNaN(minutes)) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export const formatDuration = (h, m) => {
   const hh = parseInt(h || 0, 10);
   const mm = parseInt(m || 0, 10);
