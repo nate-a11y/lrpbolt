@@ -545,9 +545,9 @@ return (
           <Tab label="MULTI RIDE UPLOAD" />
         </Tabs>
 
-        {/* -------------------- SINGLE RIDE TAB -------------------- */}
+{/* -------------------- SINGLE RIDE TAB -------------------- */}
 {rideTab === 0 && (
-  <Paper sx={{ p: 3, mb: 3 }}>
+  <Box sx={{ p: 3, mb: 3 }}>
     <Grid container spacing={2}>
       {/* Trip ID */}
       <Grid item xs={12} md={3}>
@@ -636,8 +636,9 @@ return (
         </Grid>
       </Grid>
     </Grid>
-  </Paper>
+  </Box>
 )}
+
 
         {/* -------------------- MULTI RIDE UPLOAD TAB -------------------- */}
 {rideTab === 1 && (
