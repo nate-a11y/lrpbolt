@@ -2,12 +2,16 @@
 import React from "react";
 import {
   Box,
+  Container,
   Typography,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Divider,
   Alert,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -18,151 +22,125 @@ import { useTheme } from "@mui/material/styles";
 
 export default function CalendarUpdateTab() {
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const surface = theme.palette.mode === "dark" ? theme.palette.background.paper : theme.palette.grey[50];
+  const accent = theme.palette.success.main;
+
+  const Card = ({ icon, title, children, defaultExpanded = false }) => (
+    <Accordion
+      defaultExpanded={defaultExpanded}
+      sx={{
+        mb: 2,
+        bgcolor: surface,
+        borderLeft: `5px solid ${accent}`,
+        "& .MuiAccordionSummary-content": { my: 0.5 },
+      }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography fontWeight={700} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {icon} {title}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0.5 }}>{children}</AccordionDetails>
+    </Accordion>
+  );
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, pt: 2, pb: 4, maxWidth: 700, mx: "auto" }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
+    <Container maxWidth="md" sx={{ px: { xs: 1, sm: 2 }, pt: 2, pb: 4 }}>
+      <Typography variant="h5" fontWeight={800} gutterBottom>
         🗓️ How to Mark Yourself Unavailable
       </Typography>
 
       <Typography variant="body1" sx={{ mb: 2 }}>
-        Keeping your availability current is critical to avoid overbooking.
-        Please follow both steps below for Google Calendar and Moovs.
+        Keeping your availability current prevents overbooking. Please complete both steps in Google Calendar and Moovs.
       </Typography>
 
       <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 3 }}>
-        <strong>Quick Tip:</strong> Update both Google Calendar and Moovs so
-        dispatch knows when you&apos;re out.
+        <strong>Quick tip:</strong> Update <em>both</em> Google Calendar and Moovs so dispatch knows when you’re out.
       </Alert>
 
       <Divider sx={{ mb: 3 }} />
 
-      <Accordion
+      <Card
         defaultExpanded
-        sx={{
-          mb: 2,
-          bgcolor: isDark ? "#1d1d1d" : "#fafafa",
-          borderLeft: "5px solid #4cbb17",
-        }}
+        icon={<CalendarMonthIcon fontSize="small" color="success" />}
+        title="Step 1: Google Calendar"
       >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography
-            fontWeight="bold"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <CalendarMonthIcon fontSize="small" /> Step 1: Google Calendar
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" gutterBottom>
-            Use Google Calendar to show you&apos;re unavailable to dispatch and
-            managers:
-          </Typography>
-          <Box component="ul" sx={{ pl: 3, mb: 0 }}>
-            <li>
-              <strong>🖊️ Create Event</strong>
-            </li>
-            <li>
-              Title: <em>Your Name – Not Available</em>
-            </li>
-            <li>
-              <strong>Select date(s)</strong> & time or mark{" "}
-              <strong>All Day</strong>
-            </li>
-            <li>
-              Use <strong>🔁 Repeat</strong> if recurring
-            </li>
-            <li>
-              <strong>💾 Save</strong>
-            </li>
-          </Box>
-        </AccordionDetails>
-      </Accordion>
+        <Typography variant="body2" gutterBottom>
+          Use Google Calendar to show you’re unavailable to dispatch and managers:
+        </Typography>
+        <List dense sx={{ pl: 1 }}>
+          <ListItem disableGutters>
+            <ListItemText primary="🖊️ Create event" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Title: Your Name — Not Available" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Select date(s) & time or mark All Day" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Use Repeat if this is recurring" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Save" />
+          </ListItem>
+        </List>
+      </Card>
 
-      <Accordion
-        sx={{
-          mb: 2,
-          bgcolor: isDark ? "#1d1d1d" : "#fafafa",
-          borderLeft: "5px solid #4cbb17",
-        }}
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography
-            fontWeight="bold"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <BlockIcon fontSize="small" /> Step 2: Block Time in Moovs
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" gutterBottom>
-            Block your vehicle inside Moovs to avoid customer bookings:
-          </Typography>
-          <Box component="ul" sx={{ pl: 3, mb: 0 }}>
-            <li>
-              Go to <strong>Reservations</strong> → <strong>🖊️ Create</strong>
-            </li>
-            <li>
-              Booking Contact: <strong>HOUSE ACCOUNT</strong>
-            </li>
-            <li>
-              Order Type: <strong>Corporate</strong>
-            </li>
-            <li>
-              Trip Type: <strong>Hourly</strong>
-            </li>
-            <li>
-              Pickup/Dropoff: <em>Lake Ozark, MO</em>
-            </li>
-            <li>
-              Add your vehicle → Click <strong>Add Vehicle</strong>
-            </li>
-            <li>
-              Leave <strong>Base Rate</strong> blank
-            </li>
-            <li>Delete the 3 service fee lines</li>
-            <li>
-              <strong>💾 Save Reservation</strong>
-            </li>
-            <li>
-              Mark status as <strong>DONE</strong>
-            </li>
-          </Box>
-        </AccordionDetails>
-      </Accordion>
+      <Card icon={<BlockIcon fontSize="small" color="success" />} title="Step 2: Block Time in Moovs">
+        <Typography variant="body2" gutterBottom>
+          Block your vehicle inside Moovs to avoid customer bookings:
+        </Typography>
+        <List dense sx={{ pl: 1 }}>
+          <ListItem disableGutters>
+            <ListItemText primary="Go to Reservations → Create" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Booking Contact: HOUSE ACCOUNT" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Order Type: Corporate" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Trip Type: Hourly" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Pickup/Dropoff: Lake Ozark, MO" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Add your vehicle → click Add Vehicle" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Leave Base Rate blank" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Delete the 3 service fee lines" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Save Reservation, then set status to DONE" />
+          </ListItem>
+        </List>
+      </Card>
 
-      <Accordion
-        sx={{
-          bgcolor: isDark ? "#1d1d1d" : "#fafafa",
-          borderLeft: "5px solid #4cbb17",
-        }}
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography
-            fontWeight="bold"
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <StarIcon fontSize="small" /> Bonus: Duplicate Days Off
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography variant="body2" gutterBottom>
-            Going on vacation? Duplicate your reservation for up to 10 dates at
-            once:
-          </Typography>
-          <Box component="ul" sx={{ pl: 3 }}>
-            <li>Open reservation → Click 3-dot menu</li>
-            <li>
-              Select <strong>Duplicate</strong>
-            </li>
-            <li>Select up to 10 dates</li>
-            <li>
-              <strong>💾 Confirm</strong> to finish
-            </li>
-          </Box>
-        </AccordionDetails>
-      </Accordion>
-    </Box>
+      <Card icon={<StarIcon fontSize="small" color="success" />} title="Bonus: Duplicate Days Off">
+        <Typography variant="body2" gutterBottom>
+          Going on vacation? Duplicate your reservation for multiple dates at once:
+        </Typography>
+        <List dense sx={{ pl: 1 }}>
+          <ListItem disableGutters>
+            <ListItemText primary="Open reservation → 3‑dot menu" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Choose Duplicate" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Select up to 10 dates" />
+          </ListItem>
+          <ListItem disableGutters>
+            <ListItemText primary="Confirm to finish" />
+          </ListItem>
+        </List>
+      </Card>
+    </Container>
   );
 }
