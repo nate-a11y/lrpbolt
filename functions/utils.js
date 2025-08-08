@@ -1,6 +1,36 @@
 // functions/utils.js
+/* Proprietary and confidential. See LICENSE. */
 import admin from "firebase-admin";
 const db = admin.firestore();
+
+export function formatDate(dateObject) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    hour12: true,
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  }).format(dateObject);
+}
+
+export function normalizeHeader(header) {
+  return header
+    .toString()
+    .trim()
+    .replace(/[^A-Za-z0-9]+(.)/g, (_, c) => c.toUpperCase())
+    .replace(/^./, (c) => c.toLowerCase());
+}
+
+export async function logClaimFailure(tripId, driverName, reason) {
+  await db.collection("FailedClaims").add({
+    tripId,
+    driverName,
+    reason,
+    attemptedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
 
 const truthy = (v) => {
   if (v === undefined || v === null) return false;
@@ -10,8 +40,8 @@ const truthy = (v) => {
 const norm = (v) => (v == null ? "" : String(v).trim().toLowerCase());
 
 export async function runDailyDrop() {
-  const SRC = "RideQueue";   // current queue collection (what your index.js uses)
-  const DST = "liveRides";   // <-- match the client listener name
+  const SRC = "RideQueue";   // source queue (matches index.js)
+  const DST = "liveRides";   // destination used by the client
 
   // Read both collections
   const [queueSnap, liveSnap] = await Promise.all([
@@ -28,7 +58,6 @@ export async function runDailyDrop() {
     return { imported: 0, total: liveSnap.size };
   }
 
-  // Build sets of existing, unclaimed trip IDs in live
   const liveDocs = liveSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const unclaimedLive = liveDocs.filter(
     (r) => !truthy(r.claimedBy) && !truthy(r.claimedAt)
@@ -51,11 +80,11 @@ export async function runDailyDrop() {
   for (const qDoc of queueSnap.docs) {
     const q = { id: qDoc.id, ...qDoc.data() };
 
-    // Skip anything already claimed in queue (shouldn't be there, but be safe)
+    // Skip already-claimed queue entries (defensive)
     if (truthy(q.claimedBy) || truthy(q.claimedAt)) continue;
 
     const key = norm(q.tripId || q.id);
-    if (existingTripIds.has(key)) continue; // Already in live & unclaimed
+    if (existingTripIds.has(key)) continue; // Already present & unclaimed
 
     // Upsert into liveRides with same ID; assign rideNumber if missing
     maxRideNum += 1;
@@ -71,7 +100,7 @@ export async function runDailyDrop() {
       { merge: true }
     );
 
-    // Remove from queue
+    // Remove from RideQueue
     batch.delete(qDoc.ref);
 
     ops += 2;
@@ -87,13 +116,9 @@ export async function runDailyDrop() {
   if (ops > 0) await batch.commit();
 
   await db.collection("AdminMeta").doc("DailyDrop").set(
-    {
-      lastUpdated: formatDate(new Date()),
-      imported,
-    },
+    { lastUpdated: formatDate(new Date()), imported },
     { merge: true }
   );
 
-  // Report back
   return { imported, total: imported + liveSnap.size };
 }
