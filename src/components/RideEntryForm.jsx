@@ -469,6 +469,31 @@ export default function RideEntryForm() {
     setBuilderSubmitAttempted(false);
   }, [csvBuilder, validateFields]);
 
+  const handleDownloadTemplate = () => {
+    const sample = {
+      TripID: "ABCD-12",
+      Date: dayjs().add(1, "day").format("YYYY-MM-DD"),
+      PickupTime: "08:00",
+      DurationHours: "1",
+      DurationMinutes: "30",
+      RideType: rideTypeOptions[0],
+      Vehicle: vehicleOptions[0],
+      RideNotes: "Sample notes",
+    };
+    const header = expectedCsvCols.join(",");
+    const row = expectedCsvCols.map(col => sample[col]).join(",");
+    const csv = `${header}\n${row}\n`;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rides-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleMultiSubmit = useCallback(async () => {
     if (!uploadedRows.length && !multiInput.trim()) {
       setToast({ open: true, message: "⚠️ No rides to submit", severity: "warning" });
@@ -563,8 +588,13 @@ return (
               <Grid item xs={12} md={3}>
                 <DatePicker
                   label="Date **"
-                  value={formData.Date}
-                  onChange={(val) => setFormData(fd => ({ ...fd, Date: val ? dayjs(val).format("YYYY-MM-DD") : "" }))}
+                  value={formData.Date ? dayjs(formData.Date) : null}
+                  onChange={(val) =>
+                    setFormData((fd) => ({
+                      ...fd,
+                      Date: val ? dayjs(val).format("YYYY-MM-DD") : "",
+                    }))
+                  }
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -579,8 +609,17 @@ return (
               <Grid item xs={12} md={3}>
                 <TimePicker
                   label="Pickup Time **"
-                  value={formData.PickupTime}
-                  onChange={(val) => setFormData(fd => ({ ...fd, PickupTime: val ? dayjs(val).format("HH:mm") : "" }))}
+                  value={
+                    formData.PickupTime
+                      ? dayjs(formData.PickupTime, "HH:mm")
+                      : null
+                  }
+                  onChange={(val) =>
+                    setFormData((fd) => ({
+                      ...fd,
+                      PickupTime: val ? dayjs(val).format("HH:mm") : "",
+                    }))
+                  }
                   renderInput={(params) => (
                     <TextField
                       {...params}
