@@ -311,7 +311,7 @@ export default function RideEntryForm() {
       });
       // sequential to surface any permission errors early
       for (const doc of validDocs) {
-        await addDoc(collection(db, "RideQueue"), doc); // <-- case-sensitive
+        await addDoc(collection(db, "rideQueue"), doc); // <-- case-sensitive
       }
       return { added: validDocs.length, skipped };
     },
@@ -357,7 +357,7 @@ export default function RideEntryForm() {
     try {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
-      await addDoc(collection(db, "RideQueue"), rideData); // <-- case-sensitive
+      await addDoc(collection(db, "rideQueue"), rideData); // <-- case-sensitive
       setToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,

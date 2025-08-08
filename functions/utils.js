@@ -40,7 +40,7 @@ const truthy = (v) => {
 const norm = (v) => (v == null ? "" : String(v).trim().toLowerCase());
 
 export async function runDailyDrop() {
-  const SRC = "RideQueue";   // source queue (matches index.js)
+  const SRC = "rideQueue";   // source queue (matches index.js)
   const DST = "liveRides";   // destination used by the client
 
   // Read both collections
@@ -100,7 +100,7 @@ export async function runDailyDrop() {
       { merge: true }
     );
 
-    // Remove from RideQueue
+    // Remove from rideQueue
     batch.delete(qDoc.ref);
 
     ops += 2;
