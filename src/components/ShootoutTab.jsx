@@ -37,17 +37,26 @@ function safeParse(json, fallback = {}) {
 }
 
 function normalizeSession(entry) {
-  let startMillis = 0, endMillis = 0;
+  const { startTime, endTime } = entry;
+
+  let duration = 0;
+
   try {
-    startMillis = entry.startTime?.toMillis?.() ?? new Date(entry.startTime).getTime();
-    endMillis = entry.endTime?.toMillis?.() ?? new Date(entry.endTime).getTime();
-  } catch {
-    startMillis = 0;
-    endMillis = 0;
+    const start = startTime?.toMillis?.() || new Date(startTime).getTime();
+    const end = endTime?.toMillis?.() || new Date(endTime).getTime();
+
+    if (!isNaN(start) && !isNaN(end)) {
+      duration = end - start;
+    }
+  } catch (err) {
+    console.warn("Failed to normalize session:", err); // ✅ fix here
+    duration = 0;
   }
 
-  const duration = Math.max(0, endMillis - startMillis);
-  return { ...entry, duration };
+  return {
+    ...entry,
+    duration,
+  };
 }
 
 export default function ShootoutTab() {
