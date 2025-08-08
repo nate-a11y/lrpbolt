@@ -32,7 +32,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { motion } from "framer-motion";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import useAuth from "../hooks/useAuth.js";
-import { TIMEZONE } from "../constants";
+import { TIMEZONE, COLLECTIONS } from "../constants";
 import { updateRide } from "../hooks/api";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -61,7 +61,7 @@ const EditableRideGrid = ({
   onDelete,
   loading = false,
   refreshRides,
-  sheetName = "RideQueue",
+  sheetName = COLLECTIONS.RIDE_QUEUE,
 }) => {
   const isMobile = useMediaQuery("(max-width:600px)");
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});

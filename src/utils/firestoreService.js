@@ -12,6 +12,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { COLLECTIONS } from "../constants";
 
 let driverCache = null;
 
@@ -25,7 +26,7 @@ let driverCache = null;
 export async function getDrivers(force = false) {
   if (!force && driverCache) return driverCache;
   const q = query(
-    collection(db, "userAccess"),
+    collection(db, COLLECTIONS.USER_ACCESS),
     where("access", "in", ["driver", "admin"]),
     orderBy("name", "asc"),
   );
@@ -36,7 +37,7 @@ export async function getDrivers(force = false) {
 
 export async function createUser({ email, access, name }) {
   const docId = email.toLowerCase();
-  const userRef = doc(db, "userAccess", docId);
+  const userRef = doc(db, COLLECTIONS.USER_ACCESS, docId);
   const existing = await getDoc(userRef);
   if (existing.exists()) throw new Error("User already exists");
   await setDoc(userRef, {
@@ -47,7 +48,7 @@ export async function createUser({ email, access, name }) {
 }
 
 export async function updateUser({ email, access, name }) {
-  await updateDoc(doc(db, "userAccess", email.toLowerCase()), {
+  await updateDoc(doc(db, COLLECTIONS.USER_ACCESS, email.toLowerCase()), {
     access: access.toLowerCase(),
     name: name.trim(),
   });

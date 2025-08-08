@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import { logError } from "../utils/logError";
+import { COLLECTIONS } from "../constants";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
@@ -9,7 +10,7 @@ export default function useDrivers() {
   const fetchDrivers = useCallback(async () => {
     try {
       const q = query(
-        collection(db, "userAccess"),
+        collection(db, COLLECTIONS.USER_ACCESS),
         where("access", "==", "driver"),
         orderBy("name"),
       );
