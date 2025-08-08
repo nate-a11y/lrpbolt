@@ -103,12 +103,22 @@ export default function AdminUserManager() {
       });
       return oldRow;
     }
-    await updateUser({
-      email: oldRow.id,
-      access: newRow.access,
-      name: newRow.name,
-    });
-    return newRow;
+    try {
+      await updateUser({
+        email: oldRow.id, // doc id is lowercase email
+        access: newRow.access,
+        name: newRow.name,
+      });
+      return newRow;
+    } catch (err) {
+      logError(err, "AdminUserManager:updateUser");
+      setSnackbar({
+        open: true,
+        message: err?.message || "Update failed",
+        severity: "error",
+      });
+      return oldRow; // revert
+    }
   };
 
   const columns = [

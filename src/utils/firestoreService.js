@@ -1,55 +1,36 @@
-// src/utils/firestoreService.js
-// Centralized Firestore API utilities with basic caching.
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  where,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
 import { db } from "../firebase";
-import { COLLECTIONS } from "../constants";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 
-let driverCache = null;
+const COLL = "userAccess";
 
 /**
- * Fetch drivers from the `userAccess` collection sorted alphabetically.
- * Includes both users with `driver` and `admin` access roles.
- * Results are cached for the session to reduce reads.
- * @param {boolean} [force=false] - bypass the cache when true
- * @returns {Promise<Array>} list of userAccess documents
+ * Creates/merges a userAccess doc. Doc ID is the LOWERCASED email.
+ * Fields required by rules: name, email, access ("admin" | "driver")
+ * Extra fields (active, createdAt/updatedAt) are allowed.
  */
-export async function getDrivers(force = false) {
-  if (!force && driverCache) return driverCache;
-  const q = query(
-    collection(db, COLLECTIONS.USER_ACCESS),
-    where("access", "in", ["driver", "admin"]),
-    orderBy("name", "asc"),
+export async function createUser({ name, email, access, active = true }) {
+  const lcEmail = (email || "").toLowerCase();
+  const lcAccess = (access || "").toLowerCase();
+  const ref = doc(db, COLL, lcEmail);
+  await setDoc(
+    ref,
+    {
+      name: String(name || "").trim(),
+      email: lcEmail,
+      access: lcAccess,
+      active: Boolean(active),
+      createdAt: new Date(),
+    },
+    { merge: true },
   );
-  const snapshot = await getDocs(q);
-  driverCache = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return driverCache;
 }
 
-export async function createUser({ email, access, name }) {
-  const docId = email.toLowerCase();
-  const userRef = doc(db, COLLECTIONS.USER_ACCESS, docId);
-  const existing = await getDoc(userRef);
-  if (existing.exists()) throw new Error("User already exists");
-  await setDoc(userRef, {
-    access: access.toLowerCase(),
-    email: docId,
-    name: name.trim(),
-  });
-}
-
-export async function updateUser({ email, access, name }) {
-  await updateDoc(doc(db, COLLECTIONS.USER_ACCESS, email.toLowerCase()), {
-    access: access.toLowerCase(),
-    name: name.trim(),
-  });
+export async function updateUser({ email, access, name, active }) {
+  const lcEmail = (email || "").toLowerCase();
+  const patch = {};
+  if (typeof name === "string") patch.name = name.trim();
+  if (typeof access === "string") patch.access = access.toLowerCase();
+  if (typeof active === "boolean") patch.active = active;
+  patch.updatedAt = new Date();
+  await updateDoc(doc(db, COLL, lcEmail), patch);
 }
