@@ -229,8 +229,12 @@ export default function ShootoutTab() {
       field: "startTime",
       headerName: "Start",
       width: 160,
-      valueFormatter: ({ value }) => dayjs(value?.toDate()).format("MM/DD HH:mm"),
-    },
+      valueFormatter: ({ value }) => {
+  const date = value?.toDate?.() || value;
+  const parsed = dayjs(date);
+  return parsed.isValid() ? parsed.format("MM/DD HH:mm") : "—";
+},
+  },
     {
       field: "duration",
       headerName: "Duration",
