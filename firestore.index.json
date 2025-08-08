@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "liveRides",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pickupTime", "order": "ASCENDING" },
+        { "fieldPath": "claimedBy", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "claimedRides",
       "queryScope": "COLLECTION",
       "fields": [
@@ -68,6 +76,11 @@
   "fieldOverrides": [
     {
       "collectionGroup": "rideQueue",
+      "fieldPath": "rideNotes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "liveRides",
       "fieldPath": "rideNotes",
       "indexes": []
     },

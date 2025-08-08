@@ -12,11 +12,14 @@ import {
   orderBy,
   limit,
   Timestamp,
+  runTransaction,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
 import { callFunction, apiFetch } from "../api";
+import { COLLECTIONS } from "../constants";
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -150,9 +153,11 @@ export async function deleteRideFromQueue(rideId) {
  */
 export function subscribeClaimedRides(callback, fromTime) {
   const start = fromTime || Timestamp.now();
-  const key = fromTime ? `claimedRides:${fromTime.toMillis()}` : "claimedRides";
+  const key = fromTime
+    ? `${COLLECTIONS.CLAIMED_RIDES}:${fromTime.toMillis()}`
+    : COLLECTIONS.CLAIMED_RIDES;
   const q = query(
-    collection(db, "claimedRides"),
+    collection(db, COLLECTIONS.CLAIMED_RIDES),
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
@@ -174,7 +179,7 @@ export async function claimRide(rideData) {
     rideDuration: Number(rideData.rideDuration),
     claimedAt: Timestamp.now(),
   });
-  return await addDoc(collection(db, "claimedRides"), data);
+  return await addDoc(collection(db, COLLECTIONS.CLAIMED_RIDES), data);
 }
 
 export async function updateClaimedRide(rideId, updates) {
@@ -185,11 +190,14 @@ export async function updateClaimedRide(rideId, updates) {
     data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
   if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
   data = cleanData(data);
-  return await updateDoc(doc(db, "claimedRides", rideId), data);
+  return await updateDoc(
+    doc(db, COLLECTIONS.CLAIMED_RIDES, rideId),
+    data,
+  );
 }
 
 export async function deleteClaimedRide(rideId) {
-  return await deleteDoc(doc(db, "claimedRides", rideId));
+  return await deleteDoc(doc(db, COLLECTIONS.CLAIMED_RIDES, rideId));
 }
 
 /**
@@ -437,7 +445,7 @@ export async function refreshDailyRides() {
  */
 export async function fetchLiveRides(fromTime = Timestamp.now()) {
   const q = query(
-    collection(db, "liveRides"),
+    collection(db, COLLECTIONS.LIVE_RIDES),
     where("pickupTime", ">=", fromTime),
     orderBy("pickupTime", "asc"),
   );
@@ -447,9 +455,11 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
 
 export function subscribeLiveRides(callback, fromTime) {
   const start = fromTime || Timestamp.now();
-  const key = fromTime ? `liveRides:${fromTime.toMillis()}` : "liveRides";
+  const key = fromTime
+    ? `${COLLECTIONS.LIVE_RIDES}:${fromTime.toMillis()}`
+    : COLLECTIONS.LIVE_RIDES;
   const q = query(
-    collection(db, "liveRides"),
+    collection(db, COLLECTIONS.LIVE_RIDES),
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
@@ -475,11 +485,40 @@ export async function addLiveRide(rideData) {
         : Timestamp.fromDate(new Date(rideData.claimedAt))
       : null,
   });
-  return await addDoc(collection(db, "liveRides"), data);
+  return await addDoc(collection(db, COLLECTIONS.LIVE_RIDES), data);
 }
 
 export async function deleteLiveRide(rideId) {
-  return await deleteDoc(doc(db, "liveRides", rideId));
+  return await deleteDoc(doc(db, COLLECTIONS.LIVE_RIDES, rideId));
+}
+
+export async function claimRideAtomic(rideId, driver, extra = {}) {
+  if (!rideId) throw new Error("claimRideAtomic: missing rideId");
+  if (!driver) throw new Error("claimRideAtomic: missing driver");
+
+  const srcRef = doc(db, COLLECTIONS.LIVE_RIDES, rideId);
+  const dstRef = doc(db, COLLECTIONS.CLAIMED_RIDES, rideId);
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(srcRef);
+    if (!snap.exists()) throw new Error("Already claimed or not found");
+    const data = snap.data();
+
+    if (data.status && data.status !== "open") {
+      throw new Error("Ride not claimable");
+    }
+
+    tx.set(dstRef, {
+      ...data,
+      ClaimedBy: driver,
+      claimedAt: serverTimestamp(),
+      status: "claimed",
+      ...extra,
+    });
+    tx.delete(srcRef);
+  });
+
+  return true;
 }
 
 export async function restoreLiveRide(rideData) {
@@ -508,7 +547,8 @@ export async function restoreRide(rideData) {
 }
 
 export async function updateRide(TripID, updates, sheet = "RideQueue") {
-  const collectionName = sheet === "RideQueue" ? "rideQueue" : "claimedRides";
+  const collectionName =
+    sheet === "RideQueue" ? "rideQueue" : COLLECTIONS.CLAIMED_RIDES;
   const ref = doc(db, collectionName, TripID);
   let data = { ...updates };
   if (data.pickupTime && !(data.pickupTime instanceof Timestamp))

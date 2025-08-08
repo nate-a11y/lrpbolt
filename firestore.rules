@@ -1,19 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAdmin() {
-      return request.auth != null &&
-        get(/databases/$(database)/documents/userAccess/$(request.auth.uid)).data.access == 'admin';
+    function role() {
+      return request.auth != null
+        ? get(/databases/$(database)/documents/userAccess/$(request.auth.uid)).data.access
+        : null;
     }
+    function isAdmin() { return role() == 'admin'; }
+    function isDriver() { return role() == 'driver'; }
 
     match /userAccess/{userId} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
     }
 
+    match /liveRides/{rideId} {
+      allow read: if request.auth != null && (isDriver() || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /claimedRides/{rideId} {
+      allow read: if request.auth != null && (isDriver() || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }
+

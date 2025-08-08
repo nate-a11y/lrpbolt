@@ -20,15 +20,12 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { normalizeDate } from "../utils/timeUtils";
-import {
-  claimRide as firestoreClaimRide,
-  deleteLiveRide,
-} from "../hooks/api";
+import { claimRideAtomic } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { TIMEZONE } from "../constants";
+import { TIMEZONE, COLLECTIONS } from "../constants";
 import { Timestamp, orderBy } from "firebase/firestore";
 
 dayjs.extend(utc);
@@ -52,15 +49,18 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const groupedRides = useMemo(() => {
     const grouped = {};
-    rides.forEach((r) => {
-      const normalizedDate = normalizeDate(r.Date);
+    for (const r of rides) {
+      const ts = r.pickupTime?.toDate
+        ? r.pickupTime.toDate()
+        : new Date(r.pickupTime || r.Date);
+      const normalizedDate = normalizeDate(ts);
       const day = new Date(normalizedDate).toLocaleDateString("en-US", {
         weekday: "long",
       });
       const key = `${r.Vehicle}___${day}___${normalizedDate}`;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(r);
-    });
+    }
     return grouped;
   }, [rides]);
 
@@ -101,7 +101,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     });
   }, []);
 
-  const liveRides = useFirestoreListener("liveRides", [
+  // Requires Firestore index: Firestore Database > Indexes > liveRides.pickupTime ASC
+  const liveRides = useFirestoreListener(COLLECTIONS.LIVE_RIDES, [
     orderBy("pickupTime", "asc"),
   ]);
 
@@ -115,18 +116,19 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const claimRide = useCallback(
     async (tripId) => {
-      const ride = rides.find((r) => r.TripID === tripId);
+      const ride = rides.find((r) => r.TripID === tripId || r.id === tripId);
       if (!ride) throw new Error("Ride not found");
-      await firestoreClaimRide({
-        ...ride,
-        ClaimedBy: driver,
-        pickupTime:
-          ride.pickupTime instanceof Timestamp
-            ? ride.pickupTime
-            : Timestamp.fromDate(new Date(ride.pickupTime)),
-        rideDuration: Number(ride.rideDuration),
+
+      const pickupTime =
+        ride.pickupTime instanceof Timestamp
+          ? ride.pickupTime
+          : Timestamp.fromDate(new Date(ride.pickupTime));
+
+      await claimRideAtomic(ride.id || ride.TripID, driver, {
+        pickupTime,
+        rideDuration: Number(ride.rideDuration ?? 0),
       });
-      if (ride.id) await deleteLiveRide(ride.id);
+
       setClaimLog((prev) => [
         ...prev,
         { tripId, time: new Date().toLocaleTimeString() },
