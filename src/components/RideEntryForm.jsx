@@ -588,8 +588,13 @@ return (
               <Grid item xs={12} md={3}>
                 <DatePicker
                   label="Date **"
-                  value={formData.Date}
-                  onChange={(val) => setFormData(fd => ({ ...fd, Date: val ? dayjs(val).format("YYYY-MM-DD") : "" }))}
+                  value={formData.Date ? dayjs(formData.Date) : null}
+                  onChange={(val) =>
+                    setFormData((fd) => ({
+                      ...fd,
+                      Date: val ? dayjs(val).format("YYYY-MM-DD") : "",
+                    }))
+                  }
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -604,8 +609,17 @@ return (
               <Grid item xs={12} md={3}>
                 <TimePicker
                   label="Pickup Time **"
-                  value={formData.PickupTime}
-                  onChange={(val) => setFormData(fd => ({ ...fd, PickupTime: val ? dayjs(val).format("HH:mm") : "" }))}
+                  value={
+                    formData.PickupTime
+                      ? dayjs(formData.PickupTime, "HH:mm")
+                      : null
+                  }
+                  onChange={(val) =>
+                    setFormData((fd) => ({
+                      ...fd,
+                      PickupTime: val ? dayjs(val).format("HH:mm") : "",
+                    }))
+                  }
                   renderInput={(params) => (
                     <TextField
                       {...params}
