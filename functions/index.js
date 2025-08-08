@@ -48,7 +48,7 @@ export const getRides = functions.https.onCall(async (data, context) => {
 
 export const getRideQueue = functions.https.onCall(async (data, context) => {
   await requireAdmin(context);
-  const snap = await db.collection("RideQueue").get();
+  const snap = await db.collection("rideQueue").get();
   const rides = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   return { success: true, rides };
 });
@@ -111,7 +111,7 @@ export const addRideToQueue = functions.https.onCall(async (data, context) => {
   if (!ride.tripId) {
     return { success: false, message: "tripId required" };
   }
-  await db.collection("RideQueue").doc(ride.tripId.toString()).set(ride);
+  await db.collection("rideQueue").doc(ride.tripId.toString()).set(ride);
   return { success: true };
 });
 
@@ -125,7 +125,7 @@ export const updateRide = functions.https.onCall(async (data, context) => {
   for (const [k, v] of Object.entries(fields)) {
     updates[normalizeHeader(k)] = v;
   }
-  await db.collection("RideQueue").doc(tripId.toString()).update(updates);
+  await db.collection("rideQueue").doc(tripId.toString()).update(updates);
   return { success: true };
 });
 
@@ -135,7 +135,7 @@ export const deleteRide = functions.https.onCall(async (data, context) => {
   if (!tripId) {
     return { success: false, message: "tripId required" };
   }
-  await db.collection("RideQueue").doc(tripId.toString()).delete();
+  await db.collection("rideQueue").doc(tripId.toString()).delete();
   return { success: true };
 });
 
