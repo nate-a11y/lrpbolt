@@ -15,7 +15,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import duration from "dayjs/plugin/duration";
 import { db } from "../firebase";
-import { TIMEZONE } from "../constants";
+import { TIMEZONE, COLLECTIONS } from "../constants";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 
 dayjs.extend(utc);
@@ -138,21 +138,21 @@ const buildRideQuery = (
 // ---------- Live Rides ----------
 export const subscribeLiveRides = (callback, filters) =>
   subscribeFirestore(
-    buildKey("liveRides", filters),
-    buildRideQuery("liveRides", filters),
+    buildKey(COLLECTIONS.LIVE_RIDES, filters),
+    buildRideQuery(COLLECTIONS.LIVE_RIDES, filters),
     (snap) => callback(snap.docs.map(mapDoc)),
   );
 
 export const getLiveRides = async (filters) => {
-  const snap = await getDocs(buildRideQuery("liveRides", filters));
+  const snap = await getDocs(buildRideQuery(COLLECTIONS.LIVE_RIDES, filters));
   return snap.docs.map(mapDoc);
 };
 
 export const addLiveRide = async (ride) =>
-  addDoc(collection(db, "liveRides"), prepareRideData(ride));
+  addDoc(collection(db, COLLECTIONS.LIVE_RIDES), prepareRideData(ride));
 
 export const deleteLiveRide = async (id) =>
-  deleteDoc(doc(db, "liveRides", id));
+  deleteDoc(doc(db, COLLECTIONS.LIVE_RIDES, id));
 
 export const restoreLiveRide = async (ride) => addLiveRide(ride);
 
@@ -178,18 +178,20 @@ export const deleteRideFromQueue = async (id) =>
 // ---------- Claimed Rides ----------
 export const subscribeClaimedRides = (callback, filters) =>
   subscribeFirestore(
-    buildKey("claimedRides", filters),
-    buildRideQuery("claimedRides", filters),
+    buildKey(COLLECTIONS.CLAIMED_RIDES, filters),
+    buildRideQuery(COLLECTIONS.CLAIMED_RIDES, filters),
     (snap) => callback(snap.docs.map(mapDoc)),
   );
 
 export const getClaimedRides = async (filters) => {
-  const snap = await getDocs(buildRideQuery("claimedRides", filters));
+  const snap = await getDocs(
+    buildRideQuery(COLLECTIONS.CLAIMED_RIDES, filters),
+  );
   return snap.docs.map(mapDoc);
 };
 
 export const deleteClaimedRide = async (id) =>
-  deleteDoc(doc(db, "claimedRides", id));
+  deleteDoc(doc(db, COLLECTIONS.CLAIMED_RIDES, id));
 
 // Restore a ride back to the queue
 export const restoreRide = async (ride) => addRideToQueue(ride);
