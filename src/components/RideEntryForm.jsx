@@ -15,7 +15,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   CircularProgress,
   Badge,
   Tooltip,
@@ -89,6 +88,7 @@ const vehicleOptions = [
 ];
 
 export default function RideEntryForm() {
+  // ---------- Core form state ----------
   const [formData, setFormData] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("rideForm")) || defaultValues;
@@ -97,98 +97,45 @@ export default function RideEntryForm() {
       return defaultValues;
     }
   });
-  const [csvBuilder, setCsvBuilder] = useState(defaultValues);
-  const [uploadedRows, setUploadedRows] = useState([]);
-  const [fileError, setFileError] = useState("");
-  const [toast, setToast] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+
+  // UX state for validation (Single tab)
   const errorFields = useRef({});
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  // CSV builder / bulk (Multi tab)
+  const [csvBuilder, setCsvBuilder] = useState(defaultValues);
   const [builderErrors, setBuilderErrors] = useState({});
+  const [builderTouched, setBuilderTouched] = useState({});
+  const [builderSubmitAttempted, setBuilderSubmitAttempted] = useState(false);
 
-  const preview = useMemo(() => {
-    const rideDuration = formatDuration(
-      formData.DurationHours,
-      formData.DurationMinutes
-    );
-    const formattedDate = formData.Date
-      ? dayjs(formData.Date).tz(TIMEZONE).format("M/D/YYYY")
-      : "N/A";
-    const formattedTime = toTimeString12Hr(formData.PickupTime);
-    return {
-      ...formData,
-      PickupTime: formattedTime,
-      Date: formattedDate,
-      RideDuration: rideDuration,
-    };
-  }, [formData]);
+  const [uploadedRows, setUploadedRows] = useState([]);
+  const [multiInput, setMultiInput] = useState("");
+  const [fileError, setFileError] = useState("");
 
-  const validateFields = useCallback((data, setErrors, skipRef = false) => {
-    const required = [
-      "TripID",
-      "Date",
-      "PickupTime",
-      "DurationHours",
-      "DurationMinutes",
-      "RideType",
-      "Vehicle",
-    ];
-    const errors = {};
-    for (const field of required)
-      if (!data[field]?.toString().trim()) errors[field] = true;
-
-    if (!tripIdPattern.test(data.TripID)) errors.TripID = true;
-
-    const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
-    if (!dateValid || dayjs(data.Date).isBefore(dayjs().startOf("day")))
-      errors.Date = true;
-
-    if (!timePattern.test(data.PickupTime)) errors.PickupTime = true;
-
-    if (
-      isNaN(+data.DurationMinutes) ||
-      +data.DurationMinutes < 0 ||
-      +data.DurationMinutes >= 60
-    )
-      errors.DurationMinutes = true;
-
-    if (isNaN(+data.DurationHours) || +data.DurationHours < 0)
-      errors.DurationHours = true;
-
-    if (setErrors) setErrors(errors);
-    else if (!skipRef) errorFields.current = errors;
-    return Object.keys(errors).length === 0;
-  }, []);
-
-  const isFormValid = useMemo(
-    () => validateFields(formData),
-    [formData, validateFields]
-  );
-
-  const [rideTab, setRideTab] = useState(
-    () => Number(localStorage.getItem("rideTab") || 0)
-  );
+  // UI state
+  const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
+  const [rideTab, setRideTab] = useState(() => Number(localStorage.getItem("rideTab") || 0));
+  const [dataTab, setDataTab] = useState(() => Number(localStorage.getItem("dataTab") || 0));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { counts, fetchRides } = useRides();
-  const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
-  const [syncTime, setSyncTime] = useState("");
-  const [multiInput, setMultiInput] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [dataTab, setDataTab] = useState(
-    () => Number(localStorage.getItem("dataTab") || 0)
-  );
+  const [syncTime, setSyncTime] = useState("");
+  const [shakeKey, setShakeKey] = useState(0);
+
   const isMobile = useMediaQuery("(max-width:600px)");
   const { user } = useAuth();
   const currentUser = user?.email || "Unknown";
 
-  // Cloud Functions callable
-  // If deployed to a different region, use: getFunctions(undefined, "YOUR_REGION")
+  const { counts, fetchRides } = useRides();
+  const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
+
+  // Cloud Function (daily drop)
   const functions = getFunctions();
   const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 
+  // Dropzone
+  const DROPZONE_MIN_H = 168;
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: useCallback(
       (accepted) => {
@@ -228,23 +175,107 @@ export default function RideEntryForm() {
     ),
   });
 
+  // ---------- Validation ----------
+  const validateFields = useCallback((data, setErrors, skipRef = false) => {
+    const required = [
+      "TripID",
+      "Date",
+      "PickupTime",
+      "DurationHours",
+      "DurationMinutes",
+      "RideType",
+      "Vehicle",
+    ];
+    const errors = {};
+
+    for (const field of required) {
+      if (!data[field]?.toString().trim()) errors[field] = true;
+    }
+
+    // Trip ID format XXXX-XX
+    if (data.TripID && !tripIdPattern.test(data.TripID)) errors.TripID = true;
+
+    // Date must be valid and NOT in the past (today OK)
+    const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
+    if (!dateValid || dayjs(data.Date).isBefore(dayjs().startOf("day"))) {
+      errors.Date = true;
+    }
+
+    // Time 24h HH:mm
+    if (data.PickupTime && !timePattern.test(data.PickupTime)) {
+      errors.PickupTime = true;
+    }
+
+    // Duration
+    if (isNaN(+data.DurationHours) || +data.DurationHours < 0) {
+      errors.DurationHours = true;
+    }
+    if (
+      isNaN(+data.DurationMinutes) ||
+      +data.DurationMinutes < 0 ||
+      +data.DurationMinutes >= 60
+    ) {
+      errors.DurationMinutes = true;
+    }
+
+    if (setErrors) setErrors(errors);
+    else if (!skipRef) errorFields.current = errors;
+
+    return Object.keys(errors).length === 0;
+  }, []);
+
+  // DO NOT mutate errorFields during render
+  const isFormValid = useMemo(
+    () => validateFields(formData, null, true),
+    [formData, validateFields]
+  );
+
+  const showErr = useCallback(
+    (field) => !!errorFields.current[field] && (touched[field] || submitAttempted),
+    [touched, submitAttempted]
+  );
+
+  // ---------- Derived preview ----------
+  const preview = useMemo(() => {
+    const rideDuration = formatDuration(
+      formData.DurationHours,
+      formData.DurationMinutes
+    );
+    const formattedDate = formData.Date
+      ? dayjs(formData.Date).tz(TIMEZONE).format("M/D/YYYY")
+      : "N/A";
+    const formattedTime = toTimeString12Hr(formData.PickupTime);
+    return {
+      ...formData,
+      PickupTime: formattedTime,
+      Date: formattedDate,
+      RideDuration: rideDuration,
+    };
+  }, [formData]);
+
+  // ---------- Effects ----------
   useEffect(() => {
     localStorage.setItem("rideForm", JSON.stringify(formData));
   }, [formData]);
+
   useEffect(() => {
     localStorage.setItem("rideTab", rideTab.toString());
   }, [rideTab]);
+
   useEffect(() => {
     localStorage.setItem("dataTab", dataTab.toString());
   }, [dataTab]);
+
   useEffect(() => {
     setSyncTime(dayjs().format("hh:mm A"));
   }, [counts]);
 
+  // ---------- Handlers ----------
   const handleChange = useCallback(
     (e, stateSetter = setFormData, errorSetter) => {
       const { name, value } = e.target;
       let updatedValue = value;
+
       if (name === "TripID") {
         const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
         updatedValue =
@@ -252,9 +283,10 @@ export default function RideEntryForm() {
             ? `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}`
             : cleaned;
       }
+
       stateSetter((prev) => {
         const next = { ...prev, [name]: updatedValue };
-        validateFields(next, errorSetter);
+        validateFields(next, errorSetter); // live-validate but don't paint until touched/submit
         return next;
       });
     },
@@ -262,6 +294,16 @@ export default function RideEntryForm() {
   );
 
   const handleSingleChange = (e) => handleChange(e, setFormData);
+  const handleBlur = useCallback((e) => {
+    const { name } = e.target;
+    setTouched((t) => ({ ...t, [name]: true }));
+  }, []);
+
+  // Builder touched (Multi tab)
+  const handleBuilderBlur = useCallback((e) => {
+    const { name } = e.target;
+    setBuilderTouched((t) => ({ ...t, [name]: true }));
+  }, []);
 
   const toRideDoc = useCallback(
     (row) => {
@@ -309,12 +351,8 @@ export default function RideEntryForm() {
         if (doc) validDocs.push(doc);
         else skipped++;
       });
-      // sequential to surface any permission errors early
       for (const doc of validDocs) {
-        await addDoc(
-          collection(db, COLLECTIONS.RIDE_QUEUE),
-          doc,
-        ); // <-- case-sensitive
+        await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), doc);
       }
       return { added: validDocs.length, skipped };
     },
@@ -324,16 +362,12 @@ export default function RideEntryForm() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const { data } = await refreshDrop({}); // pass empty payload
+      const { data } = await refreshDrop({});
       const msg =
         data && typeof data.imported === "number"
           ? `✅ Daily drop executed — added ${data.imported} ride(s)`
           : "✅ Daily drop executed";
-      setToast({
-        open: true,
-        message: msg,
-        severity: "success",
-      });
+      setToast({ open: true, message: msg, severity: "success" });
       await fetchRides();
     } catch (error) {
       logError(error, "RideEntryForm:refresh");
@@ -348,7 +382,9 @@ export default function RideEntryForm() {
   }, [fetchRides, refreshDrop]);
 
   const handleSubmit = useCallback(async () => {
+    setSubmitAttempted(true);
     if (!validateFields(formData)) {
+      setShakeKey((k) => k + 1);
       setToast({
         open: true,
         message: "⚠️ Please correct required fields",
@@ -360,16 +396,15 @@ export default function RideEntryForm() {
     try {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
-      await addDoc(
-        collection(db, COLLECTIONS.RIDE_QUEUE),
-        rideData,
-      ); // <-- case-sensitive
+      await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), rideData);
       setToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,
         severity: "success",
       });
       setFormData(defaultValues);
+      setTouched({});
+      setSubmitAttempted(false);
       setConfirmOpen(false);
       await fetchRides();
     } catch (err) {
@@ -386,25 +421,17 @@ export default function RideEntryForm() {
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
-      setToast({
-        open: true,
-        message: "⚠️ No rows to import",
-        severity: "warning",
-      });
+      setToast({ open: true, message: "⚠️ No rows to import", severity: "warning" });
       return;
     }
-
     setSubmitting(true);
     try {
       const { added, skipped } = await processRideRows(uploadedRows);
       setToast({
         open: true,
-        message: `✅ CSV rides imported (${added} added${
-          skipped ? `, ${skipped} skipped` : ""
-        })`,
+        message: `✅ CSV rides imported (${added} added${skipped ? `, ${skipped} skipped` : ""})`,
         severity: "success",
       });
-
       setUploadedRows([]);
       await fetchRides();
     } catch (err) {
@@ -420,6 +447,7 @@ export default function RideEntryForm() {
   }, [uploadedRows, processRideRows, fetchRides]);
 
   const handleCsvAppend = useCallback(() => {
+    setBuilderSubmitAttempted(true);
     if (!validateFields(csvBuilder, setBuilderErrors)) {
       setToast({
         open: true,
@@ -431,27 +459,19 @@ export default function RideEntryForm() {
     setUploadedRows((prev) => [...prev, csvBuilder]);
     setCsvBuilder(defaultValues);
     setBuilderErrors({});
+    setBuilderTouched({});
+    setBuilderSubmitAttempted(false);
   }, [csvBuilder, validateFields]);
 
   const handleMultiSubmit = useCallback(async () => {
     if (!uploadedRows.length && !multiInput.trim()) {
-      setToast({
-        open: true,
-        message: "⚠️ No rides to submit",
-        severity: "warning",
-      });
+      setToast({ open: true, message: "⚠️ No rides to submit", severity: "warning" });
       return;
     }
-
     const ridesToSubmit = [...uploadedRows];
     if (multiInput.trim()) {
-      const parsed = Papa.parse(multiInput.trim(), {
-        header: true,
-        skipEmptyLines: true,
-      });
-      const missing = expectedCsvCols.filter(
-        (c) => !parsed.meta.fields?.includes(c)
-      );
+      const parsed = Papa.parse(multiInput.trim(), { header: true, skipEmptyLines: true });
+      const missing = expectedCsvCols.filter((c) => !parsed.meta.fields?.includes(c));
       if (missing.length) {
         setToast({
           open: true,
@@ -462,27 +482,18 @@ export default function RideEntryForm() {
         ridesToSubmit.push(...parsed.data);
       }
     }
-
     if (!ridesToSubmit.length) {
-      setToast({
-        open: true,
-        message: "⚠️ No valid rides found",
-        severity: "warning",
-      });
+      setToast({ open: true, message: "⚠️ No valid rides found", severity: "warning" });
       return;
     }
-
     setSubmitting(true);
     try {
       const { added, skipped } = await processRideRows(ridesToSubmit);
       setToast({
         open: true,
-        message: `✅ All rides submitted (${added} added${
-          skipped ? `, ${skipped} skipped` : ""
-        })`,
+        message: `✅ All rides submitted (${added} added${skipped ? `, ${skipped} skipped` : ""})`,
         severity: "success",
       });
-
       setUploadedRows([]);
       setMultiInput("");
       await fetchRides();
@@ -498,40 +509,72 @@ export default function RideEntryForm() {
     }
   }, [uploadedRows, multiInput, processRideRows, fetchRides]);
 
+  // ---------- Render ----------
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" fontWeight={600} mb={2}>
+      <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 1.5, sm: 2 } }}>
+        <Paper
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 4,
+            bgcolor: (t) =>
+              t.palette.mode === "dark" ? "background.paper" : "background.default",
+            borderRadius: 2,
+            boxShadow: (t) => t.shadows[3],
+          }}
+        >
+          <Typography variant="h6" fontWeight={700} mb={2}>
             🚐 Ride Entry
           </Typography>
-          <Tabs value={rideTab} onChange={(e, v) => setRideTab(v)} sx={{ mb: 3 }}>
+
+          <Tabs
+            value={rideTab}
+            onChange={(e, v) => setRideTab(v)}
+            sx={{ mb: 3, "& .MuiTab-root": { minWidth: 140 } }}
+          >
             <Tab label="SINGLE RIDE" />
             <Tab label="MULTI RIDE UPLOAD" />
           </Tabs>
 
+          {/* ========================= SINGLE RIDE ========================= */}
           {rideTab === 0 && (
             <Fade in>
-              <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
-                <Grid container spacing={2}>
+              <Box sx={{ px: { xs: 0, sm: 2 }, py: 1 }}>
+                <Grid
+                  container
+                  spacing={2}
+                  key={shakeKey}
+                  className={!isFormValid && submitAttempted ? "shake" : undefined}
+                  sx={{
+                    "&.shake": { animation: "shake 0.25s linear 1" },
+                    "@keyframes shake": {
+                      "0%": { transform: "translateX(0)" },
+                      "25%": { transform: "translateX(-4px)" },
+                      "50%": { transform: "translateX(4px)" },
+                      "75%": { transform: "translateX(-2px)" },
+                      "100%": { transform: "translateX(0)" },
+                    },
+                  }}
+                >
                   {/* Trip ID */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       name="TripID"
                       label="Trip ID *"
                       value={formData.TripID}
                       onChange={handleSingleChange}
+                      onBlur={handleBlur}
+                      size="small"
                       fullWidth
                       required
-                      error={!!errorFields.current.TripID}
-                      helperText={
-                        errorFields.current.TripID ? "Required or invalid" : " "
-                      }
+                      inputProps={{ maxLength: 7 }}
+                      error={showErr("TripID")}
+                      helperText={showErr("TripID") ? "Required or invalid" : " "}
                     />
                   </Grid>
 
-                  {/* Date */}
-                  <Grid item xs={12} sm={6}>
+                  {/* Date (no past dates) */}
+                  <Grid item xs={12} sm={6} md={4}>
                     <DatePicker
                       label="Date *"
                       value={formData.Date ? dayjs(formData.Date) : null}
@@ -543,22 +586,24 @@ export default function RideEntryForm() {
                           },
                         })
                       }
+                      minDate={dayjs().startOf("day")}
                       slots={{ openPickerIcon: CalendarMonthIcon }}
                       slotProps={{
                         textField: {
                           fullWidth: true,
+                          size: "small",
                           required: true,
-                          error: !!errorFields.current.Date,
-                          helperText: errorFields.current.Date
-                            ? "Required or invalid"
-                            : " ",
+                          onBlur: handleBlur,
+                          name: "Date",
+                          error: showErr("Date"),
+                          helperText: showErr("Date") ? "Required or invalid" : " ",
                         },
                       }}
                     />
                   </Grid>
 
                   {/* Pickup Time */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TimePicker
                       label="Pickup Time *"
                       value={
@@ -578,72 +623,71 @@ export default function RideEntryForm() {
                       slotProps={{
                         textField: {
                           fullWidth: true,
+                          size: "small",
                           required: true,
-                          error: !!errorFields.current.PickupTime,
-                          helperText: errorFields.current.PickupTime
-                            ? "Required or invalid"
-                            : " ",
+                          onBlur: handleBlur,
+                          name: "PickupTime",
+                          error: showErr("PickupTime"),
+                          helperText: showErr("PickupTime") ? "Required or invalid" : " ",
                         },
                       }}
                     />
                   </Grid>
 
-                  {/* Duration Hours + Minutes */}
-                  <Grid item xs={6} sm={3}>
+                  {/* Duration */}
+                  <Grid item xs={6} sm={3} md={2.5}>
                     <TextField
                       name="DurationHours"
                       label="Hours *"
                       type="number"
+                      size="small"
                       value={formData.DurationHours}
                       onChange={handleSingleChange}
+                      onBlur={handleBlur}
+                      inputProps={{ min: 0, max: 24 }}
                       InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">h</InputAdornment>
-                        ),
+                        endAdornment: <InputAdornment position="end">h</InputAdornment>,
                       }}
                       required
                       fullWidth
-                      error={!!errorFields.current.DurationHours}
-                      helperText={
-                        errorFields.current.DurationHours ? "Invalid" : " "
-                      }
+                      error={showErr("DurationHours")}
+                      helperText={showErr("DurationHours") ? "Invalid" : " "}
                     />
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+                  <Grid item xs={6} sm={3} md={2.5}>
                     <TextField
                       name="DurationMinutes"
                       label="Minutes *"
                       type="number"
+                      size="small"
                       value={formData.DurationMinutes}
                       onChange={handleSingleChange}
+                      onBlur={handleBlur}
+                      inputProps={{ min: 0, max: 59 }}
                       InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">m</InputAdornment>
-                        ),
+                        endAdornment: <InputAdornment position="end">m</InputAdornment>,
                       }}
                       required
                       fullWidth
-                      error={!!errorFields.current.DurationMinutes}
-                      helperText={
-                        errorFields.current.DurationMinutes ? "Invalid" : " "
-                      }
+                      error={showErr("DurationMinutes")}
+                      helperText={showErr("DurationMinutes") ? "Invalid" : " "}
                     />
                   </Grid>
 
                   {/* Ride Type */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <TextField
                       select
                       name="RideType"
                       label="Ride Type *"
+                      size="small"
                       value={formData.RideType}
                       onChange={handleSingleChange}
+                      onBlur={handleBlur}
                       fullWidth
                       required
-                      error={!!errorFields.current.RideType}
-                      helperText={
-                        errorFields.current.RideType ? "Required" : " "
-                      }
+                      error={showErr("RideType")}
+                      helperText={showErr("RideType") ? "Required" : " "}
                     >
                       {rideTypeOptions.map((opt) => (
                         <MenuItem key={opt} value={opt}>
@@ -654,19 +698,19 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Vehicle */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <TextField
                       select
                       name="Vehicle"
                       label="Vehicle *"
+                      size="small"
                       value={formData.Vehicle}
                       onChange={handleSingleChange}
+                      onBlur={handleBlur}
                       fullWidth
                       required
-                      error={!!errorFields.current.Vehicle}
-                      helperText={
-                        errorFields.current.Vehicle ? "Required" : " "
-                      }
+                      error={showErr("Vehicle")}
+                      helperText={showErr("Vehicle") ? "Required" : " "}
                     >
                       {vehicleOptions.map((opt) => (
                         <MenuItem key={opt} value={opt}>
@@ -677,25 +721,32 @@ export default function RideEntryForm() {
                   </Grid>
 
                   {/* Ride Notes */}
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={6}>
                     <TextField
                       name="RideNotes"
                       label="Ride Notes"
                       value={formData.RideNotes}
                       onChange={handleSingleChange}
+                      onBlur={handleBlur}
                       fullWidth
+                      size="small"
                       multiline
-                      rows={2}
+                      minRows={2}
                     />
                   </Grid>
 
-                  {/* Action Buttons */}
+                  {/* Actions */}
                   <Grid item xs={12}>
-                    <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+                    <Box display="flex" justifyContent="flex-end" gap={1.5} mt={0.5}>
                       <Button
                         variant="outlined"
                         color="secondary"
-                        onClick={() => setFormData(defaultValues)}
+                        onClick={() => {
+                          setFormData(defaultValues);
+                          setTouched({});
+                          setSubmitAttempted(false);
+                          errorFields.current = {};
+                        }}
                       >
                         Reset
                       </Button>
@@ -714,123 +765,126 @@ export default function RideEntryForm() {
             </Fade>
           )}
 
+          {/* ========================= MULTI RIDE UPLOAD ========================= */}
           {rideTab === 1 && (
             <Fade in>
-              <Box sx={{ px: isMobile ? 1 : 3, py: 2 }}>
-                <Grid container spacing={2}>
-                  {/* CSV Template */}
-                  <Grid item xs={12}>
-                    <Button
-                      aria-label="Download ride template CSV"
-                      href="/ride-template.csv"
-                      variant="outlined"
-                      startIcon={<DownloadIcon />}
-                      download
-                      fullWidth
-                    >
-                      Download Template
-                    </Button>
-                  </Grid>
-
-                  {/* Drag & Drop Upload */}
-                  <Grid item xs={12}>
+              <Box sx={{ px: { xs: 0, sm: 2 }, py: 1 }}>
+                {/* Top row: template | dropzone | paste */}
+                <Grid container spacing={2} alignItems="stretch">
+                  <Grid item xs={12} md={3}>
                     <Box
-                      {...getRootProps()}
                       sx={{
-                        border: "2px dashed",
-                        borderColor: isDragActive ? "success.main" : "grey.500",
-                        p: 4,
-                        textAlign: "center",
-                        bgcolor: "background.default",
-                        borderRadius: 2,
+                        height: DROPZONE_MIN_H,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1.25,
                       }}
                     >
-                      <input {...getInputProps()} />
-                      <UploadFileIcon
-                        sx={{ fontSize: 40, color: "success.main", mb: 1 }}
-                      />
-                      <Typography>
-                        {isDragActive
-                          ? "Drop file here"
-                          : "Drag & drop CSV/XLS here or click to select"}
-                      </Typography>
+                      <Button
+                        aria-label="Download ride template CSV"
+                        href="/ride-template.csv"
+                        variant="outlined"
+                        startIcon={<DownloadIcon />}
+                        download
+                        fullWidth
+                        sx={{ height: 42 }}
+                      >
+                        Download Template
+                      </Button>
+                      <Box
+                        {...getRootProps()}
+                        sx={{
+                          flex: 1,
+                          border: "2px dashed",
+                          borderColor: isDragActive ? "success.main" : "divider",
+                          color: "text.secondary",
+                          borderRadius: 2,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          textAlign: "center",
+                          p: 2,
+                          bgcolor: "background.default",
+                          cursor: "pointer",
+                          transition: "border-color 120ms",
+                        }}
+                      >
+                        <input {...getInputProps()} />
+                        <Box>
+                          <UploadFileIcon sx={{ fontSize: 36, mb: 0.5 }} />
+                          <Typography variant="body2">
+                            {isDragActive
+                              ? "Drop file here"
+                              : "Drag & drop CSV/XLS here or click to select"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {fileError && (
+                        <Typography color="error" variant="caption">
+                          {fileError}
+                        </Typography>
+                      )}
                     </Box>
-                    {fileError && (
-                      <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-                        {fileError}
-                      </Typography>
-                    )}
                   </Grid>
 
-                  {/* Uploaded Data Preview */}
-                  {uploadedRows.length > 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ mt: 2 }}>
-                        <DataGrid
-                          autoHeight
-                          density="compact"
-                          rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
-                          columns={[
-                            { field: "TripID", headerName: "Trip ID", flex: 1 },
-                            { field: "Date", headerName: "Date", flex: 1 },
-                            { field: "PickupTime", headerName: "Pickup Time", flex: 1 },
-                            { field: "DurationHours", headerName: "Dur H", flex: 1 },
-                            { field: "DurationMinutes", headerName: "Dur M", flex: 1 },
-                            { field: "RideType", headerName: "Ride Type", flex: 1 },
-                            { field: "Vehicle", headerName: "Vehicle", flex: 1 },
-                          ]}
-                          pageSizeOptions={[5]}
-                        />
-                        <Button
-                          variant="contained"
-                          color="success"
-                          onClick={handleImportConfirm}
-                          disabled={submitting}
-                          sx={{ mt: 2, fontWeight: 600 }}
-                          startIcon={
-                            submitting ? (
-                              <CircularProgress size={20} color="inherit" />
-                            ) : (
-                              <UploadFileIcon />
-                            )
-                          }
-                        >
-                          Import Rides
-                        </Button>
-                      </Box>
-                    </Grid>
-                  )}
+                  <Grid item xs={12} md={6}>
+                    <Box
+                      sx={{
+                        border: "2px dashed",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                        minHeight: DROPZONE_MIN_H,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        p: 2,
+                        color: "text.secondary",
+                      }}
+                    >
+                      <Typography variant="body2">
+                        Rides you add below will show here after you click <b>Add to List</b>.
+                        You can also preview uploaded CSV rows further down.
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                  {/* Paste CSV */}
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={3}>
                     <TextField
                       label="Paste CSV Rides"
                       fullWidth
                       multiline
-                      rows={6}
+                      minRows={6}
                       value={multiInput}
                       onChange={(e) => setMultiInput(e.target.value)}
+                      sx={{ height: "100%" }}
                     />
                   </Grid>
+                </Grid>
 
-                  {/* CSV Builder */}
-                  <Grid item xs={12} sm={4}>
+                {/* Builder row */}
+                <Grid container spacing={2} mt={0.5}>
+                  <Grid item xs={12} sm={4} md={3}>
                     <TextField
                       name="TripID"
                       label="Trip ID *"
                       value={csvBuilder.TripID}
-                      onChange={(e) =>
-                        handleChange(e, setCsvBuilder, setBuilderErrors)
-                      }
+                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+                      onBlur={handleBuilderBlur}
+                      size="small"
                       required
                       fullWidth
-                      error={!!builderErrors.TripID}
+                      inputProps={{ maxLength: 7 }}
+                      error={!!builderErrors.TripID && (builderTouched.TripID || builderSubmitAttempted)}
                       helperText={
-                        builderErrors.TripID ? "Required or invalid" : " "
+                        !!builderErrors.TripID && (builderTouched.TripID || builderSubmitAttempted)
+                          ? "Required or invalid"
+                          : " "
                       }
                     />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+
+                  <Grid item xs={12} sm={4} md={3}>
                     <DatePicker
                       label="Date *"
                       value={csvBuilder.Date ? dayjs(csvBuilder.Date) : null}
@@ -846,20 +900,29 @@ export default function RideEntryForm() {
                           setBuilderErrors
                         )
                       }
+                      minDate={dayjs().startOf("day")}
                       slots={{ openPickerIcon: CalendarMonthIcon }}
                       slotProps={{
                         textField: {
                           fullWidth: true,
+                          size: "small",
                           required: true,
-                          error: !!builderErrors.Date,
-                          helperText: builderErrors.Date
-                            ? "Required or invalid"
-                            : " ",
+                          name: "Date",
+                          onBlur: handleBuilderBlur,
+                          error:
+                            !!builderErrors.Date &&
+                            (builderTouched.Date || builderSubmitAttempted),
+                          helperText:
+                            !!builderErrors.Date &&
+                            (builderTouched.Date || builderSubmitAttempted)
+                              ? "Required or invalid"
+                              : " ",
                         },
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+
+                  <Grid item xs={12} sm={4} md={3}>
                     <TimePicker
                       label="Pickup Time *"
                       value={
@@ -883,72 +946,96 @@ export default function RideEntryForm() {
                       slotProps={{
                         textField: {
                           fullWidth: true,
+                          size: "small",
                           required: true,
-                          error: !!builderErrors.PickupTime,
-                          helperText: builderErrors.PickupTime
-                            ? "Required or invalid"
-                            : " ",
+                          name: "PickupTime",
+                          onBlur: handleBuilderBlur,
+                          error:
+                            !!builderErrors.PickupTime &&
+                            (builderTouched.PickupTime || builderSubmitAttempted),
+                          helperText:
+                            !!builderErrors.PickupTime &&
+                            (builderTouched.PickupTime || builderSubmitAttempted)
+                              ? "Required or invalid"
+                              : " ",
                         },
                       }}
                     />
                   </Grid>
 
-                  {/* Duration */}
-                  <Grid item xs={6} sm={3}>
+                  <Grid item xs={6} sm={3} md={2}>
                     <TextField
                       name="DurationHours"
                       label="Duration Hours *"
                       type="number"
+                      size="small"
                       value={csvBuilder.DurationHours}
-                      onChange={(e) =>
-                        handleChange(e, setCsvBuilder, setBuilderErrors)
-                      }
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">h</InputAdornment>
-                        ),
-                      }}
+                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+                      onBlur={handleBuilderBlur}
+                      inputProps={{ min: 0, max: 24 }}
+                      InputProps={{ endAdornment: <InputAdornment position="end">h</InputAdornment> }}
                       required
                       fullWidth
-                      error={!!builderErrors.DurationHours}
-                      helperText={builderErrors.DurationHours ? "Invalid" : " "}
+                      error={
+                        !!builderErrors.DurationHours &&
+                        (builderTouched.DurationHours || builderSubmitAttempted)
+                      }
+                      helperText={
+                        !!builderErrors.DurationHours &&
+                        (builderTouched.DurationHours || builderSubmitAttempted)
+                          ? "Invalid"
+                          : " "
+                      }
                     />
                   </Grid>
-                  <Grid item xs={6} sm={3}>
+
+                  <Grid item xs={6} sm={3} md={2}>
                     <TextField
                       name="DurationMinutes"
                       label="Duration Minutes *"
                       type="number"
+                      size="small"
                       value={csvBuilder.DurationMinutes}
-                      onChange={(e) =>
-                        handleChange(e, setCsvBuilder, setBuilderErrors)
-                      }
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">m</InputAdornment>
-                        ),
-                      }}
+                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+                      onBlur={handleBuilderBlur}
+                      inputProps={{ min: 0, max: 59 }}
+                      InputProps={{ endAdornment: <InputAdornment position="end">m</InputAdornment> }}
                       required
                       fullWidth
-                      error={!!builderErrors.DurationMinutes}
-                      helperText={builderErrors.DurationMinutes ? "Invalid" : " "}
+                      error={
+                        !!builderErrors.DurationMinutes &&
+                        (builderTouched.DurationMinutes || builderSubmitAttempted)
+                      }
+                      helperText={
+                        !!builderErrors.DurationMinutes &&
+                        (builderTouched.DurationMinutes || builderSubmitAttempted)
+                          ? "Invalid"
+                          : " "
+                      }
                     />
                   </Grid>
 
-                  {/* Ride Type */}
-                  <Grid item xs={6} sm={3}>
+                  <Grid item xs={6} sm={3} md={2.5}>
                     <TextField
                       select
                       name="RideType"
                       label="Ride Type *"
+                      size="small"
                       value={csvBuilder.RideType}
-                      onChange={(e) =>
-                        handleChange(e, setCsvBuilder, setBuilderErrors)
-                      }
+                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+                      onBlur={handleBuilderBlur}
                       required
                       fullWidth
-                      error={!!builderErrors.RideType}
-                      helperText={builderErrors.RideType ? "Required" : " "}
+                      error={
+                        !!builderErrors.RideType &&
+                        (builderTouched.RideType || builderSubmitAttempted)
+                      }
+                      helperText={
+                        !!builderErrors.RideType &&
+                        (builderTouched.RideType || builderSubmitAttempted)
+                          ? "Required"
+                          : " "
+                      }
                     >
                       {rideTypeOptions.map((opt) => (
                         <MenuItem key={opt} value={opt}>
@@ -958,20 +1045,27 @@ export default function RideEntryForm() {
                     </TextField>
                   </Grid>
 
-                  {/* Vehicle */}
-                  <Grid item xs={6} sm={3}>
+                  <Grid item xs={6} sm={3} md={2.5}>
                     <TextField
                       select
                       name="Vehicle"
                       label="Vehicle *"
+                      size="small"
                       value={csvBuilder.Vehicle}
-                      onChange={(e) =>
-                        handleChange(e, setCsvBuilder, setBuilderErrors)
-                      }
+                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+                      onBlur={handleBuilderBlur}
                       required
                       fullWidth
-                      error={!!builderErrors.Vehicle}
-                      helperText={builderErrors.Vehicle ? "Required" : " "}
+                      error={
+                        !!builderErrors.Vehicle &&
+                        (builderTouched.Vehicle || builderSubmitAttempted)
+                      }
+                      helperText={
+                        !!builderErrors.Vehicle &&
+                        (builderTouched.Vehicle || builderSubmitAttempted)
+                          ? "Required"
+                          : " "
+                      }
                     >
                       {vehicleOptions.map((opt) => (
                         <MenuItem key={opt} value={opt}>
@@ -981,29 +1075,24 @@ export default function RideEntryForm() {
                     </TextField>
                   </Grid>
 
-                  {/* Ride Notes */}
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={6}>
                     <TextField
                       name="RideNotes"
                       label="Ride Notes"
                       value={csvBuilder.RideNotes}
-                      onChange={(e) =>
-                        handleChange(e, setCsvBuilder, setBuilderErrors)
-                      }
+                      onChange={(e) => handleChange(e, setCsvBuilder, setBuilderErrors)}
+                      onBlur={handleBuilderBlur}
                       fullWidth
+                      size="small"
                       multiline
-                      rows={2}
+                      minRows={2}
                     />
                   </Grid>
 
                   {/* Actions */}
                   <Grid item xs={12}>
-                    <Box display="flex" justifyContent="flex-end" gap={2}>
-                      <Button
-                        variant="contained"
-                        onClick={handleCsvAppend}
-                        sx={{ fontWeight: 600 }}
-                      >
+                    <Box display="flex" justifyContent="flex-start" gap={1.5} mt={0.5} flexWrap="wrap">
+                      <Button variant="contained" onClick={handleCsvAppend} sx={{ fontWeight: 600 }}>
                         ➕ Add to List
                       </Button>
                       <Button
@@ -1012,16 +1101,50 @@ export default function RideEntryForm() {
                         onClick={handleMultiSubmit}
                         disabled={submitting}
                         sx={{ fontWeight: 600 }}
+                        startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
                       >
-                        {submitting ? (
-                          <CircularProgress size={20} color="inherit" />
-                        ) : (
-                          "🚀 Submit All Rides"
-                        )}
+                        {submitting ? "Submitting…" : "🚀 Submit All Rides"}
                       </Button>
                     </Box>
                   </Grid>
                 </Grid>
+
+                {/* Uploaded Data Preview */}
+                {uploadedRows.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <DataGrid
+                      autoHeight
+                      density="compact"
+                      rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
+                      columns={[
+                        { field: "TripID", headerName: "Trip ID", flex: 1 },
+                        { field: "Date", headerName: "Date", flex: 1 },
+                        { field: "PickupTime", headerName: "Pickup Time", flex: 1 },
+                        { field: "DurationHours", headerName: "Dur H", flex: 1 },
+                        { field: "DurationMinutes", headerName: "Dur M", flex: 1 },
+                        { field: "RideType", headerName: "Ride Type", flex: 1 },
+                        { field: "Vehicle", headerName: "Vehicle", flex: 1 },
+                      ]}
+                      pageSizeOptions={[5]}
+                    />
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      onClick={handleImportConfirm}
+                      disabled={submitting}
+                      sx={{ mt: 1.5, fontWeight: 600 }}
+                      startIcon={
+                        submitting ? (
+                          <CircularProgress size={20} color="inherit" />
+                        ) : (
+                          <UploadFileIcon />
+                        )
+                      }
+                    >
+                      Import Rides
+                    </Button>
+                  </Box>
+                )}
               </Box>
             </Fade>
           )}
@@ -1043,9 +1166,7 @@ export default function RideEntryForm() {
                   color="secondary"
                   startIcon={
                     <SyncIcon
-                      sx={{
-                        animation: refreshing ? "spin 1s linear infinite" : "none",
-                      }}
+                      sx={{ animation: refreshing ? "spin 1s linear infinite" : "none" }}
                     />
                   }
                 >
@@ -1062,15 +1183,12 @@ export default function RideEntryForm() {
             value={dataTab}
             onChange={(e, val) => setDataTab(val)}
             TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
-            sx={{ flexGrow: 1 }}
+            sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
           >
             <Tab
               label={
                 <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    fontWeight={600}
-                    color={dataTab === 0 ? "success.main" : "inherit"}
-                  >
+                  <Typography fontWeight={600} color={dataTab === 0 ? "success.main" : "inherit"}>
                     LIVE
                   </Typography>
                   <Badge
@@ -1089,10 +1207,7 @@ export default function RideEntryForm() {
             <Tab
               label={
                 <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    fontWeight={600}
-                    color={dataTab === 1 ? "success.main" : "inherit"}
-                  >
+                  <Typography fontWeight={600} color={dataTab === 1 ? "success.main" : "inherit"}>
                     QUEUE
                   </Typography>
                   <Badge
@@ -1111,10 +1226,7 @@ export default function RideEntryForm() {
             <Tab
               label={
                 <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    fontWeight={600}
-                    color={dataTab === 2 ? "success.main" : "inherit"}
-                  >
+                  <Typography fontWeight={600} color={dataTab === 2 ? "success.main" : "inherit"}>
                     CLAIMED
                   </Typography>
                   <Badge
@@ -1159,28 +1271,31 @@ export default function RideEntryForm() {
         </Box>
 
         {/* Confirm Dialog */}
-        <Dialog
-          open={confirmOpen}
-          onClose={() => setConfirmOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Confirm Ride</DialogTitle>
           <DialogContent dividers>
             {Object.entries(preview).map(([key, value]) => (
-              <Typography key={key}>
+              <Typography key={key} sx={{ mb: 0.5 }}>
                 <strong>{key.replace(/([A-Z])/g, " $1")}:</strong> {value || "—"}
               </Typography>
             ))}
+            <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+              <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleSubmit}
+                disabled={submitting}
+                startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+              >
+                Confirm & Submit
+              </Button>
+            </Box>
           </DialogContent>
         </Dialog>
 
         {/* Snackbar */}
-        <Snackbar
-          open={toast.open}
-          autoHideDuration={4000}
-          onClose={() => setToast({ ...toast, open: false })}
-        >
+        <Snackbar open={toast.open} autoHideDuration={4000} onClose={() => setToast({ ...toast, open: false })}>
           <Alert severity={toast.severity} variant="filled">
             {toast.message}
           </Alert>
