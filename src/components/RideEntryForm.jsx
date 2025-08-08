@@ -542,234 +542,99 @@ return (
         </Tabs>
 
         {/* -------------------- SINGLE RIDE TAB -------------------- */}
-        {rideTab === 0 && (
-          <Fade in>
-            <Box component="form" noValidate autoComplete="off">
-              <Grid
-                container
-                spacing={2}
-                key={shakeKey}
-                className={!isFormValid && submitAttempted ? "shake" : undefined}
-                sx={{
-                  "&.shake": { animation: "shake 0.25s linear 1" },
-                  "@keyframes shake": {
-                    "0%": { transform: "translateX(0)" },
-                    "25%": { transform: "translateX(-4px)" },
-                    "50%": { transform: "translateX(4px)" },
-                    "75%": { transform: "translateX(-2px)" },
-                    "100%": { transform: "translateX(0)" },
-                  },
-                }}
-              >
-                {/* Trip ID */}
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    name="TripID"
-                    label="Trip ID *"
-                    value={formData.TripID}
-                    onChange={handleSingleChange}
-                    onBlur={handleBlur}
-                    fullWidth
-                    size="small"
-                    required
-                    inputProps={{ maxLength: 7 }}
-                    error={showErr("TripID")}
-                    helperText={showErr("TripID") ? "Required or invalid" : " "}
-                  />
-                </Grid>
+{rideTab === 0 && (
+  <Paper sx={{ p: 3, mb: 3 }}>
+    <Grid container spacing={2}>
+      {/* Trip ID */}
+      <Grid item xs={12} md={3}>
+        <TextField
+          label="Trip ID **"
+          value={ride.tripId}
+          onChange={(e) => setRide({ ...ride, tripId: e.target.value })}
+          fullWidth
+        />
+      </Grid>
 
-                {/* Date */}
-                <Grid item xs={12} sm={6} md={4}>
-                  <DatePicker
-                    label="Date *"
-                    value={formData.Date ? dayjs(formData.Date) : null}
-                    onChange={(newVal) =>
-                      handleSingleChange({
-                        target: {
-                          name: "Date",
-                          value: newVal ? newVal.format("YYYY-MM-DD") : "",
-                        },
-                      })
-                    }
-                    minDate={dayjs().startOf("day")}
-                    slots={{ openPickerIcon: CalendarMonthIcon }}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        size: "small",
-                        required: true,
-                        onBlur: handleBlur,
-                        name: "Date",
-                        error: showErr("Date"),
-                        helperText: showErr("Date") ? "Required or invalid" : " ",
-                      },
-                    }}
-                  />
-                </Grid>
+      {/* Date */}
+      <Grid item xs={12} md={3}>
+        <DatePicker
+          label="Date **"
+          value={ride.date}
+          onChange={(newVal) => setRide({ ...ride, date: newVal })}
+          renderInput={(params) => <TextField {...params} fullWidth />}
+        />
+      </Grid>
 
-                {/* Pickup Time */}
-                <Grid item xs={12} sm={6} md={4}>
-                  <TimePicker
-                    label="Pickup Time *"
-                    value={
-                      formData.PickupTime
-                        ? dayjs(`2000-01-01T${formData.PickupTime}`)
-                        : null
-                    }
-                    onChange={(newVal) =>
-                      handleSingleChange({
-                        target: {
-                          name: "PickupTime",
-                          value: newVal ? newVal.format("HH:mm") : "",
-                        },
-                      })
-                    }
-                    slots={{ openPickerIcon: AccessTimeIcon }}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        size: "small",
-                        required: true,
-                        onBlur: handleBlur,
-                        name: "PickupTime",
-                        error: showErr("PickupTime"),
-                        helperText: showErr("PickupTime") ? "Required or invalid" : " ",
-                      },
-                    }}
-                  />
-                </Grid>
+      {/* Pickup Time */}
+      <Grid item xs={12} md={3}>
+        <TimePicker
+          label="Pickup Time **"
+          value={ride.time}
+          onChange={(newVal) => setRide({ ...ride, time: newVal })}
+          renderInput={(params) => <TextField {...params} fullWidth />}
+        />
+      </Grid>
 
-                {/* Duration */}
-                <Grid item xs={6} sm={3} md={2.5}>
-                  <TextField
-                    name="DurationHours"
-                    label="Hours *"
-                    type="number"
-                    size="small"
-                    value={formData.DurationHours}
-                    onChange={handleSingleChange}
-                    onBlur={handleBlur}
-                    inputProps={{ min: 0, max: 24 }}
-                    InputProps={{
-                      endAdornment: <InputAdornment position="end">h</InputAdornment>,
-                    }}
-                    required
-                    fullWidth
-                    error={showErr("DurationHours")}
-                    helperText={showErr("DurationHours") ? "Invalid" : " "}
-                  />
-                </Grid>
+      {/* Duration - Hours */}
+      <Grid item xs={6} md={1.5}>
+        <TextField
+          label="Hours **"
+          value={ride.hours}
+          onChange={(e) => setRide({ ...ride, hours: e.target.value })}
+          fullWidth
+        />
+      </Grid>
 
-                <Grid item xs={6} sm={3} md={2.5}>
-                  <TextField
-                    name="DurationMinutes"
-                    label="Minutes *"
-                    type="number"
-                    size="small"
-                    value={formData.DurationMinutes}
-                    onChange={handleSingleChange}
-                    onBlur={handleBlur}
-                    inputProps={{ min: 0, max: 59 }}
-                    InputProps={{
-                      endAdornment: <InputAdornment position="end">m</InputAdornment>,
-                    }}
-                    required
-                    fullWidth
-                    error={showErr("DurationMinutes")}
-                    helperText={showErr("DurationMinutes") ? "Invalid" : " "}
-                  />
-                </Grid>
+      {/* Duration - Minutes */}
+      <Grid item xs={6} md={1.5}>
+        <TextField
+          label="Minutes **"
+          value={ride.minutes}
+          onChange={(e) => setRide({ ...ride, minutes: e.target.value })}
+          fullWidth
+        />
+      </Grid>
 
-                {/* Ride Type */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <TextField
-                    select
-                    name="RideType"
-                    label="Ride Type *"
-                    size="small"
-                    value={formData.RideType}
-                    onChange={handleSingleChange}
-                    onBlur={handleBlur}
-                    fullWidth
-                    required
-                    error={showErr("RideType")}
-                    helperText={showErr("RideType") ? "Required" : " "}
-                  >
-                    {rideTypeOptions.map((opt) => (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+      {/* Reset Duration Button */}
+      <Grid item xs={12} md={0.5}>
+        <IconButton onClick={handleResetDuration} edge="end">
+          <ReplayIcon />
+        </IconButton>
+      </Grid>
 
-                {/* Vehicle */}
-                <Grid item xs={12} sm={6} md={3}>
-                  <TextField
-                    select
-                    name="Vehicle"
-                    label="Vehicle *"
-                    size="small"
-                    value={formData.Vehicle}
-                    onChange={handleSingleChange}
-                    onBlur={handleBlur}
-                    fullWidth
-                    required
-                    error={showErr("Vehicle")}
-                    helperText={showErr("Vehicle") ? "Required" : " "}
-                  >
-                    {vehicleOptions.map((opt) => (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+      {/* Ride Notes */}
+      <Grid item xs={12} md={9}>
+        <TextField
+          label="Ride Notes"
+          value={ride.notes}
+          onChange={(e) => setRide({ ...ride, notes: e.target.value })}
+          multiline
+          rows={2}
+          fullWidth
+        />
+      </Grid>
 
-                {/* Ride Notes */}
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    name="RideNotes"
-                    label="Ride Notes"
-                    value={formData.RideNotes}
-                    onChange={handleSingleChange}
-                    onBlur={handleBlur}
-                    fullWidth
-                    size="small"
-                    multiline
-                    minRows={2}
-                  />
-                </Grid>
+      {/* Reset + Submit Buttons */}
+      <Grid item xs={12} md={3} container spacing={1} justifyContent="flex-end">
+        <Grid item>
+          <Button onClick={handleResetForm} variant="outlined" color="secondary">
+            RESET
+          </Button>
+        </Grid>
+        <Grid item>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={submitting || !isFormValid}
+          >
+            {submitting ? <CircularProgress size={20} /> : "SUBMIT"}
+          </Button>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Paper>
+)}
 
-                {/* Buttons */}
-                <Grid item xs={12}>
-                  <Box display="flex" justifyContent="flex-end" gap={2}>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => {
-                        setFormData(defaultValues);
-                        setTouched({});
-                        setSubmitAttempted(false);
-                        errorFields.current = {};
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      disabled={submitting || !isFormValid}
-                      onClick={() => setConfirmOpen(true)}
-                    >
-                      Submit
-                    </Button>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Box>
-          </Fade>
-        )}
         {/* -------------------- MULTI RIDE UPLOAD TAB -------------------- */}
         {rideTab === 1 && (
           <Fade in>
