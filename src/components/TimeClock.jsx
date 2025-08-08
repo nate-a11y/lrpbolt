@@ -88,16 +88,16 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
   // Subscribe to logs
   useEffect(() => {
-    if (unsubRef.current) {
-      try { unsubRef.current(); } catch {}
-      unsubRef.current = null;
-    }
+if (unsubRef.current) {
+  try { unsubRef.current(); } catch (err) { /* already cleaned up */ }
+  unsubRef.current = null;
+}
     unsubRef.current = subscribeTimeLogs(setLogs, driver);
-    return () => {
-      if (unsubRef.current) {
-        try { unsubRef.current(); } catch {}
-      }
-    };
+return () => {
+  if (unsubRef.current) {
+    try { unsubRef.current(); } catch (err) { /* already cleaned up */ }
+  }
+};
   }, [driver]);
 
   const formatElapsed = (seconds) => {
