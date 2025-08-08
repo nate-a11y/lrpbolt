@@ -24,37 +24,31 @@ import {
 import { getAuth } from "firebase/auth";
 
 const STORAGE_CLOCK = "shootoutClock";
-const STORAGE_HISTORY = "shootoutHistory";
 const SHOOTOUT_COL = "shootoutStats";
 const IMG_CADILLAC = "https://logos-world.net/wp-content/uploads/2021/05/Cadillac-Logo.png";
 const IMG_SHOOTOUT = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s";
 
-function safeParse(json, fallback) {
-  try { return JSON.parse(json); } catch { return fallback; }
+function safeParse(json, fallback = {}) {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizeSession(entry) {
-  const { startTime, endTime } = entry;
-
-  let duration = 0;
-
+  let startMillis = 0, endMillis = 0;
   try {
-    const start = startTime?.toMillis?.() || new Date(startTime).getTime();
-    const end = endTime?.toMillis?.() || new Date(endTime).getTime();
-
-    if (!isNaN(start) && !isNaN(end)) {
-      duration = end - start;
-    }
+    startMillis = entry.startTime?.toMillis?.() ?? new Date(entry.startTime).getTime();
+    endMillis = entry.endTime?.toMillis?.() ?? new Date(entry.endTime).getTime();
   } catch {
-    duration = 0;
+    startMillis = 0;
+    endMillis = 0;
   }
 
-  return {
-    ...entry,
-    duration,
-  };
+  const duration = Math.max(0, endMillis - startMillis);
+  return { ...entry, duration };
 }
-
 
 export default function ShootoutTab() {
   const [startTime, setStartTime] = useState(null);
@@ -67,124 +61,111 @@ export default function ShootoutTab() {
   const lastActionRef = useRef(null);
   const intervalRef = useRef(null);
 
-  // ---- Persist current session state
   const persistClock = useCallback((data) => {
-    const current = safeParse(localStorage.getItem(STORAGE_CLOCK), {});
+    const current = safeParse(localStorage.getItem(STORAGE_CLOCK));
     localStorage.setItem(STORAGE_CLOCK, JSON.stringify({ ...current, ...data }));
   }, []);
 
   const loadClock = useCallback(() => {
-    const stored = safeParse(localStorage.getItem(STORAGE_CLOCK), {});
+    const stored = safeParse(localStorage.getItem(STORAGE_CLOCK));
     if (stored.startTime) {
-      const start = Timestamp.fromMillis(stored.startTime);
-      setStartTime(start);
-      setIsRunning(true);
-      setTrips(stored.trips || 0);
-      setPassengers(stored.passengers || 0);
-      setElapsed(Math.floor((Date.now() - start.toMillis()) / 1000));
+      try {
+        const ts = Timestamp.fromMillis(stored.startTime);
+        setStartTime(ts);
+        setElapsed(Math.floor((Date.now() - ts.toMillis()) / 1000));
+        setIsRunning(true);
+        setTrips(stored.trips || 0);
+        setPassengers(stored.passengers || 0);
+      } catch {
+        console.warn("Corrupted startTime in localStorage. Resetting clock.");
+        localStorage.removeItem(STORAGE_CLOCK);
+      }
     }
   }, []);
 
-  const clearIntervalSafe = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
-  // ---- Restore local session
-  useEffect(() => {
-    loadClock();
-  }, [loadClock]);
+  useEffect(() => loadClock(), [loadClock]);
 
-  // ---- Timer sync across visibility/tab change
   useEffect(() => {
     const tick = () => {
       if (isRunning && startTime) {
-        setElapsed(Math.floor((Date.now() - startTime.toMillis()) / 1000));
+        try {
+          setElapsed(Math.floor((Date.now() - startTime.toMillis()) / 1000));
+        } catch {}
       }
     };
-    const onVisibility = () => {
-      if (document.hidden) clearIntervalSafe();
+    const onVis = () => {
+      if (document.hidden) clearInterval(intervalRef.current);
       else if (isRunning && startTime && !intervalRef.current) {
         intervalRef.current = setInterval(tick, 1000);
         tick();
       }
     };
-    if (isRunning && startTime && !document.hidden) {
+    if (isRunning && startTime) {
       intervalRef.current = setInterval(tick, 1000);
     }
-    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("visibilitychange", onVis);
     return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      clearIntervalSafe();
+      clearInterval(intervalRef.current);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [isRunning, startTime]);
 
-  // ---- Firestore live listener
   useEffect(() => {
     const q = query(collection(db, SHOOTOUT_COL), orderBy("startTime", "desc"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => normalizeSession({ id: doc.id, ...doc.data() }));
-      setHistory(data);
-      localStorage.setItem(STORAGE_HISTORY, JSON.stringify(data));
+      const parsed = snap.docs.map(doc => normalizeSession({ id: doc.id, ...doc.data() }));
+      setHistory(parsed);
     });
-    return () => unsub();
+    return unsub;
   }, []);
 
-  // ---- Cross-tab localStorage sync
   useEffect(() => {
-    const onStorage = (e) => {
+    const listener = (e) => {
       if (e.key === STORAGE_CLOCK) loadClock();
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("storage", listener);
+    return () => window.removeEventListener("storage", listener);
   }, [loadClock]);
 
-  const handleStart = useCallback(() => {
+  const handleStart = () => {
     const now = Timestamp.now();
     setStartTime(now);
-    setIsRunning(true);
     setElapsed(0);
+    setIsRunning(true);
     setTrips(0);
     setPassengers(0);
-    localStorage.setItem(STORAGE_CLOCK, JSON.stringify({
-      startTime: now.toMillis(),
-      trips: 0,
-      passengers: 0
-    }));
-  }, []);
+    persistClock({ startTime: now.toMillis(), trips: 0, passengers: 0 });
+  };
 
-  const finalizeSession = useCallback(async () => {
+  const finalizeSession = async () => {
     if (!startTime) return;
     const auth = getAuth();
     const user = auth.currentUser;
     const endTime = Timestamp.now();
-    const duration = Math.floor((endTime.toMillis() - startTime.toMillis()) / 1000);
 
     const session = {
       startTime,
       endTime,
-      duration,
       createdAt: Timestamp.now(),
       trips,
       passengers,
-      v: 1,
+      duration: Math.floor((endTime.toMillis() - startTime.toMillis()) / 1000),
       createdBy: (user?.email || "unknown").toLowerCase(),
       createdByUid: user?.uid || "",
-      eventKey: "shootout-2025"
+      eventKey: "shootout-2025",
     };
 
-    const stableId = `${startTime.toMillis()}_${endTime.toMillis()}`;
-    await setDoc(doc(db, SHOOTOUT_COL, stableId), session, { merge: true });
+    const docId = `${startTime.toMillis()}_${endTime.toMillis()}`;
+    await setDoc(doc(db, SHOOTOUT_COL, docId), session, { merge: true });
 
-    setIsRunning(false);
     setStartTime(null);
     setElapsed(0);
+    setIsRunning(false);
     setTrips(0);
     setPassengers(0);
     localStorage.removeItem(STORAGE_CLOCK);
     lastActionRef.current = null;
-  }, [startTime, trips, passengers]);
+  };
 
   const handleEnd = () => setConfirmEndOpen(true);
   const handleConfirmEnd = () => {
@@ -193,60 +174,58 @@ export default function ShootoutTab() {
   };
   const handleCancelEnd = () => setConfirmEndOpen(false);
 
-  const changeTrips = useCallback((delta) => {
+  const changeTrips = (delta) => {
     if (!isRunning) return;
-    setTrips(t => {
+    setTrips((t) => {
       const next = Math.max(0, t + delta);
       persistClock({ trips: next });
       lastActionRef.current = { type: "trip", delta };
       return next;
     });
-  }, [isRunning, persistClock]);
+  };
 
-  const changePassengers = useCallback((delta) => {
+  const changePassengers = (delta) => {
     if (!isRunning) return;
-    setPassengers(p => {
+    setPassengers((p) => {
       const next = Math.max(0, p + delta);
       persistClock({ passengers: next });
       lastActionRef.current = { type: "pax", delta };
       return next;
     });
-  }, [isRunning, persistClock]);
+  };
 
-  const undoLast = useCallback(() => {
+  const undoLast = () => {
     const last = lastActionRef.current;
-    if (!last || !isRunning) return;
+    if (!isRunning || !last) return;
     if (last.type === "trip") changeTrips(-last.delta);
     if (last.type === "pax") changePassengers(-last.delta);
     lastActionRef.current = null;
-  }, [isRunning, changeTrips, changePassengers]);
+  };
 
-  const resetCurrent = useCallback(() => {
+  const resetCurrent = () => {
     if (!isRunning) return;
     setTrips(0);
     setPassengers(0);
     persistClock({ trips: 0, passengers: 0 });
     lastActionRef.current = null;
-  }, [isRunning, persistClock]);
-  // ---- Format Time
+  };
+
   const formatElapsed = useCallback((s) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;
     return `${mins}m ${secs < 10 ? "0" : ""}${secs}s`;
   }, []);
-
-  // ---- Grid Columns
   const historyCols = useMemo(() => [
     {
       field: "startTime",
-      headerName: "Start",
+      headerName: "Start Time",
       width: 160,
       valueFormatter: ({ value }) => {
-  const date = value?.toDate?.() || value;
-  const parsed = dayjs(date);
-  return parsed.isValid() ? parsed.format("MM/DD HH:mm") : "—";
-},
-  },
+        const date = value?.toDate?.() || value;
+        const parsed = dayjs(date);
+        return parsed.isValid() ? parsed.format("MM/DD HH:mm") : "—";
+      },
+    },
     {
       field: "duration",
       headerName: "Duration",
@@ -308,7 +287,7 @@ export default function ShootoutTab() {
             <Fab
               color="success"
               onClick={handleStart}
-              sx={{ mb: 2, "&:active": { transform: "scale(0.96)" } }}
+              sx={{ mb: 2 }}
               centerRipple
               aria-label="Start session"
             >
@@ -328,10 +307,10 @@ export default function ShootoutTab() {
               <Stack direction="row" spacing={1} alignItems="center">
                 <DirectionsCarIcon />
                 <Typography>Trips: {trips}</Typography>
-                <IconButton color="primary" onClick={() => changeTrips(1)} size="small" aria-label="Add trip">
+                <IconButton color="primary" onClick={() => changeTrips(1)} size="small">
                   <AddIcon />
                 </IconButton>
-                <IconButton color="error" onClick={() => changeTrips(-1)} disabled={trips === 0} size="small" aria-label="Remove trip">
+                <IconButton color="error" onClick={() => changeTrips(-1)} disabled={trips === 0} size="small">
                   <RemoveIcon />
                 </IconButton>
               </Stack>
@@ -341,18 +320,18 @@ export default function ShootoutTab() {
                 <Typography>Passengers: {passengers}</Typography>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                   {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <Button key={n} variant="outlined" size="small" onClick={() => changePassengers(n)} aria-label={`Add ${n} passengers`}>
+                    <Button key={n} variant="outlined" size="small" onClick={() => changePassengers(n)}>
                       +{n}
                     </Button>
                   ))}
                 </Box>
-                <IconButton color="error" onClick={() => changePassengers(-1)} disabled={passengers === 0} size="small" aria-label="Remove passenger">
+                <IconButton color="error" onClick={() => changePassengers(-1)} disabled={passengers === 0} size="small">
                   <RemoveIcon />
                 </IconButton>
               </Stack>
 
               <Stack direction="row" spacing={1}>
-                <Button onClick={undoLast} startIcon={<UndoIcon />} disabled={!lastActionRef.current} variant="text">
+                <Button onClick={undoLast} startIcon={<UndoIcon />} disabled={!lastActionRef.current}>
                   Undo
                 </Button>
                 <Button onClick={resetCurrent} startIcon={<RestartAltIcon />} disabled={!isRunning || (trips === 0 && passengers === 0)}>
@@ -397,12 +376,14 @@ export default function ShootoutTab() {
         <DialogTitle>End Session?</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
-            This will save the session to history and reset the live counters.
+            This will save the session to Firestore and reset the live counter.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelEnd}>Cancel</Button>
-          <Button onClick={handleConfirmEnd} color="error" variant="contained">End & Save</Button>
+          <Button onClick={handleConfirmEnd} color="error" variant="contained">
+            End & Save
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
