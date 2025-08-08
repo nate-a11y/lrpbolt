@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // functions/index.js
 
-import functions from "firebase-functions";
+import * as functions from "firebase-functions";
 import admin from "firebase-admin";
 import cors from "cors";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
