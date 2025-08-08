@@ -38,25 +38,18 @@ function safeParse(json, fallback = {}) {
 
 function normalizeSession(entry) {
   const { startTime, endTime } = entry;
-
   let duration = 0;
-
   try {
     const start = startTime?.toMillis?.() || new Date(startTime).getTime();
     const end = endTime?.toMillis?.() || new Date(endTime).getTime();
-
     if (!isNaN(start) && !isNaN(end)) {
-      duration = end - start;
+      duration = Math.max(0, end - start);
     }
   } catch (err) {
-    console.warn("Failed to normalize session:", err); // ✅ fix here
+    console.warn("Failed to normalize session:", err);
     duration = 0;
   }
-
-  return {
-    ...entry,
-    duration,
-  };
+  return { ...entry, duration };
 }
 
 export default function ShootoutTab() {
@@ -85,7 +78,7 @@ export default function ShootoutTab() {
         setIsRunning(true);
         setTrips(stored.trips || 0);
         setPassengers(stored.passengers || 0);
-      } catch {
+      } catch (err) {
         console.warn("Corrupted startTime in localStorage. Resetting clock.");
         localStorage.removeItem(STORAGE_CLOCK);
       }
@@ -99,7 +92,9 @@ export default function ShootoutTab() {
       if (isRunning && startTime) {
         try {
           setElapsed(Math.floor((Date.now() - startTime.toMillis()) / 1000));
-        } catch {}
+        } catch (err) {
+          console.warn("Tick failed:", err);
+        }
       }
     };
     const onVis = () => {
@@ -147,7 +142,10 @@ export default function ShootoutTab() {
   };
 
   const finalizeSession = async () => {
-    if (!startTime) return;
+    if (!startTime) {
+      console.warn("No startTime set. Cannot finalize session.");
+      return;
+    }
     const auth = getAuth();
     const user = auth.currentUser;
     const endTime = Timestamp.now();
@@ -224,6 +222,7 @@ export default function ShootoutTab() {
     const secs = s % 60;
     return `${mins}m ${secs < 10 ? "0" : ""}${secs}s`;
   }, []);
+
   const historyCols = useMemo(() => [
     {
       field: "startTime",
