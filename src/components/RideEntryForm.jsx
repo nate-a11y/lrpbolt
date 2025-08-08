@@ -638,7 +638,7 @@ return (
     </Grid>
   </Box>
 )}
-
+</Paper>
 
         {/* -------------------- MULTI RIDE UPLOAD TAB -------------------- */}
 {rideTab === 1 && (
