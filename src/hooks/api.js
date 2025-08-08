@@ -1,6 +1,7 @@
 // hooks/api.js
 import {
   collection,
+  onSnapshot,
   doc,
   addDoc,
   updateDoc,
@@ -36,32 +37,33 @@ export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
  * -----------------------------
  */
 export async function getUserAccess(email) {
-  if (!email) return null;
+  const lcEmail = (email || "").toLowerCase();
+  if (!lcEmail) return null;
   // Initialize caches on first use
   if (!getUserAccess.cache) getUserAccess.cache = new Map();
   if (!getUserAccess.pending) getUserAccess.pending = new Map();
 
   // Serve from cache if available
-  if (getUserAccess.cache.has(email)) return getUserAccess.cache.get(email);
+  if (getUserAccess.cache.has(lcEmail)) return getUserAccess.cache.get(lcEmail);
   // Reuse pending request to avoid duplicate network calls
-  if (getUserAccess.pending.has(email))
-    return await getUserAccess.pending.get(email);
+  if (getUserAccess.pending.has(lcEmail))
+    return await getUserAccess.pending.get(lcEmail);
 
   const q = query(
     collection(db, COLLECTIONS.USER_ACCESS),
-    where("email", "==", email),
+    where("email", "==", lcEmail),
   );
   const fetchPromise = getDocs(q).then((snapshot) => {
     const record =
       snapshot.docs.length > 0
         ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() }
         : null;
-    getUserAccess.cache.set(email, record);
-    getUserAccess.pending.delete(email);
+    getUserAccess.cache.set(lcEmail, record);
+    getUserAccess.pending.delete(lcEmail);
     return record;
   });
 
-  getUserAccess.pending.set(email, fetchPromise);
+  getUserAccess.pending.set(lcEmail, fetchPromise);
   return await fetchPromise;
 }
 
@@ -77,25 +79,30 @@ export async function fetchUserAccess(activeOnly = false) {
 }
 
 export function subscribeUserAccess(
-  callback,
+  onRows,
   { activeOnly = false, roles = ["admin", "driver"], max = 100 } = {},
 ) {
-  const constraints = [orderBy("name", "asc"), limit(max)];
-  if (activeOnly) constraints.push(where("active", "==", true));
-  if (roles) constraints.push(where("access", "in", roles));
-  const q = query(collection(db, COLLECTIONS.USER_ACCESS), ...constraints);
-    const unsub = subscribeFirestore(
-      COLLECTIONS.USER_ACCESS,
-      q,
-      (snapshot) => {
-    const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    callback(data);
-  },
-    );
-    return () => {
-      unsub();
-    };
-  }
+  const coll = collection(db, "userAccess");
+  const clauses = [];
+  if (activeOnly) clauses.push(where("active", "==", true));
+  if (roles?.length)
+    clauses.push(where("access", "in", roles.map((r) => r.toLowerCase())));
+  const q = query(coll, ...clauses, limit(Math.min(max || 100, 500)));
+
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id, // lowercase email
+        name: data.name || "",
+        email: data.email || d.id,
+        access: (data.access || "").toLowerCase(),
+        active: data.active !== false,
+      };
+    });
+    onRows(rows);
+  });
+}
 
 /**
  * -----------------------------

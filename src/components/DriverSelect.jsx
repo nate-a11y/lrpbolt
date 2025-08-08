@@ -2,7 +2,7 @@
 // src/components/DriverSelect.jsx
 import React, { useEffect, useState } from "react";
 import { Autocomplete, TextField, CircularProgress } from "@mui/material";
-import { getDrivers } from "../utils/firestoreService";
+import { subscribeUserAccess } from "../hooks/api";
 
 /**
  * Reusable driver selection component with async loading and search.
@@ -15,16 +15,13 @@ export default function DriverSelect({ value, onChange, label = "Select Driver",
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let active = true;
     setLoading(true);
-    getDrivers()
-      .then((list) => {
-        if (active) setOptions(list);
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+    const unsubscribe = subscribeUserAccess((rows) => {
+      const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+      setOptions(sorted);
+      setLoading(false);
+    }, { activeOnly: true, roles: ["admin", "driver"] });
+    return () => unsubscribe();
   }, []);
 
   return (
