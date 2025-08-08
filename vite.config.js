@@ -12,7 +12,25 @@ export default defineConfig({
       injectRegister: null,
       workbox: {
         cleanupOutdatedCaches: true,
+      },
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,webmanifest,json}"],
+        manifestTransforms: [
+          async (entries) => {
+            const seen = new Set();
+            const manifest = entries.filter((entry) => {
+              if (!entry.url || !entry.revision) return false;
+              entry.url = entry.url.split("?")[0];
+              if (entry.url.endsWith("manifest.webmanifest")) {
+                entry.url = "manifest.webmanifest";
+              }
+              if (seen.has(entry.url)) return false;
+              seen.add(entry.url);
+              return true;
+            });
+            return { manifest };
+          },
+        ],
       },
       strategy: "injectManifest",
       srcDir: ".", // service worker lives at project root
