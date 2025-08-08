@@ -137,8 +137,15 @@ jobs:
       - name: Install Cloud Functions dependencies
         run: |
           if [ -d "functions" ]; then
-            cd functions && npm ci
-            cd ..
+          cd functions
+              if [ -f package-lock.json ]; then
+            echo "🔹 Installing with npm ci (lockfile found)..."
+          npm ci --no-audit --no-fund
+          else
+          echo "🔹 No lockfile found — using npm install..."
+          npm install --no-audit --no-fund
+          fi
+          cd ..
           fi
 
       - name: Deploy Firebase Cloud Functions
