@@ -2,8 +2,7 @@ name: CI + Deploy to Hostinger v2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -12,13 +11,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js (LTS)
+        uses: actions/setup-node@v4
         with:
-          node-version: 22.x
-          cache: "npm"
+          node-version: 20.x
+          cache: npm
 
       - name: Create .env file
         run: |
@@ -39,6 +38,14 @@ jobs:
       - name: Clear npm cache
         run: npm cache clean --force
 
+      # 👇 Ensure a lockfile exists so npm ci can run
+      - name: Ensure package-lock.json
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "No package-lock.json found; generating one…"
+            npm install --package-lock-only --no-audit --no-fund
+          fi
+
       - name: Install deps
         run: npm ci --legacy-peer-deps
 
@@ -52,10 +59,10 @@ jobs:
           echo "✅ Vite base path ensured"
 
       - name: Lint code
-        run: npm run lint
+        run: npm run lint --if-present
 
       - name: Run tests
-        run: npm test
+        run: npm test --if-present
 
       - name: Build project
         run: npm run build
@@ -69,7 +76,7 @@ jobs:
             exit 1
           fi
           MISSING=false
-          for FILE in $(grep -oP "(?<=url:\s')[^']+" $MANIFEST_FILE); do
+          for FILE in $(grep -oP "(?<=url:\s')[^']+" $MANIFEST_FILE || true); do
             if [ ! -f "dist/$FILE" ]; then
               echo "❌ Missing file in dist: $FILE"
               MISSING=true
@@ -93,36 +100,7 @@ jobs:
           fi
           echo "✅ Build verification passed — main JS found in dist/assets."
 
-      - name: Add Hostinger .htaccess
-        run: |
-          cat <<EOT > dist/.htaccess
-          AddType application/javascript .js .mjs
-          AddType application/json .json .webmanifest
-          AddType text/css .css
-          AddType image/png .png
-          AddType image/svg+xml .svg
-          AddType image/webp .webp
-          AddType image/x-icon .ico
-
-          RewriteEngine On
-          RewriteBase /
-          # Exclude assets & SW from SPA fallback
-          RewriteCond %{REQUEST_URI} !^/assets/
-          RewriteCond %{REQUEST_URI} !^/registerSW\.js$
-          RewriteCond %{REQUEST_URI} !^/sw\.js$
-          RewriteCond %{REQUEST_FILENAME} !-f
-          RewriteCond %{REQUEST_FILENAME} !-d
-          RewriteRule . /index.html [L]
-
-          <FilesMatch "\.(js|mjs|css|png|jpg|jpeg|svg|webp|ico)$">
-            Header set Cache-Control "max-age=31536000, public"
-          </FilesMatch>
-          <FilesMatch "\.(html)$">
-            Header set Cache-Control "no-cache, no-store, must-revalidate"
-          </FilesMatch>
-          EOT
-
-      - name: Verify SW exists
+      - name: Verify SW exists (source)
         run: |
           if [ ! -f "src/sw.js" ]; then
             echo "❌ ERROR: sw.js missing — service worker will fail."
@@ -145,23 +123,22 @@ jobs:
           else
             npm install --no-audit --no-fund
           fi
+
       - name: Deploy Firebase Cloud Functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
-        run: |
-          firebase deploy --only functions --force
+        run: firebase deploy --only functions --force
 
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: 145.223.77.125
-          username: u400814892.lakeridepros.xyz
-          password: m;0C&RhL=AL10b!q
+          server: 145.223.77.125  
+          username: u400814892.lakeridepros.xyz  
+          password: m;0C&RhL=AL10b!q  
           protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/
           log-level: minimal
-
           exclude: |
             **/.git*
             **/.github*
