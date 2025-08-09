@@ -6,7 +6,17 @@ import cors from "cors";
 import { admin, db } from "./firebase.js";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "./constants.js";
-const corsHandler = cors({ origin: "https://lakeridepros.xyz" });
+
+const dropCors = cors({
+  origin: [
+    "https://lakeridepros.xyz",
+    "http://localhost:5173",
+    "http://localhost:3000",
+  ],
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+});
 
 async function getUser(context) {
   if (!context.auth) {
@@ -159,20 +169,39 @@ export const dropDailyRides = functions.pubsub
     return null;
   });
 
-export const dropDailyRidesNow = functions.https.onRequest((req, res) => {
-  corsHandler(req, res, async () => {
-    res.set("Access-Control-Allow-Origin", "https://lakeridepros.xyz");
-    res.set("Vary", "Origin");
+export const dropDailyRidesNow = functions
+  .region("us-central1")
+  .https.onRequest((req, res) => {
     if (req.method === "OPTIONS") {
-      res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-      res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-      res.status(204).send("");
-      return;
+      res.set({
+        "Access-Control-Allow-Origin": req.headers.origin || "https://lakeridepros.xyz",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Max-Age": "3600",
+      });
+      return res.status(204).send("");
     }
-    const result = await runDailyDrop();
-    res.status(200).json({ success: true, ...result });
+
+    return dropCors(req, res, async () => {
+      try {
+        const result = await runDailyDrop();
+        res.set(
+          "Access-Control-Allow-Origin",
+          req.headers.origin || "https://lakeridepros.xyz",
+        );
+        return res.status(200).json({ ok: true, ...result });
+      } catch (err) {
+        console.error("[dropDailyRidesNow] error:", err);
+        res.set(
+          "Access-Control-Allow-Origin",
+          req.headers.origin || "https://lakeridepros.xyz",
+        );
+        return res
+          .status(500)
+          .json({ ok: false, error: String((err && err.message) || err) });
+      }
+    });
   });
-});
 
 export const getTicketById = functions.https.onCall(async (data, context) => {
   await getUser(context);

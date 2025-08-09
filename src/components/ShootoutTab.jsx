@@ -39,7 +39,8 @@ const IMG_SHOOTOUT = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQV
 function safeParse(json, fallback = {}) {
   try {
     return JSON.parse(json);
-  } catch {
+  } catch (e) {
+    // return fallback on parse error
     return fallback;
   }
 }

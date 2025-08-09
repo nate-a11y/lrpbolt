@@ -9,7 +9,6 @@ import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
-import "./registerSW.js";
 import { logError } from "./utils/logError";
 
 window.addEventListener("unhandledrejection", (event) => {
@@ -41,3 +40,20 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </React.StrictMode>
   </BrowserRouter>,
 );
+
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then(async (reg) => {
+        try {
+          await reg.update();
+        } catch (e) {
+          // ignore
+        }
+      })
+      .catch((err) => {
+        console.error("[SW] register failed:", err);
+      });
+  });
+}

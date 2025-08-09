@@ -1,48 +1,53 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
+import { registerRoute } from "workbox-routing";
+import { StaleWhileRevalidate } from "workbox-strategies";
 import { clientsClaim } from "workbox-core";
-import { registerRoute, setCatchHandler } from "workbox-routing";
-import { NetworkOnly, StaleWhileRevalidate } from "workbox-strategies";
 
 self.skipWaiting();
 clientsClaim();
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(cleanupOutdatedCaches());
-});
-
-const precacheManifest = (self.__WB_MANIFEST || []).filter((entry, index, arr) => {
-  const url = entry?.url?.split("?")[0];
-  const valid = entry?.url && entry?.revision && url !== "/login" && !url.includes("/__/auth/handler");
-  if (!valid) {
-    console.warn("[SW] Skipping precache entry", entry);
+const seen = new Set();
+const normalized = [];
+for (const e of self.__WB_MANIFEST || []) {
+  const url = (typeof e === "string" ? e : e.url).split("?")[0];
+  if (!seen.has(url)) {
+    seen.add(url);
+    normalized.push(
+      typeof e === "string" ? { url, revision: null } : { ...e, url },
+    );
   }
-  return valid && index === arr.findIndex((e) => e.url.split("?")[0] === url);
-});
+}
 
-precacheAndRoute(precacheManifest, {
-  plugins: [
-    {
-      fetchDidFail: async ({ request }) => {
-        console.error("[SW] Precaching failed for", request.url);
-      },
-    },
-  ],
-});
+cleanupOutdatedCaches();
+precacheAndRoute(normalized);
 
-setCatchHandler(({ event }) => {
-  console.error("[SW] Fetch failed for", event.request.url);
-  return Response.error();
-});
-
-// Avoid caching login page and Firebase auth handler so users always see fresh auth UI
 registerRoute(
-  ({ url }) =>
-    url.pathname.includes('/__/auth/handler') || url.pathname === '/login',
-  new NetworkOnly(),
-);
-
-// Runtime caching for API calls
-registerRoute(
-  ({ url }) => url.pathname.startsWith('/api'),
+  ({ request, url }) =>
+    url.origin === self.location.origin && request.destination !== "document",
   new StaleWhileRevalidate(),
 );
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        await Promise.all(
+          normalized.map(async ({ url }) => {
+            try {
+              const r = await fetch(url, { cache: "no-store" });
+              if (!r.ok) console.error("[SW] Precache failed:", url, r.status);
+            } catch (err) {
+              console.error(
+                "[SW] Precache fetch error:",
+                url,
+                err && err.message,
+              );
+            }
+          }),
+        );
+      } catch (e) {
+        console.error("[SW] Install error:", e && e.message);
+      }
+    })(),
+  );
+});
