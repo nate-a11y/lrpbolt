@@ -13,6 +13,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Ensure package-lock.json
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "⚠️ No package-lock.json found — generating one..."
+            npm install --package-lock-only --no-audit --no-fund
+          fi
+          
       - name: Setup Node.js (LTS)
         uses: actions/setup-node@v4
         with:
