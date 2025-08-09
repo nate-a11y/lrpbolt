@@ -20,7 +20,6 @@ import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
 import { callFunction, apiFetch } from "../api";
-import { dropDailyRidesNow } from "../services/api";
 import { COLLECTIONS } from "../constants";
 
 // Helper to strip undefined values before sending to Firestore
@@ -446,21 +445,6 @@ export async function logTime(payload) {
   }
 }
 
-
-/**
- * -----------------------------
- * DAILY RIDE DROP
- * -----------------------------
- */
-export async function refreshDailyRides() {
-  try {
-    const data = await dropDailyRidesNow({ refresh: true });
-    return { success: true, ...data };
-  } catch (err) {
-    logError(err, "Daily drop failed");
-    return { success: false, error: err?.message || JSON.stringify(err) };
-  }
-}
 
 /**
  * -----------------------------

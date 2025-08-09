@@ -25,7 +25,6 @@ import {
   Fade,
   InputAdornment,
 } from "@mui/material";
-import SyncIcon from "@mui/icons-material/Sync";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
@@ -47,7 +46,6 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE, COLLECTIONS } from "../constants";
 import { Timestamp, collection, addDoc } from "firebase/firestore";
-import { dropDailyRidesNow } from "../services/api";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -125,8 +123,6 @@ export default function RideEntryForm() {
   const [dataTab, setDataTab] = useState(() => Number(localStorage.getItem("dataTab") || 0));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [syncTime, setSyncTime] = useState("");
   const [shakeKey, setShakeKey] = useState(0);
 
   const isMobile = useMediaQuery("(max-width:600px)");
@@ -137,6 +133,12 @@ export default function RideEntryForm() {
   const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
 
   // Cloud Function (daily drop)
+  const [dropLoading, setDropLoading] = useState(false);
+  const [dropSnack, setDropSnack] = useState({ open: false, message: "", severity: "success" });
+  const dropAbortRef = useRef(null);
+  const DROP_FN_URL =
+    import.meta.env.VITE_DROP_DAILY_URL ||
+    "https://us-central1-<your-project-id>.cloudfunctions.net/dropDailyRidesNow";
 
   // Dropzone
   const DROPZONE_MIN_H = 168;
@@ -363,29 +365,63 @@ export default function RideEntryForm() {
     [toRideDoc]
   );
 
-  const handleRefreshRides = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      console.log("[UI] Refresh via CF…");
-      await dropDailyRidesNow({ refresh: true });
-      await fetchRides();
-      setSyncTime(dayjs().tz(TIMEZONE).format("h:mm A"));
-      setToast({
-        open: true,
-        message: "Daily rides updated",
-        severity: "success",
-      });
-    } catch (err) {
-      console.error("[UI] refresh failed:", err);
-      setToast({
-        open: true,
-        message: "Failed to update daily rides",
-        severity: "error",
-      });
-    } finally {
-      setRefreshing(false);
+  const runDropDailyRidesNow = useCallback(async () => {
+    setDropLoading(true);
+    const controller = new AbortController();
+    dropAbortRef.current = controller;
+    const headers = { "Content-Type": "application/json" };
+    const adminToken = import.meta.env.VITE_LRP_ADMIN_TOKEN || "";
+    if (adminToken) headers["x-lrp-admin-token"] = adminToken;
+    const backoff = [300, 800];
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(DROP_FN_URL, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ dryRun: false, limit: 1500 }),
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          lastErr = new Error(text || res.statusText);
+          if (res.status >= 500 && attempt < 2) {
+            await new Promise((r) => setTimeout(r, backoff[attempt]));
+            continue;
+          }
+          throw lastErr;
+        }
+        const data = await res.json();
+        setDropSnack({
+          open: true,
+          severity: "success",
+          message: `Moved ${data.moved} (skipped ${data.skipped}) in ${data.durationMs}ms`,
+        });
+        await fetchRides();
+        setDropLoading(false);
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.error("[DropDailyRidesNow]", err);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, backoff[attempt]));
+          continue;
+        }
+      }
     }
-  }, [fetchRides]);
+    setDropSnack({
+      open: true,
+      severity: "error",
+      message: `Failed: ${lastErr?.message || lastErr}`,
+    });
+    setDropLoading(false);
+  }, [DROP_FN_URL, fetchRides]);
+
+  useEffect(() => {
+    return () => {
+      dropAbortRef.current?.abort();
+    };
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     setSubmitAttempted(true);
@@ -837,31 +873,24 @@ return (
 
       {/* Daily Rides Update Section */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center" }}>
-            <SyncIcon fontSize="small" sx={{ mr: 1 }} />
-            Synced: {syncTime}
-          </Typography>
-          <Tooltip title="Runs Firebase function to refresh daily rides">
-            <span>
-              <Button
-                onClick={handleRefreshRides}
-                disabled={refreshing}
-                variant="outlined"
-                color="secondary"
-                startIcon={
-                  <SyncIcon
-                    sx={{
-                      animation: refreshing ? "spin 1s linear infinite" : "none",
-                    }}
-                  />
-                }
-              >
-                Update Daily Rides
-              </Button>
-            </span>
-          </Tooltip>
-        </Box>
+        <Tooltip title="Move all 'queued' rides into Live Rides (same logic as the 6pm job)">
+          <span>
+            <Button
+              onClick={runDropDailyRidesNow}
+              disabled={dropLoading}
+              variant="contained"
+              startIcon={
+                dropLoading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <RocketLaunchIcon />
+                )
+              }
+            >
+              {dropLoading ? "Moving…" : "Move Queue → Live"}
+            </Button>
+          </span>
+        </Tooltip>
       </Paper>
 
       {/* Live / Queue / Claimed Tabs */}
@@ -979,6 +1008,17 @@ return (
           </Box>
         </DialogContent>
       </Dialog>
+
+      {/* Drop Daily Snackbar */}
+      <Snackbar
+        open={dropSnack.open}
+        autoHideDuration={4000}
+        onClose={() => setDropSnack({ ...dropSnack, open: false })}
+      >
+        <Alert severity={dropSnack.severity} variant="filled">
+          {dropSnack.message}
+        </Alert>
+      </Snackbar>
 
       {/* Snackbar */}
       <Snackbar
