@@ -3,7 +3,8 @@
 
 import * as functions from "firebase-functions";
 import cors from "cors";
-import { admin, db } from "./firebase.js";
+import { FieldValue } from "firebase-admin/firestore";
+import { db } from "./src/admin.js";
 import { normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "./constants.js";
 
@@ -100,10 +101,10 @@ export const claimRide = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("failed-precondition", "Ride already claimed");
       }
 
-      tx.update(ref, {
-        claimedBy: driverName || user.email,
-        claimedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+        tx.update(ref, {
+          claimedBy: driverName || user.email,
+          claimedAt: FieldValue.serverTimestamp(),
+        });
     });
 
     return { success: true };
@@ -185,7 +186,7 @@ export const addTicket = functions.https.onCall(async (data, context) => {
   if (!ticket.ticketId) {
     return { success: false, message: "ticketId required" };
   }
-  ticket.createdAt = admin.firestore.FieldValue.serverTimestamp();
+  ticket.createdAt = FieldValue.serverTimestamp();
   await db
     .collection(COLLECTIONS.TICKETS)
     .doc(ticket.ticketId.toString())
@@ -236,11 +237,11 @@ export const updateTicketScanStatus = functions.https.onCall(
     const name = driverName || context.auth.token.email || "Unknown";
     if (scanType === "outbound") {
       update.scannedOutbound = true;
-      update.scannedOutboundAt = admin.firestore.FieldValue.serverTimestamp();
+        update.scannedOutboundAt = FieldValue.serverTimestamp();
       update.scannedOutboundBy = name;
     } else if (scanType === "return") {
       update.scannedReturn = true;
-      update.scannedReturnAt = admin.firestore.FieldValue.serverTimestamp();
+        update.scannedReturnAt = FieldValue.serverTimestamp();
       update.scannedReturnBy = name;
     } else {
       return { success: false, message: "Invalid scanType" };
@@ -289,7 +290,7 @@ export const logTimeEntry = functions.https.onCall(async (data, context) => {
     startTime,
     endTime,
     duration,
-    loggedAt: admin.firestore.FieldValue.serverTimestamp(),
+    loggedAt: FieldValue.serverTimestamp(),
   });
   return { success: true };
 });
