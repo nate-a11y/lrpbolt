@@ -7,7 +7,7 @@ import { admin, db } from "./firebase.js";
 import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "./constants.js";
 
-const dropCors = cors({
+const corsHandler = cors({
   origin: [
     "https://lakeridepros.xyz",
     "http://localhost:5173",
@@ -182,7 +182,7 @@ export const dropDailyRidesNow = functions
       return res.status(204).send("");
     }
 
-    return dropCors(req, res, async () => {
+    return corsHandler(req, res, async () => {
       try {
         const result = await runDailyDrop();
         res.set(

@@ -36,8 +36,11 @@ jobs:
           echo "VITE_APP_VERSION=$VERSION" >> .env
           echo "📦 Version set to $VERSION"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Clear npm cache
+        run: npm cache clean --force
+
+      - name: Install deps
+        run: npm ci --legacy-peer-deps
 
       - name: Ensure Vite base path
         run: |
@@ -60,9 +63,9 @@ jobs:
       - name: Validate precache manifest
         run: |
           echo "🔍 Checking precache manifest..."
-          MANIFEST_FILE="dist/service-worker.js"
+          MANIFEST_FILE="dist/sw.js"
           if [ ! -f "$MANIFEST_FILE" ]; then
-            echo "❌ ERROR: service-worker.js missing."
+            echo "❌ ERROR: sw.js missing."
             exit 1
           fi
           MISSING=false
@@ -106,7 +109,7 @@ jobs:
           # Exclude assets & SW from SPA fallback
           RewriteCond %{REQUEST_URI} !^/assets/
           RewriteCond %{REQUEST_URI} !^/registerSW\.js$
-          RewriteCond %{REQUEST_URI} !^/service-worker\.js$
+          RewriteCond %{REQUEST_URI} !^/sw\.js$
           RewriteCond %{REQUEST_FILENAME} !-f
           RewriteCond %{REQUEST_FILENAME} !-d
           RewriteRule . /index.html [L]
@@ -121,8 +124,8 @@ jobs:
 
       - name: Verify SW exists
         run: |
-          if [ ! -f "src/registerSW.js" ]; then
-            echo "❌ ERROR: registerSW.js missing — service worker will fail."
+          if [ ! -f "src/sw.js" ]; then
+            echo "❌ ERROR: sw.js missing — service worker will fail."
             exit 1
           fi
           echo "✅ Service worker found."

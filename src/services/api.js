@@ -24,3 +24,5 @@ export async function dropDailyRidesNow(payload = {}) {
   });
   return res.data;
 }
+
+export default API;
