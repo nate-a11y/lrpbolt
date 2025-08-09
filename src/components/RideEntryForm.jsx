@@ -367,16 +367,25 @@ export default function RideEntryForm() {
     setRefreshing(true);
     try {
       console.log("[UI] Refresh via CF…");
-      const r = await dropDailyRidesNow({ refresh: true });
-      console.log("[UI] result:", r);
-      // TODO: snackbar success + re-fetch tables
+      await dropDailyRidesNow({ refresh: true });
+      await fetchRides();
+      setSyncTime(dayjs().tz(TIMEZONE).format("h:mm A"));
+      setToast({
+        open: true,
+        message: "Daily rides updated",
+        severity: "success",
+      });
     } catch (err) {
       console.error("[UI] refresh failed:", err);
-      // TODO: snackbar error
+      setToast({
+        open: true,
+        message: "Failed to update daily rides",
+        severity: "error",
+      });
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchRides]);
 
   const handleSubmit = useCallback(async () => {
     setSubmitAttempted(true);
