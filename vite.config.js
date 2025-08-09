@@ -33,8 +33,8 @@ export default defineConfig({
         ],
       },
       strategy: "injectManifest",
-      srcDir: ".", // service worker lives at project root
-      filename: "service-worker.js",
+      srcDir: "src",
+      filename: "sw.js",
       devOptions: {
         enabled: true,
       },
@@ -61,7 +61,7 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'service-worker.js') return '[name].[ext]';
+          if (assetInfo.name === 'sw.js') return '[name].[ext]';
           return 'assets/[name]-[hash][extname]';
         },
       },

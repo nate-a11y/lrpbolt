@@ -363,30 +363,20 @@ export default function RideEntryForm() {
     [toRideDoc]
   );
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefreshRides = useCallback(async () => {
     setRefreshing(true);
     try {
-      console.log("[UI] Refreshing rides via Cloud Function…");
-      const data = await dropDailyRidesNow({ refresh: true });
-      console.log("[UI] Refresh result:", data);
-      const msg =
-        data && typeof data.imported === "number"
-          ? `✅ Daily drop executed — added ${data.imported} ride(s)`
-          : "✅ Daily drop executed";
-      setToast({ open: true, message: msg, severity: "success" });
-      await fetchRides();
-    } catch (error) {
-      console.error("[UI] Refresh failed:", error);
-      logError(error, "RideEntryForm:refresh");
-      setToast({
-        open: true,
-        message: `❌ Refresh failed: ${error?.message || JSON.stringify(error)}`,
-        severity: "error",
-      });
+      console.log("[UI] Refresh via CF…");
+      const r = await dropDailyRidesNow({ refresh: true });
+      console.log("[UI] result:", r);
+      // TODO: snackbar success + re-fetch tables
+    } catch (err) {
+      console.error("[UI] refresh failed:", err);
+      // TODO: snackbar error
     } finally {
       setRefreshing(false);
     }
-  }, [fetchRides]);
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     setSubmitAttempted(true);
@@ -846,7 +836,7 @@ return (
           <Tooltip title="Runs Firebase function to refresh daily rides">
             <span>
               <Button
-                onClick={handleRefresh}
+                onClick={handleRefreshRides}
                 disabled={refreshing}
                 variant="outlined"
                 color="secondary"

@@ -12,7 +12,9 @@
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\"",
     "test": "vitest run",
     "postinstall": "patch-package",
-    "check:react": "node -e \"const p=require('./package.json');console.log('react:',p.dependencies.react,'react-dom:',p.dependencies['react-dom'])\" && npm ls react react-dom || true"
+    "prebuild": "npm run dedupe",
+    "dedupe": "npm dedupe || true",
+    "check:react": "npm ls react react-dom || true"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -40,6 +42,7 @@
     "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.6.3",
     "uuid": "^11.1.0",
+    "axios": "^1.7.7",
     "workbox-core": "^7.3.0",
     "workbox-precaching": "^7.3.0",
     "workbox-routing": "^7.3.0",
