@@ -78,8 +78,8 @@ export default function DriverInfoTab() {
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(FLW_URL);
-    } catch {
-      // no-op; clipboard may be blocked
+    } catch (e) {
+      // clipboard may be blocked
     }
   };
 

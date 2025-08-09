@@ -47,7 +47,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE, COLLECTIONS } from "../constants";
 import { Timestamp, collection, addDoc } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { dropDailyRidesNow } from "../services/api";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -137,8 +137,6 @@ export default function RideEntryForm() {
   const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
 
   // Cloud Function (daily drop)
-  const functions = getFunctions();
-  const refreshDrop = httpsCallable(functions, "dropDailyRidesNow");
 
   // Dropzone
   const DROPZONE_MIN_H = 168;
@@ -368,7 +366,9 @@ export default function RideEntryForm() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const { data } = await refreshDrop({});
+      console.log("[UI] Refreshing rides via Cloud Function…");
+      const data = await dropDailyRidesNow({ refresh: true });
+      console.log("[UI] Refresh result:", data);
       const msg =
         data && typeof data.imported === "number"
           ? `✅ Daily drop executed — added ${data.imported} ride(s)`
@@ -376,6 +376,7 @@ export default function RideEntryForm() {
       setToast({ open: true, message: msg, severity: "success" });
       await fetchRides();
     } catch (error) {
+      console.error("[UI] Refresh failed:", error);
       logError(error, "RideEntryForm:refresh");
       setToast({
         open: true,
@@ -385,7 +386,7 @@ export default function RideEntryForm() {
     } finally {
       setRefreshing(false);
     }
-  }, [fetchRides, refreshDrop]);
+  }, [fetchRides]);
 
   const handleSubmit = useCallback(async () => {
     setSubmitAttempted(true);
