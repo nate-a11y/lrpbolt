@@ -4,7 +4,7 @@
 import * as functions from "firebase-functions";
 import cors from "cors";
 import { admin, db } from "./firebase.js";
-import { runDailyDrop, normalizeHeader, logClaimFailure } from "./utils.js";
+import { normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "./constants.js";
 
 const corsHandler = cors({
@@ -161,47 +161,6 @@ export const deleteRide = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-export const dropDailyRides = functions.pubsub
-  .schedule("0 18 * * *")
-  .timeZone("America/Chicago")
-  .onRun(async () => {
-    await runDailyDrop();
-    return null;
-  });
-
-export const dropDailyRidesNow = functions
-  .region("us-central1")
-  .https.onRequest((req, res) => {
-    if (req.method === "OPTIONS") {
-      res.set({
-        "Access-Control-Allow-Origin": req.headers.origin || "https://lakeridepros.xyz",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Max-Age": "3600",
-      });
-      return res.status(204).send("");
-    }
-
-    return corsHandler(req, res, async () => {
-      try {
-        const result = await runDailyDrop();
-        res.set(
-          "Access-Control-Allow-Origin",
-          req.headers.origin || "https://lakeridepros.xyz",
-        );
-        return res.status(200).json({ ok: true, ...result });
-      } catch (err) {
-        console.error("[dropDailyRidesNow] error:", err);
-        res.set(
-          "Access-Control-Allow-Origin",
-          req.headers.origin || "https://lakeridepros.xyz",
-        );
-        return res
-          .status(500)
-          .json({ ok: false, error: String((err && err.message) || err) });
-      }
-    });
-  });
 
 export const getTicketById = functions.https.onCall(async (data, context) => {
   await getUser(context);
@@ -334,4 +293,6 @@ export const logTimeEntry = functions.https.onCall(async (data, context) => {
   });
   return { success: true };
 });
+
+export { moveQueuedToLiveDaily, dropDailyRidesNow } from "./src/index.js";
 

@@ -94,3 +94,33 @@ This project is provided under a proprietary license; no use is permitted. See t
 These packages are pulled in by `workbox-build`, a transient dependency of
 `vite-plugin-pwa`. The warnings can be safely ignored until newer versions of
 `workbox-build` are released.
+
+## Move Queue → Live Function
+
+Trigger the Cloud Function manually with `curl`:
+
+```bash
+curl -X POST "$VITE_DROP_DAILY_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": true, "limit": 10}'
+```
+
+Expected response:
+
+```json
+{ "ok": true, "dryRun": true, "moved": 0, "skipped": 0, "durationMs": 0 }
+```
+
+### Deploying
+
+1. Enable required services:
+   ```bash
+   gcloud services enable cloudscheduler.googleapis.com pubsub.googleapis.com
+   ```
+2. Deploy functions:
+   ```bash
+   firebase deploy --only functions
+   ```
+3. Verify a scheduled trigger for 6:00 PM America/Chicago exists in Cloud Console.
+4. Configure `.env` with `VITE_DROP_DAILY_URL` (and optional `VITE_LRP_ADMIN_TOKEN`), rebuild and redeploy the web app.
+5. Use the “Move Queue → Live” button and confirm a success snackbar and no CORS errors.
