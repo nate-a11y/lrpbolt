@@ -1,6 +1,7 @@
 // functions/utils.js
 /* Proprietary and confidential. See LICENSE. */
-import { admin, db } from "./firebase.js";
+import { db } from "./src/admin.js";
+import { FieldValue } from "firebase-admin/firestore";
 import { TIMEZONE } from "./constants.js";
 
 export function formatDate(dateObject) {
@@ -28,7 +29,7 @@ export async function logClaimFailure(tripId, driverName, reason) {
     tripId,
     driverName,
     reason,
-    attemptedAt: admin.firestore.FieldValue.serverTimestamp(),
+    attemptedAt: FieldValue.serverTimestamp(),
   });
 }
 

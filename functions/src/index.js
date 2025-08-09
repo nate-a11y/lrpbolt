@@ -1,12 +1,9 @@
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
+import * as logger from "firebase-functions/logger";
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import * as logger from "firebase-functions/logger";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import cors from "cors";
-
-initializeApp();
-const db = getFirestore();
+import { db } from "./admin.js";
 
 const REGION = "us-central1";
 const QUEUE_COL = "rideQueue";
