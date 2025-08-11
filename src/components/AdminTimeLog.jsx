@@ -16,6 +16,7 @@ import {
   FormControlLabel,
   Alert,
   CircularProgress,
+  Snackbar,
   useMediaQuery,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -83,6 +84,7 @@ export default function AdminTimeLog() {
       ? JSON.parse(saved)
       : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
   });
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" });
 
   const { loading: roleLoading, isAdmin } = useRole();
   const { docs: logDocs, error: logsError, ready: logsReady } = useFirestoreSub(
@@ -149,6 +151,7 @@ export default function AdminTimeLog() {
   useEffect(() => {
     if (error) {
       logError(error, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
+      setSnackbar({ open: true, message: "Missing permissions to read some time logs.", severity: "error" });
     }
   }, [error]);
 
@@ -248,6 +251,7 @@ export default function AdminTimeLog() {
   );
 
   return (
+    <>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ px: { xs: 1, sm: 2 }, py: 3 }}>
         <ErrorBanner error={error} />
@@ -369,5 +373,15 @@ export default function AdminTimeLog() {
         )}
       </Box>
     </LocalizationProvider>
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={4000}
+      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+    >
+      <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+    </>
   );
 }

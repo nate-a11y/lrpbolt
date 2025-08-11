@@ -82,7 +82,7 @@ const isInLockoutWindow = () => {
   return hour >= 18 && hour < 20;
 };
 
-export default function App() {
+function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
@@ -462,3 +462,19 @@ export default function App() {
     </ThemeProvider>
   );
 }
+
+function AppRoot() {
+  return (
+    <ErrorBoundary FallbackComponent={({ error }) => (
+      <div style={{ padding: 16 }}>
+        <h3>Something went wrong</h3>
+        <pre style={{ whiteSpace: 'pre-wrap' }}>{String(error?.stack || error?.message)}</pre>
+      </div>
+    )}>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export default AppRoot;
+export { App };
