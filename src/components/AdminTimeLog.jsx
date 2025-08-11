@@ -37,6 +37,7 @@ import ErrorBanner from "./ErrorBanner";
 import { collection, query, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase";
 import { useRole, useFirestoreSub } from "@/hooks";
+import { useAuth } from "../context/AuthContext.js";
 
 dayjs.extend(isoWeek);
 
@@ -84,23 +85,30 @@ export default function AdminTimeLog() {
       ? JSON.parse(saved)
       : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
   });
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "error",
+  });
 
   const { loading: roleLoading, isAdmin } = useRole();
-  const { docs: logDocs, error: logsError, ready: logsReady } = useFirestoreSub(
-    () => {
-      if (roleLoading || !isAdmin) return null;
-      return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
-    },
-    [roleLoading, isAdmin],
-  );
-  const { docs: shootDocs, error: shootError, ready: shootReady } = useFirestoreSub(
-    () => {
-      if (roleLoading || !isAdmin) return null;
-      return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
-    },
-    [roleLoading, isAdmin],
-  );
+  const { authLoading, user } = useAuth();
+  const {
+    docs: logDocs,
+    error: logsError,
+    ready: logsReady,
+  } = useFirestoreSub(() => {
+    if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
+    return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+  }, [authLoading, roleLoading, isAdmin, user?.email]);
+  const {
+    docs: shootDocs,
+    error: shootError,
+    ready: shootReady,
+  } = useFirestoreSub(() => {
+    if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
+    return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
+  }, [authLoading, roleLoading, isAdmin, user?.email]);
 
   const error = logsError || shootError;
   const loading = !logsReady || !shootReady;
@@ -112,7 +120,8 @@ export default function AdminTimeLog() {
         const start = dayjs(tsToMillis(entry.startTime));
         const end = dayjs(tsToMillis(entry.endTime));
         const logged = dayjs(tsToMillis(entry.loggedAt));
-        const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
+        const duration =
+          start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
         return {
           id: i + 1,
           Driver: entry.driver || "Unknown",
@@ -120,7 +129,9 @@ export default function AdminTimeLog() {
           StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
           EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
           Duration: duration != null ? durationFormat(duration) : "—",
-          LoggedAt: logged.isValid() ? logged.format("MM/DD/YYYY hh:mm A") : "—",
+          LoggedAt: logged.isValid()
+            ? logged.format("MM/DD/YYYY hh:mm A")
+            : "—",
           raw: entry,
           durationMin: duration ?? 0,
         };
@@ -135,7 +146,8 @@ export default function AdminTimeLog() {
         const start = dayjs(tsToMillis(entry.startTime));
         const end = dayjs(tsToMillis(entry.endTime));
         const created = dayjs(tsToMillis(entry.createdAt));
-        const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
+        const elapsed =
+          start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
         return {
           id: i + 1,
           Driver: entry.driver || "Unknown",
@@ -151,7 +163,11 @@ export default function AdminTimeLog() {
   useEffect(() => {
     if (error) {
       logError(error, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
-      setSnackbar({ open: true, message: "Missing permissions to read some time logs.", severity: "error" });
+      setSnackbar({
+        open: true,
+        message: "Missing permissions to read some time logs.",
+        severity: "error",
+      });
     }
   }, [error]);
 
@@ -189,7 +205,7 @@ export default function AdminTimeLog() {
     return logs.filter(
       (r) =>
         r.Driver.toLowerCase().includes(search.toLowerCase()) ||
-        r.RideID.toLowerCase().includes(search.toLowerCase())
+        r.RideID.toLowerCase().includes(search.toLowerCase()),
     );
   }, [logs, search]);
 
@@ -218,7 +234,11 @@ export default function AdminTimeLog() {
 
   const renderTopBar = (
     <Paper sx={{ p: 2, mb: 2, borderLeft: "5px solid #4cbb17" }}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        alignItems="center"
+      >
         <TextField
           label="Search by Driver or Ride ID"
           value={searchInput}
@@ -252,136 +272,178 @@ export default function AdminTimeLog() {
 
   return (
     <>
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ px: { xs: 1, sm: 2 }, py: 3 }}>
-        <ErrorBanner error={error} />
-        <Tabs
-          value={tab}
-          onChange={(e, v) => setTab(v)}
-          variant="scrollable"
-          scrollButtons="auto"
-          TabIndicatorProps={{ style: { backgroundColor: "#4cbb17", height: 3 } }}
-          sx={{ mb: 2 }}
-        >
-          <Tab label="Log Table" icon={<TableChartIcon />} iconPosition="start" />
-          <Tab label="Weekly Summary" icon={<CalendarMonthIcon />} iconPosition="start" />
-          <Tab label="Flagged Issues" icon={<FlagIcon />} iconPosition="start" />
-          <Tab label="Shootout Stats" icon={<SportsScoreIcon />} iconPosition="start" />
-        </Tabs>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Box sx={{ px: { xs: 1, sm: 2 }, py: 3 }}>
+          <ErrorBanner error={error} />
+          <Tabs
+            value={tab}
+            onChange={(e, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            TabIndicatorProps={{
+              style: { backgroundColor: "#4cbb17", height: 3 },
+            }}
+            sx={{ mb: 2 }}
+          >
+            <Tab
+              label="Log Table"
+              icon={<TableChartIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label="Weekly Summary"
+              icon={<CalendarMonthIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label="Flagged Issues"
+              icon={<FlagIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label="Shootout Stats"
+              icon={<SportsScoreIcon />}
+              iconPosition="start"
+            />
+          </Tabs>
 
-        {tab === 0 && (
-          <>
-            {renderTopBar}
-            <Paper>
+          {tab === 0 && (
+            <>
+              {renderTopBar}
+              <Paper>
+                <DataGrid
+                  autoHeight
+                  rows={filteredLogs}
+                  columns={baseColumns}
+                  columnVisibilityModel={columnVisibility}
+                  onColumnVisibilityModelChange={(m) => setColumnVisibility(m)}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  sortingOrder={["asc", "desc"]}
+                  getRowClassName={(params) =>
+                    params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
+                  }
+                  sx={{
+                    "& .even": {
+                      backgroundColor: isDark ? "#333" : "grey.100",
+                    },
+                    "& .odd": { backgroundColor: "transparent" },
+                    "& .MuiDataGrid-row:hover": {
+                      backgroundColor: isDark ? "#444" : "grey.200",
+                    },
+                    backgroundColor: isDark ? "#2a2a2a" : "#fafafa",
+                    fontSize: "0.85rem",
+                  }}
+                />
+                {filteredLogs.length === 0 && (
+                  <Typography
+                    textAlign="center"
+                    color="text.secondary"
+                    sx={{ p: 2 }}
+                  >
+                    No logs found.
+                  </Typography>
+                )}
+              </Paper>
+            </>
+          )}
+
+          {tab === 1 && (
+            <Paper sx={{ p: 2, borderLeft: "5px solid #4cbb17" }}>
+              <Typography variant="h6" mb={2}>
+                Weekly Summary
+              </Typography>
+              {Object.entries(groupedWeekly).map(([driver, weeks]) => (
+                <Box key={driver} mb={2}>
+                  <Typography fontWeight={600}>{driver}</Typography>
+                  {Object.entries(weeks).map(([week, total]) => (
+                    <Typography key={week} ml={2}>
+                      Week {week}: {durationFormat(total)}
+                    </Typography>
+                  ))}
+                </Box>
+              ))}
+            </Paper>
+          )}
+
+          {tab === 2 && (
+            <Paper sx={{ p: 2, borderLeft: "5px solid red" }}>
+              <Typography variant="h6" mb={2}>
+                Flagged Entries (Missing or Suspicious Durations)
+              </Typography>
               <DataGrid
                 autoHeight
-                rows={filteredLogs}
+                rows={flaggedLogs}
                 columns={baseColumns}
-                columnVisibilityModel={columnVisibility}
-                onColumnVisibilityModelChange={(m) => setColumnVisibility(m)}
-                pageSizeOptions={[5, 10, 20, 50]}
-                sortingOrder={["asc", "desc"]}
-                getRowClassName={(params) =>
-                  params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
-                }
+                pageSizeOptions={[5, 10, 20]}
                 sx={{
-                  "& .even": { backgroundColor: isDark ? "#333" : "grey.100" },
-                  "& .odd": { backgroundColor: "transparent" },
+                  backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                  "& .MuiDataGrid-row:nth-of-type(odd)": {
+                    backgroundColor: isDark ? "#333" : "grey.100",
+                  },
                   "& .MuiDataGrid-row:hover": {
                     backgroundColor: isDark ? "#444" : "grey.200",
                   },
-                  backgroundColor: isDark ? "#2a2a2a" : "#fafafa",
-                  fontSize: "0.85rem",
                 }}
               />
-              {filteredLogs.length === 0 && (
-                <Typography textAlign="center" color="text.secondary" sx={{ p: 2 }}>
-                  No logs found.
+            </Paper>
+          )}
+
+          {tab === 3 && (
+            <Paper sx={{ p: 2, borderLeft: "5px solid #ffa500" }}>
+              <Typography variant="h6" mb={2}>
+                Shootout Session History
+              </Typography>
+              <DataGrid
+                autoHeight
+                rows={shootoutStats}
+                columns={shootoutColumns}
+                pageSizeOptions={[5, 10, 20]}
+                sx={{
+                  backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                  "& .MuiDataGrid-row:nth-of-type(odd)": {
+                    backgroundColor: isDark ? "#333" : "grey.100",
+                  },
+                  "& .MuiDataGrid-row:hover": {
+                    backgroundColor: isDark ? "#444" : "grey.200",
+                  },
+                }}
+              />
+              {shootoutStats.length === 0 && (
+                <Typography
+                  textAlign="center"
+                  color="text.secondary"
+                  sx={{ p: 2 }}
+                >
+                  No shootout stats.
                 </Typography>
               )}
             </Paper>
-          </>
-        )}
-
-        {tab === 1 && (
-          <Paper sx={{ p: 2, borderLeft: "5px solid #4cbb17" }}>
-            <Typography variant="h6" mb={2}>
-              Weekly Summary
-            </Typography>
-            {Object.entries(groupedWeekly).map(([driver, weeks]) => (
-              <Box key={driver} mb={2}>
-                <Typography fontWeight={600}>{driver}</Typography>
-                {Object.entries(weeks).map(([week, total]) => (
-                  <Typography key={week} ml={2}>
-                    Week {week}: {durationFormat(total)}
-                  </Typography>
-                ))}
-              </Box>
-            ))}
-          </Paper>
-        )}
-
-        {tab === 2 && (
-          <Paper sx={{ p: 2, borderLeft: "5px solid red" }}>
-            <Typography variant="h6" mb={2}>
-              Flagged Entries (Missing or Suspicious Durations)
-            </Typography>
-            <DataGrid
-              autoHeight
-              rows={flaggedLogs}
-              columns={baseColumns}
-              pageSizeOptions={[5, 10, 20]}
-              sx={{
-                backgroundColor: isDark ? "#2a2a2a" : "#fff",
-                "& .MuiDataGrid-row:nth-of-type(odd)": {
-                  backgroundColor: isDark ? "#333" : "grey.100",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  backgroundColor: isDark ? "#444" : "grey.200",
-                },
-              }}
-            />
-          </Paper>
-        )}
-
-        {tab === 3 && (
-          <Paper sx={{ p: 2, borderLeft: "5px solid #ffa500" }}>
-            <Typography variant="h6" mb={2}>
-              Shootout Session History
-            </Typography>
-            <DataGrid
-              autoHeight
-              rows={shootoutStats}
-              columns={shootoutColumns}
-              pageSizeOptions={[5, 10, 20]}
-              sx={{
-                backgroundColor: isDark ? "#2a2a2a" : "#fff",
-                "& .MuiDataGrid-row:nth-of-type(odd)": {
-                  backgroundColor: isDark ? "#333" : "grey.100",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  backgroundColor: isDark ? "#444" : "grey.200",
-                },
-              }}
-            />
-            {shootoutStats.length === 0 && (
-              <Typography textAlign="center" color="text.secondary" sx={{ p: 2 }}>
-                No shootout stats.
-              </Typography>
-            )}
-          </Paper>
-        )}
-      </Box>
-    </LocalizationProvider>
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={4000}
-      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-    >
-      <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
+          )}
+        </Box>
+      </LocalizationProvider>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 }
+useEffect(() => {
+  if (error) {
+    logError("FirestoreSubscribe AdminTimeLog", error);
+    setSnackbar({
+      open: true,
+      message: "Permissions issue reading logs.",
+      severity: "error",
+    });
+  }
+}, [error]);

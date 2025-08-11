@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
-import { AuthProvider } from "./context/AuthContext.jsx";
+import { AuthProvider } from "./context/AuthContext.js";
 import { logError } from "./utils/logError";
 import "./sw-updater.js";
 
@@ -44,10 +44,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .catch((err) => {
-        console.error("[SW] register failed:", err);
-      });
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.error("[SW] register failed:", err);
+    });
   });
 }

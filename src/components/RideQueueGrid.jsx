@@ -19,6 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import { safe } from "../utils/rideFormatters";
+import { useAuth } from "../context/AuthContext.js";
 
 const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);
@@ -28,18 +29,31 @@ const RideQueueGrid = () => {
     severity: "success",
   });
   const [loading, setLoading] = useState(true);
+  const { user, authLoading } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
   useEffect(() => {
-    const unsub = subscribeRideQueue((data) => {
-      setRows(data);
-      setLoading(false);
-    });
+    if (authLoading || !user?.email) return;
+    const unsub = subscribeRideQueue(
+      (data) => {
+        setRows(data);
+        setLoading(false);
+      },
+      undefined,
+      () => {
+        setToast({
+          open: true,
+          message: "Permissions issue loading ride queue",
+          severity: "error",
+        });
+        setLoading(false);
+      },
+    );
     return unsub;
-  }, []);
+  }, [authLoading, user?.email]);
 
   const refreshRides = async () => {
     setLoading(true);
@@ -54,7 +68,9 @@ const RideQueueGrid = () => {
     const target = rows.find((r) => r.id === deletingId);
     setUndoRow(target);
     setRows((prev) =>
-      prev.map((row) => (row.id === deletingId ? { ...row, fading: true } : row))
+      prev.map((row) =>
+        row.id === deletingId ? { ...row, fading: true } : row,
+      ),
     );
 
     setTimeout(async () => {
@@ -121,7 +137,8 @@ const RideQueueGrid = () => {
         <DialogTitle>Delete Ride?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{safe(deletingTripId)}</strong> from the Ride Queue?
+            Are you sure you want to delete{" "}
+            <strong>{safe(deletingTripId)}</strong> from the Ride Queue?
           </Typography>
         </DialogContent>
         <DialogActions>

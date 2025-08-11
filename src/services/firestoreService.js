@@ -116,10 +116,7 @@ const mapDoc = (d) => normalizeRideData({ id: d.id, ...d.data() });
 const buildKey = (col, filters) => `${col}:${JSON.stringify(filters || {})}`;
 
 // Build a query with optional filters
-const buildRideQuery = (
-  col,
-  { driver, day, vehicle, limitCount } = {},
-) => {
+const buildRideQuery = (col, { driver, day, vehicle, limitCount } = {}) => {
   const constraints = [orderBy("pickupTime", "asc")];
   if (driver) constraints.push(where("claimedBy", "==", driver));
   if (vehicle) constraints.push(where("vehicle", "==", vehicle));
@@ -136,11 +133,12 @@ const buildRideQuery = (
 };
 
 // ---------- Live Rides ----------
-export const subscribeLiveRides = (callback, filters) =>
+export const subscribeLiveRides = (callback, filters, onError) =>
   subscribeFirestore(
     buildKey(COLLECTIONS.LIVE_RIDES, filters),
     buildRideQuery(COLLECTIONS.LIVE_RIDES, filters),
     (snap) => callback(snap.docs.map(mapDoc)),
+    onError,
   );
 
 export const getLiveRides = async (filters) => {
@@ -157,11 +155,12 @@ export const deleteLiveRide = async (id) =>
 export const restoreLiveRide = async (ride) => addLiveRide(ride);
 
 // ---------- Ride Queue ----------
-export const subscribeRideQueue = (callback, filters) =>
+export const subscribeRideQueue = (callback, filters, onError) =>
   subscribeFirestore(
     buildKey(COLLECTIONS.RIDE_QUEUE, filters),
     buildRideQuery(COLLECTIONS.RIDE_QUEUE, filters),
     (snap) => callback(snap.docs.map(mapDoc)),
+    onError,
   );
 
 export const getRideQueue = async (filters) => {
@@ -176,11 +175,12 @@ export const deleteRideFromQueue = async (id) =>
   deleteDoc(doc(db, COLLECTIONS.RIDE_QUEUE, id));
 
 // ---------- Claimed Rides ----------
-export const subscribeClaimedRides = (callback, filters) =>
+export const subscribeClaimedRides = (callback, filters, onError) =>
   subscribeFirestore(
     buildKey(COLLECTIONS.CLAIMED_RIDES, filters),
     buildRideQuery(COLLECTIONS.CLAIMED_RIDES, filters),
     (snap) => callback(snap.docs.map(mapDoc)),
+    onError,
   );
 
 export const getClaimedRides = async (filters) => {

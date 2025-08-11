@@ -23,6 +23,7 @@ import {
 } from "../services/firestoreService";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
+import { useAuth } from "../context/AuthContext.js";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -33,15 +34,24 @@ const ClaimedRidesGrid = () => {
   const [confirmUndoOpen, setConfirmUndoOpen] = useState(false);
   const { toast, showToast, closeToast } = useToast("info");
   const [loading, setLoading] = useState(true);
+  const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
 
   useEffect(() => {
-    const unsub = subscribeClaimedRides((data) => {
-      setRows(data.map((r) => ({ ...r, fading: false })));
-      setLoading(false);
-    });
+    if (authLoading || !user?.email) return;
+    const unsub = subscribeClaimedRides(
+      (data) => {
+        setRows(data.map((r) => ({ ...r, fading: false })));
+        setLoading(false);
+      },
+      undefined,
+      () => {
+        showToast("Permissions issue loading claimed rides", "error");
+        setLoading(false);
+      },
+    );
     return unsub;
-  }, []);
+  }, [authLoading, user?.email]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;
