@@ -1,476 +1,178 @@
-// src/components/ShootoutTab.jsx
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Box, Card, CardContent, CardHeader, Typography, Stack,
-  IconButton, Button, Fab, Divider, Dialog, DialogTitle,
-  DialogContent, DialogActions, Alert, CircularProgress
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  Typography,
+  Stack,
+  IconButton,
+  Button,
+  Divider,
+  Snackbar,
+  Alert,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import PeopleIcon from "@mui/icons-material/People";
-import UndoIcon from "@mui/icons-material/Undo";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import dayjs from "dayjs";
-
+import { useDriver } from "../context/DriverContext.jsx";
 import {
-  addDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-  Timestamp,
-  doc,
-} from "firebase/firestore";
-import { db } from "@/firebase";
-import { waitForAuth } from "../utils/waitForAuth";
+  subscribeShootoutStats,
+  createShootoutSession,
+  updateShootoutSession,
+  tsToDate,
+} from "../utils/firestoreService";
 import { logError } from "../utils/logError";
-import ErrorBanner from "./ErrorBanner";
-import { useRole, useFirestoreSub } from "@/hooks";
-
-const STORAGE_CLOCK = "shootoutClock";
-const SHOOTOUT_COL = "shootoutStats";
-const IMG_CADILLAC = "https://logos-world.net/wp-content/uploads/2021/05/Cadillac-Logo.png";
-const IMG_SHOOTOUT = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s";
-
-async function startShootoutSession(initial = {}) {
-  const user = await waitForAuth(true);
-  const userEmail = (user.email || "").toLowerCase();
-  return addDoc(collection(db, SHOOTOUT_COL), {
-    userEmail,
-    startTime: serverTimestamp(),
-    endTime: null,
-    trips: Number(initial.trips ?? 0),
-    passengers: Number(initial.passengers ?? 0),
-    createdAt: serverTimestamp(),
-  });
-}
-
-async function stopShootoutSession(id, data) {
-  await waitForAuth(true);
-  return updateDoc(doc(db, SHOOTOUT_COL, id), {
-    endTime: serverTimestamp(),
-    trips: Number(data.trips ?? 0),
-    passengers: Number(data.passengers ?? 0),
-    updatedAt: serverTimestamp(),
-  });
-}
-
-function safeParse(json, fallback = {}) {
-  try {
-    return JSON.parse(json);
-  } catch (e) {
-    // return fallback on parse error
-    return fallback;
-  }
-}
-
-
-function tsToMillis(v) {
-  if (!v) return null;
-  if (v instanceof Timestamp) return v.toMillis();
-  if (typeof v?.toDate === "function") return v.toDate().getTime();
-  if (typeof v === "number") return v;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
 
 export default function ShootoutTab() {
-  const [startTime, setStartTime] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
+  const { driver } = useDriver();
+  const driverEmail = driver?.email || driver?.driver?.email || "";
+  const isMounted = useRef(true);
+
+  const [currentId, setCurrentId] = useState(null);
+  const [startTime, setStartTime] = useState(null); // Date | null
   const [isRunning, setIsRunning] = useState(false);
   const [trips, setTrips] = useState(0);
   const [passengers, setPassengers] = useState(0);
-  const [rows, setRows] = useState([]);
-  const [err, setErr] = useState(null);
-  const [confirmEndOpen, setConfirmEndOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-  const lastActionRef = useRef(null);
-  const intervalRef = useRef(null);
-
-  const { user, loading: roleLoading, isAdmin, isDriver } = useRole();
-  const { docs: statsDocs, error, ready } = useFirestoreSub(
-    () => {
-      if (roleLoading) return null;
-      if (!(isAdmin || isDriver) || !user?.email) return null;
-      const base = collection(db, SHOOTOUT_COL);
-      return isAdmin
-        ? query(base, orderBy("createdAt", "desc"), limit(200))
-        : query(
-            base,
-            where("userEmail", "==", user.email.toLowerCase()),
-            orderBy("createdAt", "desc"),
-            limit(200),
-          );
-    },
-    [roleLoading, isAdmin, isDriver, user?.email],
-  );
+  const [vehicle, setVehicle] = useState("");
+  const [history, setHistory] = useState([]);
+  const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
 
   useEffect(() => {
-    if (!statsDocs) return;
-    const next = statsDocs.map((d) => {
-      const st = tsToMillis(d.startTime);
-      const et = tsToMillis(d.endTime);
-      const duration = st && et ? Math.floor((et - st) / 1000) : 0;
-      return { id: d.id, ...d, startTime: st, endTime: et, duration };
-    });
-    setRows(next);
-    setErr(null);
-  }, [statsDocs]);
-
-  useEffect(() => {
-    if (error) {
-      logError(error, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-    }
-  }, [error]);
-
-  const persistClock = useCallback((data) => {
-    const current = safeParse(localStorage.getItem(STORAGE_CLOCK));
-    localStorage.setItem(STORAGE_CLOCK, JSON.stringify({ ...current, ...data }));
-  }, []);
-
-  const loadClock = useCallback(() => {
-    const stored = safeParse(localStorage.getItem(STORAGE_CLOCK));
-    if (stored.startTime) {
-      try {
-        const ts = Timestamp.fromMillis(stored.startTime);
-        setStartTime(ts);
-        setElapsed(Math.floor((Date.now() - tsToMillis(ts)) / 1000));
-        setIsRunning(true);
-        setTrips(stored.trips || 0);
-        setPassengers(stored.passengers || 0);
-        setSessionId(stored.sessionId || null);
-      } catch (err) {
-        console.warn("Corrupted startTime in localStorage. Resetting clock.");
-        localStorage.removeItem(STORAGE_CLOCK);
-      }
-    }
-  }, []);
-
-  useEffect(() => loadClock(), [loadClock]);
-
-  useEffect(() => {
-    const tick = () => {
-      if (isRunning && startTime) {
-        try {
-          setElapsed(Math.floor((Date.now() - tsToMillis(startTime)) / 1000));
-        } catch (err) {
-          console.warn("Tick failed:", err);
+    isMounted.current = true;
+    const unsub = subscribeShootoutStats({
+      driverEmail,
+      onData: (rows) => {
+        if (!isMounted.current) return;
+        setHistory(rows);
+        // Rehydrate current if there is an open session
+        const open = rows.find((r) => r.driverEmail?.toLowerCase() === driverEmail?.toLowerCase() && !r.endTime);
+        if (open) {
+          setCurrentId(open.id);
+          setStartTime(tsToDate(open.startTime));
+          setIsRunning(Boolean(open.startTime && !open.endTime));
+          setTrips(Number(open.trips || 0));
+          setPassengers(Number(open.passengers || 0));
+          setVehicle(open.vehicle || "");
+        } else {
+          // nothing open
+          setCurrentId(null);
+          setStartTime(null);
+          setIsRunning(false);
+          setTrips(0);
+          setPassengers(0);
+          setVehicle("");
         }
-      }
-    };
-    const onVis = () => {
-      if (document.hidden) clearInterval(intervalRef.current);
-      else if (isRunning && startTime && !intervalRef.current) {
-        intervalRef.current = setInterval(tick, 1000);
-        tick();
-      }
-    };
-    if (isRunning && startTime) {
-      intervalRef.current = setInterval(tick, 1000);
-    }
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      clearInterval(intervalRef.current);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [isRunning, startTime]);
-
-  // subscription handled by useFirestoreSub above
-
-  useEffect(() => {
-    const listener = (e) => {
-      if (e.key === STORAGE_CLOCK) loadClock();
-    };
-    window.addEventListener("storage", listener);
-    return () => window.removeEventListener("storage", listener);
-  }, [loadClock]);
-
-  const handleStart = async () => {
-    try {
-      const ref = await startShootoutSession();
-      setSessionId(ref.id);
-      const now = Timestamp.now();
-      setStartTime(now);
-      setElapsed(0);
-      setIsRunning(true);
-      setTrips(0);
-      setPassengers(0);
-      persistClock({ startTime: now.toMillis(), sessionId: ref.id, trips: 0, passengers: 0 });
-    } catch (e) {
-      logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-      setErr(e.message);
-    }
-  };
-
-  const handleEnd = () => setConfirmEndOpen(true);
-  const handleConfirmEnd = async () => {
-    setConfirmEndOpen(false);
-    try {
-      if (sessionId) {
-        await stopShootoutSession(sessionId, { trips, passengers });
-      }
-      setStartTime(null);
-      setElapsed(0);
-      setIsRunning(false);
-      setTrips(0);
-      setPassengers(0);
-      setSessionId(null);
-      localStorage.removeItem(STORAGE_CLOCK);
-      lastActionRef.current = null;
-    } catch (e) {
-      setErr(e.message);
-    }
-  };
-  const handleCancelEnd = () => setConfirmEndOpen(false);
-
-  const changeTrips = (delta) => {
-    if (!isRunning) return;
-    setTrips((t) => {
-      const next = Math.max(0, t + delta);
-      persistClock({ trips: next });
-      lastActionRef.current = { type: "trip", delta };
-      return next;
-    });
-  };
-
-  const changePassengers = (delta) => {
-    if (!isRunning) return;
-    setPassengers((p) => {
-      const next = Math.max(0, p + delta);
-      persistClock({ passengers: next });
-      lastActionRef.current = { type: "pax", delta };
-      return next;
-    });
-  };
-
-  const undoLast = () => {
-    const last = lastActionRef.current;
-    if (!isRunning || !last) return;
-    if (last.type === "trip") changeTrips(-last.delta);
-    if (last.type === "pax") changePassengers(-last.delta);
-    lastActionRef.current = null;
-  };
-
-  const resetCurrent = () => {
-    if (!isRunning) return;
-    setTrips(0);
-    setPassengers(0);
-    persistClock({ trips: 0, passengers: 0 });
-    lastActionRef.current = null;
-  };
-
-  const formatElapsed = useCallback((s) => {
-    const mins = Math.floor(s / 60);
-    const secs = s % 60;
-    return `${mins}m ${secs < 10 ? "0" : ""}${secs}s`;
-  }, []);
-
-  const historyCols = useMemo(() => [
-    {
-      field: "startTime",
-      headerName: "Start Time",
-      width: 160,
-      valueFormatter: ({ value }) => {
-        const parsed = dayjs(value);
-        return parsed.isValid() ? parsed.format("MM/DD HH:mm") : "—";
       },
-    },
-    {
-      field: "duration",
-      headerName: "Duration",
-      width: 130,
-      valueFormatter: ({ value }) => formatElapsed(value),
-    },
-    {
-      field: "trips",
-      headerName: "Trips",
-      width: 90,
-      align: "right",
-      headerAlign: "right",
-    },
-    {
-      field: "passengers",
-      headerName: "Passengers",
-      width: 130,
-      align: "right",
-      headerAlign: "right",
-    },
-  ], [formatElapsed]);
+      onError: (err) => {
+        setSnack({ open: true, msg: "Permissions error loading shootout stats.", severity: "error" });
+      },
+    });
+    return () => { isMounted.current = false; unsub && unsub(); };
+  }, [driverEmail]);
 
-  const historyRows = useMemo(
-    () => rows.filter((h) => h?.startTime),
-    [rows],
-  );
-  const totalTrips = useMemo(() => rows.reduce((s, h) => s + (h.trips || 0), 0), [rows]);
-  const totalPassengers = useMemo(() => rows.reduce((s, h) => s + (h.passengers || 0), 0), [rows]);
-  const avgPassengers = totalTrips ? (totalPassengers / totalTrips).toFixed(2) : "0.00";
+  const elapsed = useMemo(() => {
+    if (!startTime || !isRunning) return "00:00:00";
+    const diff = dayjs().diff(dayjs(startTime), "second");
+    const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+    const s = String(diff % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  }, [startTime, isRunning]);
 
-  if (roleLoading || !ready) {
-    return (
-      <Box mt={4} display="flex" justifyContent="center">
-        <CircularProgress />
-      </Box>
-    );
+  async function handleStart() {
+    if (!driverEmail) {
+      setSnack({ open: true, msg: "No driver email; cannot start.", severity: "error" });
+      return;
+    }
+    try {
+      if (currentId) {
+        // already running
+        return;
+      }
+      const id = await createShootoutSession({ driverEmail, vehicle, startTime: new Date() });
+      setCurrentId(id);
+      setStartTime(new Date());
+      setIsRunning(true);
+      setSnack({ open: true, msg: "Session started.", severity: "success" });
+    } catch (e) {
+      logError("handleStart", e);
+      setSnack({ open: true, msg: "Failed to start session.", severity: "error" });
+    }
   }
 
-  if (!(isAdmin || isDriver)) {
-    return (
-      <Box mt={4}>
-        <Alert severity="error">You don’t have permission to view this.</Alert>
-      </Box>
-    );
+  async function handleStop() {
+    if (!currentId) return;
+    try {
+      await updateShootoutSession(currentId, { endTime: new Date(), trips, passengers });
+      setIsRunning(false);
+      setSnack({ open: true, msg: "Session stopped.", severity: "success" });
+    } catch (e) {
+      logError("handleStop", e);
+      setSnack({ open: true, msg: "Failed to stop session.", severity: "error" });
+    }
+  }
+
+  async function inc(field, delta) {
+    try {
+      const next = field === "trips" ? Math.max(0, trips + delta) : Math.max(0, passengers + delta);
+      field === "trips" ? setTrips(next) : setPassengers(next);
+      if (currentId) await updateShootoutSession(currentId, { [field]: next });
+    } catch (e) {
+      logError("inc " + field, e);
+    }
   }
 
   return (
-    <Box maxWidth={520} mx="auto">
-      <ErrorBanner error={error || (err ? { message: err } : null)} />
-      <Card sx={{ borderLeft: (t) => `5px solid ${t.palette.success.main}` }}>
-        <CardHeader
-          title="Shootout Ride & Time Tracker"
-          subheader={
-            <Box display="flex" justifyContent="center" alignItems="center" flexWrap="wrap" gap={1.5} mt={2}>
-              <img src={IMG_SHOOTOUT} alt="Shootout Logo" style={{ height: 40 }} />
-              <img src={IMG_CADILLAC} alt="Cadillac Logo" style={{ height: 40 }} />
-            </Box>
-          }
-          sx={{ textAlign: "center" }}
-        />
-        <CardContent sx={{ textAlign: "center" }}>
-          <Box
-            sx={{
-              display: "inline-block",
-              px: 2,
-              py: 1,
-              mb: 2,
-              borderRadius: 1,
-              boxShadow: 1,
-              bgcolor: (theme) => theme.palette.background.paper,
-            }}
-          >
-            <Typography variant="h3" sx={{ fontSize: { xs: "2.4rem", sm: "3rem", md: "3.4rem" } }}>
-              {formatElapsed(elapsed)}
-            </Typography>
-          </Box>
-
-          {!isRunning ? (
-            <>
-              <Fab
-                color="success"
-                onClick={handleStart}
-                sx={{ mb: 2 }}
-                centerRipple
-                aria-label="Start session"
-              >
-                <PlayArrowIcon />
-              </Fab>
-              {rows.length === 0 && (
-                <Typography color="text.secondary">
-                  No shootout sessions yet. Press Start to begin.
-                </Typography>
-              )}
-            </>
-          ) : (
-            <Stack spacing={1.5} alignItems="center">
-              <Fab
-                color="error"
-                onClick={handleEnd}
-                sx={{ mb: 1 }}
-                aria-label="End session"
-              >
-                <StopIcon />
-              </Fab>
-
-              <Stack direction="row" spacing={1} alignItems="center">
-                <DirectionsCarIcon />
-                <Typography>Trips: {trips}</Typography>
-                <IconButton color="primary" onClick={() => changeTrips(1)} size="small">
-                  <AddIcon />
-                </IconButton>
-                <IconButton color="error" onClick={() => changeTrips(-1)} disabled={trips === 0} size="small">
-                  <RemoveIcon />
-                </IconButton>
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="center">
-                <PeopleIcon />
-                <Typography>Passengers: {passengers}</Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                  {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <Button key={n} variant="outlined" size="small" onClick={() => changePassengers(n)}>
-                      +{n}
-                    </Button>
-                  ))}
-                </Box>
-                <IconButton color="error" onClick={() => changePassengers(-1)} disabled={passengers === 0} size="small">
-                  <RemoveIcon />
-                </IconButton>
-              </Stack>
-
-              <Stack direction="row" spacing={1}>
-                <Button onClick={undoLast} startIcon={<UndoIcon />} disabled={!lastActionRef.current}>
-                  Undo
-                </Button>
-                <Button onClick={resetCurrent} startIcon={<RestartAltIcon />} disabled={!isRunning || (trips === 0 && passengers === 0)}>
-                  Reset
-                </Button>
-              </Stack>
-            </Stack>
-          )}
-
-          {rows.length > 0 && (
-            <Box mt={3} textAlign="left">
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Recent Sessions
-              </Typography>
-              <DataGrid
-                autoHeight
-                rows={historyRows}
-                columns={historyCols}
-                getRowId={(r) => r.id || `${r.startTime?.valueOf?.()}_${r.endTime?.valueOf?.()}`}
-                hideFooter
-                disableRowSelectionOnClick
-                density="compact"
-                sx={{
-                  "& .MuiDataGrid-columnHeaderTitle": { fontWeight: "bold" },
-                  "& .MuiDataGrid-row:nth-of-type(odd)": {
-                    backgroundColor: (theme) => theme.palette.action.hover,
-                  },
-                }}
-              />
-              <Stack spacing={0.5} mt={1}>
-                <Typography><b>Total Trips:</b> {totalTrips}</Typography>
-                <Typography><b>Total Passengers:</b> {totalPassengers}</Typography>
-                <Typography><b>Passengers/Trip:</b> {avgPassengers}</Typography>
-              </Stack>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={confirmEndOpen} onClose={handleCancelEnd}>
-        <DialogTitle>End Session?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            This will save the session to Firestore and reset the live counter.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelEnd}>Cancel</Button>
-          <Button onClick={handleConfirmEnd} color="error" variant="contained">
-            End & Save
+    <Card sx={{ borderRadius: 3 }}>
+      <CardHeader title="Shootout Tracker" />
+      <CardContent>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <Typography variant="h6">Elapsed: {elapsed}</Typography>
+          <Button startIcon={<PlayArrowIcon />} variant="contained" onClick={handleStart} disabled={isRunning}>
+            Start
           </Button>
-        </DialogActions>
-      </Dialog>
+          <Button startIcon={<StopIcon />} variant="outlined" color="error" onClick={handleStop} disabled={!isRunning}>
+            Stop
+          </Button>
+          <Divider flexItem sx={{ mx: 2 }} />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <DirectionsCarIcon />
+            <Typography variant="body2">{vehicle || "No vehicle"}</Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <PeopleIcon />
+            <IconButton onClick={() => inc("passengers", -1)}><RemoveIcon /></IconButton>
+            <Typography>{passengers}</Typography>
+            <IconButton onClick={() => inc("passengers", +1)}><AddIcon /></IconButton>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography>Trips</Typography>
+            <IconButton onClick={() => inc("trips", -1)}><RemoveIcon /></IconButton>
+            <Typography>{trips}</Typography>
+            <IconButton onClick={() => inc("trips", +1)}><AddIcon /></IconButton>
+          </Stack>
+        </Stack>
 
-    </Box>
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>History (latest first)</Typography>
+        <Box sx={{ fontFamily: "monospace", fontSize: 12 }}>
+          {history.map((h) => (
+            <div key={h.id}>
+              {dayjs(h.startTime).isValid() ? dayjs(h.startTime).format("YYYY-MM-DD HH:mm:ss") : "—"} → {h.endTime ? dayjs(h.endTime).format("HH:mm:ss") : "…"} | trips {h.trips ?? 0} | pax {h.passengers ?? 0}
+            </div>
+          ))}
+        </Box>
+      </CardContent>
+      <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack(s => ({...s, open:false}))}>
+        <Alert severity={snack.severity} variant="filled">{snack.msg}</Alert>
+      </Snackbar>
+    </Card>
   );
 }
+
