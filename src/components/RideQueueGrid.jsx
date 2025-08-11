@@ -18,6 +18,7 @@ import {
   Button,
   Typography,
 } from "@mui/material";
+import { safe } from "../utils/rideFormatters";
 
 const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);
@@ -62,7 +63,7 @@ const RideQueueGrid = () => {
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         setToast({
           open: true,
-          message: `🗑️ Deleted Trip ${deletingTripId}`,
+          message: `🗑️ Deleted Trip ${safe(deletingTripId, "")}`,
           severity: "info",
         });
       } catch (err) {
@@ -109,7 +110,7 @@ const RideQueueGrid = () => {
         onDelete={(id) => {
           const row = rows.find((r) => r.id === id);
           setDeletingId(id);
-          setDeletingTripId(row?.TripID || "");
+          setDeletingTripId(row?.tripId || "");
           setConfirmOpen(true);
         }}
         refreshRides={refreshRides}
@@ -120,7 +121,7 @@ const RideQueueGrid = () => {
         <DialogTitle>Delete Ride?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{deletingTripId}</strong> from the Ride Queue?
+            Are you sure you want to delete <strong>{safe(deletingTripId)}</strong> from the Ride Queue?
           </Typography>
         </DialogContent>
         <DialogActions>

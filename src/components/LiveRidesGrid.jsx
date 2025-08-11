@@ -19,6 +19,7 @@ import {
 } from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import useToast from "../hooks/useToast";
+import { safe } from "../utils/rideFormatters";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -26,7 +27,7 @@ const LiveRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState("");
-  const [deletingTripID, setDeletingTripID] = useState("");
+  const [deletingTripId, setDeletingTripId] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
 
@@ -56,7 +57,7 @@ const LiveRidesGrid = () => {
       try {
         await deleteLiveRide(deletingId);
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
-        showToast(`🗑️ Deleted Trip ${deletingTripID}`, "info");
+        showToast(`🗑️ Deleted Trip ${safe(deletingTripId, "")}`, "info");
       } catch (err) {
         setRows((prev) =>
           prev.map((row) => (row.id === deletingId ? { ...row, fading: false } : row)),
@@ -91,7 +92,7 @@ const LiveRidesGrid = () => {
         onDelete={(id) => {
           const row = rows.find((r) => r.id === id);
           setDeletingId(id);
-          setDeletingTripID(row?.TripID || "");
+          setDeletingTripId(row?.tripId || "");
           setConfirmOpen(true);
         }}
         refreshRides={refreshRides}
@@ -101,7 +102,7 @@ const LiveRidesGrid = () => {
         <DialogTitle>Delete Ride?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{deletingTripID}</strong>?
+            Are you sure you want to delete <strong>{safe(deletingTripId)}</strong>?
           </Typography>
         </DialogContent>
         <DialogActions>
