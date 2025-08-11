@@ -136,9 +136,8 @@ export default function RideEntryForm() {
   const [dropLoading, setDropLoading] = useState(false);
   const [dropSnack, setDropSnack] = useState({ open: false, message: "", severity: "success" });
   const dropAbortRef = useRef(null);
-  const DROP_FN_URL =
-    import.meta.env.VITE_DROP_DAILY_URL ||
-    "https://us-central1-<your-project-id>.cloudfunctions.net/dropDailyRidesNow";
+  const DROP_FN_URL = import.meta.env.VITE_DROP_DAILY_URL || "";
+  const dropUrlConfigured = Boolean(DROP_FN_URL);
 
   // Dropzone
   const DROPZONE_MIN_H = 168;
@@ -366,6 +365,14 @@ export default function RideEntryForm() {
   );
 
   const runDropDailyRidesNow = useCallback(async () => {
+    if (!dropUrlConfigured) {
+      setDropSnack({
+        open: true,
+        severity: "error",
+        message: "Drop function URL not configured",
+      });
+      return;
+    }
     setDropLoading(true);
     const controller = new AbortController();
     dropAbortRef.current = controller;
@@ -415,7 +422,7 @@ export default function RideEntryForm() {
       message: `Failed: ${lastErr?.message || lastErr}`,
     });
     setDropLoading(false);
-  }, [DROP_FN_URL, fetchRides]);
+  }, [DROP_FN_URL, dropUrlConfigured, fetchRides]);
 
   useEffect(() => {
     return () => {
@@ -873,11 +880,17 @@ return (
 
       {/* Daily Rides Update Section */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Tooltip title="Move all 'queued' rides into Live Rides (same logic as the 6pm job)">
+        <Tooltip
+          title={
+            dropUrlConfigured
+              ? "Move all 'queued' rides into Live Rides (same logic as the 6pm job)"
+              : "Drop function URL not configured"
+          }
+        >
           <span>
             <Button
               onClick={runDropDailyRidesNow}
-              disabled={dropLoading}
+              disabled={dropLoading || !dropUrlConfigured}
               variant="contained"
               startIcon={
                 dropLoading ? (
