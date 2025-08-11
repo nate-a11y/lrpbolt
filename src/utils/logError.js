@@ -6,5 +6,8 @@ export function logError(err, context = "") {
     msg = "Error serializing error object";
     console.error("[logError] serialization error:", e);
   }
-  console.error(`[${context}]`, msg);
+
+  const ctx =
+    typeof context === "string" ? context : JSON.stringify(context);
+  console.error(`[${ctx}]`, msg);
 }

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   Box, Card, CardContent, CardHeader, Typography, Stack,
   IconButton, Button, Fab, Divider, Dialog, DialogTitle,
-  DialogContent, DialogActions, Snackbar, Alert
+  DialogContent, DialogActions, Alert, CircularProgress
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -33,12 +33,13 @@ import {
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
+import { tsToMillis } from "../utils/timeUtils";
+import { logError } from "../utils/logError";
 
 const STORAGE_CLOCK = "shootoutClock";
 const SHOOTOUT_COL = "shootoutStats";
 const IMG_CADILLAC = "https://logos-world.net/wp-content/uploads/2021/05/Cadillac-Logo.png";
 const IMG_SHOOTOUT = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s";
-const tsToDate = (ts) => (ts && typeof ts.toDate === "function" ? ts.toDate() : null);
 
 async function startShootoutSession(initial = {}) {
   const user = await waitForAuth(true);
@@ -81,6 +82,7 @@ export default function ShootoutTab() {
   const [passengers, setPassengers] = useState(0);
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const lastActionRef = useRef(null);
@@ -97,7 +99,7 @@ export default function ShootoutTab() {
       try {
         const ts = Timestamp.fromMillis(stored.startTime);
         setStartTime(ts);
-        setElapsed(Math.floor((Date.now() - ts.toMillis()) / 1000));
+        setElapsed(Math.floor((Date.now() - tsToMillis(ts)) / 1000));
         setIsRunning(true);
         setTrips(stored.trips || 0);
         setPassengers(stored.passengers || 0);
@@ -115,7 +117,7 @@ export default function ShootoutTab() {
     const tick = () => {
       if (isRunning && startTime) {
         try {
-          setElapsed(Math.floor((Date.now() - startTime.toMillis()) / 1000));
+          setElapsed(Math.floor((Date.now() - tsToMillis(startTime)) / 1000));
         } catch (err) {
           console.warn("Tick failed:", err);
         }
@@ -152,7 +154,7 @@ export default function ShootoutTab() {
           const snap = await getDoc(doc(db, "userAccess", email));
           isAdmin = snap.exists && String(snap.data().access || "").toLowerCase() === "admin";
         } catch (e) {
-          console.error("userAccess check failed", e);
+          logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
         }
 
         const base = collection(db, SHOOTOUT_COL);
@@ -160,34 +162,40 @@ export default function ShootoutTab() {
           ? query(base, orderBy("createdAt", "desc"), limit(200))
           : query(base, where("userEmail", "==", email), orderBy("createdAt", "desc"), limit(200));
 
+        setLoading(true);
         unsub = onSnapshot(
           q,
           (snap) => {
             const next = snap.docs.map((d) => {
               const data = d.data();
-              const st = tsToDate(data.startTime);
-              const et = tsToDate(data.endTime);
+              const st = tsToMillis(data.startTime);
+              const et = tsToMillis(data.endTime);
               const duration = st && et ? Math.floor((et - st) / 1000) : 0;
               return { id: d.id, ...data, startTime: st, endTime: et, duration };
             });
             setRows(next);
             setErr(null);
+            setLoading(false);
           },
           (e) => {
-            console.error("[ShootoutTab] onSnapshot error:", e);
+            logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
             setErr(e?.code || e?.message || "Unknown error");
+            setLoading(false);
           }
         );
       } catch (e) {
-        console.error("[ShootoutTab] subscribe failed:", e);
+        logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
         setErr(e?.message || "subscribe failed");
+        setLoading(false);
       }
     })();
     return () => {
       mounted = false;
       try {
         unsub();
-      } catch (e) {}
+      } catch (e) {
+        logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
+      }
     };
   }, []);
 
@@ -211,7 +219,7 @@ export default function ShootoutTab() {
       setPassengers(0);
       persistClock({ startTime: now.toMillis(), sessionId: ref.id, trips: 0, passengers: 0 });
     } catch (e) {
-      console.error("startShootoutSession failed", e);
+      logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
       setErr(e.message);
     }
   };
@@ -319,6 +327,26 @@ export default function ShootoutTab() {
   const totalPassengers = useMemo(() => rows.reduce((s, h) => s + (h.passengers || 0), 0), [rows]);
   const avgPassengers = totalTrips ? (totalPassengers / totalTrips).toFixed(2) : "0.00";
 
+  if (loading) {
+    return (
+      <Box mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (err) {
+    return (
+      <Box mt={4}>
+        <Alert severity="error">
+          {err === "permission-denied"
+            ? "You don’t have permission to view this data. Ask an admin to grant access."
+            : err}
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box maxWidth={520} mx="auto">
       <Card sx={{ borderLeft: (t) => `5px solid ${t.palette.success.main}` }}>
@@ -350,15 +378,22 @@ export default function ShootoutTab() {
           </Box>
 
           {!isRunning ? (
-            <Fab
-              color="success"
-              onClick={handleStart}
-              sx={{ mb: 2 }}
-              centerRipple
-              aria-label="Start session"
-            >
-              <PlayArrowIcon />
-            </Fab>
+            <>
+              <Fab
+                color="success"
+                onClick={handleStart}
+                sx={{ mb: 2 }}
+                centerRipple
+                aria-label="Start session"
+              >
+                <PlayArrowIcon />
+              </Fab>
+              {rows.length === 0 && (
+                <Typography color="text.secondary">
+                  No shootout sessions yet. Press Start to begin.
+                </Typography>
+              )}
+            </>
           ) : (
             <Stack spacing={1.5} alignItems="center">
               <Fab
@@ -453,13 +488,6 @@ export default function ShootoutTab() {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={Boolean(err)} onClose={() => setErr(null)} autoHideDuration={6000}>
-        <Alert onClose={() => setErr(null)} severity="error" sx={{ width: '100%' }}>
-          {err === 'permission-denied'
-            ? "You don’t have permission to view this data. Ask an admin to grant access."
-            : err}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

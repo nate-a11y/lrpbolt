@@ -14,6 +14,8 @@ import {
   MenuItem,
   Checkbox,
   FormControlLabel,
+  Alert,
+  CircularProgress,
   useMediaQuery,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -29,7 +31,9 @@ import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/firestore";
-import { durationFormat } from "../utils/timeUtils";
+import { durationFormat, tsToMillis } from "../utils/timeUtils";
+import { logError } from "../utils/logError";
+import ErrorBanner from "./ErrorBanner";
 
 dayjs.extend(isoWeek);
 
@@ -52,7 +56,7 @@ const shootoutColumns = [
   { field: "createdAt", headerName: "Created", flex: 1 },
 ];
 
-export default function AdminTimeLog() {
+export default function AdminTimeLog({ driver }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -61,6 +65,7 @@ export default function AdminTimeLog() {
   const [logs, setLogs] = useState([]);
   const [shootoutStats, setShootoutStats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [columnVisibility, setColumnVisibility] = useState(() => {
@@ -71,53 +76,91 @@ export default function AdminTimeLog() {
   });
 
   useEffect(() => {
-    const unsub1 = subscribeTimeLogs((data) => {
-      setLogs(
-        data.map((entry, i) => {
-          const start = dayjs(entry.startTime?.toDate?.() || entry.startTime);
-          const end = dayjs(entry.endTime?.toDate?.() || entry.endTime);
-          const logged = dayjs(entry.loggedAt?.toDate?.() || entry.loggedAt);
-          const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
-          return {
-            id: i + 1,
-            Driver: entry.driver || "Unknown",
-            RideID: entry.rideID || "N/A",
-            StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
-            EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
-            Duration: duration != null ? durationFormat(duration) : "—",
-            LoggedAt: logged.isValid() ? logged.format("MM/DD/YYYY hh:mm A") : "—",
-            raw: entry,
-            durationMin: duration ?? 0,
-          };
-        })
-      );
+    if ((driver?.access || "").toLowerCase() !== "admin") {
+      setErr("permission-denied");
       setLoading(false);
-    });
+      return;
+    }
 
-    const unsub2 = subscribeShootoutStats((data) => {
-      setShootoutStats(
-        data.map((entry, i) => {
-          const start = dayjs(entry.startTime?.toDate?.());
-          const end = dayjs(entry.endTime?.toDate?.());
-          const created = dayjs(entry.createdAt?.toDate?.());
-          const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
-          return {
-            id: i + 1,
-            Driver: entry.driver || "Unknown",
-            startTime: start.format("MM/DD/YYYY hh:mm A"),
-            endTime: end.format("MM/DD/YYYY hh:mm A"),
-            elapsedMin: durationFormat(elapsed),
-            createdAt: created.format("MM/DD/YYYY hh:mm A"),
-          };
-        })
-      );
-    });
+    setLoading(true);
+    const unsub1 = subscribeTimeLogs(
+      (data) => {
+        setLogs(
+          data.map((entry, i) => {
+            const start = dayjs(tsToMillis(entry.startTime));
+            const end = dayjs(tsToMillis(entry.endTime));
+            const logged = dayjs(tsToMillis(entry.loggedAt));
+            const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
+            return {
+              id: i + 1,
+              Driver: entry.driver || "Unknown",
+              RideID: entry.rideID || "N/A",
+              StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
+              EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
+              Duration: duration != null ? durationFormat(duration) : "—",
+              LoggedAt: logged.isValid() ? logged.format("MM/DD/YYYY hh:mm A") : "—",
+              raw: entry,
+              durationMin: duration ?? 0,
+            };
+          })
+        );
+        setLoading(false);
+        setErr(null);
+      },
+      (e) => {
+        logError(e, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
+        setErr(e?.code || e?.message || "Unknown error");
+        setLoading(false);
+      },
+    );
+
+    const unsub2 = subscribeShootoutStats(
+      (data) => {
+        setShootoutStats(
+          data.map((entry, i) => {
+            const start = dayjs(tsToMillis(entry.startTime));
+            const end = dayjs(tsToMillis(entry.endTime));
+            const created = dayjs(tsToMillis(entry.createdAt));
+            const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
+            return {
+              id: i + 1,
+              Driver: entry.driver || "Unknown",
+              startTime: start.format("MM/DD/YYYY hh:mm A"),
+              endTime: end.format("MM/DD/YYYY hh:mm A"),
+              elapsedMin: durationFormat(elapsed),
+              createdAt: created.format("MM/DD/YYYY hh:mm A"),
+            };
+          })
+        );
+      },
+      (e) => {
+        logError(e, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
+        setErr(e?.code || e?.message || "Unknown error");
+      },
+    );
 
     return () => {
       unsub1();
       unsub2();
     };
-  }, []);
+  }, [driver?.access]);
+
+  if (err === "permission-denied") {
+    return (
+      <Box mt={4} textAlign="center">
+        <ErrorBanner error={err} onClose={() => setErr(null)} />
+        <Alert severity="error">Admins only</Alert>
+      </Box>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Box mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
@@ -136,7 +179,7 @@ export default function AdminTimeLog() {
   const groupedWeekly = useMemo(() => {
     const byDriver = {};
     for (const log of logs) {
-      const week = dayjs(log.raw.startTime?.toDate?.() || log.raw.startTime).isoWeek();
+      const week = dayjs(tsToMillis(log.raw.startTime)).isoWeek();
       const driver = log.Driver;
       if (!byDriver[driver]) byDriver[driver] = {};
       if (!byDriver[driver][week]) byDriver[driver][week] = 0;
@@ -233,6 +276,11 @@ export default function AdminTimeLog() {
                   fontSize: "0.85rem",
                 }}
               />
+              {filteredLogs.length === 0 && (
+                <Typography textAlign="center" color="text.secondary" sx={{ p: 2 }}>
+                  No logs found.
+                </Typography>
+              )}
             </Paper>
           </>
         )}
@@ -298,9 +346,15 @@ export default function AdminTimeLog() {
                 },
               }}
             />
+            {shootoutStats.length === 0 && (
+              <Typography textAlign="center" color="text.secondary" sx={{ p: 2 }}>
+                No shootout stats.
+              </Typography>
+            )}
           </Paper>
         )}
       </Box>
+      <ErrorBanner error={err} onClose={() => setErr(null)} />
     </LocalizationProvider>
   );
 }
