@@ -1,55 +1,44 @@
 /* Proprietary and confidential. See LICENSE. */
 // functions/index.js
 
-import * as functions from "firebase-functions";
-import cors from "cors";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./src/admin.js";
 import { normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "./constants.js";
 
-const corsHandler = cors({
-  origin: [
-    "https://lakeridepros.xyz",
-    "http://localhost:5173",
-    "http://localhost:3000",
-  ],
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false,
-});
+const CALL_OPTS = {
+  region: "us-central1",
+  memory: "256MiB",
+  timeoutSeconds: 120,
+  concurrency: 80,
+  minInstances: 0,
+};
 
-async function getUser(context) {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "Authentication required",
-    );
+async function getUser(request) {
+  const { auth } = request;
+  if (!auth) {
+    throw new HttpsError("unauthenticated", "Authentication required");
   }
- const email = (context.auth.token.email || "").toLowerCase();
- const doc = await db.collection(COLLECTIONS.USER_ACCESS).doc(email).get();
+  const email = (auth.token.email || "").toLowerCase();
+  const doc = await db.collection(COLLECTIONS.USER_ACCESS).doc(email).get();
   if (!doc.exists) {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "User not authorized",
-    );
+    throw new HttpsError("permission-denied", "User not authorized");
   }
   return { email, ...doc.data() };
 }
 
-async function requireAdmin(context) {
-  const user = await getUser(context);
+async function requireAdmin(request) {
+  const user = await getUser(request);
   if (user.role !== "admin") {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "Admin only",
-    );
+    throw new HttpsError("permission-denied", "Admin only");
   }
   return user;
 }
 
-export const getRides = functions.https.onCall(async (data, context) => {
-  await getUser(context);
+export const getRides = onCall(CALL_OPTS, async (request) => {
+  await getUser(request);
   const snap = await db.collection(COLLECTIONS.LIVE_RIDES).get();
   const rides = snap.docs
     .filter((d) => !d.data().claimedBy)
@@ -57,15 +46,15 @@ export const getRides = functions.https.onCall(async (data, context) => {
   return { success: true, rides };
 });
 
-export const getRideQueue = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
+export const getRideQueue = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
   const snap = await db.collection(COLLECTIONS.RIDE_QUEUE).get();
   const rides = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   return { success: true, rides };
 });
 
-export const getClaimedRides = functions.https.onCall(async (data, context) => {
-  const user = await getUser(context);
+export const getClaimedRides = onCall(CALL_OPTS, async (request) => {
+  const user = await getUser(request);
   const snap = await db.collection(COLLECTIONS.LIVE_RIDES).get();
   let rides = snap.docs.filter((d) => d.data().claimedBy);
   if (user.role !== "admin") {
@@ -75,9 +64,10 @@ export const getClaimedRides = functions.https.onCall(async (data, context) => {
   return { success: true, rides };
 });
 
-export const claimRide = functions.https.onCall(async (data, context) => {
-  const user = await getUser(context);
-  const { tripId, driverName } = data;
+export const claimRide = onCall(CALL_OPTS, async (request) => {
+  const { data } = request;
+  const user = await getUser(request);
+  const { tripId, driverName } = data || {};
   if (!tripId) return { success: false, message: "tripId required" };
 
   try {
@@ -89,7 +79,7 @@ export const claimRide = functions.https.onCall(async (data, context) => {
           .limit(1)
       );
       if (q.empty) {
-        throw new functions.https.HttpsError("not-found", "Ride not found");
+        throw new HttpsError("not-found", "Ride not found");
       }
 
       const docSnap = q.docs[0];
@@ -98,30 +88,29 @@ export const claimRide = functions.https.onCall(async (data, context) => {
 
       if (ride.claimedBy) {
         await logClaimFailure(tripId, user.email, "Ride already claimed");
-        throw new functions.https.HttpsError("failed-precondition", "Ride already claimed");
+        throw new HttpsError("failed-precondition", "Ride already claimed");
       }
 
-        tx.update(ref, {
-          claimedBy: driverName || user.email,
-          claimedAt: FieldValue.serverTimestamp(),
-        });
+      tx.update(ref, {
+        claimedBy: driverName || user.email,
+        claimedAt: FieldValue.serverTimestamp(),
+      });
     });
 
     return { success: true };
   } catch (err) {
-    // If we threw an HttpsError in the txn, surface the right message
-    if (err instanceof functions.https.HttpsError) {
+    if (err instanceof HttpsError) {
       return { success: false, message: err.message };
     }
-    console.error("[claimRide] unexpected error", err);
+    logger.error("[claimRide] unexpected error", err);
     return { success: false, message: "Unexpected error" };
   }
 });
 
 
-export const addRideToQueue = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
-  const ride = data.ride || {};
+export const addRideToQueue = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { ride = {} } = request.data || {};
   if (!ride.tripId) {
     return { success: false, message: "tripId required" };
   }
@@ -132,9 +121,9 @@ export const addRideToQueue = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-export const updateRide = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
-  const { tripId, fields } = data;
+export const updateRide = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { tripId, fields } = request.data || {};
   if (!tripId || !fields) {
     return { success: false, message: "tripId and fields required" };
   }
@@ -149,9 +138,9 @@ export const updateRide = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-export const deleteRide = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
-  const { tripId } = data;
+export const deleteRide = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { tripId } = request.data || {};
   if (!tripId) {
     return { success: false, message: "tripId required" };
   }
@@ -163,9 +152,9 @@ export const deleteRide = functions.https.onCall(async (data, context) => {
 });
 
 
-export const getTicketById = functions.https.onCall(async (data, context) => {
-  await getUser(context);
-  const { ticketId } = data;
+export const getTicketById = onCall(CALL_OPTS, async (request) => {
+  await getUser(request);
+  const { ticketId } = request.data || {};
   const doc = await db.collection(COLLECTIONS.TICKETS).doc(ticketId).get();
   if (!doc.exists) {
     return { success: false, message: "Ticket not found" };
@@ -173,16 +162,16 @@ export const getTicketById = functions.https.onCall(async (data, context) => {
   return { success: true, ticket: { id: doc.id, ...doc.data() } };
 });
 
-export const getAllTickets = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
+export const getAllTickets = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
   const snap = await db.collection(COLLECTIONS.TICKETS).get();
   const tickets = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return { success: true, tickets };
 });
 
-export const addTicket = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
-  const ticket = data.ticket || {};
+export const addTicket = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { ticket = {} } = request.data || {};
   if (!ticket.ticketId) {
     return { success: false, message: "ticketId required" };
   }
@@ -194,96 +183,81 @@ export const addTicket = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-export const updateTicketFields = functions.https.onCall(
-  async (data, context) => {
-    await requireAdmin(context);
-    const { ticketId, fields } = data;
-    if (!ticketId || !fields) {
-      return { success: false, message: "ticketId and fields required" };
-    }
-    const updates = {};
-    for (const [k, v] of Object.entries(fields)) {
-      updates[normalizeHeader(k)] = v;
-    }
-    await db
-      .collection(COLLECTIONS.TICKETS)
-      .doc(ticketId.toString())
-      .update(updates);
-    return { success: true };
-  },
-);
-
-export const deleteTicket = functions.https.onCall(async (data, context) => {
-  await requireAdmin(context);
-  const { ticketId } = data;
-  if (!ticketId) {
-    return { success: false, message: "ticketId required" };
+export const updateTicketFields = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { ticketId, fields } = request.data || {};
+  if (!ticketId || !fields) {
+    return { success: false, message: "ticketId and fields required" };
   }
-  await db
-    .collection(COLLECTIONS.TICKETS)
-    .doc(ticketId.toString())
-    .delete();
+  const updates = {};
+  for (const [k, v] of Object.entries(fields)) {
+    updates[normalizeHeader(k)] = v;
+  }
+  await db.collection(COLLECTIONS.TICKETS).doc(ticketId.toString()).update(updates);
   return { success: true };
 });
 
-export const updateTicketScanStatus = functions.https.onCall(
-  async (data, context) => {
-    await getUser(context);
-    const { ticketId, scanType, driverName } = data;
-    if (!ticketId || !scanType) {
-      return { success: false, message: "ticketId and scanType required" };
-    }
-    const update = {};
-    const name = driverName || context.auth.token.email || "Unknown";
-    if (scanType === "outbound") {
-      update.scannedOutbound = true;
-        update.scannedOutboundAt = FieldValue.serverTimestamp();
-      update.scannedOutboundBy = name;
-    } else if (scanType === "return") {
-      update.scannedReturn = true;
-        update.scannedReturnAt = FieldValue.serverTimestamp();
-      update.scannedReturnBy = name;
-    } else {
-      return { success: false, message: "Invalid scanType" };
-    }
-    await db
-      .collection(COLLECTIONS.TICKETS)
-      .doc(ticketId.toString())
-      .update(update);
-    return { success: true };
-  },
-);
+export const deleteTicket = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { ticketId } = request.data || {};
+  if (!ticketId) {
+    return { success: false, message: "ticketId required" };
+  }
+  await db.collection(COLLECTIONS.TICKETS).doc(ticketId.toString()).delete();
+  return { success: true };
+});
 
-export const sendTicketEmail = functions.https.onCall(
-  async (data, context) => {
-    await requireAdmin(context);
-    const { to, subject, body, attachment, filename } = data;
-    if (!to || !subject || !attachment) {
-      return { success: false, message: "Missing fields" };
-    }
-    const mailRef = db.collection("_mail").doc();
-    await mailRef.set({
-      to: Array.isArray(to) ? to : [to],
-      cc: ["contactus@lakeridepros.com"],
-      message: {
-        subject,
-        text: body || "",
-        attachments: [
-          {
-            filename: filename || "ticket.png",
-            content: attachment,
-            encoding: "base64",
-          },
-        ],
-      },
-    });
-    return { success: true };
-  },
-);
+export const updateTicketScanStatus = onCall(CALL_OPTS, async (request) => {
+  await getUser(request);
+  const { ticketId, scanType, driverName } = request.data || {};
+  if (!ticketId || !scanType) {
+    return { success: false, message: "ticketId and scanType required" };
+  }
+  const update = {};
+  const name = driverName || request.auth?.token?.email || "Unknown";
+  if (scanType === "outbound") {
+    update.scannedOutbound = true;
+    update.scannedOutboundAt = FieldValue.serverTimestamp();
+    update.scannedOutboundBy = name;
+  } else if (scanType === "return") {
+    update.scannedReturn = true;
+    update.scannedReturnAt = FieldValue.serverTimestamp();
+    update.scannedReturnBy = name;
+  } else {
+    return { success: false, message: "Invalid scanType" };
+  }
+  await db.collection(COLLECTIONS.TICKETS).doc(ticketId.toString()).update(update);
+  return { success: true };
+});
 
-export const logTimeEntry = functions.https.onCall(async (data, context) => {
-  const user = await getUser(context);
-  const { driver, rideId, startTime, endTime, duration } = data;
+export const sendTicketEmail = onCall(CALL_OPTS, async (request) => {
+  await requireAdmin(request);
+  const { to, subject, body, attachment, filename } = request.data || {};
+  if (!to || !subject || !attachment) {
+    return { success: false, message: "Missing fields" };
+  }
+  const mailRef = db.collection("_mail").doc();
+  await mailRef.set({
+    to: Array.isArray(to) ? to : [to],
+    cc: ["contactus@lakeridepros.com"],
+    message: {
+      subject,
+      text: body || "",
+      attachments: [
+        {
+          filename: filename || "ticket.png",
+          content: attachment,
+          encoding: "base64",
+        },
+      ],
+    },
+  });
+  return { success: true };
+});
+
+export const logTimeEntry = onCall(CALL_OPTS, async (request) => {
+  const user = await getUser(request);
+  const { driver, rideId, startTime, endTime, duration } = request.data || {};
   await db.collection(COLLECTIONS.TIME_LOGS).add({
     driver: driver || user.email,
     rideId: rideId || null,
@@ -295,5 +269,5 @@ export const logTimeEntry = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-export { moveQueuedToLiveDaily, dropDailyRidesNow } from "./src/index.js";
+export { dropDailyRidesNow, dropDailyRidesDaily } from "./src/dropDailyRidesNow.js";
 
