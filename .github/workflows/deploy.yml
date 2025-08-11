@@ -145,26 +145,51 @@ jobs:
         with:
           node-version: 20
 
-      - name: Validate functions secrets
+      - name: Validate required secrets
+        shell: bash
         run: |
-          [ -n "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ] || { echo "::error::Missing GOOGLE_APPLICATION_CREDENTIALS_JSON"; exit 1; }
-          [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ] || { echo "::error::Missing FIREBASE_PROJECT_ID"; exit 1; }
+          set -euo pipefail
+          missing=0
+          if [ -z "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ]; then
+            echo "::error::Missing GOOGLE_APPLICATION_CREDENTIALS_JSON"
+            missing=1
+          fi
+          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "::error::Missing FIREBASE_PROJECT_ID"
+            missing=1
+          fi
+          if [ -z "${{ secrets.MANUAL_DROP_TOKEN }}" ]; then
+            echo "::warning::MANUAL_DROP_TOKEN not set (only needed if your functions expect it)"
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Write service account key
+        shell: bash
         run: |
-          mkdir -p $HOME/.gcloud
-          echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}' > $HOME/.gcloud/key.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcloud/key.json" >> $GITHUB_ENV
+          set -euo pipefail
+          mkdir -p "$HOME/.gcloud"
+          # Write JSON exactly as-is (no interpolation)
+          cat > "$HOME/.gcloud/key.json" <<'JSON'
+          ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          JSON
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcloud/key.json" >> "$GITHUB_ENV"
 
-      - name: Export MANUAL_DROP_TOKEN
-        run: echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> $GITHUB_ENV
+      - name: Export MANUAL_DROP_TOKEN (optional)
+        if: ${{ secrets.MANUAL_DROP_TOKEN != '' }}
+        shell: bash
+        run: echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> "$GITHUB_ENV"
 
       - name: Install & Deploy Cloud Functions (v2)
         working-directory: functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        shell: bash
         run: |
+          set -euo pipefail
           npm ci
-          npx firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --force
+          npx firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --force
           # Set Artifact Registry cleanup (14 days), idempotent
           npx firebase functions:artifacts:setpolicy --location us-central1 --days 14 || true
