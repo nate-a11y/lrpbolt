@@ -25,6 +25,9 @@ import {
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
+import { tsToMillis } from "../utils/timeUtils";
+import { logError } from "../utils/logError";
+import ErrorBanner from "./ErrorBanner";
 
 const bcName = "lrp-timeclock-lock";
 
@@ -60,6 +63,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
+  const [err, setErr] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
@@ -109,7 +113,9 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   useEffect(() => {
     if (!isRunning || !startTime) return;
     const timer = setInterval(() => {
-      setElapsed(Math.floor((Timestamp.now().toMillis() - startTime.toMillis()) / 1000));
+      setElapsed(
+        Math.floor((tsToMillis(Timestamp.now()) - tsToMillis(startTime)) / 1000),
+      );
     }, 1000);
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
@@ -129,26 +135,36 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           ? query(base, orderBy("startTime", "desc"), limit(500))
           : query(base, where("userEmail", "==", userEmail), orderBy("startTime", "desc"), limit(200));
 
-        unsub = onSnapshot(q, (snap) => {
-          const rows = snap.docs.map((d) => {
-            const data = d.data();
-            const st = data.startTime && data.startTime.toDate ? data.startTime.toDate() : null;
-            const et = data.endTime && data.endTime.toDate ? data.endTime.toDate() : null;
-            const duration = st && et ? Math.round((et - st) / 60000) : 0;
-            return { id: d.id, ...data, startTime: st, endTime: et, duration };
-          });
-          setRows(rows);
-        });
+        unsub = onSnapshot(
+          q,
+          (snap) => {
+            const rows = snap.docs.map((d) => {
+              const data = d.data();
+              const st = tsToMillis(data.startTime);
+              const et = tsToMillis(data.endTime);
+              const duration = st && et ? Math.round((et - st) / 60000) : 0;
+              return { id: d.id, ...data, startTime: st, endTime: et, duration };
+            });
+            setRows(rows);
+            setErr(null);
+          },
+          (e) => {
+            logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
+            setErr(e?.code || e?.message || "Unknown error");
+          }
+        );
       } catch (e) {
-        console.error("timeLogs subscribe failed", e);
-        // TODO: surface snackbar
+        logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
+        setErr(e?.message || "subscribe failed");
       }
     })();
     return () => {
       mounted = false;
       try {
         unsub();
-      } catch (e) {}
+      } catch (e) {
+        logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
+      }
     };
   }, [driver?.access]);
 
@@ -184,7 +200,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           rideId: idToTrack,
           isNA,
           isMulti,
-          startTime: now.toMillis(),
+          startTime: tsToMillis(now),
           logId: ref.id,
         })
       );
@@ -195,12 +211,12 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           rideId: idToTrack,
           isNA,
           isMulti,
-          startTime: now.toMillis(),
+          startTime: tsToMillis(now),
           logId: ref.id,
         },
       });
     } catch (e) {
-      console.error("logTimeCreate failed", e);
+      logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
       setSnack({ open: true, message: `❌ Failed: ${e.message}`, severity: "error" });
     } finally {
       setSubmitting(false);
@@ -232,7 +248,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       bcRef.current?.postMessage({
         type: "timeclock:ended",
         driver,
-        payload: { endTime: end.toMillis() },
+        payload: { endTime: tsToMillis(end) },
       });
     } catch (err) {
       setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
@@ -307,7 +323,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         )}
         {!isRunning && endTime && (
           <Typography mt={2} color="text.secondary">
-            Ended at {dayjs(endTime.toDate()).format("HH:mm")}
+            Ended at {dayjs(tsToMillis(endTime)).format("HH:mm")}
           </Typography>
         )}
       </Paper>
@@ -325,6 +341,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           disableRowSelectionOnClick
           density="compact"
         />
+        {rows.length === 0 && (
+          <Typography textAlign="center" color="text.secondary" mt={2}>
+            No time logs found.
+          </Typography>
+        )}
       </Paper>
 
       <Snackbar
@@ -337,6 +358,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           {snack.message}
         </Alert>
       </Snackbar>
+      <ErrorBanner error={err} onClose={() => setErr(null)} />
     </Box>
   );
 }

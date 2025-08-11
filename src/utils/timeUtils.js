@@ -111,3 +111,7 @@ export function getSyncTime() {
     return '';
   }
 }
+
+// Null-safe Firestore Timestamp -> milliseconds conversion
+export const tsToMillis = (ts) =>
+  ts && typeof ts.toMillis === 'function' ? ts.toMillis() : null;

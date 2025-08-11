@@ -86,6 +86,7 @@ export async function fetchUserAccess(activeOnly = false) {
 export function subscribeUserAccess(
   onRows,
   { activeOnly = false, roles = ["admin", "driver"], max = 100 } = {},
+  onError,
 ) {
   const coll = collection(db, "userAccess");
   const clauses = [];
@@ -94,19 +95,27 @@ export function subscribeUserAccess(
     clauses.push(where("access", "in", roles.map((r) => r.toLowerCase())));
   const q = query(coll, ...clauses, limit(Math.min(max || 100, 500)));
 
-  return onSnapshot(q, (snap) => {
-    const rows = snap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id, // lowercase email
-        name: data.name || "",
-        email: data.email || d.id,
-        access: (data.access || "").toLowerCase(),
-        active: data.active !== false,
-      };
-    });
-    onRows(rows);
-  });
+  const unsub = onSnapshot(
+    q,
+    (snap) => {
+      const rows = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id, // lowercase email
+          name: data.name || "",
+          email: data.email || d.id,
+          access: (data.access || "").toLowerCase(),
+          active: data.active !== false,
+        };
+      });
+      onRows(rows);
+    },
+    (e) => {
+      logError(e, { area: "FirestoreSubscribe", comp: "subscribeUserAccess" });
+      onError?.(e);
+    },
+  );
+  return () => unsub();
 }
 
 /**
@@ -661,22 +670,29 @@ export async function fetchShootoutHistory(status, max = 100) {
   });
 }
 
-export function subscribeShootoutHistoryAll(callback, status, max = 200) {
+export function subscribeShootoutHistoryAll(callback, status, max = 200, onError) {
   const constraints = [];
   if (status) constraints.push(where("status", "==", status));
   constraints.push(orderBy("startTime", "desc"), limit(max));
   const q = query(collection(db, "shootoutStats"), ...constraints);
-  const unsub = onSnapshot(q, (snap) => {
-    const rows = snap.docs.map((d) => {
-      const data = d.data() || {};
-      return {
-        id: d.id,
-        ...data,
-        startTime: tsToDate(data.startTime),
-        endTime: tsToDate(data.endTime),
-      };
-    });
-    callback(rows);
-  });
+  const unsub = onSnapshot(
+    q,
+    (snap) => {
+      const rows = snap.docs.map((d) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          ...data,
+          startTime: tsToDate(data.startTime),
+          endTime: tsToDate(data.endTime),
+        };
+      });
+      callback(rows);
+    },
+    (e) => {
+      logError(e, { area: "FirestoreSubscribe", comp: "subscribeShootoutHistoryAll" });
+      onError?.(e);
+    },
+  );
   return () => unsub();
 }
