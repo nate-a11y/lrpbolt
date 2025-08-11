@@ -177,9 +177,14 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcloud/key.json" >> "$GITHUB_ENV"
 
       - name: Export MANUAL_DROP_TOKEN (optional)
-        if: ${{ secrets.MANUAL_DROP_TOKEN != '' }}
         shell: bash
-        run: echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> "$GITHUB_ENV"
+        run: |
+          if [ -n "${{ secrets.MANUAL_DROP_TOKEN }}" ]; then
+            echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Set MANUAL_DROP_TOKEN in env."
+          else
+            echo "MANUAL_DROP_TOKEN not set; continuing."
+          fi
 
       - name: Install & Deploy Cloud Functions (v2)
         working-directory: functions
