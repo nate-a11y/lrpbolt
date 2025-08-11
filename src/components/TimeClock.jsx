@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Snackbar, Alert, Stack
+  FormControlLabel, Snackbar, Alert, Stack, CircularProgress
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -22,13 +22,11 @@ import {
   Timestamp,
   doc,
 } from "firebase/firestore";
-import { db } from "../services/firebase";
+import { db } from "@/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
-import { tsToMillis } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
-import useRole from "../hooks/useRole";
-import useFirestoreSub from "../hooks/useFirestoreSub";
+import { useRole, useFirestoreSub } from "@/hooks";
 
 const bcName = "lrp-timeclock-lock";
 
@@ -55,6 +53,15 @@ async function logTimeUpdate(id, patch) {
   });
 }
 
+function tsToMillis(v) {
+  if (!v) return null;
+  if (v instanceof Timestamp) return v.toMillis();
+  if (typeof v?.toDate === "function") return v.toDate().getTime();
+  if (typeof v === "number") return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [rideId, setRideId] = useState("");
   const [startTime, setStartTime] = useState(null);
@@ -64,16 +71,16 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
-  const [err, setErr] = useState(null);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
   const bcRef = useRef(null);
 
-  const { isAdmin, isDriver, loading: roleLoading, user } = useRole();
-  const { data: logDocs, error: subError } = useFirestoreSub(
+  const { user, loading: roleLoading, isAdmin, isDriver } = useRole();
+  const { docs: logDocs, error, ready } = useFirestoreSub(
     () => {
-      if (roleLoading || (!isAdmin && !isDriver) || !user?.email) return null;
+      if (roleLoading) return null;
+      if (!(isAdmin || isDriver) || !user?.email) return null;
       const base = collection(db, "timeLogs");
       return isAdmin
         ? query(base, orderBy("startTime", "desc"), limit(500))
@@ -99,14 +106,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   }, [logDocs]);
 
   useEffect(() => {
-    if (!subError) return;
-    logError(subError, { area: "FirestoreSubscribe", comp: "TimeClock" });
-    if (subError.code === "permission-denied") {
-      setErr("You do not have access to view time logs.");
-    } else {
-      setErr(subError.code || subError.message || "Unknown error");
+    if (error) {
+      logError(error, { area: "FirestoreSubscribe", comp: "TimeClock" });
     }
-  }, [subError]);
+  }, [error]);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
@@ -274,17 +277,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       valueGetter: (params) => `${params.row.duration || 0}m`,
     },
   ];
-
-  if (!roleLoading && !isAdmin && !isDriver) {
-    return (
-      <Alert severity="warning" sx={{ mt: 2 }}>
-        Time logs are available to drivers and admins only.
-      </Alert>
-    );
+  if (roleLoading || !ready) return <CircularProgress sx={{ mt: 2 }} />;
+  if (!(isAdmin || isDriver)) {
+    return <Alert severity="warning" sx={{ mt: 2 }}>No access.</Alert>;
   }
 
   return (
     <Box maxWidth={600} mx="auto" p={2}>
+      <ErrorBanner error={error} />
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Time Clock</Typography>
         <TextField
@@ -359,7 +359,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           {snack.message}
         </Alert>
       </Snackbar>
-      <ErrorBanner error={err} onClose={() => setErr(null)} />
     </Box>
   );
 }

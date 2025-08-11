@@ -29,12 +29,11 @@ import {
   Timestamp,
   doc,
 } from "firebase/firestore";
-import { db } from "../services/firebase";
+import { db } from "@/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
-import { tsToMillis } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
-import useRole from "../hooks/useRole";
-import useFirestoreSub from "../hooks/useFirestoreSub";
+import ErrorBanner from "./ErrorBanner";
+import { useRole, useFirestoreSub } from "@/hooks";
 
 const STORAGE_CLOCK = "shootoutClock";
 const SHOOTOUT_COL = "shootoutStats";
@@ -74,6 +73,15 @@ function safeParse(json, fallback = {}) {
 }
 
 
+function tsToMillis(v) {
+  if (!v) return null;
+  if (v instanceof Timestamp) return v.toMillis();
+  if (typeof v?.toDate === "function") return v.toDate().getTime();
+  if (typeof v === "number") return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export default function ShootoutTab() {
   const [startTime, setStartTime] = useState(null);
   const [elapsed, setElapsed] = useState(0);
@@ -82,16 +90,16 @@ export default function ShootoutTab() {
   const [passengers, setPassengers] = useState(0);
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const lastActionRef = useRef(null);
   const intervalRef = useRef(null);
 
-  const { isAdmin, isDriver, loading: roleLoading, user } = useRole();
-  const { data: statsDocs, error: subError } = useFirestoreSub(
+  const { user, loading: roleLoading, isAdmin, isDriver } = useRole();
+  const { docs: statsDocs, error, ready } = useFirestoreSub(
     () => {
-      if (roleLoading || (!isAdmin && !isDriver) || !user?.email) return null;
+      if (roleLoading) return null;
+      if (!(isAdmin || isDriver) || !user?.email) return null;
       const base = collection(db, SHOOTOUT_COL);
       return isAdmin
         ? query(base, orderBy("createdAt", "desc"), limit(200))
@@ -115,19 +123,13 @@ export default function ShootoutTab() {
     });
     setRows(next);
     setErr(null);
-    setLoading(false);
   }, [statsDocs]);
 
   useEffect(() => {
-    if (!subError) return;
-    logError(subError, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-    if (subError.code === "permission-denied") {
-      setErr("You do not have access to view shootout stats.");
-    } else {
-      setErr(subError.code || subError.message || "Unknown error");
+    if (error) {
+      logError(error, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
     }
-    setLoading(false);
-  }, [subError]);
+  }, [error]);
 
   const persistClock = useCallback((data) => {
     const current = safeParse(localStorage.getItem(STORAGE_CLOCK));
@@ -311,7 +313,7 @@ export default function ShootoutTab() {
   const totalPassengers = useMemo(() => rows.reduce((s, h) => s + (h.passengers || 0), 0), [rows]);
   const avgPassengers = totalTrips ? (totalPassengers / totalTrips).toFixed(2) : "0.00";
 
-  if (loading) {
+  if (roleLoading || !ready) {
     return (
       <Box mt={4} display="flex" justifyContent="center">
         <CircularProgress />
@@ -319,30 +321,17 @@ export default function ShootoutTab() {
     );
   }
 
-  if (err) {
+  if (!(isAdmin || isDriver)) {
     return (
       <Box mt={4}>
-        <Alert severity="error">
-          {err === "permission-denied"
-            ? "You don’t have permission to view this data. Ask an admin to grant access."
-            : err}
-        </Alert>
-      </Box>
-    );
-  }
-
-  if (!roleLoading && !isAdmin && !isDriver) {
-    return (
-      <Box mt={4}>
-        <Alert severity="warning">
-          Shootout stats are available to drivers and admins only.
-        </Alert>
+        <Alert severity="warning">No access.</Alert>
       </Box>
     );
   }
 
   return (
     <Box maxWidth={520} mx="auto">
+      <ErrorBanner error={error || (err ? { message: err } : null)} />
       <Card sx={{ borderLeft: (t) => `5px solid ${t.palette.success.main}` }}>
         <CardHeader
           title="Shootout Ride & Time Tracker"

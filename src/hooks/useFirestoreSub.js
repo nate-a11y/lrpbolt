@@ -1,4 +1,3 @@
-// Pure JS — no TypeScript
 import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 
@@ -9,17 +8,13 @@ export function useFirestoreSub(makeQuery, deps) {
 
   useEffect(() => {
     const q = typeof makeQuery === "function" ? makeQuery() : null;
-    if (!q) return; // not ready (e.g., role/auth not loaded yet)
+    if (!q) return;
     readyRef.current = true;
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setError(null);
-      },
-      (e) => setError(e)
-    );
+    const unsub = onSnapshot(q, (snap) => {
+      setDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setError(null);
+    }, (e) => setError(e));
 
     return () => { try { unsub(); } catch (_) {} };
     // eslint-disable-next-line react-hooks/exhaustive-deps

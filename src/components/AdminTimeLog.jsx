@@ -30,15 +30,23 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { durationFormat, tsToMillis } from "../utils/timeUtils";
+import { durationFormat } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
-import { collection, query, orderBy } from "firebase/firestore";
-import { db } from "../services/firebase";
-import useRole from "../hooks/useRole";
-import useFirestoreSub from "../hooks/useFirestoreSub";
+import { collection, query, orderBy, Timestamp } from "firebase/firestore";
+import { db } from "@/firebase";
+import { useRole, useFirestoreSub } from "@/hooks";
 
 dayjs.extend(isoWeek);
+
+function tsToMillis(v) {
+  if (!v) return null;
+  if (v instanceof Timestamp) return v.toMillis();
+  if (typeof v?.toDate === "function") return v.toDate().getTime();
+  if (typeof v === "number") return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
 const baseColumns = [
   { field: "id", headerName: "#", width: 60 },
@@ -67,8 +75,6 @@ export default function AdminTimeLog() {
   const [tab, setTab] = useState(0);
   const [logs, setLogs] = useState([]);
   const [shootoutStats, setShootoutStats] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [columnVisibility, setColumnVisibility] = useState(() => {
@@ -78,21 +84,24 @@ export default function AdminTimeLog() {
       : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
   });
 
-  const { isAdmin, loading: roleLoading } = useRole();
-  const { data: logDocs, error: logsError } = useFirestoreSub(
+  const { loading: roleLoading, isAdmin } = useRole();
+  const { docs: logDocs, error: logsError, ready: logsReady } = useFirestoreSub(
     () => {
       if (roleLoading || !isAdmin) return null;
       return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
     },
     [roleLoading, isAdmin],
   );
-  const { data: shootDocs, error: shootError } = useFirestoreSub(
+  const { docs: shootDocs, error: shootError, ready: shootReady } = useFirestoreSub(
     () => {
       if (roleLoading || !isAdmin) return null;
       return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
     },
     [roleLoading, isAdmin],
   );
+
+  const error = logsError || shootError;
+  const loading = !logsReady || !shootReady;
 
   useEffect(() => {
     if (!logDocs) return;
@@ -115,8 +124,6 @@ export default function AdminTimeLog() {
         };
       }),
     );
-    setLoading(false);
-    setErr(null);
   }, [logDocs]);
 
   useEffect(() => {
@@ -140,37 +147,23 @@ export default function AdminTimeLog() {
   }, [shootDocs]);
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
-      setErr("permission-denied");
-      setLoading(false);
+    if (error) {
+      logError(error, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
     }
-  }, [roleLoading, isAdmin]);
+  }, [error]);
 
-  useEffect(() => {
-    const e = logsError || shootError;
-    if (!e) return;
-    logError(e, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
-    if (e.code === "permission-denied") {
-      setErr("permission-denied");
-    } else {
-      setErr(e.code || e.message || "Unknown error");
-    }
-    setLoading(false);
-  }, [logsError, shootError]);
-
-  if (err === "permission-denied") {
+  if (roleLoading || loading) {
     return (
-      <Box mt={4} textAlign="center">
-        <ErrorBanner error={err} onClose={() => setErr(null)} />
-        <Alert severity="error">Admins only</Alert>
+      <Box mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
       </Box>
     );
   }
 
-  if (loading) {
+  if (!isAdmin) {
     return (
-      <Box mt={4} display="flex" justifyContent="center">
-        <CircularProgress />
+      <Box mt={4}>
+        <Alert severity="warning">No access.</Alert>
       </Box>
     );
   }
@@ -231,7 +224,6 @@ export default function AdminTimeLog() {
         />
         <Tooltip title="Reload Data">
           <IconButton
-            onClick={() => setLoading(true)}
             sx={{
               animation: loading ? "spin 2s linear infinite" : "none",
               "@keyframes spin": {
@@ -250,6 +242,7 @@ export default function AdminTimeLog() {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ px: { xs: 1, sm: 2 }, py: 3 }}>
+        <ErrorBanner error={error} />
         <Tabs
           value={tab}
           onChange={(e, v) => setTab(v)}
@@ -367,7 +360,6 @@ export default function AdminTimeLog() {
           </Paper>
         )}
       </Box>
-      <ErrorBanner error={err} onClose={() => setErr(null)} />
     </LocalizationProvider>
   );
 }
