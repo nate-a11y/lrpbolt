@@ -1,3 +1,1 @@
-module.exports = {
-  ...require("./src/dropDailyRidesNow.js"),
-};
+export * from "./src/index.js";
