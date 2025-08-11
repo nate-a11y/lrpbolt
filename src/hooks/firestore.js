@@ -5,7 +5,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { db } from "../firebase";
 
 // Realtime listener for timeLogs collection
 export function subscribeTimeLogs(callback) {

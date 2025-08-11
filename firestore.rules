@@ -30,6 +30,26 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /rideQueue/{rideId} {
+      allow read: if request.auth != null && (isDriver() || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /claimFailures/{docId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /timeLogs/{logId} {
+      allow read: if request.auth != null && (isDriver() || isAdmin());
+      allow create: if request.auth != null && (isDriver() || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if request.auth != null && (isDriver() || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

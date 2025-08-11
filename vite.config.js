@@ -14,7 +14,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
       },
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,webmanifest,json}"],
+        globPatterns: ["**/*.{js,css,html,webmanifest,json,png}"],
         manifestTransforms: [
           async (entries) => {
             const seen = new Set();
@@ -35,6 +35,19 @@ export default defineConfig({
       strategy: "injectManifest",
       srcDir: "src",
       filename: "sw.js",
+      manifest: {
+        name: "LRP Driver Portal",
+        short_name: "LRP",
+        start_url: "/",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#4cbb17",
+        description: "Ride Claim & Time Clock Portal",
+        icons: [
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
+      },
       devOptions: {
         enabled: true,
       },
@@ -67,13 +80,17 @@ export default defineConfig({
       },
     },
   },
-  base: "./",
+  base: "/",
   optimizeDeps: {
     include: [
       "@mui/material",
       "@mui/icons-material",
       "@emotion/react",
       "@emotion/styled",
+      "firebase/app",
+      "firebase/auth",
+      "firebase/firestore",
+      "firebase/functions",
     ],
   },
   define: {

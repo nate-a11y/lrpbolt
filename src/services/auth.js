@@ -1,4 +1,4 @@
-import { auth } from "../firebase/config";
+import { auth } from "../firebase";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -8,7 +8,8 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  updateProfile,
 } from "firebase/auth";
 
 const provider = new GoogleAuthProvider();
@@ -30,8 +31,10 @@ export function loginWithEmail(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export function registerWithEmail(email, password) {
-  return createUserWithEmailAndPassword(auth, email, password);
+export async function registerWithEmail(name, email, password) {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  if (name) await updateProfile(cred.user, { displayName: name });
+  return cred;
 }
 
 export function sendPasswordReset(email) {
