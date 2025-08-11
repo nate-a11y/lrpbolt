@@ -49,7 +49,18 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE, COLLECTIONS } from "../constants";
 import { RIDE_TYPES, VEHICLES } from "../constants/rides";
-import { Timestamp, collection, addDoc } from "firebase/firestore";
+import {
+  Timestamp,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  limit,
+  getDocs,
+  writeBatch,
+  doc,
+} from "firebase/firestore";
 import Papa from "papaparse";
 import {
   LocalizationProvider,
@@ -58,6 +69,13 @@ import {
 } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DataGrid } from "@mui/x-data-grid";
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Chip,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useDropzone } from "react-dropzone";
 
 dayjs.extend(utc);
@@ -147,8 +165,8 @@ export default function RideEntryForm() {
         const file = accepted[0];
         if (!file) return;
         const ext = file.name.split(".").pop().toLowerCase();
-        if (!["csv", "xls", "xlsx"].includes(ext)) {
-          setFileError("Unsupported file type");
+        if (!["csv"].includes(ext)) {
+          setFileError("Unsupported file type (use .csv)");
           return;
         }
         const reader = new FileReader();
@@ -326,8 +344,13 @@ export default function RideEntryForm() {
       const rideDuration =
         Number(clean.DurationHours || 0) * 60 +
         Number(clean.DurationMinutes || 0);
+
       const pickupTimestamp = Timestamp.fromDate(
-        new Date(`${clean.Date}T${clean.PickupTime}`)
+        dayjs.tz(
+          `${clean.Date} ${clean.PickupTime}`,
+          "YYYY-MM-DD HH:mm",
+          TIMEZONE
+        ).toDate()
       );
 
       return {
@@ -341,26 +364,88 @@ export default function RideEntryForm() {
         claimedAt: null,
         createdBy: currentUser,
         lastModifiedBy: currentUser,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
     },
     [validateFields, currentUser]
   );
 
+  // --- Duplicate guards: reject if tripId exists in Queue or Live ---
+  const tripExistsInQueue = useCallback(async (tripId) => {
+    const qy = query(
+      collection(db, COLLECTIONS.RIDE_QUEUE),
+      where("tripId", "==", tripId),
+      limit(1)
+    );
+    const snap = await getDocs(qy);
+    return !snap.empty;
+  }, []);
+
+  const tripExistsInLive = useCallback(async (tripId) => {
+    const qy = query(
+      collection(db, COLLECTIONS.LIVE_RIDES),
+      where("tripId", "==", tripId),
+      limit(1)
+    );
+    const snap = await getDocs(qy);
+    return !snap.empty;
+  }, []);
+
+  const tripExistsAnywhere = useCallback(
+    async (tripId) => {
+      const [inQueue, inLive] = await Promise.all([
+        tripExistsInQueue(tripId),
+        tripExistsInLive(tripId),
+      ]);
+      return inQueue || inLive;
+    },
+    [tripExistsInQueue, tripExistsInLive]
+  );
+
   const processRideRows = useCallback(
     async (rows) => {
-      const validDocs = [];
+      const docs = [];
       let skipped = 0;
-      rows.forEach((row) => {
-        const doc = toRideDoc(row);
-        if (doc) validDocs.push(doc);
+
+      for (const row of rows) {
+        const d = toRideDoc(row);
+        if (d) docs.push(d);
         else skipped++;
-      });
-      for (const doc of validDocs) {
-        await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), doc);
       }
-      return { added: validDocs.length, skipped };
+
+      // Filter duplicates: in-file and in DB (Queue or Live)
+      const seen = new Set();
+      const filtered = [];
+      for (const d of docs) {
+        if (seen.has(d.tripId)) {
+          skipped++;
+          continue;
+        } // in-file dup
+        seen.add(d.tripId);
+        // eslint-disable-next-line no-await-in-loop
+        if (await tripExistsAnywhere(d.tripId)) {
+          skipped++;
+          continue;
+        } // remote dup
+        filtered.push(d);
+      }
+
+      // Write in chunks of 500
+      const CHUNK = 500;
+      for (let i = 0; i < filtered.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        filtered.slice(i, i + CHUNK).forEach((d) => {
+          const ref = doc(collection(db, COLLECTIONS.RIDE_QUEUE));
+          batch.set(ref, d);
+        });
+        // eslint-disable-next-line no-await-in-loop
+        await batch.commit();
+      }
+
+      return { added: filtered.length, skipped };
     },
-    [toRideDoc]
+    [toRideDoc, tripExistsAnywhere]
   );
 
   const onDropNow = async () => {
@@ -398,6 +483,9 @@ export default function RideEntryForm() {
     try {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
+      if (await tripExistsAnywhere(rideData.tripId)) {
+        throw new Error(`TripID ${rideData.tripId} already exists (Queue/Live).`);
+      }
       await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), rideData);
       setFormToast({
         open: true,
@@ -419,7 +507,7 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateFields, toRideDoc, fetchRides]);
+  }, [formData, validateFields, toRideDoc, tripExistsAnywhere, fetchRides]);
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
@@ -569,7 +657,7 @@ return (
         {/* SINGLE RIDE TAB */}
         {rideTab === 0 && (
           <Box sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={3}>
                 <TextField
                   label="Trip ID **"
@@ -627,32 +715,47 @@ return (
                   )}
                 />
               </Grid>
-              <Grid item xs={6} md={1.5}>
+              <Grid item xs={6} md={2}>
                 <TextField
                   label="Hours **"
                   name="DurationHours"
+                  type="number"
                   value={formData.DurationHours}
                   onChange={handleSingleChange}
                   onBlur={handleBlur}
                   error={showErr("DurationHours")}
+                  inputProps={{ min: 0, max: 24, inputMode: "numeric", pattern: "[0-9]*" }}
                   fullWidth
                 />
               </Grid>
-              <Grid item xs={6} md={1.5}>
+              <Grid item xs={6} md={2}>
                 <TextField
                   label="Minutes **"
                   name="DurationMinutes"
+                  type="number"
                   value={formData.DurationMinutes}
                   onChange={handleSingleChange}
                   onBlur={handleBlur}
                   error={showErr("DurationMinutes")}
+                  inputProps={{ min: 0, max: 59, inputMode: "numeric", pattern: "[0-9]*" }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="Reset duration"
+                          onClick={() =>
+                            setFormData(fd => ({ ...fd, DurationHours: "", DurationMinutes: "" }))
+                          }
+                          edge="end"
+                          size="small"
+                        >
+                          <ReplayIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   fullWidth
                 />
-              </Grid>
-              <Grid item xs={12} md={0.5}>
-                <IconButton onClick={() => setFormData(fd => ({ ...fd, DurationHours: "", DurationMinutes: "" }))} edge="end">
-                  <ReplayIcon />
-                </IconButton>
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField
@@ -753,7 +856,7 @@ return (
                   <input {...getInputProps()} />
                   <CloudUploadIcon fontSize="large" />
                   <Typography variant="body2" mt={1}>
-                    Drag & drop CSV/XLS here or click to select
+                    Drag & drop CSV here or click to select
                   </Typography>
                   {fileError && (
                     <Typography color="error" variant="caption">
@@ -904,7 +1007,24 @@ return (
             </Tooltip>
           )}
           <Box sx={{ flex: 1, minWidth: 320 }}>
-            <DropDailyWidget />
+            <Accordion
+              defaultExpanded={false}
+              expanded={localStorage.getItem("dropDailyOpen") === "true"}
+              onChange={(_, exp) => localStorage.setItem("dropDailyOpen", String(exp))}
+              sx={{ bgcolor: "background.paper", borderRadius: 2, "&:before": { display: "none" } }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Daily Drop Status
+                  </Typography>
+                  <Chip size="small" label="Tap to expand" variant="outlined" />
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+                <DropDailyWidget />
+              </AccordionDetails>
+            </Accordion>
           </Box>
         </Stack>
       </Box>
