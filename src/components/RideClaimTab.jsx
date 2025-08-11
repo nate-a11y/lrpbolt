@@ -19,9 +19,9 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
-import { normalizeDate } from "../utils/timeUtils";
 import { claimRideAtomic } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
+import { fmtDow, safe, groupKey } from "../utils/rideFormatters";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -50,14 +50,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const groupedRides = useMemo(() => {
     const grouped = {};
     for (const r of rides) {
-      const ts = r.pickupTime?.toDate
-        ? r.pickupTime.toDate()
-        : new Date(r.pickupTime || r.Date);
-      const normalizedDate = normalizeDate(ts);
-      const day = new Date(normalizedDate).toLocaleDateString("en-US", {
-        weekday: "long",
-      });
-      const key = `${r.Vehicle}___${day}___${normalizedDate}`;
+      const key = `${safe(r.vehicle)}___${fmtDow(r.pickupTime)}___${groupKey(
+        r.pickupTime,
+      )}`;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(r);
     }
@@ -65,7 +60,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   }, [rides]);
 
   const uniqueVehicles = useMemo(
-    () => Array.from(new Set(rides.map((r) => r.Vehicle))),
+    () => Array.from(new Set(rides.map((r) => r.vehicle))),
     [rides],
   );
 
@@ -116,7 +111,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const claimRide = useCallback(
     async (tripId) => {
-      const ride = rides.find((r) => r.TripID === tripId || r.id === tripId);
+      const ride = rides.find((r) => r.tripId === tripId || r.id === tripId);
       if (!ride) throw new Error("Ride not found");
 
       const pickupTime =
@@ -124,7 +119,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           ? ride.pickupTime
           : Timestamp.fromDate(new Date(ride.pickupTime));
 
-      await claimRideAtomic(ride.id || ride.TripID, driver, {
+      await claimRideAtomic(ride.id || ride.tripId, driver, {
         pickupTime,
         rideDuration: Number(ride.rideDuration ?? 0),
       });
@@ -238,8 +233,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         </Box>
       ) : (
         <>
-          {Object.entries(groupedRides).map(([groupKey, rides]) => {
-            const [vehicle, day] = groupKey.split("___");
+          {Object.entries(groupedRides).map(([gKey, rides]) => {
+            const [vehicle, day] = gKey.split("___");
             if (
               (vehicleFilter && vehicle !== vehicleFilter) ||
               (dayFilter && day !== dayFilter)
@@ -248,8 +243,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
             return (
               <RideGroup
-                key={groupKey}
-                groupKey={groupKey}
+                key={gKey}
+                groupKey={gKey}
                 rides={rides}
                 onClaim={claimRide}
                 showToast={showToast}

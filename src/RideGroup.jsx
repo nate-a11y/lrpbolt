@@ -23,9 +23,13 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import NotesIcon from "@mui/icons-material/Notes";
-import { calculateDropOff } from "./utils/timeUtils";
 import dayjs from "dayjs";
 import { logError } from "./utils/logError";
+import {
+  fmtTime,
+  fmtDurationHM,
+  safe,
+} from "./utils/rideFormatters";
 
 const RideDetailRow = ({
   icon,
@@ -72,7 +76,7 @@ function RideGroup({
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimingIds, setClaimingIds] = useState([]);
   const selectedInGroup = useMemo(
-    () => rides.filter((r) => selectedRides.has(r.TripID)).map((r) => r.TripID),
+    () => rides.filter((r) => selectedRides.has(r.tripId)).map((r) => r.tripId),
     [rides, selectedRides],
   );
   const dayOfWeek = useMemo(() => dayjs(date).format("dddd"), [date]);
@@ -87,7 +91,7 @@ function RideGroup({
   const handleToggle = (tripId) => onToggleSelect(tripId);
 
   const handleSelectAll = () => {
-    const allIds = rides.map((r) => r.TripID);
+    const allIds = rides.map((r) => r.tripId);
     onGroupToggle(allIds);
   };
 
@@ -205,15 +209,11 @@ function RideGroup({
 
       <Stack spacing={3}>
         {rides.map((ride) => {
-          const isSelected = selectedInGroup.includes(ride.TripID);
-          const isLoading = claimingIds.includes(ride.TripID);
-          const dropoffTime = calculateDropOff(
-            ride.PickupTime,
-            ride.RideDuration,
-          );
+          const isSelected = selectedInGroup.includes(ride.tripId);
+          const isLoading = claimingIds.includes(ride.tripId);
 
           return (
-            <Grow in key={ride.TripID} timeout={300}>
+            <Grow in key={ride.tripId} timeout={300}>
               <Card
                 elevation={2}
                 sx={{
@@ -238,7 +238,7 @@ function RideGroup({
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Chip
-                      label={`ID ${ride.TripID}`}
+                      label={`ID ${safe(ride.tripId)}`}
                       size="small"
                       sx={{
                         backgroundColor:
@@ -254,14 +254,10 @@ function RideGroup({
                         sx={{ color: theme.palette.text.secondary }}
                       />
                       <Typography variant="body2" color="text.primary">
-                        {ride.PickupTime} → {dropoffTime}
+                        {fmtTime(ride.pickupTime)} • {fmtDurationHM(
+                          ride.rideDuration,
+                        )}
                       </Typography>
-                      <Chip
-                        label={ride.RideDuration}
-                        color="success"
-                        size="small"
-                        sx={{ fontWeight: "bold" }}
-                      />
                     </Box>
 
                     <Box mt={1}>
@@ -274,15 +270,15 @@ function RideGroup({
                       </Typography>
                       <RideDetailRow
                         icon={<SwapHorizIcon fontSize="small" />}
-                        label={`Type: ${ride.RideType}`}
+                        label={`Type: ${safe(ride.rideType)}`}
                         highlightColor={
-                          ride.RideType === "Hourly" ? "#4cbb17" : undefined
+                          ride.rideType === "Hourly" ? "#4cbb17" : undefined
                         }
                       />
-                      {ride.RideNotes && (
+                      {ride.rideNotes && (
                         <RideDetailRow
                           icon={<NotesIcon fontSize="small" />}
-                          label={`Notes: ${ride.RideNotes}`}
+                          label={`Notes: ${ride.rideNotes}`}
                           preserveLine
                         />
                       )}
@@ -302,7 +298,7 @@ function RideGroup({
                         <ToggleButton
                           value="select"
                           selected={isSelected}
-                          onChange={() => handleToggle(ride.TripID)}
+                          onChange={() => handleToggle(ride.tripId)}
                           sx={{ textTransform: "none" }}
                         >
                           {isSelected ? "Selected" : "Select"}
@@ -310,7 +306,7 @@ function RideGroup({
                         <Button
                           color="success"
                           variant="contained"
-                          onClick={() => handleSingleClaim(ride.TripID)}
+                          onClick={() => handleSingleClaim(ride.tripId)}
                           disabled={isClaiming || isLoading}
                           sx={{ textTransform: "none", fontWeight: "bold" }}
                         >
