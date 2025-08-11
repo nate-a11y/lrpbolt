@@ -1,27 +1,31 @@
-import { useEffect, useState } from "react";
-import { onSnapshot, Query, DocumentData } from "firebase/firestore";
+// Pure JS — no TypeScript
+import { useEffect, useRef, useState } from "react";
+import { onSnapshot } from "firebase/firestore";
 
-export default function useFirestoreSub(
-  makeQuery: () => Query<DocumentData> | null | undefined,
-  deps: any[] = [],
-) {
-  const [data, setData] = useState<DocumentData[]>([]);
-  const [error, setError] = useState<Error | null>(null);
+export function useFirestoreSub(makeQuery, deps) {
+  const [error, setError] = useState(null);
+  const [docs, setDocs] = useState([]);
+  const readyRef = useRef(false);
 
   useEffect(() => {
-    const q = makeQuery();
-    if (!q) return;
-    const unsubscribe = onSnapshot(
+    const q = typeof makeQuery === "function" ? makeQuery() : null;
+    if (!q) return; // not ready (e.g., role/auth not loaded yet)
+    readyRef.current = true;
+
+    const unsub = onSnapshot(
       q,
-      (snapshot) => {
-        setData(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      (snap) => {
+        setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setError(null);
       },
-      (err) => setError(err),
+      (e) => setError(e)
     );
-    return () => unsubscribe();
+
+    return () => { try { unsub(); } catch (_) {} };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  return { data, error };
+  return { docs, error, ready: readyRef.current };
 }
+
+export default useFirestoreSub;
