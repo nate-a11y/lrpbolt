@@ -86,7 +86,7 @@ function App() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
-  const { user, loading } = useAuth();
+  const { user, authLoading } = useAuth();
   const { toast, showToast, closeToast } = useToast("success");
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
@@ -224,7 +224,7 @@ function App() {
 
   const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
-  if (loading || !driver) {
+  if (authLoading || !driver) {
     return <LoadingScreen />;
   }
 
@@ -463,15 +463,27 @@ function App() {
   );
 }
 
+function AppShell() {
+  const { authLoading } = useAuth();
+  if (authLoading) {
+    return <div style={{ padding: 24 }}>Loading…</div>;
+  }
+  return <App />;
+}
+
 function AppRoot() {
   return (
-    <ErrorBoundary FallbackComponent={({ error }) => (
-      <div style={{ padding: 16 }}>
-        <h3>Something went wrong</h3>
-        <pre style={{ whiteSpace: 'pre-wrap' }}>{String(error?.stack || error?.message)}</pre>
-      </div>
-    )}>
-      <App />
+    <ErrorBoundary
+      FallbackComponent={({ error }) => (
+        <div style={{ padding: 16 }}>
+          <h3>Something went wrong</h3>
+          <pre style={{ whiteSpace: "pre-wrap" }}>
+            {String(error?.stack || error?.message)}
+          </pre>
+        </div>
+      )}
+    >
+      <AppShell />
     </ErrorBoundary>
   );
 }

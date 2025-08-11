@@ -1,10 +1,19 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminUserManager.jsx
 import React, { useEffect, useState } from "react";
-import { Card, TextField, Button, Snackbar, Alert, Typography, Stack } from "@mui/material";
+import {
+  Card,
+  TextField,
+  Button,
+  Snackbar,
+  Alert,
+  Typography,
+  Stack,
+} from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
+import { useAuth } from "../context/AuthContext.js";
 import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
 
@@ -12,6 +21,7 @@ export default function AdminUserManager() {
   const { driver } = useDriver();
   const role = driver?.access || "user";
   const isAdmin = role === "admin";
+  const { user, authLoading } = useAuth();
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
   const [snackbar, setSnackbar] = useState({
@@ -22,13 +32,23 @@ export default function AdminUserManager() {
 
   // 🔄 Subscribe to Firestore
   useEffect(() => {
-    const unsubscribe = subscribeUserAccess(setRows, {
-      activeOnly: true,
-      roles: ["admin", "driver"],
-      max: 100,
-    });
+    if (authLoading || !user?.email) return;
+    const unsubscribe = subscribeUserAccess(
+      setRows,
+      {
+        activeOnly: true,
+        roles: ["admin", "driver"],
+        max: 100,
+      },
+      () =>
+        setSnackbar({
+          open: true,
+          message: "Permissions issue loading users",
+          severity: "error",
+        }),
+    );
     return () => unsubscribe();
-  }, []);
+  }, [authLoading, user?.email]);
 
   // ➕ Add Users
   const handleAddUsers = async () => {
@@ -85,10 +105,7 @@ export default function AdminUserManager() {
     setInput("");
     setSnackbar({
       open: true,
-      message:
-        errors.length > 0
-          ? errors.join(" • ")
-          : "✅ Users processed",
+      message: errors.length > 0 ? errors.join(" • ") : "✅ Users processed",
       severity: errors.length > 0 ? "warning" : "success",
     });
   };
@@ -122,8 +139,20 @@ export default function AdminUserManager() {
   };
 
   const columns = [
-    { field: "name", headerName: "Name", flex: 1, minWidth: 150, editable: isAdmin },
-    { field: "email", headerName: "Email", flex: 1, minWidth: 200, editable: false },
+    {
+      field: "name",
+      headerName: "Name",
+      flex: 1,
+      minWidth: 150,
+      editable: isAdmin,
+    },
+    {
+      field: "email",
+      headerName: "Email",
+      flex: 1,
+      minWidth: 200,
+      editable: false,
+    },
     {
       field: "access",
       headerName: "Access",

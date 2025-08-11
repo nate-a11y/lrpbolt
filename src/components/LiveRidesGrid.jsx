@@ -20,11 +20,13 @@ import {
 import EditableRideGrid from "../components/EditableRideGrid";
 import useToast from "../hooks/useToast";
 import { safe } from "../utils/rideFormatters";
+import { useAuth } from "../context/AuthContext.js";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
   const { toast, showToast, closeToast } = useToast("success");
   const [loading, setLoading] = useState(true);
+  const { user, authLoading } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [deletingTripId, setDeletingTripId] = useState("");
@@ -32,12 +34,20 @@ const LiveRidesGrid = () => {
   const [undoRow, setUndoRow] = useState(null);
 
   useEffect(() => {
-    const unsub = subscribeLiveRides((data) => {
-      setRows(data);
-      setLoading(false);
-    });
+    if (authLoading || !user?.email) return;
+    const unsub = subscribeLiveRides(
+      (data) => {
+        setRows(data);
+        setLoading(false);
+      },
+      undefined,
+      () => {
+        showToast("Permissions issue loading live rides", "error");
+        setLoading(false);
+      },
+    );
     return unsub;
-  }, []);
+  }, [authLoading, user?.email]);
 
   const refreshRides = async () => {
     setLoading(true);
@@ -51,7 +61,9 @@ const LiveRidesGrid = () => {
     const target = rows.find((r) => r.id === deletingId);
     setUndoRow(target);
     setRows((prev) =>
-      prev.map((row) => (row.id === deletingId ? { ...row, fading: true } : row)),
+      prev.map((row) =>
+        row.id === deletingId ? { ...row, fading: true } : row,
+      ),
     );
     setTimeout(async () => {
       try {
@@ -60,13 +72,12 @@ const LiveRidesGrid = () => {
         showToast(`🗑️ Deleted Trip ${safe(deletingTripId, "")}`, "info");
       } catch (err) {
         setRows((prev) =>
-          prev.map((row) => (row.id === deletingId ? { ...row, fading: false } : row)),
+          prev.map((row) =>
+            row.id === deletingId ? { ...row, fading: false } : row,
+          ),
         );
         setUndoRow(null);
-        showToast(
-          `❌ ${err?.message || "Failed to delete ride"}`,
-          "error",
-        );
+        showToast(`❌ ${err?.message || "Failed to delete ride"}`, "error");
       }
       setDeleting(false);
       setConfirmOpen(false);
@@ -102,7 +113,8 @@ const LiveRidesGrid = () => {
         <DialogTitle>Delete Ride?</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{safe(deletingTripId)}</strong>?
+            Are you sure you want to delete{" "}
+            <strong>{safe(deletingTripId)}</strong>?
           </Typography>
         </DialogContent>
         <DialogActions>

@@ -25,7 +25,8 @@ import { getAuth } from "firebase/auth";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
-const tsToDate = (ts) => (ts && typeof ts.toDate === "function" ? ts.toDate() : null);
+const tsToDate = (ts) =>
+  ts && typeof ts.toDate === "function" ? ts.toDate() : null;
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -92,7 +93,13 @@ export function subscribeUserAccess(
   const clauses = [];
   if (activeOnly) clauses.push(where("active", "==", true));
   if (roles?.length)
-    clauses.push(where("access", "in", roles.map((r) => r.toLowerCase())));
+    clauses.push(
+      where(
+        "access",
+        "in",
+        roles.map((r) => r.toLowerCase()),
+      ),
+    );
   const q = query(coll, ...clauses, limit(Math.min(max || 100, 500)));
 
   const unsub = onSnapshot(
@@ -123,7 +130,7 @@ export function subscribeUserAccess(
  * RIDE QUEUE
  * -----------------------------
  */
-export function subscribeRideQueue(callback, fromTime) {
+export function subscribeRideQueue(callback, fromTime, onError) {
   const start = fromTime || Timestamp.now();
   const key = fromTime
     ? `${COLLECTIONS.RIDE_QUEUE}:${fromTime.toMillis()}`
@@ -133,13 +140,18 @@ export function subscribeRideQueue(callback, fromTime) {
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
-    const unsub = subscribeFirestore(key, q, (snapshot) => {
+  const unsub = subscribeFirestore(
+    key,
+    q,
+    (snapshot) => {
       callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => {
-      unsub();
-    };
-  }
+    },
+    onError,
+  );
+  return () => {
+    unsub();
+  };
+}
 
 export async function addRideToQueue(rideData) {
   const data = cleanData({
@@ -181,7 +193,7 @@ export async function deleteRideFromQueue(rideId) {
  * CLAIMED RIDES
  * -----------------------------
  */
-export function subscribeClaimedRides(callback, fromTime) {
+export function subscribeClaimedRides(callback, fromTime, onError) {
   const start = fromTime || Timestamp.now();
   const key = fromTime
     ? `${COLLECTIONS.CLAIMED_RIDES}:${fromTime.toMillis()}`
@@ -191,13 +203,18 @@ export function subscribeClaimedRides(callback, fromTime) {
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
-    const unsub = subscribeFirestore(key, q, (snapshot) => {
+  const unsub = subscribeFirestore(
+    key,
+    q,
+    (snapshot) => {
       callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => {
-      unsub();
-    };
-  }
+    },
+    onError,
+  );
+  return () => {
+    unsub();
+  };
+}
 
 export async function claimRide(rideData) {
   const data = cleanData({
@@ -220,10 +237,7 @@ export async function updateClaimedRide(rideId, updates) {
     data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
   if (data.rideDuration) data.rideDuration = Number(data.rideDuration);
   data = cleanData(data);
-  return await updateDoc(
-    doc(db, COLLECTIONS.CLAIMED_RIDES, rideId),
-    data,
-  );
+  return await updateDoc(doc(db, COLLECTIONS.CLAIMED_RIDES, rideId), data);
 }
 
 export async function deleteClaimedRide(rideId) {
@@ -246,23 +260,24 @@ export async function logClaim(claimData) {
   return await addDoc(collection(db, "claimLog"), data);
 }
 
-export function subscribeClaimLog(callback, max = 100) {
+export function subscribeClaimLog(callback, max = 100, onError) {
   const q = query(
     collection(db, "claimLog"),
     orderBy("timestamp", "desc"),
     limit(max),
   );
-    const unsub = subscribeFirestore(
-      `claimLog:${max}`,
-      q,
-      (snapshot) => {
-        callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      },
-    );
-    return () => {
-      unsub();
-    };
-  }
+  const unsub = subscribeFirestore(
+    `claimLog:${max}`,
+    q,
+    (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    },
+    onError,
+  );
+  return () => {
+    unsub();
+  };
+}
 
 /**
  * -----------------------------
@@ -272,6 +287,7 @@ export function subscribeClaimLog(callback, max = 100) {
 export function subscribeTickets(
   callback,
   { passenger, pickupTime } = {},
+  onError,
 ) {
   const constraints = [];
   const keyParts = [COLLECTIONS.TICKETS, passenger || "all"];
@@ -286,17 +302,18 @@ export function subscribeTickets(
   }
   constraints.push(orderBy("pickupTime", "asc"));
   const q = query(collection(db, COLLECTIONS.TICKETS), ...constraints);
-    const unsub = subscribeFirestore(
-      keyParts.join(":"),
-      q,
-      (snapshot) => {
-        callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      },
-    );
-    return () => {
-      unsub();
-    };
-  }
+  const unsub = subscribeFirestore(
+    keyParts.join(":"),
+    q,
+    (snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    },
+    onError,
+  );
+  return () => {
+    unsub();
+  };
+}
 
 export async function fetchTickets(filters = {}) {
   const { passenger, pickupTime } = filters;
@@ -342,7 +359,9 @@ export async function updateTicket(ticketId, updates) {
   if (data.pickupTime && !(data.pickupTime instanceof Timestamp))
     data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
   if (data.scannedOutboundAt && !(data.scannedOutboundAt instanceof Timestamp))
-    data.scannedOutboundAt = Timestamp.fromDate(new Date(data.scannedOutboundAt));
+    data.scannedOutboundAt = Timestamp.fromDate(
+      new Date(data.scannedOutboundAt),
+    );
   if (data.scannedReturnAt && !(data.scannedReturnAt instanceof Timestamp))
     data.scannedReturnAt = Timestamp.fromDate(new Date(data.scannedReturnAt));
   if (data.createdAt && !(data.createdAt instanceof Timestamp))
@@ -407,14 +426,14 @@ export function subscribeTimeLogs(callback, driver, max = 100) {
   const constraints = [orderBy("loggedAt", "desc"), limit(max)];
   if (driver) constraints.push(where("driver", "==", driver));
   const q = query(collection(db, COLLECTIONS.TIME_LOGS), ...constraints);
-    const key = `${COLLECTIONS.TIME_LOGS}:${driver || "all"}:${max}`;
-    const unsub = subscribeFirestore(key, q, (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => {
-      unsub();
-    };
-  }
+  const key = `${COLLECTIONS.TIME_LOGS}:${driver || "all"}:${max}`;
+  const unsub = subscribeFirestore(key, q, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  });
+  return () => {
+    unsub();
+  };
+}
 
 export async function fetchTimeLogs(driver) {
   const snapshot = await getDocs(collection(db, COLLECTIONS.TIME_LOGS));
@@ -437,7 +456,9 @@ export async function addTimeLog(logData) {
       : null,
     duration: Number(logData.duration),
     loggedAt:
-      logData.loggedAt instanceof Timestamp ? logData.loggedAt : Timestamp.now(),
+      logData.loggedAt instanceof Timestamp
+        ? logData.loggedAt
+        : Timestamp.now(),
   });
   return await addDoc(collection(db, COLLECTIONS.TIME_LOGS), data);
 }
@@ -455,10 +476,12 @@ export async function logTime(payload) {
     return { success: true }; // ✅ Required for TimeClock to show success
   } catch (err) {
     console.error("logTime failed:", err);
-    return { success: false, message: err?.message || "Unknown Firestore error" };
+    return {
+      success: false,
+      message: err?.message || "Unknown Firestore error",
+    };
   }
 }
-
 
 /**
  * -----------------------------
@@ -485,13 +508,13 @@ export function subscribeLiveRides(callback, fromTime) {
     where("pickupTime", ">=", start),
     orderBy("pickupTime", "asc"),
   );
-    const unsub = subscribeFirestore(key, q, (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => {
-      unsub();
-    };
-  }
+  const unsub = subscribeFirestore(key, q, (snapshot) => {
+    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  });
+  return () => {
+    unsub();
+  };
+}
 
 export async function addLiveRide(rideData) {
   const data = cleanData({
@@ -670,7 +693,12 @@ export async function fetchShootoutHistory(status, max = 100) {
   });
 }
 
-export function subscribeShootoutHistoryAll(callback, status, max = 200, onError) {
+export function subscribeShootoutHistoryAll(
+  callback,
+  status,
+  max = 200,
+  onError,
+) {
   const constraints = [];
   if (status) constraints.push(where("status", "==", status));
   constraints.push(orderBy("startTime", "desc"), limit(max));
@@ -690,7 +718,10 @@ export function subscribeShootoutHistoryAll(callback, status, max = 200, onError
       callback(rows);
     },
     (e) => {
-      logError(e, { area: "FirestoreSubscribe", comp: "subscribeShootoutHistoryAll" });
+      logError(e, {
+        area: "FirestoreSubscribe",
+        comp: "subscribeShootoutHistoryAll",
+      });
       onError?.(e);
     },
   );

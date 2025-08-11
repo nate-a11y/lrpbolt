@@ -46,6 +46,7 @@ import {
 } from "../hooks/api";
 import { Timestamp } from "firebase/firestore";
 import { logError } from "../utils/logError";
+import { useAuth } from "../context/AuthContext.js";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -69,9 +70,11 @@ export default function Tickets() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const previewRef = useRef(null);
+  const { user, authLoading } = useAuth();
 
   // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
+    if (authLoading || !user?.email) return;
     const filters = {};
     if (searchQuery.trim()) filters.passenger = searchQuery.trim();
     if (filteredDate !== "All Dates") {
@@ -79,9 +82,18 @@ export default function Tickets() {
         dayjs(filteredDate, "MM-DD-YYYY").toDate(),
       );
     }
-    const unsubscribe = subscribeTickets((data) => setTickets(data), filters);
+    const unsubscribe = subscribeTickets(
+      (data) => setTickets(data),
+      filters,
+      () =>
+        setSnackbar({
+          open: true,
+          message: "Permissions issue loading tickets",
+          severity: "error",
+        }),
+    );
     return () => unsubscribe();
-  }, [searchQuery, filteredDate]);
+  }, [authLoading, user?.email, searchQuery, filteredDate]);
 
   const filteredTickets = tickets.filter((t) => {
     const matchDate =

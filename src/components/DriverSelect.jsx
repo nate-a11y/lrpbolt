@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Autocomplete, TextField, CircularProgress } from "@mui/material";
 import { subscribeUserAccess } from "../hooks/api";
+import { useAuth } from "../context/AuthContext.js";
 
 /**
  * Reusable driver selection component with async loading and search.
@@ -10,19 +11,30 @@ import { subscribeUserAccess } from "../hooks/api";
  * @param {object|null} props.value - currently selected driver object
  * @param {(driver: object|null) => void} props.onChange - callback when selection changes
  */
-export default function DriverSelect({ value, onChange, label = "Select Driver", disabled = false }) {
+export default function DriverSelect({
+  value,
+  onChange,
+  label = "Select Driver",
+  disabled = false,
+}) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { user, authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading || !user?.email) return;
     setLoading(true);
-    const unsubscribe = subscribeUserAccess((rows) => {
-      const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
-      setOptions(sorted);
-      setLoading(false);
-    }, { activeOnly: true, roles: ["admin", "driver"] });
+    const unsubscribe = subscribeUserAccess(
+      (rows) => {
+        const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+        setOptions(sorted);
+        setLoading(false);
+      },
+      { activeOnly: true, roles: ["admin", "driver"] },
+      () => setLoading(false),
+    );
     return () => unsubscribe();
-  }, []);
+  }, [authLoading, user?.email]);
 
   return (
     <Autocomplete
@@ -46,7 +58,9 @@ export default function DriverSelect({ value, onChange, label = "Select Driver",
             ...params.InputProps,
             endAdornment: (
               <>
-                {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                {loading ? (
+                  <CircularProgress color="inherit" size={20} />
+                ) : null}
                 {params.InputProps.endAdornment}
               </>
             ),

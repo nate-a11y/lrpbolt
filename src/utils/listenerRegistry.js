@@ -5,18 +5,27 @@ import { onSnapshot } from "firebase/firestore";
 // Generic Firestore snapshot registry keyed by a unique string.
 const fsRegistry = new Map();
 
-export function subscribeFirestore(key, queryRef, callback) {
+export function subscribeFirestore(key, queryRef, callback, onError) {
   let entry = fsRegistry.get(key);
   if (!entry) {
-    const callbacks = new Set([callback]);
+    const callbacks = new Map();
+    callbacks.set(callback, onError);
     entry = { callbacks, unsubscribe: null, snapshot: null };
-    entry.unsubscribe = onSnapshot(queryRef, (snapshot) => {
-      entry.snapshot = snapshot;
-      callbacks.forEach((cb) => cb(snapshot));
-    });
+    entry.unsubscribe = onSnapshot(
+      queryRef,
+      (snapshot) => {
+        entry.snapshot = snapshot;
+        callbacks.forEach((_, cb) => cb(snapshot));
+      },
+      (err) => {
+        callbacks.forEach((errCb) => {
+          errCb?.(err);
+        });
+      },
+    );
     fsRegistry.set(key, entry);
   } else {
-    entry.callbacks.add(callback);
+    entry.callbacks.set(callback, onError);
     if (entry.snapshot) callback(entry.snapshot);
   }
   return () => {
