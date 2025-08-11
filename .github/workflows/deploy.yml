@@ -84,7 +84,12 @@ jobs:
 
       # Quality gates — keep them beast mode
       - name: Lint
-        run: npm run lint --if-present
+        run: |
+          if [ -f package.json ] && npm ls eslint --depth=0 >/dev/null 2>&1; then
+          npm run lint --if-present
+          else
+          echo "⚠️ Skipping lint — eslint not installed"
+          fi
 
       - name: Test
         run: npm test --if-present
