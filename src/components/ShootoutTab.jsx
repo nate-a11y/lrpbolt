@@ -269,7 +269,7 @@ export default function ShootoutTab() {
   ], [formatElapsed]);
 
   const historyRows = useMemo(
-    () => rows.filter((h) => h.startTime),
+    () => rows.filter((h) => h?.startTime),
     [rows],
   );
   const totalTrips = useMemo(() => rows.reduce((s, h) => s + (h.trips || 0), 0), [rows]);

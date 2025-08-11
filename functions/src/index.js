@@ -9,6 +9,12 @@ if (!admin.apps.length) {
 }
 
 async function requireAdmin(req) {
+  // Allow privileged access via pre-shared key for service automation
+  const key = req.get("x-admin-key");
+  if (key && process.env.ADMIN_API_KEY && key === process.env.ADMIN_API_KEY) {
+    return { role: "admin" };
+  }
+
   const authz = req.get("Authorization") || "";
   const m = authz.match(/^Bearer\s+(.+)$/i);
   if (!m) throw Object.assign(new Error("unauthorized"), { code: 401 });

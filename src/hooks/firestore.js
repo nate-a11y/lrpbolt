@@ -9,7 +9,7 @@ import { db } from "../firebase";
 
 // Realtime listener for timeLogs collection
 export function subscribeTimeLogs(callback) {
-  const q = query(collection(db, "timeLogs"), orderBy("createdAt", "desc"));
+  const q = query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
   return onSnapshot(q, (snapshot) => {
     const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     callback(data);
