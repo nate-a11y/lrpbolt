@@ -1,14 +1,13 @@
+import { onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
-import * as functions from "firebase-functions";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import cors from "cors";
 import { db } from "./admin.js";
+import { corsMiddleware } from "../cors.js";
 
 const REGION = "us-central1";
 const QUEUE_COL = "rideQueue";
 const LIVE_COL = "liveRides";
-const TZ = "America/Chicago";
-const DAILY_CRON = "0 18 * * *";
 
 export async function moveQueuedToLive({ dryRun = false, limit = 1500 } = {}) {
   const start = Date.now();
@@ -89,47 +88,63 @@ export async function moveQueuedToLive({ dryRun = false, limit = 1500 } = {}) {
   return { moved, skipped, durationMs, dryRun };
 }
 
-const corsHandler = cors({ origin: true });
-
-export const dropDailyRidesNow = functions
-  .region(REGION)
-  .runWith({ maxInstances: 1, timeoutSeconds: 540, memory: "512MB" })
-  .https.onRequest(async (req, res) => {
-    return corsHandler(req, res, async () => {
-      if (req.method !== "POST") {
-        res.status(405).json({ ok: false, error: "Method Not Allowed" });
-        return;
-      }
-
-      const expected = process.env.LRP_ADMIN_TOKEN;
-      const provided = req.get("x-lrp-admin-token");
-      if (expected && provided !== expected) {
-        res.status(401).json({ ok: false, error: "Unauthorized" });
-        return;
-      }
-
+export const dropDailyRidesNow = onRequest(
+  {
+    region: REGION,
+    memory: "512MiB",
+    timeoutSeconds: 540,
+    concurrency: 1,
+    maxInstances: 1,
+    minInstances: 0,
+  },
+  async (req, res) => {
+    corsMiddleware(req, res, async () => {
       try {
+        if (req.method === "OPTIONS") {
+          return res.status(204).send("");
+        }
+        if (req.method !== "POST") {
+          return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+        }
+
+        const expected = process.env.LRP_ADMIN_TOKEN || "dev-override-token"; // TODO: move to Secret Manager
+        const provided = req.get("x-lrp-admin-token");
+        if (expected && provided !== expected) {
+          logger.warn("Unauthorized dropDailyRidesNow attempt");
+          return res.status(401).json({ ok: false, error: "Unauthorized" });
+        }
+
         const { dryRun = false, limit = 1500 } = req.body || {};
         const result = await moveQueuedToLive({ dryRun, limit });
-        res.status(200).json({ ok: true, ...result });
+        return res.status(200).json({ ok: true, ...result });
       } catch (err) {
-        logger.error("[dropDailyRidesNow]", err);
-        res.status(500).json({ ok: false, error: err.message || String(err) });
+        logger.error("dropDailyRidesNow failed", err);
+        return res.status(500).json({ ok: false, error: err.message || String(err) });
       }
     });
-  });
+  }
+);
 
-export const moveQueuedToLiveDaily = functions
-  .region(REGION)
-  .pubsub.schedule(DAILY_CRON)
-  .timeZone(TZ)
-  .retryConfig({
-    retryCount: 3,
-    maxRetryDurationSeconds: 600,
-    minBackoffSeconds: 10,
-    maxBackoffSeconds: 60,
-    maxDoublings: 4,
-  })
-  .onRun(async () => {
-    await moveQueuedToLive();
-  });
+export const dropDailyRidesDaily = onSchedule(
+  {
+    region: REGION,
+    schedule: "30 3 * * *",
+    timeZone: "America/Chicago",
+    memory: "512MiB",
+    timeoutSeconds: 540,
+    concurrency: 1,
+    maxInstances: 1,
+    minInstances: 0,
+    retryCount: 0,
+  },
+  async (event) => {
+    try {
+      logger.info("[dropDailyRidesDaily] start", { eventId: event.id });
+      const result = await moveQueuedToLive();
+      logger.info("[dropDailyRidesDaily] complete", result);
+    } catch (err) {
+      logger.error("dropDailyRidesDaily failed", err);
+      throw err;
+    }
+  }
+);

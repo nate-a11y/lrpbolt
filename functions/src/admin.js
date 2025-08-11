@@ -1,6 +1,11 @@
-import { getApps, initializeApp, getApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import admin from "firebase-admin";
 
-const app = getApps().length ? getApp() : initializeApp();
+if (!admin.apps.length) {
+  // TODO: move service account / params to Secret Manager (keep as-is for now)
+  admin.initializeApp();
+}
 
-export const db = getFirestore(app);
+const db = admin.firestore();
+
+export { admin, db };
+
