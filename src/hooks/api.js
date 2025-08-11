@@ -21,6 +21,11 @@ import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
+import { getAuth } from "firebase/auth";
+
+const lc = (s) => (s || "").toLowerCase();
+const currentEmail = () => lc(getAuth().currentUser?.email || "");
+const tsToDate = (ts) => (ts && typeof ts.toDate === "function" ? ts.toDate() : null);
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -581,8 +586,10 @@ export async function updateRide(
  * -----------------------------
  */
 export async function startShootoutSession(data) {
+  const userEmail = currentEmail();
   const payload = cleanData({
     ...data,
+    userEmail,
     startTime:
       data.startTime instanceof Timestamp
         ? data.startTime
@@ -610,19 +617,66 @@ export async function endShootoutSession(sessionId, data) {
 }
 
 export function subscribeShootoutHistory(callback, status, max = 100) {
-  const constraints = status
-    ? [
-        where("status", "==", status),
-        orderBy("startTime", "desc"),
-        limit(max),
-      ]
-    : [orderBy("startTime", "desc"), limit(max)];
+  const userEmail = currentEmail();
+  const constraints = [];
+  if (status) constraints.push(where("status", "==", status));
+  // align with rules: owner-only unless admin path uses a different API
+  constraints.push(where("userEmail", "==", userEmail));
+  constraints.push(orderBy("startTime", "desc"), limit(max));
+
   const q = query(collection(db, "shootoutStats"), ...constraints);
-    const key = `shootoutStats:${status || "all"}:${max}`;
-    const unsub = subscribeFirestore(key, q, (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  const key = `shootoutStats:${status || "all"}:${userEmail}:${max}`;
+
+  const unsub = subscribeFirestore(key, q, (snapshot) => {
+    const rows = snapshot.docs.map((d) => {
+      const data = d.data() || {};
+      return {
+        id: d.id,
+        ...data,
+        startTime: tsToDate(data.startTime),
+        endTime: tsToDate(data.endTime),
+      };
     });
-    return () => {
-      unsub();
+    callback(rows);
+  });
+  return () => unsub();
+}
+
+export async function fetchShootoutHistory(status, max = 100) {
+  const userEmail = currentEmail();
+  const constraints = [];
+  if (status) constraints.push(where("status", "==", status));
+  constraints.push(where("userEmail", "==", userEmail));
+  constraints.push(orderBy("startTime", "desc"), limit(max));
+  const q = query(collection(db, "shootoutStats"), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data() || {};
+    return {
+      id: d.id,
+      ...data,
+      startTime: tsToDate(data.startTime),
+      endTime: tsToDate(data.endTime),
     };
-  }
+  });
+}
+
+export function subscribeShootoutHistoryAll(callback, status, max = 200) {
+  const constraints = [];
+  if (status) constraints.push(where("status", "==", status));
+  constraints.push(orderBy("startTime", "desc"), limit(max));
+  const q = query(collection(db, "shootoutStats"), ...constraints);
+  const unsub = onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => {
+      const data = d.data() || {};
+      return {
+        id: d.id,
+        ...data,
+        startTime: tsToDate(data.startTime),
+        endTime: tsToDate(data.endTime),
+      };
+    });
+    callback(rows);
+  });
+  return () => unsub();
+}
