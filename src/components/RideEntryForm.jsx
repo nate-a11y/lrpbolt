@@ -43,6 +43,7 @@ import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
+import DropDailyWidget from "./DropDailyWidget";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -368,16 +369,18 @@ export default function RideEntryForm() {
   const onDropNow = async () => {
     setDropping(true);
     try {
-      const { ok } = await callDropDailyRidesNow({ force: true });
-      if (ok) {
-        setToast({ open: true, msg: "Daily rides dropped successfully.", severity: "success" });
-        await fetchRides(); // Optionally trigger a refresh of dependent grids here
-      } else {
-        throw new Error("Unknown failure");
-      }
+      const { ok, stats } = await callDropDailyRidesNow({ dryRun: false });
+      if (!ok) throw new Error("Drop failed");
+      const s = stats || {};
+      setToast({
+        open: true,
+        severity: "success",
+        msg: `Imported ${s.imported} | Duplicates ${s.duplicatesFound} | Skipped ${s.skippedNoTripId} | Queue cleared ${s.queueCleared}`,
+      });
+      // TODO: trigger any grid refresh if needed; snapshots should update automatically.
     } catch (e) {
       console.error(e);
-      setToast({ open: true, msg: "Failed to drop rides. Check logs.", severity: "error" });
+      setToast({ open: true, severity: "error", msg: "Drop failed. See logs." });
     } finally {
       setDropping(false);
     }
@@ -831,24 +834,28 @@ return (
         )}
       </Paper>
 
-      {/* Daily Rides Update Section */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        {isAdmin && (
-          <Tooltip title="Run daily drop/rollover now (admin only)">
-            <span>
-              <Button
-                variant="contained"
-                color="warning"
-                startIcon={<RocketLaunchIcon />}
-                onClick={onDropNow}
-                disabled={dropping}
-              >
-                {dropping ? "Running…" : "Drop Daily Rides Now"}
-              </Button>
-            </span>
-          </Tooltip>
-        )}
-      </Paper>
+      <Box sx={{ mb: 2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
+          {isAdmin && (
+            <Tooltip title="Run daily drop now (admin only)">
+              <span>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  startIcon={<RocketLaunchIcon />}
+                  onClick={onDropNow}
+                  disabled={dropping}
+                >
+                  {dropping ? "Running…" : "Drop Daily Rides Now"}
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          <Box sx={{ flex: 1, minWidth: 320 }}>
+            <DropDailyWidget />
+          </Box>
+        </Stack>
+      </Box>
 
       {/* Live / Queue / Claimed Tabs */}
       <Box display="flex" alignItems="center" sx={{ mb: 2 }}>

@@ -41,6 +41,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---------- AdminMeta ----------
+    match /AdminMeta/{docId} {
+      allow read: if request.auth != null;     // widget reads lastDropDaily
+      allow create, update, delete: if false;  // writes occur via Admin SDK in functions
+    }
+
     // ---------- timeLogs ----------
     // App writes: { userEmail, driver, rideId, startTime, endTime?, duration, loggedAt }
     match /timeLogs/{id} {

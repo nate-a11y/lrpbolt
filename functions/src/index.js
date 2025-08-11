@@ -1,79 +1,52 @@
-/* Proprietary and confidential. See LICENSE. */
+// functions/src/index.js
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
-async function dropDailyRidesCore() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+const { dropDailyFromQueue } = require("./jobs/dropDailyFromQueue");
 
-  const q = await db
-    .collection("rides")
-    .where("rideDate", "<", admin.firestore.Timestamp.fromDate(today))
-    .get();
-
-  let count = 0;
-  const batch = db.batch();
-  q.forEach((doc) => {
-    batch.update(doc.ref, {
-      archived: true,
-      archivedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    count++;
-  });
-  if (count) await batch.commit();
-  return { archivedCount: count };
+async function requireAdmin(emailLower) {
+  const snap = await db.doc(`userAccess/${emailLower}`).get();
+  const access = snap.exists ? String(snap.data().access || "").toLowerCase() : "";
+  if (access !== "admin") throw new HttpsError("permission-denied", "Admin only.");
 }
 
-/**
- * Callable admin-only task to drop/rollover daily rides.
- * TODO: Move any embedded secrets to Secret Manager (left in place for now).
- */
-exports.dropDailyRidesNow = onCall(
-  {
-    region: "us-central1",
-    // If App Check is configured on the client and you want enforcement:
-    // enforceAppCheck: true,
-  },
-  async (req) => {
-    const uid = req.auth && req.auth.uid;
-    if (!uid) throw new HttpsError("unauthenticated", "Sign in to continue.");
+exports.dropDailyRidesNow = onCall({ region: "us-central1" }, async (req) => {
+  const uid = req.auth && req.auth.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in to continue.");
+  const email = String(req.auth.token.email || "").toLowerCase();
+  await requireAdmin(email);
 
-    const email = ((req.auth.token.email || "") + "").toLowerCase();
-    if (!email) throw new HttpsError("permission-denied", "Email required.");
+  try {
+    const dryRun = !!(req.data && req.data.dryRun);
+    const stats = await dropDailyFromQueue({ dryRun });
+    return { ok: true, dryRun, stats };
+  } catch (err) {
+    console.error("dropDailyRidesNow failed:", err);
+    throw new HttpsError("internal", err?.message || "Internal error");
+  }
+});
 
-    // Role check (userAccess/{email}.access === "admin")
-    const ref = db.doc(`userAccess/${email}`);
-    const snap = await ref.get();
-    const access = snap.exists ? String(snap.data().access || "").toLowerCase() : "";
-    if (access !== "admin") {
-      throw new HttpsError("permission-denied", "Admin access required.");
-    }
-
+// Daily schedule: 7:30 PM Central
+exports.scheduleDropDailyRides = onSchedule(
+  { region: "us-central1", schedule: "30 19 * * *", timeZone: "America/Chicago" },
+  async () => {
     try {
-      // === BEGIN your job logic ===
-      await dropDailyRidesCore();
-      // === END your job logic ===
-      return { ok: true, at: Date.now() };
-    } catch (err) {
-      console.error("dropDailyRidesNow failed:", err);
-      const msg = err && err.message ? err.message : "Internal error";
-      throw new HttpsError("internal", msg);
+      const cfg = await db.doc("AdminMeta/config").get();
+      const dropEnabled = cfg.exists ? cfg.data().dropEnabled !== false : true;
+      if (!dropEnabled) { console.log("dropDailyRides skipped by config"); return; }
+
+      const stats = await dropDailyFromQueue({ dryRun: false });
+      await db.doc("AdminMeta/lastDropDaily").set(
+        { ranAt: admin.firestore.FieldValue.serverTimestamp(), stats, v: 1, trigger: "schedule" },
+        { merge: true }
+      );
+      console.log("dropDailyRides complete", stats);
+    } catch (e) {
+      console.error("scheduleDropDailyRides error", e);
     }
   }
 );
 
-exports.dropDailyRidesDaily = onSchedule(
-  { region: "us-central1", schedule: "30 3 * * *", timeZone: "America/Chicago", retryCount: 0 },
-  async (event) => {
-    logger.info("[dropDailyRidesDaily] cron start", { eventId: event.id });
-    const result = await dropDailyRidesCore();
-    logger.info("[dropDailyRidesDaily] cron done", result);
-  }
-);
