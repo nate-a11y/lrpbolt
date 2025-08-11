@@ -8,15 +8,24 @@ service cloud.firestore {
     }
     function me() { return authed() ? lower(request.auth.token.email) : ""; }
 
-    // role is stored in userAccess/{lower(email)}.access
-    function roleOf(emailLower) {
-      return exists(/databases/$(database)/documents/userAccess/$(emailLower))
-        ? lower(get(/databases/$(database)/documents/userAccess/$(emailLower)).data.access)
+    // determine role via uid first, then email fallback
+    function role() {
+      return request.auth != null
+        ? (
+            exists(/databases/$(database)/documents/userAccessByUid/$(request.auth.uid))
+              ? get(/databases/$(database)/documents/userAccessByUid/$(request.auth.uid)).data.access
+              : (
+                  request.auth.token.email != null &&
+                  exists(/databases/$(database)/documents/userAccess/$(lower(request.auth.token.email)))
+                    ? get(/databases/$(database)/documents/userAccess/$(lower(request.auth.token.email))).data.access
+                    : ""
+                )
+          )
         : "";
     }
-    function myRole() { return roleOf(me()); }
-    function isAdmin()  { return myRole() == "admin"; }
-    function isDriver() { return myRole() == "driver"; }
+    function isAuthed() { return request.auth != null; }
+    function isAdmin()  { return lower(role()) == "admin"; }
+    function isDriver() { return lower(role()) == "driver"; }
 
     // small validators
     function isStrOrNull(v) { return (v is string) || (v == null); }
@@ -34,11 +43,16 @@ service cloud.firestore {
     }
 
     // ---------- userAccess ----------
-    // User can read their own record by docId (lower(email)); admins read all.
-    // No client writes; manage via console/admin callable only.
+    // userAccess (by email) – admins can read all; user can read their own
     match /userAccess/{emailKey} {
-      allow read: if authed() && (emailKey == me() || isAdmin());
-      allow write: if false;
+      allow read: if isAdmin() || (authed() && emailKey == me());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // userAccessByUid – same idea
+    match /userAccessByUid/{uid} {
+      allow read: if isAdmin() || (authed() && uid == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
 
     // ---------- AdminMeta ----------
@@ -50,8 +64,10 @@ service cloud.firestore {
     // ---------- timeLogs ----------
     // App writes: { userEmail, driver, rideId, startTime, endTime?, duration, loggedAt }
     match /timeLogs/{id} {
-      allow read: if authed() && (isAdmin() || resource.data.userEmail == me());
-      allow create: if authed()
+      // allow read to drivers/admins
+      allow read: if authed() && (isAdmin() || isDriver());
+      // drivers can create; admins can do anything; driver can update own items if you store driverUid/driverEmail
+      allow create: if authed() && (isAdmin() || isDriver())
         && request.resource.data.userEmail == me()
         && request.resource.data.driver is string
         && request.resource.data.rideId is string
@@ -59,22 +75,15 @@ service cloud.firestore {
         && isTsOrNull(request.resource.data.endTime)
         && request.resource.data.duration is number
         && request.resource.data.loggedAt is timestamp;
-      allow update: if authed()
-        && (
-          isAdmin() ||
-          (
-            resource.data.userEmail == me() &&
-            request.resource.data.userEmail == resource.data.userEmail
-          )
-        );
-      allow delete: if isAdmin();
+      allow update, delete: if authed() && isAdmin();
     }
 
     // ---------- shootoutStats ----------
     // App writes: { userEmail, startTime, endTime?, trips, passengers, duration?, status, createdAt }
     match /shootoutStats/{id} {
-      allow read: if authed() && (isAdmin() || resource.data.userEmail == me());
-      allow create: if authed()
+      // shootout stats (drivers & admins)
+      allow read: if authed() && (isAdmin() || isDriver());
+      allow create: if authed() && (isAdmin() || isDriver())
         && request.resource.data.userEmail == me()
         && request.resource.data.startTime is timestamp
         && isTsOrNull(request.resource.data.endTime)
@@ -83,18 +92,7 @@ service cloud.firestore {
         && isNumOrNull(request.resource.data.duration)
         && request.resource.data.status is string
         && request.resource.data.createdAt is timestamp;
-      // owner can update mutable fields only; admin can update all
-      allow update: if authed()
-        && (
-          isAdmin() ||
-          (
-            resource.data.userEmail == me() &&
-            request.resource.data.userEmail == resource.data.userEmail &&
-            request.resource.data.startTime == resource.data.startTime &&
-            request.resource.data.createdAt == resource.data.createdAt
-          )
-        );
-      allow delete: if isAdmin() || resource.data.userEmail == me();
+      allow update, delete: if authed() && (isAdmin() || isDriver());
     }
 
     // ---------- adminLogs ----------
