@@ -30,6 +30,7 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import { useDriver } from "../context/DriverContext.jsx";
+import { useRole } from "@/hooks";
 
 const NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
@@ -81,6 +82,7 @@ export default function SidebarNavigation() {
   const { driver } = useDriver();
   const role = driver?.access || "";
   const isAdmin = role === "admin";
+  const { role: hookRole } = useRole();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -117,6 +119,11 @@ export default function SidebarNavigation() {
           );
         })}
       </List>
+      {import.meta.env.DEV && (
+        <div style={{ padding: "6px 10px", fontSize: 12, opacity: 0.7 }}>
+          Role: {hookRole || "(none)"}
+        </div>
+      )}
     </Box>
   );
 

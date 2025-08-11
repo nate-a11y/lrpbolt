@@ -27,6 +27,7 @@ import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
 import { useRole, useFirestoreSub } from "@/hooks";
+import RoleDebug from "@/components/RoleDebug";
 
 const bcName = "lrp-timeclock-lock";
 
@@ -277,13 +278,13 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       valueGetter: (params) => `${params.row.duration || 0}m`,
     },
   ];
-  if (roleLoading || !ready) return <CircularProgress sx={{ mt: 2 }} />;
-  if (!(isAdmin || isDriver)) {
-    return <Alert severity="warning" sx={{ mt: 2 }}>No access.</Alert>;
-  }
+  if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
+  if (!(isAdmin || isDriver)) return <Alert severity="error">You don’t have permission to view this.</Alert>;
+  if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
 
   return (
     <Box maxWidth={600} mx="auto" p={2}>
+      {import.meta.env.DEV && <RoleDebug />}
       <ErrorBanner error={error} />
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Time Clock</Typography>
