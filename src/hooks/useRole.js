@@ -1,47 +1,85 @@
+// Pure JS — no TypeScript
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";                  // adjust if your firebase export lives elsewhere
+import { useAuth } from "../context/AuthContext";  // must expose { user, authLoading }
 
-interface RoleState {
-  role: string;
-  isAdmin: boolean;
-  isDriver: boolean;
-  loading: boolean;
-  user: User | null;
-}
-
-export default function useRole(): RoleState {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState("");
+export function useRole() {
+  const { user, authLoading } = useAuth();
+  const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        let r = "";
-        try {
-          const uidDoc = await getDoc(doc(db, "userAccessByUid", u.uid));
-          if (uidDoc.exists()) {
-            r = String(uidDoc.data()?.access || "");
-          } else if (u.email) {
-            const emailDoc = await getDoc(doc(db, "userAccess", u.email.toLowerCase()));
-            if (emailDoc.exists()) {
-              r = String(emailDoc.data()?.access || "");
-            }
-          }
-        } catch {
-          r = "";
-        }
-        setRole(r.toLowerCase());
-      } else {
-        setRole("");
-      }
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
+    // Wait until auth settles
+    if (authLoading) return;
+    if (!user) { setRole(null); setLoading(false); return; }
 
-  return { role, isAdmin: role === "admin", isDriver: role === "driver", loading, user };
+    const emailKey = (user.email || "").toLowerCase();
+    const uidDoc = doc(db, "userAccessByUid", user.uid);
+    const emailDoc = emailKey ? doc(db, "userAccess", emailKey) : null;
+
+    let unsubUid = () => {};
+    let unsubEmail = () => {};
+
+    try {
+      unsubUid = onSnapshot(
+        uidDoc,
+        (snap) => {
+          const r = snap.exists() ? (snap.data()?.access ?? null) : null;
+          if (r) {
+            setRole(String(r).toLowerCase());
+            setLoading(false);
+          } else if (emailDoc) {
+            unsubEmail = onSnapshot(
+              emailDoc,
+              (snap2) => {
+                const r2 = snap2.exists() ? (snap2.data()?.access ?? null) : null;
+                setRole(r2 ? String(r2).toLowerCase() : null);
+                setLoading(false);
+              },
+              () => setLoading(false)
+            );
+          } else {
+            setRole(null);
+            setLoading(false);
+          }
+        },
+        () => {
+          // UID lookup errored; try email as fallback
+          if (emailDoc) {
+            unsubEmail = onSnapshot(
+              emailDoc,
+              (snap2) => {
+                const r2 = snap2.exists() ? (snap2.data()?.access ?? null) : null;
+                setRole(r2 ? String(r2).toLowerCase() : null);
+                setLoading(false);
+              },
+              () => setLoading(false)
+            );
+          } else {
+            setRole(null);
+            setLoading(false);
+          }
+        }
+      );
+    } catch (e) {
+      setRole(null);
+      setLoading(false);
+    }
+
+    return () => {
+      try { unsubUid(); } catch (_) {}
+      try { unsubEmail(); } catch (_) {}
+    };
+  }, [authLoading, user?.uid, user?.email]);
+
+  return {
+    role,
+    isAdmin: role === "admin",
+    isDriver: role === "driver",
+    loading: !!(authLoading || loading),
+    user,
+  };
 }
+
+export default useRole;
