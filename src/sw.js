@@ -1,10 +1,9 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { StaleWhileRevalidate } from "workbox-strategies";
-import { clientsClaim } from "workbox-core";
 
-self.skipWaiting();
-clientsClaim();
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", () => self.clients.claim());
 
 const seen = new Set();
 const normalized = [];

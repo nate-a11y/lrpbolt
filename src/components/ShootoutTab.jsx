@@ -17,24 +17,50 @@ import UndoIcon from "@mui/icons-material/Undo";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import dayjs from "dayjs";
 
-import { db } from "../firebase";
-import { normalizeSession } from "../utils/firestore";
 import {
+  addDoc,
+  updateDoc,
   collection,
-  doc,
-  setDoc,
   onSnapshot,
   query,
+  where,
   orderBy,
   limit,
+  serverTimestamp,
   Timestamp,
+  doc,
+  getDoc,
 } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { db } from "../services/firebase";
+import { waitForAuth } from "../utils/waitForAuth";
 
 const STORAGE_CLOCK = "shootoutClock";
 const SHOOTOUT_COL = "shootoutStats";
 const IMG_CADILLAC = "https://logos-world.net/wp-content/uploads/2021/05/Cadillac-Logo.png";
 const IMG_SHOOTOUT = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s";
+
+async function startShootoutSession(initial = {}) {
+  const user = await waitForAuth(true);
+  const userEmail = (user.email || "").toLowerCase();
+  return addDoc(collection(db, SHOOTOUT_COL), {
+    userEmail,
+    startTime: serverTimestamp(),
+    endTime: null,
+    trips: Number(initial.trips ?? 0),
+    passengers: Number(initial.passengers ?? 0),
+    createdAt: serverTimestamp(),
+  });
+}
+
+async function stopShootoutSession(id, data) {
+  await waitForAuth(true);
+  return updateDoc(doc(db, SHOOTOUT_COL, id), {
+    endTime: serverTimestamp(),
+    trips: Number(data.trips ?? 0),
+    passengers: Number(data.passengers ?? 0),
+    updatedAt: serverTimestamp(),
+  });
+}
 
 function safeParse(json, fallback = {}) {
   try {
@@ -55,6 +81,7 @@ export default function ShootoutTab() {
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState(null);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
   const lastActionRef = useRef(null);
   const intervalRef = useRef(null);
 
@@ -73,6 +100,7 @@ export default function ShootoutTab() {
         setIsRunning(true);
         setTrips(stored.trips || 0);
         setPassengers(stored.passengers || 0);
+        setSessionId(stored.sessionId || null);
       } catch (err) {
         console.warn("Corrupted startTime in localStorage. Resetting clock.");
         localStorage.removeItem(STORAGE_CLOCK);
@@ -110,30 +138,56 @@ export default function ShootoutTab() {
   }, [isRunning, startTime]);
 
   useEffect(() => {
-    try {
-      const col = collection(db, SHOOTOUT_COL);
-      const q = query(col, orderBy("createdAt", "desc"), limit(200));
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          const next = [];
-          snap.forEach((doc) => {
-            const n = normalizeSession(doc, doc.id);
-            if (n && n.startTime) next.push(n);
-          });
-          setRows(next);
-          setErr(null);
-        },
-        (e) => {
-          console.error("[ShootoutTab] onSnapshot error:", e);
-          setErr(e?.code || e?.message || "Unknown error");
+    let unsub = () => {};
+    let mounted = true;
+    (async () => {
+      try {
+        const user = await waitForAuth(true);
+        if (!mounted) return;
+        const email = (user.email || "").toLowerCase();
+
+        let isAdmin = false;
+        try {
+          const snap = await getDoc(doc(db, "userAccess", email));
+          isAdmin = snap.exists && String(snap.data().access || "").toLowerCase() === "admin";
+        } catch (e) {
+          console.error("userAccess check failed", e);
         }
-      );
-      return () => unsub();
-    } catch (e) {
-      console.error("[ShootoutTab] subscribe failed:", e);
-      setErr(e?.message || "subscribe failed");
-    }
+
+        const base = collection(db, SHOOTOUT_COL);
+        const q = isAdmin
+          ? query(base, orderBy("createdAt", "desc"), limit(200))
+          : query(base, where("userEmail", "==", email), orderBy("createdAt", "desc"), limit(200));
+
+        unsub = onSnapshot(
+          q,
+          (snap) => {
+            const next = snap.docs.map((d) => {
+              const data = d.data();
+              const st = data.startTime && data.startTime.toDate ? data.startTime.toDate() : null;
+              const et = data.endTime && data.endTime.toDate ? data.endTime.toDate() : null;
+              const duration = st && et ? Math.floor((et - st) / 1000) : 0;
+              return { id: d.id, ...data, startTime: st, endTime: et, duration };
+            });
+            setRows(next);
+            setErr(null);
+          },
+          (e) => {
+            console.error("[ShootoutTab] onSnapshot error:", e);
+            setErr(e?.code || e?.message || "Unknown error");
+          }
+        );
+      } catch (e) {
+        console.error("[ShootoutTab] subscribe failed:", e);
+        setErr(e?.message || "subscribe failed");
+      }
+    })();
+    return () => {
+      mounted = false;
+      try {
+        unsub();
+      } catch (e) {}
+    };
   }, []);
 
   useEffect(() => {
@@ -144,53 +198,41 @@ export default function ShootoutTab() {
     return () => window.removeEventListener("storage", listener);
   }, [loadClock]);
 
-  const handleStart = () => {
-    const now = Timestamp.now();
-    setStartTime(now);
-    setElapsed(0);
-    setIsRunning(true);
-    setTrips(0);
-    setPassengers(0);
-    persistClock({ startTime: now.toMillis(), trips: 0, passengers: 0 });
-  };
-
-  const finalizeSession = async () => {
-    if (!startTime) {
-      console.warn("No startTime set. Cannot finalize session.");
-      return;
+  const handleStart = async () => {
+    try {
+      const ref = await startShootoutSession();
+      setSessionId(ref.id);
+      const now = Timestamp.now();
+      setStartTime(now);
+      setElapsed(0);
+      setIsRunning(true);
+      setTrips(0);
+      setPassengers(0);
+      persistClock({ startTime: now.toMillis(), sessionId: ref.id, trips: 0, passengers: 0 });
+    } catch (e) {
+      console.error("startShootoutSession failed", e);
+      setErr(e.message);
     }
-    const auth = getAuth();
-    const user = auth.currentUser;
-    const endTime = Timestamp.now();
-
-    const session = {
-      startTime,
-      endTime,
-      createdAt: Timestamp.now(),
-      trips,
-      passengers,
-      duration: Math.floor((endTime.toMillis() - startTime.toMillis()) / 1000),
-      createdBy: (user?.email || "unknown").toLowerCase(),
-      createdByUid: user?.uid || "",
-      eventKey: "shootout-2025",
-    };
-
-    const docId = `${startTime.toMillis()}_${endTime.toMillis()}`;
-    await setDoc(doc(db, SHOOTOUT_COL, docId), session, { merge: true });
-
-    setStartTime(null);
-    setElapsed(0);
-    setIsRunning(false);
-    setTrips(0);
-    setPassengers(0);
-    localStorage.removeItem(STORAGE_CLOCK);
-    lastActionRef.current = null;
   };
 
   const handleEnd = () => setConfirmEndOpen(true);
-  const handleConfirmEnd = () => {
+  const handleConfirmEnd = async () => {
     setConfirmEndOpen(false);
-    finalizeSession();
+    try {
+      if (sessionId) {
+        await stopShootoutSession(sessionId, { trips, passengers });
+      }
+      setStartTime(null);
+      setElapsed(0);
+      setIsRunning(false);
+      setTrips(0);
+      setPassengers(0);
+      setSessionId(null);
+      localStorage.removeItem(STORAGE_CLOCK);
+      lastActionRef.current = null;
+    } catch (e) {
+      setErr(e.message);
+    }
   };
   const handleCancelEnd = () => setConfirmEndOpen(false);
 

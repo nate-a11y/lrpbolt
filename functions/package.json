@@ -1,7 +1,6 @@
 {
   "name": "lrp-functions",
   "private": true,
-  "type": "module",
   "engines": { "node": "20" },
   "main": "src/index.js",
   "scripts": {
