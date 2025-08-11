@@ -38,6 +38,7 @@ const STORAGE_CLOCK = "shootoutClock";
 const SHOOTOUT_COL = "shootoutStats";
 const IMG_CADILLAC = "https://logos-world.net/wp-content/uploads/2021/05/Cadillac-Logo.png";
 const IMG_SHOOTOUT = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuQVpBIwemQ40C8l6cpz3508Vxrk2HaWmMNQ&s";
+const tsToDate = (ts) => (ts && typeof ts.toDate === "function" ? ts.toDate() : null);
 
 async function startShootoutSession(initial = {}) {
   const user = await waitForAuth(true);
@@ -164,8 +165,8 @@ export default function ShootoutTab() {
           (snap) => {
             const next = snap.docs.map((d) => {
               const data = d.data();
-              const st = data.startTime && data.startTime.toDate ? data.startTime.toDate() : null;
-              const et = data.endTime && data.endTime.toDate ? data.endTime.toDate() : null;
+              const st = tsToDate(data.startTime);
+              const et = tsToDate(data.endTime);
               const duration = st && et ? Math.floor((et - st) / 1000) : 0;
               return { id: d.id, ...data, startTime: st, endTime: et, duration };
             });
