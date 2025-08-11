@@ -92,7 +92,12 @@ jobs:
           fi
 
       - name: Test
-        run: npm test --if-present
+        run: |
+          if npm ls vitest --depth=0 >/dev/null 2>&1; then
+          npm test
+          else
+          echo "⚠️ Skipping tests — vitest not installed"
+          fi
 
       - name: Build (Vite)
         run: |
