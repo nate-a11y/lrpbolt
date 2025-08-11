@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   Box, Card, CardContent, CardHeader, Typography, Stack,
   IconButton, Button, Fab, Divider, Dialog, DialogTitle,
-  DialogContent, DialogActions
+  DialogContent, DialogActions, Snackbar, Alert
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -18,6 +18,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import dayjs from "dayjs";
 
 import { db } from "../firebase";
+import { normalizeSession } from "../utils/firestore";
 import {
   collection,
   doc,
@@ -27,7 +28,6 @@ import {
   orderBy,
   limit,
   Timestamp,
-  where,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
@@ -45,21 +45,6 @@ function safeParse(json, fallback = {}) {
   }
 }
 
-function normalizeSession(entry = {}) {
-  const { startTime, endTime } = entry;
-  let duration = 0;
-  try {
-    const start = startTime?.toMillis?.() || new Date(startTime).getTime();
-    const end = endTime?.toMillis?.() || new Date(endTime).getTime();
-    if (!isNaN(start) && !isNaN(end)) {
-      duration = Math.max(0, end - start);
-    }
-  } catch (err) {
-    console.warn("Failed to normalize session:", err);
-    duration = 0;
-  }
-  return { ...entry, duration };
-}
 
 export default function ShootoutTab() {
   const [startTime, setStartTime] = useState(null);
@@ -67,7 +52,8 @@ export default function ShootoutTab() {
   const [isRunning, setIsRunning] = useState(false);
   const [trips, setTrips] = useState(0);
   const [passengers, setPassengers] = useState(0);
-  const [history, setHistory] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [err, setErr] = useState(null);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
   const lastActionRef = useRef(null);
   const intervalRef = useRef(null);
@@ -124,30 +110,30 @@ export default function ShootoutTab() {
   }, [isRunning, startTime]);
 
   useEffect(() => {
-    const q = query(
-      collection(db, SHOOTOUT_COL),
-      where("startTime", "!=", null),
-      where("endTime", "!=", null),
-      orderBy("startTime", "desc"),
-      limit(50),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const parsed = snap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((d) => {
-            const valid = d.startTime && d.endTime;
-            if (!valid) {
-              console.warn("Skipping invalid session", d.id, d);
-            }
-            return valid;
+    try {
+      const col = collection(db, SHOOTOUT_COL);
+      const q = query(col, orderBy("createdAt", "desc"), limit(200));
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const next = [];
+          snap.forEach((doc) => {
+            const n = normalizeSession(doc, doc.id);
+            if (n && n.startTime) next.push(n);
           });
-        setHistory(parsed);
-      },
-      (err) => console.error("Shootout snapshot error:", err),
-    );
-    return unsub;
+          setRows(next);
+          setErr(null);
+        },
+        (e) => {
+          console.error("[ShootoutTab] onSnapshot error:", e);
+          setErr(e?.code || e?.message || "Unknown error");
+        }
+      );
+      return () => unsub();
+    } catch (e) {
+      console.error("[ShootoutTab] subscribe failed:", e);
+      setErr(e?.message || "subscribe failed");
+    }
   }, []);
 
   useEffect(() => {
@@ -256,8 +242,7 @@ export default function ShootoutTab() {
       headerName: "Start Time",
       width: 160,
       valueFormatter: ({ value }) => {
-        const date = value?.toDate?.() || value;
-        const parsed = dayjs(date);
+        const parsed = dayjs(value);
         return parsed.isValid() ? parsed.format("MM/DD HH:mm") : "—";
       },
     },
@@ -284,11 +269,11 @@ export default function ShootoutTab() {
   ], [formatElapsed]);
 
   const historyRows = useMemo(
-    () => history.filter((h) => h.startTime && h.endTime).map(normalizeSession),
-    [history],
+    () => rows.filter((h) => h.startTime),
+    [rows],
   );
-  const totalTrips = useMemo(() => history.reduce((s, h) => s + (h.trips || 0), 0), [history]);
-  const totalPassengers = useMemo(() => history.reduce((s, h) => s + (h.passengers || 0), 0), [history]);
+  const totalTrips = useMemo(() => rows.reduce((s, h) => s + (h.trips || 0), 0), [rows]);
+  const totalPassengers = useMemo(() => rows.reduce((s, h) => s + (h.passengers || 0), 0), [rows]);
   const avgPassengers = totalTrips ? (totalPassengers / totalTrips).toFixed(2) : "0.00";
 
   return (
@@ -379,7 +364,7 @@ export default function ShootoutTab() {
             </Stack>
           )}
 
-          {history.length > 0 && (
+          {rows.length > 0 && (
             <Box mt={3} textAlign="left">
               <Divider sx={{ mb: 2 }} />
               <Typography variant="h6" gutterBottom>
@@ -389,7 +374,7 @@ export default function ShootoutTab() {
                 autoHeight
                 rows={historyRows}
                 columns={historyCols}
-                getRowId={(r) => r.id || `${r.startTime?.seconds}_${r.endTime?.seconds}`}
+                getRowId={(r) => r.id || `${r.startTime?.valueOf?.()}_${r.endTime?.valueOf?.()}`}
                 hideFooter
                 disableRowSelectionOnClick
                 density="compact"
@@ -424,6 +409,14 @@ export default function ShootoutTab() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={Boolean(err)} onClose={() => setErr(null)} autoHideDuration={6000}>
+        <Alert onClose={() => setErr(null)} severity="error" sx={{ width: '100%' }}>
+          {err === 'permission-denied'
+            ? "You don’t have permission to view this data. Ask an admin to grant access."
+            : err}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

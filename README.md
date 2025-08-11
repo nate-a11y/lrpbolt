@@ -124,3 +124,7 @@ Expected response:
 3. Verify a scheduled trigger for 6:00 PM America/Chicago exists in Cloud Console.
 4. Configure `.env` with `VITE_DROP_DAILY_URL` (and optional `VITE_LRP_ADMIN_TOKEN`), rebuild and redeploy the web app.
 5. Use the “Move Queue → Live” button and confirm a success snackbar and no CORS errors.
+
+### Clearing Service Worker Cache
+
+After deploying a new build, open your browser DevTools and navigate to **Application → Service Workers**. Unregister old service workers and perform a hard refresh to clear cached assets.
