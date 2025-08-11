@@ -10,11 +10,40 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: null,
+      strategies: "generateSW",
       workbox: {
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+        // only precache core assets; skip huge images
+        globPatterns: ["**/*.{html,js,css,ico,svg,webmanifest}"],
+        globIgnores: ["**/DropOffPics/**"],
+        runtimeCaching: [
+          {
+            // Runtime cache for large DropOffPics
+            urlPattern: ({ url }) => url.pathname.startsWith("/DropOffPics/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "dropoff-pics",
+              expiration: {
+                maxEntries: 120,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
+          {
+            // All other images get SWR
+            urlPattern: ({ request }) => request.destination === "image",
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "images",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+        ],
       },
       manifest: {
         name: "LRP Driver Portal",
