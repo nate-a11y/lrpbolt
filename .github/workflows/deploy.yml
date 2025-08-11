@@ -122,9 +122,9 @@ jobs:
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: 145.223.77.125  
-          username: u400814892.lakeridepros.xyz  
-          password: m;0C&RhL=AL10b!q  
+          server: "145.223.77.125"
+          username: "u400814892.lakeridepros.xyz"
+          password: "m;0C&RhL=AL10b!q"
           protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/
