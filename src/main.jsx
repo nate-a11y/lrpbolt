@@ -10,6 +10,7 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { logError } from "./utils/logError";
+import "./sw-updater.js";
 
 window.addEventListener("unhandledrejection", (event) => {
   logError(event.reason, "UnhandledPromiseRejection");

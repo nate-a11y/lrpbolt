@@ -92,3 +92,22 @@ export const toTimeString12Hr = (t) => {
   const parsed = dayjs(`2000-01-01 ${t}`, ["h:mm A", "H:mm", "HH:mm"]);
   return parsed.isValid() ? parsed.tz(TIMEZONE).format("h:mm A") : t;
 };
+
+// Persist sync timestamp in localStorage.
+export function setSyncTime(value) {
+  try {
+    localStorage.setItem('lrp_sync_time', String(value ?? ''));
+  } catch (e) {
+    console.warn('[timeUtils] setSyncTime failed', e);
+  }
+}
+
+// Retrieve sync timestamp from localStorage.
+export function getSyncTime() {
+  try {
+    const v = localStorage.getItem('lrp_sync_time');
+    return v || '';
+  } catch {
+    return '';
+  }
+}

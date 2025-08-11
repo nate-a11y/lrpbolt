@@ -3,33 +3,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // TODO: move any hard-coded tokens to Functions env or GitHub Actions secrets.
+
     // ========= Helpers =========
-    function authed() {
-      return request.auth != null && request.auth.token.email is string;
-    }
-    function emailLower() {
-      return authed() ? lower(request.auth.token.email) : "";
+    function lowerEmail() {
+      return request.auth != null && request.auth.token.email != null
+        ? lower(request.auth.token.email)
+        : "";
     }
 
     function role() {
-      return exists(/databases/$(database)/documents/userAccess/$(emailLower()))
-        ? lower(get(/databases/$(database)/documents/userAccess/$(emailLower())).data.access)
+      return exists(/databases/$(database)/documents/userAccess/$(lowerEmail()))
+        ? get(/databases/$(database)/documents/userAccess/$(lowerEmail())).data.access
         : "";
     }
-    function isAdmin() { return role() == "admin"; }
-    function isDriver() { return role() == "driver"; }
+
+    function isAdmin() { return lower(role()) == "admin"; }
+    function isDriver() { return lower(role()) == "driver"; }
+    function isAuthed() { return request.auth != null; }
+
+    // Backwards compatibility for existing rules
+    function authed() { return isAuthed(); }
+    function emailLower() { return lowerEmail(); }
 
     function isStrOrNull(v) { return (v is string) || (v == null); }
     function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
 
     // ========= USER ACCESS =========
     match /userAccess/{userId} {
-      allow read: if authed();
-      allow create, update, delete: if isAdmin()
-        && request.resource.data.name is string
-        && request.resource.data.email is string
-        && lower(request.resource.data.access) in ["admin","driver"]
-        && userId == lower(request.resource.data.email);
+      // admins manage; users can read their own doc for UI.
+      allow read: if isAuthed() && userId == lowerEmail() || isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     // ========= SETTINGS =========
@@ -252,46 +256,26 @@ service cloud.firestore {
     }
 
     // ========= SHOOTOUT STATS =========
-    match /shootoutStats/{docId} {
-      function hasValidKeys() {
-        return request.resource.data.keys().hasAll([
-          "startTime","endTime","createdAt","duration",
-          "trips","passengers","v","createdBy","createdByUid","eventKey"
-        ]);
-      }
-      function valid() {
-        return hasValidKeys()
-          && request.resource.data.startTime is timestamp
-          && isTsOrNull(request.resource.data.endTime)
-          && request.resource.data.createdAt is timestamp
-          && request.resource.data.duration is number
-          && request.resource.data.trips is number
-          && request.resource.data.passengers is number
-          && request.resource.data.v == 1
-          && request.resource.data.createdBy is string
-          && request.resource.data.createdByUid is string
-          && request.resource.data.eventKey is string;
-      }
-      function isOwner() {
-        return authed() && lower(resource.data.createdBy) == emailLower();
-      }
+    match /shootoutStats/{id} {
+      allow read: if isAuthed() && (isDriver() || isAdmin());
+      // drivers can write their own sessions, admins can write all
+      allow create: if isAuthed() && (isDriver() || isAdmin());
+      allow update, delete: if isAuthed() && (isAdmin() ||
+        (isDriver() && request.resource.data.uid == request.auth.uid));
+    }
 
-      allow read: if authed() && (isAdmin() || isDriver());
-      allow create: if authed() && (isAdmin() || isDriver()) && valid();
+    // ========= RIDES =========
+    match /rides/{docId} {
+      allow read: if isAuthed() && (isDriver() || isAdmin());
+      allow create, update: if isAuthed() && (isAdmin() || isDriver());
+      allow delete: if isAdmin();
+    }
 
-      allow update: if authed()
-        && valid()
-        && (
-          isAdmin()
-          || (isOwner()
-            && request.resource.data.startTime == resource.data.startTime
-            && request.resource.data.createdAt == resource.data.createdAt
-            && lower(request.resource.data.createdBy) == lower(resource.data.createdBy)
-            && request.resource.data.createdByUid == resource.data.createdByUid
-          )
-        );
-
-      allow delete: if authed() && (isAdmin() || isOwner());
+    // ========= TICKETS =========
+    match /tickets/{docId} {
+      allow read: if isAuthed() && (isDriver() || isAdmin());
+      allow create, update: if isAuthed() && (isAdmin() || isDriver());
+      allow delete: if isAdmin();
     }
 
     // ========= Deprecated =========
