@@ -1,6 +1,5 @@
 import * as logger from "firebase-functions/logger";
-import { onRequest } from "firebase-functions/v2/https";
-import { onSchedule } from "firebase-functions/v2/scheduler";
+import * as functions from "firebase-functions";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import cors from "cors";
 import { db } from "./admin.js";
@@ -92,9 +91,10 @@ export async function moveQueuedToLive({ dryRun = false, limit = 1500 } = {}) {
 
 const corsHandler = cors({ origin: true });
 
-export const dropDailyRidesNow = onRequest(
-  { region: REGION, cors: true, maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
-  async (req, res) => {
+export const dropDailyRidesNow = functions
+  .region(REGION)
+  .runWith({ maxInstances: 1, timeoutSeconds: 540, memory: "512MB" })
+  .https.onRequest(async (req, res) => {
     return corsHandler(req, res, async () => {
       if (req.method !== "POST") {
         res.status(405).json({ ok: false, error: "Method Not Allowed" });
@@ -117,23 +117,19 @@ export const dropDailyRidesNow = onRequest(
         res.status(500).json({ ok: false, error: err.message || String(err) });
       }
     });
-  },
-);
+  });
 
-export const moveQueuedToLiveDaily = onSchedule(
-  {
-    schedule: DAILY_CRON,
-    timeZone: TZ,
-    region: REGION,
-    retryConfig: {
-      retryCount: 3,
-      maxRetryDurationSeconds: 600,
-      minBackoffSeconds: 10,
-      maxBackoffSeconds: 60,
-      maxDoublings: 4,
-    },
-  },
-  async () => {
+export const moveQueuedToLiveDaily = functions
+  .region(REGION)
+  .pubsub.schedule(DAILY_CRON)
+  .timeZone(TZ)
+  .retryConfig({
+    retryCount: 3,
+    maxRetryDurationSeconds: 600,
+    minBackoffSeconds: 10,
+    maxBackoffSeconds: 60,
+    maxDoublings: 4,
+  })
+  .onRun(async () => {
     await moveQueuedToLive();
-  },
-);
+  });
