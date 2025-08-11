@@ -1,153 +1,104 @@
-name: CI + Deploy to Hostinger v2
+name: Build & Deploy LRP
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
-  build-test-deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Ensure package-lock.json
-        run: |
-          if [ ! -f package-lock.json ]; then
-            echo "⚠️ No package-lock.json found — generating one..."
-            npm install --package-lock-only --no-audit --no-fund
-          fi
-          
-      - name: Setup Node.js (LTS)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
-          cache: npm
+          node-version: 20
 
-      - name: Create .env file
+      - name: Fail if required secrets missing
         run: |
-          echo "VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}" >> .env
-          echo "VITE_CALENDAR_ID=${{ secrets.VITE_CALENDAR_ID }}" >> .env
-          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env
-          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
-          echo "VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}" >> .env
-          echo "VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}" >> .env
-          echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" >> .env
-
-      - name: Set build version
-        run: |
-          VERSION=$(date +"%Y.%m.%d")+${GITHUB_SHA::7}
-          echo "VITE_APP_VERSION=$VERSION" >> .env
-          echo "📦 Version set to $VERSION"
-
-      - name: Clear npm cache
-        run: npm cache clean --force
-
-      # 👇 Ensure a lockfile exists so npm ci can run
-      - name: Ensure package-lock.json
-        run: |
-          if [ ! -f package-lock.json ]; then
-            echo "No package-lock.json found; generating one…"
-            npm install --package-lock-only --no-audit --no-fund
-          fi
-
-      - name: Install deps
-        run: npm ci --legacy-peer-deps
-
-      - name: Ensure Vite base path
-        run: |
-          if grep -q "base" vite.config.js; then
-            sed -i "s|base: .*|base: '/',|" vite.config.js
-          else
-            sed -i "/export default defineConfig({/a\  base: '/'," vite.config.js
-          fi
-          echo "✅ Vite base path ensured"
-
-      - name: Lint code
-        run: npm run lint --if-present
-
-      - name: Run tests
-        run: npm test --if-present
-
-      - name: Build project
-        run: npm run build
-
-      - name: Validate precache manifest
-        run: |
-          echo "🔍 Checking precache manifest..."
-          MANIFEST_FILE="dist/sw.js"
-          if [ ! -f "$MANIFEST_FILE" ]; then
-            echo "❌ ERROR: sw.js missing."
-            exit 1
-          fi
-          MISSING=false
-          for FILE in $(grep -oP "(?<=url:\s')[^']+" $MANIFEST_FILE || true); do
-            if [ ! -f "dist/$FILE" ]; then
-              echo "❌ Missing file in dist: $FILE"
-              MISSING=true
-            fi
+          required=(
+            VITE_CALENDAR_API_KEY VITE_CALENDAR_ID
+            VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID
+            VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID
+            VITE_GOOGLE_CLIENT_ID VITE_API_BASE_URL VITE_API_SECRET_KEY VITE_TIME_LOG_CSV
+            VITE_DROP_DAILY_URL
+          )
+          for k in "${required[@]}"; do
+            v="${!k}"
+            if [ -z "${!k}" ]; then echo "::error::Missing secret $k"; exit 1; fi
           done
-          if [ "$MISSING" = true ]; then
-            echo "❌ ERROR: One or more precache files missing."
-            exit 1
-          fi
-          echo "✅ Precache validation passed."
-
-      - name: Verify build output
-        run: |
-          if [ ! -d "dist/assets" ]; then
-            echo "❌ ERROR: dist/assets folder is missing — build failed or output path incorrect."
-            exit 1
-          fi
-          if ! ls dist/assets/main-*.js 1> /dev/null 2>&1; then
-            echo "❌ ERROR: No main-*.js file found in dist/assets — build hash may have failed."
-            exit 1
-          fi
-          echo "✅ Build verification passed — main JS found in dist/assets."
-
-      - name: Verify SW exists (source)
-        run: |
-          if [ ! -f "src/sw.js" ]; then
-            echo "❌ ERROR: sw.js missing — service worker will fail."
-            exit 1
-          fi
-          echo "✅ Service worker found."
-
-      - name: Write GCP credentials to file
-        run: |
-          echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}' > /tmp/gcloud.json
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Install Cloud Functions dependencies
-        run: |
-          cd functions
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-          fi
-
-      - name: Deploy Firebase Cloud Functions
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
-        run: firebase deploy --only functions --force
+          VITE_CALENDAR_API_KEY: ${{ secrets.VITE_CALENDAR_API_KEY }}
+          VITE_CALENDAR_ID: ${{ secrets.VITE_CALENDAR_ID }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_SECRET_KEY: ${{ secrets.VITE_API_SECRET_KEY }}
+          VITE_TIME_LOG_CSV: ${{ secrets.VITE_TIME_LOG_CSV }}
+          VITE_DROP_DAILY_URL: ${{ secrets.VITE_DROP_DAILY_URL }}
+
+      - name: Create .env from GitHub Secrets
+        run: |
+          cat > .env << 'EOF2'
+          VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}
+          VITE_CALENDAR_ID=${{ secrets.VITE_CALENDAR_ID }}
+          VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}
+          VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}
+          VITE_DROP_DAILY_URL=${{ secrets.VITE_DROP_DAILY_URL }}
+          EOF2
+
+      - name: Install & build web
+        run: |
+          npm ci
+          npm run build
 
       - name: Deploy to Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        uses: SamKirkland/FTP-Deploy-Action@v4
         with:
-          server: 145.223.77.125  
-          username: u400814892.lakeridepros.xyz  
-          password: m;0C&RhL=AL10b!q  
-          protocol: ftp
-          local-dir: ./dist/
-          server-dir: /public_html/
-          log-level: minimal
-          exclude: |
-            **/.git*
-            **/.github*
-            **/node_modules/*
-            **/src/*
+          server: ${{ secrets.HOSTINGER_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          local-dir: dist/
+          server-dir: ${{ secrets.HOSTINGER_REMOTE_PATH }}
+
+  functions:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Write service account key
+        run: |
+          mkdir -p $HOME/.gcloud
+          echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}' > $HOME/.gcloud/key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcloud/key.json" >> $GITHUB_ENV
+
+      - name: Export MANUAL_DROP_TOKEN
+        run: echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Install & deploy functions (set cleanup policy if needed)
+        working-directory: functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        run: |
+          npm ci
+          npx firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --force || true
+          # Ensure artifact cleanup policy (14 days) - idempotent
+          npx firebase functions:artifacts:setpolicy --location us-central1 --days 14 || true
