@@ -23,7 +23,7 @@ import {
 } from "../services/firestoreService";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);

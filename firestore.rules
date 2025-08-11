@@ -2,7 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- Helpers (safe) ----
+    // KEEP YOUR SCHEMA VALIDATION MATCH BLOCKS AS-IS.
+    // Only updating permission helpers/expressions safely:
+
     function authed() { return request.auth != null; }
 
     function email() {

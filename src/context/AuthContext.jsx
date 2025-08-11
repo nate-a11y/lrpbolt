@@ -1,25 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-} from "firebase/auth";
-import "../firebase"; // ensure app initialized
+import { auth } from "../firebase";
+import { onAuthStateChanged, setPersistence, browserLocalPersistence } from "firebase/auth";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext({ user: null, authLoading: true });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth();
-    // Force local persistence so refresh retains session
-    setPersistence(auth, browserLocalPersistence).catch(() => {
-      /* ignore */
-    });
-
+    // persist across refresh
+    setPersistence(auth, browserLocalPersistence).catch(() => { /* no-op */ });
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u || null);
       setAuthLoading(false);
@@ -37,4 +28,4 @@ export function useAuth() {
   return ctx;
 }
 
-export default AuthContext;
+export default AuthProvider;

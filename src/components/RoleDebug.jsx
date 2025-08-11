@@ -2,9 +2,14 @@ import { Button, Chip, Divider, Stack, Typography } from "@mui/material";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/firebase";
 import { useRole } from "@/hooks";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function RoleDebug() {
-  const { user, role, loading, isAdmin, isDriver } = useRole();
+  const { role, authLoading } = useRole();
+  const { user } = useAuth();
+  const isAdmin = role === "admin";
+  const isDriver = role === "driver";
+  const loading = authLoading;
 
   if (!user) return <Typography variant="body2">Not signed in.</Typography>;
 

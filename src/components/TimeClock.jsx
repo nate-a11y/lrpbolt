@@ -27,6 +27,7 @@ import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
 import { useRole, useFirestoreSub } from "@/hooks";
+import { useAuth } from "../context/AuthContext.jsx";
 import RoleDebug from "@/components/RoleDebug";
 
 const bcName = "lrp-timeclock-lock";
@@ -77,7 +78,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [logId, setLogId] = useState(null);
   const bcRef = useRef(null);
 
-  const { user, loading: roleLoading, isAdmin, isDriver } = useRole();
+  const { role, authLoading: roleLoading } = useRole();
+  const { user } = useAuth();
+  const isAdmin = role === "admin";
+  const isDriver = role === "driver";
   const { docs: logDocs, error, ready } = useFirestoreSub(
     () => {
       if (roleLoading) return null;

@@ -37,7 +37,7 @@ import ErrorBanner from "./ErrorBanner";
 import { collection, query, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase";
 import { useRole, useFirestoreSub } from "@/hooks";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 dayjs.extend(isoWeek);
 
@@ -91,7 +91,8 @@ export default function AdminTimeLog() {
     severity: "error",
   });
 
-  const { loading: roleLoading, isAdmin } = useRole();
+  const { role, authLoading: roleLoading } = useRole();
+  const isAdmin = role === "admin";
   const { authLoading, user } = useAuth();
   const {
     docs: logDocs,
@@ -112,6 +113,17 @@ export default function AdminTimeLog() {
 
   const error = logsError || shootError;
   const loading = !logsReady || !shootReady;
+
+  useEffect(() => {
+    if (error) {
+      logError("FirestoreSubscribe AdminTimeLog", error);
+      setSnackbar({
+        open: true,
+        message: "Permissions issue reading logs.",
+        severity: "error",
+      });
+    }
+  }, [error]);
 
   useEffect(() => {
     if (!logDocs) return;
@@ -437,13 +449,3 @@ export default function AdminTimeLog() {
     </>
   );
 }
-useEffect(() => {
-  if (error) {
-    logError("FirestoreSubscribe AdminTimeLog", error);
-    setSnackbar({
-      open: true,
-      message: "Permissions issue reading logs.",
-      severity: "error",
-    });
-  }
-}, [error]);

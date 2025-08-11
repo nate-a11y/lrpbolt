@@ -20,7 +20,7 @@ import {
 import EditableRideGrid from "../components/EditableRideGrid";
 import useToast from "../hooks/useToast";
 import { safe } from "../utils/rideFormatters";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);

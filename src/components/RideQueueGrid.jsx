@@ -19,7 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import { safe } from "../utils/rideFormatters";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);

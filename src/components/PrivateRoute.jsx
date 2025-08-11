@@ -4,9 +4,9 @@ import useAuth from "../hooks/useAuth.js";
 import { CircularProgress, Box } from "@mui/material";
 
 export default function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, authLoading } = useAuth();
 
-  if (loading) {
+  if (authLoading) {
     return (
       <Box display="flex" justifyContent="center" mt={4}>
         <CircularProgress />

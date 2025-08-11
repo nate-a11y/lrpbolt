@@ -46,7 +46,7 @@ import {
 } from "../hooks/api";
 import { Timestamp } from "firebase/firestore";
 import { logError } from "../utils/logError";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
