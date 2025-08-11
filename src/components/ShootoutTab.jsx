@@ -21,7 +21,6 @@ import {
   addDoc,
   updateDoc,
   collection,
-  onSnapshot,
   query,
   where,
   orderBy,
@@ -29,12 +28,13 @@ import {
   serverTimestamp,
   Timestamp,
   doc,
-  getDoc,
 } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
 import { tsToMillis } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
+import useRole from "../hooks/useRole";
+import useFirestoreSub from "../hooks/useFirestoreSub";
 
 const STORAGE_CLOCK = "shootoutClock";
 const SHOOTOUT_COL = "shootoutStats";
@@ -88,6 +88,47 @@ export default function ShootoutTab() {
   const lastActionRef = useRef(null);
   const intervalRef = useRef(null);
 
+  const { isAdmin, isDriver, loading: roleLoading, user } = useRole();
+  const { data: statsDocs, error: subError } = useFirestoreSub(
+    () => {
+      if (roleLoading || (!isAdmin && !isDriver) || !user?.email) return null;
+      const base = collection(db, SHOOTOUT_COL);
+      return isAdmin
+        ? query(base, orderBy("createdAt", "desc"), limit(200))
+        : query(
+            base,
+            where("userEmail", "==", user.email.toLowerCase()),
+            orderBy("createdAt", "desc"),
+            limit(200),
+          );
+    },
+    [roleLoading, isAdmin, isDriver, user?.email],
+  );
+
+  useEffect(() => {
+    if (!statsDocs) return;
+    const next = statsDocs.map((d) => {
+      const st = tsToMillis(d.startTime);
+      const et = tsToMillis(d.endTime);
+      const duration = st && et ? Math.floor((et - st) / 1000) : 0;
+      return { id: d.id, ...d, startTime: st, endTime: et, duration };
+    });
+    setRows(next);
+    setErr(null);
+    setLoading(false);
+  }, [statsDocs]);
+
+  useEffect(() => {
+    if (!subError) return;
+    logError(subError, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
+    if (subError.code === "permission-denied") {
+      setErr("You do not have access to view shootout stats.");
+    } else {
+      setErr(subError.code || subError.message || "Unknown error");
+    }
+    setLoading(false);
+  }, [subError]);
+
   const persistClock = useCallback((data) => {
     const current = safeParse(localStorage.getItem(STORAGE_CLOCK));
     localStorage.setItem(STORAGE_CLOCK, JSON.stringify({ ...current, ...data }));
@@ -140,64 +181,7 @@ export default function ShootoutTab() {
     };
   }, [isRunning, startTime]);
 
-  useEffect(() => {
-    let unsub = () => {};
-    let mounted = true;
-    (async () => {
-      try {
-        const user = await waitForAuth(true);
-        if (!mounted) return;
-        const email = (user.email || "").toLowerCase();
-
-        let isAdmin = false;
-        try {
-          const snap = await getDoc(doc(db, "userAccess", email));
-          isAdmin = snap.exists && String(snap.data().access || "").toLowerCase() === "admin";
-        } catch (e) {
-          logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-        }
-
-        const base = collection(db, SHOOTOUT_COL);
-        const q = isAdmin
-          ? query(base, orderBy("createdAt", "desc"), limit(200))
-          : query(base, where("userEmail", "==", email), orderBy("createdAt", "desc"), limit(200));
-
-        setLoading(true);
-        unsub = onSnapshot(
-          q,
-          (snap) => {
-            const next = snap.docs.map((d) => {
-              const data = d.data();
-              const st = tsToMillis(data.startTime);
-              const et = tsToMillis(data.endTime);
-              const duration = st && et ? Math.floor((et - st) / 1000) : 0;
-              return { id: d.id, ...data, startTime: st, endTime: et, duration };
-            });
-            setRows(next);
-            setErr(null);
-            setLoading(false);
-          },
-          (e) => {
-            logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-            setErr(e?.code || e?.message || "Unknown error");
-            setLoading(false);
-          }
-        );
-      } catch (e) {
-        logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-        setErr(e?.message || "subscribe failed");
-        setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-      try {
-        unsub();
-      } catch (e) {
-        logError(e, { area: "FirestoreSubscribe", comp: "ShootoutTab" });
-      }
-    };
-  }, []);
+  // subscription handled by useFirestoreSub above
 
   useEffect(() => {
     const listener = (e) => {
@@ -342,6 +326,16 @@ export default function ShootoutTab() {
           {err === "permission-denied"
             ? "You don’t have permission to view this data. Ask an admin to grant access."
             : err}
+        </Alert>
+      </Box>
+    );
+  }
+
+  if (!roleLoading && !isAdmin && !isDriver) {
+    return (
+      <Box mt={4}>
+        <Alert severity="warning">
+          Shootout stats are available to drivers and admins only.
         </Alert>
       </Box>
     );

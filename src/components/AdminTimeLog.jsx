@@ -30,10 +30,13 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/firestore";
 import { durationFormat, tsToMillis } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
+import { collection, query, orderBy } from "firebase/firestore";
+import { db } from "../services/firebase";
+import useRole from "../hooks/useRole";
+import useFirestoreSub from "../hooks/useFirestoreSub";
 
 dayjs.extend(isoWeek);
 
@@ -56,7 +59,7 @@ const shootoutColumns = [
   { field: "createdAt", headerName: "Created", flex: 1 },
 ];
 
-export default function AdminTimeLog({ driver }) {
+export default function AdminTimeLog() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -75,75 +78,85 @@ export default function AdminTimeLog({ driver }) {
       : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
   });
 
+  const { isAdmin, loading: roleLoading } = useRole();
+  const { data: logDocs, error: logsError } = useFirestoreSub(
+    () => {
+      if (roleLoading || !isAdmin) return null;
+      return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+    },
+    [roleLoading, isAdmin],
+  );
+  const { data: shootDocs, error: shootError } = useFirestoreSub(
+    () => {
+      if (roleLoading || !isAdmin) return null;
+      return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
+    },
+    [roleLoading, isAdmin],
+  );
+
   useEffect(() => {
-    if ((driver?.access || "").toLowerCase() !== "admin") {
+    if (!logDocs) return;
+    setLogs(
+      logDocs.map((entry, i) => {
+        const start = dayjs(tsToMillis(entry.startTime));
+        const end = dayjs(tsToMillis(entry.endTime));
+        const logged = dayjs(tsToMillis(entry.loggedAt));
+        const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
+        return {
+          id: i + 1,
+          Driver: entry.driver || "Unknown",
+          RideID: entry.rideID || "N/A",
+          StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
+          EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
+          Duration: duration != null ? durationFormat(duration) : "—",
+          LoggedAt: logged.isValid() ? logged.format("MM/DD/YYYY hh:mm A") : "—",
+          raw: entry,
+          durationMin: duration ?? 0,
+        };
+      }),
+    );
+    setLoading(false);
+    setErr(null);
+  }, [logDocs]);
+
+  useEffect(() => {
+    if (!shootDocs) return;
+    setShootoutStats(
+      shootDocs.map((entry, i) => {
+        const start = dayjs(tsToMillis(entry.startTime));
+        const end = dayjs(tsToMillis(entry.endTime));
+        const created = dayjs(tsToMillis(entry.createdAt));
+        const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
+        return {
+          id: i + 1,
+          Driver: entry.driver || "Unknown",
+          startTime: start.format("MM/DD/YYYY hh:mm A"),
+          endTime: end.format("MM/DD/YYYY hh:mm A"),
+          elapsedMin: durationFormat(elapsed),
+          createdAt: created.format("MM/DD/YYYY hh:mm A"),
+        };
+      }),
+    );
+  }, [shootDocs]);
+
+  useEffect(() => {
+    if (!roleLoading && !isAdmin) {
       setErr("permission-denied");
       setLoading(false);
-      return;
     }
+  }, [roleLoading, isAdmin]);
 
-    setLoading(true);
-    const unsub1 = subscribeTimeLogs(
-      (data) => {
-        setLogs(
-          data.map((entry, i) => {
-            const start = dayjs(tsToMillis(entry.startTime));
-            const end = dayjs(tsToMillis(entry.endTime));
-            const logged = dayjs(tsToMillis(entry.loggedAt));
-            const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
-            return {
-              id: i + 1,
-              Driver: entry.driver || "Unknown",
-              RideID: entry.rideID || "N/A",
-              StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
-              EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
-              Duration: duration != null ? durationFormat(duration) : "—",
-              LoggedAt: logged.isValid() ? logged.format("MM/DD/YYYY hh:mm A") : "—",
-              raw: entry,
-              durationMin: duration ?? 0,
-            };
-          })
-        );
-        setLoading(false);
-        setErr(null);
-      },
-      (e) => {
-        logError(e, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
-        setErr(e?.code || e?.message || "Unknown error");
-        setLoading(false);
-      },
-    );
-
-    const unsub2 = subscribeShootoutStats(
-      (data) => {
-        setShootoutStats(
-          data.map((entry, i) => {
-            const start = dayjs(tsToMillis(entry.startTime));
-            const end = dayjs(tsToMillis(entry.endTime));
-            const created = dayjs(tsToMillis(entry.createdAt));
-            const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
-            return {
-              id: i + 1,
-              Driver: entry.driver || "Unknown",
-              startTime: start.format("MM/DD/YYYY hh:mm A"),
-              endTime: end.format("MM/DD/YYYY hh:mm A"),
-              elapsedMin: durationFormat(elapsed),
-              createdAt: created.format("MM/DD/YYYY hh:mm A"),
-            };
-          })
-        );
-      },
-      (e) => {
-        logError(e, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
-        setErr(e?.code || e?.message || "Unknown error");
-      },
-    );
-
-    return () => {
-      unsub1();
-      unsub2();
-    };
-  }, [driver?.access]);
+  useEffect(() => {
+    const e = logsError || shootError;
+    if (!e) return;
+    logError(e, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
+    if (e.code === "permission-denied") {
+      setErr("permission-denied");
+    } else {
+      setErr(e.code || e.message || "Unknown error");
+    }
+    setLoading(false);
+  }, [logsError, shootError]);
 
   if (err === "permission-denied") {
     return (

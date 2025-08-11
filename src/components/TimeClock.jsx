@@ -18,7 +18,6 @@ import {
   where,
   orderBy,
   limit,
-  onSnapshot,
   serverTimestamp,
   Timestamp,
   doc,
@@ -28,6 +27,8 @@ import { waitForAuth } from "../utils/waitForAuth";
 import { tsToMillis } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
+import useRole from "../hooks/useRole";
+import useFirestoreSub from "../hooks/useFirestoreSub";
 
 const bcName = "lrp-timeclock-lock";
 
@@ -68,6 +69,44 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
   const bcRef = useRef(null);
+
+  const { isAdmin, isDriver, loading: roleLoading, user } = useRole();
+  const { data: logDocs, error: subError } = useFirestoreSub(
+    () => {
+      if (roleLoading || (!isAdmin && !isDriver) || !user?.email) return null;
+      const base = collection(db, "timeLogs");
+      return isAdmin
+        ? query(base, orderBy("startTime", "desc"), limit(500))
+        : query(
+            base,
+            where("userEmail", "==", user.email.toLowerCase()),
+            orderBy("startTime", "desc"),
+            limit(200),
+          );
+    },
+    [roleLoading, isAdmin, isDriver, user?.email],
+  );
+
+  useEffect(() => {
+    if (!logDocs) return;
+    const rows = logDocs.map((d) => {
+      const st = tsToMillis(d.startTime);
+      const et = tsToMillis(d.endTime);
+      const duration = st && et ? Math.round((et - st) / 60000) : 0;
+      return { id: d.id, ...d, startTime: st, endTime: et, duration };
+    });
+    setRows(rows);
+  }, [logDocs]);
+
+  useEffect(() => {
+    if (!subError) return;
+    logError(subError, { area: "FirestoreSubscribe", comp: "TimeClock" });
+    if (subError.code === "permission-denied") {
+      setErr("You do not have access to view time logs.");
+    } else {
+      setErr(subError.code || subError.message || "Unknown error");
+    }
+  }, [subError]);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
@@ -120,53 +159,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
 
-  useEffect(() => {
-    let unsub = () => {};
-    let mounted = true;
-    (async () => {
-      try {
-        const user = await waitForAuth(true);
-        if (!mounted) return;
-        const userEmail = (user.email || "").toLowerCase();
-        const isAdmin = (driver?.access || "").toLowerCase() === "admin";
-
-        const base = collection(db, "timeLogs");
-        const q = isAdmin
-          ? query(base, orderBy("startTime", "desc"), limit(500))
-          : query(base, where("userEmail", "==", userEmail), orderBy("startTime", "desc"), limit(200));
-
-        unsub = onSnapshot(
-          q,
-          (snap) => {
-            const rows = snap.docs.map((d) => {
-              const data = d.data();
-              const st = tsToMillis(data.startTime);
-              const et = tsToMillis(data.endTime);
-              const duration = st && et ? Math.round((et - st) / 60000) : 0;
-              return { id: d.id, ...data, startTime: st, endTime: et, duration };
-            });
-            setRows(rows);
-            setErr(null);
-          },
-          (e) => {
-            logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
-            setErr(e?.code || e?.message || "Unknown error");
-          }
-        );
-      } catch (e) {
-        logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
-        setErr(e?.message || "subscribe failed");
-      }
-    })();
-    return () => {
-      mounted = false;
-      try {
-        unsub();
-      } catch (e) {
-        logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
-      }
-    };
-  }, [driver?.access]);
+  // subscription handled by useFirestoreSub above
 
   const formatElapsed = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -281,6 +274,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       valueGetter: (params) => `${params.row.duration || 0}m`,
     },
   ];
+
+  if (!roleLoading && !isAdmin && !isDriver) {
+    return (
+      <Alert severity="warning" sx={{ mt: 2 }}>
+        Time logs are available to drivers and admins only.
+      </Alert>
+    );
+  }
 
   return (
     <Box maxWidth={600} mx="auto" p={2}>
