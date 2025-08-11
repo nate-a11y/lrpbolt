@@ -33,8 +33,10 @@ export function loginWithEmail(email, password) {
 
 export async function registerWithEmail(name, email, password) {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
-  if (name) await updateProfile(cred.user, { displayName: name });
-  return cred;
+  if (name) {
+    await updateProfile(cred.user, { displayName: name });
+  }
+  return cred.user;
 }
 
 export function sendPasswordReset(email) {
