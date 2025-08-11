@@ -1,58 +1,318 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ========= Helpers =========
+    function authed() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+    function emailLower() {
+      return authed() ? lower(request.auth.token.email) : "";
+    }
+
     function role() {
-      return request.auth != null && exists(/databases/$(database)/documents/userAccess/$(lower(request.auth.token.email)))
-        ? get(/databases/$(database)/documents/userAccess/$(lower(request.auth.token.email))).data.access
+      return exists(/databases/$(database)/documents/userAccess/$(emailLower()))
+        ? lower(get(/databases/$(database)/documents/userAccess/$(emailLower())).data.access)
         : "";
     }
-    function isAdmin() { return lower(role()) == "admin"; }
-    function isDriver() { return lower(role()) == "driver"; }
+    function isAdmin() { return role() == "admin"; }
+    function isDriver() { return role() == "driver"; }
 
+    function isStrOrNull(v) { return (v is string) || (v == null); }
+    function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
+
+    // ========= USER ACCESS =========
     match /userAccess/{userId} {
-      // Any signed-in user can read the directory
-      allow read: if request.auth != null;
-
-      // Only admins can write
-      allow create, update, delete: if request.auth != null && isAdmin()
+      allow read: if authed();
+      allow create, update, delete: if isAdmin()
         && request.resource.data.name is string
         && request.resource.data.email is string
-        && lower(request.resource.data.access) in ["admin", "driver"];
+        && lower(request.resource.data.access) in ["admin","driver"]
+        && userId == lower(request.resource.data.email);
     }
 
-    match /liveRides/{rideId} {
-      allow read: if request.auth != null && (isDriver() || isAdmin());
+    // ========= SETTINGS =========
+    match /settings/{docId} {
+      allow read: if authed();
       allow create, update, delete: if isAdmin();
     }
 
-    match /claimedRides/{rideId} {
-      allow read: if request.auth != null && (isDriver() || isAdmin());
+    // ========= ADMIN META =========
+    match /AdminMeta/{docId} {
+      allow read: if authed();
       allow create, update, delete: if isAdmin();
     }
 
+    // ========= RIDE QUEUE =========
     match /rideQueue/{rideId} {
-      allow read: if request.auth != null && (isDriver() || isAdmin());
-      allow create, update, delete: if isAdmin();
+      function valid() {
+        return request.resource.data.keys().hasAll([
+          "tripId","pickupTime","rideDuration","rideType","vehicle","rideNotes",
+          "claimedBy","claimedAt","createdBy","lastModifiedBy"
+        ])
+        && request.resource.data.tripId is string
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.rideDuration is number
+        && request.resource.data.rideType is string
+        && request.resource.data.vehicle is string
+        && isStrOrNull(request.resource.data.rideNotes)
+        && isStrOrNull(request.resource.data.claimedBy)
+        && isTsOrNull(request.resource.data.claimedAt)
+        && request.resource.data.createdBy is string
+        && request.resource.data.lastModifiedBy is string;
+      }
+
+      allow read: if authed();
+      allow create: if authed() && isAdmin() && valid();
+      allow delete: if authed() && isAdmin();
+
+      allow update: if authed()
+        && (
+          (isAdmin() && valid())
+          ||
+          (isDriver()
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "claimedBy","claimedAt","lastModifiedBy","rideNotes"
+            ])
+            && valid()
+          )
+        );
     }
 
-    match /claimFailures/{docId} {
-      allow read, create, update, delete: if isAdmin();
+    // ========= CLAIMED RIDES =========
+    match /claimedRides/{rideId} {
+      function valid() {
+        return request.resource.data.keys().hasAll([
+          "tripId","pickupTime","rideDuration","rideType","vehicle","rideNotes",
+          "claimedBy","claimedAt","createdBy","lastModifiedBy"
+        ])
+        && request.resource.data.tripId is string
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.rideDuration is number
+        && request.resource.data.rideType is string
+        && request.resource.data.vehicle is string
+        && isStrOrNull(request.resource.data.rideNotes)
+        && request.resource.data.claimedBy is string
+        && request.resource.data.claimedAt is timestamp
+        && request.resource.data.createdBy is string
+        && request.resource.data.lastModifiedBy is string;
+      }
+
+      allow read: if authed();
+      allow create: if authed() && (isAdmin() || isDriver()) && valid();
+      allow delete: if authed() && isAdmin();
+
+      allow update: if authed()
+        && (
+          (isAdmin() && valid())
+          ||
+          (isDriver()
+            && lower(resource.data.claimedBy) == emailLower()
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "rideNotes","lastModifiedBy"
+            ])
+            && valid()
+          )
+        );
     }
 
-    match /timeLogs/{logId} {
-      allow read: if request.auth != null && (isDriver() || isAdmin());
-      allow create: if request.auth != null && (isDriver() || isAdmin());
-      allow update, delete: if isAdmin();
+    // ========= LIVE RIDES =========
+    match /liveRides/{rideId} {
+      function valid() {
+        return request.resource.data.keys().hasAll([
+          "tripId","pickupTime","rideDuration","rideType","vehicle","rideNotes",
+          "claimedBy","claimedAt","createdBy","lastModifiedBy"
+        ])
+        && request.resource.data.tripId is string
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.rideDuration is number
+        && request.resource.data.rideType is string
+        && request.resource.data.vehicle is string
+        && isStrOrNull(request.resource.data.rideNotes)
+        && isStrOrNull(request.resource.data.claimedBy)
+        && isTsOrNull(request.resource.data.claimedAt)
+        && request.resource.data.createdBy is string
+        && request.resource.data.lastModifiedBy is string;
+      }
+
+      allow read: if authed();
+      allow create, delete: if authed() && isAdmin() && valid();
+
+      allow update: if authed()
+        && (
+          (isAdmin() && valid())
+          ||
+          (isDriver()
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "claimedBy","claimedAt","lastModifiedBy","rideNotes"
+            ])
+            && valid()
+          )
+        );
     }
 
+    // ========= TICKETS =========
     match /tickets/{ticketId} {
-      allow read: if request.auth != null && (isDriver() || isAdmin());
-      allow create, update, delete: if isAdmin();
+      function valid() {
+        return request.resource.data.keys().hasAll([
+          "ticketId","passenger","pickup","dropoff","pickupTime","passengercount",
+          "notes","scannedOutbound","scannedReturn","createdAt",
+          "scannedOutboundAt","scannedOutboundBy","scannedReturnAt","scannedReturnBy"
+        ])
+        && request.resource.data.ticketId is string
+        && request.resource.data.passenger is string
+        && request.resource.data.pickup is string
+        && request.resource.data.dropoff is string
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.passengercount is number
+        && isStrOrNull(request.resource.data.notes)
+        && request.resource.data.scannedOutbound is bool
+        && request.resource.data.scannedReturn is bool
+        && request.resource.data.createdAt is timestamp
+        && isTsOrNull(request.resource.data.scannedOutboundAt)
+        && isStrOrNull(request.resource.data.scannedOutboundBy)
+        && isTsOrNull(request.resource.data.scannedReturnAt)
+        && isStrOrNull(request.resource.data.scannedReturnBy);
+      }
+
+      allow read: if authed();
+      allow create: if authed() && isAdmin() && valid();
+      allow delete: if authed() && isAdmin();
+
+      allow update: if authed()
+        && (
+          (isAdmin() && valid())
+          ||
+          (isDriver()
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              "scannedOutbound","scannedOutboundAt","scannedOutboundBy",
+              "scannedReturn","scannedReturnAt","scannedReturnBy"
+            ])
+            && valid()
+          )
+        );
     }
 
+    // ========= TIME LOGS =========
+    match /timeLogs/{logId} {
+      function valid() {
+        return request.resource.data.keys().hasAll([
+          "driver","rideId","startTime","endTime","duration","loggedAt"
+        ])
+        && request.resource.data.driver is string
+        && request.resource.data.rideId is string
+        && request.resource.data.startTime is timestamp
+        && isTsOrNull(request.resource.data.endTime)
+        && request.resource.data.duration is number
+        && request.resource.data.loggedAt is timestamp;
+      }
+
+      allow read: if authed() && (isAdmin() || lower(resource.data.driver) == emailLower());
+
+      allow create: if authed()
+        && valid()
+        && (isAdmin() || lower(request.resource.data.driver) == emailLower());
+
+      allow update: if authed()
+        && valid()
+        && (
+          isAdmin()
+          ||
+          (isDriver()
+            && lower(resource.data.driver) == emailLower()
+            && request.resource.data.driver == resource.data.driver
+          )
+        );
+
+      allow delete: if authed() && isAdmin();
+    }
+
+    // ========= CLAIM LOG =========
+    match /claimLog/{logId} {
+      allow read: if authed();
+      allow create: if authed()
+        && request.resource.data.keys().hasAll(["driver","timestamp","tripId"])
+        && request.resource.data.driver is string
+        && request.resource.data.timestamp is timestamp
+        && request.resource.data.tripId is string;
+      allow delete: if authed() && isAdmin();
+    }
+
+    // ========= CLAIM FAILURES =========
+    match /claimFailures/{failureId} {
+      allow read: if authed();
+      allow create: if authed()
+        && request.resource.data.keys().hasAll(["tripId","driverName","attemptedAt","reason"])
+        && request.resource.data.tripId is string
+        && request.resource.data.driverName is string
+        && request.resource.data.attemptedAt is timestamp
+        && request.resource.data.reason is string;
+      allow delete: if authed() && isAdmin();
+    }
+
+    // ========= SHOOTOUT STATS =========
+    match /shootoutStats/{docId} {
+      function hasValidKeys() {
+        return request.resource.data.keys().hasAll([
+          "startTime","endTime","createdAt","duration",
+          "trips","passengers","v","createdBy","createdByUid","eventKey"
+        ]);
+      }
+      function valid() {
+        return hasValidKeys()
+          && request.resource.data.startTime is timestamp
+          && isTsOrNull(request.resource.data.endTime)
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.duration is number
+          && request.resource.data.trips is number
+          && request.resource.data.passengers is number
+          && request.resource.data.v == 1
+          && request.resource.data.createdBy is string
+          && request.resource.data.createdByUid is string
+          && request.resource.data.eventKey is string;
+      }
+      function isOwner() {
+        return authed() && lower(resource.data.createdBy) == emailLower();
+      }
+
+      allow read: if authed() && (isAdmin() || isDriver());
+      allow create: if authed() && (isAdmin() || isDriver()) && valid();
+
+      allow update: if authed()
+        && valid()
+        && (
+          isAdmin()
+          || (isOwner()
+            && request.resource.data.startTime == resource.data.startTime
+            && request.resource.data.createdAt == resource.data.createdAt
+            && lower(request.resource.data.createdBy) == lower(resource.data.createdBy)
+            && request.resource.data.createdByUid == resource.data.createdByUid
+          )
+        );
+
+      allow delete: if authed() && (isAdmin() || isOwner());
+    }
+
+    // ========= Deprecated =========
+    match /driverRotation/{driverId} {
+      allow read: if authed();
+      allow create, update, delete: if isAdmin()
+        && request.resource.data.keys().hasAll([
+          "name","email","access","lastClaimed","claimsThisWeek","priority","notes"
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && lower(request.resource.data.access) in ["admin","driver"]
+        && isTsOrNull(request.resource.data.lastClaimed)
+        && request.resource.data.claimsThisWeek is number
+        && request.resource.data.priority is number
+        && isStrOrNull(request.resource.data.notes);
+    }
+
+    // ========= DEFAULT DENY =========
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-

@@ -1,153 +1,87 @@
-import { onRequest } from "firebase-functions/v2/https";
-import { onSchedule } from "firebase-functions/v2/scheduler";
-import { setGlobalOptions } from "firebase-functions/v2";
-import * as logger from "firebase-functions/logger";
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { db } from "./admin.js";
-import { corsMiddleware } from "../cors.js";
+const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const logger = require("firebase-functions/logger");
+const { admin } = require("../admin");
+const { corsMiddleware } = require("../cors");
+const { COLLECTIONS } = require("../constants");
 
-setGlobalOptions({ region: "us-central1", maxInstances: 10 });
+// Server-only token for CI/manual calls (set via GitHub Secrets)
+const MANUAL_DROP_TOKEN = process.env.MANUAL_DROP_TOKEN || ""; // TODO: move to Secret Manager
 
-const REGION = "us-central1";
-const QUEUE_COL = "rideQueue";
-const LIVE_COL = "liveRides";
+async function isAdminUser(req) {
+  const auth = req.headers.authorization || "";
+  const idToken = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!idToken) return false;
 
-export async function moveQueuedToLive({ dryRun = false, limit = 1500 } = {}) {
-  const start = Date.now();
-  let processed = 0;
-  let skipped = 0;
-  logger.info("[moveQueuedToLive] start", { dryRun, limit });
-
-  const queuedSnap = await db
-    .collection(QUEUE_COL)
-    .where("status", "==", "queued")
-    .orderBy("createdAt", "asc")
-    .limit(limit)
-    .get();
-
-  let docs = queuedSnap.docs;
-  if (docs.length < limit) {
-    const remaining = limit - docs.length;
-    const nullSnap = await db
-      .collection(QUEUE_COL)
-      .where("status", "==", null)
-      .orderBy("createdAt", "asc")
-      .limit(remaining)
-      .get();
-    docs = docs.concat(nullSnap.docs);
-  }
-
-  const writer = db.bulkWriter();
-  writer.onWriteError((err) => {
-    logger.error("[moveQueuedToLive] BulkWriter error", {
-      path: err.documentRef.path,
-      attempts: err.failedAttempts,
-      error: err.message,
-    });
-    if (err.failedAttempts < 3) {
-      return true; // retry
-    }
-    skipped += 1;
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const email = (decoded.email || "").toLowerCase();
+    const ref = admin.firestore().doc(`${COLLECTIONS.USER_ACCESS}/${email}`);
+    const snap = await ref.get();
+    return snap.exists && (snap.data().access || "").toLowerCase() === "admin";
+  } catch (e) {
+    logger.warn("isAdminUser verify failed", e);
     return false;
-  });
-
-  for (const doc of docs) {
-    const data = doc.data();
-    if (!data || (data.status && data.status !== "queued" && data.status !== null)) {
-      continue;
-    }
-    if (!data.pickupTime && !data.startTime) {
-      skipped += 1;
-      continue;
-    }
-    processed += 1;
-    if (!dryRun) {
-      const dstRef = db.collection(LIVE_COL).doc(doc.id);
-      writer.set(
-        dstRef,
-        {
-          ...data,
-          status: "live",
-          movedAt: Timestamp.now(),
-          _movedFrom: QUEUE_COL,
-          _movedByFn: "moveQueuedToLive",
-          _updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-      writer.delete(doc.ref);
-    }
   }
-
-  if (!dryRun) {
-    await writer.close();
-  } else {
-    writer.close();
-  }
-
-  const durationMs = Date.now() - start;
-  const moved = processed - skipped;
-  logger.info("[moveQueuedToLive] complete", { moved, skipped, durationMs, dryRun });
-  return { moved, skipped, durationMs, dryRun };
 }
 
-export const dropDailyRidesNowV2 = onRequest(
-  {
-    region: REGION,
-    memory: "512MiB",
-    timeoutSeconds: 540,
-    concurrency: 1,
-    maxInstances: 1,
-    minInstances: 0,
-  },
+async function dropDailyRidesCore() {
+  const db = admin.firestore();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // Example: archive rides older than today
+  const q = await db.collection("rides")
+    .where("rideDate", "<", admin.firestore.Timestamp.fromDate(today))
+    .get();
+
+  let count = 0;
+  const batch = db.batch();
+  q.forEach(doc => {
+    batch.update(doc.ref, {
+      archived: true,
+      archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    count++;
+  });
+  if (count) await batch.commit();
+  return { archivedCount: count };
+}
+
+exports.dropDailyRidesNow = onRequest(
+  { region: "us-central1", timeoutSeconds: 120, memory: "256MiB", concurrency: 10, maxInstances: 5 },
   async (req, res) => {
     corsMiddleware(req, res, async () => {
       try {
-        if (req.method === "OPTIONS") {
-          return res.status(204).send("");
-        }
-        if (req.method !== "POST") {
-          return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+        if (req.method === "OPTIONS") return res.status(204).send("");
+
+        const headerToken = req.get("X-Auth-Token") || "";
+        const adminOk = await isAdminUser(req);
+        const serverTokenOk = MANUAL_DROP_TOKEN && headerToken === MANUAL_DROP_TOKEN;
+
+        if (!(adminOk || serverTokenOk)) {
+          logger.warn("Unauthorized drop attempt");
+          return res.status(401).json({ ok: false, error: "unauthorized" });
         }
 
-        const expected = process.env.LRP_ADMIN_TOKEN || "dev-override-token"; // TODO: move to Secret Manager
-        const provided = req.get("x-lrp-admin-token");
-        if (expected && provided !== expected) {
-          logger.warn("Unauthorized dropDailyRidesNow attempt");
-          return res.status(401).json({ ok: false, error: "Unauthorized" });
-        }
-
-        const { dryRun = false, limit = 1500 } = req.body || {};
-        const result = await moveQueuedToLive({ dryRun, limit });
+        logger.info("[dropDailyRidesNow] start");
+        const result = await dropDailyRidesCore();
+        logger.info("[dropDailyRidesNow] done", result);
         return res.status(200).json({ ok: true, ...result });
       } catch (err) {
         logger.error("dropDailyRidesNow failed", err);
-        return res.status(500).json({ ok: false, error: err.message || String(err) });
+        return res.status(500).json({ ok: false, error: err.message || "Internal error" });
       }
     });
   }
 );
 
-export const dropDailyRidesDailyV2 = onSchedule(
-  {
-    region: REGION,
-    schedule: "30 3 * * *",
-    timeZone: "America/Chicago",
-    memory: "512MiB",
-    timeoutSeconds: 540,
-    concurrency: 1,
-    maxInstances: 1,
-    minInstances: 0,
-    retryCount: 0,
-  },
+// Scheduled daily at 03:30 America/Chicago
+exports.dropDailyRidesDaily = onSchedule(
+  { region: "us-central1", schedule: "30 3 * * *", timeZone: "America/Chicago", retryCount: 0 },
   async (event) => {
-    try {
-      logger.info("[dropDailyRidesDaily] start", { eventId: event.id });
-      const result = await moveQueuedToLive();
-      logger.info("[dropDailyRidesDaily] complete", result);
-    } catch (err) {
-      logger.error("dropDailyRidesDaily failed", err);
-      throw err;
-    }
+    logger.info("[dropDailyRidesDaily] cron start", { eventId: event.id });
+    const result = await dropDailyRidesCore();
+    logger.info("[dropDailyRidesDaily] cron done", result);
   }
 );
