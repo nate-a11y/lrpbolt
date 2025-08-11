@@ -76,7 +76,7 @@ export default function AdminTimeLog() {
         data.map((entry, i) => {
           const start = dayjs(entry.startTime?.toDate?.() || entry.startTime);
           const end = dayjs(entry.endTime?.toDate?.() || entry.endTime);
-          const logged = dayjs(entry.createdAt?.toDate?.() || entry.createdAt);
+          const logged = dayjs(entry.loggedAt?.toDate?.() || entry.loggedAt);
           const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
           return {
             id: i + 1,
