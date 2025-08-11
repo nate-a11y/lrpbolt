@@ -1,20 +1,55 @@
 // src/components/TimeClockGodMode.jsx
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Snackbar, Alert, Stack, CircularProgress
+  FormControlLabel, Snackbar, Alert, Stack
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   PlayArrow as PlayArrowIcon,
-  Stop as StopIcon,
-  Refresh as RefreshIcon
+  Stop as StopIcon
 } from "@mui/icons-material";
-import { Timestamp } from "firebase/firestore";
 import dayjs from "dayjs";
-import { logTime, subscribeTimeLogs } from "../hooks/api";
+import {
+  addDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  serverTimestamp,
+  Timestamp,
+  doc,
+} from "firebase/firestore";
+import { db } from "../services/firebase";
+import { waitForAuth } from "../utils/waitForAuth";
 
 const bcName = "lrp-timeclock-lock";
+
+async function logTimeCreate(payload) {
+  const user = await waitForAuth(true);
+  const userEmail = (user.email || "").toLowerCase();
+
+  return addDoc(collection(db, "timeLogs"), {
+    userEmail,
+    driverId: payload.driverId ?? null,
+    startTime: payload.startTime instanceof Timestamp ? payload.startTime : serverTimestamp(),
+    endTime: payload.endTime ?? null,
+    rideId: payload.rideId ?? null,
+    mode: payload.mode ?? "N/A",
+    createdAt: serverTimestamp(),
+  });
+}
+
+async function logTimeUpdate(id, patch) {
+  await waitForAuth(true);
+  return updateDoc(doc(db, "timeLogs", id), {
+    ...patch,
+    updatedAt: serverTimestamp(),
+  });
+}
 
 export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [rideId, setRideId] = useState("");
@@ -24,11 +59,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isNA, setIsNA] = useState(false);
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [logs, setLogs] = useState([]);
+  const [rows, setRows] = useState([]);
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [submitting, setSubmitting] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const unsubRef = useRef(null);
+  const [logId, setLogId] = useState(null);
   const bcRef = useRef(null);
 
   useEffect(() => {
@@ -39,6 +73,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       setIsRunning(true);
       setIsNA(stored.isNA || false);
       setIsMulti(stored.isMulti || false);
+      setLogId(stored.logId || null);
     }
   }, [driver]);
 
@@ -80,25 +115,42 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   }, [isRunning, startTime]);
 
   useEffect(() => {
-    if (unsubRef.current) {
+    let unsub = () => {};
+    let mounted = true;
+    (async () => {
       try {
-        unsubRef.current();
-      } catch (err) {
-        // noop
+        const user = await waitForAuth(true);
+        if (!mounted) return;
+        const userEmail = (user.email || "").toLowerCase();
+        const isAdmin = (driver?.access || "").toLowerCase() === "admin";
+
+        const base = collection(db, "timeLogs");
+        const q = isAdmin
+          ? query(base, orderBy("startTime", "desc"), limit(500))
+          : query(base, where("userEmail", "==", userEmail), orderBy("startTime", "desc"), limit(200));
+
+        unsub = onSnapshot(q, (snap) => {
+          const rows = snap.docs.map((d) => {
+            const data = d.data();
+            const st = data.startTime && data.startTime.toDate ? data.startTime.toDate() : null;
+            const et = data.endTime && data.endTime.toDate ? data.endTime.toDate() : null;
+            const duration = st && et ? Math.round((et - st) / 60000) : 0;
+            return { id: d.id, ...data, startTime: st, endTime: et, duration };
+          });
+          setRows(rows);
+        });
+      } catch (e) {
+        console.error("timeLogs subscribe failed", e);
+        // TODO: surface snackbar
       }
-      unsubRef.current = null;
-    }
-    unsubRef.current = subscribeTimeLogs(setLogs, driver);
+    })();
     return () => {
-      if (unsubRef.current) {
-        try {
-          unsubRef.current();
-        } catch (err) {
-          // noop
-        }
-      }
+      mounted = false;
+      try {
+        unsub();
+      } catch (e) {}
     };
-  }, [driver]);
+  }, [driver?.access]);
 
   const formatElapsed = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -106,7 +158,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return `${m}m ${s.toString().padStart(2, "0")}s`;
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {
       return setSnack({ open: true, message: "Enter Ride ID or select a mode", severity: "error" });
     }
@@ -114,68 +166,74 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
     const now = Timestamp.now();
     const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
-
-    setStartTime(now);
-    setEndTime(null);
-    setIsRunning(true);
     setSubmitting(true);
-
-    localStorage.setItem("lrp_timeTrack", JSON.stringify({
-      driver,
-      rideId: idToTrack,
-      isNA,
-      isMulti,
-      startTime: now.toMillis()
-    }));
-
-    bcRef.current?.postMessage({
-      type: "timeclock:started",
-      driver,
-      payload: {
+    try {
+      const ref = await logTimeCreate({
+        driverId: driver,
         rideId: idToTrack,
-        isNA,
-        isMulti,
-        startTime: now.toMillis()
-      }
-    });
-
-    setTimeout(() => setSubmitting(false), 600);
+        mode: isNA ? "N/A" : isMulti ? "MULTI" : "RIDE",
+      });
+      setLogId(ref.id);
+      setStartTime(now);
+      setEndTime(null);
+      setIsRunning(true);
+      localStorage.setItem(
+        "lrp_timeTrack",
+        JSON.stringify({
+          driver,
+          rideId: idToTrack,
+          isNA,
+          isMulti,
+          startTime: now.toMillis(),
+          logId: ref.id,
+        })
+      );
+      bcRef.current?.postMessage({
+        type: "timeclock:started",
+        driver,
+        payload: {
+          rideId: idToTrack,
+          isNA,
+          isMulti,
+          startTime: now.toMillis(),
+          logId: ref.id,
+        },
+      });
+    } catch (e) {
+      console.error("logTimeCreate failed", e);
+      setSnack({ open: true, message: `❌ Failed: ${e.message}`, severity: "error" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEnd = async () => {
-    if (!isRunning || !startTime) return;
+    if (!isRunning || !startTime || !logId) return;
 
     const end = Timestamp.now();
     setEndTime(end);
     setIsRunning(false);
     setSubmitting(true);
 
-    const payload = {
-      driver,
-      rideId: isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase(),
-      startTime,
-      endTime: end,
-      duration: Math.max(1, Math.round((end.toMillis() - startTime.toMillis()) / 60000)),
-      createdAt: Timestamp.now()
-    };
-
+    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
     try {
-      const res = await logTime(payload);
-      if (res?.success) {
-        setSnack({ open: true, message: "✅ Time logged", severity: "success" });
-        localStorage.removeItem("lrp_timeTrack");
-        setRideId("");
-        setIsNA(false);
-        setIsMulti(false);
-        setElapsed(0);
-        bcRef.current?.postMessage({
-          type: "timeclock:ended",
-          driver,
-          payload: { endTime: end.toMillis() }
-        });
-      } else {
-        throw new Error(res?.message || "Unknown error");
-      }
+      await logTimeUpdate(logId, {
+        endTime: serverTimestamp(),
+        rideId: idToTrack,
+        mode: isNA ? "N/A" : isMulti ? "MULTI" : "RIDE",
+      });
+      setSnack({ open: true, message: "✅ Time logged", severity: "success" });
+      localStorage.removeItem("lrp_timeTrack");
+      setRideId("");
+      setIsNA(false);
+      setIsMulti(false);
+      setElapsed(0);
+      setLogId(null);
+      bcRef.current?.postMessage({
+        type: "timeclock:ended",
+        driver,
+        payload: { endTime: end.toMillis() },
+      });
     } catch (err) {
       setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
       setIsRunning(true);
@@ -186,20 +244,27 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
   const columns = [
     { field: "rideId", headerName: "Ride ID", flex: 1 },
-    { field: "start", headerName: "Start Time", flex: 1.5 },
-    { field: "end", headerName: "End Time", flex: 1.5 },
-    { field: "duration", headerName: "Duration", flex: 1 }
+    {
+      field: "startTime",
+      headerName: "Start Time",
+      flex: 1.5,
+      valueGetter: (params) =>
+        params.value ? dayjs(params.value).format("MM/DD hh:mm A") : "",
+    },
+    {
+      field: "endTime",
+      headerName: "End Time",
+      flex: 1.5,
+      valueGetter: (params) =>
+        params.value ? dayjs(params.value).format("MM/DD hh:mm A") : "",
+    },
+    {
+      field: "duration",
+      headerName: "Duration",
+      flex: 1,
+      valueGetter: (params) => `${params.row.duration || 0}m`,
+    },
   ];
-
-  const rows = useMemo(() => {
-    return logs.map((s, i) => ({
-      id: i,
-      rideId: s.rideId,
-      start: dayjs(s.start?.toDate?.()).format("MM/DD hh:mm A"),
-      end: dayjs(s.end?.toDate?.()).format("MM/DD hh:mm A"),
-      duration: `${s.duration || 0}m`
-    }));
-  }, [logs]);
 
   return (
     <Box maxWidth={600} mx="auto" p={2}>
@@ -250,21 +315,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       <Paper elevation={2} sx={{ p: 2 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="subtitle1">Previous Sessions</Typography>
-          <Button
-            onClick={() => {
-              setRefreshing(true);
-              unsubRef.current?.();
-              setTimeout(() => {
-                unsubRef.current = subscribeTimeLogs(setLogs, driver);
-                setRefreshing(false);
-              }, 500);
-            }}
-            size="small"
-            startIcon={refreshing ? <CircularProgress size={14} /> : <RefreshIcon />}
-            disabled={refreshing}
-          >
-            Refresh
-          </Button>
         </Box>
         <DataGrid
           autoHeight
