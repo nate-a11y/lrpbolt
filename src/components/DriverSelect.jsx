@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Autocomplete, TextField, CircularProgress } from "@mui/material";
 import { subscribeUserAccess } from "../hooks/api";
-import { useAuth } from "../context/AuthContext.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 /**
  * Reusable driver selection component with async loading and search.

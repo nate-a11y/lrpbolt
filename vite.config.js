@@ -1,68 +1,73 @@
 // vite.config.js
+import path from "path";
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
-import path from "path";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      injectRegister: null,
-      strategies: "generateSW",
-      workbox: {
-        cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
-        // only precache core assets; skip huge images
-        globPatterns: ["**/*.{html,js,css,ico,svg,webmanifest}"],
-        globIgnores: ["**/DropOffPics/**"],
-        runtimeCaching: [
-          {
-            // Runtime cache for large DropOffPics
-            urlPattern: ({ url }) => url.pathname.startsWith("/DropOffPics/"),
-            handler: "CacheFirst",
-            options: {
-              cacheName: "dropoff-pics",
-              expiration: {
-                maxEntries: 120,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-              },
+    VitePWA(
+      mode === "development"
+        ? { disable: true }
+        : {
+            registerType: "autoUpdate",
+            injectRegister: null,
+            strategies: "generateSW",
+            workbox: {
+              cleanupOutdatedCaches: true,
+              skipWaiting: true,
+              clientsClaim: true,
+              // only precache core assets; skip huge images
+              globPatterns: ["**/*.{html,js,css,ico,svg,webmanifest}"],
+              globIgnores: ["**/DropOffPics/**"],
+              runtimeCaching: [
+                {
+                  // Runtime cache for large DropOffPics
+                  urlPattern: ({ url }) => url.pathname.startsWith("/DropOffPics/"),
+                  handler: "CacheFirst",
+                  options: {
+                    cacheName: "dropoff-pics",
+                    expiration: {
+                      maxEntries: 120,
+                      maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                    },
+                  },
+                },
+                {
+                  // All other images get SWR
+                  urlPattern: ({ request }) => request.destination === "image",
+                  handler: "StaleWhileRevalidate",
+                  options: {
+                    cacheName: "images",
+                    expiration: {
+                      maxEntries: 200,
+                      maxAgeSeconds: 60 * 60 * 24 * 30,
+                    },
+                  },
+                },
+              ],
             },
-          },
-          {
-            // All other images get SWR
-            urlPattern: ({ request }) => request.destination === "image",
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "images",
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
+            manifest: {
+              name: "LRP Driver Portal",
+              short_name: "LRP",
+              start_url: "/",
+              display: "standalone",
+              background_color: "#ffffff",
+              theme_color: "#4cbb17",
+              description: "Ride Claim & Time Clock Portal",
+              version: "1.0.1",
+              icons: [
+                { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
+                { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
+              ],
             },
-          },
-        ],
-      },
-      manifest: {
-        name: "LRP Driver Portal",
-        short_name: "LRP",
-        start_url: "/",
-        display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#4cbb17",
-        description: "Ride Claim & Time Clock Portal",
-        version: "1.0.1",
-        icons: [
-          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
-        ],
-      },
-      devOptions: {
-        enabled: true,
-      },
-    }),
+            devOptions: {
+              enabled: true,
+            },
+          }
+    ),
   ],
   resolve: {
     alias: {
@@ -113,4 +118,4 @@ export default defineConfig({
       overlay: true,
     },
   },
-});
+}));

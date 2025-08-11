@@ -2,7 +2,6 @@ import {
   addDoc,
   collection,
   doc,
-  getFirestore,
   onSnapshot,
   orderBy,
   query,

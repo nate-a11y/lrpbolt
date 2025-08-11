@@ -16,7 +16,13 @@ export function useFirestoreSub(makeQuery, deps) {
       setError(null);
     }, (e) => setError(e));
 
-    return () => { try { unsub(); } catch (_) {} };
+    return () => {
+      try {
+        unsub();
+      } catch {
+        /* ignore */
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 

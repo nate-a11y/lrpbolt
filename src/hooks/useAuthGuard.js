@@ -12,10 +12,10 @@ import { logError } from "../utils/logError";
 export default function useAuthGuard(requiredRole) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user, authLoading } = useAuth();
 
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
 
     if (!user) {
       if (location.pathname !== "/login") navigate("/login", { replace: true });
@@ -44,5 +44,5 @@ export default function useAuthGuard(requiredRole) {
     return () => {
       cancelled = true;
     };
-  }, [user, loading, requiredRole, navigate, location.pathname]);
+  }, [user, authLoading, requiredRole, navigate, location.pathname]);
 }
