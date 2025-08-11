@@ -48,6 +48,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { TIMEZONE, COLLECTIONS } from "../constants";
+import { RIDE_TYPES, VEHICLES } from "../constants/rides";
 import { Timestamp, collection, addDoc } from "firebase/firestore";
 import Papa from "papaparse";
 import {
@@ -86,19 +87,15 @@ const expectedCsvCols = [
   "RideNotes",
 ];
 
-const rideTypeOptions = ["P2P", "Round-Trip", "Hourly"];
-const vehicleOptions = [
-  "LRPBus - Limo Bus",
-  "LRPSHU - Shuttle",
-  "LRPSPR - Sprinter",
-  "LRPSQD - Rescue Squad",
-];
 
 export default function RideEntryForm() {
   // ---------- Core form state ----------
   const [formData, setFormData] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("rideForm")) || defaultValues;
+      const stored = JSON.parse(localStorage.getItem("rideForm")) || {};
+      stored.RideType ??= "";
+      stored.Vehicle ??= "";
+      return { ...defaultValues, ...stored };
     } catch (err) {
       logError(err, "RideEntryForm:init");
       return defaultValues;
@@ -475,8 +472,8 @@ export default function RideEntryForm() {
       PickupTime: "08:00",
       DurationHours: "1",
       DurationMinutes: "30",
-      RideType: rideTypeOptions[0],
-      Vehicle: vehicleOptions[0],
+      RideType: RIDE_TYPES[0],
+      Vehicle: VEHICLES[0],
       RideNotes: "Sample notes",
     };
     const header = expectedCsvCols.join(",");
@@ -657,6 +654,42 @@ return (
                   <ReplayIcon />
                 </IconButton>
               </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  label="Ride Type"
+                  name="RideType"
+                  select
+                  fullWidth
+                  value={formData.RideType ?? ""}
+                  onChange={handleSingleChange}
+                  onBlur={handleBlur}
+                  error={showErr("RideType")}
+                >
+                  {RIDE_TYPES.map((t) => (
+                    <MenuItem key={t} value={t}>
+                      {t}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  label="Vehicle"
+                  name="Vehicle"
+                  select
+                  fullWidth
+                  value={formData.Vehicle ?? ""}
+                  onChange={handleSingleChange}
+                  onBlur={handleBlur}
+                  error={showErr("Vehicle")}
+                >
+                  {VEHICLES.map((v) => (
+                    <MenuItem key={v} value={v}>
+                      {v}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
               <Grid item xs={12} md={9}>
                 <TextField
                   label="Ride Notes"
@@ -747,15 +780,34 @@ return (
                     .filter(f => f !== "RideNotes") // RideNotes last
                     .map(field => (
                       <Grid item xs={12} sm={6} key={field}>
-                        <TextField
-                          label={field.replace(/([A-Z])/g, " $1")}
-                          name={field}
-                          value={csvBuilder[field]}
-                          onChange={e => setCsvBuilder(b => ({ ...b, [field]: e.target.value }))}
-                          onBlur={handleBuilderBlur}
-                          error={!!builderErrors[field] && (builderTouched[field] || builderSubmitAttempted)}
-                          fullWidth
-                        />
+                        {field === "RideType" || field === "Vehicle" ? (
+                          <TextField
+                            label={field.replace(/([A-Z])/g, " $1")}
+                            name={field}
+                            select
+                            value={csvBuilder[field] ?? ""}
+                            onChange={e => setCsvBuilder(b => ({ ...b, [field]: e.target.value }))}
+                            onBlur={handleBuilderBlur}
+                            error={!!builderErrors[field] && (builderTouched[field] || builderSubmitAttempted)}
+                            fullWidth
+                          >
+                            {(field === "RideType" ? RIDE_TYPES : VEHICLES).map(opt => (
+                              <MenuItem key={opt} value={opt}>
+                                {opt}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        ) : (
+                          <TextField
+                            label={field.replace(/([A-Z])/g, " $1")}
+                            name={field}
+                            value={csvBuilder[field]}
+                            onChange={e => setCsvBuilder(b => ({ ...b, [field]: e.target.value }))}
+                            onBlur={handleBuilderBlur}
+                            error={!!builderErrors[field] && (builderTouched[field] || builderSubmitAttempted)}
+                            fullWidth
+                          />
+                        )}
                       </Grid>
                     ))}
                   <Grid item xs={12}>
