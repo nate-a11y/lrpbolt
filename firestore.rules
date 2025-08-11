@@ -2,46 +2,238 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ---------- Helpers ----------
     function authed() {
       return request.auth != null && request.auth.token.email is string;
     }
-    function me() {
-      return authed() ? lower(request.auth.token.email) : "";
-    }
-    function roleOf(e) {
-      return exists(/databases/$(database)/documents/userAccess/$(e))
-        ? lower(get(/databases/$(database)/documents/userAccess/$(e)).data.access)
+    function me() { return authed() ? lower(request.auth.token.email) : ""; }
+
+    // role is stored in userAccess/{lower(email)}.access
+    function roleOf(emailLower) {
+      return exists(/databases/$(database)/documents/userAccess/$(emailLower))
+        ? lower(get(/databases/$(database)/documents/userAccess/$(emailLower)).data.access)
         : "";
     }
     function myRole() { return roleOf(me()); }
-    function isAdmin() { return myRole() == "admin"; }
+    function isAdmin()  { return myRole() == "admin"; }
+    function isDriver() { return myRole() == "driver"; }
 
-    // userAccess: user can read self; admins read all; no client writes
-    match /userAccess/{email} {
-      allow read: if authed() && (me() == email || isAdmin());
+    // small validators
+    function isStrOrNull(v) { return (v is string) || (v == null); }
+    function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
+    function isNumOrNull(v) { return (v is number) || (v == null); }
+
+    // tolerate legacy "ClaimedBy"/"ClaimedAt" briefly while code normalizes
+    function claimedByLower(d) {
+      return lower((d.claimedBy != null ? d.claimedBy :
+            (d.ClaimedBy != null ? d.ClaimedBy : "")));
+    }
+    function claimedAtVal(d) {
+      return (d.claimedAt != null ? d.claimedAt :
+             (d.ClaimedAt != null ? d.ClaimedAt : null));
+    }
+
+    // ---------- userAccess ----------
+    // User can read their own record by docId (lower(email)); admins read all.
+    // No client writes; manage via console/admin callable only.
+    match /userAccess/{emailKey} {
+      allow read: if authed() && (emailKey == me() || isAdmin());
       allow write: if false;
     }
 
-    // timeLogs: user owns own docs; admins full read/write
+    // ---------- timeLogs ----------
+    // App writes: { userEmail, driver, rideId, startTime, endTime?, duration, loggedAt }
     match /timeLogs/{id} {
       allow read: if authed() && (isAdmin() || resource.data.userEmail == me());
-      allow create: if authed() && request.resource.data.userEmail == me();
-      allow update: if authed() && (
-        isAdmin() ||
-        (resource.data.userEmail == me() && request.resource.data.userEmail == me())
-      );
+      allow create: if authed()
+        && request.resource.data.userEmail == me()
+        && request.resource.data.driver is string
+        && request.resource.data.rideId is string
+        && request.resource.data.startTime is timestamp
+        && isTsOrNull(request.resource.data.endTime)
+        && request.resource.data.duration is number
+        && request.resource.data.loggedAt is timestamp;
+      allow update: if authed()
+        && (
+          isAdmin() ||
+          (
+            resource.data.userEmail == me() &&
+            request.resource.data.userEmail == resource.data.userEmail
+          )
+        );
       allow delete: if isAdmin();
     }
 
-    // shootoutStats: same pattern as timeLogs
+    // ---------- shootoutStats ----------
+    // App writes: { userEmail, startTime, endTime?, trips, passengers, duration?, status, createdAt }
     match /shootoutStats/{id} {
       allow read: if authed() && (isAdmin() || resource.data.userEmail == me());
-      allow create: if authed() && request.resource.data.userEmail == me();
+      allow create: if authed()
+        && request.resource.data.userEmail == me()
+        && request.resource.data.startTime is timestamp
+        && isTsOrNull(request.resource.data.endTime)
+        && isNumOrNull(request.resource.data.trips)
+        && isNumOrNull(request.resource.data.passengers)
+        && isNumOrNull(request.resource.data.duration)
+        && request.resource.data.status is string
+        && request.resource.data.createdAt is timestamp;
+      // owner can update mutable fields only; admin can update all
+      allow update: if authed()
+        && (
+          isAdmin() ||
+          (
+            resource.data.userEmail == me() &&
+            request.resource.data.userEmail == resource.data.userEmail &&
+            request.resource.data.startTime == resource.data.startTime &&
+            request.resource.data.createdAt == resource.data.createdAt
+          )
+        );
+      allow delete: if isAdmin() || resource.data.userEmail == me();
+    }
+
+    // ---------- rideQueue ----------
+    // Drivers may only claim/unclaim + edit rideNotes; admin full control.
+    match /rideQueue/{rideId} {
+      function validBase(d) {
+        return d.pickupTime is timestamp &&
+               isNumOrNull(d.rideDuration) &&
+               isStrOrNull(d.rideType) &&
+               isStrOrNull(d.vehicle) &&
+               isStrOrNull(d.rideNotes) &&
+               isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy) &&
+               isTsOrNull(claimedAtVal(d));
+      }
+      allow read: if authed();
+      allow create: if authed() && isAdmin() && validBase(request.resource.data);
+      allow delete: if authed() && isAdmin();
+      // Drivers may only change {claimedBy|ClaimedBy, claimedAt|ClaimedAt, rideNotes}
       allow update: if authed() && (
-        isAdmin() ||
-        (resource.data.userEmail == me() && request.resource.data.userEmail == me())
+        (isAdmin() && validBase(request.resource.data)) ||
+        (
+          isDriver() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            "claimedBy","ClaimedBy","claimedAt","ClaimedAt","rideNotes"
+          ]) &&
+          validBase(request.resource.data)
+        )
       );
-      allow delete: if isAdmin();
+    }
+
+    // ---------- claimedRides ----------
+    // Created when a driver claims; drivers can edit their own notes; admin full control.
+    match /claimedRides/{rideId} {
+      function validBase(d) {
+        return d.pickupTime is timestamp &&
+               isNumOrNull(d.rideDuration) &&
+               isStrOrNull(d.rideType) &&
+               isStrOrNull(d.vehicle) &&
+               isStrOrNull(d.rideNotes) &&
+               (claimedByLower(d) != "") &&
+               claimedAtVal(d) is timestamp;
+      }
+      allow read: if authed();
+      // Driver can create if they are the claimer; admin can create too
+      allow create: if authed() && (
+        (isDriver() && claimedByLower(request.resource.data) == me() && validBase(request.resource.data)) ||
+        (isAdmin() && validBase(request.resource.data))
+      );
+      allow delete: if authed() && isAdmin();
+      // Driver may only edit rideNotes on their own claimed ride
+      allow update: if authed() && (
+        (isAdmin() && validBase(request.resource.data)) ||
+        (
+          isDriver() &&
+          claimedByLower(resource.data) == me() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(["rideNotes"]) &&
+          validBase(request.resource.data)
+        )
+      );
+    }
+
+    // ---------- liveRides ----------
+    // Admin manages queue; drivers can only claim/unclaim + notes.
+    match /liveRides/{rideId} {
+      function validBase(d) {
+        return d.pickupTime is timestamp &&
+               isNumOrNull(d.rideDuration) &&
+               isStrOrNull(d.rideType) &&
+               isStrOrNull(d.vehicle) &&
+               isStrOrNull(d.rideNotes) &&
+               isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy) &&
+               isTsOrNull(claimedAtVal(d));
+      }
+      allow read: if authed();
+      allow create, delete: if authed() && isAdmin() && validBase(request.resource.data);
+      allow update: if authed() && (
+        (isAdmin() && validBase(request.resource.data)) ||
+        (
+          isDriver() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            "claimedBy","ClaimedBy","claimedAt","ClaimedAt","rideNotes"
+          ]) &&
+          validBase(request.resource.data)
+        )
+      );
+    }
+
+    // ---------- tickets ----------
+    // Admin creates/edits; drivers only toggle scan fields.
+    match /tickets/{ticketId} {
+      function validBase(d) {
+        return d.pickupTime is timestamp &&
+               d.passengercount is number &&
+               isStrOrNull(d.ticketId) &&
+               isStrOrNull(d.passenger) &&
+               isStrOrNull(d.pickup) &&
+               isStrOrNull(d.dropoff) &&
+               isStrOrNull(d.notes) &&
+               (d.scannedOutbound is bool) &&
+               (d.scannedReturn is bool) &&
+               d.createdAt is timestamp &&
+               isTsOrNull(d.scannedOutboundAt) &&
+               isStrOrNull(d.scannedOutboundBy) &&
+               isTsOrNull(d.scannedReturnAt) &&
+               isStrOrNull(d.scannedReturnBy);
+      }
+      allow read: if authed();
+      allow create: if authed() && isAdmin() && validBase(request.resource.data);
+      allow delete: if authed() && isAdmin();
+      // driver scan-only
+      allow update: if authed() && (
+        (isAdmin() && validBase(request.resource.data)) ||
+        (
+          isDriver() &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            "scannedOutbound","scannedOutboundAt","scannedOutboundBy",
+            "scannedReturn","scannedReturnAt","scannedReturnBy"
+          ]) &&
+          validBase(request.resource.data)
+        )
+      );
+    }
+
+    // ---------- claimLog / claimFailures ----------
+    match /claimLog/{id} {
+      allow read: if authed();
+      allow create: if authed()
+        && request.resource.data.driver is string
+        && request.resource.data.tripId is string
+        && request.resource.data.timestamp is timestamp;
+      allow update, delete: if isAdmin();
+    }
+    match /claimFailures/{id} {
+      allow read: if authed();
+      allow create: if authed()
+        && request.resource.data.tripId is string
+        && request.resource.data.driverName is string
+        && request.resource.data.attemptedAt is timestamp
+        && request.resource.data.reason is string;
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- default deny ----------
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
