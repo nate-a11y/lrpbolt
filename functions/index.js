@@ -2,11 +2,14 @@
 // functions/index.js
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./src/admin.js";
 import { normalizeHeader, logClaimFailure } from "./utils.js";
 import { COLLECTIONS } from "./constants.js";
+
+setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const CALL_OPTS = {
   region: "us-central1",
@@ -37,7 +40,7 @@ async function requireAdmin(request) {
   return user;
 }
 
-export const getRides = onCall(CALL_OPTS, async (request) => {
+export const getRidesV2 = onCall(CALL_OPTS, async (request) => {
   await getUser(request);
   const snap = await db.collection(COLLECTIONS.LIVE_RIDES).get();
   const rides = snap.docs
@@ -46,14 +49,14 @@ export const getRides = onCall(CALL_OPTS, async (request) => {
   return { success: true, rides };
 });
 
-export const getRideQueue = onCall(CALL_OPTS, async (request) => {
+export const getRideQueueV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const snap = await db.collection(COLLECTIONS.RIDE_QUEUE).get();
   const rides = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   return { success: true, rides };
 });
 
-export const getClaimedRides = onCall(CALL_OPTS, async (request) => {
+export const getClaimedRidesV2 = onCall(CALL_OPTS, async (request) => {
   const user = await getUser(request);
   const snap = await db.collection(COLLECTIONS.LIVE_RIDES).get();
   let rides = snap.docs.filter((d) => d.data().claimedBy);
@@ -64,7 +67,7 @@ export const getClaimedRides = onCall(CALL_OPTS, async (request) => {
   return { success: true, rides };
 });
 
-export const claimRide = onCall(CALL_OPTS, async (request) => {
+export const claimRideV2 = onCall(CALL_OPTS, async (request) => {
   const { data } = request;
   const user = await getUser(request);
   const { tripId, driverName } = data || {};
@@ -108,7 +111,7 @@ export const claimRide = onCall(CALL_OPTS, async (request) => {
 });
 
 
-export const addRideToQueue = onCall(CALL_OPTS, async (request) => {
+export const addRideToQueueV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { ride = {} } = request.data || {};
   if (!ride.tripId) {
@@ -121,7 +124,7 @@ export const addRideToQueue = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const updateRide = onCall(CALL_OPTS, async (request) => {
+export const updateRideV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { tripId, fields } = request.data || {};
   if (!tripId || !fields) {
@@ -138,7 +141,7 @@ export const updateRide = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const deleteRide = onCall(CALL_OPTS, async (request) => {
+export const deleteRideV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { tripId } = request.data || {};
   if (!tripId) {
@@ -152,7 +155,7 @@ export const deleteRide = onCall(CALL_OPTS, async (request) => {
 });
 
 
-export const getTicketById = onCall(CALL_OPTS, async (request) => {
+export const getTicketByIdV2 = onCall(CALL_OPTS, async (request) => {
   await getUser(request);
   const { ticketId } = request.data || {};
   const doc = await db.collection(COLLECTIONS.TICKETS).doc(ticketId).get();
@@ -162,14 +165,14 @@ export const getTicketById = onCall(CALL_OPTS, async (request) => {
   return { success: true, ticket: { id: doc.id, ...doc.data() } };
 });
 
-export const getAllTickets = onCall(CALL_OPTS, async (request) => {
+export const getAllTicketsV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const snap = await db.collection(COLLECTIONS.TICKETS).get();
   const tickets = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   return { success: true, tickets };
 });
 
-export const addTicket = onCall(CALL_OPTS, async (request) => {
+export const addTicketV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { ticket = {} } = request.data || {};
   if (!ticket.ticketId) {
@@ -183,7 +186,7 @@ export const addTicket = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const updateTicketFields = onCall(CALL_OPTS, async (request) => {
+export const updateTicketFieldsV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { ticketId, fields } = request.data || {};
   if (!ticketId || !fields) {
@@ -197,7 +200,7 @@ export const updateTicketFields = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const deleteTicket = onCall(CALL_OPTS, async (request) => {
+export const deleteTicketV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { ticketId } = request.data || {};
   if (!ticketId) {
@@ -207,7 +210,7 @@ export const deleteTicket = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const updateTicketScanStatus = onCall(CALL_OPTS, async (request) => {
+export const updateTicketScanStatusV2 = onCall(CALL_OPTS, async (request) => {
   await getUser(request);
   const { ticketId, scanType, driverName } = request.data || {};
   if (!ticketId || !scanType) {
@@ -230,7 +233,7 @@ export const updateTicketScanStatus = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const sendTicketEmail = onCall(CALL_OPTS, async (request) => {
+export const sendTicketEmailV2 = onCall(CALL_OPTS, async (request) => {
   await requireAdmin(request);
   const { to, subject, body, attachment, filename } = request.data || {};
   if (!to || !subject || !attachment) {
@@ -255,7 +258,7 @@ export const sendTicketEmail = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export const logTimeEntry = onCall(CALL_OPTS, async (request) => {
+export const logTimeEntryV2 = onCall(CALL_OPTS, async (request) => {
   const user = await getUser(request);
   const { driver, rideId, startTime, endTime, duration } = request.data || {};
   await db.collection(COLLECTIONS.TIME_LOGS).add({
@@ -269,5 +272,5 @@ export const logTimeEntry = onCall(CALL_OPTS, async (request) => {
   return { success: true };
 });
 
-export { dropDailyRidesNow, dropDailyRidesDaily } from "./src/dropDailyRidesNow.js";
+export { dropDailyRidesNowV2, dropDailyRidesDailyV2 } from "./src/dropDailyRidesNow.js";
 
