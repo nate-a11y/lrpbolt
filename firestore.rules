@@ -29,11 +29,17 @@ service cloud.firestore {
     function isStrOrNull(v) { return (v is string) || (v == null); }
     function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
 
+    function userEmail() {
+      return request.auth != null ? lower(request.auth.token.email) : "";
+    }
+
     // ========= USER ACCESS =========
-    match /userAccess/{userId} {
-      // admins manage; users can read their own doc for UI.
-      allow read: if isAuthed() && userId == lowerEmail() || isAdmin();
-      allow create, update, delete: if isAdmin();
+    match /userAccess/{email} {
+      allow read: if userEmail() == email || // user can read their own
+                   // admins can read all
+                   exists(/databases/$(database)/documents/userAccess/$(userEmail())) &&
+                   lower(get(/databases/$(database)/documents/userAccess/$(userEmail())).data.access) == "admin";
+      allow write: if false; // writes managed by Admin SDK in callable or console
     }
 
     // ========= SETTINGS =========

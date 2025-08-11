@@ -41,6 +41,8 @@ import { db } from "../firebase";
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
+import { callDropDailyRidesNow } from "../utils/functions";
+import { useDriver } from "../context/DriverContext.jsx";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -118,7 +120,7 @@ export default function RideEntryForm() {
   const [fileError, setFileError] = useState("");
 
   // UI state
-  const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
+  const [formToast, setFormToast] = useState({ open: false, message: "", severity: "success" });
   const [rideTab, setRideTab] = useState(() => Number(localStorage.getItem("rideTab") || 0));
   const [dataTab, setDataTab] = useState(() => Number(localStorage.getItem("dataTab") || 0));
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -132,12 +134,11 @@ export default function RideEntryForm() {
   const { counts, fetchRides } = useRides();
   const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
 
-  // Cloud Function (daily drop)
-  const [dropLoading, setDropLoading] = useState(false);
-  const [dropSnack, setDropSnack] = useState({ open: false, message: "", severity: "success" });
-  const dropAbortRef = useRef(null);
-  const DROP_FN_URL = import.meta.env.VITE_DROP_DAILY_URL || "";
-  const dropUrlConfigured = Boolean(DROP_FN_URL);
+  // Admin-only daily drop callable
+  const [dropping, setDropping] = useState(false);
+  const [toast, setToast] = useState({ open: false, msg: "", severity: "success" });
+  const { driver } = useDriver();
+  const isAdmin = (driver?.access || "").toLowerCase() === "admin";
 
   // Dropzone
   const DROPZONE_MIN_H = 168;
@@ -162,7 +163,7 @@ export default function RideEntryForm() {
                 (c) => !results.meta.fields?.includes(c)
               );
               if (missing.length) {
-                setToast({
+                setFormToast({
                   open: true,
                   message: `⚠️ Missing columns: ${missing.join(", ")}`,
                   severity: "warning",
@@ -176,7 +177,7 @@ export default function RideEntryForm() {
         };
         reader.readAsText(file);
       },
-      [setToast]
+      [setFormToast]
     ),
   });
 
@@ -364,77 +365,29 @@ export default function RideEntryForm() {
     [toRideDoc]
   );
 
-  const runDropDailyRidesNow = useCallback(async () => {
-    if (!dropUrlConfigured) {
-      setDropSnack({
-        open: true,
-        severity: "error",
-        message: "Drop function URL not configured",
-      });
-      return;
-    }
-    setDropLoading(true);
-    const controller = new AbortController();
-    dropAbortRef.current = controller;
-    const headers = { "Content-Type": "application/json" };
-    const adminToken = import.meta.env.VITE_LRP_ADMIN_TOKEN || "";
-    if (adminToken) headers["x-lrp-admin-token"] = adminToken;
-    const backoff = [300, 800];
-    let lastErr = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const res = await fetch(DROP_FN_URL, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ dryRun: false, limit: 1500 }),
-          signal: controller.signal,
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          lastErr = new Error(text || res.statusText);
-          if (res.status >= 500 && attempt < 2) {
-            await new Promise((r) => setTimeout(r, backoff[attempt]));
-            continue;
-          }
-          throw lastErr;
-        }
-        const data = await res.json();
-        setDropSnack({
-          open: true,
-          severity: "success",
-          message: `Moved ${data.moved} (skipped ${data.skipped}) in ${data.durationMs}ms`,
-        });
-        await fetchRides();
-        setDropLoading(false);
-        return;
-      } catch (err) {
-        lastErr = err;
-        console.error("[DropDailyRidesNow]", err);
-        if (attempt < 2) {
-          await new Promise((r) => setTimeout(r, backoff[attempt]));
-          continue;
-        }
+  const onDropNow = async () => {
+    setDropping(true);
+    try {
+      const { ok } = await callDropDailyRidesNow({ force: true });
+      if (ok) {
+        setToast({ open: true, msg: "Daily rides dropped successfully.", severity: "success" });
+        await fetchRides(); // Optionally trigger a refresh of dependent grids here
+      } else {
+        throw new Error("Unknown failure");
       }
+    } catch (e) {
+      console.error(e);
+      setToast({ open: true, msg: "Failed to drop rides. Check logs.", severity: "error" });
+    } finally {
+      setDropping(false);
     }
-    setDropSnack({
-      open: true,
-      severity: "error",
-      message: `Failed: ${lastErr?.message || lastErr}`,
-    });
-    setDropLoading(false);
-  }, [DROP_FN_URL, dropUrlConfigured, fetchRides]);
-
-  useEffect(() => {
-    return () => {
-      dropAbortRef.current?.abort();
-    };
-  }, []);
+  };
 
   const handleSubmit = useCallback(async () => {
     setSubmitAttempted(true);
     if (!validateFields(formData)) {
       setShakeKey((k) => k + 1);
-      setToast({
+      setFormToast({
         open: true,
         message: "⚠️ Please correct required fields",
         severity: "error",
@@ -446,7 +399,7 @@ export default function RideEntryForm() {
       const rideData = toRideDoc(formData);
       if (!rideData) throw new Error("Invalid form data");
       await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), rideData);
-      setToast({
+      setFormToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,
         severity: "success",
@@ -458,7 +411,7 @@ export default function RideEntryForm() {
       await fetchRides();
     } catch (err) {
       logError(err, "RideEntryForm:submit");
-      setToast({
+      setFormToast({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,
         severity: "error",
@@ -470,13 +423,13 @@ export default function RideEntryForm() {
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
-      setToast({ open: true, message: "⚠️ No rows to import", severity: "warning" });
+      setFormToast({ open: true, message: "⚠️ No rows to import", severity: "warning" });
       return;
     }
     setSubmitting(true);
     try {
       const { added, skipped } = await processRideRows(uploadedRows);
-      setToast({
+      setFormToast({
         open: true,
         message: `✅ CSV rides imported (${added} added${skipped ? `, ${skipped} skipped` : ""})`,
         severity: "success",
@@ -485,7 +438,7 @@ export default function RideEntryForm() {
       await fetchRides();
     } catch (err) {
       logError(err, "RideEntryForm:import");
-      setToast({
+      setFormToast({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,
         severity: "error",
@@ -498,7 +451,7 @@ export default function RideEntryForm() {
   const handleCsvAppend = useCallback(() => {
     setBuilderSubmitAttempted(true);
     if (!validateFields(csvBuilder, setBuilderErrors)) {
-      setToast({
+      setFormToast({
         open: true,
         message: "⚠️ Please correct CSV builder fields",
         severity: "error",
@@ -539,7 +492,7 @@ export default function RideEntryForm() {
 
   const handleMultiSubmit = useCallback(async () => {
     if (!uploadedRows.length && !multiInput.trim()) {
-      setToast({ open: true, message: "⚠️ No rides to submit", severity: "warning" });
+      setFormToast({ open: true, message: "⚠️ No rides to submit", severity: "warning" });
       return;
     }
     const ridesToSubmit = [...uploadedRows];
@@ -547,7 +500,7 @@ export default function RideEntryForm() {
       const parsed = Papa.parse(multiInput.trim(), { header: true, skipEmptyLines: true });
       const missing = expectedCsvCols.filter((c) => !parsed.meta.fields?.includes(c));
       if (missing.length) {
-        setToast({
+        setFormToast({
           open: true,
           message: `⚠️ Missing columns: ${missing.join(", ")}`,
           severity: "warning",
@@ -557,13 +510,13 @@ export default function RideEntryForm() {
       }
     }
     if (!ridesToSubmit.length) {
-      setToast({ open: true, message: "⚠️ No valid rides found", severity: "warning" });
+      setFormToast({ open: true, message: "⚠️ No valid rides found", severity: "warning" });
       return;
     }
     setSubmitting(true);
     try {
       const { added, skipped } = await processRideRows(ridesToSubmit);
-      setToast({
+      setFormToast({
         open: true,
         message: `✅ All rides submitted (${added} added${skipped ? `, ${skipped} skipped` : ""})`,
         severity: "success",
@@ -573,7 +526,7 @@ export default function RideEntryForm() {
       await fetchRides();
     } catch (err) {
       logError(err, "RideEntryForm:bulkSubmit");
-      setToast({
+      setFormToast({
         open: true,
         message: `❌ ${err?.message || JSON.stringify(err)}`,
         severity: "error",
@@ -880,30 +833,21 @@ return (
 
       {/* Daily Rides Update Section */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Tooltip
-          title={
-            dropUrlConfigured
-              ? "Move all 'queued' rides into Live Rides (same logic as the 6pm job)"
-              : "Drop function URL not configured"
-          }
-        >
-          <span>
-            <Button
-              onClick={runDropDailyRidesNow}
-              disabled={dropLoading || !dropUrlConfigured}
-              variant="contained"
-              startIcon={
-                dropLoading ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  <RocketLaunchIcon />
-                )
-              }
-            >
-              {dropLoading ? "Moving…" : "Move Queue → Live"}
-            </Button>
-          </span>
-        </Tooltip>
+        {isAdmin && (
+          <Tooltip title="Run daily drop/rollover now (admin only)">
+            <span>
+              <Button
+                variant="contained"
+                color="warning"
+                startIcon={<RocketLaunchIcon />}
+                onClick={onDropNow}
+                disabled={dropping}
+              >
+                {dropping ? "Running…" : "Drop Daily Rides Now"}
+              </Button>
+            </span>
+          </Tooltip>
+        )}
       </Paper>
 
       {/* Live / Queue / Claimed Tabs */}
@@ -1022,25 +966,30 @@ return (
         </DialogContent>
       </Dialog>
 
-      {/* Drop Daily Snackbar */}
       <Snackbar
-        open={dropSnack.open}
+        open={toast.open}
         autoHideDuration={4000}
-        onClose={() => setDropSnack({ ...dropSnack, open: false })}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity={dropSnack.severity} variant="filled">
-          {dropSnack.message}
+        <Alert
+          onClose={() => setToast((t) => ({ ...t, open: false }))}
+          severity={toast.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {toast.msg}
         </Alert>
       </Snackbar>
 
       {/* Snackbar */}
       <Snackbar
-        open={toast.open}
+        open={formToast.open}
         autoHideDuration={4000}
-        onClose={() => setToast({ ...toast, open: false })}
+        onClose={() => setFormToast({ ...formToast, open: false })}
       >
-        <Alert severity={toast.severity} variant="filled">
-          {toast.message}
+        <Alert severity={formToast.severity} variant="filled">
+          {formToast.message}
         </Alert>
       </Snackbar>
     </Box>

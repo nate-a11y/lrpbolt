@@ -2,7 +2,7 @@
 // src/api/index.js
 
 import { httpsCallable } from "firebase/functions";
-import { functions } from "../firebase";
+import { functions } from "../utils/functions";
 import { logRequest } from "../utils/apiMonitor";
 import { logError } from "../utils/logError";
 

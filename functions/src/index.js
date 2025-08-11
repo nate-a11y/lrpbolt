@@ -1,44 +1,18 @@
 /* Proprietary and confidential. See LICENSE. */
-import { onRequest } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
-import admin from "firebase-admin";
+import * as admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) {
+// Guard to avoid "The default Firebase app already exists"
+if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
-async function requireAdmin(req) {
-  // Allow privileged access via pre-shared key for service automation
-  const key = req.get("x-admin-key");
-  if (key && process.env.ADMIN_API_KEY && key === process.env.ADMIN_API_KEY) {
-    return { role: "admin" };
-  }
-
-  const authz = req.get("Authorization") || "";
-  const m = authz.match(/^Bearer\s+(.+)$/i);
-  if (!m) throw Object.assign(new Error("unauthorized"), { code: 401 });
-
-  const idToken = m[1];
-  const decoded = await admin.auth().verifyIdToken(idToken);
-
-  // 1) Prefer custom claims
-  const claimRole = (decoded.role || decoded.customClaims?.role || "").toLowerCase();
-  if (claimRole === "admin") return decoded;
-
-  // 2) Fallback to Firestore doc: userAccess/<lower(email)>.access === "admin"
-  const email = (decoded.email || "").toLowerCase();
-  if (!email) throw Object.assign(new Error("unauthorized"), { code: 401 });
-
-  const doc = await admin.firestore().doc(`userAccess/${email}`).get();
-  const access = doc.exists ? String(doc.data().access || "").toLowerCase() : "";
-  if (access !== "admin") throw Object.assign(new Error("forbidden"), { code: 403 });
-
-  return decoded;
-}
+const db = getFirestore();
 
 async function dropDailyRidesCore() {
-  const db = admin.firestore();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -60,36 +34,40 @@ async function dropDailyRidesCore() {
   return { archivedCount: count };
 }
 
-const allowedOrigins = [
-  "https://lakeridepros.xyz",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
-
-export const dropDailyRidesNow = onRequest(
+/**
+ * Callable admin-only task to drop/rollover daily rides.
+ * TODO: Move any embedded secrets to Google Secret Manager.  <-- leave for now per instruction
+ */
+export const dropDailyRidesNow = onCall(
   {
     region: "us-central1",
-    timeoutSeconds: 120,
-    memory: "256MiB",
-    concurrency: 10,
-    maxInstances: 5,
-    cors: allowedOrigins,
+    // If App Check is enabled on the client and you want enforcement here, set true:
+    // enforceAppCheck: true,
   },
-  async (req, res) => {
-    if (req.method !== "POST") {
-      res.set("Allow", "POST");
-      return res.status(405).json({ ok: false, error: "method not allowed" });
+  async (req) => {
+    const uid = req.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Sign in to continue.");
+
+    const email = (req.auth?.token?.email || "").toLowerCase();
+    if (!email) throw new HttpsError("permission-denied", "Email required.");
+
+    // Role check via userAccess collection
+    const doc = await db.doc(`userAccess/${email}`).get();
+    const access = (doc.exists ? (doc.data()?.access || "") : "").toString().toLowerCase();
+    if (access !== "admin") {
+      throw new HttpsError("permission-denied", "Admin access required.");
     }
+
     try {
-      await requireAdmin(req);
-      logger.info("[dropDailyRidesNow] start");
-      const result = await dropDailyRidesCore();
-      logger.info("[dropDailyRidesNow] done", result);
-      return res.status(200).json({ ok: true, ...result });
+      // === BEGIN your job logic ===
+      // Implement or call your existing job logic here. Keep it idempotent.
+      await dropDailyRidesCore();
+      // === END job logic ===
+
+      return { ok: true, at: Date.now() };
     } catch (err) {
-      logger.warn("dropDailyRidesNow error", err);
-      const code = err.code || 500;
-      return res.status(code).json({ ok: false, error: err.message || "Internal error" });
+      console.error("dropDailyRidesNow failed:", err);
+      throw new HttpsError("internal", err?.message || "Internal error");
     }
   }
 );
