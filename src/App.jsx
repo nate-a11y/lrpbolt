@@ -29,7 +29,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
-import SidebarNavigation from "./components/SidebarNavigation";
+import Navigation from "./components/Navigation";
 import useDarkMode from "./hooks/useDarkMode";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
@@ -43,7 +43,6 @@ import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
 import ContactEscalation from "./components/ContactEscalation";
-import ResponsiveHeader from "./components/ResponsiveHeader";
 import { motion } from "framer-motion";
 import { Routes, Route, Navigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -248,14 +247,13 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <CssBaseline />
         <InstallBanner />
-        <ResponsiveHeader
+        <Navigation
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           onChangeDriver={openChangeDriver}
           onSignOut={openSignOutConfirm}
         />
         <Box sx={{ display: "flex" }}>
-          <SidebarNavigation />
           <Box
             component="main"
             sx={{
