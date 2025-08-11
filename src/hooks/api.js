@@ -19,7 +19,7 @@ import {
 import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
-import { callFunction, apiFetch } from "../api";
+import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
 
 // Helper to strip undefined values before sending to Firestore
