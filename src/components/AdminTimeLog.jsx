@@ -152,7 +152,7 @@ export default function AdminTimeLog() {
     }
   }, [error]);
 
-  if (roleLoading || loading) {
+  if (roleLoading) {
     return (
       <Box mt={4} display="flex" justifyContent="center">
         <CircularProgress />
@@ -163,7 +163,15 @@ export default function AdminTimeLog() {
   if (!isAdmin) {
     return (
       <Box mt={4}>
-        <Alert severity="warning">No access.</Alert>
+        <Alert severity="error">You don’t have permission to view this.</Alert>
+      </Box>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Box mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
       </Box>
     );
   }
