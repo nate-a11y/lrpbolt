@@ -21,5 +21,5 @@ export const functions = getLRPFunctions();
 export async function callDropDailyRidesNow(payload = {}) {
   const fn = httpsCallable(getLRPFunctions(), "dropDailyRidesNow");
   const res = await fn(payload);
-  return res.data; // { ok, at }
+  return res.data; // { ok, dryRun, stats }
 }
