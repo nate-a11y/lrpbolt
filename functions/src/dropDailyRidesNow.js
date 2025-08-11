@@ -1,9 +1,12 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { setGlobalOptions } from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "./admin.js";
 import { corsMiddleware } from "../cors.js";
+
+setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const REGION = "us-central1";
 const QUEUE_COL = "rideQueue";
@@ -88,7 +91,7 @@ export async function moveQueuedToLive({ dryRun = false, limit = 1500 } = {}) {
   return { moved, skipped, durationMs, dryRun };
 }
 
-export const dropDailyRidesNow = onRequest(
+export const dropDailyRidesNowV2 = onRequest(
   {
     region: REGION,
     memory: "512MiB",
@@ -125,7 +128,7 @@ export const dropDailyRidesNow = onRequest(
   }
 );
 
-export const dropDailyRidesDaily = onSchedule(
+export const dropDailyRidesDailyV2 = onSchedule(
   {
     region: REGION,
     schedule: "30 3 * * *",
