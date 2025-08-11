@@ -1,8 +1,13 @@
-name: Build & Deploy LRP
+name: Build & Deploy LRP (beast mode)
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: lrp-deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -10,11 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Fail if required secrets missing
+      # Ensure lockfile so npm ci is deterministic
+      - name: Ensure package-lock.json
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "No package-lock.json found; generating one…"
+            npm install --package-lock-only --no-audit --no-fund
+          fi
+
+      # Fail fast if any required secret is missing (Vite + FTP)
+      - name: Validate required secrets
         run: |
           required=(
             VITE_CALENDAR_API_KEY VITE_CALENDAR_ID
@@ -22,29 +38,34 @@ jobs:
             VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID
             VITE_GOOGLE_CLIENT_ID VITE_API_BASE_URL VITE_API_SECRET_KEY VITE_TIME_LOG_CSV
             VITE_DROP_DAILY_URL
+            HOSTINGER_FTP_HOST HOSTINGER_FTP_USERNAME HOSTINGER_FTP_PASSWORD HOSTINGER_REMOTE_PATH
           )
           for k in "${required[@]}"; do
-            v="${!k}"
-            if [ -z "${!k}" ]; then echo "::error::Missing secret $k"; exit 1; fi
+            v="${!k}"; if [ -z "$v" ]; then echo "::error::Missing secret $k"; exit 1; fi
           done
         env:
-          VITE_CALENDAR_API_KEY: ${{ secrets.VITE_CALENDAR_API_KEY }}
-          VITE_CALENDAR_ID: ${{ secrets.VITE_CALENDAR_ID }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          VITE_API_SECRET_KEY: ${{ secrets.VITE_API_SECRET_KEY }}
-          VITE_TIME_LOG_CSV: ${{ secrets.VITE_TIME_LOG_CSV }}
-          VITE_DROP_DAILY_URL: ${{ secrets.VITE_DROP_DAILY_URL }}
+          VITE_CALENDAR_API_KEY:               ${{ secrets.VITE_CALENDAR_API_KEY }}
+          VITE_CALENDAR_ID:                    ${{ secrets.VITE_CALENDAR_ID }}
+          VITE_FIREBASE_API_KEY:               ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN:           ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID:            ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET:        ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID:   ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID:                ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_GOOGLE_CLIENT_ID:               ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_API_BASE_URL:                   ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_SECRET_KEY:                 ${{ secrets.VITE_API_SECRET_KEY }}
+          VITE_TIME_LOG_CSV:                   ${{ secrets.VITE_TIME_LOG_CSV }}
+          VITE_DROP_DAILY_URL:                 ${{ secrets.VITE_DROP_DAILY_URL }}
+          HOSTINGER_FTP_HOST:                  ${{ secrets.HOSTINGER_FTP_HOST }}
+          HOSTINGER_FTP_USERNAME:              ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          HOSTINGER_FTP_PASSWORD:              ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          HOSTINGER_REMOTE_PATH:               ${{ secrets.HOSTINGER_REMOTE_PATH }}
 
+      # Write .env for Vite
       - name: Create .env from GitHub Secrets
         run: |
-          cat > .env << 'EOF2'
+          cat > .env << 'EOF'
           VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}
           VITE_CALENDAR_ID=${{ secrets.VITE_CALENDAR_ID }}
           VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -58,13 +79,36 @@ jobs:
           VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}
           VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}
           VITE_DROP_DAILY_URL=${{ secrets.VITE_DROP_DAILY_URL }}
-          EOF2
+          VITE_APP_VERSION=${{ github.sha }}
+          EOF
 
-      - name: Install & build web
+      # Quality gates — keep them beast mode
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm test --if-present
+
+      - name: Build (Vite)
         run: |
           npm ci
           npm run build
 
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist/assets" ]; then
+            echo "❌ dist/assets missing"; exit 1; fi
+          if ! ls dist/assets/main-*.js 1> /dev/null 2>&1; then
+            echo "❌ main-*.js not found"; exit 1; fi
+          echo "✅ Build artifacts verified"
+
+      - name: Validate precache/service worker
+        run: |
+          SW="dist/sw.js"
+          if [ ! -f "$SW" ]; then echo "❌ sw.js missing"; exit 1; fi
+          echo "✅ Service worker present"
+
+      # Deploy static site to Hostinger
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -80,7 +124,7 @@ jobs:
             **/.github*
             **/node_modules/*
             **/src/*
-
+            
   functions:
     runs-on: ubuntu-latest
     needs: build
@@ -91,6 +135,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Validate functions secrets
+        run: |
+          [ -n "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ] || { echo "::error::Missing GOOGLE_APPLICATION_CREDENTIALS_JSON"; exit 1; }
+          [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ] || { echo "::error::Missing FIREBASE_PROJECT_ID"; exit 1; }
+
       - name: Write service account key
         run: |
           mkdir -p $HOME/.gcloud
@@ -100,12 +149,12 @@ jobs:
       - name: Export MANUAL_DROP_TOKEN
         run: echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Install & deploy functions (set cleanup policy if needed)
+      - name: Install & Deploy Cloud Functions (v2)
         working-directory: functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: |
           npm ci
-          npx firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --force || true
-          # Ensure artifact cleanup policy (14 days) - idempotent
+          npx firebase deploy --only functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --force
+          # Set Artifact Registry cleanup (14 days), idempotent
           npx firebase functions:artifacts:setpolicy --location us-central1 --days 14 || true
