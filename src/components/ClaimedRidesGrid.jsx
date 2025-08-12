@@ -16,11 +16,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DataGrid } from "@mui/x-data-grid";
-import {
-  subscribeClaimedRides,
-  deleteClaimedRide,
-  restoreRide,
-} from "../services/firestoreService";
+import { deleteClaimedRide, restoreRide } from "../services/firestoreService";
+import { useRides } from "../hooks/useRides";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -36,22 +33,20 @@ const ClaimedRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
+  const { rides, error } = useRides({ status: "claimed", pageSize: 500 });
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    const unsub = subscribeClaimedRides(
-      (data) => {
-        setRows(data.map((r) => ({ ...r, fading: false })));
-        setLoading(false);
-      },
-      undefined,
-      () => {
-        showToast("Permissions issue loading claimed rides", "error");
-        setLoading(false);
-      },
-    );
-    return unsub;
-  }, [authLoading, user?.email]);
+    setRows(rides.map((r) => ({ ...r, fading: false })));
+    setLoading(false);
+  }, [authLoading, user?.email, rides]);
+
+  useEffect(() => {
+    if (error) {
+      showToast("Permissions issue loading claimed rides", "error");
+      setLoading(false);
+    }
+  }, [error, showToast]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;
