@@ -1,18 +1,57 @@
-import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
-import { ThemeProvider, CssBaseline } from "@mui/material";
+/* Proprietary and confidential. See LICENSE. */
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useContext,
+} from "react";
+import { ThemeProvider, CssBaseline, useMediaQuery } from "@mui/material";
 import { buildTheme } from "../theme";
 
 export const ColorModeContext = createContext({ mode: "dark", toggle: () => {} });
+export const useColorMode = () => useContext(ColorModeContext);
 
 export default function ColorModeProvider({ children }) {
-  const systemPrefersDark = typeof window !== "undefined" &&
-    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  // SSR-safe media query: only runs in browser
+  const prefersDark = typeof window !== "undefined"
+    ? useMediaQuery("(prefers-color-scheme: dark)")
+    : true;
 
-  const [mode, setMode] = useState(() => localStorage.getItem("lrp:mode") || (systemPrefersDark ? "dark" : "light"));
+  const [mode, setMode] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    return localStorage.getItem("lrp:mode") || (prefersDark ? "dark" : "light");
+  });
 
-  useEffect(() => { localStorage.setItem("lrp:mode", mode); }, [mode]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lrp:mode", mode);
+    }
+  }, [mode]);
 
-  const toggle = useCallback(() => setMode((m) => (m === "light" ? "dark" : "light")), []);
+  // Optional: react to OS changes only if user never manually toggled
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e) => {
+      const stored = localStorage.getItem("lrp:mode");
+      if (!stored) setMode(e.matches ? "dark" : "light");
+    };
+    // modern addEventListener with fallback
+    try {
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    } catch (_err) {
+      mql.addListener(onChange);
+      return () => mql.removeListener(onChange);
+    }
+  }, []);
+
+  const toggle = useCallback(() => {
+    setMode((m) => (m === "light" ? "dark" : "light"));
+  }, []);
+
   const theme = useMemo(() => buildTheme(mode), [mode]);
 
   return (
