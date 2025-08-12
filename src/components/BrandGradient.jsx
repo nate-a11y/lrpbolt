@@ -23,3 +23,4 @@ export default function BrandGradient({ position = "top", height = 6, rounded = 
     />
   );
 }
+
