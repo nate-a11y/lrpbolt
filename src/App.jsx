@@ -29,7 +29,7 @@ import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
 import Navigation from "./components/Navigation";
 import useToast from "./hooks/useToast";
-import useDrivers from "./hooks/useDrivers";
+import { useDrivers } from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import useAuth from "./hooks/useAuth.js";
 import { getUserAccess } from "./hooks/api";

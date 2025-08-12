@@ -1,48 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import { onSnapshot } from "firebase/firestore";
+import { useEffect, useMemo } from "react";
+import { subscribeOnce } from "../utils/firestoreListenerRegistry";
 
-import { useAuth } from "../context/AuthContext.jsx";
-import { logError } from "../utils/logError";
-
-export function useFirestoreSub(makeQuery, deps) {
-  const [error, setError] = useState(null);
-  const [docs, setDocs] = useState([]);
-  const readyRef = useRef(false);
-  const { user, authLoading } = useAuth();
-
-  const depsWithAuth = Array.isArray(deps)
-    ? [authLoading, user, ...deps]
-    : [authLoading, user];
-
+/**
+ * @param {string} key  Stable id (e.g., 'rides:driver=abc|date=2025-08-21')
+ * @param {() => import('firebase/firestore').Query|null} buildQuery
+ * @param {(snap) => void} onNext
+ * @param {(err) => void} onError
+ * @param {any[]} deps  Dependencies for buildQuery memoization
+ */
+export default function useFirestoreSub(key, buildQuery, onNext, onError, deps) {
+  const q = useMemo(() => buildQuery?.() ?? null, deps);
   useEffect(() => {
-    if (authLoading || !user) return;
-    const q = typeof makeQuery === "function" ? makeQuery() : null;
     if (!q) return;
-    readyRef.current = true;
-
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setError(null);
-      },
-      (e) => {
-        logError(e, "useFirestoreSub:onSnapshot");
-        setError(e);
-      },
-    );
-
-    return () => {
-      try {
-        unsub();
-      } catch (err) {
-        logError(err, "useFirestoreSub:unsub");
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, depsWithAuth);
-
-  return { docs, error, ready: readyRef.current };
+    const unsub = subscribeOnce(key, q, onNext, onError);
+    return () => unsub();
+  }, [key, q, onNext, onError]);
 }
-
-export default useFirestoreSub;

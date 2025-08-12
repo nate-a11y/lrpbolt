@@ -6,7 +6,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 
-import { db } from "../firebase";
+import { db } from "../utils/firebaseInit";
 import { logError } from "../utils/logError";
 
 // Realtime listener for timeLogs collection
