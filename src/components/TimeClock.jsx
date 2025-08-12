@@ -1,13 +1,22 @@
 // src/components/TimeClockGodMode.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Box, Paper, TextField, Button, Typography, Checkbox,
-  FormControlLabel, Snackbar, Alert, Stack, CircularProgress
+  Box,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+  Snackbar,
+  Alert,
+  Stack,
+  CircularProgress,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   PlayArrow as PlayArrowIcon,
-  Stop as StopIcon
+  Stop as StopIcon,
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 import {
@@ -22,16 +31,19 @@ import {
   Timestamp,
   doc,
 } from "firebase/firestore";
+
 import { db } from "@/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
-import { toNumber, tsToDate } from "../utils/safe";
+import { toNumber, toString, tsToDate } from "../utils/safe";
+import { safeGetter, safeFormatter } from "../utils/datagridSafe";
+import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import ErrorBanner from "./ErrorBanner";
 import { useRole, useFirestoreSub } from "@/hooks";
 import { useAuth } from "../context/AuthContext.jsx";
 import RoleDebug from "@/components/RoleDebug";
 
-const bcName = "lrp-timeclock-lock";
+const bcName = "lrp-timeclock";
 
 async function logTimeCreate(payload) {
   const user = await waitForAuth(true);
@@ -73,7 +85,8 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
-  const bcRef = useRef(null);
+  const driverRef = useRef(driver);
+  const isRunningRef = useRef(isRunning);
 
   const { role, authLoading: roleLoading } = useRole();
   const { user } = useAuth();
@@ -100,10 +113,24 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   useEffect(() => {
     if (!logDocs) return;
     const rows = logDocs.map((d) => {
-      const st = tsToMillis(d.startTime);
-      const et = tsToMillis(d.endTime);
-      const duration = st && et ? Math.round((et - st) / 60000) : 0;
-      return { id: d.id, ...d, startTime: st, endTime: et, duration };
+      const st = d.startTime ?? null;
+      const et = d.endTime ?? null;
+      let duration = toNumber(d.duration, 0);
+      if (!duration && st && et) {
+        const s = tsToDate(st)?.getTime();
+        const e = tsToDate(et)?.getTime();
+        duration = s && e ? Math.round((e - s) / 60000) : 0;
+      }
+      return {
+        id: d.id,
+        driverEmail: toString(d.driverEmail),
+        rideId: toString(d.rideId),
+        note: toString(d.note),
+        startTime: st,
+        endTime: et,
+        duration,
+        loggedAt: d.loggedAt ?? null,
+      };
     });
     setRows(rows);
   }, [logDocs]);
@@ -127,29 +154,36 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   }, [driver]);
 
   useEffect(() => {
-    const bc = new BroadcastChannel(bcName);
-    bcRef.current = bc;
-
-    bc.onmessage = (e) => {
-      if (e?.data?.type === "timeclock:started" && e.data.driver === driver) {
-        if (!isRunning) {
-          const s = e.data.payload;
-          setRideId(s.rideId || "");
-          setStartTime(Timestamp.fromMillis(s.startTime));
-          setIsNA(s.isNA);
-          setIsMulti(s.isMulti);
-          setIsRunning(true);
+    const c = getChannel(bcName);
+    if (c) {
+      c.onmessage = (e) => {
+        if (e?.data?.type === "timeclock:started" && e.data.driver === driverRef.current) {
+          if (!isRunningRef.current) {
+            const s = e.data.payload;
+            setRideId(s.rideId || "");
+            setStartTime(Timestamp.fromMillis(s.startTime));
+            setIsNA(s.isNA);
+            setIsMulti(s.isMulti);
+            setIsRunning(true);
+          }
         }
-      }
-      if (e?.data?.type === "timeclock:ended" && e.data.driver === driver) {
-        setIsRunning(false);
-        setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
-        localStorage.removeItem("lrp_timeTrack");
-      }
-    };
+        if (e?.data?.type === "timeclock:ended" && e.data.driver === driverRef.current) {
+          setIsRunning(false);
+          setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
+          localStorage.removeItem("lrp_timeTrack");
+        }
+      };
+    }
+    return () => closeChannel();
+  }, []);
 
-    return () => bc.close();
-  }, [driver, isRunning]);
+  useEffect(() => {
+    driverRef.current = driver;
+  }, [driver]);
+
+  useEffect(() => {
+    isRunningRef.current = isRunning;
+  }, [isRunning]);
 
   useEffect(() => {
     setIsTracking(isRunning);
@@ -201,19 +235,22 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           isMulti,
           startTime: tsToMillis(now),
           logId: ref.id,
-        })
+        }),
       );
-      bcRef.current?.postMessage({
-        type: "timeclock:started",
-        driver,
-        payload: {
-          rideId: idToTrack,
-          isNA,
-          isMulti,
-          startTime: tsToMillis(now),
-          logId: ref.id,
+      safePost(
+        {
+          type: "timeclock:started",
+          driver,
+          payload: {
+            rideId: idToTrack,
+            isNA,
+            isMulti,
+            startTime: tsToMillis(now),
+            logId: ref.id,
+          },
         },
-      });
+        bcName,
+      );
     } catch (e) {
       logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
       setSnack({ open: true, message: `❌ Failed: ${e.message}`, severity: "error" });
@@ -244,11 +281,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       setIsMulti(false);
       setElapsed(0);
       setLogId(null);
-      bcRef.current?.postMessage({
-        type: "timeclock:ended",
-        driver,
-        payload: { endTime: tsToMillis(end) },
-      });
+      safePost(
+        { type: "timeclock:ended", driver, payload: { endTime: tsToMillis(end) } },
+        bcName,
+      );
     } catch (err) {
       setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
       setIsRunning(true);
@@ -258,26 +294,45 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   };
 
   const columns = [
-    { field: "rideId", headerName: "Ride ID", flex: 1 },
+    {
+      field: "rideId",
+      headerName: "Ride ID",
+      flex: 1,
+      valueGetter: safeGetter((p) => toString(p?.row?.rideId)),
+    },
     {
       field: "startTime",
-      headerName: "Start Time",
-      flex: 1.5,
-      valueGetter: (params) =>
-        params.value ? dayjs(params.value).format("MM/DD hh:mm A") : "",
+      headerName: "Start",
+      width: 160,
+      valueGetter: safeGetter((p) => p?.row?.startTime || null),
+      valueFormatter: safeFormatter((p) => {
+        const dt = tsToDate(p.value);
+        return dt ? new Date(dt).toLocaleString() : "";
+      }),
     },
     {
       field: "endTime",
-      headerName: "End Time",
-      flex: 1.5,
-      valueGetter: (params) =>
-        params.value ? dayjs(params.value).format("MM/DD hh:mm A") : "",
+      headerName: "End",
+      width: 160,
+      valueGetter: safeGetter((p) => p?.row?.endTime || null),
+      valueFormatter: safeFormatter((p) => {
+        const dt = tsToDate(p.value);
+        return dt ? new Date(dt).toLocaleString() : "";
+      }),
     },
     {
       field: "duration",
-      headerName: "Duration",
+      headerName: "Duration (min)",
+      type: "number",
+      width: 140,
+      valueGetter: safeGetter((p) => toNumber(p?.row?.duration, 0)),
+      valueFormatter: safeFormatter((p) => `${toNumber(p.value, 0).toFixed(1)}`),
+    },
+    {
+      field: "note",
+      headerName: "Note",
       flex: 1,
-      valueGetter: (params) => `${toNumber(params.row?.duration, 0)}m`,
+      valueGetter: safeGetter((p) => p?.row?.note ?? ""),
     },
   ];
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
@@ -340,6 +395,9 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           autoHeight
           rows={rows}
           columns={columns}
+          getRowId={(r) =>
+            r.id ?? `${r.driverEmail}-${r.startTime?.seconds ?? Math.random()}`
+          }
           pageSizeOptions={[5]}
           initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
           disableRowSelectionOnClick
