@@ -1,30 +1,49 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
-import { ThemeProvider, CssBaseline, GlobalStyles } from "@mui/material";
-import { buildTheme, getInitialMode, STORAGE_KEY } from "../theme";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { ThemeProvider, CssBaseline, useMediaQuery } from "@mui/material";
+import { getTheme } from "../theme/getTheme";
 
-const ColorModeContext = createContext({ mode: "dark", setMode: () => {}, toggle: () => {} });
+const ColorModeContext = createContext({ mode: "dark", toggle: () => {} });
 export const useColorMode = () => useContext(ColorModeContext);
 
-export default function ColorModeProvider({ children }) {
-  const [mode, setMode] = useState(getInitialMode());
+export function ColorModeProvider({ children }) {
+  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
+  const [mode, setMode] = useState(() => {
+    const saved = localStorage.getItem("lrp:themeMode");
+    return saved === "light" || saved === "dark"
+      ? saved
+      : prefersDark
+        ? "dark"
+        : "light";
+  });
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, mode); } catch (e) { void e; }
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", "#060606");
-    document.body.dataset.theme = mode;
+    localStorage.setItem("lrp:themeMode", mode);
   }, [mode]);
 
-  const value = useMemo(() => ({ mode, setMode, toggle: () => setMode((m) => (m === "dark" ? "light" : "dark")) }), [mode]);
-  const theme = useMemo(() => buildTheme(mode), [mode]);
+  const value = useMemo(
+    () => ({
+      mode,
+      toggle: () => setMode((m) => (m === "dark" ? "light" : "dark")),
+      set: (m) => setMode(m === "light" ? "light" : "dark"),
+    }),
+    [mode],
+  );
+
+  const theme = useMemo(() => getTheme(mode), [mode]);
 
   return (
     <ColorModeContext.Provider value={value}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <GlobalStyles styles={{ "::selection": { background: "rgba(76,187,23,0.35)" } }} />
         {children}
       </ThemeProvider>
     </ColorModeContext.Provider>
   );
 }
+
