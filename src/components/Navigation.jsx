@@ -51,6 +51,36 @@ import { useDriver } from "../context/DriverContext.jsx";
 const DRAWER_WIDTH = 260;
 const MINI_WIDTH = 72;
 
+// Expanded (stripe) active style
+const makeActiveExpandedSX = (theme) => {
+  const c = theme.palette.success.main;
+  return {
+    borderLeft: `4px solid ${c}`,
+    bgcolor:
+      theme.palette.mode === "dark" ? "rgba(76,187,23,0.18)" : "rgba(76,187,23,0.12)",
+    "& .MuiListItemIcon-root": { color: c },
+    fontWeight: 700,
+  };
+};
+
+// Collapsed (icon bubble) active style
+const makeActiveCollapsedSX = (theme) => {
+  const c = theme.palette.success.main;
+  return {
+    position: "relative",
+    "& .MuiListItemIcon-root": { color: c },
+    "&::after": {
+      content: '""',
+      position: "absolute",
+      inset: 6,
+      borderRadius: 12,
+      backgroundColor:
+        theme.palette.mode === "dark" ? "rgba(76,187,23,0.18)" : "rgba(76,187,23,0.12)",
+      zIndex: -1,
+    },
+  };
+};
+
 const ALL_NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
   { label: "Time Clock", icon: <AccessTimeIcon />, path: "/clock" },
@@ -81,6 +111,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const location = useLocation();
 
+  // Respect reduced motion for transitions
+  const prefersNoMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
   // Mobile temporary drawer open/close
   const [mobileOpen, setMobileOpen] = useState(false);
   const openMobile = useCallback(() => setMobileOpen(true), []);
@@ -100,27 +133,26 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
     try {
       localStorage.setItem("lrp:navCollapsed", String(collapsed));
     } catch {
-      // ignore storage errors
+      /* ignore storage errors */
     }
   }, [collapsed]);
 
-  const items = useMemo(
-    () => ALL_NAV_ITEMS.filter((it) => !it.admin || isAdmin),
-    [isAdmin]
-  );
-
-  const activeSX = useMemo(() => {
-    const c = theme.palette.success.main;
-    return {
-      borderLeft: `4px solid ${c}`,
-      bgcolor:
-        theme.palette.mode === "dark"
-          ? "rgba(76,187,23,0.18)"
-          : "rgba(76,187,23,0.12)",
-      "& .MuiListItemIcon-root": { color: c },
-      fontWeight: 700,
+  // Optional UX boost: keyboard shortcut "[" to collapse, "]" to expand (desktop only)
+  useEffect(() => {
+    if (isMobile) return;
+    const onKey = (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "[") setCollapsed(true);
+      if (e.key === "]") setCollapsed(false);
     };
-  }, [theme]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMobile]);
+
+  const items = useMemo(() => ALL_NAV_ITEMS.filter((it) => !it.admin || isAdmin), [isAdmin]);
+
+  const activeSXExpanded = useMemo(() => makeActiveExpandedSX(theme), [theme]);
+  const activeSXCollapsed = useMemo(() => makeActiveCollapsedSX(theme), [theme]);
 
   const isActivePath = useCallback(
     (to) => location.pathname === to || location.pathname.startsWith(`${to}/`),
@@ -139,7 +171,7 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
         alignItems: "center",
         justifyContent: collapsed ? "center" : "space-between",
         gap: 1,
-        transition: "padding 200ms ease",
+        transition: prefersNoMotion ? "none" : "padding 200ms ease",
       }}
     >
       {!collapsed ? (
@@ -149,7 +181,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
               src="https://lakeridepros.xyz/Color%20logo%20-%20no%20background.png"
               alt="Lake Ride Pros"
               style={{ height: 32 }}
-              onError={(e) => (e.currentTarget.style.display = "none")}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
             <Typography variant="subtitle1" fontWeight={800} noWrap>
               LRP Driver Portal
@@ -166,17 +200,15 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
           </Tooltip>
         </>
       ) : (
-        <>
-          <Tooltip title="Expand">
-            <IconButton
-              onClick={() => setCollapsed(false)}
-              size="small"
-              aria-label="Expand navigation"
-            >
-              <ChevronRightIcon />
-            </IconButton>
-          </Tooltip>
-        </>
+        <Tooltip title="Expand">
+          <IconButton
+            onClick={() => setCollapsed(false)}
+            size="small"
+            aria-label="Expand navigation"
+          >
+            <ChevronRightIcon />
+          </IconButton>
+        </Tooltip>
       )}
     </Box>
   );
@@ -189,7 +221,7 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
         flexDirection: "column",
         height: "100%",
         overflowX: "hidden",
-        transition: "width 200ms ease",
+        transition: prefersNoMotion ? "none" : "width 200ms ease",
       }}
       role="presentation"
       onClick={() => {
@@ -217,8 +249,8 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
                 "&:hover": { bgcolor: "action.hover" },
                 px: collapsed ? 1 : 2,
                 justifyContent: collapsed ? "center" : "flex-start",
-                transition: "padding 200ms ease",
-                ...(active ? activeSX : null),
+                transition: prefersNoMotion ? "none" : "padding 200ms ease",
+                ...(active ? (collapsed ? activeSXCollapsed : activeSXExpanded) : null),
               }}
             >
               <ListItemIcon
@@ -249,15 +281,35 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
       {/* Footer controls */}
       <Box sx={{ mt: "auto" }}>
         <List sx={{ py: 0 }}>
-          <ListItemButton disableRipple disabled sx={{ px: collapsed ? 1 : 2, justifyContent: collapsed ? "center" : "flex-start" }}>
-            <ListItemIcon sx={{ minWidth: collapsed ? "auto" : 40, mr: collapsed ? 0 : 1, justifyContent: "center" }}>
+          <ListItemButton
+            disableRipple
+            disabled
+            sx={{
+              px: collapsed ? 1 : 2,
+              justifyContent: collapsed ? "center" : "flex-start",
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: collapsed ? "auto" : 40,
+                mr: collapsed ? 0 : 1,
+                justifyContent: "center",
+              }}
+            >
               <PersonIcon />
             </ListItemIcon>
             {!collapsed ? (
               <ListItemText
                 primary={
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <span>Driver: {selectedDriver || "—"}</span>
+                  <Box display="flex" alignItems="center" gap={1} minWidth={0}>
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      sx={{ maxWidth: 160 }}
+                      title={selectedDriver || "—"}
+                    >
+                      Driver: {selectedDriver || "—"}
+                    </Typography>
                     {role && (
                       <Chip
                         size="small"
@@ -278,7 +330,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
                     fontSize: 14,
                     bgcolor: "primary.main",
                     color: "primary.contrastText",
+                    mx: "auto",
                   }}
+                  aria-label="Driver initials"
                 >
                   {(selectedDriver || "—").slice(0, 1).toUpperCase()}
                 </Avatar>
@@ -288,9 +342,18 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
 
           <ListItemButton
             onClick={(e) => e.stopPropagation()}
-            sx={{ px: collapsed ? 1 : 2, justifyContent: collapsed ? "center" : "flex-start" }}
+            sx={{
+              px: collapsed ? 1 : 2,
+              justifyContent: collapsed ? "center" : "flex-start",
+            }}
           >
-            <ListItemIcon sx={{ minWidth: collapsed ? "auto" : 40, mr: collapsed ? 0 : 1, justifyContent: "center" }}>
+            <ListItemIcon
+              sx={{
+                minWidth: collapsed ? "auto" : 40,
+                mr: collapsed ? 0 : 1,
+                justifyContent: "center",
+              }}
+            >
               <Brightness4Icon />
             </ListItemIcon>
             {!collapsed && <ListItemText primary="Dark Mode" />}
@@ -307,11 +370,21 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
             <ListItemButton
               onClick={(e) => {
                 e.stopPropagation();
-                onChangeDriver?.();
+                if (onChangeDriver) onChangeDriver();
               }}
-              sx={{ px: collapsed ? 1 : 2, justifyContent: collapsed ? "center" : "flex-start" }}
+              sx={{
+                px: collapsed ? 1 : 2,
+                justifyContent: collapsed ? "center" : "flex-start",
+              }}
             >
-              <ListItemIcon sx={{ minWidth: collapsed ? "auto" : 40, mr: collapsed ? 0 : 1, justifyContent: "center", color: "success.main" }}>
+              <ListItemIcon
+                sx={{
+                  minWidth: collapsed ? "auto" : 40,
+                  mr: collapsed ? 0 : 1,
+                  justifyContent: "center",
+                  color: "success.main",
+                }}
+              >
                 <LoopIcon />
               </ListItemIcon>
               {!collapsed && <ListItemText primary="Change Driver" />}
@@ -321,11 +394,20 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
           <ListItemButton
             onClick={(e) => {
               e.stopPropagation();
-              onSignOut?.();
+              if (onSignOut) onSignOut();
             }}
-            sx={{ px: collapsed ? 1 : 2, justifyContent: collapsed ? "center" : "flex-start" }}
+            sx={{
+              px: collapsed ? 1 : 2,
+              justifyContent: collapsed ? "center" : "flex-start",
+            }}
           >
-            <ListItemIcon sx={{ minWidth: collapsed ? "auto" : 40, mr: collapsed ? 0 : 1, justifyContent: "center" }}>
+            <ListItemIcon
+              sx={{
+                minWidth: collapsed ? "auto" : 40,
+                mr: collapsed ? 0 : 1,
+                justifyContent: "center",
+              }}
+            >
               <ExitToAppIcon color="error" />
             </ListItemIcon>
             {!collapsed && <ListItemText primary="Sign Out" />}
@@ -334,7 +416,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
 
         {!collapsed && (
           <Box sx={{ p: 2, pt: 0, opacity: 0.7 }}>
-            <Typography variant="caption">© {new Date().getFullYear()} Lake Ride Pros</Typography>
+            <Typography variant="caption">
+              © {new Date().getFullYear()} Lake Ride Pros
+            </Typography>
           </Box>
         )}
       </Box>
@@ -354,7 +438,7 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
           borderBottom: (t) => `1px solid ${t.palette.divider}`,
           bgcolor: (t) =>
             t.palette.mode === "dark" ? t.palette.background.default : t.palette.background.paper,
-          transition: "margin-left 200ms ease, width 200ms ease",
+          transition: prefersNoMotion ? "none" : "margin-left 200ms ease, width 200ms ease",
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between", gap: 2 }}>
@@ -383,7 +467,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
                 src="https://lakeridepros.xyz/Color%20logo%20-%20no%20background.png"
                 alt="Lake Ride Pros"
                 style={{ height: 40 }}
-                onError={(e) => (e.currentTarget.style.display = "none")}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
             )}
 
@@ -412,7 +498,7 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
                   </Box>
                 </Tooltip>
 
-                <Typography variant="body2" noWrap maxWidth={240}>
+                <Typography variant="body2" noWrap maxWidth={240} title={selectedDriver || "—"}>
                   <strong>Driver:</strong> {selectedDriver || "—"}
                 </Typography>
 
@@ -454,7 +540,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
               boxSizing: "border-box",
               borderRight: (t) => `1px solid ${t.palette.divider}`,
               overflowX: "hidden",
-              transition: "width 200ms ease",
+              transition: prefersNoMotion ? "none" : "width 200ms ease",
+              display: "flex",
+              flexDirection: "column",
             },
           }}
         >
