@@ -39,6 +39,9 @@ export default [
       ...pluginReact.configs.recommended.rules,
       ...pluginReactHooks.configs.recommended.rules,
 
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+
       // LRP portal prefs:
       "no-empty": ["error", { "allowEmptyCatch": false }],
       "import/order": ["warn", { "newlines-between": "always" }],
