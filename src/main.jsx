@@ -9,20 +9,15 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
-import { AuthProvider } from "./context/AuthContext.jsx";
+import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import "./sw-updater.js";
 import { registerFCM } from "./utils/registerFCM";
 
 if ("serviceWorker" in navigator) {
-  // don’t block app start
+  // Non-blocking, once-per-session
   registerFCM().then((res) => {
-    if (!res?.ok) {
-      console.info("[FCM] token not acquired:", res?.reason);
-    } else {
-      console.info("[FCM] token:", res.token);
-      // TODO: POST token to backend if needed
-    }
+    if (!res?.ok) console.info("[FCM]", res?.reason || "noop");
   });
 }
 
@@ -35,7 +30,9 @@ const Root = () => {
             <Suspense fallback={<LoadingScreen />}> 
               <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/*" element={<PrivateRoute><AppRoot /></PrivateRoute>} />
+                <Route element={<PrivateRoute />}>
+                  <Route path="/*" element={<AppRoot />} />
+                </Route>
               </Routes>
             </Suspense>
           </DriverProvider>

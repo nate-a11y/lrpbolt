@@ -18,6 +18,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+});
+
 // Optional: show a simple notification if push arrives in background
 messaging.onBackgroundMessage((payload) => {
   const title = (payload?.notification && (payload.notification.title || "LRP")) || "LRP";
