@@ -9,8 +9,6 @@ body {
   padding: 0;
   min-height: 100vh;
   font-family: "Segoe UI", system-ui, sans-serif !important;
-  background-color: var(--bg) !important;
-  color: var(--text) !important;
   transition:
     background-color 0.4s ease,
     color 0.4s ease;
@@ -19,9 +17,7 @@ body {
 }
 
 :root {
-  --bg: #060606;
-  --text: #e8eaed;
-  --card-selected-bg: #183c18;
+  --card-selected-bg: #102c10;
   --card-selected-text: #ffffff;
   --card-selected-border: #4cbb17;
   --space-sm: 0.5rem;

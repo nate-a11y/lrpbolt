@@ -31,8 +31,6 @@ import LoopIcon from "@mui/icons-material/Loop";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import PersonIcon from "@mui/icons-material/Person";
-import BrandGradient from "./BrandGradient.jsx";
-import { useColorMode } from "../context/ColorModeContext.jsx";
 
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -51,6 +49,7 @@ import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
+import { useColorMode } from "../context/ColorModeContext.jsx";
 
 const DRAWER_WIDTH = 260;
 const MINI_WIDTH = 72;
@@ -106,7 +105,6 @@ const ALL_NAV_ITEMS = [
 ];
 
 export default function Navigation({ onChangeDriver, onSignOut }) {
-  const { mode, toggle } = useColorMode();
   const { driver } = useDriver();
   const role = (driver?.access || "").toLowerCase();
   const isAdmin = role === "admin";
@@ -115,6 +113,9 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const location = useLocation();
+
+  const { mode, toggle } = useColorMode();
+  const darkMode = mode === "dark";
 
   // Respect reduced motion for transitions
   const prefersNoMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -366,7 +367,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
             {!collapsed && <ListItemText primary="Dark Mode" />}
             <Switch
               edge="end"
-              checked={mode === "dark"}
+              checked={darkMode}
               onChange={toggle}
               inputProps={{ "aria-label": "Toggle dark mode" }}
               sx={{ ml: collapsed ? 0 : 1 }}
@@ -495,7 +496,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                   <Box display="flex" alignItems="center" gap={0.5}>
                     <Brightness4Icon fontSize="small" />
                     <Switch
-                      checked={mode === "dark"}
+                      checked={darkMode}
                       onChange={toggle}
                       inputProps={{ "aria-label": "Toggle dark mode" }}
                     />
@@ -536,7 +537,6 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
             </Menu>
           </Box>
         </Toolbar>
-        <BrandGradient height={4} />
       </AppBar>
 
       {/* Offset for fixed AppBar */}

@@ -7,3 +7,4 @@ export default function FocusRing({ children }) {
     })}>{children}</Box>
   );
 }
+
