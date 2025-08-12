@@ -1,16 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-// src/components/DriverSelect.jsx
 import React, { useEffect, useState } from "react";
-import { Autocomplete, TextField, CircularProgress } from "@mui/material";
+import { Autocomplete, TextField, CircularProgress, Typography } from "@mui/material";
 import { subscribeUserAccess } from "../hooks/api";
 import { useAuth } from "../context/AuthContext.jsx";
 
-/**
- * Reusable driver selection component with async loading and search.
- * @param {object} props
- * @param {object|null} props.value - currently selected driver object
- * @param {(driver: object|null) => void} props.onChange - callback when selection changes
- */
 export default function DriverSelect({
   value,
   onChange,
@@ -23,16 +16,27 @@ export default function DriverSelect({
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
+
     setLoading(true);
     const unsubscribe = subscribeUserAccess(
       (rows) => {
-        const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+        console.debug("[DriverSelect] subscribeUserAccess returned:", rows);
+        const sorted = [...rows]
+          .map((row) => ({
+            ...row,
+            id: row.id || row.docId || row.email, // Ensure there's a stable id
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
         setOptions(sorted);
         setLoading(false);
       },
       { activeOnly: true, roles: ["admin", "driver"] },
-      () => setLoading(false),
+      (err) => {
+        console.error("[DriverSelect] Error in subscription:", err);
+        setLoading(false);
+      }
     );
+
     return () => unsubscribe();
   }, [authLoading, user?.email]);
 
@@ -42,9 +46,12 @@ export default function DriverSelect({
       value={value}
       onChange={(_, newVal) => onChange(newVal)}
       getOptionLabel={(opt) => opt?.name || ""}
-      isOptionEqualToValue={(opt, val) => opt.id === val.id}
+      isOptionEqualToValue={(opt, val) => opt?.id === val?.id}
       loading={loading}
       disabled={disabled}
+      noOptionsText={
+        loading ? "Loading drivers..." : "No drivers found"
+      }
       renderOption={(props, option) => (
         <li {...props}>
           {option.name} ({option.email})
@@ -58,9 +65,7 @@ export default function DriverSelect({
             ...params.InputProps,
             endAdornment: (
               <>
-                {loading ? (
-                  <CircularProgress color="inherit" size={20} />
-                ) : null}
+                {loading && <CircularProgress color="inherit" size={20} />}
                 {params.InputProps.endAdornment}
               </>
             ),
