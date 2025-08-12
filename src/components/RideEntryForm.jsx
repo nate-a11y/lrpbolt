@@ -108,19 +108,16 @@ const expectedCsvCols = [
 ];
 
 /* ------------------ Reusable builder (chips) ------------------ */
-function ChipSelect({ label, options, value, onChange, disabled }) {
-  const normalized = options.map((o) =>
-    typeof o === "string" ? { value: o, label: o } : o
-  );
+function ChipSelect({ label, options, value, onChange, disabled, required=false, error=false }) {
+  const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  const showError = required && error && !value;
+
   return (
     <Box>
-      <Typography
-        variant="caption"
-        sx={{ fontWeight: 700, textTransform: "uppercase", mb: 0.5, display: "block" }}
-      >
+      <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", mb: 0.5, display: "block" }}>
         {label}
       </Typography>
-      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
         {normalized.map((opt) => {
           const selected = value === opt.value;
           return (
@@ -128,7 +125,7 @@ function ChipSelect({ label, options, value, onChange, disabled }) {
               key={opt.value}
               label={opt.label}
               clickable
-              color={selected ? "primary" : "default"}
+              color={selected ? "primary" : (showError ? "error" : "default")}
               variant={selected ? "filled" : "outlined"}
               onClick={() => !disabled && onChange(opt.value)}
               disabled={disabled}
@@ -137,31 +134,34 @@ function ChipSelect({ label, options, value, onChange, disabled }) {
           );
         })}
       </Stack>
-      {!value && <FormHelperText sx={{ mt: 0.5 }}>Select one</FormHelperText>}
+      {showError && <FormHelperText error sx={{ mt: 0.5 }}>Required</FormHelperText>}
     </Box>
   );
 }
 
-function RideBuilderFields({
-  value,
-  onChange,
-  rideTypeOptions,
-  vehicleOptions,
-  disableTripId = false,
-}) {
+function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, disableTripId=false }) {
+  const [touched, setTouched] = React.useState({});
+  const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
+
+  const tripIdError = !!value.tripId && !/^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(value.tripId);
+
+  const minutes = Number.isFinite(value.minutes) ? value.minutes : '';
+  const hours = Number.isFinite(value.hours) ? value.hours : '';
 
   return (
     <Grid container spacing={2}>
-      {/* Consistent widths (3-up on desktop) */}
       <Grid item xs={12} md={4}>
         <TextField
           {...FIELD_PROPS}
-  label="Trip ID"
-  value={value.tripId || ""}
-  onChange={(e) => onChange({ ...value, tripId: e.target.value.toUpperCase() })}
-  placeholder="e.g., 6K5G-RS"
-  disabled={disableTripId}
+          label="Trip ID"
+          value={value.tripId || ""}
+          onBlur={mark("tripId")}
+          onChange={(e) => onChange({ ...value, tripId: e.target.value.toUpperCase() })}
+          placeholder="e.g., 6K5G-RS"
+          disabled={disableTripId}
+          error={touched.tripId && (!!tripIdError || !value.tripId)}
+          helperText={touched.tripId && (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")}
         />
       </Grid>
 
@@ -171,7 +171,10 @@ function RideBuilderFields({
           type="date"
           label="Date"
           value={value.date || ""}
+          onBlur={mark("date")}
           onChange={set("date")}
+          error={touched.date && !value.date}
+          helperText={touched.date && !value.date ? "Required" : " "}
         />
       </Grid>
 
@@ -181,25 +184,28 @@ function RideBuilderFields({
           type="time"
           label="Pickup Time"
           value={value.pickupTime || ""}
+          onBlur={mark("pickupTime")}
           onChange={set("pickupTime")}
           inputProps={{ step: 300 }}
+          error={touched.pickupTime && !value.pickupTime}
+          helperText={touched.pickupTime && !value.pickupTime ? "Required" : " "}
         />
       </Grid>
 
-      {/* Duration half width */}
       <Grid item xs={6} md={2}>
         <TextField
           {...FIELD_PROPS}
           type="number"
           label="Duration Hours"
-          value={value.hours ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              hours: e.target.value === "" ? "" : Number(e.target.value),
-            })
-          }
+          value={hours}
+          onBlur={mark("hours")}
+          onChange={(e) => {
+            const v = e.target.value === "" ? "" : Math.max(0, Number(e.target.value));
+            onChange({ ...value, hours: v });
+          }}
           inputProps={{ min: 0 }}
+          error={touched.hours && (hours === "" || hours < 0)}
+          helperText={touched.hours && (hours === "" ? "Required" : hours < 0 ? "Must be ≥ 0" : " ")}
         />
       </Grid>
 
@@ -208,24 +214,27 @@ function RideBuilderFields({
           {...FIELD_PROPS}
           type="number"
           label="Duration Minutes"
-          value={value.minutes ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              minutes: e.target.value === "" ? "" : Number(e.target.value),
-            })
-          }
+          value={minutes}
+          onBlur={mark("minutes")}
+          onChange={(e) => {
+            let v = e.target.value === "" ? "" : Number(e.target.value);
+            if (v !== "") v = Math.min(59, Math.max(0, v));
+            onChange({ ...value, minutes: v });
+          }}
           inputProps={{ min: 0, max: 59 }}
+          error={touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)}
+          helperText={touched.minutes && (minutes === "" ? "Required" : " ")}
         />
       </Grid>
 
-      {/* Chips */}
       <Grid item xs={12} md={4}>
         <ChipSelect
           label="Ride Type"
           options={rideTypeOptions}
           value={value.rideType || ""}
           onChange={(v) => onChange({ ...value, rideType: v })}
+          required
+          error={touched.rideType}
         />
       </Grid>
 
@@ -235,6 +244,8 @@ function RideBuilderFields({
           options={vehicleOptions}
           value={value.vehicle || ""}
           onChange={(v) => onChange({ ...value, vehicle: v })}
+          required
+          error={touched.vehicle}
         />
       </Grid>
 
@@ -373,17 +384,18 @@ export default function RideEntryForm() {
       errors.PickupTime = true;
     }
 
-    // Duration
-    if (isNaN(+data.DurationHours) || +data.DurationHours < 0) {
-      errors.DurationHours = true;
-    }
-    if (
-      isNaN(+data.DurationMinutes) ||
-      +data.DurationMinutes < 0 ||
-      +data.DurationMinutes >= 60
-    ) {
-      errors.DurationMinutes = true;
-    }
+// Duration — must be >=0 and total > 0
+const hours = isNaN(+data.DurationHours) ? 0 : +data.DurationHours;
+const minutes = isNaN(+data.DurationMinutes) ? 0 : +data.DurationMinutes;
+
+if (hours < 0) errors.DurationHours = true;
+if (minutes < 0 || minutes >= 60) errors.DurationMinutes = true;
+
+const totalMinutes = hours * 60 + minutes;
+if (totalMinutes <= 0) {
+  errors.DurationHours = true;
+  errors.DurationMinutes = true;
+}
 
     if (setErrors) setErrors(errors);
     else if (!skipRef) errorFields.current = errors;
@@ -741,6 +753,14 @@ export default function RideEntryForm() {
     [formData]
   );
 
+  const isSingleValid = useMemo(() => {
+  const h = Number(singleRide.hours || 0);
+  const m = Number(singleRide.minutes || 0);
+  const durOK = h > 0 || m > 0;
+  const tripOK = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(singleRide.tripId || "");
+  return !!(tripOK && singleRide.date && singleRide.pickupTime && singleRide.rideType && singleRide.vehicle && durOK);
+}, [singleRide]);
+
   const setSingleRide = (val) =>
     setFormData((prev) => {
       const next = {
@@ -897,7 +917,7 @@ export default function RideEntryForm() {
                 color="success"
                 onClick={onSubmitSingle}
                 sx={{ minHeight: 48 }}
-                disabled={singleSubmitting}
+                disabled={singleSubmitting || !isSingleValid}
                 startIcon={<RocketLaunchIcon />}
               >
                 Submit
