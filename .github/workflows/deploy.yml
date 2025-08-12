@@ -82,6 +82,54 @@ jobs:
           VITE_APP_VERSION=${{ github.sha }}
           EOF
 
+      - name: Set build version
+        run: |
+          # Install jq if not already available
+          if ! command -v jq &> /dev/null; then
+          sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+          # Read base version from package.json (fallback to 0.0.0)
+          BASE_VERSION=$(jq -r '.version // "0.0.0"' package.json)
+
+          # Get today's date
+          DATE=$(date +"%Y-%m-%d")
+          DATE_TAG=$(date +"%Y%m%d")
+
+          # Prepare build count file (kept in workspace)
+          COUNT_FILE=".buildcount"
+          if [ -f "$COUNT_FILE" ]; then
+          LAST_DATE=$(cut -d',' -f1 "$COUNT_FILE")
+          COUNT=$(cut -d',' -f2 "$COUNT_FILE")
+          if [ "$LAST_DATE" = "$DATE_TAG" ]; then
+          COUNT=$((COUNT + 1))
+          else
+          COUNT=1
+          fi
+          else
+          COUNT=1
+          fi
+          echo "$DATE_TAG,$COUNT" > "$COUNT_FILE"
+
+          # Compose final version
+          FINAL_VERSION="${BASE_VERSION}-${DATE_TAG}.${COUNT}"
+
+          # Save to .env for Vite
+          echo "VITE_APP_VERSION=$FINAL_VERSION" >> .env
+
+          # Pretty print for Actions log
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 LRP Driver Portal v$BASE_VERSION"
+          echo "   🗓  Build Date: $DATE"
+          echo "   🔢 Build Number: #$COUNT"
+          echo "   🏷  Full Version: $FINAL_VERSION"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          # Set as GitHub Actions output (optional)
+          echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+
       - name: Install dependencies
         run: npm ci
 
