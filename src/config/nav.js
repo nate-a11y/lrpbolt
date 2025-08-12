@@ -14,6 +14,7 @@ export const NAV_ITEMS = [
   { to: "/tickets",         label: "Tickets",               icon: "ConfirmationNumber" },
   { to: "/admin-time-log",  label: "Admin Logs",            icon: "TableChart", admin: true },
   { to: "/admin-user-manager", label: "User Manager",       icon: "ManageAccounts", admin: true },
+  { to: "/admin/notifications", label: "Notifications", icon: "Notifications", admin: true },
   { to: "/ride-entry",      label: "Add Ride",              icon: "AddCircle", admin: true },
   { to: "/generate-ticket", label: "Generate Ticket",       icon: "LocalActivity", admin: true },
 ];
