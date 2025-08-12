@@ -160,6 +160,44 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
+      # Make sure the SW actually exists in the build
+      - name: Verify SW files exist
+        run: |
+          test -f dist/firebase-messaging-sw.js || { echo "::error::dist/firebase-messaging-sw.js missing"; exit 1; }
+          test -f dist/manifest.webmanifest || true
+
+      # Write Hostinger .htaccess so SW/manifest bypass SPA rewrite
+      - name: Write Hostinger .htaccess
+        run: |
+          cat > dist/.htaccess <<'HTACCESS'
+          # ---------- MIME hints ----------
+          AddType application/javascript .js .mjs
+          AddType application/json .json .webmanifest
+          AddType text/css .css
+          AddType image/png .png
+          AddType image/x-icon .ico
+          AddType image/svg+xml .svg
+          AddType image/webp .webp
+
+          # ---------- React SPA + PWA routing ----------
+          RewriteEngine On
+          RewriteBase /
+
+          # 1) Serve existing files/directories as-is
+          RewriteCond %{REQUEST_FILENAME} -f [OR]
+          RewriteCond %{REQUEST_FILENAME} -d
+          RewriteRule ^ - [L]
+
+          # 2) Exempt PWA critical files from SPA fallback
+          RewriteRule ^(firebase-messaging-sw\.js|sw\.js|service-worker\.js|manifest\.webmanifest|robots\.txt|sitemap\.xml)$ - [L]
+          RewriteRule ^icons/ - [L]
+          RewriteRule ^assets/ - [L]
+
+          # 3) Everything else -> index.html
+          RewriteRule . /index.html [L]
+          HTACCESS
+
+
       - name: Verify build output
         run: |
           if [ ! -d "dist/assets" ]; then
