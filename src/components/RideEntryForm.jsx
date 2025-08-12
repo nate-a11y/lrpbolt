@@ -2,14 +2,18 @@
 // src/components/RideEntryForm.jsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Box,
   Paper,
   Grid,
+  Chip,
+  FormHelperText,
   Stack,
   Divider,
   Typography,
   TextField,
-  MenuItem,
   Button,
   Snackbar,
   Alert,
@@ -29,20 +33,29 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { DataGrid } from "@mui/x-data-grid";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { useDropzone } from "react-dropzone";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import Papa from "papaparse";
+
 import LiveRidesGrid from "./LiveRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
+import DropDailyWidget from "./DropDailyWidget";
+
 import { formatDuration, toTimeString12Hr, setSyncTime } from "../utils/timeUtils";
-import { db } from "../firebase";
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
-import DropDailyWidget from "./DropDailyWidget";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+
+import { db } from "../firebase";
 import { TIMEZONE, COLLECTIONS } from "../constants";
 import { RIDE_TYPES, VEHICLES } from "../constants/rides";
 import {
@@ -57,160 +70,16 @@ import {
   writeBatch,
   doc,
 } from "firebase/firestore";
-import Papa from "papaparse";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DataGrid } from "@mui/x-data-grid";
-import {
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Chip,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useDropzone } from "react-dropzone";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// --- Shared UI helpers ---
-const SELECT_MENU_PROPS = {
-  PaperProps: {
-    sx: {
-      minWidth: 360,
-      maxWidth: 560,
-      maxHeight: 420,
-      '& .MuiMenuItem-root': { whiteSpace: 'normal', lineHeight: 1.25, py: 1 },
-    },
-  },
-};
-
+// --- Shared field props ---
 const FIELD_PROPS = {
-  size: 'medium',
+  size: "medium",
   fullWidth: true,
   InputLabelProps: { shrink: true },
 };
-
-// --- Reusable builder used by both tabs ---
-function RideBuilderFields({
-  value,
-  onChange,
-  rideTypeOptions,
-  vehicleOptions,
-  disableTripId = false,
-}) {
-  const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
-
-  return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} md={6}>
-        <TextField
-          {...FIELD_PROPS}
-          label="Trip ID"
-          value={value.tripId || ''}
-          onChange={set('tripId')}
-          placeholder="e.g., 6k5g-rs"
-          disabled={disableTripId}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={6}>
-        <TextField
-          {...FIELD_PROPS}
-          type="date"
-          label="Date"
-          value={value.date || ''}
-          onChange={set('date')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={6}>
-        <TextField
-          {...FIELD_PROPS}
-          type="time"
-          label="Pickup Time"
-          value={value.pickupTime || ''}
-          onChange={set('pickupTime')}
-          inputProps={{ step: 300 }}
-        />
-      </Grid>
-
-      <Grid item xs={6} md={3}>
-        <TextField
-          {...FIELD_PROPS}
-          type="number"
-          label="Duration Hours"
-          value={value.hours ?? ''}
-          onChange={(e) =>
-            onChange({ ...value, hours: e.target.value === '' ? '' : Number(e.target.value) })
-          }
-          inputProps={{ min: 0 }}
-        />
-      </Grid>
-
-      <Grid item xs={6} md={3}>
-        <TextField
-          {...FIELD_PROPS}
-          type="number"
-          label="Duration Minutes"
-          value={value.minutes ?? ''}
-          onChange={(e) =>
-            onChange({ ...value, minutes: e.target.value === '' ? '' : Number(e.target.value) })
-          }
-          inputProps={{ min: 0, max: 59 }}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={6}>
-        <TextField
-          {...FIELD_PROPS}
-          select
-          label="Ride Type"
-          value={value.rideType || ''}
-          onChange={set('rideType')}
-          SelectProps={{ MenuProps: SELECT_MENU_PROPS }}
-          placeholder="Select ride type"
-        >
-          {rideTypeOptions.map((opt) => (
-            <MenuItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-
-      <Grid item xs={12} md={6}>
-        <TextField
-          {...FIELD_PROPS}
-          select
-          label="Vehicle"
-          value={value.vehicle || ''}
-          onChange={set('vehicle')}
-          SelectProps={{ MenuProps: SELECT_MENU_PROPS }}
-          placeholder="Select vehicle"
-        >
-          {vehicleOptions.map((opt) => (
-            <MenuItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-
-      <Grid item xs={12}>
-        <TextField
-          {...FIELD_PROPS}
-          multiline
-          minRows={3}
-          label="Ride Notes"
-          value={value.notes || ''}
-          onChange={set('notes')}
-          placeholder="Optional notes"
-        />
-      </Grid>
-    </Grid>
-  );
-}
 
 const defaultValues = {
   TripID: "",
@@ -222,6 +91,8 @@ const defaultValues = {
   Vehicle: "",
   RideNotes: "",
 };
+
+
 
 const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/;
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -236,6 +107,152 @@ const expectedCsvCols = [
   "RideNotes",
 ];
 
+/* ------------------ Reusable builder (chips) ------------------ */
+function ChipSelect({ label, options, value, onChange, disabled }) {
+  const normalized = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o
+  );
+  return (
+    <Box>
+      <Typography
+        variant="caption"
+        sx={{ fontWeight: 700, textTransform: "uppercase", mb: 0.5, display: "block" }}
+      >
+        {label}
+      </Typography>
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+        {normalized.map((opt) => {
+          const selected = value === opt.value;
+          return (
+            <Chip
+              key={opt.value}
+              label={opt.label}
+              clickable
+              color={selected ? "primary" : "default"}
+              variant={selected ? "filled" : "outlined"}
+              onClick={() => !disabled && onChange(opt.value)}
+              disabled={disabled}
+              sx={{ fontWeight: 700 }}
+            />
+          );
+        })}
+      </Stack>
+      {!value && <FormHelperText sx={{ mt: 0.5 }}>Select one</FormHelperText>}
+    </Box>
+  );
+}
+
+function RideBuilderFields({
+  value,
+  onChange,
+  rideTypeOptions,
+  vehicleOptions,
+  disableTripId = false,
+}) {
+  const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
+
+  return (
+    <Grid container spacing={2}>
+      {/* Consistent widths (3-up on desktop) */}
+      <Grid item xs={12} md={4}>
+        <TextField
+          {...FIELD_PROPS}
+  label="Trip ID"
+  value={value.tripId || ""}
+  onChange={(e) => onChange({ ...value, tripId: e.target.value.toUpperCase() })}
+  placeholder="e.g., 6K5G-RS"
+  disabled={disableTripId}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={4}>
+        <TextField
+          {...FIELD_PROPS}
+          type="date"
+          label="Date"
+          value={value.date || ""}
+          onChange={set("date")}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={4}>
+        <TextField
+          {...FIELD_PROPS}
+          type="time"
+          label="Pickup Time"
+          value={value.pickupTime || ""}
+          onChange={set("pickupTime")}
+          inputProps={{ step: 300 }}
+        />
+      </Grid>
+
+      {/* Duration half width */}
+      <Grid item xs={6} md={2}>
+        <TextField
+          {...FIELD_PROPS}
+          type="number"
+          label="Duration Hours"
+          value={value.hours ?? ""}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              hours: e.target.value === "" ? "" : Number(e.target.value),
+            })
+          }
+          inputProps={{ min: 0 }}
+        />
+      </Grid>
+
+      <Grid item xs={6} md={2}>
+        <TextField
+          {...FIELD_PROPS}
+          type="number"
+          label="Duration Minutes"
+          value={value.minutes ?? ""}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              minutes: e.target.value === "" ? "" : Number(e.target.value),
+            })
+          }
+          inputProps={{ min: 0, max: 59 }}
+        />
+      </Grid>
+
+      {/* Chips */}
+      <Grid item xs={12} md={4}>
+        <ChipSelect
+          label="Ride Type"
+          options={rideTypeOptions}
+          value={value.rideType || ""}
+          onChange={(v) => onChange({ ...value, rideType: v })}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={4}>
+        <ChipSelect
+          label="Vehicle"
+          options={vehicleOptions}
+          value={value.vehicle || ""}
+          onChange={(v) => onChange({ ...value, vehicle: v })}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          {...FIELD_PROPS}
+          multiline
+          minRows={3}
+          label="Ride Notes"
+          value={value.notes || ""}
+          onChange={set("notes")}
+          placeholder="Optional notes"
+        />
+      </Grid>
+    </Grid>
+  );
+}
+/* ------------------ /Reusable builder ------------------ */
 
 export default function RideEntryForm() {
   // ---------- Core form state ----------
@@ -268,6 +285,10 @@ export default function RideEntryForm() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [dropOpen, setDropOpen] = useState(
+    () => localStorage.getItem("dropDailyOpen") === "true"
+    );
+  
   const isMobile = useMediaQuery("(max-width:600px)");
   const { user, authLoading } = useAuth();
   const currentUser = user?.email || "Unknown";
@@ -282,8 +303,7 @@ export default function RideEntryForm() {
   const isAdmin = (driver?.access || "").toLowerCase() === "admin";
 
   // Dropzone
-  const DROPZONE_MIN_H = 168;
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop: useCallback(
       (accepted) => {
         setFileError("");
@@ -371,7 +391,6 @@ export default function RideEntryForm() {
     return Object.keys(errors).length === 0;
   }, []);
 
-  // DO NOT mutate errorFields during render
   // ---------- Derived preview ----------
   const preview = useMemo(() => {
     const rideDuration = formatDuration(
@@ -504,13 +523,13 @@ export default function RideEntryForm() {
         if (seen.has(d.tripId)) {
           skipped++;
           continue;
-        } // in-file dup
+        }
         seen.add(d.tripId);
         // eslint-disable-next-line no-await-in-loop
         if (await tripExistsAnywhere(d.tripId)) {
           skipped++;
           continue;
-        } // remote dup
+        }
         filtered.push(d);
       }
 
@@ -542,7 +561,6 @@ export default function RideEntryForm() {
         severity: "success",
         msg: `Imported ${s.imported} | Duplicates ${s.duplicatesFound} | Skipped ${s.skippedNoTripId} | Queue cleared ${s.queueCleared}`,
       });
-      // TODO: trigger any grid refresh if needed; snapshots should update automatically.
     } catch (e) {
       console.error(e);
       setToast({ open: true, severity: "error", msg: "Drop failed. See logs." });
@@ -640,7 +658,7 @@ export default function RideEntryForm() {
       RideNotes: "Sample notes",
     };
     const header = expectedCsvCols.join(",");
-    const row = expectedCsvCols.map(col => sample[col]).join(",");
+    const row = expectedCsvCols.map((col) => sample[col]).join(",");
     const csv = `${header}\n${row}\n`;
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -864,7 +882,12 @@ export default function RideEntryForm() {
               vehicleOptions={vehicleOptions}
             />
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }} alignItems={{ xs: 'stretch', sm: 'center' }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ mt: 3 }}
+              alignItems={{ xs: "stretch", sm: "center" }}
+            >
               <Button variant="outlined" onClick={onResetSingle} sx={{ minHeight: 48 }}>
                 Reset
               </Button>
@@ -891,7 +914,6 @@ export default function RideEntryForm() {
                 MULTI RIDE UPLOAD
               </Typography>
 
-              {/* CSV tools on top */}
               <TextField
                 {...FIELD_PROPS}
                 multiline
@@ -901,11 +923,13 @@ export default function RideEntryForm() {
                 placeholder="tripId, yyyy-mm-dd, hh:mm, hours, minutes, rideType, vehicle, notes"
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
-                sx={{ mb: 3, '& textarea': { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
+                sx={{
+                  mb: 3,
+                  "& textarea": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" },
+                }}
                 helperText="Tip: paste multiple lines; we’ll validate before submit."
               />
 
-              {/* Optional: drop zone lives here if you have one */}
               {dropZone}
 
               <Divider sx={{ my: 2 }} />
@@ -921,8 +945,18 @@ export default function RideEntryForm() {
                 vehicleOptions={vehicleOptions}
               />
 
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                <Button variant="outlined" onClick={onAddToList} startIcon={<AddIcon />} sx={{ minHeight: 48 }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                sx={{ mt: 3 }}
+                alignItems={{ xs: "stretch", sm: "center" }}
+              >
+                <Button
+                  variant="outlined"
+                  onClick={onAddToList}
+                  startIcon={<AddIcon />}
+                  sx={{ minHeight: 48 }}
+                >
                   Add to List
                 </Button>
                 <Box sx={{ flexGrow: 1 }} />
@@ -948,7 +982,7 @@ export default function RideEntryForm() {
                   autoHeight
                   density="compact"
                   rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
-                  columns={expectedCsvCols.map(col => ({
+                  columns={expectedCsvCols.map((col) => ({
                     field: col,
                     headerName: col.replace(/([A-Z])/g, " $1"),
                     flex: 1,
@@ -976,189 +1010,191 @@ export default function RideEntryForm() {
           </>
         )}
 
-      <Box sx={{ mb: 2 }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
-          {isAdmin && (
-            <Tooltip title="Run daily drop now (admin only)">
-              <span>
-                <Button
-                  variant="contained"
-                  color="warning"
-                  startIcon={<RocketLaunchIcon />}
-                  onClick={onDropNow}
-                  disabled={dropping}
-                >
-                  {dropping ? "Running…" : "Drop Daily Rides Now"}
-                </Button>
-              </span>
-            </Tooltip>
-          )}
-          <Box sx={{ flex: 1, minWidth: 320 }}>
-            <Accordion
-              defaultExpanded={false}
-              expanded={localStorage.getItem("dropDailyOpen") === "true"}
-              onChange={(_, exp) => localStorage.setItem("dropDailyOpen", String(exp))}
-              sx={{ bgcolor: "background.paper", borderRadius: 2, "&:before": { display: "none" } }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    Daily Drop Status
+        {/* Admin: daily drop + status */}
+        <Box sx={{ mb: 2 }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
+            {isAdmin && (
+              <Tooltip title="Run daily drop now (admin only)">
+                <span>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    startIcon={<RocketLaunchIcon />}
+                    onClick={onDropNow}
+                    disabled={dropping}
+                  >
+                    {dropping ? "Running…" : "Drop Daily Rides Now"}
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+            <Box sx={{ flex: 1, minWidth: 320 }}>
+<Accordion
+  expanded={dropOpen}
+  onChange={(_, exp) => {
+    setDropOpen(exp);
+    localStorage.setItem("dropDailyOpen", String(exp));
+  }}
+  sx={{ bgcolor: "background.paper", borderRadius: 2, "&:before": { display: "none" } }}
+>
+  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Typography variant="subtitle1" fontWeight={700}>Daily Drop Status</Typography>
+      <Chip size="small" label={dropOpen ? "Collapse" : "Expand"} variant="outlined" />
+    </Stack>
+  </AccordionSummary>
+  <AccordionDetails>
+    <DropDailyWidget />
+  </AccordionDetails>
+</Accordion>
+
+            </Box>
+          </Stack>
+        </Box>
+
+        {/* Live / Queue / Claimed Tabs */}
+        <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+          <Tabs
+            value={dataTab}
+            onChange={(e, val) => setDataTab(val)}
+            TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
+            sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
+          >
+            <Tab
+              label={
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Typography fontWeight={600} color={dataTab === 0 ? "success.main" : "inherit"}>
+                    LIVE
                   </Typography>
-                  <Chip size="small" label="Tap to expand" variant="outlined" />
-                </Stack>
-              </AccordionSummary>
-              <AccordionDetails>
-                <DropDailyWidget />
-              </AccordionDetails>
-            </Accordion>
-          </Box>
-        </Stack>
-      </Box>
+                  <Badge
+                    badgeContent={liveCount}
+                    color="success"
+                    sx={{
+                      "& .MuiBadge-badge": {
+                        transform: "scale(0.8) translate(60%, -40%)",
+                        transformOrigin: "top right",
+                      },
+                    }}
+                  />
+                </Box>
+              }
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Typography fontWeight={600} color={dataTab === 1 ? "success.main" : "inherit"}>
+                    QUEUE
+                  </Typography>
+                  <Badge
+                    badgeContent={queueCount}
+                    color="primary"
+                    sx={{
+                      "& .MuiBadge-badge": {
+                        transform: "scale(0.8) translate(60%, -40%)",
+                        transformOrigin: "top right",
+                      },
+                    }}
+                  />
+                </Box>
+              }
+            />
+            <Tab
+              label={
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Typography fontWeight={600} color={dataTab === 2 ? "success.main" : "inherit"}>
+                    CLAIMED
+                  </Typography>
+                  <Badge
+                    badgeContent={claimedCount}
+                    color="secondary"
+                    sx={{
+                      "& .MuiBadge-badge": {
+                        transform: "scale(0.8) translate(60%, -40%)",
+                        transformOrigin: "top right",
+                      },
+                    }}
+                  />
+                </Box>
+              }
+            />
+          </Tabs>
+        </Box>
 
-      {/* Live / Queue / Claimed Tabs */}
-      <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
-        <Tabs
-          value={dataTab}
-          onChange={(e, val) => setDataTab(val)}
-          TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
-          sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
-        >
-          <Tab
-            label={
-              <Box display="flex" alignItems="center" gap={0.5}>
-                <Typography fontWeight={600} color={dataTab === 0 ? "success.main" : "inherit"}>
-                  LIVE
-                </Typography>
-                <Badge
-                  badgeContent={liveCount}
-                  color="success"
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      transform: "scale(0.8) translate(60%, -40%)",
-                      transformOrigin: "top right",
-                    },
-                  }}
-                />
+        <Box sx={{ width: "100%", overflowX: "hidden" }}>
+          {dataTab === 0 && (
+            <Fade in>
+              <Box>
+                <LiveRidesGrid />
               </Box>
-            }
-          />
-          <Tab
-            label={
-              <Box display="flex" alignItems="center" gap={0.5}>
-                <Typography fontWeight={600} color={dataTab === 1 ? "success.main" : "inherit"}>
-                  QUEUE
-                </Typography>
-                <Badge
-                  badgeContent={queueCount}
-                  color="primary"
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      transform: "scale(0.8) translate(60%, -40%)",
-                      transformOrigin: "top right",
-                    },
-                  }}
-                />
+            </Fade>
+          )}
+          {dataTab === 1 && (
+            <Fade in>
+              <Box>
+                <RideQueueGrid />
               </Box>
-            }
-          />
-          <Tab
-            label={
-              <Box display="flex" alignItems="center" gap={0.5}>
-                <Typography fontWeight={600} color={dataTab === 2 ? "success.main" : "inherit"}>
-                  CLAIMED
-                </Typography>
-                <Badge
-                  badgeContent={claimedCount}
-                  color="secondary"
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      transform: "scale(0.8) translate(60%, -40%)",
-                      transformOrigin: "top right",
-                    },
-                  }}
-                />
+            </Fade>
+          )}
+          {dataTab === 2 && (
+            <Fade in>
+              <Box>
+                <ClaimedRidesGrid />
               </Box>
-            }
-          />
-        </Tabs>
-      </Box>
+            </Fade>
+          )}
+        </Box>
 
-      <Box sx={{ width: "100%", overflowX: "hidden" }}>
-        {dataTab === 0 && (
-          <Fade in>
-            <Box>
-              <LiveRidesGrid />
+        {/* Confirm Dialog */}
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Confirm Ride</DialogTitle>
+          <DialogContent dividers>
+            {Object.entries(preview).map(([key, value]) => (
+              <Typography key={key} sx={{ mb: 0.5 }}>
+                <strong>{key.replace(/([A-Z])/g, " $1")}:</strong> {value || "—"}
+              </Typography>
+            ))}
+            <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+              <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleSubmit}
+                disabled={submitting}
+                startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+              >
+                Confirm & Submit
+              </Button>
             </Box>
-          </Fade>
-        )}
-        {dataTab === 1 && (
-          <Fade in>
-            <Box>
-              <RideQueueGrid />
-            </Box>
-          </Fade>
-        )}
-        {dataTab === 2 && (
-          <Fade in>
-            <Box>
-              <ClaimedRidesGrid />
-            </Box>
-          </Fade>
-        )}
-      </Box>
+          </DialogContent>
+        </Dialog>
 
-      {/* Confirm Dialog */}
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Confirm Ride</DialogTitle>
-        <DialogContent dividers>
-          {Object.entries(preview).map(([key, value]) => (
-            <Typography key={key} sx={{ mb: 0.5 }}>
-              <strong>{key.replace(/([A-Z])/g, " $1")}:</strong> {value || "—"}
-            </Typography>
-          ))}
-          <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
-            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSubmit}
-              disabled={submitting}
-              startIcon={submitting ? <CircularProgress size={18} color="inherit" /> : undefined}
-            >
-              Confirm & Submit
-            </Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={4000}
-        onClose={() => setToast((t) => ({ ...t, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
+        {/* Toasts */}
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={4000}
           onClose={() => setToast((t) => ({ ...t, open: false }))}
-          severity={toast.severity}
-          variant="filled"
-          sx={{ width: "100%" }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         >
-          {toast.msg}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={() => setToast((t) => ({ ...t, open: false }))}
+            severity={toast.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
+            {toast.msg}
+          </Alert>
+        </Snackbar>
 
-      {/* Snackbar */}
-      <Snackbar
-        open={formToast.open}
-        autoHideDuration={4000}
-        onClose={() => setFormToast({ ...formToast, open: false })}
-      >
-        <Alert severity={formToast.severity} variant="filled">
-          {formToast.message}
-        </Alert>
-      </Snackbar>
-    </Box>
-  </LocalizationProvider>
-);
+        <Snackbar
+          open={formToast.open}
+          autoHideDuration={4000}
+          onClose={() => setFormToast({ ...formToast, open: false })}
+        >
+          <Alert severity={formToast.severity} variant="filled">
+            {formToast.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </LocalizationProvider>
+  );
 }
