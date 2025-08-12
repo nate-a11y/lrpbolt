@@ -1,9 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
 // Updated timeUtils.js
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
 import { TIMEZONE } from "../constants";
+
 import { logError } from "./logError";
 
 dayjs.extend(utc);

@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState } from "react";
+
 import {
   getRideQueue,
   getLiveRides,

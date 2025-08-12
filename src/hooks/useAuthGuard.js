@@ -1,9 +1,11 @@
 // src/hooks/useAuthGuard.js
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+
+import { logError } from "../utils/logError";
+
 import { getUserAccess } from "./api";
 import useAuth from "./useAuth.js";
-import { logError } from "../utils/logError";
 
 /**
  * Redirects unauthenticated users to "/login" and unauthorized users to "/rides".

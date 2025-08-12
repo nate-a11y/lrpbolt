@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { logError } from "../utils/logError";
 
 export default function usePersistentState(key, defaultValue) {

@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import fs from "fs";
 import path from "path";
+
 import sharp from "sharp";
 
 const ROOT = process.cwd();

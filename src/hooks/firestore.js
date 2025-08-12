@@ -5,6 +5,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
+
 import { db } from "../firebase";
 import { logError } from "../utils/logError";
 

@@ -1,4 +1,3 @@
-import { auth } from "../firebase";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -11,6 +10,8 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from "firebase/auth";
+
+import { auth } from "../firebase";
 
 const provider = new GoogleAuthProvider();
 

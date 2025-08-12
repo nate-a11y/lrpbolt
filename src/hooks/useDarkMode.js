@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect } from "react";
+
 import usePersistentState from "./usePersistentState";
 
 export default function useDarkMode() {

@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { db } from "../firebase";
-import { logError } from "../utils/logError";
+import { useCallback, useState } from "react";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+
 import { COLLECTIONS } from "../constants";
 import { useAuth } from "../context/AuthContext.jsx";
+import { db } from "../firebase";
+import { logError } from "../utils/logError";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);

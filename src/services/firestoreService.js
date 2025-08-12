@@ -11,11 +11,12 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import duration from "dayjs/plugin/duration";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+import { COLLECTIONS, TIMEZONE } from "../constants";
 import { db } from "../firebase";
-import { TIMEZONE, COLLECTIONS } from "../constants";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 
 dayjs.extend(utc);

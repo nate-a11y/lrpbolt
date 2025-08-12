@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+
 import { normalizeSession } from '../../src/utils/firestore.js';
 
 const ts = (s) => ({ seconds: s });

@@ -1,5 +1,4 @@
 // src/utils/firebaseInit.js
-import { auth, db } from "../firebase";
 import {
   setPersistence,
   browserLocalPersistence,
@@ -7,6 +6,8 @@ import {
   connectAuthEmulator,
 } from "firebase/auth";
 import { connectFirestoreEmulator } from "firebase/firestore";
+
+import { auth, db } from "../firebase";
 
 // Sessions
 setPersistence(auth, browserLocalPersistence).catch((err) => {

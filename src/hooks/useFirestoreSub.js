@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
+
 import { useAuth } from "../context/AuthContext.jsx";
 
 export function useFirestoreSub(makeQuery, deps) {
