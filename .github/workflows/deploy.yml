@@ -36,6 +36,7 @@ jobs:
             VITE_CALENDAR_API_KEY VITE_CALENDAR_ID
             VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN VITE_FIREBASE_PROJECT_ID
             VITE_FIREBASE_STORAGE_BUCKET VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID
+            VITE_FIREBASE_VAPID_KEY
             VITE_GOOGLE_CLIENT_ID VITE_API_BASE_URL VITE_API_SECRET_KEY VITE_TIME_LOG_CSV
             VITE_DROP_DAILY_URL
             HOSTINGER_FTP_HOST HOSTINGER_FTP_USERNAME HOSTINGER_FTP_PASSWORD HOSTINGER_REMOTE_PATH
@@ -62,7 +63,6 @@ jobs:
           HOSTINGER_FTP_PASSWORD:              ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           HOSTINGER_REMOTE_PATH:               ${{ secrets.HOSTINGER_REMOTE_PATH }}
 
-      # Write .env for Vite
       - name: Create .env from GitHub Secrets
         run: |
           cat > .env << 'EOF'
@@ -74,6 +74,7 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}   # ← add this
           VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
           VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}
@@ -81,6 +82,11 @@ jobs:
           VITE_DROP_DAILY_URL=${{ secrets.VITE_DROP_DAILY_URL }}
           VITE_APP_VERSION=${{ github.sha }}
           EOF
+
+      - name: Create .env.production
+        run: |
+          echo "VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}" >> .env.production
+
 
       - name: Set build version
         run: |
