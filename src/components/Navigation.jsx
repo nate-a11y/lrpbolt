@@ -31,6 +31,8 @@ import LoopIcon from "@mui/icons-material/Loop";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import PersonIcon from "@mui/icons-material/Person";
+import BrandGradient from "./BrandGradient.jsx";
+import { useColorMode } from "../context/ColorModeContext.jsx";
 
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -103,7 +105,8 @@ const ALL_NAV_ITEMS = [
   { label: "Generate Ticket", icon: <AppShortcutIcon />, path: "/generate-ticket", admin: true },
 ];
 
-export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSignOut }) {
+export default function Navigation({ onChangeDriver, onSignOut }) {
+  const { mode, toggle } = useColorMode();
   const { driver } = useDriver();
   const role = (driver?.access || "").toLowerCase();
   const isAdmin = role === "admin";
@@ -363,8 +366,8 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
             {!collapsed && <ListItemText primary="Dark Mode" />}
             <Switch
               edge="end"
-              checked={darkMode}
-              onChange={() => setDarkMode(!darkMode)}
+              checked={mode === "dark"}
+              onChange={toggle}
               inputProps={{ "aria-label": "Toggle dark mode" }}
               sx={{ ml: collapsed ? 0 : 1 }}
             />
@@ -492,8 +495,8 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
                   <Box display="flex" alignItems="center" gap={0.5}>
                     <Brightness4Icon fontSize="small" />
                     <Switch
-                      checked={darkMode}
-                      onChange={() => setDarkMode(!darkMode)}
+                      checked={mode === "dark"}
+                      onChange={toggle}
                       inputProps={{ "aria-label": "Toggle dark mode" }}
                     />
                   </Box>
@@ -533,6 +536,7 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
             </Menu>
           </Box>
         </Toolbar>
+        <BrandGradient height={4} />
       </AppBar>
 
       {/* Offset for fixed AppBar */}

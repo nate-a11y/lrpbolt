@@ -29,6 +29,7 @@ import {
 } from "../hooks/api";
 import { Timestamp } from "firebase/firestore";
 import { logError } from "../utils/logError";
+import { brand } from "../theme";
 
 const getStoredLocations = (key) =>
   JSON.parse(localStorage.getItem(key) || "[]");
@@ -156,7 +157,7 @@ export default function TicketGenerator() {
     if (!ticketRef.current || !ticket) return;
     try {
       const dataUrl = await toPng(ticketRef.current, {
-        backgroundColor: "#fff",
+        backgroundColor: brand.white,
       });
       const link = document.createElement("a");
       link.download = `${ticket.ticketId}.png`;
@@ -183,7 +184,7 @@ export default function TicketGenerator() {
     try {
       await new Promise((res) => setTimeout(res, 250)); // Ensure DOM is rendered
       const dataUrl = await toPng(ticketRef.current, {
-        backgroundColor: "#fff",
+        backgroundColor: brand.white,
       });
       const base64 = dataUrl.split(",")[1];
 
@@ -218,7 +219,7 @@ export default function TicketGenerator() {
     const win = window.open("", "Print", "height=600,width=400");
     if (!win) return;
     win.document.write(
-      "<html><head><title>Ticket</title><style>body{background:#fff;color:#000;padding:20px;font-family:sans-serif;} img{display:block;margin:auto;}</style></head><body>",
+      `<html><head><title>Ticket</title><style>body{background:${brand.white};color:${brand.black};padding:20px;font-family:sans-serif;} img{display:block;margin:auto;}</style></head><body>`,
     );
     win.document.write(contents);
     win.document.write("</body></html>");
@@ -352,15 +353,15 @@ export default function TicketGenerator() {
             <>
               <Box
                 ref={ticketRef}
-                sx={{
-                  backgroundColor: "#fff",
-                  color: "#000",
+                sx={(t) => ({
+                  backgroundColor: t.palette.background.paper,
+                  color: t.palette.text.primary,
                   p: 3,
                   borderRadius: 2,
                   width: "100%",
                   maxWidth: 320,
                   mx: "auto",
-                }}
+                })}
               >
                 <Box display="flex" justifyContent="center" mb={2}>
                   <img
@@ -400,7 +401,7 @@ export default function TicketGenerator() {
                   <strong>Ticket ID:</strong> {ticket.ticketId}
                 </Typography>
                 <Box mt={3} display="flex" justifyContent="center">
-                  <Box sx={{ p: 2, bgcolor: "#fff" }}>
+                  <Box sx={(t) => ({ p: 2, bgcolor: t.palette.background.paper })}>
                     <QRCode
                       value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
                       size={160}

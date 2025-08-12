@@ -337,6 +337,10 @@ export default function AdminTimeLog() {
                     params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
                   }
                   sx={{
+                    bgcolor: (t) => t.palette.background.paper,
+                    "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
+                    "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
+                    borderColor: "divider",
                     "& .even": {
                       backgroundColor: isDark ? "#333" : "grey.100",
                     },
@@ -344,9 +348,9 @@ export default function AdminTimeLog() {
                     "& .MuiDataGrid-row:hover": {
                       backgroundColor: isDark ? "#444" : "grey.200",
                     },
-                    backgroundColor: isDark ? "#2a2a2a" : "#fafafa",
                     fontSize: "0.85rem",
                   }}
+                  density="comfortable"
                 />
                 {filteredLogs.length === 0 && (
                   <Typography
@@ -390,7 +394,10 @@ export default function AdminTimeLog() {
                 columns={baseColumns}
                 pageSizeOptions={[5, 10, 20]}
                 sx={{
-                  backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                  bgcolor: (t) => t.palette.background.paper,
+                  "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
+                  "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
+                  borderColor: "divider",
                   "& .MuiDataGrid-row:nth-of-type(odd)": {
                     backgroundColor: isDark ? "#333" : "grey.100",
                   },
@@ -398,6 +405,7 @@ export default function AdminTimeLog() {
                     backgroundColor: isDark ? "#444" : "grey.200",
                   },
                 }}
+                density="comfortable"
               />
             </Paper>
           )}
@@ -413,7 +421,10 @@ export default function AdminTimeLog() {
                 columns={shootoutColumns}
                 pageSizeOptions={[5, 10, 20]}
                 sx={{
-                  backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                  bgcolor: (t) => t.palette.background.paper,
+                  "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
+                  "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
+                  borderColor: "divider",
                   "& .MuiDataGrid-row:nth-of-type(odd)": {
                     backgroundColor: isDark ? "#333" : "grey.100",
                   },
@@ -421,6 +432,7 @@ export default function AdminTimeLog() {
                     backgroundColor: isDark ? "#444" : "grey.200",
                   },
                 }}
+                density="comfortable"
               />
               {shootoutStats.length === 0 && (
                 <Typography

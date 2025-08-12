@@ -102,7 +102,7 @@ const DriverSelector = ({
           size="small"
           sx={{
             backgroundColor: isDark ? "#555" : "#888",
-            color: "#fff",
+            color: (t) => t.palette.common.white,
           }}
         />
       )}
