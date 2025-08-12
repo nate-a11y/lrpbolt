@@ -12,6 +12,7 @@ export const NAV_ITEMS = [
   { to: "/vehicle-calendar",label: "Ride & Vehicle Calendar", icon: "Event" },
   { to: "/scan",            label: "Ticket Scanner",        icon: "QrCodeScanner" },
   { to: "/tickets",         label: "Tickets",               icon: "ConfirmationNumber" },
+  { to: "/settings",        label: "Settings",              icon: "Settings" },
   { to: "/admin-time-log",  label: "Admin Logs",            icon: "TableChart", admin: true },
   { to: "/admin-user-manager", label: "User Manager",       icon: "ManageAccounts", admin: true },
   { to: "/admin/notifications", label: "Notifications", icon: "Notifications", admin: true },

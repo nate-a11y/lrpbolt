@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
 const cfg = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,6 +24,7 @@ function assertConfig(config) {
 assertConfig(cfg);
 
 export const app = getApps().length ? getApp() : initializeApp(cfg);
+export const db = getFirestore(app);
 
 // TEMP: expose for runtime sanity checks (safe)
 if (typeof window !== "undefined") {

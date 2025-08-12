@@ -3,7 +3,7 @@ import { getMessaging, isSupported, getToken, onMessage, deleteToken } from "fir
 
 import { app } from "./firebaseInit";
 
-const VAPID = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+const VAPID = import.meta.env.VITE_FCM_VAPID_KEY;
 
 async function registerRootSW() {
   const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
