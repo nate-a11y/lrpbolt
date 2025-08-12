@@ -186,6 +186,12 @@ jobs:
             echo "MANUAL_DROP_TOKEN not set; continuing."
           fi
 
+      - name: Deploy Firestore Rules
+        run: npx firebase-tools deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+
       - name: Install & Deploy Cloud Functions (v2)
         working-directory: functions
         env:
@@ -195,5 +201,5 @@ jobs:
         run: |
           set -euo pipefail
           npm ci
-          npx --yes firebase-tools deploy --only functions --project "$FIREBASE_PROJECT_ID" --force
+          npx --yes firebase-tools deploy --only functions --project "$FIREBASE_PROJECT_ID" --force --non-interactive
           npx --yes firebase-tools functions:artifacts:setpolicy --location us-central1 --days 14 || true
