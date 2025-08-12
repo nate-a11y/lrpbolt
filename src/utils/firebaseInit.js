@@ -1,21 +1,32 @@
-// src/firebaseInit.js
-import { auth, db } from "./firebase";
-import { setPersistence, browserLocalPersistence, onAuthStateChanged, connectAuthEmulator } from "firebase/auth";
-import { connectFirestoreEmulator, initializeFirestore } from "firebase/firestore";
+// src/utils/firebaseInit.js
+import { auth, db } from "../firebase";
+import {
+  setPersistence,
+  browserLocalPersistence,
+  onAuthStateChanged,
+  connectAuthEmulator,
+} from "firebase/auth";
+import { connectFirestoreEmulator } from "firebase/firestore";
 
-// Set persistence
-setPersistence(auth, browserLocalPersistence).catch(console.error);
+// Sessions
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error("[firebaseInit] setPersistence failed:", err?.message || err);
+});
 
-// Ignore undefined properties
-initializeFirestore(auth.app, { ignoreUndefinedProperties: true });
-
-// Local dev emulator connection
+// Emulators (dev only)
 if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true") {
-  connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-  connectFirestoreEmulator(db, "localhost", 8080);
+  try {
+    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "localhost", 8080);
+    console.info("[firebaseInit] Connected to Firebase emulators.");
+  } catch (err) {
+    console.error("[firebaseInit] Emulator connect failed:", err?.message || err);
+  }
 }
 
-// Debug auth
-onAuthStateChanged(auth, (u) => {
-  console.log("[AUTH]", Boolean(u), u?.email || null);
-});
+// Optional debug in dev
+if (import.meta.env.DEV) {
+  onAuthStateChanged(auth, (u) => {
+    console.log("[AUTH]", Boolean(u), u?.email || null);
+  });
+}
