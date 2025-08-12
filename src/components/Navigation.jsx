@@ -157,6 +157,12 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
 
   const items = useMemo(() => ALL_NAV_ITEMS.filter((it) => !it.admin || isAdmin), [isAdmin]);
 
+  // Determine label of currently active route
+  const activeLabel = useMemo(
+    () => items.find((it) => location.pathname.startsWith(it.path))?.label,
+    [items, location.pathname],
+  );
+
   const activeSXExpanded = useMemo(() => makeActiveExpandedSX(theme), [theme]);
   const activeSXCollapsed = useMemo(() => makeActiveCollapsedSX(theme), [theme]);
 
@@ -446,7 +452,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between", gap: 2 }}>
-          <Box display="flex" alignItems="center" gap={1.5} minWidth={0}>
+          <Box display="flex" alignItems="center" gap={1.5} minWidth={0} flexGrow={1}>
             {isMobile ? (
               <Tooltip title="Menu">
                 <IconButton edge="start" onClick={openMobile} size="large" aria-label="Open menu">
@@ -483,7 +489,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
               noWrap
               sx={{ lineHeight: 1.1 }}
             >
-              Lake Ride Pros: Driver Portal
+              {isMobile ? activeLabel || "LRP Driver Portal" : "Lake Ride Pros: Driver Portal"}
             </Typography>
           </Box>
 
