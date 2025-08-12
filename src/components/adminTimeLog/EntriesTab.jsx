@@ -11,12 +11,11 @@ import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 // helper guards
 const tsToDate = (v) => {
-  // supports Firestore Timestamp, ISO string, number(ms), Date, or null
   try {
     if (!v) return null;
     if (v.toDate) return v.toDate();
-    if (v.seconds && v.nanoseconds !== undefined) return new Date(v.seconds * 1000);
-    if (typeof v === "string" || typeof v === "number" || v instanceof Date) return new Date(v);
+    if (v.seconds != null) return new Date(v.seconds * 1000);
+    if (typeof v === "number" || typeof v === "string" || v instanceof Date) return new Date(v);
   } catch (_) {}
   return null;
 };
@@ -30,7 +29,7 @@ const diffMins = (start, end) => {
   const s = tsToDate(start);
   const e = tsToDate(end);
   if (!s || !e) return "";
-  const mins = Math.max(0, Math.round((e.getTime() - s.getTime()) / 60000));
+  const mins = Math.max(0, Math.round((e - s) / 60000));
   return `${mins}m`;
 };
 
@@ -127,29 +126,12 @@ export default function EntriesTab() {
       { field: "driver", headerName: "Driver", flex: 1, minWidth: 160 },
       { field: "rideId", headerName: "Ride ID", width: 120 },
       { field: "mode", headerName: "Mode", width: 110 },
-      {
-        field: "startTime",
-        headerName: "Start",
-        minWidth: 180,
-        valueGetter: (params) => params?.row ? params.row.startTime ?? null : null,
-        renderCell: (p) => fmt(p.value),
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        minWidth: 180,
-        valueGetter: (params) => params?.row ? params.row.endTime ?? null : null,
-        renderCell: (p) => fmt(p.value),
-      },
-      {
-        field: "duration",
-        headerName: "Duration",
-        minWidth: 120,
-        valueGetter: (params) => {
-          const r = params?.row || {};
-          return diffMins(r.startTime, r.endTime);
-        },
-      },
+      { field: "startTime", headerName: "Start", minWidth: 180,
+        valueGetter: (p) => p?.row?.startTime ?? null, renderCell: (p) => fmt(p.value) },
+      { field: "endTime", headerName: "End", minWidth: 180,
+        valueGetter: (p) => p?.row?.endTime ?? null, renderCell: (p) => fmt(p.value) },
+      { field: "duration", headerName: "Duration", minWidth: 120,
+        valueGetter: (p) => diffMins(p?.row?.startTime, p?.row?.endTime) },
       {
         field: "status",
         headerName: "Status",

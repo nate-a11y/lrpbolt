@@ -1,13 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
-/* Firebase app bootstrap (single init, modular SDK) */
 import { initializeApp, getApps } from "firebase/app";
 import { getAnalytics, isSupported as analyticsSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getMessaging, isSupported as messagingSupported } from "firebase/messaging";
 
-/** IMPORTANT: hardcoded on purpose per request (move to env later). */
-const firebaseConfig = {
+/** HARD-CODED PER REQUEST (move to env later). */
+export const firebaseConfig = {
   apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
   authDomain: "lrp---claim-portal.firebaseapp.com",
   projectId: "lrp---claim-portal",
@@ -17,28 +16,12 @@ const firebaseConfig = {
   measurementId: "G-9NM69MZN6B",
 };
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+export const app = getApps()[0] || initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-const auth = getAuth(app);
-const db = getFirestore(app);
+export let analytics;
+(async () => { try { if (await analyticsSupported()) analytics = getAnalytics(app); } catch { /* ignore */ } })();
 
-/** Lazy, safe feature gates (no throw on unsupported). */
-let analytics;
-(async () => {
-  try {
-    if (await analyticsSupported()) analytics = getAnalytics(app);
-  } catch {
-    /* no-op */
-  }
-})();
-
-let messaging;
-(async () => {
-  try {
-    if (await messagingSupported()) messaging = getMessaging(app);
-  } catch {
-    /* no-op */
-  }
-})();
-
-export { app, auth, db, messaging, analytics, firebaseConfig };
+export let messaging;
+(async () => { try { if (await messagingSupported()) messaging = getMessaging(app); } catch { /* ignore */ } })();

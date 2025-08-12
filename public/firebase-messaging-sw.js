@@ -5,7 +5,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-messaging-compat.js");
 
-/** MUST match web app config (hardcoded by request). */
+/** MUST match app config exactly (hardcoded by request). */
 firebase.initializeApp({
   apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
   authDomain: "lrp---claim-portal.firebaseapp.com",
@@ -18,19 +18,16 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-/* Optional: show a basic notification when app is backgrounded */
-messaging.onBackgroundMessage(payload => {
-  const { title = "Lake Ride Pros", body = "", icon } = (payload?.notification || {});
+messaging.onBackgroundMessage((payload) => {
+  const { title = "Lake Ride Pros", body = "", icon = "/icons/icon-192.png" } = payload?.notification || {};
   self.registration.showNotification(title, { body, icon });
 });
 
-/* Make SW updates immediate to avoid stale chunks (workbox) */
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
-    // clean old caches aggressively
     const keys = await caches.keys();
-    await Promise.all(keys.map(k => caches.delete(k)));
+    await Promise.all(keys.map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });

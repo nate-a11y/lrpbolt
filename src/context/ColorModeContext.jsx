@@ -1,28 +1,22 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { ThemeProvider, CssBaseline, useMediaQuery } from "@mui/material";
-import { getTheme } from "../theme/getTheme";
+import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import { ThemeProvider, CssBaseline } from "@mui/material";
+import { buildTheme } from "../theme";
 
-const ColorModeContext = createContext({ mode: "dark", toggle: () => {}, set: () => {} });
-export const useColorMode = () => useContext(ColorModeContext);
+export const ColorModeContext = createContext({ mode: "dark", toggle: () => {} });
 
-export function ColorModeProvider({ children }) {
-  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
-  const [mode, setMode] = useState(() => {
-    const saved = localStorage.getItem("lrp:themeMode");
-    return saved === "light" || saved === "dark" ? saved : (prefersDark ? "dark" : "light");
-  });
-  useEffect(() => { localStorage.setItem("lrp:themeMode", mode); }, [mode]);
+export default function ColorModeProvider({ children }) {
+  const systemPrefersDark = typeof window !== "undefined" &&
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  const value = useMemo(() => ({
-    mode,
-    toggle: () => setMode((m) => (m === "dark" ? "light" : "dark")),
-    set: (m) => setMode(m === "light" ? "light" : "dark"),
-  }), [mode]);
+  const [mode, setMode] = useState(() => localStorage.getItem("lrp:mode") || (systemPrefersDark ? "dark" : "light"));
 
-  const theme = useMemo(() => getTheme(mode), [mode]);
+  useEffect(() => { localStorage.setItem("lrp:mode", mode); }, [mode]);
+
+  const toggle = useCallback(() => setMode((m) => (m === "light" ? "dark" : "light")), []);
+  const theme = useMemo(() => buildTheme(mode), [mode]);
 
   return (
-    <ColorModeContext.Provider value={value}>
+    <ColorModeContext.Provider value={{ mode, toggle }}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         {children}

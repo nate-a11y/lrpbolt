@@ -9,23 +9,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "robots.txt", "apple-touch-icon.png", "firebase-messaging-sw.js"],
-      workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
-        navigateFallbackDenylist: [/^\/assets\/.*\.map$/],
-      },
+      includeAssets: ["firebase-messaging-sw.js", "icons/icon-192.png", "icons/icon-512.png"],
+      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true },
       manifest: {
         name: "LRP Driver Portal",
         short_name: "LRP",
-        theme_color: "#101418",
-        background_color: "#101418",
-        display: "standalone",
         start_url: "/",
+        display: "standalone",
+        background_color: "#101418",
+        theme_color: "#101418",
         icons: [
-          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" }
+          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
         ]
       }
     })
