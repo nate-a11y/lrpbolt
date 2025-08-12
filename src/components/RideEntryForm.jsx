@@ -139,19 +139,34 @@ function ChipSelect({ label, options, value, onChange, disabled, required=false,
   );
 }
 
-function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, disableTripId=false }) {
+function RideBuilderFields({
+  value,
+  onChange,
+  rideTypeOptions,
+  vehicleOptions,
+  disableTripId = false,
+}) {
   const [touched, setTouched] = React.useState({});
   const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
   const tripIdError = !!value.tripId && !/^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(value.tripId);
 
-  const minutes = Number.isFinite(value.minutes) ? value.minutes : '';
-  const hours = Number.isFinite(value.hours) ? value.hours : '';
+  // coerce numbers but allow "" for controlled inputs
+  const hours = value.hours === "" ? "" : Number(value.hours);
+  const minutes = value.minutes === "" ? "" : Number(value.minutes);
+
+  const shortNumberProps = {
+    ...FIELD_PROPS,
+    type: "number",
+    inputProps: { min: 0, max: 59, inputMode: "numeric", pattern: "[0-9]*" },
+    sx: { maxWidth: 120 }, // <- keep both the same visual width
+  };
 
   return (
     <Grid container spacing={2}>
-      <Grid item xs={12} md={4}>
+      {/* Row 1: Trip ID (full width) */}
+      <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
           label="Trip ID"
@@ -161,11 +176,14 @@ function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, d
           placeholder="e.g., 6K5G-RS"
           disabled={disableTripId}
           error={touched.tripId && (!!tripIdError || !value.tripId)}
-          helperText={touched.tripId && (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")}
+          helperText={
+            touched.tripId && (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
+          }
         />
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      {/* Row 2: Date, Time, Duration (H/M short & same width) */}
+      <Grid item xs={12} sm={4} md={3}>
         <TextField
           {...FIELD_PROPS}
           type="date"
@@ -178,7 +196,7 @@ function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, d
         />
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      <Grid item xs={12} sm={4} md={3}>
         <TextField
           {...FIELD_PROPS}
           type="time"
@@ -192,42 +210,38 @@ function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, d
         />
       </Grid>
 
-      <Grid item xs={6} md={2}>
+      <Grid item xs={6} sm={"auto"}>
         <TextField
-          {...FIELD_PROPS}
-          type="number"
+          {...shortNumberProps}
           label="Duration Hours"
           value={hours}
           onBlur={mark("hours")}
           onChange={(e) => {
-            const v = e.target.value === "" ? "" : Math.max(0, Number(e.target.value));
+            const v = e.target.value === "" ? "" : Math.min(24, Math.max(0, Number(e.target.value)));
             onChange({ ...value, hours: v });
           }}
-          inputProps={{ min: 0 }}
-          error={touched.hours && (hours === "" || hours < 0)}
-          helperText={touched.hours && (hours === "" ? "Required" : hours < 0 ? "Must be ≥ 0" : " ")}
+          helperText={touched.hours && (hours === "" ? "Required" : " ")}
+          error={touched.hours && (hours === "" || hours < 0 || hours > 24)}
         />
       </Grid>
 
-      <Grid item xs={6} md={2}>
+      <Grid item xs={6} sm={"auto"}>
         <TextField
-          {...FIELD_PROPS}
-          type="number"
+          {...shortNumberProps}
           label="Duration Minutes"
           value={minutes}
           onBlur={mark("minutes")}
           onChange={(e) => {
-            let v = e.target.value === "" ? "" : Number(e.target.value);
-            if (v !== "") v = Math.min(59, Math.max(0, v));
+            const v = e.target.value === "" ? "" : Math.min(59, Math.max(0, Number(e.target.value)));
             onChange({ ...value, minutes: v });
           }}
-          inputProps={{ min: 0, max: 59 }}
-          error={touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)}
           helperText={touched.minutes && (minutes === "" ? "Required" : " ")}
+          error={touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)}
         />
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      {/* Row 3: Ride Type (full width) */}
+      <Grid item xs={12}>
         <ChipSelect
           label="Ride Type"
           options={rideTypeOptions}
@@ -238,7 +252,8 @@ function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, d
         />
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      {/* Row 4: Vehicle (full width) */}
+      <Grid item xs={12}>
         <ChipSelect
           label="Vehicle"
           options={vehicleOptions}
@@ -249,6 +264,7 @@ function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, d
         />
       </Grid>
 
+      {/* Row 5: Notes (full width) */}
       <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
@@ -263,6 +279,7 @@ function RideBuilderFields({ value, onChange, rideTypeOptions, vehicleOptions, d
     </Grid>
   );
 }
+
 /* ------------------ /Reusable builder ------------------ */
 
 export default function RideEntryForm() {
