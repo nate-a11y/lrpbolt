@@ -32,9 +32,6 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import LiveRidesGrid from "./LiveRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
-import BrandHeader from "./BrandHeader.jsx";
-import BrandCard from "./BrandCard.jsx";
-import PageContainer from "./PageContainer.jsx";
 import { formatDuration, toTimeString12Hr, setSyncTime } from "../utils/timeUtils";
 import { db } from "../firebase";
 import { logError } from "../utils/logError";
@@ -824,12 +821,25 @@ export default function RideEntryForm() {
   // ---------- Render ----------
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <PageContainer>
-        <BrandHeader title="🚐 Ride Entry" />
-        <BrandCard contentSx={{ p: { xs: 2, sm: 3 } }} sx={{ mb: 4 }}>
+      <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 2, sm: 3 } }}>
+        <Paper
+          elevation={3}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 4,
+            bgcolor: (t) =>
+              t.palette.mode === "dark" ? "background.paper" : "background.default",
+            borderRadius: 3,
+          }}
+        >
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            🚐 Ride Entry
+          </Typography>
+
           <Tabs
             value={rideTab}
             onChange={(e, v) => setRideTab(v)}
+            TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
             sx={{
               mb: 3,
               "& .MuiTab-root": { minWidth: 150, fontWeight: 600 },
@@ -838,7 +848,7 @@ export default function RideEntryForm() {
             <Tab label="SINGLE RIDE" />
             <Tab label="MULTI RIDE UPLOAD" />
           </Tabs>
-        </BrandCard>
+        </Paper>
 
         {/* SINGLE RIDE TAB */}
         {rideTab === 0 && (
@@ -936,7 +946,7 @@ export default function RideEntryForm() {
                 </Typography>
                 <DataGrid
                   autoHeight
-                  density="comfortable"
+                  density="compact"
                   rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
                   columns={expectedCsvCols.map(col => ({
                     field: col,
@@ -944,12 +954,6 @@ export default function RideEntryForm() {
                     flex: 1,
                   }))}
                   pageSizeOptions={[5]}
-                  sx={{
-                    bgcolor: (t) => t.palette.background.paper,
-                    "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
-                    "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
-                    borderColor: "divider",
-                  }}
                 />
                 <Button
                   variant="outlined"
@@ -1017,6 +1021,7 @@ export default function RideEntryForm() {
         <Tabs
           value={dataTab}
           onChange={(e, val) => setDataTab(val)}
+          TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
           sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
         >
           <Tab
@@ -1153,7 +1158,7 @@ export default function RideEntryForm() {
           {formToast.message}
         </Alert>
       </Snackbar>
-    </PageContainer>
+    </Box>
   </LocalizationProvider>
 );
 }

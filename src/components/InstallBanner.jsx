@@ -8,7 +8,6 @@ import {
   Slide,
   useMediaQuery,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 
 const isIosSafari = () => {
@@ -62,9 +61,9 @@ const InstallBanner = () => {
   return (
     <Slide direction="down" in={visible} mountOnEnter unmountOnExit>
       <Box
-        sx={(t) => ({
-          backgroundColor: t.palette.primary.main,
-          color: t.palette.primary.contrastText,
+        sx={{
+          backgroundColor: "#4cbb17",
+          color: "#fff",
           textAlign: "center",
           p: 2,
           zIndex: 2000,
@@ -74,7 +73,7 @@ const InstallBanner = () => {
           px: 3,
           flexWrap: "wrap",
           rowGap: 1,
-        })}
+        }}
       >
         <Typography variant="body1" sx={{ flex: 1, pr: 2 }}>
           {isIos
@@ -86,19 +85,19 @@ const InstallBanner = () => {
             <Button
               onClick={handleInstall}
               variant="contained"
-              sx={(t) => ({
-                backgroundColor: t.palette.background.paper,
-                color: t.palette.primary.main,
+              sx={{
+                backgroundColor: "#fff",
+                color: "#4cbb17",
                 fontWeight: "bold",
-                "&:hover": { backgroundColor: alpha(t.palette.primary.main, 0.1) },
-              })}
+                "&:hover": { backgroundColor: "#eafbe3" },
+              }}
             >
               TAP TO INSTALL
             </Button>
           )}
           <IconButton
             onClick={handleDismiss}
-            sx={(t) => ({ color: t.palette.primary.contrastText })}
+            sx={{ color: "#fff" }}
             aria-label="Dismiss banner"
           >
             <CloseIcon />
