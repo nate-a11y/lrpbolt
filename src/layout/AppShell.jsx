@@ -22,9 +22,9 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
         sx={{
           flex: 1,
           pt: `calc(${APP_BAR_HEIGHT}px + 6px)`,        // nothing hides under blur
-          ml: { xs: 0, sm: `var(--rail-width)` },   // space for rail
-          pr: { xs: 1.5, sm: 2 },                   // keep RIGHT padding
-          pl: { xs: 1.5, sm: 2 },                   // remove LEFT padding
+          ml: { xs: 0, md: `var(--rail-width)` },   // space for rail when permanent
+          pr: { xs: 0, md: 2 },                     // horizontal padding when rail visible
+          pl: { xs: 0, md: 2 },                     // horizontal padding when rail visible
           pb: 3,                                     // keep bottom padding
           backgroundColor: (t) => t.palette.background.default,
           borderLeft: (t) => `1px solid ${t.palette.divider}`, // single hairline (drawer has none)
