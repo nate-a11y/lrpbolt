@@ -31,7 +31,7 @@ service cloud.firestore {
     function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
     function isNumOrNull(v) { return (v is number) || (v == null); }
 
-    // tolerate legacy "ClaimedBy"/"ClaimedAt" while code normalizes
+    // tolerate legacy "ClaimedBy"/"ClaimedAt"
     function claimedByLower(d) {
       return lower((d.claimedBy != null ? d.claimedBy :
             (d.ClaimedBy != null ? d.ClaimedBy : "")));
@@ -93,7 +93,7 @@ service cloud.firestore {
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k => isValid(k, request.resource.data[k]))
+             .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
@@ -110,8 +110,8 @@ service cloud.firestore {
           (k=='vehicle'     && v is string) ||
           (k=='startTime'   && v is timestamp) ||
           (k=='endTime'     && isTsOrNull(v)) ||
-          (k=='trips'       && (v is number)) ||
-          (k=='passengers'  && (v is number)) ||
+          (k=='trips'       && v is number) ||
+          (k=='passengers'  && v is number) ||
           (k=='createdAt'   && v is timestamp);
       }
 
@@ -132,7 +132,7 @@ service cloud.firestore {
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k => isValid(k, request.resource.data[k]))
+             .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
@@ -174,7 +174,7 @@ service cloud.firestore {
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k => isValid(k, request.resource.data[k]))
+             .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
@@ -216,7 +216,7 @@ service cloud.firestore {
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k => isValid(k, request.resource.data[k]))
+             .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
@@ -253,7 +253,7 @@ service cloud.firestore {
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k => isValid(k, request.resource.data[k]))
+             .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
@@ -297,11 +297,11 @@ service cloud.firestore {
         && request.resource.data.scannedReturn is bool
         && request.resource.data.createdAt is timestamp;
 
-      // Partial-safe update (e.g., setting scannedOutbound + scannedOutboundAt/By)
+      // Partial-safe update
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k => isValid(k, request.resource.data[k]))
+             .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
