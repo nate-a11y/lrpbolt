@@ -5,20 +5,31 @@ import { useTheme } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-export default function ToolsCell({ row }) {
+export default function ToolsCell({ row, onEdit, onDelete }) {
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
-
   const size = mdUp ? "medium" : "small";
+
   return (
     <Stack direction="row" spacing={1}>
       <Tooltip title="Edit">
-        <IconButton size={size}>
+        <IconButton
+          size={size}
+          onClick={() => onEdit?.(row)} // call parent handler
+        >
           <EditIcon />
         </IconButton>
       </Tooltip>
       <Tooltip title="Delete">
-        <IconButton size={size} color="error">
+        <IconButton
+          size={size}
+          color="error"
+          onClick={() => {
+            if (window.confirm("Are you sure you want to delete this entry?")) {
+              onDelete?.(row);
+            }
+          }}
+        >
           <DeleteIcon />
         </IconButton>
       </Tooltip>
