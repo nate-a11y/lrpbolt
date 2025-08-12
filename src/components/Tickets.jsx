@@ -39,14 +39,16 @@ import EmailIcon from "@mui/icons-material/Email";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { motion } from "framer-motion";
+import { Timestamp } from "firebase/firestore";
+
 import {
   subscribeTickets,
   deleteTicket as apiDeleteTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
-import { Timestamp } from "firebase/firestore";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
+import { safeGetter } from "../utils/datagridSafe";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -305,7 +307,7 @@ export default function Tickets() {
       headerName: "Link",
       minWidth: 100,
       sortable: false,
-      valueGetter: (params) => params?.row?.ticketId,
+      valueGetter: safeGetter((p) => p?.row?.ticketId),
       renderCell: (params) => (
         <a
           href={`/ticket/${params.value}`}
@@ -491,6 +493,7 @@ export default function Tickets() {
         <DataGrid
           rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
           columns={columns}
+          getRowId={(r) => r.id ?? `${r.ticketId}-${r.date ?? Math.random()}`}
           autoHeight
           checkboxSelection
           pageSizeOptions={[5, 10, 25, 100]}
