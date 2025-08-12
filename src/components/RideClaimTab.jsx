@@ -97,9 +97,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   }, []);
 
   // Requires Firestore index: Firestore Database > Indexes > liveRides.pickupTime ASC
-  const liveRides = useFirestoreListener(COLLECTIONS.LIVE_RIDES, [
-    orderBy("pickupTime", "asc"),
-  ]);
+  const rideQuery = useMemo(() => [orderBy("pickupTime", "asc")], []);
+  const liveRides = useFirestoreListener(COLLECTIONS.LIVE_RIDES, rideQuery);
 
   // ✅ Update rides from shared hook
   useEffect(() => {
