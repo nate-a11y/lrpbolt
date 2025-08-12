@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 
 import { useAuth } from "../context/AuthContext.jsx";
-import { db } from "../utils/firebaseInit";
+import { db } from "../firebase";
 
 export function useRole() {
   const { user, authLoading } = useAuth();

@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -16,15 +16,15 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DataGrid } from "@mui/x-data-grid";
-import { collection, query, orderBy } from "firebase/firestore";
-import { deleteClaimedRide, restoreRide } from "../services/firestoreService";
+import {
+  subscribeClaimedRides,
+  deleteClaimedRide,
+  restoreRide,
+} from "../services/firestoreService";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import BrandHeader from "./BrandHeader.jsx";
-import { db } from "../utils/firebaseInit";
-import useFirestoreSub from "../hooks/useFirestoreSub";
-import { COLLECTIONS } from "../constants";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -38,22 +38,21 @@ const ClaimedRidesGrid = () => {
   const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
 
-  useFirestoreSub(
-    "claimedRides:all",
-    () => {
-      if (authLoading || !user?.email) return null;
-      return query(collection(db, COLLECTIONS.CLAIMED_RIDES), orderBy("pickupTime", "asc"));
-    },
-    (snap) => {
-      setRows(snap.docs.map((d) => ({ id: d.id, ...d.data(), fading: false })));
-      setLoading(false);
-    },
-    () => {
-      showToast("Permissions issue loading claimed rides", "error");
-      setLoading(false);
-    },
-    [authLoading, user?.email]
-  );
+  useEffect(() => {
+    if (authLoading || !user?.email) return;
+    const unsub = subscribeClaimedRides(
+      (data) => {
+        setRows(data.map((r) => ({ ...r, fading: false })));
+        setLoading(false);
+      },
+      undefined,
+      () => {
+        showToast("Permissions issue loading claimed rides", "error");
+        setLoading(false);
+      },
+    );
+    return unsub;
+  }, [authLoading, user?.email]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;

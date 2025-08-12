@@ -36,7 +36,7 @@ import BrandHeader from "./BrandHeader.jsx";
 import BrandCard from "./BrandCard.jsx";
 import PageContainer from "./PageContainer.jsx";
 import { formatDuration, toTimeString12Hr, setSyncTime } from "../utils/timeUtils";
-import { db } from "../utils/firebaseInit";
+import { db } from "../firebase";
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";

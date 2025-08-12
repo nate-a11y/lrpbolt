@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Email, Download, Search, Summary, Scanner Status
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import dayjs from "dayjs";
 import QRCode from "react-qr-code";
@@ -40,14 +40,13 @@ import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { brand } from "../theme";
 import { motion } from "framer-motion";
-import { collection, query, where, orderBy, Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 
 import {
+  subscribeTickets,
   deleteTicket as apiDeleteTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
-import { db } from "../utils/firebaseInit";
-import useFirestoreSub from "../hooks/useFirestoreSub";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { safeGetter } from "../utils/datagridSafe";
@@ -77,34 +76,27 @@ export default function Tickets() {
   const { user, authLoading } = useAuth();
 
   // ✅ Real-time ticket subscription with indexed search
-  useFirestoreSub(
-    `tickets:pass=${searchQuery || ""}|date=${filteredDate}`,
-    () => {
-      if (authLoading || !user?.email) return null;
-      const col = collection(db, "tickets");
-      const clauses = [];
-      if (searchQuery.trim()) clauses.push(where("passenger", "==", searchQuery.trim()));
-      if (filteredDate !== "All Dates") {
-        clauses.push(
-          where(
-            "pickupTime",
-            "==",
-            Timestamp.fromDate(dayjs(filteredDate, "MM-DD-YYYY").toDate()),
-          ),
-        );
-      }
-      clauses.push(orderBy("pickupTime", "asc"));
-      return query(col, ...clauses);
-    },
-    (snap) => setTickets(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    () =>
-      setSnackbar({
-        open: true,
-        message: "Permissions issue loading tickets",
-        severity: "error",
-      }),
-    [authLoading, user?.email, searchQuery, filteredDate]
-  );
+  useEffect(() => {
+    if (authLoading || !user?.email) return;
+    const filters = {};
+    if (searchQuery.trim()) filters.passenger = searchQuery.trim();
+    if (filteredDate !== "All Dates") {
+      filters.pickupTime = Timestamp.fromDate(
+        dayjs(filteredDate, "MM-DD-YYYY").toDate(),
+      );
+    }
+    const unsubscribe = subscribeTickets(
+      (data) => setTickets(data),
+      filters,
+      () =>
+        setSnackbar({
+          open: true,
+          message: "Permissions issue loading tickets",
+          severity: "error",
+        }),
+    );
+    return () => unsubscribe();
+  }, [authLoading, user?.email, searchQuery, filteredDate]);
 
   const filteredTickets = tickets.filter((t) => {
     const matchDate =

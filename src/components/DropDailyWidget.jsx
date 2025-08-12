@@ -24,7 +24,7 @@ import ScienceIcon from "@mui/icons-material/Science";
 import EventIcon from "@mui/icons-material/Event";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "../utils/firebaseInit";
+import { db } from "../firebase";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";

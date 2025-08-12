@@ -1,6 +1,6 @@
 import { Button, Chip, Divider, Stack, Typography } from "@mui/material";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/utils/firebaseInit";
+import { db } from "@/firebase";
 import { useRole } from "@/hooks";
 import { useAuth } from "../context/AuthContext.jsx";
 
