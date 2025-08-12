@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => ({
               cleanupOutdatedCaches: true,
               skipWaiting: true,
               clientsClaim: true,
+              maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
               // only precache core assets; skip huge images
               globPatterns: ["**/*.{html,js,css,ico,svg,webmanifest}"],
               globIgnores: ["**/DropOffPics/**"],
@@ -81,7 +82,7 @@ export default defineConfig(({ mode }) => ({
     outDir: "dist",
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
@@ -92,6 +93,11 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: (assetInfo) => {
           if (assetInfo.name === 'sw.js') return '[name].[ext]';
           return 'assets/[name]-[hash][extname]';
+        },
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          mui: ["@mui/material", "@emotion/react", "@emotion/styled"],
+          dayjs: ["dayjs"],
         },
       },
     },
