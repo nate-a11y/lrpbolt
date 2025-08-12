@@ -113,24 +113,33 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
   useEffect(() => {
     if (!logDocs) return;
-    const rows = logDocs.map((d) => {
-      const st = d.startTime ?? null;
-      const et = d.endTime ?? null;
-      let duration = toNumber(d.duration, 0);
+    const rows = logDocs.map((snap) => {
+      // Support both shapes: DocumentSnapshot[] or plain data[]
+      const data = typeof snap?.data === "function" ? snap.data() : snap || {};
+      const id = snap?.id || data.id || `${data.userEmail || data.driver || "row"}-${data.startTime?.seconds || Math.random()}`;
+
+      // Normalize legacy vs new fields
+      const driverEmail = toString(data.userEmail ?? data.driverEmail ?? data.driver ?? "");
+      const st = data.startTime ?? null;
+      const et = data.endTime ?? null;
+
+      // duration: prefer stored, else compute from timestamps
+      let duration = toNumber(data.duration, 0);
       if (!duration && st && et) {
         const s = tsToDate(st)?.getTime();
         const e = tsToDate(et)?.getTime();
-        duration = s && e ? Math.round((e - s) / 60000) : 0;
+        if (s && e) duration = Math.max(0, Math.round((e - s) / 60000));
       }
+
       return {
-        id: d.id,
-        driverEmail: toString(d.driverEmail),
-        rideId: toString(d.rideId),
-        note: toString(d.note),
+        id,
+        driverEmail,
+        rideId: toString(data.rideId ?? ""),
+        note: toString(data.note ?? ""),
         startTime: st,
         endTime: et,
         duration,
-        loggedAt: d.loggedAt ?? null,
+        loggedAt: data.loggedAt ?? data.createdAt ?? null,
       };
     });
     setRows(rows);
