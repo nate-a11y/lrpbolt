@@ -35,7 +35,7 @@ import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
 import ContactEscalation from "./components/ContactEscalation";
 import { motion } from "framer-motion";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -45,6 +45,7 @@ import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
 import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
+import { initAnalytics, trackPageView } from "./utils/analytics";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
 
@@ -78,6 +79,17 @@ function App() {
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
   const { user, authLoading } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    // one-time init
+    initAnalytics();
+  }, []);
+
+  useEffect(() => {
+    // fire on route change only
+    trackPageView(location.pathname);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!user) return;
