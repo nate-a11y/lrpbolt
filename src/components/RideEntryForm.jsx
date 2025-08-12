@@ -3,36 +3,32 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Box,
-  Button,
-  TextField,
-  Typography,
-  MenuItem,
   Paper,
+  Grid,
+  Stack,
+  Divider,
+  Typography,
+  TextField,
+  MenuItem,
+  Button,
   Snackbar,
   Alert,
   Tabs,
   Tab,
   Dialog,
   DialogTitle,
-  Stack,
   DialogContent,
   CircularProgress,
   Badge,
-  Grid,
   Tooltip,
   useMediaQuery,
-  IconButton,
   Fade,
-  InputAdornment,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
-import ReplayIcon from "@mui/icons-material/Replay"; // ← Add this
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import LiveRidesGrid from "./LiveRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
@@ -62,11 +58,7 @@ import {
   doc,
 } from "firebase/firestore";
 import Papa from "papaparse";
-import {
-  LocalizationProvider,
-  DatePicker,
-  TimePicker,
-} from "@mui/x-date-pickers";
+import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -80,6 +72,145 @@ import { useDropzone } from "react-dropzone";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+// --- Shared UI helpers ---
+const SELECT_MENU_PROPS = {
+  PaperProps: {
+    sx: {
+      minWidth: 360,
+      maxWidth: 560,
+      maxHeight: 420,
+      '& .MuiMenuItem-root': { whiteSpace: 'normal', lineHeight: 1.25, py: 1 },
+    },
+  },
+};
+
+const FIELD_PROPS = {
+  size: 'medium',
+  fullWidth: true,
+  InputLabelProps: { shrink: true },
+};
+
+// --- Reusable builder used by both tabs ---
+function RideBuilderFields({
+  value,
+  onChange,
+  rideTypeOptions,
+  vehicleOptions,
+  disableTripId = false,
+}) {
+  const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
+
+  return (
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          label="Trip ID"
+          value={value.tripId || ''}
+          onChange={set('tripId')}
+          placeholder="e.g., 6k5g-rs"
+          disabled={disableTripId}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          type="date"
+          label="Date"
+          value={value.date || ''}
+          onChange={set('date')}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          type="time"
+          label="Pickup Time"
+          value={value.pickupTime || ''}
+          onChange={set('pickupTime')}
+          inputProps={{ step: 300 }}
+        />
+      </Grid>
+
+      <Grid item xs={6} md={3}>
+        <TextField
+          {...FIELD_PROPS}
+          type="number"
+          label="Duration Hours"
+          value={value.hours ?? ''}
+          onChange={(e) =>
+            onChange({ ...value, hours: e.target.value === '' ? '' : Number(e.target.value) })
+          }
+          inputProps={{ min: 0 }}
+        />
+      </Grid>
+
+      <Grid item xs={6} md={3}>
+        <TextField
+          {...FIELD_PROPS}
+          type="number"
+          label="Duration Minutes"
+          value={value.minutes ?? ''}
+          onChange={(e) =>
+            onChange({ ...value, minutes: e.target.value === '' ? '' : Number(e.target.value) })
+          }
+          inputProps={{ min: 0, max: 59 }}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          select
+          label="Ride Type"
+          value={value.rideType || ''}
+          onChange={set('rideType')}
+          SelectProps={{ MenuProps: SELECT_MENU_PROPS }}
+          placeholder="Select ride type"
+        >
+          {rideTypeOptions.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          select
+          label="Vehicle"
+          value={value.vehicle || ''}
+          onChange={set('vehicle')}
+          SelectProps={{ MenuProps: SELECT_MENU_PROPS }}
+          placeholder="Select vehicle"
+        >
+          {vehicleOptions.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          {...FIELD_PROPS}
+          multiline
+          minRows={3}
+          label="Ride Notes"
+          value={value.notes || ''}
+          onChange={set('notes')}
+          placeholder="Optional notes"
+        />
+      </Grid>
+    </Grid>
+  );
+}
 
 const defaultValues = {
   TripID: "",
@@ -122,17 +253,12 @@ export default function RideEntryForm() {
 
   // UX state for validation (Single tab)
   const errorFields = useRef({});
-  const [touched, setTouched] = useState({});
-  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // CSV builder / bulk (Multi tab)
   const [csvBuilder, setCsvBuilder] = useState(defaultValues);
-  const [builderErrors, setBuilderErrors] = useState({});
-  const [builderTouched, setBuilderTouched] = useState({});
-  const [builderSubmitAttempted, setBuilderSubmitAttempted] = useState(false);
 
   const [uploadedRows, setUploadedRows] = useState([]);
-  const [multiInput, setMultiInput] = useState("");
+  const [csvText, setCsvText] = useState("");
   const [fileError, setFileError] = useState("");
 
   // UI state
@@ -141,7 +267,6 @@ export default function RideEntryForm() {
   const [dataTab, setDataTab] = useState(() => Number(localStorage.getItem("dataTab") || 0));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [shakeKey, setShakeKey] = useState(0);
 
   const isMobile = useMediaQuery("(max-width:600px)");
   const { user, authLoading } = useAuth();
@@ -247,16 +372,6 @@ export default function RideEntryForm() {
   }, []);
 
   // DO NOT mutate errorFields during render
-  const isFormValid = useMemo(
-    () => validateFields(formData, null, true),
-    [formData, validateFields]
-  );
-
-  const showErr = useCallback(
-    (field) => !!errorFields.current[field] && (touched[field] || submitAttempted),
-    [touched, submitAttempted]
-  );
-
   // ---------- Derived preview ----------
   const preview = useMemo(() => {
     const rideDuration = formatDuration(
@@ -293,40 +408,6 @@ export default function RideEntryForm() {
   }, [counts]);
 
   // ---------- Handlers ----------
-  const handleChange = useCallback(
-    (e, stateSetter = setFormData, errorSetter) => {
-      const { name, value } = e.target;
-      let updatedValue = value;
-
-      if (name === "TripID") {
-        const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-        updatedValue =
-          cleaned.length > 4
-            ? `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}`
-            : cleaned;
-      }
-
-      stateSetter((prev) => {
-        const next = { ...prev, [name]: updatedValue };
-        validateFields(next, errorSetter); // live-validate but don't paint until touched/submit
-        return next;
-      });
-    },
-    [validateFields]
-  );
-
-  const handleSingleChange = (e) => handleChange(e, setFormData);
-  const handleBlur = useCallback((e) => {
-    const { name } = e.target;
-    setTouched((t) => ({ ...t, [name]: true }));
-  }, []);
-
-  // Builder touched (Multi tab)
-  const handleBuilderBlur = useCallback((e) => {
-    const { name } = e.target;
-    setBuilderTouched((t) => ({ ...t, [name]: true }));
-  }, []);
-
   const toRideDoc = useCallback(
     (row) => {
       const clean = {
@@ -471,9 +552,7 @@ export default function RideEntryForm() {
   };
 
   const handleSubmit = useCallback(async () => {
-    setSubmitAttempted(true);
     if (!validateFields(formData)) {
-      setShakeKey((k) => k + 1);
       setFormToast({
         open: true,
         message: "⚠️ Please correct required fields",
@@ -495,8 +574,6 @@ export default function RideEntryForm() {
         severity: "success",
       });
       setFormData(defaultValues);
-      setTouched({});
-      setSubmitAttempted(false);
       setConfirmOpen(false);
       await fetchRides();
     } catch (err) {
@@ -539,8 +616,7 @@ export default function RideEntryForm() {
   }, [uploadedRows, processRideRows, fetchRides]);
 
   const handleCsvAppend = useCallback(() => {
-    setBuilderSubmitAttempted(true);
-    if (!validateFields(csvBuilder, setBuilderErrors)) {
+    if (!validateFields(csvBuilder)) {
       setFormToast({
         open: true,
         message: "⚠️ Please correct CSV builder fields",
@@ -550,9 +626,6 @@ export default function RideEntryForm() {
     }
     setUploadedRows((prev) => [...prev, csvBuilder]);
     setCsvBuilder(defaultValues);
-    setBuilderErrors({});
-    setBuilderTouched({});
-    setBuilderSubmitAttempted(false);
   }, [csvBuilder, validateFields]);
 
   const handleDownloadTemplate = () => {
@@ -581,13 +654,13 @@ export default function RideEntryForm() {
   };
 
   const handleMultiSubmit = useCallback(async () => {
-    if (!uploadedRows.length && !multiInput.trim()) {
+    if (!uploadedRows.length && !csvText.trim()) {
       setFormToast({ open: true, message: "⚠️ No rides to submit", severity: "warning" });
       return;
     }
     const ridesToSubmit = [...uploadedRows];
-    if (multiInput.trim()) {
-      const parsed = Papa.parse(multiInput.trim(), { header: true, skipEmptyLines: true });
+    if (csvText.trim()) {
+      const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
       const missing = expectedCsvCols.filter((c) => !parsed.meta.fields?.includes(c));
       if (missing.length) {
         setFormToast({
@@ -612,7 +685,7 @@ export default function RideEntryForm() {
         severity: "success",
       });
       setUploadedRows([]);
-      setMultiInput("");
+      setCsvText("");
       await fetchRides();
     } catch (err) {
       logError(err, "RideEntryForm:bulkSubmit");
@@ -624,335 +697,248 @@ export default function RideEntryForm() {
     } finally {
       setSubmitting(false);
     }
-  }, [uploadedRows, multiInput, processRideRows, fetchRides]);
+  }, [uploadedRows, csvText, processRideRows, fetchRides]);
+
+  const rideTypeOptions = useMemo(
+    () => RIDE_TYPES.map((t) => ({ value: t, label: t })),
+    []
+  );
+  const vehicleOptions = useMemo(
+    () => VEHICLES.map((v) => ({ value: v, label: v })),
+    []
+  );
+
+  const singleRide = useMemo(
+    () => ({
+      tripId: formData.TripID,
+      date: formData.Date,
+      pickupTime: formData.PickupTime,
+      hours: formData.DurationHours === "" ? "" : Number(formData.DurationHours),
+      minutes:
+        formData.DurationMinutes === "" ? "" : Number(formData.DurationMinutes),
+      rideType: formData.RideType,
+      vehicle: formData.Vehicle,
+      notes: formData.RideNotes,
+    }),
+    [formData]
+  );
+
+  const setSingleRide = (val) =>
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        TripID: val.tripId,
+        Date: val.date,
+        PickupTime: val.pickupTime,
+        DurationHours: val.hours === "" ? "" : String(val.hours),
+        DurationMinutes: val.minutes === "" ? "" : String(val.minutes),
+        RideType: val.rideType,
+        Vehicle: val.vehicle,
+        RideNotes: val.notes,
+      };
+      validateFields(next);
+      return next;
+    });
+
+  const onResetSingle = () => setFormData(defaultValues);
+  const onSubmitSingle = () => setConfirmOpen(true);
+  const singleSubmitting = submitting;
+
+  const builder = useMemo(
+    () => ({
+      tripId: csvBuilder.TripID,
+      date: csvBuilder.Date,
+      pickupTime: csvBuilder.PickupTime,
+      hours: csvBuilder.DurationHours === "" ? "" : Number(csvBuilder.DurationHours),
+      minutes:
+        csvBuilder.DurationMinutes === "" ? "" : Number(csvBuilder.DurationMinutes),
+      rideType: csvBuilder.RideType,
+      vehicle: csvBuilder.Vehicle,
+      notes: csvBuilder.RideNotes,
+    }),
+    [csvBuilder]
+  );
+
+  const setBuilder = (val) =>
+    setCsvBuilder((prev) => {
+      const next = {
+        ...prev,
+        TripID: val.tripId,
+        Date: val.date,
+        PickupTime: val.pickupTime,
+        DurationHours: val.hours === "" ? "" : String(val.hours),
+        DurationMinutes: val.minutes === "" ? "" : String(val.minutes),
+        RideType: val.rideType,
+        Vehicle: val.vehicle,
+        RideNotes: val.notes,
+      };
+      validateFields(next);
+      return next;
+    });
+
+  const onAddToList = handleCsvAppend;
+  const onSubmitAll = handleMultiSubmit;
+  const submitDisabled = submitting;
+
+  const dropZone = (
+    <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid item xs={12} md={4}>
+        <Button
+          variant="outlined"
+          fullWidth
+          startIcon={<DownloadIcon />}
+          onClick={handleDownloadTemplate}
+        >
+          Download Template
+        </Button>
+      </Grid>
+      <Grid item xs={12} md={8}>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            borderStyle: "dashed",
+            textAlign: "center",
+            cursor: "pointer",
+          }}
+          {...getRootProps()}
+        >
+          <input {...getInputProps()} />
+          <CloudUploadIcon fontSize="large" />
+          <Typography variant="body2" mt={1}>
+            Drag & drop CSV here or click to select
+          </Typography>
+          {fileError && (
+            <Typography color="error" variant="caption">
+              {fileError}
+            </Typography>
+          )}
+        </Paper>
+      </Grid>
+    </Grid>
+  );
 
   // ---------- Render ----------
-return (
-  <LocalizationProvider dateAdapter={AdapterDayjs}>
-    <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 2, sm: 3 } }}>
-      <Paper
-        elevation={3}
-        sx={{
-          p: { xs: 2, sm: 3 },
-          mb: 4,
-          bgcolor: (t) =>
-            t.palette.mode === "dark" ? "background.paper" : "background.default",
-          borderRadius: 3,
-        }}
-      >
-        <Typography variant="h6" fontWeight={700} gutterBottom>
-          🚐 Ride Entry
-        </Typography>
-
-        <Tabs
-          value={rideTab}
-          onChange={(e, v) => setRideTab(v)}
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 2, sm: 3 } }}>
+        <Paper
+          elevation={3}
           sx={{
-            mb: 3,
-            "& .MuiTab-root": { minWidth: 150, fontWeight: 600 },
+            p: { xs: 2, sm: 3 },
+            mb: 4,
+            bgcolor: (t) =>
+              t.palette.mode === "dark" ? "background.paper" : "background.default",
+            borderRadius: 3,
           }}
         >
-          <Tab label="SINGLE RIDE" />
-          <Tab label="MULTI RIDE UPLOAD" />
-        </Tabs>
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            🚐 Ride Entry
+          </Typography>
+
+          <Tabs
+            value={rideTab}
+            onChange={(e, v) => setRideTab(v)}
+            TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
+            sx={{
+              mb: 3,
+              "& .MuiTab-root": { minWidth: 150, fontWeight: 600 },
+            }}
+          >
+            <Tab label="SINGLE RIDE" />
+            <Tab label="MULTI RIDE UPLOAD" />
+          </Tabs>
+        </Paper>
 
         {/* SINGLE RIDE TAB */}
         {rideTab === 0 && (
-          <Box sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={3}>
-                <TextField
-                  label="Trip ID **"
-                  name="TripID"
-                  value={formData.TripID}
-                  onChange={handleSingleChange}
-                  onBlur={handleBlur}
-                  error={showErr("TripID")}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <DatePicker
-                  label="Date **"
-                  value={formData.Date ? dayjs(formData.Date) : null}
-                  onChange={(val) =>
-                    setFormData((fd) => ({
-                      ...fd,
-                      Date: val ? dayjs(val).format("YYYY-MM-DD") : "",
-                    }))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      name="Date"
-                      onBlur={handleBlur}
-                      error={showErr("Date")}
-                      fullWidth
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TimePicker
-                  label="Pickup Time **"
-                  value={
-                    formData.PickupTime
-                      ? dayjs(formData.PickupTime, "HH:mm")
-                      : null
-                  }
-                  onChange={(val) =>
-                    setFormData((fd) => ({
-                      ...fd,
-                      PickupTime: val ? dayjs(val).format("HH:mm") : "",
-                    }))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      name="PickupTime"
-                      onBlur={handleBlur}
-                      error={showErr("PickupTime")}
-                      fullWidth
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={6} md={2}>
-                <TextField
-                  label="Hours **"
-                  name="DurationHours"
-                  type="number"
-                  value={formData.DurationHours}
-                  onChange={handleSingleChange}
-                  onBlur={handleBlur}
-                  error={showErr("DurationHours")}
-                  inputProps={{ min: 0, max: 24, inputMode: "numeric", pattern: "[0-9]*" }}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={6} md={2}>
-                <TextField
-                  label="Minutes **"
-                  name="DurationMinutes"
-                  type="number"
-                  value={formData.DurationMinutes}
-                  onChange={handleSingleChange}
-                  onBlur={handleBlur}
-                  error={showErr("DurationMinutes")}
-                  inputProps={{ min: 0, max: 59, inputMode: "numeric", pattern: "[0-9]*" }}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="Reset duration"
-                          onClick={() =>
-                            setFormData(fd => ({ ...fd, DurationHours: "", DurationMinutes: "" }))
-                          }
-                          edge="end"
-                          size="small"
-                        >
-                          <ReplayIcon fontSize="small" />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  label="Ride Type"
-                  name="RideType"
-                  select
-                  fullWidth
-                  value={formData.RideType ?? ""}
-                  onChange={handleSingleChange}
-                  onBlur={handleBlur}
-                  error={showErr("RideType")}
-                >
-                  {RIDE_TYPES.map((t) => (
-                    <MenuItem key={t} value={t}>
-                      {t}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  label="Vehicle"
-                  name="Vehicle"
-                  select
-                  fullWidth
-                  value={formData.Vehicle ?? ""}
-                  onChange={handleSingleChange}
-                  onBlur={handleBlur}
-                  error={showErr("Vehicle")}
-                >
-                  {VEHICLES.map((v) => (
-                    <MenuItem key={v} value={v}>
-                      {v}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12} md={9}>
-                <TextField
-                  label="Ride Notes"
-                  name="RideNotes"
-                  value={formData.RideNotes}
-                  onChange={handleSingleChange}
-                  fullWidth
-                  multiline
-                  rows={2}
-                />
-              </Grid>
-              <Grid item xs={12} md={3} container spacing={1} justifyContent="flex-end">
-                <Grid item>
-                  <Button
-                    onClick={() => setFormData(defaultValues)}
-                    variant="outlined"
-                    color="secondary"
-                  >
-                    RESET
-                  </Button>
-                </Grid>
-                <Grid item>
-                  <Button
-                    onClick={() => setConfirmOpen(true)}
-                    variant="contained"
-                    disabled={submitting || !isFormValid}
-                  >
-                    {submitting ? <CircularProgress size={20} /> : "SUBMIT"}
-                  </Button>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Box>
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 3 }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              SINGLE RIDE
+            </Typography>
+
+            <RideBuilderFields
+              value={singleRide}
+              onChange={setSingleRide}
+              rideTypeOptions={rideTypeOptions}
+              vehicleOptions={vehicleOptions}
+            />
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }} alignItems={{ xs: 'stretch', sm: 'center' }}>
+              <Button variant="outlined" onClick={onResetSingle} sx={{ minHeight: 48 }}>
+                Reset
+              </Button>
+              <Box sx={{ flexGrow: 1 }} />
+              <Button
+                variant="contained"
+                color="success"
+                onClick={onSubmitSingle}
+                sx={{ minHeight: 48 }}
+                disabled={singleSubmitting}
+                startIcon={<RocketLaunchIcon />}
+              >
+                Submit
+              </Button>
+            </Stack>
+          </Paper>
         )}
 
         {/* MULTI RIDE UPLOAD TAB */}
         {rideTab === 1 && (
-          <Box sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<DownloadIcon />}
-                  onClick={handleDownloadTemplate}
-                >
-                  Download Template
+          <>
+            <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 3 }}>
+              <Typography variant="h6" fontWeight={700} gutterBottom>
+                MULTI RIDE UPLOAD
+              </Typography>
+
+              {/* CSV tools on top */}
+              <TextField
+                {...FIELD_PROPS}
+                multiline
+                minRows={6}
+                maxRows={16}
+                label="Paste CSV Rides"
+                placeholder="tripId, yyyy-mm-dd, hh:mm, hours, minutes, rideType, vehicle, notes"
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                sx={{ mb: 3, '& textarea': { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }}
+                helperText="Tip: paste multiple lines; we’ll validate before submit."
+              />
+
+              {/* Optional: drop zone lives here if you have one */}
+              {dropZone}
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                Or Use Ride Builder
+              </Typography>
+
+              <RideBuilderFields
+                value={builder}
+                onChange={setBuilder}
+                rideTypeOptions={rideTypeOptions}
+                vehicleOptions={vehicleOptions}
+              />
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                <Button variant="outlined" onClick={onAddToList} startIcon={<AddIcon />} sx={{ minHeight: 48 }}>
+                  Add to List
                 </Button>
-              </Grid>
-              <Grid item xs={12} md={8}>
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderStyle: "dashed",
-                    textAlign: "center",
-                    cursor: "pointer",
-                  }}
-                  {...getRootProps()}
+                <Box sx={{ flexGrow: 1 }} />
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={onSubmitAll}
+                  startIcon={<RocketLaunchIcon />}
+                  sx={{ minHeight: 48 }}
+                  disabled={submitDisabled}
                 >
-                  <input {...getInputProps()} />
-                  <CloudUploadIcon fontSize="large" />
-                  <Typography variant="body2" mt={1}>
-                    Drag & drop CSV here or click to select
-                  </Typography>
-                  {fileError && (
-                    <Typography color="error" variant="caption">
-                      {fileError}
-                    </Typography>
-                  )}
-                </Paper>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Paste CSV Rides"
-                  multiline
-                  minRows={4}
-                  maxRows={10}
-                  value={multiInput}
-                  onChange={(e) => setMultiInput(e.target.value)}
-                  fullWidth
-                />
-              </Grid>
-              {/* CSV Builder fields */}
-              <Grid item xs={12} md={6}>
-                <Grid container spacing={2}>
-                  {expectedCsvCols
-                    .filter(f => f !== "RideNotes") // RideNotes last
-                    .map(field => (
-                      <Grid item xs={12} sm={6} key={field}>
-                        {field === "RideType" || field === "Vehicle" ? (
-                          <TextField
-                            label={field.replace(/([A-Z])/g, " $1")}
-                            name={field}
-                            select
-                            value={csvBuilder[field] ?? ""}
-                            onChange={e => setCsvBuilder(b => ({ ...b, [field]: e.target.value }))}
-                            onBlur={handleBuilderBlur}
-                            error={!!builderErrors[field] && (builderTouched[field] || builderSubmitAttempted)}
-                            fullWidth
-                          >
-                            {(field === "RideType" ? RIDE_TYPES : VEHICLES).map(opt => (
-                              <MenuItem key={opt} value={opt}>
-                                {opt}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        ) : (
-                          <TextField
-                            label={field.replace(/([A-Z])/g, " $1")}
-                            name={field}
-                            value={csvBuilder[field]}
-                            onChange={e => setCsvBuilder(b => ({ ...b, [field]: e.target.value }))}
-                            onBlur={handleBuilderBlur}
-                            error={!!builderErrors[field] && (builderTouched[field] || builderSubmitAttempted)}
-                            fullWidth
-                          />
-                        )}
-                      </Grid>
-                    ))}
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Ride Notes"
-                      name="RideNotes"
-                      value={csvBuilder.RideNotes}
-                      onChange={e => setCsvBuilder(b => ({ ...b, RideNotes: e.target.value }))}
-                      multiline
-                      rows={2}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12} container spacing={1} justifyContent="flex-end">
-                    <Grid item>
-                      <Button
-                        onClick={handleCsvAppend}
-                        variant="contained"
-                        color="success"
-                        startIcon={<AddIcon />}
-                      >
-                        Add to List
-                      </Button>
-                    </Grid>
-                    <Grid item>
-                      <Button
-                        onClick={handleMultiSubmit}
-                        variant="contained"
-                        color="success"
-                        startIcon={<RocketLaunchIcon />}
-                        disabled={submitting}
-                      >
-                        Submit All Rides
-                      </Button>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-            </Grid>
-            {/* Preview Table */}
+                  Submit All Rides
+                </Button>
+              </Stack>
+            </Paper>
+
             {uploadedRows.length > 0 && (
               <Box mt={4}>
                 <Typography variant="subtitle1" fontWeight={600} mb={1}>
@@ -987,9 +973,8 @@ return (
                 </Button>
               </Box>
             )}
-          </Box>
+          </>
         )}
-      </Paper>
 
       <Box sx={{ mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
