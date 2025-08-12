@@ -425,7 +425,7 @@ function App() {
                     borderWidth: 2,
                     "&:hover": {
                       backgroundColor: "error.main",
-                      color: (t) => t.palette.error.contrastText,
+                      color: "#fff",
                     },
                   }}
                   onClick={handleClearCache}

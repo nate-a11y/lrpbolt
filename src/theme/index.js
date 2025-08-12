@@ -4,7 +4,7 @@ import { alpha } from "@mui/material/styles";
 
 export const STORAGE_KEY = "lrp:color-mode";
 export const brand = {
-  green500: "#4cbb17", // primary
+  green500: "#4cbb17",
   green400: "#60e421",
   green700: "#3a8e11",
   black: "#060606",
@@ -16,9 +16,7 @@ export function getInitialMode() {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s === "dark" || s === "light") return s;
-  } catch {
-    /* ignore */
-  }
+  } catch (e) { void e; }
   return "dark";
 }
 
@@ -40,15 +38,6 @@ const buildPalette = (mode) => {
     divider: alpha("#e8eaed", 0.12),
     brand,
   };
-  if (mode === "light") {
-    // Our “light” still uses dark canvas as brand choice
-    return {
-      mode,
-      ...common,
-      text: { primary: "#e8eaed", secondary: "#b0b7c3", disabled: alpha("#e8eaed", 0.38) },
-      background: { default: brand.black, paper: "#121416" },
-    };
-  }
   return {
     mode,
     ...common,
@@ -66,9 +55,7 @@ export const getDesignTokens = (mode) => ({
         "html, body, #root": { height: "100%" },
         body: { backgroundColor: brand.black, color: "#e8eaed" },
         a: { color: brand.green400 },
-        "*:focus-visible": {
-          outline: "none",
-        },
+        "*:focus-visible": { outline: "none" },
       },
     },
     MuiPaper: {
@@ -113,17 +100,16 @@ export const getDesignTokens = (mode) => ({
         }),
       },
     },
-    MuiTooltip: {
-      styleOverrides: {
-        tooltip: { backgroundColor: "#1a1d20", border: `1px solid ${alpha("#e8eaed", 0.12)}` },
-      },
-    },
+    MuiTooltip: { styleOverrides: { tooltip: { backgroundColor: "#1a1d20", border: `1px solid ${alpha("#e8eaed", 0.12)}` } } },
     MuiOutlinedInput: {
       styleOverrides: {
         root: ({ theme }) => ({
           "& fieldset": { borderColor: alpha("#e8eaed", 0.22) },
           "&:hover fieldset": { borderColor: alpha("#e8eaed", 0.35) },
-          "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main, boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.18)}` },
+          "&.Mui-focused fieldset": {
+            borderColor: theme.palette.primary.main,
+            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.18)}`,
+          },
         }),
       },
     },
