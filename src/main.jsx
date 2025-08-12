@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
+import { ThemeProvider, CssBaseline } from "@mui/material";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import HomeIcon from "@mui/icons-material/Home";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
@@ -10,6 +11,7 @@ import "./utils/firebaseInit.js"; // runs before AuthProvider / subscriptions
 import "./index.css";
 import "./sw-updater.js";
 
+import theme from "./theme";
 import LayoutShell from "./layout/LayoutShell.jsx";
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
@@ -39,31 +41,34 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter basename={import.meta.env.BASE_URL}>
-    <ErrorBoundary>
-      <React.StrictMode>
-        <AuthProvider>
-          <DriverProvider>
-            <Suspense fallback={<LoadingScreen />}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                {/* Firebase Auth iframe route placeholder */}
-                <Route path="/__/auth/iframe" element={<div />} />
-                <Route
-                  path="/*"
-                  element={
-                    <PrivateRoute>
-                      <AppWithShell />
-                    </PrivateRoute>
-                  }
-                />
-              </Routes>
-            </Suspense>
-          </DriverProvider>
-        </AuthProvider>
-      </React.StrictMode>
-    </ErrorBoundary>
-  </BrowserRouter>,
+  <React.StrictMode>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <ErrorBoundary>
+          <AuthProvider>
+            <DriverProvider>
+              <Suspense fallback={<LoadingScreen />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  {/* Firebase Auth iframe route placeholder */}
+                  <Route path="/__/auth/iframe" element={<div />} />
+                  <Route
+                    path="/*"
+                    element={
+                      <PrivateRoute>
+                        <AppWithShell />
+                      </PrivateRoute>
+                    }
+                  />
+                </Routes>
+              </Suspense>
+            </DriverProvider>
+          </AuthProvider>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </ThemeProvider>
+  </React.StrictMode>,
 );
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
