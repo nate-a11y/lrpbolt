@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { getFunctions, httpsCallable } from "firebase/functions";
 
-import { app } from "src/utils/firebaseInit";
+import { app } from "./firebaseInit";
 
 const fn = httpsCallable(getFunctions(app), "sendPortalNotification");
 

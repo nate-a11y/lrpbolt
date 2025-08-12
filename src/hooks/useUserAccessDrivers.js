@@ -2,7 +2,8 @@
 // src/hooks/useUserAccessDrivers.js
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where, limit } from "firebase/firestore";
-import { db } from "src/utils/firebaseInit";
+
+import { db } from "../utils/firebaseInit";
 
 /**
  * Live drivers list from Firestore userAccess.
@@ -51,7 +52,8 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
     );
 
     return () => unsub();
-  }, [roles.join("|")]);
+    // NOTE: roles must be in deps to satisfy eslint
+  }, [roles]);
 
   const drivers = useMemo(() => {
     const map = new Map();

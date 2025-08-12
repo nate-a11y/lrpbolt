@@ -2,7 +2,7 @@
 import { getMessaging, getToken, isSupported, deleteToken } from "firebase/messaging";
 import { doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
-import { app, db } from "src/utils/firebaseInit";
+import { app, db } from "./firebaseInit";
 import { logError as _logError } from "./logError";
 
 const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY;
