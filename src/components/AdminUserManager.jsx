@@ -21,9 +21,13 @@ export default function AdminUserManager() {
   const { driver } = useDriver();
   const role = driver?.access || "user";
   const isAdmin = role === "admin";
+
   const { user, authLoading } = useAuth();
+
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -33,21 +37,37 @@ export default function AdminUserManager() {
   // 🔄 Subscribe to Firestore
   useEffect(() => {
     if (authLoading || !user?.email) return;
+
     const unsubscribe = subscribeUserAccess(
-      setRows,
+      (list = []) => {
+        // Ensure every row has a stable id for DataGrid
+        const mapped = list.map((r) => ({
+          id: r.id || r.email, // prefer doc id; fallback to email
+          email: (r.email || r.id || "").toLowerCase(),
+          name: r.name || "",
+          access: (r.access || "").toLowerCase(),
+        }));
+        setRows(mapped);
+        setLoading(false);
+      },
       {
         activeOnly: true,
         roles: ["admin", "driver"],
         max: 100,
       },
-      () =>
+      () => {
         setSnackbar({
           open: true,
           message: "Permissions issue loading users",
           severity: "error",
-        }),
+        });
+        setLoading(false);
+      }
     );
-    return () => unsubscribe();
+
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
   }, [authLoading, user?.email]);
 
   // ➕ Add Users
@@ -94,19 +114,19 @@ export default function AdminUserManager() {
     }
 
     const errors = [];
-    for (const user of validUsers) {
+    for (const u of validUsers) {
       try {
-        await createUser(user);
+        await createUser(u);
       } catch (err) {
         logError(err, "AdminUserManager:createUser");
-        errors.push(`${user.email}: ${err?.message || JSON.stringify(err)}`);
+        errors.push(`${u.email}: ${err?.message || JSON.stringify(err)}`);
       }
     }
     setInput("");
     setSnackbar({
       open: true,
-      message: errors.length > 0 ? errors.join(" • ") : "✅ Users processed",
-      severity: errors.length > 0 ? "warning" : "success",
+      message: errors.length ? errors.join(" • ") : "✅ Users processed",
+      severity: errors.length ? "warning" : "success",
     });
   };
 
@@ -134,7 +154,7 @@ export default function AdminUserManager() {
         message: err?.message || "Update failed",
         severity: "error",
       });
-      return oldRow; // revert
+      return oldRow; // revert on error
     }
   };
 
@@ -171,6 +191,7 @@ export default function AdminUserManager() {
             Admin access required to modify users
           </Typography>
         )}
+
         <TextField
           label="Users CSV"
           placeholder="Name,email,access"
@@ -179,25 +200,26 @@ export default function AdminUserManager() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
-        <Button
-          variant="contained"
-          onClick={handleAddUsers}
-          disabled={!isAdmin}
-        >
+        <Button variant="contained" onClick={handleAddUsers} disabled={!isAdmin}>
           Add Users
         </Button>
+
         <div style={{ width: "100%" }}>
           <DataGrid
             rows={rows}
             columns={columns}
             autoHeight
+            loading={loading}
             disableRowSelectionOnClick
             processRowUpdate={handleProcessRowUpdate}
             isCellEditable={(params) => isAdmin && params.field !== "email"}
             pageSizeOptions={[5, 10, 25]}
+            getRowId={(r) => r.id || r.email} // safety net
+            experimentalFeatures={{ newEditingApi: true }}
           />
         </div>
       </Stack>
+
       <Snackbar
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         open={snackbar.open}
