@@ -2,6 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ============================================================
+    // WIDE-OPEN OVERRIDE (Public read/write; no auth required)
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // ============================================================
+    // Schema helpers & collection rules (kept for future lockdown)
+    // NOTE: These are effectively bypassed by the wide-open rule above.
+    //       Keep them here so you can re-enable fine-grained control later.
+    // ============================================================
+
     // ---------- Auth & helpers ----------
     function authed() { return request.auth != null; }
 
@@ -327,7 +340,7 @@ service cloud.firestore {
       allow delete: if authed();
     }
 
-    // ---------- default deny ----------
+    // ---------- default deny (kept for reference; overridden by wide-open) ----------
     match /{document=**} {
       allow read, write: if false;
     }
