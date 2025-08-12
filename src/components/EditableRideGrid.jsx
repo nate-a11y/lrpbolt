@@ -302,18 +302,13 @@ const EditableRideGrid = ({
           components={{ Toolbar: CustomToolbar }}
           getRowClassName={(params) => (params.row.fading ? "fade-out" : "")}
           sx={{
-            bgcolor: (t) => t.palette.background.paper,
-            "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
-            "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
-            borderColor: "divider",
             "& .MuiDataGrid-columnHeaders": {
               position: "sticky",
               top: 0,
               zIndex: 1,
-              bgcolor: (t) => t.palette.background.paper,
+              bgcolor: "background.paper",
             },
           }}
-          density="comfortable"
         />
       </Box>
 

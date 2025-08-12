@@ -195,13 +195,6 @@ export default function AdminUserManager() {
             processRowUpdate={handleProcessRowUpdate}
             isCellEditable={(params) => isAdmin && params.field !== "email"}
             pageSizeOptions={[5, 10, 25]}
-            density="comfortable"
-            sx={{
-              bgcolor: (t) => t.palette.background.paper,
-              "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
-              "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
-              borderColor: "divider",
-            }}
           />
         </div>
       </Stack>

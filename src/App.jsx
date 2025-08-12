@@ -28,6 +28,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
 import Navigation from "./components/Navigation";
+import useDarkMode from "./hooks/useDarkMode";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
@@ -78,6 +79,7 @@ const isInLockoutWindow = () => {
 };
 
 function App() {
+  const [darkMode, setDarkMode] = useDarkMode();
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
   const { user, authLoading } = useAuth();
@@ -239,6 +241,8 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <InstallBanner />
         <Navigation
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
           onChangeDriver={openChangeDriver}
           onSignOut={openSignOutConfirm}
         />
@@ -425,7 +429,7 @@ function App() {
                     borderWidth: 2,
                     "&:hover": {
                       backgroundColor: "error.main",
-                      color: (t) => t.palette.error.contrastText,
+                      color: "#fff",
                     },
                   }}
                   onClick={handleClearCache}

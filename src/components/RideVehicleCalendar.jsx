@@ -273,7 +273,7 @@ export default function RideVehicleCalendar() {
                   sx={{
                     backgroundColor:
                       option === "ALL" ? undefined : getVehicleColor(option),
-                    color: option === "ALL" ? undefined : (t) => t.palette.common.white,
+                    color: option === "ALL" ? undefined : "#fff",
                     fontWeight: 500,
                     "&:hover": {
                       backgroundColor:
@@ -355,7 +355,7 @@ export default function RideVehicleCalendar() {
                   sx={{
                     mt: 0.5,
                     backgroundColor: getVehicleColor(event.vehicle),
-                    color: (t) => t.palette.common.white,
+                    color: "#fff",
                     fontWeight: 500,
                     fontSize: "0.75rem",
                   }}

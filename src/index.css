@@ -19,14 +19,22 @@ body {
 }
 
 :root {
-  --bg: #060606;
-  --text: #e8eaed;
-  --card-selected-bg: #183c18;
+  --bg: #ffffff;
+  --text: #111111;
+  --card-selected-bg: #102c10;
   --card-selected-text: #ffffff;
   --card-selected-border: #4cbb17;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;
+}
+
+body.dark {
+  --bg: #121212;
+  --text: #e0e0e0;
+  --card-selected-bg: #183c18;
+  --card-selected-text: #ffffff;
+  --card-selected-border: #4cbb17;
 }
 
 /* Base Ride Card */

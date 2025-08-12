@@ -38,7 +38,6 @@ import DownloadIcon from "@mui/icons-material/Download";
 import EmailIcon from "@mui/icons-material/Email";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import { brand } from "../theme";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
@@ -124,7 +123,7 @@ export default function Tickets() {
     if (!previewRef.current || !previewTicket) return;
     try {
       const dataUrl = await toPng(previewRef.current, {
-        backgroundColor: brand.white,
+        backgroundColor: "#fff",
       });
       const link = document.createElement("a");
       link.download = `${previewTicket.ticketId}.png`;
@@ -183,13 +182,13 @@ export default function Tickets() {
       const root = ReactDOM.createRoot(container);
       root.render(
         <Box
-          sx={(t) => ({
+          sx={{
             p: 2,
             width: 360,
-            backgroundColor: t.palette.background.paper,
+            backgroundColor: "#fff",
             borderRadius: 2,
-            color: t.palette.text.primary,
-          })}
+            color: "#000",
+          }}
         >
           <Box display="flex" justifyContent="center" mb={2}>
             <img
@@ -263,7 +262,7 @@ export default function Tickets() {
     if (!previewRef.current || !previewTicket || !emailAddress) return;
     try {
       const dataUrl = await toPng(previewRef.current, {
-        backgroundColor: brand.white,
+        backgroundColor: "#fff",
       });
       const base64 = dataUrl.split(",")[1];
       const data = await apiEmailTicket(
@@ -498,15 +497,11 @@ export default function Tickets() {
           autoHeight
           checkboxSelection
           pageSizeOptions={[5, 10, 25, 100]}
-          density="comfortable"
+          density="compact"
           disableRowSelectionOnClick
           onRowSelectionModelChange={(model) => setRowSelectionModel(model)}
           rowSelectionModel={rowSelectionModel}
           sx={{
-            bgcolor: (t) => t.palette.background.paper,
-            "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
-            "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
-            borderColor: "divider",
             "& .MuiDataGrid-row:nth-of-type(odd)": {
               backgroundColor: "rgba(255,255,255,0.04)",
             },
@@ -591,12 +586,12 @@ export default function Tickets() {
             <>
               <Box
                 ref={previewRef}
-                sx={(t) => ({
+                sx={{
                   p: 2,
-                  backgroundColor: t.palette.background.paper,
+                  backgroundColor: "#fff",
                   borderRadius: 2,
-                  color: t.palette.text.primary,
-                })}
+                  color: "#000",
+                }}
               >
                 <Box display="flex" justifyContent="center" mb={2}>
                   <img
@@ -646,12 +641,10 @@ export default function Tickets() {
                 </Typography>
                 <Box mt={2} display="flex" justifyContent="center">
                   <Box
-                    sx={(t) => ({
-                      p: 1.5,
-                      bgcolor: t.palette.background.paper,
-                      borderRadius: 2,
-                      boxShadow: `0 0 10px ${t.palette.primary.main}`,
-                    })}
+                    p={1.5}
+                    bgcolor="#fff"
+                    borderRadius={2}
+                    boxShadow="0 0 10px lime"
                   >
                     <QRCode
                       value={`https://lakeridepros.xyz/ticket/${previewTicket.ticketId}`}

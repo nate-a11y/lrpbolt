@@ -223,9 +223,11 @@ function RideGroup({
                     ? theme.palette.mode === "dark"
                       ? "#324d28"
                       : "#e8f5e9"
-                    : theme.palette.background.paper,
-                  border: isSelected ? `2px solid ${theme.palette.primary.main}` : "1px solid",
-                  borderColor: isSelected ? theme.palette.primary.main : theme.palette.divider,
+                    : theme.palette.mode === "dark"
+                      ? "#2a2a2a"
+                      : "#ffffff",
+                  border: isSelected ? "2px solid #4cbb17" : "1px solid",
+                  borderColor: isSelected ? "#4cbb17" : theme.palette.divider,
                   transition: "background 0.3s ease, transform 0.3s ease",
                   "&:hover": {
                     transform: "translateY(-2px)",
@@ -241,7 +243,7 @@ function RideGroup({
                       sx={{
                         backgroundColor:
                           theme.palette.mode === "dark" ? "#6a1b9a" : "#ba68c8",
-                        color: theme.palette.common.white,
+                        color: "#fff",
                         fontWeight: "bold",
                         mb: 1,
                       }}
