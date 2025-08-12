@@ -265,15 +265,7 @@ function App() {
           >
             <Toolbar />
             <Suspense fallback={<CircularProgress />}>
-              <ErrorBoundary
-                fallbackRender={({ error }) => (
-                  <Typography color="error" sx={{ mt: 4 }}>
-                    🚨 Something went wrong:{" "}
-                    {error?.message || JSON.stringify(error)}
-                  </Typography>
-                )}
-              >
-                <Routes>
+              <Routes>
                   <Route path="/" element={<Navigate to="/rides" replace />} />
                   <Route
                     path="/rides"
@@ -342,7 +334,6 @@ function App() {
                     }
                   />
                 </Routes>
-              </ErrorBoundary>
             </Suspense>
 
             <Dialog open={signOutConfirmOpen} onClose={closeSignOutConfirm}>
