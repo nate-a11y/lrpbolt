@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
+import "./firebaseInit"; // runs before AuthProvider / subscriptions
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import PrivateRoute from "./components/PrivateRoute.jsx";
