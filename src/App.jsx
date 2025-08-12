@@ -26,8 +26,9 @@ import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import FcmToaster from "./components/FcmToaster.jsx";
+import NotificationsOptInDialog from "./components/NotificationsOptInDialog.jsx";
 import { getUserAccess } from "./hooks/api";
-import { setupMessaging } from "@/utils/initMessaging";
+import { ensureFcmToken } from "./utils/fcm";
 import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
@@ -53,6 +54,7 @@ const AdminTimeLog = lazy(() => import("./components/AdminTimeLog"));
 const AdminUserManager = lazy(() => import("./components/AdminUserManager"));
 const RideEntryForm = lazy(() => import("./components/RideEntryForm"));
 const NotificationsCenter = lazy(() => import("./pages/Admin/NotificationsCenter.jsx"));
+const ProfilePage = lazy(() => import("./pages/Profile/Settings.jsx"));
 const RideVehicleCalendar = lazy(
   () => import("./components/RideVehicleCalendar"),
 );
@@ -79,13 +81,9 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    let mounted = true;
-    setupMessaging()
-      .then((t) => mounted && console.log("[LRP] Push ready:", !!t))
-      .catch((e) => console.warn("[LRP] Messaging disabled:", e?.message || e));
-    return () => {
-      mounted = false;
-    };
+    ensureFcmToken(user).catch((e) =>
+      console.warn("[LRP] ensureFcmToken:", e?.message || e)
+    );
   }, [user]);
   const { toast, showToast, closeToast } = useToast("success");
   const handleRefresh = useCallback(() => window.location.reload(), []);
@@ -234,6 +232,7 @@ function App() {
                     path="/vehicle-calendar"
                     element={<RideVehicleCalendar />}
                   />
+                  <Route path="/settings" element={<ProfilePage />} />
                   <Route
                     path="/admin-time-log"
                     element={
@@ -307,7 +306,7 @@ function App() {
               onRetry={retryConnection}
               onClose={dismissOffline}
             />
-
+            <NotificationsOptInDialog user={user} />
             <FcmToaster />
 
             <motion.div

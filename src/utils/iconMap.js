@@ -15,6 +15,7 @@ import TableChart from "@mui/icons-material/TableChart";
 import ManageAccounts from "@mui/icons-material/ManageAccounts";
 import AddCircle from "@mui/icons-material/AddCircle";
 import LocalActivity from "@mui/icons-material/LocalActivity"; // Generate Ticket
+import Settings from "@mui/icons-material/Settings";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 
@@ -34,6 +35,7 @@ export const iconMap = {
   ManageAccounts,
   AddCircle,
   LocalActivity,
+  Settings,
   ExitToApp,
   ChevronRight,
 };
