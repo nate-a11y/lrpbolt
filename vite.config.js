@@ -8,13 +8,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
       injectRegister: "auto",
+      registerType: "prompt",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/__\/firebase/],
       },
       devOptions: { enabled: false },
