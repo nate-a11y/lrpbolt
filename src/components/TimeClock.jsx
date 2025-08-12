@@ -401,7 +401,13 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           pageSizeOptions={[5]}
           initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
           disableRowSelectionOnClick
-          density="compact"
+          density="comfortable"
+          sx={{
+            bgcolor: (t) => t.palette.background.paper,
+            "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
+            "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
+            borderColor: "divider",
+          }}
         />
         {rows.length === 0 && (
           <Typography textAlign="center" color="text.secondary" mt={2}>
