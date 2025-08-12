@@ -62,36 +62,60 @@ service cloud.firestore {
       allow create, update, delete: if false;  // writes occur via Admin SDK in functions
     }
 
-    // ---------- timeLogs ----------
-    // App writes: { driverEmail, driver, rideId, startTime, endTime?, duration, loggedAt }
-    match /timeLogs/{id} {
-      allow read: if authed();
-      allow create, update: if authed()
-        && request.resource.data.driverEmail is string
-        && request.resource.data.driver is string
-        && request.resource.data.rideId is string
-        && request.resource.data.startTime is timestamp
-        && isTsOrNull(request.resource.data.endTime)
-        && request.resource.data.duration is number
-        && request.resource.data.loggedAt is timestamp;
-      allow delete: if authed();
-    }
+// ---------- timeLogs ----------
+match /timeLogs/{id} {
+  allow read: if authed();
 
-    // ---------- shootoutStats ----------
-    // App writes: { driverEmail, vehicle, startTime, endTime?, trips, passengers, createdAt }
-    match /shootoutStats/{id} {
-      allow read: if authed();
-      allow create, update: if authed()
-        && request.resource.data.driverEmail is string
-        && request.resource.data.vehicle is string
-        && request.resource.data.startTime is timestamp
-        && isTsOrNull(request.resource.data.endTime)
-        && isNumOrNull(request.resource.data.trips)
-        && isNumOrNull(request.resource.data.passengers)
-        && request.resource.data.createdAt is timestamp;
-      allow delete: if authed();
-    }
+  // Create: minimal "start" fields only
+  allow create: if authed()
+    && request.resource.data.driverEmail is string
+    && request.resource.data.driver is string
+    && request.resource.data.rideId is string
+    && request.resource.data.startTime is timestamp
+    && request.resource.data.loggedAt is timestamp
+    // explicitly allow end fields to be absent at create
+    && !( "endTime" in request.resource.data ) 
+    && !( "duration" in request.resource.data );
 
+  // Update: require full schema when stopping
+  allow update: if authed()
+    && request.resource.data.driverEmail is string
+    && request.resource.data.driver is string
+    && request.resource.data.rideId is string
+    && request.resource.data.startTime is timestamp
+    && isTsOrNull(request.resource.data.endTime)
+    && request.resource.data.duration is number
+    && request.resource.data.loggedAt is timestamp;
+
+  allow delete: if authed();
+}
+
+// ---------- shootoutStats ----------
+match /shootoutStats/{id} {
+  allow read: if authed();
+
+  // Create: minimal "start" snapshot
+  allow create: if authed()
+    && request.resource.data.driverEmail is string
+    && request.resource.data.vehicle is string
+    && request.resource.data.startTime is timestamp
+    && request.resource.data.createdAt is timestamp
+    && isNumOrNull(request.resource.data.trips)      // can start at 0 or be absent
+    && isNumOrNull(request.resource.data.passengers) // can start at 0 or be absent
+    && isTsOrNull(request.resource.data.endTime);
+
+  // Update: keep full schema; you may enforce numbers from now on
+  allow update: if authed()
+    && request.resource.data.driverEmail is string
+    && request.resource.data.vehicle is string
+    && request.resource.data.startTime is timestamp
+    && isTsOrNull(request.resource.data.endTime)
+    && isNumOrNull(request.resource.data.trips)
+    && isNumOrNull(request.resource.data.passengers)
+    && request.resource.data.createdAt is timestamp;
+
+  allow delete: if authed();
+}
     // ---------- adminLogs ----------
     // Admins only (keep locked)
     match /adminLogs/{id} {
