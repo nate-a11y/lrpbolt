@@ -45,7 +45,7 @@ const Stat = ({ label, value, tip }) => (
 export default function DropDailyWidget() {
   const { driver } = useDriver();
   const isAdmin = (driver?.access || "").toLowerCase() === "admin";
-  const { authLoading } = useAuth();
+  const { user, authLoading } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [last, setLast] = useState(null);
@@ -59,7 +59,7 @@ export default function DropDailyWidget() {
   });
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !user) return;
     const ref = doc(db, "AdminMeta", "lastDropDaily");
     const unsub = onSnapshot(
       ref,
@@ -73,7 +73,7 @@ export default function DropDailyWidget() {
       },
     );
     return () => unsub();
-  }, [authLoading]);
+  }, [authLoading, user]);
 
   const ranAtString = useMemo(() => {
     const ts = last?.ranAt;

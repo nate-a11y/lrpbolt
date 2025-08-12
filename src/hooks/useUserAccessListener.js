@@ -3,6 +3,7 @@ import { collection, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { COLLECTIONS } from "../constants";
+import { useAuth } from "../context/AuthContext.jsx";
 
 function getKey({ activeOnly, roles, max }) {
   return JSON.stringify({ activeOnly, roles, max });
@@ -17,8 +18,10 @@ export default function useUserAccessListener(
   { activeOnly = false, roles = ["admin", "driver"], max = 100 } = {},
 ) {
   const [data, setData] = useState([]);
+  const { user, authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading || !user) return;
     const key = getKey({ activeOnly, roles, max });
     const constraints = [orderBy("name", "asc"), limit(max)];
     if (activeOnly) constraints.push(where("active", "==", true));
@@ -29,7 +32,7 @@ export default function useUserAccessListener(
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setData(list);
     });
-  }, [activeOnly, roles, max]);
+  }, [authLoading, user, activeOnly, roles, max]);
 
   return data;
 }

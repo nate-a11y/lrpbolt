@@ -33,6 +33,16 @@ service cloud.firestore {
     function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
     function isNumOrNull(v) { return (v is number) || (v == null); }
 
+    function hasOnly(keys, allowed) {
+      // returns true if all keys are within the allowed set
+      return keys.hasOnly(allowed);
+    }
+
+    function validPartial(newData, validators) {
+      return newData.keys().hasOnly(validators.keys()) &&
+        newData.keys().map(k => validators[k](newData[k])).hasOnly([true]);
+    }
+
     // tolerate legacy "ClaimedBy"/"ClaimedAt" briefly while code normalizes
     function claimedByLower(d) {
       return lower((d.claimedBy != null ? d.claimedBy :
@@ -64,55 +74,90 @@ service cloud.firestore {
 
 // ---------- timeLogs ----------
 match /timeLogs/{id} {
+  function allowedKeys() {
+    return [
+      'driverEmail','driver','rideId','startTime','endTime','duration','loggedAt'
+    ];
+  }
+
+  function validators() {
+    return {
+      driverEmail: (v) => v is string,
+      driver:      (v) => v is string,
+      rideId:      (v) => v is string,
+      startTime:   (v) => v is timestamp,
+      endTime:     (v) => isTsOrNull(v),
+      duration:    (v) => v is number,
+      loggedAt:    (v) => v is timestamp,
+    };
+  }
+
   allow read: if authed();
 
   // Create: minimal "start" fields only
   allow create: if authed()
+    && hasOnly(request.resource.data.keys(), allowedKeys())
+    && validPartial(request.resource.data, validators())
     && request.resource.data.driverEmail is string
     && request.resource.data.driver is string
     && request.resource.data.rideId is string
     && request.resource.data.startTime is timestamp
     && request.resource.data.loggedAt is timestamp
     // explicitly allow end fields to be absent at create
-    && !( "endTime" in request.resource.data ) 
-    && !( "duration" in request.resource.data );
+    && !("endTime" in request.resource.data)
+    && !("duration" in request.resource.data);
 
-  // Update: require full schema when stopping
+  // Partial update
   allow update: if authed()
-    && request.resource.data.driverEmail is string
-    && request.resource.data.driver is string
-    && request.resource.data.rideId is string
-    && request.resource.data.startTime is timestamp
-    && isTsOrNull(request.resource.data.endTime)
-    && request.resource.data.duration is number
-    && request.resource.data.loggedAt is timestamp;
+    && hasOnly(request.resource.data.diff(resource.data).changedKeys(), allowedKeys())
+    && validPartial(
+      request.resource.data.diff(resource.data).affectedKeys()
+        .reduce((m, k) => m.put(k, request.resource.data[k]), {}),
+      validators()
+    );
 
   allow delete: if authed();
 }
 
 // ---------- shootoutStats ----------
 match /shootoutStats/{id} {
+  function allowedKeys() {
+    return [
+      'driverEmail','vehicle','startTime','endTime','trips','passengers','createdAt'
+    ];
+  }
+
+  function validators() {
+    return {
+      driverEmail: (v) => v is string,
+      vehicle:     (v) => v is string,
+      startTime:   (v) => v is timestamp,
+      endTime:     (v) => isTsOrNull(v),
+      trips:       (v) => isNumOrNull(v),
+      passengers:  (v) => isNumOrNull(v),
+      createdAt:   (v) => v is timestamp,
+    };
+  }
+
   allow read: if authed();
 
   // Create: minimal "start" snapshot
   allow create: if authed()
+    && hasOnly(request.resource.data.keys(), allowedKeys())
+    && validPartial(request.resource.data, validators())
     && request.resource.data.driverEmail is string
     && request.resource.data.vehicle is string
     && request.resource.data.startTime is timestamp
-    && request.resource.data.createdAt is timestamp
-    && isNumOrNull(request.resource.data.trips)      // can start at 0 or be absent
-    && isNumOrNull(request.resource.data.passengers) // can start at 0 or be absent
-    && isTsOrNull(request.resource.data.endTime);
-
-  // Update: keep full schema; you may enforce numbers from now on
-  allow update: if authed()
-    && request.resource.data.driverEmail is string
-    && request.resource.data.vehicle is string
-    && request.resource.data.startTime is timestamp
-    && isTsOrNull(request.resource.data.endTime)
-    && isNumOrNull(request.resource.data.trips)
-    && isNumOrNull(request.resource.data.passengers)
     && request.resource.data.createdAt is timestamp;
+
+  // Partial update
+  allow update: if authed()
+    && hasOnly(request.resource.data.diff(resource.data).changedKeys(), allowedKeys())
+    && validPartial(
+      request.resource.data.diff(resource.data).affectedKeys()
+        .reduce((m, k) => m.put(k, request.resource.data[k]), {}),
+      validators()
+    );
 
   allow delete: if authed();
 }
@@ -125,75 +170,185 @@ match /shootoutStats/{id} {
     // ---------- rideQueue ----------
     // Keep schema; open to any authenticated user
     match /rideQueue/{rideId} {
-      function validBase(d) {
-        return d.pickupTime is timestamp &&
-               isNumOrNull(d.rideDuration) &&
-               isStrOrNull(d.rideType) &&
-               isStrOrNull(d.vehicle) &&
-               isStrOrNull(d.rideNotes) &&
-               (isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy)) &&
-               isTsOrNull(claimedAtVal(d));
+      function allowedKeys() {
+        return [
+          'pickupTime','rideDuration','rideType','vehicle','rideNotes',
+          'claimedBy','ClaimedBy','claimedAt','ClaimedAt'
+        ];
       }
+
+      function validators() {
+        return {
+          pickupTime: (v) => v is timestamp,
+          rideDuration: (v) => isNumOrNull(v),
+          rideType: (v) => isStrOrNull(v),
+          vehicle: (v) => isStrOrNull(v),
+          rideNotes: (v) => isStrOrNull(v),
+          claimedBy: (v) => isStrOrNull(v),
+          ClaimedBy: (v) => isStrOrNull(v),
+          claimedAt: (v) => isTsOrNull(v),
+          ClaimedAt: (v) => isTsOrNull(v),
+        };
+      }
+
       allow read: if authed();
-      allow create, update: if authed() && validBase(request.resource.data);
+
+      allow create: if authed()
+        && hasOnly(request.resource.data.keys(), allowedKeys())
+        && validPartial(request.resource.data, validators())
+        && request.resource.data.pickupTime is timestamp;
+
+      // Partial update
+      allow update: if authed()
+        && hasOnly(request.resource.data.diff(resource.data).changedKeys(), allowedKeys())
+        && validPartial(
+          request.resource.data.diff(resource.data).affectedKeys()
+            .reduce((m, k) => m.put(k, request.resource.data[k]), {}),
+          validators()
+        );
+
       allow delete: if authed();
     }
 
     // ---------- claimedRides ----------
     // Keep schema; open to any authenticated user
     match /claimedRides/{rideId} {
-      function validBase(d) {
-        return d.pickupTime is timestamp &&
-               isNumOrNull(d.rideDuration) &&
-               isStrOrNull(d.rideType) &&
-               isStrOrNull(d.vehicle) &&
-               isStrOrNull(d.rideNotes) &&
-               (claimedByLower(d) != "") &&
-               claimedAtVal(d) is timestamp;
+      function allowedKeys() {
+        return [
+          'pickupTime','rideDuration','rideType','vehicle','rideNotes',
+          'claimedBy','ClaimedBy','claimedAt','ClaimedAt'
+        ];
       }
+
+      function validators() {
+        return {
+          pickupTime: (v) => v is timestamp,
+          rideDuration: (v) => isNumOrNull(v),
+          rideType: (v) => isStrOrNull(v),
+          vehicle: (v) => isStrOrNull(v),
+          rideNotes: (v) => isStrOrNull(v),
+          claimedBy: (v) => isStrOrNull(v),
+          ClaimedBy: (v) => isStrOrNull(v),
+          claimedAt: (v) => isTsOrNull(v),
+          ClaimedAt: (v) => isTsOrNull(v),
+        };
+      }
+
       allow read: if authed();
-      allow create, update: if authed() && validBase(request.resource.data);
+
+      allow create: if authed()
+        && hasOnly(request.resource.data.keys(), allowedKeys())
+        && validPartial(request.resource.data, validators())
+        && request.resource.data.pickupTime is timestamp
+        && ((request.resource.data.claimedBy is string) || (request.resource.data.ClaimedBy is string))
+        && ((request.resource.data.claimedAt is timestamp) || (request.resource.data.ClaimedAt is timestamp));
+
+      // Partial update
+      allow update: if authed()
+        && hasOnly(request.resource.data.diff(resource.data).changedKeys(), allowedKeys())
+        && validPartial(
+          request.resource.data.diff(resource.data).affectedKeys()
+            .reduce((m, k) => m.put(k, request.resource.data[k]), {}),
+          validators()
+        );
+
       allow delete: if authed();
     }
 
     // ---------- liveRides ----------
     // Keep schema; open to any authenticated user
     match /liveRides/{rideId} {
-      function validBase(d) {
-        return d.pickupTime is timestamp &&
-               isNumOrNull(d.rideDuration) &&
-               isStrOrNull(d.rideType) &&
-               isStrOrNull(d.vehicle) &&
-               isStrOrNull(d.rideNotes) &&
-               (isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy)) &&
-               isTsOrNull(claimedAtVal(d));
+      function allowedKeys() {
+        return [
+          'pickupTime','rideDuration','rideType','vehicle','rideNotes',
+          'claimedBy','ClaimedBy','claimedAt','ClaimedAt'
+        ];
       }
+
+      function validators() {
+        return {
+          pickupTime: (v) => v is timestamp,
+          rideDuration: (v) => isNumOrNull(v),
+          rideType: (v) => isStrOrNull(v),
+          vehicle: (v) => isStrOrNull(v),
+          rideNotes: (v) => isStrOrNull(v),
+          claimedBy: (v) => isStrOrNull(v),
+          ClaimedBy: (v) => isStrOrNull(v),
+          claimedAt: (v) => isTsOrNull(v),
+          ClaimedAt: (v) => isTsOrNull(v),
+        };
+      }
+
       allow read: if authed();
-      allow create, update: if authed() && validBase(request.resource.data);
+
+      allow create: if authed()
+        && hasOnly(request.resource.data.keys(), allowedKeys())
+        && validPartial(request.resource.data, validators())
+        && request.resource.data.pickupTime is timestamp;
+
+      // Partial update
+      allow update: if authed()
+        && hasOnly(request.resource.data.diff(resource.data).changedKeys(), allowedKeys())
+        && validPartial(
+          request.resource.data.diff(resource.data).affectedKeys()
+            .reduce((m, k) => m.put(k, request.resource.data[k]), {}),
+          validators()
+        );
+
       allow delete: if authed();
     }
 
     // ---------- tickets ----------
     // Keep schema; open to any authenticated user
     match /tickets/{ticketId} {
-      function validBase(d) {
-        return d.pickupTime is timestamp &&
-               d.passengercount is number &&
-               isStrOrNull(d.ticketId) &&
-               isStrOrNull(d.passenger) &&
-               isStrOrNull(d.pickup) &&
-               isStrOrNull(d.dropoff) &&
-               isStrOrNull(d.notes) &&
-               (d.scannedOutbound is bool) &&
-               (d.scannedReturn is bool) &&
-               d.createdAt is timestamp &&
-               isTsOrNull(d.scannedOutboundAt) &&
-               isStrOrNull(d.scannedOutboundBy) &&
-               isTsOrNull(d.scannedReturnAt) &&
-               isStrOrNull(d.scannedReturnBy);
+      function allowedKeys() {
+        return [
+          'pickupTime','passengercount','ticketId','passenger','pickup','dropoff','notes',
+          'scannedOutbound','scannedReturn','createdAt',
+          'scannedOutboundAt','scannedOutboundBy','scannedReturnAt','scannedReturnBy'
+        ];
       }
+
+      function validators() {
+        return {
+          pickupTime:        (v) => v is timestamp,
+          passengercount:    (v) => v is number,
+          ticketId:          (v) => (v is string) || (v == null),
+          passenger:         (v) => (v is string) || (v == null),
+          pickup:            (v) => (v is string) || (v == null),
+          dropoff:           (v) => (v is string) || (v == null),
+          notes:             (v) => (v is string) || (v == null),
+          scannedOutbound:   (v) => v is bool,
+          scannedReturn:     (v) => v is bool,
+          createdAt:         (v) => v is timestamp,
+          scannedOutboundAt: (v) => (v is timestamp) || (v == null),
+          scannedOutboundBy: (v) => (v is string) || (v == null),
+          scannedReturnAt:   (v) => (v is timestamp) || (v == null),
+          scannedReturnBy:   (v) => (v is string) || (v == null),
+        };
+      }
+
       allow read: if authed();
-      allow create, update: if authed() && validBase(request.resource.data);
+
+      // Full doc create
+      allow create: if authed()
+        && hasOnly(request.resource.data.keys(), allowedKeys())
+        && validPartial(request.resource.data, validators())
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.passengercount is number
+        && request.resource.data.scannedOutbound is bool
+        && request.resource.data.scannedReturn is bool
+        && request.resource.data.createdAt is timestamp;
+
+      // Partial update
+      allow update: if authed()
+        && hasOnly(request.resource.data.diff(resource.data).changedKeys(), allowedKeys())
+        && validPartial(
+          request.resource.data.diff(resource.data).affectedKeys()
+            .reduce((m, k) => m.put(k, request.resource.data[k]), {}),
+          validators()
+        );
+
       allow delete: if authed();
     }
 

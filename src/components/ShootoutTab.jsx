@@ -28,10 +28,11 @@ import {
   tsToDate,
 } from "../utils/firestoreService";
 import { logError } from "../utils/logError";
+import { currentUserEmailLower } from "../utils/userEmail";
 
 export default function ShootoutTab() {
   const { user, authLoading } = useAuth();
-  const driverEmail = (user?.email || "").toLowerCase();
+  const driverEmail = currentUserEmailLower(user);
   const isMounted = useRef(true);
 
   const [currentId, setCurrentId] = useState(null);
