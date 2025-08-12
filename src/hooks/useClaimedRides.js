@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { subscribeClaimedRides } from "./api";
 
 export default function useClaimedRides() {

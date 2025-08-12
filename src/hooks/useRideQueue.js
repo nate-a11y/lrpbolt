@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { subscribeRideQueue } from "./api";
+
 import { useAuth } from "../context/AuthContext.jsx";
+
+import { subscribeRideQueue } from "./api";
 
 export default function useRideQueue() {
   const [rides, setRides] = useState([]);

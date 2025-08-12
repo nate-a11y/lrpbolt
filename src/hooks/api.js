@@ -16,13 +16,14 @@ import {
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { subscribeFirestore } from "../utils/listenerRegistry";
-import { logError } from "../utils/logError";
+import { getAuth } from "firebase/auth";
+
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
-import { getAuth } from "firebase/auth";
+import { db } from "../firebase";
 import { ensureTicketShapeOnCreate } from "../services/db";
+import { subscribeFirestore } from "../utils/listenerRegistry";
+import { logError } from "../utils/logError";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
