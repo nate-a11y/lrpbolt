@@ -10,12 +10,14 @@ import {
   FormControlLabel,
   Link,
   IconButton,
+  Divider,
 } from "@mui/material";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useColorMode } from "../context/ColorModeContext.jsx";
 import BrandGradient from "../components/BrandGradient.jsx";
+import LoginPopup from "../components/LoginPopup.jsx";
 
 export default function Login() {
   const { signIn, sendPasswordReset } = useAuth();
@@ -46,6 +48,8 @@ export default function Login() {
             Lake Ride Pros — Sign in
           </Typography>
           <Stack spacing={2}>
+            <LoginPopup />
+            <Divider>or</Divider>
             <TextField label="Email" type="email" fullWidth value={email} onChange={(e) => setEmail(e.target.value)} required />
             <TextField label="Password" type="password" fullWidth value={password} onChange={(e) => setPassword(e.target.value)} required />
             <FormControlLabel control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} />} label="Remember me" />
@@ -61,4 +65,3 @@ export default function Login() {
     </Box>
   );
 }
-

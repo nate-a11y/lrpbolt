@@ -29,10 +29,10 @@ export default function LoginPopup() {
 
   return (
     <Stack spacing={2}>
-      <Button variant="contained" onClick={handlePopup} disabled={loading}>
+      <Button variant="contained" fullWidth onClick={handlePopup} disabled={loading}>
         Sign in with Google (Popup)
       </Button>
-      <Button variant="contained" onClick={handleRedirect} disabled={loading}>
+      <Button variant="contained" fullWidth onClick={handleRedirect} disabled={loading}>
         Sign in with Google (Redirect)
       </Button>
     </Stack>
