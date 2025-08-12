@@ -327,7 +327,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       valueGetter: safeGetter((p) => p?.row?.endTime || null),
       valueFormatter: safeFormatter((p) => {
         const dt = tsToDate(p.value);
-        return dt ? new Date(dt).toLocaleString() : "";
+          return dt ? new Date(dt).toLocaleString() : "—";
       }),
     },
     {
@@ -405,9 +405,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           autoHeight
           rows={rows}
           columns={columns}
-          getRowId={(r) =>
-            r.id ?? `${r.driverEmail}-${r.startTime?.seconds ?? Math.random()}`
-          }
+          getRowId={(r) => r.id}
           pageSizeOptions={[5]}
           initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
           disableRowSelectionOnClick
