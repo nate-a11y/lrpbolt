@@ -8,8 +8,8 @@ import {
   getDocs,
   Timestamp,
 } from "firebase/firestore";
-
 import { db } from "src/utils/firebaseInit";
+
 import { logError } from "../utils/logError";
 
 // Realtime listener for timeLogs collection
@@ -78,18 +78,19 @@ export async function fetchWeeklySummary({ days = 7 } = {}) {
       if (typeof r.duration === "number" && r.duration >= 0) {
         minutes = Math.round(r.duration);
       } else {
-        const s = toDate(r.startTime);
-        const e = toDate(r.endTime);
-        if (s && e) minutes = Math.max(0, Math.round((e - s) / 60000));
+        const start = toDate(r.start);
+        const end = toDate(r.end);
+        if (start && end) minutes = Math.round((end - start) / 60000);
       }
 
-      const prev = byDriver.get(driver) || { driver, totalMinutes: 0, entries: 0 };
-      prev.totalMinutes += minutes;
-      prev.entries += 1;
-      byDriver.set(driver, prev);
+      const prev = byDriver.get(driver) || 0;
+      byDriver.set(driver, prev + minutes);
     }
 
-    return Array.from(byDriver.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
+    return Array.from(byDriver.entries()).map(([driver, minutes]) => ({
+      driver,
+      minutes,
+    }));
   } catch (e) {
     logError(e, { area: "FirestoreFetch", comp: "fetchWeeklySummary" });
     throw e;

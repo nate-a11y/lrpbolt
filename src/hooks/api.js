@@ -17,10 +17,10 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { db } from "src/utils/firebaseInit";
 
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
-import { db } from "src/utils/firebaseInit";
 import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
