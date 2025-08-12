@@ -1,4 +1,5 @@
 // src/components/AdminTimeLog.jsx
+/* Proprietary and confidential. See LICENSE. */
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
@@ -10,10 +11,6 @@ import {
   Tooltip,
   TextField,
   Stack,
-  Menu,
-  MenuItem,
-  Checkbox,
-  FormControlLabel,
   Alert,
   CircularProgress,
   Snackbar,
@@ -34,9 +31,9 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import { durationFormat } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
-import { collection, query, orderBy, Timestamp } from "firebase/firestore";
-import { db } from "@/utils/firebaseInit";
-import { useRole, useFirestoreSub } from "@/hooks";
+import { collection, query, orderBy, Timestamp, onSnapshot } from "firebase/firestore";
+import { db } from "../utils/firebaseInit"; // 🔒 singleton
+import { useRole } from "@/hooks";
 import { useAuth } from "../context/AuthContext.jsx";
 
 dayjs.extend(isoWeek);
@@ -74,6 +71,7 @@ export default function AdminTimeLog() {
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // UI state
   const [tab, setTab] = useState(0);
   const [logs, setLogs] = useState([]);
   const [shootoutStats, setShootoutStats] = useState([]);
@@ -81,158 +79,128 @@ export default function AdminTimeLog() {
   const [search, setSearch] = useState("");
   const [columnVisibility, setColumnVisibility] = useState(() => {
     const saved = localStorage.getItem("logColumnVisibility");
-    return saved
-      ? JSON.parse(saved)
-      : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
+    return saved ? JSON.parse(saved) : baseColumns.reduce((acc, c) => ({ ...acc, [c.field]: true }), {});
   });
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "error",
-  });
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" });
 
+  // Auth & role
   const { role, authLoading: roleLoading } = useRole();
   const isAdmin = role === "admin";
   const { authLoading, user } = useAuth();
-  const logQuery = useMemo(() => {
-    if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
-    return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
-  }, [authLoading, roleLoading, isAdmin, user?.email]);
-  const shootQuery = useMemo(() => {
-    if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
-    return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
-  }, [authLoading, roleLoading, isAdmin, user?.email]);
 
-  const [logsReady, setLogsReady] = useState(false);
-  const [shootReady, setShootReady] = useState(false);
+  // Firestore subscribe: timeLogs
+  const [logDocs, setLogDocs] = useState(null);
   const [logsError, setLogsError] = useState(null);
+  const [logsReady, setLogsReady] = useState(false);
+  useEffect(() => {
+    if (authLoading || roleLoading || !isAdmin || !user?.email) return;
+    const q = query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setLogDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLogsReady(true);
+      },
+      (e) => {
+        setLogsError(e);
+        setLogsReady(true);
+      },
+    );
+    return () => unsub();
+  }, [authLoading, roleLoading, isAdmin, user?.email]);
+
+  // Firestore subscribe: shootoutStats
+  const [shootDocs, setShootDocs] = useState(null);
   const [shootError, setShootError] = useState(null);
-
-  useFirestoreSub(
-    `adminTimeLogs:${user?.email || "anon"}`,
-    () => logQuery,
-    (snap) => {
-      setLogs(
-        snap.docs.map((d, i) => {
-          const entry = { id: d.id, ...d.data() };
-          const start = dayjs(tsToMillis(entry.startTime));
-          const end = dayjs(tsToMillis(entry.endTime));
-          const logged = dayjs(tsToMillis(entry.loggedAt));
-          const duration =
-            start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
-          return {
-            id: i + 1,
-            Driver: entry.driver || "Unknown",
-            RideID: entry.rideID || "N/A",
-            StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
-            EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
-            Duration: duration != null ? durationFormat(duration) : "—",
-            LoggedAt: logged.isValid()
-              ? logged.format("MM/DD/YYYY hh:mm A")
-              : "—",
-            raw: entry,
-            durationMin: duration ?? 0,
-          };
-        })
-      );
-      setLogsReady(true);
-      setLogsError(null);
-    },
-    (e) => {
-      setLogsError(e);
-      setLogsReady(true);
-    },
-    [logQuery]
-  );
-
-  useFirestoreSub(
-    `shootoutStats:admin:${user?.email || "anon"}`,
-    () => shootQuery,
-    (snap) => {
-      setShootoutStats(
-        snap.docs.map((d, i) => {
-          const entry = { id: d.id, ...d.data() };
-          const start = dayjs(tsToMillis(entry.startTime));
-          const end = dayjs(tsToMillis(entry.endTime));
-          const created = dayjs(tsToMillis(entry.createdAt));
-          const elapsed =
-            start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
-          return {
-            id: i + 1,
-            Driver: entry.driver || "Unknown",
-            startTime: start.format("MM/DD/YYYY hh:mm A"),
-            endTime: end.format("MM/DD/YYYY hh:mm A"),
-            elapsedMin: durationFormat(elapsed),
-            createdAt: created.format("MM/DD/YYYY hh:mm A"),
-          };
-        })
-      );
-      setShootReady(true);
-      setShootError(null);
-    },
-    (e) => {
-      setShootError(e);
-      setShootReady(true);
-    },
-    [shootQuery]
-  );
+  const [shootReady, setShootReady] = useState(false);
+  useEffect(() => {
+    if (authLoading || roleLoading || !isAdmin || !user?.email) return;
+    const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setShootDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setShootReady(true);
+      },
+      (e) => {
+        setShootError(e);
+        setShootReady(true);
+      },
+    );
+    return () => unsub();
+  }, [authLoading, roleLoading, isAdmin, user?.email]);
 
   const error = logsError || shootError;
   const loading = !logsReady || !shootReady;
 
+  // Error snackbar (single effect)
   useEffect(() => {
-      if (error) {
-        logError("FirestoreSubscribe AdminTimeLog", error);
-        setSnackbar({
-          open: true,
-          message: "Permissions issue reading logs.",
-          severity: "error",
-        });
-      }
-    }, [error]);
+    if (!error) return;
+    try { logError("FirestoreSubscribe AdminTimeLog", error); } catch (e) { /* logError handles itself */ }
+    setSnackbar({ open: true, message: "Permissions issue reading logs.", severity: "error" });
+  }, [error]);
 
-  if (roleLoading) {
-    return (
-      <Box mt={4} display="flex" justifyContent="center">
-        <CircularProgress />
-      </Box>
+  // Materialize rows when docs change
+  useEffect(() => {
+    if (!logDocs) return;
+    setLogs(
+      logDocs.map((entry, i) => {
+        const start = dayjs(tsToMillis(entry.startTime));
+        const end = dayjs(tsToMillis(entry.endTime));
+        const logged = dayjs(tsToMillis(entry.loggedAt));
+        const duration = start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
+        return {
+          id: i + 1,
+          Driver: entry.driver || "Unknown",
+          RideID: entry.rideID || "N/A",
+          StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
+          EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
+          Duration: duration != null ? durationFormat(duration) : "—",
+          LoggedAt: logged.isValid() ? logged.format("MM/DD/YYYY hh:mm A") : "—",
+          raw: entry,
+          durationMin: duration ?? 0,
+        };
+      }),
     );
-  }
+  }, [logDocs]);
 
-  if (!isAdmin) {
-    return (
-      <Box mt={4}>
-        <Alert severity="error">You don’t have permission to view this.</Alert>
-      </Box>
+  useEffect(() => {
+    if (!shootDocs) return;
+    setShootoutStats(
+      shootDocs.map((entry, i) => {
+        const start = dayjs(tsToMillis(entry.startTime));
+        const end = dayjs(tsToMillis(entry.endTime));
+        const created = dayjs(tsToMillis(entry.createdAt));
+        const elapsed = start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
+        return {
+          id: i + 1,
+          Driver: entry.driver || "Unknown",
+          startTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
+          endTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
+          elapsedMin: durationFormat(elapsed),
+          createdAt: created.isValid() ? created.format("MM/DD/YYYY hh:mm A") : "—",
+        };
+      }),
     );
-  }
+  }, [shootDocs]);
 
-  if (loading) {
-    return (
-      <Box mt={4} display="flex" justifyContent="center">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
+  // Debounce search — MUST be before any return (hook order)
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  // Derived rows (hooks BEFORE returns)
   const filteredLogs = useMemo(() => {
     if (!search) return logs;
-    return logs.filter(
-      (r) =>
-        r.Driver.toLowerCase().includes(search.toLowerCase()) ||
-        r.RideID.toLowerCase().includes(search.toLowerCase()),
-    );
+    const q = search.toLowerCase();
+    return logs.filter((r) => r.Driver.toLowerCase().includes(q) || r.RideID.toLowerCase().includes(q));
   }, [logs, search]);
 
   const groupedWeekly = useMemo(() => {
     const byDriver = {};
     for (const log of logs) {
-      const week = dayjs(tsToMillis(log.raw.startTime)).isoWeek();
+      const week = dayjs(tsToMillis(log.raw?.startTime)).isoWeek();
       const driver = log.Driver;
       if (!byDriver[driver]) byDriver[driver] = {};
       if (!byDriver[driver][week]) byDriver[driver][week] = 0;
@@ -242,23 +210,36 @@ export default function AdminTimeLog() {
   }, [logs]);
 
   const flaggedLogs = useMemo(() => {
-    return logs.filter((log) => {
-      return (
-        log.StartTime === "—" ||
-        log.EndTime === "—" ||
-        log.durationMin < 0 ||
-        log.durationMin > 720
-      );
-    });
+    return logs.filter((log) => log.StartTime === "—" || log.EndTime === "—" || log.durationMin < 0 || log.durationMin > 720);
   }, [logs]);
+
+  // ── After ALL hooks, do early returns ──────────────────────────────────────
+  if (roleLoading) {
+    return (
+      <Box mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
+      </Box>
+    );
+  }
+  if (!isAdmin) {
+    return (
+      <Box mt={4}>
+        <Alert severity="error">You don’t have permission to view this.</Alert>
+      </Box>
+    );
+  }
+  if (loading) {
+    return (
+      <Box mt={4} display="flex" justifyContent="center">
+        <CircularProgress />
+      </Box>
+    );
+  }
+  // ───────────────────────────────────────────────────────────────────────────
 
   const renderTopBar = (
     <Paper sx={{ p: 2, mb: 2, borderLeft: "5px solid #4cbb17" }}>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        alignItems="center"
-      >
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
         <TextField
           label="Search by Driver or Ride ID"
           value={searchInput}
@@ -275,12 +256,14 @@ export default function AdminTimeLog() {
         />
         <Tooltip title="Reload Data">
           <IconButton
+            onClick={() => {
+              // trigger refetch by toggling readiness flags; snapshots will resend
+              setLogsReady(false);
+              setShootReady(false);
+            }}
             sx={{
-              animation: loading ? "spin 2s linear infinite" : "none",
-              "@keyframes spin": {
-                from: { transform: "rotate(0deg)" },
-                to: { transform: "rotate(360deg)" },
-              },
+              "@keyframes spin": { from: { transform: "rotate(0deg)" }, to: { transform: "rotate(360deg)" } },
+              animation: "spin 0.8s linear",
             }}
           >
             <RefreshIcon />
@@ -295,36 +278,19 @@ export default function AdminTimeLog() {
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box sx={{ px: { xs: 1, sm: 2 }, py: 3 }}>
           <ErrorBanner error={error} />
+
           <Tabs
             value={tab}
             onChange={(e, v) => setTab(v)}
             variant="scrollable"
             scrollButtons="auto"
-            TabIndicatorProps={{
-              style: { backgroundColor: "#4cbb17", height: 3 },
-            }}
+            TabIndicatorProps={{ style: { backgroundColor: "#4cbb17", height: 3 } }}
             sx={{ mb: 2 }}
           >
-            <Tab
-              label="Log Table"
-              icon={<TableChartIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="Weekly Summary"
-              icon={<CalendarMonthIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="Flagged Issues"
-              icon={<FlagIcon />}
-              iconPosition="start"
-            />
-            <Tab
-              label="Shootout Stats"
-              icon={<SportsScoreIcon />}
-              iconPosition="start"
-            />
+            <Tab label="Log Table" icon={<TableChartIcon />} iconPosition="start" />
+            <Tab label="Weekly Summary" icon={<CalendarMonthIcon />} iconPosition="start" />
+            <Tab label="Flagged Issues" icon={<FlagIcon />} iconPosition="start" />
+            <Tab label="Shootout Stats" icon={<SportsScoreIcon />} iconPosition="start" />
           </Tabs>
 
           {tab === 0 && (
@@ -339,31 +305,21 @@ export default function AdminTimeLog() {
                   onColumnVisibilityModelChange={(m) => setColumnVisibility(m)}
                   pageSizeOptions={[5, 10, 20, 50]}
                   sortingOrder={["asc", "desc"]}
-                  getRowClassName={(params) =>
-                    params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
-                  }
+                  getRowClassName={(params) => (params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd")}
                   sx={{
                     bgcolor: (t) => t.palette.background.paper,
                     "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
                     "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
                     borderColor: "divider",
-                    "& .even": {
-                      backgroundColor: isDark ? "#333" : "grey.100",
-                    },
+                    "& .even": { backgroundColor: isDark ? "#333" : "grey.100" },
                     "& .odd": { backgroundColor: "transparent" },
-                    "& .MuiDataGrid-row:hover": {
-                      backgroundColor: isDark ? "#444" : "grey.200",
-                    },
+                    "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "#444" : "grey.200" },
                     fontSize: "0.85rem",
                   }}
                   density="comfortable"
                 />
                 {filteredLogs.length === 0 && (
-                  <Typography
-                    textAlign="center"
-                    color="text.secondary"
-                    sx={{ p: 2 }}
-                  >
+                  <Typography textAlign="center" color="text.secondary" sx={{ p: 2 }}>
                     No logs found.
                   </Typography>
                 )}
@@ -373,16 +329,12 @@ export default function AdminTimeLog() {
 
           {tab === 1 && (
             <Paper sx={{ p: 2, borderLeft: "5px solid #4cbb17" }}>
-              <Typography variant="h6" mb={2}>
-                Weekly Summary
-              </Typography>
+              <Typography variant="h6" mb={2}>Weekly Summary</Typography>
               {Object.entries(groupedWeekly).map(([driver, weeks]) => (
                 <Box key={driver} mb={2}>
                   <Typography fontWeight={600}>{driver}</Typography>
                   {Object.entries(weeks).map(([week, total]) => (
-                    <Typography key={week} ml={2}>
-                      Week {week}: {durationFormat(total)}
-                    </Typography>
+                    <Typography key={week} ml={2}>Week {week}: {durationFormat(total)}</Typography>
                   ))}
                 </Box>
               ))}
@@ -391,9 +343,7 @@ export default function AdminTimeLog() {
 
           {tab === 2 && (
             <Paper sx={{ p: 2, borderLeft: "5px solid red" }}>
-              <Typography variant="h6" mb={2}>
-                Flagged Entries (Missing or Suspicious Durations)
-              </Typography>
+              <Typography variant="h6" mb={2}>Flagged Entries (Missing or Suspicious Durations)</Typography>
               <DataGrid
                 autoHeight
                 rows={flaggedLogs}
@@ -404,12 +354,8 @@ export default function AdminTimeLog() {
                   "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
                   "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
                   borderColor: "divider",
-                  "& .MuiDataGrid-row:nth-of-type(odd)": {
-                    backgroundColor: isDark ? "#333" : "grey.100",
-                  },
-                  "& .MuiDataGrid-row:hover": {
-                    backgroundColor: isDark ? "#444" : "grey.200",
-                  },
+                  "& .MuiDataGrid-row:nth-of-type(odd)": { backgroundColor: isDark ? "#333" : "grey.100" },
+                  "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "#444" : "grey.200" },
                 }}
                 density="comfortable"
               />
@@ -418,9 +364,7 @@ export default function AdminTimeLog() {
 
           {tab === 3 && (
             <Paper sx={{ p: 2, borderLeft: "5px solid #ffa500" }}>
-              <Typography variant="h6" mb={2}>
-                Shootout Session History
-              </Typography>
+              <Typography variant="h6" mb={2}>Shootout Session History</Typography>
               <DataGrid
                 autoHeight
                 rows={shootoutStats}
@@ -431,21 +375,13 @@ export default function AdminTimeLog() {
                   "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
                   "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
                   borderColor: "divider",
-                  "& .MuiDataGrid-row:nth-of-type(odd)": {
-                    backgroundColor: isDark ? "#333" : "grey.100",
-                  },
-                  "& .MuiDataGrid-row:hover": {
-                    backgroundColor: isDark ? "#444" : "grey.200",
-                  },
+                  "& .MuiDataGrid-row:nth-of-type(odd)": { backgroundColor: isDark ? "#333" : "grey.100" },
+                  "& .MuiDataGrid-row:hover": { backgroundColor: isDark ? "#444" : "grey.200" },
                 }}
                 density="comfortable"
               />
               {shootoutStats.length === 0 && (
-                <Typography
-                  textAlign="center"
-                  color="text.secondary"
-                  sx={{ p: 2 }}
-                >
+                <Typography textAlign="center" color="text.secondary" sx={{ p: 2 }}>
                   No shootout stats.
                 </Typography>
               )}
@@ -453,19 +389,13 @@ export default function AdminTimeLog() {
           )}
         </Box>
       </LocalizationProvider>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-      >
-        <Alert
-          severity={snackbar.severity}
-          variant="filled"
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        >
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+        <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
           {snackbar.message}
         </Alert>
       </Snackbar>
     </>
   );
 }
+
