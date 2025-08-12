@@ -7,7 +7,7 @@ import { APP_BAR_HEIGHT } from "../layout/constants";
 import { useAuth } from "../context/AuthContext.jsx";       // must expose { user }
 import { useDriver } from "../context/DriverContext.jsx";   // must expose { driverName, role }
 
-export default function Header({ onToggleTheme, onRefresh }) {
+export default function Header({ onToggleTheme, onRefresh, leftSlot = null }) {
   const { user } = useAuth?.() || {};
   const { driverName, role } = useDriver?.() || {};
 
@@ -19,6 +19,7 @@ export default function Header({ onToggleTheme, onRefresh }) {
       justifyContent: "center",
     }}>
       <Toolbar disableGutters variant="dense" sx={{ px: { xs: 2, md: 3 }, minHeight: APP_BAR_HEIGHT }}>
+        {leftSlot}
         {/* Brand */}
         <Typography variant="h6" sx={{ fontWeight: 800, mr: 2 }}>
           LRP Driver Portal
