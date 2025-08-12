@@ -2,25 +2,20 @@
 // src/App.jsx
 import React, {
   useEffect,
-  useMemo,
   useState,
   useRef,
   Suspense,
   lazy,
   useCallback,
 } from "react";
-  import {
-    Box,
-    Typography,
-    Button,
-    Snackbar,
-    Alert,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    CircularProgress,
-  } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  Snackbar,
+  Alert,
+  CircularProgress,
+} from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
@@ -32,7 +27,6 @@ import { useDriver } from "./context/DriverContext.jsx";
 import useAuth from "./hooks/useAuth.js";
 import { getUserAccess } from "./hooks/api";
 import DriverInfoTab from "./components/DriverInfoTab";
-import { logError } from "./utils/logError";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
@@ -43,13 +37,14 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { logout } from "./services/auth";
-import { unsubscribeAll } from "./utils/listenerRegistry";
 import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
 import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
 import LoadingScreen from "./components/LoadingScreen.jsx";
+import AppShell from "./layout/AppShell.jsx";
+import { useColorMode } from "./context/ColorModeContext.jsx";
 
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
@@ -80,8 +75,9 @@ function App() {
   const { fetchDrivers } = useDrivers();
   const { user, authLoading } = useAuth();
   const { toast, showToast, closeToast } = useToast("success");
+  const { toggle } = useColorMode();
+  const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
-  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
   const [isLockedOut, setIsLockedOut] = useState(isInLockoutWindow());
   const [isAppReady, setIsAppReady] = useState(false);
@@ -99,16 +95,7 @@ function App() {
     dismiss: dismissOffline,
   } = useNetworkStatus(() => showToast("✅ Reconnected", "success"));
 
-  const openChangeDriver = useCallback(() => setChangeDriverOpen(true), []);
-
   const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
-
-  const openSignOutConfirm = useCallback(() => setSignOutConfirmOpen(true), []);
-
-  const closeSignOutConfirm = useCallback(
-    () => setSignOutConfirmOpen(false),
-    [],
-  );
 
   const noop = useCallback(() => {}, []);
 
@@ -129,40 +116,6 @@ function App() {
       return () => stopMonitoring();
     }
   }, []);
-
-  const handleSignOut = useCallback(async () => {
-    try {
-      hadUserRef.current = false;
-      await logout();
-      // Tear down any shared listeners to prevent duplicate subscriptions
-      unsubscribeAll();
-      setDriver(null);
-      localStorage.clear();
-      sessionStorage.clear();
-      document.cookie.split(";").forEach((cookie) => {
-        const eqPos = cookie.indexOf("=");
-        const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
-        document.cookie =
-          name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-      });
-      if ("serviceWorker" in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const reg of registrations) await reg.unregister();
-      }
-      if ("caches" in window) {
-        const cacheNames = await caches.keys();
-        for (const name of cacheNames) await caches.delete(name);
-      }
-      const dbs = await indexedDB.databases?.();
-      for (const db of dbs || []) {
-        await indexedDB.deleteDatabase(db.name);
-      }
-      window.location.reload();
-    } catch (err) {
-      logError(err, "App:signOut");
-      showToast("Sign out failed", "error");
-    }
-  }, [showToast, setDriver]);
 
   useEffect(() => {
     if (!hasFetchedRef.current) hasFetchedRef.current = true;
@@ -236,14 +189,7 @@ function App() {
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <InstallBanner />
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            maxWidth: "100%",
-            ml: 0,
-          }}
-        >
+        <AppShell onToggleTheme={toggle} onRefresh={handleRefresh}>
           <Suspense fallback={<CircularProgress />}> 
             <Routes>
                   <Route path="/" element={<Navigate to="/rides" replace />} />
@@ -315,28 +261,6 @@ function App() {
                   />
                 </Routes>
             </Suspense>
-
-            <Dialog open={signOutConfirmOpen} onClose={closeSignOutConfirm}>
-              <DialogTitle sx={{ fontWeight: "bold", color: "#d32f2f" }}>
-                💥 Confirm Sign Out
-              </DialogTitle>
-              <DialogContent dividers>
-                <Typography>
-                  Are you sure you want to{" "}
-                  <strong>log out of Beast Mode™</strong>?
-                </Typography>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={closeSignOutConfirm}>Cancel</Button>
-                <Button
-                  onClick={handleSignOut}
-                  variant="contained"
-                  color="error"
-                >
-                  Log Me Out
-                </Button>
-              </DialogActions>
-            </Dialog>
 
             {isAdmin && (
               <ChangeDriverModal
@@ -424,22 +348,9 @@ function App() {
                 </Button>
               </Box>
             </motion.div>
-          </Box>
+          </AppShell>
         </LocalizationProvider>
     );
-  }
-
-function AppShell() {
-  const { authLoading } = useAuth();
-  if (authLoading) {
-    return <div style={{ padding: 24 }}>Loading…</div>;
-  }
-  return <App />;
 }
 
-function AppRoot() {
-  return <AppShell />;
-}
-
-export default AppRoot;
-export { App };
+export default App;

@@ -30,7 +30,13 @@ export const DriverProvider = ({ children }) => {
   }, [setDriver]);
 
   const value = useMemo(
-    () => ({ driver, setDriver, logout }),
+    () => ({
+      driver,
+      driverName: driver?.name,
+      role: driver?.access,
+      setDriver,
+      logout,
+    }),
     [driver, setDriver, logout],
   );
 

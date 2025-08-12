@@ -1,17 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
-import HomeIcon from "@mui/icons-material/Home";
-import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import "./utils/firebaseInit.js"; // runs before AuthProvider / subscriptions
 import "./index.css";
 import "./sw-updater.js";
 
-import LayoutShell from "./layout/LayoutShell.jsx";
-import AppRoot from "./App.jsx";
+import App from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import PrivateRoute from "./components/PrivateRoute.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
@@ -20,20 +16,6 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { logError } from "./utils/logError";
-
-function AppWithShell() {
-  const nav = useNavigate();
-  const items = [
-    { label: "Dashboard", icon: HomeIcon, to: "/" },
-    { label: "Rides", icon: DirectionsCarIcon, to: "/rides" },
-    { label: "Time Logs", icon: AccessTimeIcon, to: "/clock" },
-  ];
-  return (
-    <LayoutShell railItems={items} onNavigate={(to) => nav(to)}>
-      <AppRoot />
-    </LayoutShell>
-  );
-}
 
 window.addEventListener("unhandledrejection", (event) => {
   logError(event.reason, "UnhandledPromiseRejection");
@@ -55,7 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                     path="/*"
                     element={
                       <PrivateRoute>
-                        <AppWithShell />
+                        <App />
                       </PrivateRoute>
                     }
                   />
