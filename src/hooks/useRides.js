@@ -1,107 +1,54 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { subscribeRides } from "../services/rideSubscriptions";
+import {
+  getRideQueue,
+  getLiveRides,
+  getClaimedRides,
+} from "../services/firestoreService";
 
-/**
- * Idempotent rides hook: subscribes once, cleans up, and pauses on hidden tab.
- */
-export function useRides({ vehicleId, status, range, pageSize = 500 }) {
-  const [data, setData] = useState([]);
-  const [error, setError] = useState(null);
-  const unsubRef = useRef(null);
-  const visibleRef = useRef(document.visibilityState === "visible");
-  const rafRef = useRef(0);
+let ridesCache = {
+  rideQueue: [],
+  liveRides: [],
+  claimedRides: [],
+};
+let countsCache = { queue: 0, live: 0, claimed: 0 };
+const listeners = new Set();
+let initialized = false;
 
-  const updateData = (rows) => {
-    cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => setData(rows));
+export async function fetchRides() {
+  const [queue, live, claimed] = await Promise.all([
+    getRideQueue(),
+    getLiveRides(),
+    getClaimedRides(),
+  ]);
+
+  ridesCache = {
+    rideQueue: queue,
+    liveRides: live,
+    claimedRides: claimed,
   };
+  countsCache = {
+    queue: queue.length,
+    live: live.length,
+    claimed: claimed.length,
+  };
+  listeners.forEach((cb) => cb({ ...ridesCache, counts: countsCache }));
+}
 
-  // Build a stable key so effect runs only when relevant inputs change
-  const key = useMemo(() => {
-    const s = JSON.stringify({
-      vehicleId: vehicleId || "",
-      status: status || "",
-      range: {
-        start: range?.start
-          ? new Date(range.start.toDate?.() ?? range.start).toISOString()
-          : "",
-        end: range?.end
-          ? new Date(range.end.toDate?.() ?? range.end).toISOString()
-          : "",
-      },
-      pageSize,
-    });
-    return s;
-  }, [vehicleId, status, range?.start, range?.end, pageSize]);
+export default function useRides() {
+  const [state, setState] = useState({ ...ridesCache, counts: countsCache });
 
   useEffect(() => {
-    function handleVis() {
-      const nowVisible = document.visibilityState === "visible";
-      if (!nowVisible && unsubRef.current) {
-        unsubRef.current();
-        unsubRef.current = null;
-      }
-      visibleRef.current = nowVisible;
-      if (nowVisible && !unsubRef.current) {
-        attach();
-      }
+    listeners.add(setState);
+    if (!initialized) {
+      initialized = true;
+      fetchRides();
+    } else {
+      setState({ ...ridesCache, counts: countsCache });
     }
+    return () => listeners.delete(setState);
+  }, []);
 
-    const attach = () => {
-      if (unsubRef.current) return;
-      const parsed = JSON.parse(key);
-      unsubRef.current = subscribeRides(
-        {
-          vehicleId: parsed.vehicleId,
-          status: parsed.status,
-          range: {
-            start: parsed.range.start ? new Date(parsed.range.start) : undefined,
-            end: parsed.range.end ? new Date(parsed.range.end) : undefined,
-          },
-          pageSize: parsed.pageSize,
-        },
-        updateData,
-        setError
-      );
-    };
-
-    document.addEventListener("visibilitychange", handleVis);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVis);
-    };
-  }, [key]);
-
-  useEffect(() => {
-    if (unsubRef.current) {
-      unsubRef.current();
-      unsubRef.current = null;
-    }
-    if (document.visibilityState !== "visible") return;
-
-    const parsed = JSON.parse(key);
-    unsubRef.current = subscribeRides(
-      {
-        vehicleId: parsed.vehicleId,
-        status: parsed.status,
-        range: {
-          start: parsed.range.start ? new Date(parsed.range.start) : undefined,
-          end: parsed.range.end ? new Date(parsed.range.end) : undefined,
-        },
-        pageSize: parsed.pageSize,
-      },
-      updateData,
-      setError
-    );
-
-    return () => {
-      if (unsubRef.current) {
-        unsubRef.current();
-        unsubRef.current = null;
-      }
-    };
-  }, [key]);
-
-  return { rides: data, error };
+  return { ...state, fetchRides };
 }

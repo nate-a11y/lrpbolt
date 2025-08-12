@@ -11,8 +11,12 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { deleteLiveRide, restoreLiveRide, getLiveRides } from "../services/firestoreService";
-import { useRides } from "../hooks/useRides";
+import {
+  subscribeLiveRides,
+  deleteLiveRide,
+  restoreLiveRide,
+  getLiveRides,
+} from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import useToast from "../hooks/useToast";
 import { safe } from "../utils/rideFormatters";
@@ -23,7 +27,6 @@ const LiveRidesGrid = () => {
   const { toast, showToast, closeToast } = useToast("success");
   const [loading, setLoading] = useState(true);
   const { user, authLoading } = useAuth();
-  const { rides, error } = useRides({ status: "live", pageSize: 500 });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [deletingTripId, setDeletingTripId] = useState("");
@@ -32,16 +35,19 @@ const LiveRidesGrid = () => {
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    setRows(rides);
-    setLoading(false);
-  }, [authLoading, user?.email, rides]);
-
-  useEffect(() => {
-    if (error) {
-      showToast("Permissions issue loading live rides", "error");
-      setLoading(false);
-    }
-  }, [error, showToast]);
+    const unsub = subscribeLiveRides(
+      (data) => {
+        setRows(data);
+        setLoading(false);
+      },
+      undefined,
+      () => {
+        showToast("Permissions issue loading live rides", "error");
+        setLoading(false);
+      },
+    );
+    return unsub;
+  }, [authLoading, user?.email]);
 
   const refreshRides = async () => {
     setLoading(true);

@@ -51,7 +51,7 @@ import DropDailyWidget from "./DropDailyWidget";
 import { formatDuration, toTimeString12Hr, setSyncTime } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
-import useAdminRides from "../hooks/useAdminRides";
+import useRides from "../hooks/useRides";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
 
@@ -321,7 +321,7 @@ export default function RideEntryForm() {
   const { user, authLoading } = useAuth();
   const currentUser = user?.email || "Unknown";
 
-  const { counts, fetchRides } = useAdminRides();
+  const { counts, fetchRides } = useRides();
   const { live: liveCount, claimed: claimedCount, queue: queueCount } = counts;
 
   // Admin-only daily drop callable
