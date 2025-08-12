@@ -14,15 +14,15 @@ import { getAuth } from "firebase/auth";
  * keep env. If they are hardcoded, KEEP THE HARDCODED LITERALS.
  * (Do not rename keys.)
  */
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "HARDCODE_KEEP_AS_IS",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "HARDCODE_KEEP_AS_IS",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "HARDCODE_KEEP_AS_IS",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "HARDCODE_KEEP_AS_IS",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "HARDCODE_KEEP_AS_IS",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? "HARDCODE_KEEP_AS_IS",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, // ok if undefined
-};
+  firebase.initializeApp({
+    apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+    authDomain: "lrp---claim-portal.firebaseapp.com",
+    projectId: "lrp---claim-portal",
+    storageBucket: "lrp---claim-portal.firebasestorage.app",
+    messagingSenderId: "799613895072",
+    appId: "1:799613895072:web:1b41c28c6819198ce824c5",
+    measurementId: "G-9NM69MZN6B",
+  });
 
 // App singleton
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
