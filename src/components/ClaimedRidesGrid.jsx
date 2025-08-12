@@ -165,7 +165,7 @@ const ClaimedRidesGrid = () => {
           alignItems="center"
           sx={{
             bgcolor: "#ff1744",
-            color: "#fff",
+            color: "common.white",
             px: 2,
             py: 1,
             mb: 2,
@@ -180,7 +180,7 @@ const ClaimedRidesGrid = () => {
             color="inherit"
             startIcon={<DeleteIcon />}
             sx={{
-              bgcolor: "#fff",
+              bgcolor: (t) => t.palette.background.paper,
               color: "#ff1744",
               "&:hover": { bgcolor: "#eee" },
             }}

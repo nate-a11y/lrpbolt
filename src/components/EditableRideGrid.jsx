@@ -278,7 +278,11 @@ const EditableRideGrid = ({
   return (
     <>
       {isMobile && (
-        <Box textAlign="center" py={1} bgcolor="#fff3cd" color="#856404">
+        <Box
+          textAlign="center"
+          py={1}
+          sx={{ bgcolor: (t) => t.palette.warning.light, color: (t) => t.palette.warning.dark }}
+        >
           👉 Swipe horizontally to view more columns
         </Box>
       )}

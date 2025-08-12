@@ -38,6 +38,7 @@ import { collection, query, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/firebase";
 import { useRole, useFirestoreSub } from "@/hooks";
 import { useAuth } from "../context/AuthContext.jsx";
+import PageContainer from "./PageContainer.jsx";
 
 dayjs.extend(isoWeek);
 
@@ -287,7 +288,7 @@ export default function AdminTimeLog() {
   return (
     <>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box sx={{ px: { xs: 1, sm: 2 }, py: 3 }}>
+        <PageContainer>
           <ErrorBanner error={error} />
           <Tabs
             value={tab}
@@ -390,7 +391,7 @@ export default function AdminTimeLog() {
                 columns={baseColumns}
                 pageSizeOptions={[5, 10, 20]}
                 sx={{
-                  backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                  backgroundColor: isDark ? "#2a2a2a" : theme.palette.background.paper,
                   "& .MuiDataGrid-row:nth-of-type(odd)": {
                     backgroundColor: isDark ? "#333" : "grey.100",
                   },
@@ -413,7 +414,7 @@ export default function AdminTimeLog() {
                 columns={shootoutColumns}
                 pageSizeOptions={[5, 10, 20]}
                 sx={{
-                  backgroundColor: isDark ? "#2a2a2a" : "#fff",
+                  backgroundColor: isDark ? "#2a2a2a" : theme.palette.background.paper,
                   "& .MuiDataGrid-row:nth-of-type(odd)": {
                     backgroundColor: isDark ? "#333" : "grey.100",
                   },
@@ -433,7 +434,7 @@ export default function AdminTimeLog() {
               )}
             </Paper>
           )}
-        </Box>
+        </PageContainer>
       </LocalizationProvider>
       <Snackbar
         open={snackbar.open}

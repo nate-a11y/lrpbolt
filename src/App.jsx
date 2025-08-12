@@ -9,25 +9,23 @@ import React, {
   lazy,
   useCallback,
 } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  Snackbar,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Toolbar,
-  CircularProgress,
-} from "@mui/material";
+  import {
+    Box,
+    Typography,
+    Button,
+    Snackbar,
+    Alert,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    CircularProgress,
+  } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
-import Navigation from "./components/Navigation";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
@@ -238,21 +236,16 @@ function App() {
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <InstallBanner />
-          <Navigation onChangeDriver={openChangeDriver} onSignOut={openSignOutConfirm} />
-        <Box sx={{ display: "flex" }}>
-          <Box
-            component="main"
-            sx={{
-              flexGrow: 1,
-              p: 3,
-              maxWidth: "100%",
-              mt: "64px", // keep this for AppBar spacing
-              ml: 0, // ← remove sidebar offset here
-            }}
-          >
-            <Toolbar />
-            <Suspense fallback={<CircularProgress />}>
-              <Routes>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            maxWidth: "100%",
+            ml: 0,
+          }}
+        >
+          <Suspense fallback={<CircularProgress />}> 
+            <Routes>
                   <Route path="/" element={<Navigate to="/rides" replace />} />
                   <Route
                     path="/rides"
@@ -422,7 +415,7 @@ function App() {
                     borderWidth: 2,
                     "&:hover": {
                       backgroundColor: "error.main",
-                      color: "#fff",
+                      color: "common.white",
                     },
                   }}
                   onClick={handleClearCache}
@@ -432,7 +425,6 @@ function App() {
               </Box>
             </motion.div>
           </Box>
-        </Box>
         </LocalizationProvider>
     );
   }
