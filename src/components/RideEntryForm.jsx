@@ -55,7 +55,7 @@ import useRides from "../hooks/useRides";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
 
-import { db } from "../firebase";
+import { db } from "src/utils/firebaseInit";
 import { TIMEZONE, COLLECTIONS } from "../constants";
 import { RIDE_TYPES, VEHICLES } from "../constants/rides";
 import {

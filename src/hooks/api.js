@@ -20,7 +20,7 @@ import { getAuth } from "firebase/auth";
 
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
-import { db } from "../firebase";
+import { db } from "src/utils/firebaseInit";
 import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";

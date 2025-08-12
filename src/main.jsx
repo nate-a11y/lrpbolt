@@ -3,7 +3,7 @@ import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import "./utils/firebaseInit.js"; // runs before AuthProvider / subscriptions
+import "src/utils/firebaseInit"; // runs before AuthProvider / subscriptions
 import "./index.css";
 import "./sw-updater.js";
 

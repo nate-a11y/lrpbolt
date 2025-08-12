@@ -9,7 +9,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 
-import { db } from "../firebase";
+import { db } from "src/utils/firebaseInit";
 import { logError } from "../utils/logError";
 
 // Realtime listener for timeLogs collection

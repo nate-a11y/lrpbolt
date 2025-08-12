@@ -3,7 +3,7 @@ import { collection, limit, orderBy, query, where } from "firebase/firestore";
 
 import { COLLECTIONS } from "../constants";
 import { useAuth } from "../context/AuthContext.jsx";
-import { db } from "../firebase";
+import { db } from "src/utils/firebaseInit";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 
 function getKey({ activeOnly, roles, max }) {
