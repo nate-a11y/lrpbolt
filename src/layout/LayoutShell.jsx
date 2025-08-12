@@ -128,9 +128,10 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           flex: 1,
           minWidth: 0,
           pt: `${APP_BAR_HEIGHT}px`,
-          ml: { xs: 1.5, sm: `var(--rail-width)` },
-          pr: { xs: 1.5, sm: 2 },
-          pb: 3,
+          ml: { xs: 0, sm: `var(--rail-width)` },   // space for rail
+          pr: { xs: 1.5, sm: 2 },                   // keep RIGHT padding
+          pl: { xs: 1.5, sm: 2 },                   // remove LEFT padding
+          pb: 3,                                     // keep bottom padding
           transition: (t) =>
             t.transitions.create("margin-left", { duration: t.transitions.duration.enteringScreen }),
         }}
