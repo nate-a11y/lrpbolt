@@ -23,7 +23,7 @@ const RAIL_WIDTH = 72; // collapsed
 const DRAWER_WIDTH = 240; // expanded
 
 const AppBar = styled(MuiAppBar)(({ theme }) => ({
-  zIndex: theme.zIndex.drawer + 1,
+  zIndex: theme.zIndex.drawer + 5,
   height: APP_BAR_HEIGHT,
 }));
 
@@ -128,8 +128,8 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           flex: 1,
           minWidth: 0,
           pt: `${APP_BAR_HEIGHT}px`,
-          ml: { xs: 0, sm: `var(--rail-width)` },
-          px: { xs: 1.5, sm: 2 },
+          ml: { xs: 1.5, sm: `var(--rail-width)` },
+          pr: { xs: 1.5, sm: 2 },
           pb: 3,
           transition: (t) =>
             t.transitions.create("margin-left", { duration: t.transitions.duration.enteringScreen }),
