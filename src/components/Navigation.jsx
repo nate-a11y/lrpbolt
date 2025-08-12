@@ -7,7 +7,6 @@ import {
   Typography,
   Box,
   Switch,
-  Button,
   Drawer,
   List,
   ListItemButton,
@@ -18,6 +17,8 @@ import {
   Divider,
   Chip,
   Avatar,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { NavLink, useLocation } from "react-router-dom";
@@ -47,6 +48,7 @@ import CropFreeIcon from "@mui/icons-material/CropFree";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 import { useDriver } from "../context/DriverContext.jsx";
+import useMenuAnchor from "../hooks/useMenuAnchor";
 
 const DRAWER_WIDTH = 260;
 const MINI_WIDTH = 72;
@@ -118,6 +120,8 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
   const [mobileOpen, setMobileOpen] = useState(false);
   const openMobile = useCallback(() => setMobileOpen(true), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  const userMenu = useMenuAnchor();
 
   // Desktop mini/expanded state (persisted)
   const [collapsed, setCollapsed] = useState(() => {
@@ -392,10 +396,7 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
           )}
 
           <ListItemButton
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onSignOut) onSignOut();
-            }}
+            onClick={onSignOut}
             sx={{
               px: collapsed ? 1 : 2,
               justifyContent: collapsed ? "center" : "flex-start",
@@ -516,9 +517,20 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
               </>
             )}
 
-            <Button variant="outlined" size="small" color="error" onClick={onSignOut}>
-              Sign Out
-            </Button>
+            <IconButton id="user-menu-btn" onClick={userMenu.handleOpen} size="small">
+              <PersonIcon />
+            </IconButton>
+            <Menu
+              open={userMenu.open}
+              anchorEl={userMenu.anchorEl}
+              onClose={userMenu.handleClose}
+              MenuListProps={{
+                onClick: userMenu.handleClose,
+                "aria-labelledby": "user-menu-btn",
+              }}
+            >
+              <MenuItem onClick={onSignOut}>Sign Out</MenuItem>
+            </Menu>
           </Box>
         </Toolbar>
       </AppBar>
