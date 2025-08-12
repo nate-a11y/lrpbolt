@@ -133,7 +133,7 @@ const DRIVER_LIST = [
     vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
-    name: "Tom Addington",
+    name: "Tony Addington",
     lrp: "LRP20",
     phone: "573.434.3420",
     email: "tonyaddington58@gmail.com",
