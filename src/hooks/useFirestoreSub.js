@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 
 import { useAuth } from "../context/AuthContext.jsx";
+import { logError } from "../utils/logError";
 
 export function useFirestoreSub(makeQuery, deps) {
   const [error, setError] = useState(null);
@@ -19,16 +20,23 @@ export function useFirestoreSub(makeQuery, deps) {
     if (!q) return;
     readyRef.current = true;
 
-    const unsub = onSnapshot(q, (snap) => {
-      setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setError(null);
-    }, (e) => setError(e));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setError(null);
+      },
+      (e) => {
+        logError(e, "useFirestoreSub:onSnapshot");
+        setError(e);
+      },
+    );
 
     return () => {
       try {
         unsub();
-      } catch {
-        /* ignore */
+      } catch (err) {
+        logError(err, "useFirestoreSub:unsub");
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
