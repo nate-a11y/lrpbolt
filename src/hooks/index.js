@@ -1,2 +1,2 @@
 export { useRole } from "./useRole";
-export { useFirestoreSub } from "./useFirestoreSub";
+export { default as useFirestoreSub } from "./useFirestoreSub";

@@ -35,7 +35,7 @@ import { durationFormat } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import ErrorBanner from "./ErrorBanner";
 import { collection, query, orderBy, Timestamp } from "firebase/firestore";
-import { db } from "@/firebase";
+import { db } from "@/utils/firebaseInit";
 import { useRole, useFirestoreSub } from "@/hooks";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -98,92 +98,98 @@ export default function AdminTimeLog() {
     if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
     return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
   }, [authLoading, roleLoading, isAdmin, user?.email]);
-  const {
-    docs: logDocs,
-    error: logsError,
-    ready: logsReady,
-  } = useFirestoreSub(() => logQuery, [logQuery]);
   const shootQuery = useMemo(() => {
     if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
     return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
   }, [authLoading, roleLoading, isAdmin, user?.email]);
-  const {
-    docs: shootDocs,
-    error: shootError,
-    ready: shootReady,
-  } = useFirestoreSub(() => shootQuery, [shootQuery]);
+
+  const [logsReady, setLogsReady] = useState(false);
+  const [shootReady, setShootReady] = useState(false);
+  const [logsError, setLogsError] = useState(null);
+  const [shootError, setShootError] = useState(null);
+
+  useFirestoreSub(
+    `adminTimeLogs:${user?.email || "anon"}`,
+    () => logQuery,
+    (snap) => {
+      setLogs(
+        snap.docs.map((d, i) => {
+          const entry = { id: d.id, ...d.data() };
+          const start = dayjs(tsToMillis(entry.startTime));
+          const end = dayjs(tsToMillis(entry.endTime));
+          const logged = dayjs(tsToMillis(entry.loggedAt));
+          const duration =
+            start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
+          return {
+            id: i + 1,
+            Driver: entry.driver || "Unknown",
+            RideID: entry.rideID || "N/A",
+            StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
+            EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
+            Duration: duration != null ? durationFormat(duration) : "—",
+            LoggedAt: logged.isValid()
+              ? logged.format("MM/DD/YYYY hh:mm A")
+              : "—",
+            raw: entry,
+            durationMin: duration ?? 0,
+          };
+        })
+      );
+      setLogsReady(true);
+      setLogsError(null);
+    },
+    (e) => {
+      setLogsError(e);
+      setLogsReady(true);
+    },
+    [logQuery]
+  );
+
+  useFirestoreSub(
+    `shootoutStats:admin:${user?.email || "anon"}`,
+    () => shootQuery,
+    (snap) => {
+      setShootoutStats(
+        snap.docs.map((d, i) => {
+          const entry = { id: d.id, ...d.data() };
+          const start = dayjs(tsToMillis(entry.startTime));
+          const end = dayjs(tsToMillis(entry.endTime));
+          const created = dayjs(tsToMillis(entry.createdAt));
+          const elapsed =
+            start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
+          return {
+            id: i + 1,
+            Driver: entry.driver || "Unknown",
+            startTime: start.format("MM/DD/YYYY hh:mm A"),
+            endTime: end.format("MM/DD/YYYY hh:mm A"),
+            elapsedMin: durationFormat(elapsed),
+            createdAt: created.format("MM/DD/YYYY hh:mm A"),
+          };
+        })
+      );
+      setShootReady(true);
+      setShootError(null);
+    },
+    (e) => {
+      setShootError(e);
+      setShootReady(true);
+    },
+    [shootQuery]
+  );
 
   const error = logsError || shootError;
   const loading = !logsReady || !shootReady;
 
   useEffect(() => {
-    if (error) {
-      logError("FirestoreSubscribe AdminTimeLog", error);
-      setSnackbar({
-        open: true,
-        message: "Permissions issue reading logs.",
-        severity: "error",
-      });
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (!logDocs) return;
-    setLogs(
-      logDocs.map((entry, i) => {
-        const start = dayjs(tsToMillis(entry.startTime));
-        const end = dayjs(tsToMillis(entry.endTime));
-        const logged = dayjs(tsToMillis(entry.loggedAt));
-        const duration =
-          start.isValid() && end.isValid() ? end.diff(start, "minute") : null;
-        return {
-          id: i + 1,
-          Driver: entry.driver || "Unknown",
-          RideID: entry.rideID || "N/A",
-          StartTime: start.isValid() ? start.format("MM/DD/YYYY hh:mm A") : "—",
-          EndTime: end.isValid() ? end.format("MM/DD/YYYY hh:mm A") : "—",
-          Duration: duration != null ? durationFormat(duration) : "—",
-          LoggedAt: logged.isValid()
-            ? logged.format("MM/DD/YYYY hh:mm A")
-            : "—",
-          raw: entry,
-          durationMin: duration ?? 0,
-        };
-      }),
-    );
-  }, [logDocs]);
-
-  useEffect(() => {
-    if (!shootDocs) return;
-    setShootoutStats(
-      shootDocs.map((entry, i) => {
-        const start = dayjs(tsToMillis(entry.startTime));
-        const end = dayjs(tsToMillis(entry.endTime));
-        const created = dayjs(tsToMillis(entry.createdAt));
-        const elapsed =
-          start.isValid() && end.isValid() ? end.diff(start, "minute") : 0;
-        return {
-          id: i + 1,
-          Driver: entry.driver || "Unknown",
-          startTime: start.format("MM/DD/YYYY hh:mm A"),
-          endTime: end.format("MM/DD/YYYY hh:mm A"),
-          elapsedMin: durationFormat(elapsed),
-          createdAt: created.format("MM/DD/YYYY hh:mm A"),
-        };
-      }),
-    );
-  }, [shootDocs]);
-
-  useEffect(() => {
-    if (error) {
-      logError(error, { area: "FirestoreSubscribe", comp: "AdminTimeLog" });
-      setSnackbar({
-        open: true,
-        message: "Missing permissions to read some time logs.",
-        severity: "error",
-      });
-    }
-  }, [error]);
+      if (error) {
+        logError("FirestoreSubscribe AdminTimeLog", error);
+        setSnackbar({
+          open: true,
+          message: "Permissions issue reading logs.",
+          severity: "error",
+        });
+      }
+    }, [error]);
 
   if (roleLoading) {
     return (
