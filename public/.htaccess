@@ -1,26 +1,26 @@
-# ✅ Force correct MIME for JS, CSS, JSON, and PWA files
-AddType application/javascript .js
-AddType application/javascript .mjs
-AddType application/json .json
-AddType application/json .webmanifest
+# ---------- MIME hints ----------
+AddType application/javascript .js .mjs
+AddType application/json .json .webmanifest
 AddType text/css .css
 AddType image/png .png
 AddType image/x-icon .ico
 AddType image/svg+xml .svg
 AddType image/webp .webp
 
-# ✅ React SPA routing fix
+# ---------- React SPA + PWA routing ----------
 RewriteEngine On
 RewriteBase /
 
-# Exclude service worker files from SPA fallback
-RewriteCond %{REQUEST_URI} !^/registerSW\.js$
-RewriteCond %{REQUEST_URI} !^/service-worker\.js$
-RewriteCond %{REQUEST_URI} !^/__/auth/handler$
+# 1) Serve existing files/directories as-is
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
 
-# Don't rewrite actual files or directories
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# 2) EXEMPT critical PWA files from rewrite
+#    (must be at the web root to allow scope "/")
+RewriteRule ^(firebase-messaging-sw\.js|sw\.js|service-worker\.js|manifest\.webmanifest|robots\.txt|sitemap\.xml)$ - [L]
+RewriteRule ^icons/ - [L]
+RewriteRule ^assets/ - [L]
 
-# Redirect all other requests to index.html
-RewriteRule ^ index.html [L]
+# 3) Everything else -> index.html (SPA fallback)
+RewriteRule . /index.html [L]
