@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 
+import "../utils/firebaseInit";
+import { db } from "../utils/firebaseInit";
 import { useAuth } from "../context/AuthContext.jsx";
-import { db } from "src/utils/firebaseInit";
 
 export function useRole() {
   const { user, authLoading } = useAuth();

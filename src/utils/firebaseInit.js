@@ -1,48 +1,44 @@
 /* Proprietary and confidential. See LICENSE. */
-import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  initializeFirestore,
-  getFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from "firebase/firestore";
+/* Firebase app bootstrap (single init, modular SDK) */
+import { initializeApp, getApps } from "firebase/app";
+import { getAnalytics, isSupported as analyticsSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getMessaging, isSupported as messagingSupported } from "firebase/messaging";
 
-/**
- * IMPORTANT:
- * Keep values exactly as they exist in the repo (env or hardcoded).
- * Do not rename keys. If an env var is missing at build time, the fallback
- * literal "HARDCODE_KEEP_AS_IS" preserves your current repo behavior.
- */
+/** IMPORTANT: hardcoded on purpose per request (move to env later). */
 const firebaseConfig = {
-    apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
-    authDomain: "lrp---claim-portal.firebaseapp.com",
-    projectId: "lrp---claim-portal",
-    storageBucket: "lrp---claim-portal.firebasestorage.app",
-    messagingSenderId: "799613895072",
-    appId: "1:799613895072:web:1b41c28c6819198ce824c5",
-    measurementId: "G-9NM69MZN6B", 
+  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+  authDomain: "lrp---claim-portal.firebaseapp.com",
+  projectId: "lrp---claim-portal",
+  storageBucket: "lrp---claim-portal.firebasestorage.app",
+  messagingSenderId: "799613895072",
+  appId: "1:799613895072:web:1b41c28c6819198ce824c5",
+  measurementId: "G-9NM69MZN6B",
 };
 
-// App singleton
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-// Firestore singleton (HMR‑safe)
-const DB_INSTANCE_KEY = "__LRP_DB_SINGLETON__";
-if (!globalThis[DB_INSTANCE_KEY]) {
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/** Lazy, safe feature gates (no throw on unsupported). */
+let analytics;
+(async () => {
   try {
-    globalThis[DB_INSTANCE_KEY] = initializeFirestore(app, {
-      ignoreUndefinedProperties: true,
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
-    });
+    if (await analyticsSupported()) analytics = getAnalytics(app);
   } catch {
-    // Already initialized with options; reuse it
-    globalThis[DB_INSTANCE_KEY] = getFirestore(app);
+    /* no-op */
   }
-}
-export const db = globalThis[DB_INSTANCE_KEY];
+})();
 
-// Auth (safe to call repeatedly)
-export const auth = getAuth(app);
+let messaging;
+(async () => {
+  try {
+    if (await messagingSupported()) messaging = getMessaging(app);
+  } catch {
+    /* no-op */
+  }
+})();
+
+export { app, auth, db, messaging, analytics, firebaseConfig };

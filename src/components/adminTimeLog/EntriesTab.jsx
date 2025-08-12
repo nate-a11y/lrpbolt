@@ -6,25 +6,33 @@ import dayjs from "dayjs";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import ToolsCell from "./cells/ToolsCell.jsx";
 import StatusCell from "./cells/StatusCell.jsx";
-import { db } from "src/utils/firebaseInit";
+import { db } from "../../utils/firebaseInit";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 
-/** Safely turn a Firestore Timestamp/seconds/ms into a JS Date */
-function tsToDate(v) {
-  if (!v) return null;
-  if (typeof v?.toDate === "function") return v.toDate();
-  if (typeof v?.seconds === "number") return new Date(v.seconds * 1000);
-  if (typeof v === "number") return new Date(v);
+// helper guards
+const tsToDate = (v) => {
+  // supports Firestore Timestamp, ISO string, number(ms), Date, or null
+  try {
+    if (!v) return null;
+    if (v.toDate) return v.toDate();
+    if (v.seconds && v.nanoseconds !== undefined) return new Date(v.seconds * 1000);
+    if (typeof v === "string" || typeof v === "number" || v instanceof Date) return new Date(v);
+  } catch (_) {}
   return null;
-}
+};
 
-/** Compute minutes between two timestamps (rounded) */
-function minutesBetween(start, end) {
+const fmt = (v) => {
+  const d = tsToDate(v);
+  return d ? dayjs(d).format("MM/DD/YYYY h:mm A") : "—";
+};
+
+const diffMins = (start, end) => {
   const s = tsToDate(start);
   const e = tsToDate(end);
-  if (!s || !e) return 0;
-  return Math.max(0, Math.round((e.getTime() - s.getTime()) / 60000));
-}
+  if (!s || !e) return "";
+  const mins = Math.max(0, Math.round((e.getTime() - s.getTime()) / 60000));
+  return `${mins}m`;
+};
 
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
@@ -49,10 +57,6 @@ export default function EntriesTab() {
 
         const startTime = d.startTime ?? null;
         const endTime = d.endTime ?? null;
-        const duration =
-          typeof d.duration === "number" && d.duration > 0
-            ? Math.round(d.duration)
-            : minutesBetween(startTime, endTime);
 
         const driver = d.driverEmail || d.driver || "";
         const status = endTime ? "Closed" : "Open";
@@ -65,7 +69,6 @@ export default function EntriesTab() {
           mode: d.mode || "RIDE",
           startTime,
           endTime,
-          duration,
           note: d.note || "",
           status,
           createdAt: d.createdAt || null,
@@ -127,23 +130,25 @@ export default function EntriesTab() {
       {
         field: "startTime",
         headerName: "Start",
-        width: 180,
-        valueGetter: (p) => tsToDate(p.row.startTime),
-        valueFormatter: (p) => (p.value ? dayjs(p.value).format("M/D/YYYY h:mm A") : "—"),
+        minWidth: 180,
+        valueGetter: (params) => params?.row ? params.row.startTime ?? null : null,
+        renderCell: (p) => fmt(p.value),
       },
       {
         field: "endTime",
         headerName: "End",
-        width: 180,
-        valueGetter: (p) => tsToDate(p.row.endTime),
-        valueFormatter: (p) => (p.value ? dayjs(p.value).format("M/D/YYYY h:mm A") : "—"),
+        minWidth: 180,
+        valueGetter: (params) => params?.row ? params.row.endTime ?? null : null,
+        renderCell: (p) => fmt(p.value),
       },
       {
         field: "duration",
-        headerName: "Duration (min)",
-        type: "number",
-        width: 140,
-        valueGetter: (p) => p.row.duration ?? 0,
+        headerName: "Duration",
+        minWidth: 120,
+        valueGetter: (params) => {
+          const r = params?.row || {};
+          return diffMins(r.startTime, r.endTime);
+        },
       },
       {
         field: "status",

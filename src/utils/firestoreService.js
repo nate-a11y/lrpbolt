@@ -13,8 +13,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-import { db } from "src/utils/firebaseInit";
-
+import { db } from "./firebaseInit";
 import { logError } from "./logError";
 
 /**
