@@ -442,20 +442,20 @@ export default function Tickets() {
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
 
-        <Button
-          onClick={() =>
-            setSnackbar({
-              open: true,
-              message: "🔥 Real-time updates active",
-              severity: "info",
-            })
-          }
-          variant="contained"
-          color="primary"
-          startIcon={<RefreshIcon />}
-        >
-          Refresh
-        </Button>
+          <Button
+            onClick={() =>
+              setSnackbar({
+                open: true,
+                message: "🔥 Real-time updates active",
+                severity: "info",
+              })
+            }
+            variant="outlined"
+            color="primary"
+            startIcon={<RefreshIcon />}
+          >
+            Refresh
+          </Button>
         <Tooltip
           title={
             selectedIds.length

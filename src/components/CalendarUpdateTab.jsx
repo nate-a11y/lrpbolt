@@ -45,7 +45,7 @@ export default function CalendarUpdateTab() {
   );
 
   return (
-    <Container maxWidth="md" sx={{ px: { xs: 1, sm: 2 }, pt: 2, pb: 4 }}>
+    <Container maxWidth="md" sx={{ pl: { xs: 1, sm: 0 }, pr: { xs: 1, sm: 2 }, pt: 2, pb: 4 }}>
       <Typography variant="h5" fontWeight={800} gutterBottom>
         🗓️ How to Mark Yourself Unavailable
       </Typography>

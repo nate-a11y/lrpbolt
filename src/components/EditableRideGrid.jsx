@@ -253,25 +253,26 @@ const EditableRideGrid = ({
   const CustomToolbar = () => (
     <GridToolbarContainer sx={{ justifyContent: "space-between", px: 1 }}>
       <GridToolbarColumnsButton />
-      <Tooltip title="Reload ride data from Google Sheets">
-        <span>
-          <Button
-            onClick={refreshRides}
-            disabled={loading}
-            variant="outlined"
-            size="small"
-            startIcon={
-              loading ? (
-                <CircularProgress size={16} sx={{ color: "inherit" }} />
-              ) : (
-                <RefreshIcon />
-              )
-            }
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </Button>
-        </span>
-      </Tooltip>
+        <Tooltip title="Reload ride data from Google Sheets">
+          <span>
+            <Button
+              onClick={refreshRides}
+              disabled={loading}
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={
+                loading ? (
+                  <CircularProgress size={16} sx={{ color: "inherit" }} />
+                ) : (
+                  <RefreshIcon />
+                )
+              }
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </span>
+        </Tooltip>
     </GridToolbarContainer>
   );
 

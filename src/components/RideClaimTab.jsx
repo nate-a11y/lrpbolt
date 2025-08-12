@@ -206,8 +206,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
         <Button
           variant="outlined"
+          color="primary"
           startIcon={
-        loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />
+          loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />
           }
           onClick={() =>
             showToast("🔥 Real-time updates active", "info")

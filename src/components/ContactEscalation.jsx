@@ -65,7 +65,7 @@ export default function ContactEscalation() {
   const isDark = theme.palette.mode === "dark";
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, pb: 4 }}>
+    <Box sx={{ pl: { xs: 1, sm: 0 }, pr: { xs: 1, sm: 2 }, pb: 4 }}>
       <Typography variant="h5" gutterBottom fontWeight="bold">
         📞 Who to Contact & When
       </Typography>
