@@ -26,8 +26,8 @@ import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import FcmToaster from "./components/FcmToaster.jsx";
-import { useFcm } from "./hooks/useFcm.js";
 import { getUserAccess } from "./hooks/api";
+import { setupMessaging } from "@/utils/initMessaging";
 import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
@@ -76,7 +76,17 @@ function App() {
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
   const { user, authLoading } = useAuth();
-  useFcm(user);
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    setupMessaging()
+      .then((t) => mounted && console.log("[LRP] Push ready:", !!t))
+      .catch((e) => console.warn("[LRP] Messaging disabled:", e?.message || e));
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
   const { toast, showToast, closeToast } = useToast("success");
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);

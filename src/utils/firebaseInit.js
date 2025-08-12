@@ -1,37 +1,31 @@
-// src/utils/firebaseInit.js
-import {
-  setPersistence,
-  browserLocalPersistence,
-  onAuthStateChanged,
-  connectAuthEmulator,
-} from "firebase/auth";
-import { connectFirestoreEmulator } from "firebase/firestore";
-import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+/* Proprietary and confidential. See LICENSE. */
+import { initializeApp, getApps, getApp } from "firebase/app";
 
-import app, { auth, db, firebaseConfig } from "../firebase";
-const functions = getFunctions(app);
+const cfg = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, // optional
+};
 
-// Sessions
-setPersistence(auth, browserLocalPersistence).catch((err) => {
-  console.error("[firebaseInit] setPersistence failed:", err?.message || err);
-});
-
-// Emulators (dev only)
-if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === "true") {
-  try {
-    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-    connectFirestoreEmulator(db, "localhost", 8080);
-    connectFunctionsEmulator(functions, "localhost", 5001);
-    console.info("[firebaseInit] Connected to Firebase emulators.");
-  } catch (err) {
-    console.error("[firebaseInit] Emulator connect failed:", err?.message || err);
+function assertConfig(config) {
+  const missing = Object.entries(config)
+    .filter(([k, v]) => !v && k !== "measurementId")
+    .map(([k]) => k);
+  if (missing.length) {
+    console.error("[LRP] Missing Firebase env(s):", missing);
+    throw new Error(`Firebase config missing: ${missing.join(", ")}`);
   }
 }
+assertConfig(cfg);
 
-// Optional debug in dev
-if (import.meta.env.DEV) {
-  onAuthStateChanged(auth, (u) => {
-    console.log("[AUTH]", Boolean(u), u?.email || null);
-  });
+export const app = getApps().length ? getApp() : initializeApp(cfg);
+
+// TEMP: expose for runtime sanity checks (safe)
+if (typeof window !== "undefined") {
+  console.log("[LRP] Firebase app options:", app.options);
+  window.__LRP_APP__ = app;
 }
-export { app, db, auth, functions, firebaseConfig };

@@ -19,8 +19,8 @@ import {
 import SendIcon from "@mui/icons-material/Send";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { collection, getDocs, query, where, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../utils/firebaseInit";
+import { collection, getDocs, query, where, addDoc, serverTimestamp, getFirestore } from "firebase/firestore";
+import { app } from "../../utils/firebaseInit";
 import { sendPortalNotification } from "../../utils/notify";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -32,6 +32,7 @@ const SEGMENTS = [
 export default function NotificationsCenter() {
   const theme = useTheme();
   const { user } = useAuth();
+  const db = useMemo(() => getFirestore(app), []);
   const isDark = theme.palette.mode === "dark";
 
   const [allUsers, setAllUsers] = useState([]); // {id,email,name,access}
