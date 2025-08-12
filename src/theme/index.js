@@ -8,7 +8,7 @@ export const brand = {
   green400: "#60e421",
   green700: "#3a8e11",
   black: "#060606",
-  white: "#ffffff",
+    white: "#FFFFFF",
   grey200: "#e6e6e6",
 };
 
@@ -42,31 +42,34 @@ const buildPalette = (mode) => {
     mode,
     ...common,
     text: { primary: "#e8eaed", secondary: "#b0b7c3", disabled: alpha("#e8eaed", 0.38) },
-    background: { default: brand.black, paper: "#121416" },
+      background: { default: "#0e0f10", paper: "#17191b" },
   };
 };
 
 export const getDesignTokens = (mode) => ({
   palette: buildPalette(mode),
   ...base,
-  components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        "html, body, #root": { height: "100%" },
-        body: { backgroundColor: brand.black, color: "#e8eaed" },
-        a: { color: brand.green400 },
-        "*:focus-visible": { outline: "none" },
-      },
-    },
-    MuiPaper: {
-      defaultProps: { elevation: 2 },
-      styleOverrides: {
-        root: ({ theme }) => ({
-          backgroundImage: "none",
-          backgroundColor: theme.palette.background.paper,
+    components: {
+      MuiCssBaseline: {
+        styleOverrides: (t) => ({
+          "html, body, #root": {
+            height: "100%",
+            backgroundColor: t.palette.background.default,
+          },
+          body: { color: "#e8eaed" },
+          a: { color: t.palette.primary.light },
+          "*:focus-visible": { outline: "none" },
         }),
       },
-    },
+      MuiPaper: {
+        defaultProps: { elevation: 0 },
+        styleOverrides: {
+          root: ({ theme }) => ({
+            backgroundImage: "none",
+            backgroundColor: theme.palette.background.paper,
+          }),
+        },
+      },
     MuiAppBar: {
       styleOverrides: {
         root: ({ theme }) => ({

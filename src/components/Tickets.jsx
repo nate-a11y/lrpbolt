@@ -29,6 +29,7 @@ import {
   Tooltip,
   InputAdornment,
   OutlinedInput,
+  useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import EditIcon from "@mui/icons-material/Edit";
@@ -38,6 +39,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import EmailIcon from "@mui/icons-material/Email";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import PageContainer from "./PageContainer.jsx";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
@@ -73,6 +75,7 @@ export default function Tickets() {
   const [emailAddress, setEmailAddress] = useState("");
   const previewRef = useRef(null);
   const { user, authLoading } = useAuth();
+  const theme = useTheme();
 
   // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
@@ -123,7 +126,7 @@ export default function Tickets() {
     if (!previewRef.current || !previewTicket) return;
     try {
       const dataUrl = await toPng(previewRef.current, {
-        backgroundColor: "#fff",
+        backgroundColor: theme.palette.background.paper,
       });
       const link = document.createElement("a");
       link.download = `${previewTicket.ticketId}.png`;
@@ -185,9 +188,9 @@ export default function Tickets() {
           sx={{
             p: 2,
             width: 360,
-            backgroundColor: "#fff",
+            backgroundColor: theme.palette.background.paper,
             borderRadius: 2,
-            color: "#000",
+            color: theme.palette.text.primary,
           }}
         >
           <Box display="flex" justifyContent="center" mb={2}>
@@ -262,7 +265,7 @@ export default function Tickets() {
     if (!previewRef.current || !previewTicket || !emailAddress) return;
     try {
       const dataUrl = await toPng(previewRef.current, {
-        backgroundColor: "#fff",
+        backgroundColor: theme.palette.background.paper,
       });
       const base64 = dataUrl.split(",")[1];
       const data = await apiEmailTicket(
@@ -375,7 +378,7 @@ export default function Tickets() {
     },
   ];
   return (
-    <Box sx={{ maxWidth: 960, mx: "auto", mt: 4, px: { xs: 1, sm: 3 } }}>
+    <PageContainer maxWidth={960}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
         🎟️ Shuttle Ticket Overview
       </Typography>
@@ -588,9 +591,9 @@ export default function Tickets() {
                 ref={previewRef}
                 sx={{
                   p: 2,
-                  backgroundColor: "#fff",
+                  backgroundColor: theme.palette.background.paper,
                   borderRadius: 2,
-                  color: "#000",
+                  color: theme.palette.text.primary,
                 }}
               >
                 <Box display="flex" justifyContent="center" mb={2}>
@@ -604,7 +607,7 @@ export default function Tickets() {
                   variant="h6"
                   align="center"
                   gutterBottom
-                  sx={{ color: "#000" }}
+                  sx={{ color: theme.palette.text.primary }}
                 >
                   🎟️ Shuttle Ticket
                 </Typography>
@@ -642,7 +645,7 @@ export default function Tickets() {
                 <Box mt={2} display="flex" justifyContent="center">
                   <Box
                     p={1.5}
-                    bgcolor="#fff"
+                    bgcolor={(t) => t.palette.background.paper}
                     borderRadius={2}
                     boxShadow="0 0 10px lime"
                   >
@@ -701,6 +704,6 @@ export default function Tickets() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 }

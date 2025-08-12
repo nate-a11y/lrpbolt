@@ -19,6 +19,7 @@ import {
   Switch,
   Tooltip,
 } from "@mui/material";
+import PageContainer from "./PageContainer.jsx";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -231,7 +232,7 @@ export default function RideVehicleCalendar() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ p: isMobile ? 1 : 3 }}>
+      <PageContainer>
         <Typography variant="h5" gutterBottom>
           🚖 Ride & Vehicle Calendar — {date.format("dddd, MMMM D")}
         </Typography>
@@ -273,7 +274,7 @@ export default function RideVehicleCalendar() {
                   sx={{
                     backgroundColor:
                       option === "ALL" ? undefined : getVehicleColor(option),
-                    color: option === "ALL" ? undefined : "#fff",
+                    color: option === "ALL" ? undefined : theme.palette.common.white,
                     fontWeight: 500,
                     "&:hover": {
                       backgroundColor:
@@ -355,7 +356,7 @@ export default function RideVehicleCalendar() {
                   sx={{
                     mt: 0.5,
                     backgroundColor: getVehicleColor(event.vehicle),
-                    color: "#fff",
+                    color: theme.palette.common.white,
                     fontWeight: 500,
                     fontSize: "0.75rem",
                   }}
@@ -420,7 +421,7 @@ export default function RideVehicleCalendar() {
             </Box>
           </Box>
         </Dialog>
-      </Box>
+      </PageContainer>
     </LocalizationProvider>
   );
 }

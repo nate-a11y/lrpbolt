@@ -17,7 +17,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  useTheme,
 } from "@mui/material";
+import PageContainer from "./PageContainer.jsx";
 import EmailIcon from "@mui/icons-material/Email";
 import QRCode from "react-qr-code";
 import dayjs from "dayjs";
@@ -63,6 +65,7 @@ export default function TicketGenerator() {
   const [emailSending, setEmailSending] = useState(false);
   const pickupOptions = getStoredLocations("lrp_pickup");
   const dropoffOptions = getStoredLocations("lrp_dropoff");
+  const theme = useTheme();
 
   const validate = () => {
     const newErrors = {};
@@ -156,7 +159,7 @@ export default function TicketGenerator() {
     if (!ticketRef.current || !ticket) return;
     try {
       const dataUrl = await toPng(ticketRef.current, {
-        backgroundColor: "#fff",
+        backgroundColor: theme.palette.background.paper,
       });
       const link = document.createElement("a");
       link.download = `${ticket.ticketId}.png`;
@@ -183,7 +186,7 @@ export default function TicketGenerator() {
     try {
       await new Promise((res) => setTimeout(res, 250)); // Ensure DOM is rendered
       const dataUrl = await toPng(ticketRef.current, {
-        backgroundColor: "#fff",
+        backgroundColor: theme.palette.background.paper,
       });
       const base64 = dataUrl.split(",")[1];
 
@@ -218,7 +221,7 @@ export default function TicketGenerator() {
     const win = window.open("", "Print", "height=600,width=400");
     if (!win) return;
     win.document.write(
-      "<html><head><title>Ticket</title><style>body{background:#fff;color:#000;padding:20px;font-family:sans-serif;} img{display:block;margin:auto;}</style></head><body>",
+      `<html><head><title>Ticket</title><style>body{background:${theme.palette.background.paper};color:${theme.palette.text.primary};padding:20px;font-family:sans-serif;} img{display:block;margin:auto;}</style></head><body>`,
     );
     win.document.write(contents);
     win.document.write("</body></html>");
@@ -233,7 +236,7 @@ export default function TicketGenerator() {
     setTicket(null);
   };
   return (
-    <Box sx={{ maxWidth: 500, mx: "auto", mt: 4 }}>
+    <PageContainer maxWidth={500}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
         🚌 Generate Shuttle Ticket
       </Typography>
@@ -353,8 +356,8 @@ export default function TicketGenerator() {
               <Box
                 ref={ticketRef}
                 sx={{
-                  backgroundColor: "#fff",
-                  color: "#000",
+                  backgroundColor: theme.palette.background.paper,
+                  color: theme.palette.text.primary,
                   p: 3,
                   borderRadius: 2,
                   width: "100%",
@@ -400,7 +403,7 @@ export default function TicketGenerator() {
                   <strong>Ticket ID:</strong> {ticket.ticketId}
                 </Typography>
                 <Box mt={3} display="flex" justifyContent="center">
-                  <Box sx={{ p: 2, bgcolor: "#fff" }}>
+                  <Box sx={{ p: 2, bgcolor: theme.palette.background.paper }}>
                     <QRCode
                       value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
                       size={160}
@@ -495,6 +498,6 @@ export default function TicketGenerator() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 }

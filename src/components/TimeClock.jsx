@@ -1,18 +1,19 @@
 // src/components/TimeClockGodMode.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  Snackbar,
-  Alert,
-  Stack,
-  CircularProgress,
-} from "@mui/material";
+  import {
+    Box,
+    Paper,
+    TextField,
+    Button,
+    Typography,
+    Checkbox,
+    FormControlLabel,
+    Snackbar,
+    Alert,
+    Stack,
+    CircularProgress,
+  } from "@mui/material";
+  import PageContainer from "./PageContainer.jsx";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   PlayArrow as PlayArrowIcon,
@@ -340,7 +341,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
 
   return (
-    <Box maxWidth={600} mx="auto" p={2}>
+    <PageContainer maxWidth={600}>
       {import.meta.env.DEV && <RoleDebug />}
       <ErrorBanner error={error} />
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
@@ -420,6 +421,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           {snack.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </PageContainer>
   );
 }

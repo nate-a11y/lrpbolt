@@ -1,8 +1,19 @@
-import React from "react";
 import { Box } from "@mui/material";
-export default function PageContainer({ children, maxWidth = 1180, ...rest }) {
+
+export default function PageContainer({ children, maxWidth = 1400, pt = 2, pb = 4 }) {
   return (
-    <Box {...rest} sx={(t) => ({ maxWidth, mx: "auto", p: { xs: 2, sm: 3 }, bgcolor: t.palette.background.default, minHeight: "calc(100vh - 64px)", ...(rest.sx || {}) })}>
+    <Box
+      component="main"
+      sx={{
+        px: { xs: 2, md: 3 },
+        pt,
+        pb,
+        mx: "auto",
+        maxWidth,
+        width: "100%",
+        backgroundColor: (t) => t.palette.background.default,
+      }}
+    >
       {children}
     </Box>
   );
