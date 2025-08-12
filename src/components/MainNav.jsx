@@ -7,10 +7,16 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
 
+// helper: resolve icon safely
+const resolveIcon = (name) => Icons[name] || Icons.ChevronRight;
+
 export default function MainNav({ onToggleTheme }) {
   const { user } = useAuth?.() || {};
   const { driverName, role, logout: signOut } = useDriver?.() || {};
   const items = NAV_ITEMS.filter((it) => !it.admin || role?.toLowerCase?.() === "admin");
+
+  // pick a sign-out icon that exists
+  const ExitIcon = Icons.ExitToApp || Icons.Logout || Icons.LogoutRounded;
 
   return (
     <Drawer variant="permanent" sx={{
@@ -26,11 +32,14 @@ export default function MainNav({ onToggleTheme }) {
     }}>
       <List sx={{ py: 1 }}>
         {items.map(({ to, label, icon }) => {
-          const Icon = Icons[icon] || Icons["ChevronRight"];
+          const Icon = resolveIcon(icon);
           return (
-            <ListItemButton key={to} component={NavLink} to={to} sx={{
-              "&.active": { bgcolor: (t) => t.palette.action.selected },
-            }}>
+            <ListItemButton
+              key={to}
+              component={NavLink}
+              to={to}
+              sx={{ "&.active": { bgcolor: (t) => t.palette.action.selected } }}
+            >
               <ListItemIcon><Icon /></ListItemIcon>
               <ListItemText primary={label} />
             </ListItemButton>
@@ -40,7 +49,6 @@ export default function MainNav({ onToggleTheme }) {
 
       <Box sx={{ flexGrow: 1 }} />
 
-      {/* Footer info: driver + admin + theme + sign out */}
       <Divider />
       <Box sx={{ p: 2 }}>
         <Stack spacing={1}>
@@ -54,7 +62,7 @@ export default function MainNav({ onToggleTheme }) {
             <Switch onChange={onToggleTheme} />
           </Stack>
           <ListItemButton onClick={signOut}>
-            <ListItemIcon><Icons["ExitToApp"] /></ListItemIcon>
+            <ListItemIcon><ExitIcon /></ListItemIcon>
             <ListItemText primary="Sign Out" />
           </ListItemButton>
         </Stack>
