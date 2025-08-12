@@ -13,10 +13,7 @@ export default function ToolsCell({ row, onEdit, onDelete }) {
   return (
     <Stack direction="row" spacing={1}>
       <Tooltip title="Edit">
-        <IconButton
-          size={size}
-          onClick={() => onEdit?.(row)} // call parent handler
-        >
+        <IconButton size={size} onClick={() => onEdit?.(row)}>
           <EditIcon />
         </IconButton>
       </Tooltip>
@@ -24,11 +21,7 @@ export default function ToolsCell({ row, onEdit, onDelete }) {
         <IconButton
           size={size}
           color="error"
-          onClick={() => {
-            if (window.confirm("Are you sure you want to delete this entry?")) {
-              onDelete?.(row);
-            }
-          }}
+          onClick={() => onDelete?.(row)}
         >
           <DeleteIcon />
         </IconButton>
