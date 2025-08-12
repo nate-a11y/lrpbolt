@@ -1,14 +1,11 @@
 import React from "react";
 import { Drawer, List, ListItemButton, ListItemIcon, ListItemText, Box, Divider, Switch, Stack, Typography, Chip } from "@mui/material";
-import * as Icons from "@mui/icons-material";
+import { iconMap } from "../utils/iconMap";
 import { NAV_ITEMS } from "../config/nav";
 import { DRAWER_WIDTH, APP_BAR_HEIGHT } from "../layout/constants";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
-
-// helper: resolve icon safely
-const resolveIcon = (name) => Icons[name] || Icons.ChevronRight;
 
 export default function MainNav({ onToggleTheme }) {
   const { user } = useAuth?.() || {};
@@ -16,7 +13,7 @@ export default function MainNav({ onToggleTheme }) {
   const items = NAV_ITEMS.filter((it) => !it.admin || role?.toLowerCase?.() === "admin");
 
   // pick a sign-out icon that exists
-  const ExitIcon = Icons.ExitToApp || Icons.Logout || Icons.LogoutRounded;
+  const ExitIcon = iconMap.ExitToApp || iconMap.ChevronRight;
 
   return (
     <Drawer variant="permanent" sx={{
@@ -32,7 +29,7 @@ export default function MainNav({ onToggleTheme }) {
     }}>
       <List sx={{ py: 1 }}>
         {items.map(({ to, label, icon }) => {
-          const Icon = resolveIcon(icon);
+          const Icon = iconMap[icon] || iconMap.ChevronRight;
           return (
             <ListItemButton
               key={to}
