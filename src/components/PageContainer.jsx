@@ -7,3 +7,4 @@ export default function PageContainer({ children, maxWidth = 1180, ...rest }) {
     </Box>
   );
 }
+

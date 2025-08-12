@@ -21,7 +21,6 @@ import { deleteClaimedRide, restoreRide } from "../services/firestoreService";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
-import BrandHeader from "./BrandHeader.jsx";
 import { db } from "../utils/firebaseInit";
 import useFirestoreSub from "../hooks/useFirestoreSub";
 import { COLLECTIONS } from "../constants";
@@ -159,22 +158,21 @@ const ClaimedRidesGrid = () => {
   ];
 
   return (
-    <Box sx={{ p: 2 }}>
-      <BrandHeader title="Claim Rides" />
+    <Box>
       {selectedRows.length > 0 && (
         <Box
           display="flex"
           justifyContent="space-between"
           alignItems="center"
-          sx={(t) => ({
-            bgcolor: t.palette.error.main,
-            color: t.palette.error.contrastText,
+          sx={{
+            bgcolor: "#ff1744",
+            color: "#fff",
             px: 2,
             py: 1,
             mb: 2,
             borderRadius: 1,
             boxShadow: 3,
-          })}
+          }}
         >
           <Typography>{selectedRows.length} selected</Typography>
           <Button
@@ -182,11 +180,11 @@ const ClaimedRidesGrid = () => {
             variant="contained"
             color="inherit"
             startIcon={<DeleteIcon />}
-            sx={(t) => ({
-              bgcolor: t.palette.background.paper,
-              color: t.palette.error.main,
-              "&:hover": { bgcolor: t.palette.action.hover },
-            })}
+            sx={{
+              bgcolor: "#fff",
+              color: "#ff1744",
+              "&:hover": { bgcolor: "#eee" },
+            }}
           >
             Delete Selected
           </Button>
@@ -204,13 +202,7 @@ const ClaimedRidesGrid = () => {
           setSelectedRows(model);
         }}
         loading={loading}
-        sx={{
-          bgcolor: (t) => t.palette.background.paper,
-          "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": { color: (t) => t.palette.text.primary },
-          "& .MuiTablePagination-root": { color: (t) => t.palette.text.secondary },
-          borderColor: "divider",
-        }}
-        density="comfortable"
+        sx={{ bgcolor: "background.paper" }}
       />
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>

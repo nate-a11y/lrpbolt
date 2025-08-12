@@ -16,3 +16,4 @@ export default function BrandHeader({ title, right, mb = 2 }) {
     </Box>
   );
 }
+

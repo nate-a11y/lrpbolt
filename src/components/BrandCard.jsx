@@ -10,3 +10,4 @@ export default function BrandCard({ children, gradientPosition = "top", glow = t
     </Card>
   );
 }
+
