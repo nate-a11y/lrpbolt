@@ -150,6 +150,10 @@ jobs:
           echo "⚠️ Skipping tests — vitest not installed"
           fi
 
+      - name: Create .env.production
+        run: |
+          echo "VITE_FCM_VAPID_KEY=${{ secrets.VITE_FCM_VAPID_KEY }}" >> .env.production
+
       - name: Build (Vite)
         run: npm run build
 

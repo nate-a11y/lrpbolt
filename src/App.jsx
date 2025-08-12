@@ -24,7 +24,9 @@ import ChangeDriverModal from "./components/ChangeDriverModal";
 import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
-import useAuth from "./hooks/useAuth.js";
+import { useAuth } from "./context/AuthContext.jsx";
+import FcmToaster from "./components/FcmToaster.jsx";
+import { useFcm } from "./hooks/useFcm.js";
 import { getUserAccess } from "./hooks/api";
 import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
@@ -50,6 +52,7 @@ const TimeClock = lazy(() => import("./components/TimeClock"));
 const AdminTimeLog = lazy(() => import("./components/AdminTimeLog"));
 const AdminUserManager = lazy(() => import("./components/AdminUserManager"));
 const RideEntryForm = lazy(() => import("./components/RideEntryForm"));
+const NotificationsCenter = lazy(() => import("./pages/Admin/NotificationsCenter.jsx"));
 const RideVehicleCalendar = lazy(
   () => import("./components/RideVehicleCalendar"),
 );
@@ -73,6 +76,7 @@ function App() {
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
   const { user, authLoading } = useAuth();
+  useFcm(user);
   const { toast, showToast, closeToast } = useToast("success");
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
@@ -237,6 +241,12 @@ function App() {
                     }
                   />
                   <Route
+                    path="/admin/notifications"
+                    element={
+                      isAdmin ? <NotificationsCenter /> : <Navigate to="/" />
+                    }
+                  />
+                  <Route
                     path="/ride-entry"
                     element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
                   />
@@ -287,6 +297,8 @@ function App() {
               onRetry={retryConnection}
               onClose={dismissOffline}
             />
+
+            <FcmToaster />
 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
