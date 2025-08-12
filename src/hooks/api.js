@@ -86,45 +86,45 @@ export async function fetchUserAccess(activeOnly = false) {
   return data;
 }
 
+/**
+ * subscribeUserAccess(cb, { roles }, onError?)
+ * Emits array of { id: email, name, email, access }
+ */
 export function subscribeUserAccess(
-  onRows,
-  { activeOnly = false, roles = ["admin", "driver"], max = 100 } = {},
+  cb,
+  { roles = ["admin", "driver"] } = {},
   onError,
 ) {
-  const coll = collection(db, "userAccess");
-  const clauses = [];
-  if (activeOnly) clauses.push(where("active", "==", true));
-  if (roles?.length)
-    clauses.push(
-      where(
-        "access",
-        "in",
-        roles.map((r) => r.toLowerCase()),
-      ),
-    );
-  const q = query(coll, ...clauses, limit(Math.min(max || 100, 500)));
+  const q = query(
+    collection(db, "userAccess"),
+    where("access", "in", roles),
+    limit(1000),
+  );
 
-  const unsub = onSnapshot(
+  return onSnapshot(
     q,
     (snap) => {
       const rows = snap.docs.map((d) => {
-        const data = d.data();
+        const x = d.data() ?? {};
+        const email = (x.email || d.id || "").trim();
+        const name =
+          (x.name || "").toString().trim() ||
+          (email.includes("@") ? email.split("@")[0] : email) ||
+          "Unknown";
         return {
-          id: d.id, // lowercase email
-          name: data.name || "",
-          email: data.email || d.id,
-          access: (data.access || "").toLowerCase(),
-          active: data.active !== false,
+          id: email,
+          email,
+          name,
+          access: (x.access || "").toString().toLowerCase(),
         };
       });
-      onRows(rows);
+      cb(rows);
     },
-    (e) => {
-      logError(e, { area: "FirestoreSubscribe", comp: "subscribeUserAccess" });
-      onError?.(e);
+    (err) => {
+      console.error("[subscribeUserAccess] error:", err);
+      if (onError) onError(err);
     },
   );
-  return () => unsub();
 }
 
 /**

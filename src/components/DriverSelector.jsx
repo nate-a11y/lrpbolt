@@ -13,37 +13,70 @@ import {
 } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 
-const DriverSelector = ({
-  driver,
-  setDriver,
-  drivers = [],
-  isTracking,
-  role,
-}) => {
+/**
+ * Props:
+ *  - driver: string | { id?: string; name: string; email?: string } | null
+ *  - setDriver: (driver: string | { id?: string; name: string; email?: string } | null) => void
+ *  - drivers: Array<string | { id?: string; name: string; email?: string }>
+ *  - isTracking: boolean
+ *  - role: "admin" | "driver" | string
+ */
+const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isAdmin = role === "admin";
 
+  // Normalize incoming drivers to { id, name, email }
+  const options = useMemo(() => {
+    const norm = (d) =>
+      typeof d === "string"
+        ? { id: d, name: d, email: undefined }
+        : {
+            id: d?.id ?? d?.email ?? d?.name ?? JSON.stringify(d),
+            name: d?.name ?? "",
+            email: d?.email,
+          };
+
+    const mapped = (drivers || [])
+      .filter(Boolean)
+      .map(norm)
+      .filter((d) => d.name?.trim().length > 0);
+
+    const byId = new Map();
+    for (const d of mapped) if (d.id) byId.set(d.id, d);
+
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [drivers]);
+
+  // Controlled Select value = option id
+  const valueId = useMemo(() => {
+    if (!driver) return "";
+    return typeof driver === "string"
+      ? options.find((o) => o.id === driver || o.name === driver)?.id ?? ""
+      : options.find((o) => o.id === driver.id || o.name === driver.name)?.id ?? "";
+  }, [driver, options]);
+
+  const disabled = !isAdmin || isTracking;
+
   const handleChange = useCallback(
     (e) => {
-      if (!isTracking && isAdmin) {
-        const selected = e.target.value;
-        setDriver(selected);
+      const nextId = e.target.value;
+      const selected = options.find((o) => o.id === nextId) || null;
+      if (selected) {
+        setDriver(typeof driver === "string" ? selected.name : selected);
+      } else {
+        setDriver(null);
       }
     },
-    [isTracking, isAdmin, setDriver],
+    [driver, options, setDriver]
   );
 
   const handleClear = useCallback(() => {
-    if (!isTracking && isAdmin) {
-      setDriver("");
-    }
-  }, [isTracking, isAdmin, setDriver]);
+    setDriver(typeof driver === "string" ? "" : null);
+  }, [driver, setDriver]);
 
-  const sortedDrivers = useMemo(
-    () => [...drivers].sort((a, b) => a.localeCompare(b)),
-    [drivers],
-  );
+  const labelId = "driver-select-label";
+  const selectId = "driver-select";
 
   return (
     <Box
@@ -61,37 +94,53 @@ const DriverSelector = ({
       }}
     >
       <Typography variant="body1" fontWeight="bold">
-        Driver: <span style={{ fontWeight: 600 }}>{driver || "—"}</span>
+        Driver:{" "}
+        <span style={{ fontWeight: 600 }}>
+          {options.find((o) => o.id === valueId)?.name || "—"}
+        </span>
       </Typography>
 
       {isAdmin ? (
         <>
-          <Button
-            onClick={handleClear}
-            disabled={isTracking}
-            variant="outlined"
-            size="small"
-          >
-            🔁 Change Driver
+          <Button onClick={handleClear} disabled={disabled} variant="outlined" size="small">
+            🔁 Clear
           </Button>
 
-          <FormControl fullWidth sx={{ minWidth: 240 }}>
-            <InputLabel>Select Driver</InputLabel>
+          <FormControl fullWidth sx={{ minWidth: 260, maxWidth: 420 }}>
+            <InputLabel id={labelId}>Select Driver</InputLabel>
             <Select
-              value={driver}
-              onChange={handleChange}
+              labelId={labelId}
+              id={selectId}
+              value={valueId}
               label="Select Driver"
-              disabled={isTracking}
+              onChange={handleChange}
+              disabled={disabled}
+              displayEmpty
+              renderValue={(selectedId) => {
+                if (!selectedId) return <span style={{ opacity: 0.7 }}>Select a driver…</span>;
+                const opt = options.find((o) => o.id === selectedId);
+                return opt ? opt.name : "";
+              }}
+              MenuProps={{ PaperProps: { sx: { maxHeight: 360, width: 360 } } }}
               sx={{
                 bgcolor: isDark ? "grey.800" : "background.paper",
                 borderRadius: 1,
               }}
             >
-              {sortedDrivers.map((name, i) => (
-                <MenuItem key={i} value={name}>
-                  {name}
+              <MenuItem value="">
+                <em>— Select a driver —</em>
+              </MenuItem>
+              {options.length === 0 ? (
+                <MenuItem value="__none" disabled>
+                  No drivers available
                 </MenuItem>
-              ))}
+              ) : (
+                options.map((o) => (
+                  <MenuItem key={o.id} value={o.id}>
+                    {o.name} {o.email ? `(${o.email})` : ""}
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
         </>
@@ -100,10 +149,7 @@ const DriverSelector = ({
           icon={<LockIcon fontSize="small" />}
           label="Locked"
           size="small"
-          sx={{
-            backgroundColor: isDark ? "#555" : "#888",
-            color: "common.white",
-          }}
+          sx={{ backgroundColor: isDark ? "#555" : "#888", color: "common.white" }}
         />
       )}
     </Box>

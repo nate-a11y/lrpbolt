@@ -2,11 +2,12 @@
 // src/hooks/useUserAccessDrivers.js
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where, limit } from "firebase/firestore";
-import { db } from "../firebase"; // or wherever you export Firestore
+import { db } from "../firebase"; // adjust if your Firestore export is elsewhere
 
 /**
  * Live drivers list from Firestore userAccess.
- * Each item: { id: email, name, email, access }
+ * Returns { drivers, loading, error }
+ * drivers: [{ id: email, name, email, access }]
  */
 export function useUserAccessDrivers(roles = ["admin", "driver"]) {
   const [rows, setRows] = useState([]);
@@ -15,8 +16,7 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
 
   useEffect(() => {
     setLoading(true);
-    // Firestore: where 'access' in ['admin','driver']
-    // Avoid orderBy here to prevent composite-index headaches; we’ll sort client-side.
+
     const q = query(
       collection(db, "userAccess"),
       where("access", "in", roles),
@@ -27,19 +27,17 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
       q,
       (snap) => {
         const data = snap.docs.map((d) => {
-          const docData = d.data() ?? {};
-          const email = (docData.email || d.id || "").trim();
-          // Fallback name from email if missing
+          const x = d.data() ?? {};
+          const email = (x.email || d.id || "").trim();
           const name =
-            (docData.name || "")
-              .toString()
-              .trim() || email.split("@")[0] || "Unknown";
-
-        return {
-            id: email,             // use email as stable id
+            (x.name || "").toString().trim() ||
+            (email.includes("@") ? email.split("@")[0] : email) ||
+            "Unknown";
+          return {
+            id: email, // use email as stable id
             email,
             name,
-            access: (docData.access || "").toString().toLowerCase(),
+            access: (x.access || "").toString().toLowerCase(),
           };
         });
         setRows(data);
@@ -55,7 +53,6 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
     return () => unsub();
   }, [roles.join("|")]);
 
-  // Sort by name and dedupe by id
   const drivers = useMemo(() => {
     const map = new Map();
     for (const r of rows) if (r.id) map.set(r.id, r);

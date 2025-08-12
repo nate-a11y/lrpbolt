@@ -42,7 +42,7 @@ export default function AdminUserManager() {
       (list = []) => {
         // Ensure every row has a stable id for DataGrid
         const mapped = list.map((r) => ({
-          id: r.id || r.email, // prefer doc id; fallback to email
+          id: r.id || r.email,
           email: (r.email || r.id || "").toLowerCase(),
           name: r.name || "",
           access: (r.access || "").toLowerCase(),
@@ -50,11 +50,7 @@ export default function AdminUserManager() {
         setRows(mapped);
         setLoading(false);
       },
-      {
-        activeOnly: true,
-        roles: ["admin", "driver"],
-        max: 100,
-      },
+      { roles: ["admin", "driver"] },
       () => {
         setSnackbar({
           open: true,

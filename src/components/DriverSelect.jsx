@@ -21,16 +21,11 @@ export default function DriverSelect({
     const unsubscribe = subscribeUserAccess(
       (rows) => {
         console.debug("[DriverSelect] subscribeUserAccess returned:", rows);
-        const sorted = [...rows]
-          .map((row) => ({
-            ...row,
-            id: row.id || row.docId || row.email, // Ensure there's a stable id
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
         setOptions(sorted);
         setLoading(false);
       },
-      { activeOnly: true, roles: ["admin", "driver"] },
+      { roles: ["admin", "driver"] },
       (err) => {
         console.error("[DriverSelect] Error in subscription:", err);
         setLoading(false);
