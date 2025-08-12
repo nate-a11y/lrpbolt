@@ -2,9 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // KEEP YOUR SCHEMA VALIDATION MATCH BLOCKS AS-IS.
-    // Only updating permission helpers/expressions safely:
-
+    // KEEP SCHEMA VALIDATION HELPERS
     function authed() { return request.auth != null; }
 
     function email() {
@@ -19,7 +17,7 @@ service cloud.firestore {
         : "";
     }
 
-    function isAdmin() { return authed() && lower(role()) == "admin"; }
+    function isAdmin()  { return authed() && lower(role()) == "admin"; }
     function isDriver() { return authed() && lower(role()) == "driver"; }
 
     function isOwner(data) {
@@ -54,21 +52,21 @@ service cloud.firestore {
 
     // userAccessByUid – same idea
     match /userAccessByUid/{uid} {
-      allow read: if isAdmin() || (authed() && uid == request.auth.uid);
-      allow create, update, delete: if isAdmin();
+      allow read: if authed() && (uid == request.auth.uid || isAdmin());
+      allow create, update, delete: if authed() && isAdmin();
     }
 
     // ---------- AdminMeta ----------
     match /AdminMeta/{docId} {
-      allow read: if request.auth != null;     // widget reads lastDropDaily
+      allow read: if authed();                 // widget reads lastDropDaily
       allow create, update, delete: if false;  // writes occur via Admin SDK in functions
     }
 
     // ---------- timeLogs ----------
     // App writes: { driverEmail, driver, rideId, startTime, endTime?, duration, loggedAt }
     match /timeLogs/{id} {
-      allow read: if authed() && (isAdmin() || isOwner(resource.data));
-      allow create, update: if authed() && (isAdmin() || isOwner(request.resource.data))
+      allow read: if authed();
+      allow create, update: if authed()
         && request.resource.data.driverEmail is string
         && request.resource.data.driver is string
         && request.resource.data.rideId is string
@@ -76,14 +74,14 @@ service cloud.firestore {
         && isTsOrNull(request.resource.data.endTime)
         && request.resource.data.duration is number
         && request.resource.data.loggedAt is timestamp;
-      allow delete: if authed() && isAdmin();
+      allow delete: if authed();
     }
 
     // ---------- shootoutStats ----------
     // App writes: { driverEmail, vehicle, startTime, endTime?, trips, passengers, createdAt }
     match /shootoutStats/{id} {
-      allow read: if authed() && (isAdmin() || isOwner(resource.data));
-      allow create, update: if authed() && (isAdmin() || isOwner(request.resource.data))
+      allow read: if authed();
+      allow create, update: if authed()
         && request.resource.data.driverEmail is string
         && request.resource.data.vehicle is string
         && request.resource.data.startTime is timestamp
@@ -91,17 +89,17 @@ service cloud.firestore {
         && isNumOrNull(request.resource.data.trips)
         && isNumOrNull(request.resource.data.passengers)
         && request.resource.data.createdAt is timestamp;
-      allow delete: if authed() && isAdmin();
+      allow delete: if authed();
     }
 
     // ---------- adminLogs ----------
-    // Admins only
+    // Admins only (keep locked)
     match /adminLogs/{id} {
       allow read, create, update, delete: if authed() && isAdmin();
     }
 
     // ---------- rideQueue ----------
-    // Drivers may only claim/unclaim + edit rideNotes; admin full control.
+    // Keep schema; open to any authenticated user
     match /rideQueue/{rideId} {
       function validBase(d) {
         return d.pickupTime is timestamp &&
@@ -109,27 +107,16 @@ service cloud.firestore {
                isStrOrNull(d.rideType) &&
                isStrOrNull(d.vehicle) &&
                isStrOrNull(d.rideNotes) &&
-               isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy) &&
+               (isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy)) &&
                isTsOrNull(claimedAtVal(d));
       }
       allow read: if authed();
-      allow create: if authed() && isAdmin() && validBase(request.resource.data);
-      allow delete: if authed() && isAdmin();
-      // Drivers may only change {claimedBy|ClaimedBy, claimedAt|ClaimedAt, rideNotes}
-      allow update: if authed() && (
-        (isAdmin() && validBase(request.resource.data)) ||
-        (
-          isDriver() &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            "claimedBy","ClaimedBy","claimedAt","ClaimedAt","rideNotes"
-          ]) &&
-          validBase(request.resource.data)
-        )
-      );
+      allow create, update: if authed() && validBase(request.resource.data);
+      allow delete: if authed();
     }
 
     // ---------- claimedRides ----------
-    // Created when a driver claims; drivers can edit their own notes; admin full control.
+    // Keep schema; open to any authenticated user
     match /claimedRides/{rideId} {
       function validBase(d) {
         return d.pickupTime is timestamp &&
@@ -141,26 +128,12 @@ service cloud.firestore {
                claimedAtVal(d) is timestamp;
       }
       allow read: if authed();
-      // Driver can create if they are the claimer; admin can create too
-      allow create: if authed() && (
-        (isDriver() && claimedByLower(request.resource.data) == me() && validBase(request.resource.data)) ||
-        (isAdmin() && validBase(request.resource.data))
-      );
-      allow delete: if authed() && isAdmin();
-      // Driver may only edit rideNotes on their own claimed ride
-      allow update: if authed() && (
-        (isAdmin() && validBase(request.resource.data)) ||
-        (
-          isDriver() &&
-          claimedByLower(resource.data) == me() &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(["rideNotes"]) &&
-          validBase(request.resource.data)
-        )
-      );
+      allow create, update: if authed() && validBase(request.resource.data);
+      allow delete: if authed();
     }
 
     // ---------- liveRides ----------
-    // Admin manages queue; drivers can only claim/unclaim + notes.
+    // Keep schema; open to any authenticated user
     match /liveRides/{rideId} {
       function validBase(d) {
         return d.pickupTime is timestamp &&
@@ -168,25 +141,16 @@ service cloud.firestore {
                isStrOrNull(d.rideType) &&
                isStrOrNull(d.vehicle) &&
                isStrOrNull(d.rideNotes) &&
-               isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy) &&
+               (isStrOrNull(d.claimedBy) || isStrOrNull(d.ClaimedBy)) &&
                isTsOrNull(claimedAtVal(d));
       }
       allow read: if authed();
-      allow create, delete: if authed() && isAdmin() && validBase(request.resource.data);
-      allow update: if authed() && (
-        (isAdmin() && validBase(request.resource.data)) ||
-        (
-          isDriver() &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            "claimedBy","ClaimedBy","claimedAt","ClaimedAt","rideNotes"
-          ]) &&
-          validBase(request.resource.data)
-        )
-      );
+      allow create, update: if authed() && validBase(request.resource.data);
+      allow delete: if authed();
     }
 
     // ---------- tickets ----------
-    // Admin creates/edits; drivers only toggle scan fields.
+    // Keep schema; open to any authenticated user
     match /tickets/{ticketId} {
       function validBase(d) {
         return d.pickupTime is timestamp &&
@@ -205,39 +169,28 @@ service cloud.firestore {
                isStrOrNull(d.scannedReturnBy);
       }
       allow read: if authed();
-      allow create: if authed() && isAdmin() && validBase(request.resource.data);
-      allow delete: if authed() && isAdmin();
-      // driver scan-only
-      allow update: if authed() && (
-        (isAdmin() && validBase(request.resource.data)) ||
-        (
-          isDriver() &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            "scannedOutbound","scannedOutboundAt","scannedOutboundBy",
-            "scannedReturn","scannedReturnAt","scannedReturnBy"
-          ]) &&
-          validBase(request.resource.data)
-        )
-      );
+      allow create, update: if authed() && validBase(request.resource.data);
+      allow delete: if authed();
     }
 
     // ---------- claimLog / claimFailures ----------
     match /claimLog/{id} {
       allow read: if authed();
-      allow create: if authed()
+      allow create, update: if authed()
         && request.resource.data.driver is string
         && request.resource.data.tripId is string
         && request.resource.data.timestamp is timestamp;
-      allow update, delete: if isAdmin();
+      allow delete: if authed();
     }
+
     match /claimFailures/{id} {
       allow read: if authed();
-      allow create: if authed()
+      allow create, update: if authed()
         && request.resource.data.tripId is string
         && request.resource.data.driverName is string
         && request.resource.data.attemptedAt is timestamp
         && request.resource.data.reason is string;
-      allow update, delete: if isAdmin();
+      allow delete: if authed();
     }
 
     // ---------- default deny ----------
