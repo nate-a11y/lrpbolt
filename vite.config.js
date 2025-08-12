@@ -13,6 +13,18 @@ export default defineConfig({
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/__\/firebase/],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /google-analytics\.com/.test(url.hostname),
+            handler: "NetworkOnly",
+            options: { cacheName: "ga-network-only" },
+          },
+          {
+            urlPattern: ({ url }) => /www\.googletagmanager\.com/.test(url.hostname),
+            handler: "NetworkOnly",
+            options: { cacheName: "gtm-network-only" },
+          },
+        ],
       },
       devOptions: { enabled: false },
       manifest: {

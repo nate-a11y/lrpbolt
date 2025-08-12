@@ -2,7 +2,6 @@
 // Centralized Firebase init (modular). Always import THIS file first in main.jsx.
 
 import { initializeApp, getApps } from "firebase/app";
-import { getAnalytics, isSupported as analyticsSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -23,16 +22,6 @@ export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfi
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-
-// Lazy guards so non‑supported browsers don’t crash
-export let analytics;
-(async () => {
-  try {
-    if (await analyticsSupported()) analytics = getAnalytics(app);
-  } catch {
-    /* no-op */
-  }
-})();
 
 export async function getMessagingIfSupported() {
   try {
