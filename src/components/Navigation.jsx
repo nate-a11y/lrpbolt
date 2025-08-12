@@ -49,6 +49,7 @@ import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
+import { useColorMode } from "../context/ColorModeContext.jsx";
 
 const DRAWER_WIDTH = 260;
 const MINI_WIDTH = 72;
@@ -103,11 +104,12 @@ const ALL_NAV_ITEMS = [
   { label: "Generate Ticket", icon: <AppShortcutIcon />, path: "/generate-ticket", admin: true },
 ];
 
-export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSignOut }) {
+export default function Navigation({ onChangeDriver, onSignOut }) {
   const { driver } = useDriver();
   const role = (driver?.access || "").toLowerCase();
   const isAdmin = role === "admin";
   const selectedDriver = driver?.name || "";
+  const { mode, toggle } = useColorMode();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -363,8 +365,8 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
             {!collapsed && <ListItemText primary="Dark Mode" />}
             <Switch
               edge="end"
-              checked={darkMode}
-              onChange={() => setDarkMode(!darkMode)}
+              checked={mode === "dark"}
+              onChange={toggle}
               inputProps={{ "aria-label": "Toggle dark mode" }}
               sx={{ ml: collapsed ? 0 : 1 }}
             />
@@ -430,8 +432,9 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
     <>
       {/* AppBar */}
       <AppBar
-        position="fixed"
+        position="sticky"
         color="default"
+        enableColorOnDark
         elevation={1}
         sx={{
           width: { sm: `calc(100% - ${effectiveDrawerWidth}px)` },
@@ -492,8 +495,8 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
                   <Box display="flex" alignItems="center" gap={0.5}>
                     <Brightness4Icon fontSize="small" />
                     <Switch
-                      checked={darkMode}
-                      onChange={() => setDarkMode(!darkMode)}
+                      checked={mode === "dark"}
+                      onChange={toggle}
                       inputProps={{ "aria-label": "Toggle dark mode" }}
                     />
                   </Box>
@@ -534,9 +537,6 @@ export default function Navigation({ darkMode, setDarkMode, onChangeDriver, onSi
           </Box>
         </Toolbar>
       </AppBar>
-
-      {/* Offset for fixed AppBar */}
-      <Box sx={theme.mixins.toolbar} />
 
       {/* Desktop: permanent mini/permanent drawer */}
       {!isMobile && (

@@ -36,7 +36,7 @@ import {
   sendPasswordReset,
   registerWithEmail,
 } from "../services/auth";
-import useDarkMode from "../hooks/useDarkMode";
+import { useColorMode } from "../context/ColorModeContext.jsx";
 
 /** utils **/
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
@@ -70,7 +70,7 @@ function mapAuthError(err) {
 export default function Login() {
   const prefersReducedMotion = useReducedMotion();
   const upMd = useMediaQuery("(min-width:900px)");
-  const [darkMode, toggleDarkMode] = useDarkMode();
+  const { mode, toggle } = useColorMode();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -112,7 +112,7 @@ export default function Login() {
     const onKey = (e) => {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === "k") {
-        e.preventDefault(); toggleDarkMode();
+        e.preventDefault(); toggle();
       }
       if (mod && e.key.toLowerCase() === "g") {
         e.preventDefault(); handleGooglePopup();
@@ -123,7 +123,7 @@ export default function Login() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleDarkMode]); // handleGooglePopup is stable below via useCallback deps
+  }, [toggle]); // handleGooglePopup is stable below via useCallback deps
 
   const safeNavigateHome = useCallback(() => {
     navigate("/", { replace: true });
@@ -306,11 +306,11 @@ export default function Login() {
             {/* Top bar: theme toggle */}
             <Box sx={{ display: "flex", justifyContent: "flex-end", p: 1 }}>
               <IconButton
-                onClick={toggleDarkMode}
+                onClick={toggle}
                 size="large"
-                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
-                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+                {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
             </Box>
 
