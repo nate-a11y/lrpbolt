@@ -6,7 +6,7 @@ import Header from "../components/Header";
 import MainNav from "../components/MainNav";
 import { APP_BAR_HEIGHT, DRAWER_WIDTH } from "./constants";
 
-export default function AppShell({ children, onToggleTheme, onRefresh, onChangeDriver }) {
+export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -17,7 +17,6 @@ export default function AppShell({ children, onToggleTheme, onRefresh, onChangeD
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: (t) => t.palette.background.default }}>
       <Header
-        onToggleTheme={onToggleTheme}
         onRefresh={onRefresh}
         leftSlot={!mdUp ? (
           <IconButton edge="start" onClick={toggleMobile} sx={{ mr: 1 }}>
@@ -30,7 +29,6 @@ export default function AppShell({ children, onToggleTheme, onRefresh, onChangeD
         variant={mdUp ? "permanent" : "temporary"}
         open={!mdUp ? mobileOpen : true}
         onClose={closeMobile}
-        onToggleTheme={onToggleTheme}
         onChangeDriver={onChangeDriver}
       />
       {/* Main content area */}
@@ -40,8 +38,12 @@ export default function AppShell({ children, onToggleTheme, onRefresh, onChangeD
           flex: 1,
           pt: `${APP_BAR_HEIGHT}px`,
           ml: mdUp ? `${DRAWER_WIDTH}px` : 0,
-          px: { xs: 2, md: 3 },
+          // tight but breathable next to the 1px drawer hairline
+          pl: { xs: 1, md: 1.5 },
+          pr: { xs: 2, md: 3 },
           pb: 4,
+          // ensure no background seam shines through on scroll
+          backgroundColor: (t) => t.palette.background.default,
         }}
       >
         {children}

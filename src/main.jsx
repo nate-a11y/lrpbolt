@@ -13,7 +13,7 @@ import PrivateRoute from "./components/PrivateRoute.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
-import ColorModeProvider from "./context/ColorModeContext.jsx";
+import { ColorModeProvider } from "./context/ColorModeContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { logError } from "./utils/logError";
 

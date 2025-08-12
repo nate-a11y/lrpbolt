@@ -19,10 +19,12 @@ import { NavLink, useLocation } from "react-router-dom";
 import { iconMap } from "../utils/iconMap";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
+import { useColorMode } from "../context/ColorModeContext.jsx";
 
-export default function MainNav({ variant = "permanent", open = true, onClose, onToggleTheme, onChangeDriver }) {
+export default function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }) {
   const { user } = useAuth?.() || {};
   const { driverName, role, logout: signOut } = useDriver?.() || {};
+  const { mode, toggle } = useColorMode();
   const location = useLocation();
   const items = NAV_ITEMS.filter((it) => !it.admin || role?.toLowerCase?.() === "admin");
 
@@ -34,7 +36,11 @@ export default function MainNav({ variant = "permanent", open = true, onClose, o
       boxSizing: "border-box",
       top: APP_BAR_HEIGHT,
       height: `calc(100% - ${APP_BAR_HEIGHT}px)`,
-      borderRight: (t) => `1px solid ${t.palette.divider}`,
+      borderRight: (t) => `1px solid ${t.palette.divider}`, // hairline
+      backgroundColor: (t) => t.palette.background.paper,
+      // Avoid subpixel blur on the hairline
+      willChange: "transform",
+      transform: "translateZ(0)",
     },
   };
 
@@ -93,7 +99,7 @@ export default function MainNav({ variant = "permanent", open = true, onClose, o
 
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography variant="body2">Dark Mode</Typography>
-            <Switch onChange={onToggleTheme} />
+            <Switch checked={mode === "dark"} onChange={toggle} />
           </Stack>
 
           <ListItemButton onClick={signOut}>

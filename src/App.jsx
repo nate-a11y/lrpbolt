@@ -44,7 +44,6 @@ import OfflineNotice from "./components/OfflineNotice";
 import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
-import { useColorMode } from "./context/ColorModeContext.jsx";
 
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
@@ -75,7 +74,6 @@ function App() {
   const { fetchDrivers } = useDrivers();
   const { user, authLoading } = useAuth();
   const { toast, showToast, closeToast } = useToast("success");
-  const { toggle } = useColorMode();
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
@@ -190,7 +188,7 @@ function App() {
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <InstallBanner />
-        <AppShell onToggleTheme={toggle} onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
+        <AppShell onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
           <Suspense fallback={<CircularProgress />}> 
             <Routes>
                   <Route path="/" element={<Navigate to="/rides" replace />} />
