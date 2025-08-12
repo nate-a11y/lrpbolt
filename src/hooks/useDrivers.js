@@ -3,11 +3,14 @@ import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import { logError } from "../utils/logError";
 import { COLLECTIONS } from "../constants";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
+  const { user, authLoading } = useAuth();
 
   const fetchDrivers = useCallback(async () => {
+    if (authLoading || !user) return;
     try {
       const q = query(
         collection(db, COLLECTIONS.USER_ACCESS),
@@ -20,7 +23,7 @@ export default function useDrivers() {
     } catch (err) {
       logError(err, "useDrivers");
     }
-  }, []);
+  }, [authLoading, user]);
 
   return { drivers, fetchDrivers };
 }

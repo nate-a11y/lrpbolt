@@ -22,6 +22,7 @@ import { logError } from "../utils/logError";
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
 import { getAuth } from "firebase/auth";
+import { ensureTicketShapeOnCreate } from "../services/db";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
@@ -340,17 +341,7 @@ export async function fetchTicket(ticketId) {
 }
 
 export async function addTicket(ticketData) {
-  const data = cleanData({
-    ...ticketData,
-    pickupTime:
-      ticketData.pickupTime instanceof Timestamp
-        ? ticketData.pickupTime
-        : Timestamp.fromDate(new Date(ticketData.pickupTime)),
-    passengercount: Number(ticketData.passengercount),
-    scannedOutbound: !!ticketData.scannedOutbound,
-    scannedReturn: !!ticketData.scannedReturn,
-    createdAt: Timestamp.now(),
-  });
+  const data = cleanData(ensureTicketShapeOnCreate(ticketData));
   return await addDoc(collection(db, COLLECTIONS.TICKETS), data);
 }
 

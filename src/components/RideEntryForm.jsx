@@ -144,7 +144,7 @@ export default function RideEntryForm() {
   const [shakeKey, setShakeKey] = useState(0);
 
   const isMobile = useMediaQuery("(max-width:600px)");
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const currentUser = user?.email || "Unknown";
 
   const { counts, fetchRides } = useRides();
@@ -373,6 +373,7 @@ export default function RideEntryForm() {
 
   // --- Duplicate guards: reject if tripId exists in Queue or Live ---
   const tripExistsInQueue = useCallback(async (tripId) => {
+    if (authLoading || !user) return false;
     const qy = query(
       collection(db, COLLECTIONS.RIDE_QUEUE),
       where("tripId", "==", tripId),
@@ -380,9 +381,10 @@ export default function RideEntryForm() {
     );
     const snap = await getDocs(qy);
     return !snap.empty;
-  }, []);
+  }, [authLoading, user]);
 
   const tripExistsInLive = useCallback(async (tripId) => {
+    if (authLoading || !user) return false;
     const qy = query(
       collection(db, COLLECTIONS.LIVE_RIDES),
       where("tripId", "==", tripId),
@@ -390,7 +392,7 @@ export default function RideEntryForm() {
     );
     const snap = await getDocs(qy);
     return !snap.empty;
-  }, []);
+  }, [authLoading, user]);
 
   const tripExistsAnywhere = useCallback(
     async (tripId) => {

@@ -30,3 +30,5 @@ if (import.meta.env.DEV) {
     console.log("[AUTH]", Boolean(u), u?.email || null);
   });
 }
+
+export { auth, db };
