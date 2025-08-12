@@ -82,6 +82,9 @@ jobs:
           VITE_APP_VERSION=${{ github.sha }}
           EOF
 
+      - name: Install dependencies
+        run: npm ci
+
       # Quality gates — keep them beast mode
       - name: Lint
         run: |
@@ -100,9 +103,7 @@ jobs:
           fi
 
       - name: Build (Vite)
-        run: |
-          npm ci
-          npm run build
+        run: npm run build
 
       - name: Verify build output
         run: |
