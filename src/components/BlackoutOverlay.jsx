@@ -86,18 +86,20 @@ export default function BlackoutOverlay({ isAdmin = false, isLocked, onUnlock })
           bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.60)"),
           color: (t) => t.palette.getContrastText(t.palette.background.default),
           p: 2,
+          pointerEvents: "none",
         }}
       >
-        <Box
-          sx={{
-            width: "min(540px, 92vw)",
-            textAlign: "center",
-            p: 3,
-            borderRadius: 3,
-            bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(18,18,18,0.85)" : "rgba(255,255,255,0.12)"),
-            boxShadow: (t) => (t.palette.mode === "dark" ? "0 10px 30px rgba(0,0,0,0.6)" : "0 10px 30px rgba(0,0,0,0.4)"),
-          }}
-        >
+        <Box sx={{ pointerEvents: "auto" }}>
+          <Box
+            sx={{
+              width: "min(540px, 92vw)",
+              textAlign: "center",
+              p: 3,
+              borderRadius: 3,
+              bgcolor: (t) => (t.palette.mode === "dark" ? "rgba(18,18,18,0.85)" : "rgba(255,255,255,0.12)"),
+              boxShadow: (t) => (t.palette.mode === "dark" ? "0 10px 30px rgba(0,0,0,0.6)" : "0 10px 30px rgba(0,0,0,0.4)"),
+            }}
+          >
           <LockIcon
             sx={{
               fontSize: 64,
@@ -162,6 +164,7 @@ export default function BlackoutOverlay({ isAdmin = false, isLocked, onUnlock })
               Debug: {now.format("YYYY-MM-DD hh:mm:ss A")} ({CST})
             </Typography>
           )}
+          </Box>
         </Box>
       </Box>
     </Fade>
