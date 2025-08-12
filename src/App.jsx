@@ -48,6 +48,10 @@ import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
 import { initAnalytics, trackPageView } from "./utils/analytics";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
+import {
+  BLACKOUT_START_HOUR,
+  BLACKOUT_END_HOUR,
+} from "./components/BlackoutOverlay.jsx";
 
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
@@ -72,7 +76,7 @@ const CST = TIMEZONE;
 const isInLockoutWindow = () => {
   const now = dayjs().tz(CST);
   const hour = now.hour();
-  return hour >= 18 && hour < 20;
+  return hour >= BLACKOUT_START_HOUR && hour < BLACKOUT_END_HOUR;
 };
 
 function App() {

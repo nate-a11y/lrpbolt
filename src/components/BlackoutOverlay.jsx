@@ -13,9 +13,10 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const CST = TIMEZONE; // e.g., "America/Chicago"
-const BLACKOUT_START_HOUR = 19; // 7 PM
-const BLACKOUT_END_HOUR   = 20; // 8 PM
-const WINDOW_SECONDS      = (BLACKOUT_END_HOUR - BLACKOUT_START_HOUR) * 3600; // 3600
+export const BLACKOUT_START_HOUR = 19; // 7 PM
+export const BLACKOUT_END_HOUR = 20; // 8 PM
+const WINDOW_SECONDS =
+  (BLACKOUT_END_HOUR - BLACKOUT_START_HOUR) * 3600; // 3600
 
 /**
  * Props:
