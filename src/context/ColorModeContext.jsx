@@ -9,7 +9,7 @@ export default function ColorModeProvider({ children }) {
   const [mode, setMode] = useState(getInitialMode());
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, mode); } catch (e) { void e; }
+    try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* ignore */ }
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", "#060606");
     document.body.dataset.theme = mode;
@@ -28,4 +28,3 @@ export default function ColorModeProvider({ children }) {
     </ColorModeContext.Provider>
   );
 }
-
