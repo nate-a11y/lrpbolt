@@ -10,6 +10,8 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+
+import useAccordionControl from "../hooks/useAccordionControl";
 import LOCATIONS from "../driverLocations";
 
 const CATEGORIES = {
@@ -53,11 +55,16 @@ export default function DropoffAccordion({ onSelectImage }) {
     category,
     places: LOCATIONS.filter((loc) => names.includes(loc.name)),
   }));
+  const acc = useAccordionControl(false);
 
   return (
     <>
       {categorized.map(({ category, places }, idx) => (
-        <Accordion key={idx}>
+        <Accordion
+          key={idx}
+          expanded={acc.is(category)}
+          onChange={acc.handleChange(category)}
+        >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography fontWeight="bold">{category}</Typography>
           </AccordionSummary>
