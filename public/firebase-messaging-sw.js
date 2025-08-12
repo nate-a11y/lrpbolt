@@ -10,15 +10,16 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-messaging-com
  * Paste the SAME config you use in initializeApp(...) below.
  * TODO: Move to env + injected at build if desired.
  */
-firebase.initializeApp({
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME",
-  measurementId: "REPLACE_ME"
-});
+  // MUST MATCH your web app config exactly
+  firebase.initializeApp({
+    apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+    authDomain: "lrp---claim-portal.firebaseapp.com",
+    projectId: "lrp---claim-portal",
+    storageBucket: "lrp---claim-portal.firebasestorage.app",
+    messagingSenderId: "799613895072",
+    appId: "1:799613895072:web:1b41c28c6819198ce824c5",
+    measurementId: "G-9NM69MZN6B",
+  });
 
 const messaging = firebase.messaging();
 
