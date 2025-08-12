@@ -36,7 +36,7 @@ export default function MainNav({ variant = "permanent", open = true, onClose, o
       boxSizing: "border-box",
       top: APP_BAR_HEIGHT,
       height: `calc(100% - ${APP_BAR_HEIGHT}px)`,
-      borderRight: (t) => `1px solid ${t.palette.divider}`, // hairline
+      borderRight: "none",
       backgroundColor: (t) => t.palette.background.paper,
       // Avoid subpixel blur on the hairline
       willChange: "transform",
