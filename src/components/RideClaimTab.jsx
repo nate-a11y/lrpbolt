@@ -20,26 +20,24 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic } from "../hooks/api";
-import useFirestoreListener from "../hooks/useFirestoreListener";
+import { useRides } from "../hooks/useRides";
 import { fmtDow, safe, groupKey } from "../utils/rideFormatters";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { TIMEZONE, COLLECTIONS } from "../constants";
-import { Timestamp, orderBy } from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-const CST = TIMEZONE;
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [rides, setRides] = useState([]);
+  const { rides, error } = useRides({ status: "live", pageSize: 500 });
   const [vehicleFilter, setVehicleFilter] = useState("");
   const [dayFilter, setDayFilter] = useState("");
   const [claimLog, setClaimLog] = useState([]);
-  const [loadingRides, setLoadingRides] = useState(false);
+  const [loadingRides, setLoadingRides] = useState(true);
   const [toast, setToast] = useState({
     open: false,
     message: "",
@@ -96,18 +94,17 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     });
   }, []);
 
-  // Requires Firestore index: Firestore Database > Indexes > liveRides.pickupTime ASC
-  const liveRides = useFirestoreListener(COLLECTIONS.LIVE_RIDES, [
-    orderBy("pickupTime", "asc"),
-  ]);
-
-  // ✅ Update rides from shared hook
   useEffect(() => {
     if (driver && !isLockedOut) {
-      setRides(liveRides);
       setLoadingRides(false);
     }
-  }, [driver, isLockedOut, liveRides]);
+  }, [driver, isLockedOut, rides, error]);
+
+  useEffect(() => {
+    if (error) {
+      showToast("Permissions issue loading rides", "error");
+    }
+  }, [error]);
 
   const claimRide = useCallback(
     async (tripId) => {
