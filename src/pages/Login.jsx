@@ -1,8 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  ThemeProvider,
-  CssBaseline,
   Container,
   Card,
   CardContent,
@@ -39,7 +37,6 @@ import {
   registerWithEmail,
 } from "../services/auth";
 import useDarkMode from "../hooks/useDarkMode";
-import getTheme from "../theme";
 
 /** utils **/
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
@@ -74,7 +71,6 @@ export default function Login() {
   const prefersReducedMotion = useReducedMotion();
   const upMd = useMediaQuery("(min-width:900px)");
   const [darkMode, toggleDarkMode] = useDarkMode();
-  const theme = useMemo(() => getTheme(darkMode), [darkMode]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -251,11 +247,10 @@ export default function Login() {
     if (e.key === "Enter") handleRegister();
   }, [handleRegister]);
 
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {/* Animated BG */}
-      <Box
+    return (
+      <>
+        {/* Animated BG */}
+        <Box
         sx={{
           position: "fixed",
           inset: 0,
@@ -276,9 +271,9 @@ export default function Login() {
             style={{ width: "100%", height: "100%" }}
           />
         )}
-      </Box>
+        </Box>
 
-      <Container
+        <Container
         maxWidth="sm"
         sx={{
           position: "relative",
@@ -597,7 +592,7 @@ export default function Login() {
             {regLoading ? "Creating…" : "Create account"}
           </Button>
         </DialogActions>
-      </Dialog>
-    </ThemeProvider>
-  );
+        </Dialog>
+      </>
+    );
 }

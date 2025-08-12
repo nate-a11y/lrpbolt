@@ -1,10 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState } from "react";
-import { styled } from "@mui/material/styles";
+import { styled, useTheme } from "@mui/material/styles";
 import {
   AppBar as MuiAppBar,
   Box,
-  CssBaseline,
   Divider,
   Drawer as MuiDrawer,
   IconButton,
@@ -44,7 +43,10 @@ const drawerPaperSx = (t, expanded) => ({
 });
 
 export default function LayoutShell({ children, railItems, onNavigate }) {
-  const smUp = useMediaQuery((t) => t.breakpoints.up("sm"));
+  const theme = useTheme();
+  const smUp = theme?.breakpoints
+    ? useMediaQuery(theme.breakpoints.up("sm"), { noSsr: true })
+    : useMediaQuery("(min-width:600px)", { noSsr: true });
   const [expanded, setExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -60,7 +62,6 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100%", ...vars }}>
-      <CssBaseline />
       <AppBar position="fixed" color="default" elevation={1}>
         <Toolbar sx={{ minHeight: APP_BAR_HEIGHT }}>
           {!smUp ? (

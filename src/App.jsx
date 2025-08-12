@@ -10,8 +10,6 @@ import React, {
   useCallback,
 } from "react";
 import {
-  ThemeProvider,
-  CssBaseline,
   Box,
   Typography,
   Button,
@@ -26,6 +24,7 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
 import Navigation from "./components/Navigation";
@@ -35,7 +34,6 @@ import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import useAuth from "./hooks/useAuth.js";
 import { getUserAccess } from "./hooks/api";
-import getTheme from "./theme";
 import DriverInfoTab from "./components/DriverInfoTab";
 import { logError } from "./utils/logError";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
@@ -220,8 +218,6 @@ function App() {
     }
   }, [showEliteBadge]);
 
-  const theme = useMemo(() => getTheme(darkMode), [darkMode]);
-
   if (authLoading || !driver) {
     return <LoadingScreen />;
   }
@@ -241,10 +237,8 @@ function App() {
     );
   }
 
-  return (
-    <ThemeProvider theme={theme}>
+    return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <CssBaseline />
         <InstallBanner />
         <Navigation
           darkMode={darkMode}
@@ -446,10 +440,9 @@ function App() {
             </motion.div>
           </Box>
         </Box>
-      </LocalizationProvider>
-    </ThemeProvider>
-  );
-}
+        </LocalizationProvider>
+    );
+  }
 
 function AppShell() {
   const { authLoading } = useAuth();
