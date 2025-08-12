@@ -22,17 +22,50 @@ exports.sendPortalNotification = onCall(async (req) => {
 
   try {
     const messaging = admin.messaging();
+    const db = admin.firestore();
     if (token) {
-      await messaging.send({ ...base, token });
-      logger.info("Sent to token");
-      return { ok: true, count: 1 };
+      try {
+        await messaging.send({ ...base, token });
+        logger.info("Sent to token");
+        return { ok: true, count: 1 };
+      } catch (err) {
+        if (
+          err?.code === "messaging/registration-token-not-registered" ||
+          err?.message?.includes("Requested entity was not found")
+        ) {
+          const qs = await db.collection("fcmTokens").where("token", "==", token).get();
+          await Promise.all(qs.docs.map((d) => d.ref.delete().catch(() => undefined)));
+          logger.info("Removed invalid token");
+          return { ok: true, count: 0 };
+        }
+        throw err;
+      }
     }
     if (email) {
-      const qs = await admin.firestore().collection("fcmTokens").where("email", "==", email).get();
+      const qs = await db.collection("fcmTokens").where("email", "==", email).get();
       const tokens = qs.docs.map((d) => d.data().token).filter(Boolean);
       if (tokens.length === 0) return { ok: true, count: 0 };
-      const responses = await Promise.all(tokens.map((t) => messaging.send({ ...base, token: t })));
-      return { ok: true, count: responses.length };
+      const results = await Promise.allSettled(tokens.map((t) => messaging.send({ ...base, token: t })));
+      let count = 0;
+      for (let i = 0; i < results.length; i++) {
+        const res = results[i];
+        if (res.status === "fulfilled") {
+          count++;
+          continue;
+        }
+        const err = res.reason;
+        if (
+          err?.code === "messaging/registration-token-not-registered" ||
+          err?.message?.includes("Requested entity was not found")
+        ) {
+          const t = tokens[i];
+          const docId = `${email}__${t.slice(0, 16)}`;
+          await db.collection("fcmTokens").doc(docId).delete().catch(() => undefined);
+          continue;
+        }
+        throw err;
+      }
+      return { ok: true, count };
     }
     if (topic) {
       await messaging.send({ ...base, topic });
