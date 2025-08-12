@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Box, CircularProgress, Alert, Typography } from "@mui/material";
-import { fetchWeeklySummary } from "../../hooks/firestore"; // adjust import
+import { fetchWeeklySummary } from "../../hooks/firestore";
 
 export default function WeeklySummaryTab() {
   const [summary, setSummary] = useState(null);
@@ -20,48 +20,51 @@ export default function WeeklySummaryTab() {
 
   const rows = useMemo(() => {
     if (!summary) return [];
-    return summary.map((item, index) => ({
-      id: item.driverEmail || index,
-      driverEmail: item.driverEmail || "",
-      totalTrips: item.totalTrips || 0,
-      totalPassengers: item.totalPassengers || 0,
-      totalHours: item.totalHours || 0,
-      vehicle: item.vehicle || "",
+    return summary.map((item, i) => ({
+      id: item.driver || i,
+      driver: item.driver || "Unknown",
+      trips: item.entries ?? 0,
+      hours: (item.totalMinutes ?? 0) / 60,
     }));
   }, [summary]);
 
   const columns = [
-    { field: "driverEmail", headerName: "Driver", flex: 1 },
-    { field: "vehicle", headerName: "Vehicle", width: 150 },
-    { field: "totalTrips", headerName: "Trips", width: 110, type: "number" },
-    { field: "totalPassengers", headerName: "Passengers", width: 140, type: "number" },
+    { field: "driver", headerName: "Driver", flex: 1, minWidth: 200 },
+    { field: "trips", headerName: "Trips", width: 110, type: "number" },
     {
-      field: "totalHours",
+      field: "hours",
       headerName: "Hours",
       width: 120,
       type: "number",
-      valueFormatter: (p) => p.value?.toFixed(2) || "0.00",
+      valueFormatter: (p) =>
+        (typeof p.value === "number" ? p.value : 0).toFixed(2),
     },
   ];
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
-  if (!summary) return <CircularProgress sx={{ m: 2 }} />;
+
+  if (!summary) {
+    return (
+      <Box sx={{ p: 3, display: "flex", alignItems: "center", gap: 1 }}>
+        <CircularProgress size={22} />
+        <Typography variant="body2">Loading weekly summary…</Typography>
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ width: "100%", height: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
         Weekly Driver Summary
       </Typography>
       <DataGrid
+        autoHeight
         rows={rows}
         columns={columns}
         density="compact"
-        initialState={{
-          pagination: { paginationModel: { pageSize: 10 } },
-        }}
-        pageSizeOptions={[5, 10, 25]}
         disableRowSelectionOnClick
-        autoHeight
+        initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+        pageSizeOptions={[5, 10, 25]}
       />
     </Box>
   );
