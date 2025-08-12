@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import ToolsCell from "./cells/ToolsCell.jsx";
 import StatusCell from "./cells/StatusCell.jsx";
-import { db } from "../../firebase";
+import { db } from "src/utils/firebaseInit";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 /** Safely turn a Firestore Timestamp/seconds/ms into a JS Date */
