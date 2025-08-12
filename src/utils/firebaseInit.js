@@ -10,9 +10,8 @@ import { getAuth } from "firebase/auth";
 
 /**
  * IMPORTANT:
- * Keep these values EXACTLY as currently set in the repo. If they come from env,
- * keep env. If they are hardcoded, KEEP THE HARDCODED LITERALS.
- * (Do not rename keys.)
+ * Keep values exactly as they exist in the repo (env or hardcoded).
+ * Do not rename keys.
  */
   firebase.initializeApp({
     apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
@@ -27,7 +26,7 @@ import { getAuth } from "firebase/auth";
 // App singleton
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Firestore singleton (HMR‑safe). Never call initializeFirestore twice.
+// Firestore singleton (HMR‑safe)
 const DB_KEY = "__LRP_DB_SINGLETON__";
 if (!globalThis[DB_KEY]) {
   try {
@@ -37,17 +36,12 @@ if (!globalThis[DB_KEY]) {
         tabManager: persistentMultipleTabManager(),
       }),
     });
-  } catch {
-    // If already initialized with options in this tab (HMR), reuse it:
+  } catch (e) {
+    // Already initialized with options; reuse it
     globalThis[DB_KEY] = getFirestore(app);
   }
 }
 export const db = globalThis[DB_KEY];
 
-// Auth (safe to get repeatedly)
+// Auth (safe to call repeatedly)
 export const auth = getAuth(app);
-
-if (import.meta.env.DEV && "serviceWorker" in navigator) {
-  // Uncomment for one-time cleanup during refactor:
-  // navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
-}
