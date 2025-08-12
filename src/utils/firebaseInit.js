@@ -1,33 +1,53 @@
 /* Proprietary and confidential. See LICENSE. */
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-const cfg = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, // optional
+/**
+ * IMPORTANT:
+ * Keep these values EXACTLY as currently set in the repo. If they come from env,
+ * keep env. If they are hardcoded, KEEP THE HARDCODED LITERALS.
+ * (Do not rename keys.)
+ */
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "HARDCODE_KEEP_AS_IS",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "HARDCODE_KEEP_AS_IS",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "HARDCODE_KEEP_AS_IS",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "HARDCODE_KEEP_AS_IS",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "HARDCODE_KEEP_AS_IS",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? "HARDCODE_KEEP_AS_IS",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, // ok if undefined
 };
 
-function assertConfig(config) {
-  const missing = Object.entries(config)
-    .filter(([k, v]) => !v && k !== "measurementId")
-    .map(([k]) => k);
-  if (missing.length) {
-    console.error("[LRP] Missing Firebase env(s):", missing);
-    throw new Error(`Firebase config missing: ${missing.join(", ")}`);
+// App singleton
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+// Firestore singleton (HMR‑safe). Never call initializeFirestore twice.
+const DB_KEY = "__LRP_DB_SINGLETON__";
+if (!globalThis[DB_KEY]) {
+  try {
+    globalThis[DB_KEY] = initializeFirestore(app, {
+      ignoreUndefinedProperties: true,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch {
+    // If already initialized with options in this tab (HMR), reuse it:
+    globalThis[DB_KEY] = getFirestore(app);
   }
 }
-assertConfig(cfg);
+export const db = globalThis[DB_KEY];
 
-export const app = getApps().length ? getApp() : initializeApp(cfg);
-export const db = getFirestore(app);
+// Auth (safe to get repeatedly)
+export const auth = getAuth(app);
 
-// TEMP: expose for runtime sanity checks (safe)
-if (typeof window !== "undefined") {
-  console.log("[LRP] Firebase app options:", app.options);
-  window.__LRP_APP__ = app;
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
+  // Uncomment for one-time cleanup during refactor:
+  // navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
 }

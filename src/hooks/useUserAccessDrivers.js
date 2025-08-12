@@ -2,7 +2,7 @@
 // src/hooks/useUserAccessDrivers.js
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where, limit } from "firebase/firestore";
-import { db } from "../firebase"; // adjust if your Firestore export is elsewhere
+import { db } from "src/utils/firebaseInit";
 
 /**
  * Live drivers list from Firestore userAccess.

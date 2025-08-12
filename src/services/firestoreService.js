@@ -16,7 +16,7 @@ import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 
 import { COLLECTIONS, TIMEZONE } from "../constants";
-import { db } from "../firebase";
+import { db } from "src/utils/firebaseInit";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 
 dayjs.extend(utc);

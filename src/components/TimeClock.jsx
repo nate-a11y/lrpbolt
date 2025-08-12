@@ -33,7 +33,7 @@ import {
   doc,
 } from "firebase/firestore";
 
-import { db } from "@/firebase";
+import { db } from "src/utils/firebaseInit";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import { toNumber, toString, tsToDate } from "../utils/safe";

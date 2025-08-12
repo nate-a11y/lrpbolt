@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query } from "firebase/firestore";
 
 import { useAuth } from "../context/AuthContext.jsx";
-import { db } from "../firebase";
+import { db } from "src/utils/firebaseInit";
 
 export default function useFirestoreListener(path, qConstraints = []) {
   const [data, setData] = useState([]);
