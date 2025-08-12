@@ -18,7 +18,7 @@ export default function Header({ onRefresh, leftSlot = null }) {
     <AppBar position="fixed" elevation={0} color="transparent" sx={(t) => ({
       backdropFilter: "saturate(180%) blur(8px)",
       WebkitBackdropFilter: "saturate(180%) blur(8px)",
-      backgroundColor: t.palette.mode === "dark" ? "rgba(14,15,16,0.72)" : "rgba(255,255,255,0.72)",
+      backgroundColor: t.palette.background.paper,
       borderBottom: `1px solid ${t.palette.divider}`,
       height: APP_BAR_HEIGHT,
       justifyContent: "center",

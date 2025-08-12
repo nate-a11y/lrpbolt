@@ -25,14 +25,22 @@ const buildPalette = (mode) => {
     warning: { main: "#f9a825" },
     error: { main: "#ef5350" },
     info: { main: "#64b5f6" },
-    divider: alpha("#e8eaed", 0.12),
     brand,
   };
+  if (mode === "dark") {
+    return {
+      mode,
+      ...common,
+      text: { primary: "#e8eaed", secondary: "#b0b7c3", disabled: alpha("#e8eaed", 0.38) },
+      background: { default: "#0b0c0d", paper: "#111214" },
+      divider: alpha("#ffffff", 0.12),
+    };
+  }
   return {
     mode,
     ...common,
-    text: { primary: "#e8eaed", secondary: "#b0b7c3", disabled: alpha("#e8eaed", 0.38) },
-    background: { default: brand.black, paper: "#121416" },
+    background: { default: "#fafafa", paper: "#ffffff" },
+    divider: "rgba(0,0,0,0.12)",
   };
 };
 
@@ -43,8 +51,11 @@ export const getDesignTokens = (mode) => ({
     MuiCssBaseline: {
       styleOverrides: {
         "html, body, #root": { height: "100%" },
-        body: { backgroundColor: brand.black, color: "#e8eaed" },
-        a: { color: brand.green400 },
+        body: ({ theme }) => ({
+          backgroundColor: theme.palette.background.default,
+          color: theme.palette.text.primary,
+        }),
+        a: ({ theme }) => ({ color: theme.palette.primary.main }),
         "*:focus-visible": { outline: "none" },
       },
     },
@@ -62,7 +73,7 @@ export const getDesignTokens = (mode) => ({
         root: ({ theme }) => ({
           backgroundImage: "none",
           backgroundColor: theme.palette.background.paper,
-          borderBottom: `1px solid ${alpha("#e8eaed", 0.08)}`,
+          borderBottom: `1px solid ${theme.palette.divider}`,
         }),
       },
     },

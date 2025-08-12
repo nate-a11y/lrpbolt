@@ -9,8 +9,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["firebase-messaging-sw.js", "icons/icon-192.png", "icons/icon-512.png"],
-      workbox: { skipWaiting: true, clientsClaim: true, cleanupOutdatedCaches: true },
+      injectRegister: "auto",
+      includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        navigateFallbackDenylist: [/^\/__\/firebase/],
+      },
+      devOptions: { enabled: false },
       manifest: {
         name: "LRP Driver Portal",
         short_name: "LRP",

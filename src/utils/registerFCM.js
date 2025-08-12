@@ -1,29 +1,36 @@
-import { getToken, isSupported } from "firebase/messaging";
+/* Proprietary and confidential. See LICENSE. */
+import { getToken } from "firebase/messaging";
 
-import { messaging } from "./firebaseInit";
+import { getMessagingIfSupported } from "./firebaseInit";
 
-const VAPID_KEY = undefined; // optional later
+// OPTIONAL: move to env later; keep here per request
+const VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY || "YOUR_PUBLIC_VAPID_KEY_HERE";
 
-export async function ensureFcmToken(onToken) {
+export async function registerFCM() {
   try {
-    if (!(await isSupported()) || !messaging || !("serviceWorker" in navigator)) return null;
+    const messaging = await getMessagingIfSupported();
+    if (!messaging) return { ok: false, reason: "messaging-not-supported" };
 
-    // Ensure our SW is registered at root scope
-    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+    // Service worker must be at the ROOT scope
+    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+      scope: "/",
+      updateViaCache: "none",
+      type: "classic",
+    });
+
+    // Wait until active to avoid race conditions
     await navigator.serviceWorker.ready;
 
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") return null;
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: reg,
+    });
 
-    const token = await getToken(
-      messaging,
-      VAPID_KEY ? { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg }
-                : { serviceWorkerRegistration: reg }
-    );
-    if (token && typeof onToken === "function") onToken(token);
-    return token || null;
+    return token
+      ? { ok: true, token }
+      : { ok: false, reason: "getToken-null" };
   } catch (err) {
-    console.warn("[FCM] token error", err);
-    return null;
+    console.warn("[FCM] register error:", err);
+    return { ok: false, reason: err?.message || "unknown" };
   }
 }
