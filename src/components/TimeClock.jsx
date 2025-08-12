@@ -32,7 +32,7 @@ import {
   doc,
 } from "firebase/firestore";
 
-import { db } from "@/utils/firebaseInit";
+import { db } from "@/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -105,45 +105,41 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           limit(200),
         );
   }, [roleLoading, isAdmin, isDriver, user?.email]);
-  const [error, setError] = useState(null);
-  const [ready, setReady] = useState(false);
-
-  useFirestoreSub(
-    `timeLogs:${isAdmin ? "admin" : "driver"}:${user?.email || "anon"}`,
+  const { docs: logDocs, error, ready } = useFirestoreSub(
     () => logQuery,
-    (snap) => {
-      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const rows = docs.map((d) => {
-        const st = d.startTime ?? null;
-        const et = d.endTime ?? null;
-        let duration = toNumber(d.duration, 0);
-        if (!duration && st && et) {
-          const s = tsToDate(st)?.getTime();
-          const e = tsToDate(et)?.getTime();
-          duration = s && e ? Math.round((e - s) / 60000) : 0;
-        }
-        return {
-          id: d.id,
-          driverEmail: toString(d.driverEmail),
-          rideId: toString(d.rideId),
-          note: toString(d.note),
-          startTime: st,
-          endTime: et,
-          duration,
-          loggedAt: d.loggedAt ?? null,
-        };
-      });
-      setRows(rows);
-      setReady(true);
-      setError(null);
-    },
-    (e) => {
-      setError(e);
-      setReady(true);
-      logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
-    },
-    [logQuery]
+    [logQuery],
   );
+
+  useEffect(() => {
+    if (!logDocs) return;
+    const rows = logDocs.map((d) => {
+      const st = d.startTime ?? null;
+      const et = d.endTime ?? null;
+      let duration = toNumber(d.duration, 0);
+      if (!duration && st && et) {
+        const s = tsToDate(st)?.getTime();
+        const e = tsToDate(et)?.getTime();
+        duration = s && e ? Math.round((e - s) / 60000) : 0;
+      }
+      return {
+        id: d.id,
+        driverEmail: toString(d.driverEmail),
+        rideId: toString(d.rideId),
+        note: toString(d.note),
+        startTime: st,
+        endTime: et,
+        duration,
+        loggedAt: d.loggedAt ?? null,
+      };
+    });
+    setRows(rows);
+  }, [logDocs]);
+
+  useEffect(() => {
+    if (error) {
+      logError(error, { area: "FirestoreSubscribe", comp: "TimeClock" });
+    }
+  }, [error]);
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");

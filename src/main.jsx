@@ -76,11 +76,3 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
     });
   });
 }
-
-if (import.meta.env.DEV) {
-  const { activeListenerCount } = await import("./utils/firestoreListenerRegistry.js");
-  setInterval(() => {
-    const n = activeListenerCount();
-    if (n > 200) console.warn(`[FS] HIGH listener count: ${n}`);
-  }, 10000);
-}

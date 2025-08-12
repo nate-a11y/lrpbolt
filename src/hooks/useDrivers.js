@@ -1,16 +1,30 @@
-import { useState } from "react";
-import { collection } from "firebase/firestore";
-import { db } from "../utils/firebaseInit";
-import useFirestoreSub from "./useFirestoreSub";
+import { useCallback, useState } from "react";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 
-export function useDrivers() {
-  const [drivers, setDrivers] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(null);
-  useFirestoreSub(
-    "drivers:all",
-    () => collection(db, "drivers"),
-    (snap) => { setDrivers(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); },
-    (e) => { setError(e); setLoading(false); },
-    []
-  );
-  return { drivers, loading, error };
+import { COLLECTIONS } from "../constants";
+import { useAuth } from "../context/AuthContext.jsx";
+import { db } from "../firebase";
+import { logError } from "../utils/logError";
+
+export default function useDrivers() {
+  const [drivers, setDrivers] = useState([]);
+  const { user, authLoading } = useAuth();
+
+  const fetchDrivers = useCallback(async () => {
+    if (authLoading || !user) return;
+    try {
+      const q = query(
+        collection(db, COLLECTIONS.USER_ACCESS),
+        where("access", "==", "driver"),
+        orderBy("name"),
+      );
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setDrivers(list);
+    } catch (err) {
+      logError(err, "useDrivers");
+    }
+  }, [authLoading, user]);
+
+  return { drivers, fetchDrivers };
 }

@@ -1,8 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Snackbar, Alert } from "@mui/material";
-import { collection, query, orderBy } from "firebase/firestore";
 import {
+  subscribeRideQueue,
   deleteRideFromQueue,
   addRideToQueue,
   getRideQueue,
@@ -20,8 +20,6 @@ import {
 } from "@mui/material";
 import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
-import { db } from "../utils/firebaseInit";
-import useFirestoreSub from "../hooks/useFirestoreSub";
 
 const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);
@@ -37,26 +35,25 @@ const RideQueueGrid = () => {
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
 
-  useFirestoreSub(
-    "rideQueue:all",
-    () => {
-      if (authLoading || !user?.email) return null;
-      return query(collection(db, COLLECTIONS.RIDE_QUEUE), orderBy("pickupTime", "asc"));
-    },
-    (snap) => {
-      setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    },
-    () => {
-      setToast({
-        open: true,
-        message: "Permissions issue loading ride queue",
-        severity: "error",
-      });
-      setLoading(false);
-    },
-    [authLoading, user?.email]
-  );
+  useEffect(() => {
+    if (authLoading || !user?.email) return;
+    const unsub = subscribeRideQueue(
+      (data) => {
+        setRows(data);
+        setLoading(false);
+      },
+      undefined,
+      () => {
+        setToast({
+          open: true,
+          message: "Permissions issue loading ride queue",
+          severity: "error",
+        });
+        setLoading(false);
+      },
+    );
+    return unsub;
+  }, [authLoading, user?.email]);
 
   const refreshRides = async () => {
     setLoading(true);
