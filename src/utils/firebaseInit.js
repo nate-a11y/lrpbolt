@@ -1,12 +1,15 @@
 /* Proprietary and confidential. See LICENSE. */
+// Centralized Firebase init (modular). Always import THIS file first in main.jsx.
+
 import { initializeApp, getApps } from "firebase/app";
 import { getAnalytics, isSupported as analyticsSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 import { getMessaging, isSupported as messagingSupported } from "firebase/messaging";
 
-/** HARD-CODED PER REQUEST (move to env later). */
-export const firebaseConfig = {
+// TODO: move to env at build-time; left hardcoded per request for now.
+const firebaseConfig = {
   apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
   authDomain: "lrp---claim-portal.firebaseapp.com",
   projectId: "lrp---claim-portal",
@@ -16,12 +19,26 @@ export const firebaseConfig = {
   measurementId: "G-9NM69MZN6B",
 };
 
-export const app = getApps()[0] || initializeApp(firebaseConfig);
+export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
+// Lazy guards so non‑supported browsers don’t crash
 export let analytics;
-(async () => { try { if (await analyticsSupported()) analytics = getAnalytics(app); } catch { /* ignore */ } })();
+(async () => {
+  try {
+    if (await analyticsSupported()) analytics = getAnalytics(app);
+  } catch {
+    /* no-op */
+  }
+})();
 
-export let messaging;
-(async () => { try { if (await messagingSupported()) messaging = getMessaging(app); } catch { /* ignore */ } })();
+export async function getMessagingIfSupported() {
+  try {
+    if (await messagingSupported()) return getMessaging(app);
+  } catch {
+    /* no-op */
+  }
+  return null;
+}

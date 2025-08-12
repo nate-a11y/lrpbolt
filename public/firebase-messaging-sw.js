@@ -1,11 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
 /* eslint-env serviceworker */
-/* global firebase */
-/* eslint-disable no-undef */
+/* global importScripts, firebase */
+
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-messaging-compat.js");
 
-/** MUST match app config exactly (hardcoded by request). */
+// MUST MATCH web app config exactly (left hardcoded per request)
 firebase.initializeApp({
   apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
   authDomain: "lrp---claim-portal.firebaseapp.com",
@@ -18,16 +18,10 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Optional: show a simple notification if push arrives in background
 messaging.onBackgroundMessage((payload) => {
-  const { title = "Lake Ride Pros", body = "", icon = "/icons/icon-192.png" } = payload?.notification || {};
+  const title = (payload?.notification && (payload.notification.title || "LRP")) || "LRP";
+  const body = payload?.notification?.body || "New message";
+  const icon = payload?.notification?.icon || "/icons/icon-192.png";
   self.registration.showNotification(title, { body, icon });
-});
-
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((k) => caches.delete(k)));
-    await self.clients.claim();
-  })());
 });
