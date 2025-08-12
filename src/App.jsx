@@ -89,12 +89,13 @@ function App() {
   const isAdmin = role === "admin";
   const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 
-  const {
+  const { 
     showOffline,
     retry: retryConnection,
     dismiss: dismissOffline,
   } = useNetworkStatus(() => showToast("✅ Reconnected", "success"));
 
+  const openChangeDriver = useCallback(() => setChangeDriverOpen(true), []);
   const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
 
   const noop = useCallback(() => {}, []);
@@ -189,7 +190,7 @@ function App() {
     return (
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <InstallBanner />
-        <AppShell onToggleTheme={toggle} onRefresh={handleRefresh}>
+        <AppShell onToggleTheme={toggle} onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
           <Suspense fallback={<CircularProgress />}> 
             <Routes>
                   <Route path="/" element={<Navigate to="/rides" replace />} />
