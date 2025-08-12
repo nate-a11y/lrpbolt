@@ -12,6 +12,7 @@ import { DriverProvider } from "./context/DriverContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { logError } from "./utils/logError";
 import "./sw-updater.js";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 window.addEventListener("unhandledrejection", (event) => {
   logError(event.reason, "UnhandledPromiseRejection");
@@ -19,27 +20,29 @@ window.addEventListener("unhandledrejection", (event) => {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter basename={import.meta.env.BASE_URL}>
-    <React.StrictMode>
-      <AuthProvider>
-        <DriverProvider>
-          <Suspense fallback={<LoadingScreen />}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              {/* Firebase Auth iframe route placeholder */}
-              <Route path="/__/auth/iframe" element={<div />} />
-              <Route
-                path="/*"
-                element={
-                  <PrivateRoute>
-                    <AppRoot />
-                  </PrivateRoute>
-                }
-              />
-            </Routes>
-          </Suspense>
-        </DriverProvider>
-      </AuthProvider>
-    </React.StrictMode>
+    <ErrorBoundary>
+      <React.StrictMode>
+        <AuthProvider>
+          <DriverProvider>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                {/* Firebase Auth iframe route placeholder */}
+                <Route path="/__/auth/iframe" element={<div />} />
+                <Route
+                  path="/*"
+                  element={
+                    <PrivateRoute>
+                      <AppRoot />
+                    </PrivateRoute>
+                  }
+                />
+              </Routes>
+            </Suspense>
+          </DriverProvider>
+        </AuthProvider>
+      </React.StrictMode>
+    </ErrorBoundary>
   </BrowserRouter>,
 );
 

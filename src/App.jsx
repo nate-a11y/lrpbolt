@@ -24,7 +24,6 @@ import {
   Toolbar,
   CircularProgress,
 } from "@mui/material";
-import { ErrorBoundary } from "react-error-boundary";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import InstallBanner from "./components/InstallBanner";
@@ -470,20 +469,7 @@ function AppShell() {
 }
 
 function AppRoot() {
-  return (
-    <ErrorBoundary
-      FallbackComponent={({ error }) => (
-        <div style={{ padding: 16 }}>
-          <h3>Something went wrong</h3>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {String(error?.stack || error?.message)}
-          </pre>
-        </div>
-      )}
-    >
-      <AppShell />
-    </ErrorBoundary>
-  );
+  return <AppShell />;
 }
 
 export default AppRoot;

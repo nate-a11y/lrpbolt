@@ -94,22 +94,24 @@ export default function AdminTimeLog() {
   const { role, authLoading: roleLoading } = useRole();
   const isAdmin = role === "admin";
   const { authLoading, user } = useAuth();
+  const logQuery = useMemo(() => {
+    if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
+    return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+  }, [authLoading, roleLoading, isAdmin, user?.email]);
   const {
     docs: logDocs,
     error: logsError,
     ready: logsReady,
-  } = useFirestoreSub(() => {
+  } = useFirestoreSub(() => logQuery, [logQuery]);
+  const shootQuery = useMemo(() => {
     if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
-    return query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+    return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
   }, [authLoading, roleLoading, isAdmin, user?.email]);
   const {
     docs: shootDocs,
     error: shootError,
     ready: shootReady,
-  } = useFirestoreSub(() => {
-    if (authLoading || roleLoading || !isAdmin || !user?.email) return null;
-    return query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
-  }, [authLoading, roleLoading, isAdmin, user?.email]);
+  } = useFirestoreSub(() => shootQuery, [shootQuery]);
 
   const error = logsError || shootError;
   const loading = !logsReady || !shootReady;

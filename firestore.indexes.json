@@ -88,6 +88,30 @@
         { "fieldPath": "access", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "shootoutStats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "driverEmail", "order": "ASCENDING" },
+        { "fieldPath": "startTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shootoutStats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "driverEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "timeLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "driverEmail", "order": "ASCENDING" },
+        { "fieldPath": "startTime", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

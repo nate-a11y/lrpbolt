@@ -25,10 +25,10 @@ import {
   subscribeShootoutStats,
   createShootoutSession,
   updateShootoutSession,
-  tsToDate,
 } from "../utils/firestoreService";
 import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
+import { toNumber, toString, tsToDate } from "../utils/safe";
 
 export default function ShootoutTab() {
   const { user, authLoading } = useAuth();
@@ -64,12 +64,14 @@ export default function ShootoutTab() {
             !r.endTime,
         );
         if (open) {
+          const start = tsToDate(open.startTime);
+          const end = tsToDate(open.endTime);
           setCurrentId(open.id);
-          setStartTime(tsToDate(open.startTime));
-          setIsRunning(Boolean(open.startTime && !open.endTime));
-          setTrips(Number(open.trips || 0));
-          setPassengers(Number(open.passengers || 0));
-          setVehicle(open.vehicle || "");
+          setStartTime(start);
+          setIsRunning(Boolean(start && !end));
+          setTrips(toNumber(open.trips, 0));
+          setPassengers(toNumber(open.passengers, 0));
+          setVehicle(toString(open.vehicle, ""));
         } else {
           // nothing open
           setCurrentId(null);
@@ -218,15 +220,18 @@ export default function ShootoutTab() {
           History (latest first)
         </Typography>
         <Box sx={{ fontFamily: "monospace", fontSize: 12 }}>
-          {history.map((h) => (
-            <div key={h.id}>
-              {dayjs(h.startTime).isValid()
-                ? dayjs(h.startTime).format("YYYY-MM-DD HH:mm:ss")
-                : "—"}{" "}
-              → {h.endTime ? dayjs(h.endTime).format("HH:mm:ss") : "…"} | trips{" "}
-              {h.trips ?? 0} | pax {h.passengers ?? 0}
-            </div>
-          ))}
+          {history.map((h) => {
+            const start = tsToDate(h.startTime);
+            const end = tsToDate(h.endTime);
+            const trips = toNumber(h.trips, 0);
+            const pax = toNumber(h.passengers, 0);
+            return (
+              <div key={h.id}>
+                {start ? dayjs(start).format("YYYY-MM-DD HH:mm:ss") : "—"}{" "}
+                → {end ? dayjs(end).format("HH:mm:ss") : "…"} | trips {trips} | pax {pax}
+              </div>
+            );
+          })}
         </Box>
       </CardContent>
       <Snackbar

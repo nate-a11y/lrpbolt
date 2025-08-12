@@ -9,6 +9,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  limit,
   setDoc,
 } from "firebase/firestore";
 
@@ -16,47 +17,49 @@ import { db } from "../firebase";
 
 import { logError } from "./logError";
 
-export const tsToDate = (v) => {
-  try {
-    if (!v) return null;
-    if (v instanceof Date) return v;
-    if (v instanceof Timestamp) return v.toDate();
-    if (typeof v?.toDate === "function") return v.toDate();
-    return null;
-  } catch (e) {
-    logError("tsToDate failed", e);
-    return null;
-  }
-};
+/**
+ * Normalize a shootoutStats document snapshot.
+ * @param {import('firebase/firestore').QueryDocumentSnapshot} doc
+ * @returns {object}
+ */
+function normalizeShootout(doc) {
+  const d = doc.data() || {};
+  return {
+    id: doc.id,
+    driverEmail: d.driverEmail || "",
+    vehicle: d.vehicle || "",
+    startTime: d.startTime || null,
+    endTime: d.endTime || null,
+    trips: typeof d.trips === "number" ? d.trips : 0,
+    passengers: typeof d.passengers === "number" ? d.passengers : 0,
+    createdAt: d.createdAt || null,
+  };
+}
 
 export function subscribeShootoutStats({ driverEmail, onData, onError }) {
   try {
     const base = collection(db, "shootoutStats");
     const q = driverEmail
-      ? query(base, where("driverEmail", "==", driverEmail), orderBy("createdAt", "desc"))
-      : query(base, orderBy("createdAt", "desc"));
+      ? query(
+          base,
+          where("driverEmail", "==", driverEmail),
+          orderBy("startTime", "desc"),
+          limit(200),
+        )
+      : query(base, orderBy("startTime", "desc"), limit(200));
     return onSnapshot(
       q,
       (snap) => {
-        const rows = snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            ...data,
-            startTime: tsToDate(data.startTime),
-            endTime: tsToDate(data.endTime),
-            createdAt: tsToDate(data.createdAt),
-          };
-        });
+        const rows = snap.docs.map(normalizeShootout);
         onData(rows);
       },
       (err) => {
-        logError("FirestoreSubscribe: shootoutStats", err);
+        logError(err, "FirestoreSubscribe: shootoutStats");
         onError?.(err);
-      }
+      },
     );
   } catch (e) {
-    logError("subscribeShootoutStats init", e);
+    logError(e, "FirestoreSubscribe: shootoutStats init");
     onError?.(e);
     return () => {};
   }

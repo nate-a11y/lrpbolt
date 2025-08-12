@@ -1,5 +1,5 @@
 // src/components/TimeClockGodMode.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box, Paper, TextField, Button, Typography, Checkbox,
   FormControlLabel, Snackbar, Alert, Stack, CircularProgress
@@ -25,6 +25,7 @@ import {
 import { db } from "@/firebase";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
+import { toNumber, tsToDate } from "../utils/safe";
 import ErrorBanner from "./ErrorBanner";
 import { useRole, useFirestoreSub } from "@/hooks";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -56,12 +57,8 @@ async function logTimeUpdate(id, patch) {
 }
 
 function tsToMillis(v) {
-  if (!v) return null;
-  if (v instanceof Timestamp) return v.toMillis();
-  if (typeof v?.toDate === "function") return v.toDate().getTime();
-  if (typeof v === "number") return v;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  const d = tsToDate(v);
+  return d ? d.getTime() : null;
 }
 
 export default function TimeClockGodMode({ driver, setIsTracking }) {
@@ -82,21 +79,22 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const { user } = useAuth();
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
+  const logQuery = useMemo(() => {
+    if (roleLoading) return null;
+    if (!(isAdmin || isDriver) || !user?.email) return null;
+    const base = collection(db, "timeLogs");
+    return isAdmin
+      ? query(base, orderBy("startTime", "desc"), limit(500))
+      : query(
+          base,
+          where("userEmail", "==", user.email.toLowerCase()),
+          orderBy("startTime", "desc"),
+          limit(200),
+        );
+  }, [roleLoading, isAdmin, isDriver, user?.email]);
   const { docs: logDocs, error, ready } = useFirestoreSub(
-    () => {
-      if (roleLoading) return null;
-      if (!(isAdmin || isDriver) || !user?.email) return null;
-      const base = collection(db, "timeLogs");
-      return isAdmin
-        ? query(base, orderBy("startTime", "desc"), limit(500))
-        : query(
-            base,
-            where("userEmail", "==", user.email.toLowerCase()),
-            orderBy("startTime", "desc"),
-            limit(200),
-          );
-    },
-    [roleLoading, isAdmin, isDriver, user?.email],
+    () => logQuery,
+    [logQuery],
   );
 
   useEffect(() => {
@@ -279,7 +277,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       field: "duration",
       headerName: "Duration",
       flex: 1,
-      valueGetter: (params) => `${params.row.duration || 0}m`,
+      valueGetter: (params) => `${toNumber(params.row?.duration, 0)}m`,
     },
   ];
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
