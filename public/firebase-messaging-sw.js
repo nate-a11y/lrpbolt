@@ -4,29 +4,19 @@
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.3/firebase-messaging-compat.js");
 
-// Allow the page to pass config; initialize once.
-let __inited = false;
-function initIfNeeded(cfg) {
-  if (__inited) return;
-  try {
-    firebase.initializeApp(cfg || {});
-    __inited = true;
-  } catch {
-    // ignore duplicate init
-    __inited = true;
-  }
-}
-
-// Receive config from page (posted after registration)
-self.addEventListener("message", (evt) => {
-  const cfg = evt?.data?.__FIREBASE_CONFIG;
-  if (cfg) initIfNeeded(cfg);
+/** 🔒 Paste the SAME config you use in initializeApp(...) */
+firebase.initializeApp({
+  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+  authDomain: "lrp---claim-portal.firebaseapp.com",
+  projectId: "lrp---claim-portal",
+  storageBucket: "lrp---claim-portal.firebasestorage.app",
+  messagingSenderId: "799613895072",
+  appId: "1:799613895072:web:1b41c28c6819198ce824c5",
+  measurementId: "G-9NM69MZN6B",
 });
 
-// Fallback (some browsers won't postMessage before push arrives)
-initIfNeeded(self.__FIREBASE_CONFIG);
-
 const messaging = firebase.messaging();
+
 messaging.onBackgroundMessage((payload) => {
   const title = payload?.notification?.title || "Notification";
   const options = {
