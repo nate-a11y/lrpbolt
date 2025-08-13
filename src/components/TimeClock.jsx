@@ -12,6 +12,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
     Alert,
     Stack,
     CircularProgress,
+    useMediaQuery,
   } from "@mui/material";
   import PageContainer from "./PageContainer.jsx";
 import { DataGrid } from "@mui/x-data-grid";
@@ -86,6 +87,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
+  const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
   const driverRef = useRef(driver);
   const isRunningRef = useRef(isRunning);
 
@@ -345,6 +347,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       valueGetter: safeGetter((p) => p?.row?.note ?? ""),
     },
   ];
+  const formatTS = (ts) => {
+    const dt = tsToDate(ts);
+    return dt ? new Date(dt).toLocaleString() : '—';
+  };
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
   if (!(isAdmin || isDriver)) return <Alert severity="error">You don’t have permission to view this.</Alert>;
   if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
@@ -401,20 +407,42 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="subtitle1">Previous Sessions</Typography>
         </Box>
-        <DataGrid
-          autoHeight
-          rows={rows}
-          columns={columns}
-          getRowId={(r) => r.id}
-          pageSizeOptions={[5]}
-          initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
-          disableRowSelectionOnClick
-          density="compact"
-        />
-        {rows.length === 0 && (
-          <Typography textAlign="center" color="text.secondary" mt={2}>
-            No time logs found.
-          </Typography>
+        {isSmall ? (
+          <Stack spacing={1}>
+            {rows.map((r) => (
+              <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
+                <Typography variant="body2">Ride: {r.rideId || '—'}</Typography>
+                <Typography variant="body2">Start: {formatTS(r.startTime)}</Typography>
+                <Typography variant="body2">End: {formatTS(r.endTime)}</Typography>
+                <Typography variant="body2">Duration: {r.duration}</Typography>
+                {r.note && <Typography variant="body2">Note: {r.note}</Typography>}
+              </Paper>
+            ))}
+            {rows.length === 0 && (
+              <Typography textAlign="center" color="text.secondary" mt={2}>
+                No time logs found.
+              </Typography>
+            )}
+          </Stack>
+        ) : (
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <DataGrid
+              autoHeight
+              rows={rows}
+              columns={columns}
+              getRowId={(r) => r.id}
+              pageSizeOptions={[5]}
+              initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
+              disableRowSelectionOnClick
+              density="compact"
+              columnVisibilityModel={isSmall ? { rideId: false, note: false } : undefined}
+            />
+            {rows.length === 0 && (
+              <Typography textAlign="center" color="text.secondary" mt={2}>
+                No time logs found.
+              </Typography>
+            )}
+          </Box>
         )}
       </Paper>
 

@@ -30,6 +30,8 @@ import {
   InputAdornment,
   OutlinedInput,
   useTheme,
+  useMediaQuery,
+  Stack,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import EditIcon from "@mui/icons-material/Edit";
@@ -76,6 +78,7 @@ export default function Tickets() {
   const previewRef = useRef(null);
   const { user, authLoading } = useAuth();
   const theme = useTheme();
+  const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
 
   // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
@@ -493,41 +496,57 @@ export default function Tickets() {
       </Tabs>
 
       {tab === 0 && (
-        <DataGrid
-          rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
-          columns={columns}
-          getRowId={(r) => r.id ?? `${r.ticketId}-${r.date ?? Math.random()}`}
-          autoHeight
-          checkboxSelection
-          pageSizeOptions={[5, 10, 25, 100]}
-          density="compact"
-          disableRowSelectionOnClick
-          onRowSelectionModelChange={(model) => setRowSelectionModel(model)}
-          rowSelectionModel={rowSelectionModel}
-          sx={{
-            "& .MuiDataGrid-row:nth-of-type(odd)": {
-              backgroundColor: "rgba(255,255,255,0.04)",
-            },
-            "& .MuiDataGrid-row:hover": {
-              backgroundColor: "rgba(76,187,23,0.1)",
-            },
-            "& .MuiDataGrid-row.Mui-selected": {
-              backgroundColor: "rgba(76,187,23,0.2)",
-            },
-            "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-              outline: "none",
-            },
-            "& .MuiDataGrid-footerContainer": {
-              flexWrap: { xs: "wrap", sm: "nowrap" },
-            },
-            "& .MuiTablePagination-toolbar": {
-              flexWrap: { xs: "wrap", sm: "nowrap" },
-            },
-          }}
-          slotProps={{
-            pagination: { labelRowsPerPage: "Rows" },
-          }}
-        />
+        isSmall ? (
+          <Stack spacing={2} sx={{ mb: 2 }}>
+            {filteredTickets.map((t) => (
+              <Paper key={t.ticketId} variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle2">{t.ticketId}</Typography>
+                <Typography variant="body2">Passenger: {t.passenger}</Typography>
+                <Typography variant="body2">Date: {t.date}</Typography>
+                <Typography variant="body2">Pickup: {t.pickup}</Typography>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <DataGrid
+              rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
+              columns={columns}
+              getRowId={(r) => r.id ?? `${r.ticketId}-${r.date ?? Math.random()}`}
+              autoHeight
+              checkboxSelection
+              pageSizeOptions={[5, 10, 25, 100]}
+              density="compact"
+              disableRowSelectionOnClick
+              onRowSelectionModelChange={(model) => setRowSelectionModel(model)}
+              rowSelectionModel={rowSelectionModel}
+              sx={{
+                "& .MuiDataGrid-row:nth-of-type(odd)": {
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                },
+                "& .MuiDataGrid-row:hover": {
+                  backgroundColor: "rgba(76,187,23,0.1)",
+                },
+                "& .MuiDataGrid-row.Mui-selected": {
+                  backgroundColor: "rgba(76,187,23,0.2)",
+                },
+                "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+                  outline: "none",
+                },
+                "& .MuiDataGrid-footerContainer": {
+                  flexWrap: { xs: "wrap", sm: "nowrap" },
+                },
+                "& .MuiTablePagination-toolbar": {
+                  flexWrap: { xs: "wrap", sm: "nowrap" },
+                },
+              }}
+              slotProps={{
+                pagination: { labelRowsPerPage: "Rows" },
+              }}
+              columnVisibilityModel={isSmall ? { link: false, scanStatus: false, pickup: false } : undefined}
+            />
+          </Box>
+        )
       )}
 
       {tab === 1 && (

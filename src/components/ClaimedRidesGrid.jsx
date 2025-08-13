@@ -13,6 +13,9 @@ import {
   Alert,
   CircularProgress,
   IconButton,
+  Stack,
+  Paper,
+  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DataGrid } from "@mui/x-data-grid";
@@ -36,6 +39,7 @@ const ClaimedRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
+  const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
@@ -190,19 +194,39 @@ const ClaimedRidesGrid = () => {
         </Box>
       )}
 
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        autoHeight
-        checkboxSelection
-        disableRowSelectionOnClick
-        getRowClassName={(params) => (params.row.fading ? "fade-out" : "")}
-        onRowSelectionModelChange={(model) => {
-          setSelectedRows(model);
-        }}
-        loading={loading}
-        sx={{ bgcolor: "background.paper" }}
-      />
+      {isSmall ? (
+        <Stack spacing={2} sx={{ mb: 2 }}>
+          {rows.map((r) => (
+            <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle2">{r.TripID}</Typography>
+              <Typography variant="body2">Pickup: {r.PickupTime}</Typography>
+              <Typography variant="body2">Duration: {r.RideDuration}</Typography>
+              <Typography variant="body2">Type: {r.RideType}</Typography>
+              <Typography variant="body2">Vehicle: {r.Vehicle}</Typography>
+              {r.RideNotes && (
+                <Typography variant="body2">Notes: {r.RideNotes}</Typography>
+              )}
+            </Paper>
+          ))}
+        </Stack>
+      ) : (
+        <Box sx={{ width: '100%', overflowX: 'auto' }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            autoHeight
+            checkboxSelection
+            disableRowSelectionOnClick
+            getRowClassName={(params) => (params.row.fading ? 'fade-out' : '')}
+            onRowSelectionModelChange={(model) => {
+              setSelectedRows(model);
+            }}
+            loading={loading}
+            sx={{ bgcolor: 'background.paper' }}
+            columnVisibilityModel={isSmall ? { RideNotes: false, CreatedBy: false, LastModifiedBy: false, ClaimedBy: false, ClaimedAt: false } : undefined}
+          />
+        </Box>
+      )}
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Delete Ride?</DialogTitle>
