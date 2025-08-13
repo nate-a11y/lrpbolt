@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from "react";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { Box, CircularProgress, Alert, Typography } from "@mui/material";
 import { fetchWeeklySummary } from "../../hooks/firestore";
 
@@ -63,6 +63,8 @@ export default function WeeklySummaryTab() {
         columns={columns}
         density="compact"
         disableRowSelectionOnClick
+        slots={{ toolbar: GridToolbar }}
+        slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }}
         initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
         pageSizeOptions={[5, 10, 25]}
       />

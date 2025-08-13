@@ -1,6 +1,19 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Stack, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Snackbar,
+  Alert,
+  useMediaQuery,
+} from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import dayjs from "dayjs";
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -25,10 +38,13 @@ const fmt = (v) => {
   return d ? dayjs(d).format("MM/DD/YYYY h:mm A") : "—";
 };
 
-const diffMins = (start, end) => {
+const calcDuration = (start, end, duration) => {
   const s = tsToDate(start);
-  const e = tsToDate(end);
-  if (!s || !e) return "";
+  if (!s) return "";
+  if (typeof duration === "number") {
+    return `${Math.round(duration)}m`;
+  }
+  const e = tsToDate(end) || new Date();
   const mins = Math.max(0, Math.round((e - s) / 60000));
   return `${mins}m`;
 };
@@ -36,6 +52,14 @@ const diffMins = (start, end) => {
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+  const columnVisibilityModel = useMemo(() => {
+    const base = { note: false, createdAt: false, updatedAt: false };
+    if (isSmall) {
+      return { ...base, rideId: false, mode: false, startTime: false, endTime: false };
+    }
+    return base;
+  }, [isSmall]);
 
   // edit modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -56,6 +80,7 @@ export default function EntriesTab() {
 
         const startTime = d.startTime ?? null;
         const endTime = d.endTime ?? null;
+        const duration = typeof d.duration === "number" ? d.duration : null;
 
         const driver = d.driverEmail || d.driver || "";
         const status = endTime ? "Closed" : "Open";
@@ -68,6 +93,7 @@ export default function EntriesTab() {
           mode: d.mode || "RIDE",
           startTime,
           endTime,
+          duration,
           note: d.note || "",
           status,
           createdAt: d.createdAt || null,
@@ -131,7 +157,7 @@ export default function EntriesTab() {
       { field: "endTime", headerName: "End", minWidth: 180,
         valueGetter: (p) => p?.row?.endTime ?? null, renderCell: (p) => fmt(p.value) },
       { field: "duration", headerName: "Duration", minWidth: 120,
-        valueGetter: (p) => diffMins(p?.row?.startTime, p?.row?.endTime) },
+        valueGetter: (p) => calcDuration(p?.row?.startTime, p?.row?.endTime, p?.row?.duration) },
       {
         field: "status",
         headerName: "Status",
@@ -173,9 +199,9 @@ export default function EntriesTab() {
           slotProps={{
             toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
           }}
+          columnVisibilityModel={columnVisibilityModel}
           initialState={{
             pagination: { paginationModel: { pageSize: 10 } },
-            columns: { columnVisibilityModel: { note: false, createdAt: false, updatedAt: false } },
           }}
           pageSizeOptions={[5, 10, 25, 50]}
         />
