@@ -375,13 +375,13 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           }} disabled={isRunning} />}
           label="Multiple Back-to-Back Rides"
         />
-        <Stack direction="row" spacing={2} mt={2}>
-          <Button fullWidth onClick={handleStart} disabled={isRunning || submitting}
-            startIcon={<PlayArrowIcon />} variant="contained" color="success">
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={2}>
+          <Button onClick={handleStart} disabled={isRunning || submitting}
+            startIcon={<PlayArrowIcon />} variant="contained" color="success" sx={{ flex: 1 }}>
             {submitting && !isRunning ? "Starting…" : "Start"}
           </Button>
-          <Button fullWidth onClick={handleEnd} disabled={!isRunning || submitting}
-            startIcon={<StopIcon />} variant="contained" color="error">
+          <Button onClick={handleEnd} disabled={!isRunning || submitting}
+            startIcon={<StopIcon />} variant="contained" color="error" sx={{ flex: 1 }}>
             {submitting && isRunning ? "Logging…" : "End"}
           </Button>
         </Stack>
