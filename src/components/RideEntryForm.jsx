@@ -895,9 +895,12 @@ if (totalMinutes <= 0) {
             value={rideTab}
             onChange={(e, v) => setRideTab(v)}
             TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
               mb: 3,
-              "& .MuiTab-root": { minWidth: 150, fontWeight: 600 },
+              "& .MuiTab-root": { fontWeight: 600 },
             }}
           >
             <Tab label="SINGLE RIDE" />
