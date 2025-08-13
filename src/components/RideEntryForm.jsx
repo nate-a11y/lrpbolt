@@ -1177,7 +1177,7 @@ if (totalMinutes <= 0) {
           </Tabs>
         </Box>
 
-        <Box sx={{ width: "100%", overflowX: "hidden" }}>
+        <Box sx={{ width: "100%", overflowX: "auto" }}>
           {dataTab === 0 && (
             <Fade in>
               <Box>
