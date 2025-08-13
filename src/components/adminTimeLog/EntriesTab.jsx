@@ -130,23 +130,24 @@ export default function EntriesTab() {
         headerName: "Start",
         flex: 1,
         minWidth: 170,
-        valueGetter: (p) => p?.row?.startTime ?? null,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (params = {}) => params?.row?.startTime ?? null,
+        valueFormatter: (params = {}) => fmtDateTime(params?.value),
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 170,
-        valueGetter: (p) => p?.row?.endTime ?? null,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (params = {}) => params?.row?.endTime ?? null,
+        valueFormatter: (params = {}) => fmtDateTime(params?.value),
       },
       {
         field: "duration",
         headerName: "Duration",
         width: 110,
-        valueGetter: (p) => {
-          const { startTime, endTime, duration } = p.row || {};
+        valueGetter: (params = {}) => {
+          const r = params?.row || {};
+          const { startTime, endTime, duration } = r;
           if (typeof duration === "number") return `${Math.round(duration)}m`;
           const mins = diffMinutes(startTime, endTime ?? new Date());
           return isNil(mins) ? "" : `${mins}m`;
@@ -156,7 +157,7 @@ export default function EntriesTab() {
         field: "status",
         headerName: "Status",
         width: 120,
-        renderCell: (params) => <StatusCell value={params.value} />,
+        renderCell: (params = {}) => <StatusCell value={params?.value} />,
         sortable: true,
       },
       {
@@ -165,9 +166,9 @@ export default function EntriesTab() {
         width: 160,
         sortable: false,
         filterable: false,
-        renderCell: (params) => (
+        renderCell: (params = {}) => (
           <ToolsCell
-            row={params.row}
+            row={params?.row}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
@@ -186,7 +187,7 @@ export default function EntriesTab() {
           rows={rows}
           columns={columns}
           loading={loading}
-          getRowId={(r) => r.id}
+          getRowId={(r) => r?.id}
           density="compact"
           disableRowSelectionOnClick
           slots={{ toolbar: GridToolbar }}

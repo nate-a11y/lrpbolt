@@ -146,17 +146,20 @@ const ClaimedRidesGrid = () => {
       headerName: "",
       width: 80,
       sortable: false,
-      renderCell: (params) => (
-        <IconButton
-          color="error"
-          onClick={() => {
-            setSelectedRow(params.row);
-            setConfirmOpen(true);
-          }}
-        >
-          <DeleteIcon />
-        </IconButton>
-      ),
+      renderCell: (params = {}) => {
+        const row = params?.row;
+        return (
+          <IconButton
+            color="error"
+            onClick={() => {
+              setSelectedRow(row);
+              setConfirmOpen(true);
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        );
+      },
     },
   ];
 
@@ -243,7 +246,7 @@ const ClaimedRidesGrid = () => {
             autoHeight
             checkboxSelection
             disableRowSelectionOnClick
-            getRowClassName={(params) => (params.row.fading ? 'fade-out' : '')}
+            getRowClassName={(params = {}) => (params?.row?.fading ? 'fade-out' : '')}
             onRowSelectionModelChange={(model) => {
               setSelectedRows(model);
             }}

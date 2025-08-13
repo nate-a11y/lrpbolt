@@ -430,7 +430,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
               autoHeight
               rows={rows}
               columns={columns}
-              getRowId={(r) => r.id}
+              getRowId={(r) => r?.id}
               pageSizeOptions={[5]}
               initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
               disableRowSelectionOnClick

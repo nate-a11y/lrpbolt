@@ -36,8 +36,10 @@ export default function WeeklySummaryTab() {
       headerName: "Hours",
       width: 120,
       type: "number",
-      valueFormatter: (p) =>
-        (typeof p.value === "number" ? p.value : 0).toFixed(2),
+      valueFormatter: (params = {}) => {
+        const v = params?.value;
+        return (typeof v === "number" ? v : 0).toFixed(2);
+      },
     },
   ];
 

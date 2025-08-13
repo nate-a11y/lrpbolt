@@ -302,8 +302,8 @@ export default function Tickets() {
       headerName: "Passenger",
       minWidth: 130,
       flex: 1,
-      renderCell: (params) => (
-        <Typography fontWeight="bold">{params.value}</Typography>
+      renderCell: (params = {}) => (
+        <Typography fontWeight="bold">{params?.value}</Typography>
       ),
     },
     { field: "date", headerName: "Date", minWidth: 110 },
@@ -314,9 +314,9 @@ export default function Tickets() {
       minWidth: 100,
       sortable: false,
       valueGetter: safeGetter((p) => p?.row?.ticketId),
-      renderCell: (params) => (
+      renderCell: (params = {}) => (
         <a
-          href={`/ticket/${params.value}`}
+          href={`/ticket/${params?.value}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "#0af" }}
@@ -329,7 +329,8 @@ export default function Tickets() {
       field: "scanStatus",
       headerName: "Scan",
       minWidth: 120,
-      renderCell: ({ row } = {}) => {
+      renderCell: (params = {}) => {
+        const row = params?.row;
         if (row?.scannedReturn) return "✅ Return";
         if (row?.scannedOutbound) return "↗️ Outbound";
         return "❌ Not Scanned";
@@ -340,7 +341,7 @@ export default function Tickets() {
       headerName: "Actions",
       width: 160,
       sortable: false,
-      renderCell: (params) => {
+      renderCell: (params = {}) => {
         const row = params?.row;
         if (!row) return null;
         return (
@@ -512,7 +513,7 @@ export default function Tickets() {
             <DataGrid
               rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
               columns={columns}
-              getRowId={(r) => r.id ?? `${r.ticketId}-${r.date ?? Math.random()}`}
+              getRowId={(r) => r?.id ?? `${r?.ticketId}-${r?.date ?? Math.random()}`}
               autoHeight
               checkboxSelection
               pageSizeOptions={[5, 10, 25, 100]}
