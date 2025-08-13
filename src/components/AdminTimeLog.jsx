@@ -12,7 +12,13 @@ export default function AdminTimeLog() {
   return (
     <PageContainer pt={2} pb={4}>
       <Box sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable">
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
           <Tab label="Entries" />
           <Tab label="Weekly Summary" />
           <Tab label="Shootout Stats" />
