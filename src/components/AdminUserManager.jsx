@@ -9,6 +9,8 @@ import {
   Alert,
   Typography,
   Stack,
+  Box,
+  useMediaQuery,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { subscribeUserAccess } from "../hooks/api";
@@ -23,6 +25,7 @@ export default function AdminUserManager() {
   const isAdmin = role === "admin";
 
   const { user, authLoading } = useAuth();
+  const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
 
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
@@ -200,7 +203,7 @@ export default function AdminUserManager() {
           Add Users
         </Button>
 
-        <div style={{ width: "100%" }}>
+        <Box sx={{ width: '100%', overflowX: 'auto' }}>
           <DataGrid
             rows={rows}
             columns={columns}
@@ -208,12 +211,13 @@ export default function AdminUserManager() {
             loading={loading}
             disableRowSelectionOnClick
             processRowUpdate={handleProcessRowUpdate}
-            isCellEditable={(params) => isAdmin && params.field !== "email"}
+            isCellEditable={(params) => isAdmin && params.field !== 'email'}
             pageSizeOptions={[5, 10, 25]}
             getRowId={(r) => r.id || r.email} // safety net
             experimentalFeatures={{ newEditingApi: true }}
+            columnVisibilityModel={isSmall ? { access: false } : undefined}
           />
-        </div>
+        </Box>
       </Stack>
 
       <Snackbar
