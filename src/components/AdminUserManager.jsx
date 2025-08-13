@@ -382,7 +382,7 @@ export default function AdminUserManager() {
               processRowUpdate={handleProcessRowUpdate}
               isCellEditable={(params) => isAdmin && params.field !== 'email'}
               pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) => r.id || r.email} // safety net
+              getRowId={(r) => r?.id || r?.email} // safety net
               experimentalFeatures={{ newEditingApi: true }}
               columnVisibilityModel={isSmall ? { access: false } : undefined}
             />

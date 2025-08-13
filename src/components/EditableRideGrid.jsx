@@ -198,10 +198,10 @@ const EditableRideGrid = ({
         headerName: "Trip ID",
         minWidth: 120,
         flex: 1,
-        renderCell: (params) => (
-          <Tooltip title={params.value}>
+        renderCell: (params = {}) => (
+          <Tooltip title={params?.value}>
             <Box display="flex" alignItems="center" gap={1}>
-              {params.value}
+              {params?.value}
               <Tooltip title="Click row to view ride details">
                 <InfoOutlinedIcon fontSize="small" color="action" />
               </Tooltip>
@@ -358,7 +358,7 @@ const EditableRideGrid = ({
       ) : (
         <Box sx={{ width: "100%", overflowX: "auto" }}>
           <DataGrid
-            getRowId={(row) => row.id}
+            getRowId={(row) => row?.id}
             rows={rows}
             columns={columns}
             autoHeight
@@ -373,7 +373,7 @@ const EditableRideGrid = ({
             columnVisibilityModel={columnVisibilityModel}
             onColumnVisibilityModelChange={setColumnVisibilityModel}
             components={{ Toolbar: CustomToolbar }}
-            getRowClassName={(params) => (params.row.fading ? "fade-out" : "")}
+            getRowClassName={(params = {}) => (params?.row?.fading ? "fade-out" : "")}
             sx={{
               "& .MuiDataGrid-columnHeaders": {
                 position: "sticky",

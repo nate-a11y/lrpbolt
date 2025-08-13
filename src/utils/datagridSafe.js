@@ -1,4 +1,4 @@
-export const safeGetter = (fn) => (params) => {
+export const safeGetter = (fn) => (params = {}) => {
   try {
     return fn?.(params) ?? null;
   } catch {
@@ -7,7 +7,7 @@ export const safeGetter = (fn) => (params) => {
   }
 };
 
-export const safeFormatter = (fn) => (params) => {
+export const safeFormatter = (fn) => (params = {}) => {
   try {
     return fn?.(params) ?? '';
   } catch {

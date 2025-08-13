@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Box, Paper, CircularProgress, Alert } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { onSnapshot, collection, query, orderBy } from "firebase/firestore";
-import { db } from "../firebase"; // adjust if different
+import { db } from "../firebase"; // adjust if your firebase export path differs
 import { isNil, tsToDate, fmtDateTime, diffMinutes } from "../utils/timeUtilsSafe";
 
 export default function AdminTimeLog() {
@@ -12,8 +12,8 @@ export default function AdminTimeLog() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Adjust collection path as needed
     try {
+      // ✅ Change "timeLogs" if your collection is named differently
       const qRef = query(collection(db, "timeLogs"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(
         qRef,
@@ -21,19 +21,18 @@ export default function AdminTimeLog() {
           const data = [];
           snap.forEach((doc) => {
             const d = doc.data() || {};
-            // Normalize shapes; NEVER store nested {value:...} in the grid
             data.push({
               id: doc.id,
               driverEmail: typeof d.driverEmail === "string" ? d.driverEmail : d?.driverEmail?.value ?? null,
               vehicle: typeof d.vehicle === "string" ? d.vehicle : d?.vehicle?.value ?? null,
               startTime: d.startTime ?? null,
               endTime: d.endTime ?? null,
-              trips: isNil(d.trips) ? null : d.trips,
-              passengers: isNil(d.passengers) ? null : d.passengers,
+              trips: isNil(d.trips) ? null : Number(d.trips),
+              passengers: isNil(d.passengers) ? null : Number(d.passengers),
               createdAt: d.createdAt ?? null,
             });
           });
-          setRows(data);
+          setRows(Array.isArray(data) ? data : []);
           setLoading(false);
         },
         (err) => {
@@ -49,22 +48,29 @@ export default function AdminTimeLog() {
   }, []);
 
   const columns = useMemo(() => {
+    // NOTE: Never destructure params; always guard: (params = {}) => ...
     return [
       {
         field: "driverEmail",
         headerName: "Driver",
         flex: 1,
         minWidth: 160,
-        valueGetter: (params) => params.row?.driverEmail ?? null,
-        valueFormatter: ({ value }) => (isNil(value) || value === "" ? "—" : value),
+        valueGetter: (params = {}) => params?.row?.driverEmail ?? null,
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) || v === "" ? "—" : String(v);
+        },
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         flex: 1,
         minWidth: 140,
-        valueGetter: (params) => params.row?.vehicle ?? null,
-        valueFormatter: ({ value }) => (isNil(value) || value === "" ? "—" : value),
+        valueGetter: (params = {}) => params?.row?.vehicle ?? null,
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) || v === "" ? "—" : String(v);
+        },
       },
       {
         field: "startTime",
@@ -72,12 +78,12 @@ export default function AdminTimeLog() {
         type: "dateTime",
         flex: 1,
         minWidth: 190,
-        valueGetter: (params) => params.row?.startTime ?? null,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (params = {}) => params?.row?.startTime ?? null,
+        valueFormatter: (params = {}) => fmtDateTime(params?.value),
         sortComparator: (a, b) => {
           const da = tsToDate(a)?.getTime() ?? -1;
-          const dbv = tsToDate(b)?.getTime() ?? -1;
-          return da - dbv;
+          const db = tsToDate(b)?.getTime() ?? -1;
+          return da - db;
         },
       },
       {
@@ -86,26 +92,30 @@ export default function AdminTimeLog() {
         type: "dateTime",
         flex: 1,
         minWidth: 190,
-        valueGetter: (params) => params.row?.endTime ?? null,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (params = {}) => params?.row?.endTime ?? null,
+        valueFormatter: (params = {}) => fmtDateTime(params?.value),
         sortComparator: (a, b) => {
           const da = tsToDate(a)?.getTime() ?? -1;
-          const dbv = tsToDate(b)?.getTime() ?? -1;
-          return da - dbv;
+          const db = tsToDate(b)?.getTime() ?? -1;
+          return da - db;
         },
       },
       {
         field: "durationMin",
         headerName: "Duration",
-        description: "Computed from Start → End",
+        description: "Computed from Start → End (minutes)",
         flex: 0.7,
         minWidth: 120,
-        // Store as number for native numeric sort, but display pretty
-        valueGetter: (params) => {
-          const m = diffMinutes(params.row?.startTime, params.row?.endTime);
-          return isNil(m) ? null : m; // number or null
+        // Compute directly from row to avoid nested {s,e} objects
+        valueGetter: (params = {}) => {
+          const r = params?.row ?? null;
+          const m = diffMinutes(r?.startTime, r?.endTime);
+          return isNil(m) ? null : m; // number (better sorting)
         },
-        valueFormatter: ({ value }) => (isNil(value) ? "—" : `${value} min`),
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) ? "—" : `${v} min`;
+        },
         sortComparator: (a, b) => {
           const na = isNil(a) ? -1 : Number(a);
           const nb = isNil(b) ? -1 : Number(b);
@@ -118,8 +128,14 @@ export default function AdminTimeLog() {
         type: "number",
         flex: 0.5,
         minWidth: 90,
-        valueGetter: (params) => (isNil(params.row?.trips) ? null : Number(params.row.trips)),
-        valueFormatter: ({ value }) => (isNil(value) ? "—" : String(value)),
+        valueGetter: (params = {}) => {
+          const v = params?.row?.trips;
+          return isNil(v) ? null : Number(v);
+        },
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) ? "—" : String(v);
+        },
       },
       {
         field: "passengers",
@@ -127,8 +143,14 @@ export default function AdminTimeLog() {
         type: "number",
         flex: 0.5,
         minWidth: 90,
-        valueGetter: (params) => (isNil(params.row?.passengers) ? null : Number(params.row.passengers)),
-        valueFormatter: ({ value }) => (isNil(value) ? "—" : String(value)),
+        valueGetter: (params = {}) => {
+          const v = params?.row?.passengers;
+          return isNil(v) ? null : Number(v);
+        },
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) ? "—" : String(v);
+        },
       },
       {
         field: "createdAt",
@@ -136,12 +158,12 @@ export default function AdminTimeLog() {
         type: "dateTime",
         flex: 1,
         minWidth: 190,
-        valueGetter: (params) => params.row?.createdAt ?? null,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (params = {}) => params?.row?.createdAt ?? null,
+        valueFormatter: (params = {}) => fmtDateTime(params?.value),
         sortComparator: (a, b) => {
           const da = tsToDate(a)?.getTime() ?? -1;
-          const dbv = tsToDate(b)?.getTime() ?? -1;
-          return da - dbv;
+          const db = tsToDate(b)?.getTime() ?? -1;
+          return da - db;
         },
       },
     ];
@@ -167,20 +189,16 @@ export default function AdminTimeLog() {
     <Paper sx={{ p: 1 }}>
       <div style={{ height: 640, width: "100%" }}>
         <DataGrid
-          rows={rows}
-          getRowId={(r) => r.id}
+          rows={rows ?? []}                // ✅ never pass undefined
+          getRowId={(r) => r?.id ?? String(Math.random())}
           columns={columns}
           disableRowSelectionOnClick
           initialState={{
             sorting: { sortModel: [{ field: "createdAt", sort: "desc" }] },
-            columns: {
-              columnVisibilityModel: {
-                createdAt: true,
-              },
-            },
           }}
         />
       </div>
     </Paper>
   );
 }
+
