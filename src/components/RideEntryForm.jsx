@@ -1026,17 +1026,31 @@ if (totalMinutes <= 0) {
                 <Typography variant="subtitle1" fontWeight={600} mb={1}>
                   Preview Rides ({uploadedRows.length})
                 </Typography>
-                <DataGrid
-                  autoHeight
-                  density="compact"
-                  rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
-                  columns={expectedCsvCols.map((col) => ({
-                    field: col,
-                    headerName: col.replace(/([A-Z])/g, " $1"),
-                    flex: 1,
-                  }))}
-                  pageSizeOptions={[5]}
-                />
+                {isMobile && (
+                  <Box
+                    textAlign="center"
+                    py={1}
+                    sx={{
+                      bgcolor: (t) => t.palette.warning.light,
+                      color: (t) => t.palette.warning.dark,
+                    }}
+                  >
+                    👉 Swipe horizontally to view more columns
+                  </Box>
+                )}
+                <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
+                  <DataGrid
+                    autoHeight
+                    density="compact"
+                    rows={uploadedRows.map((r, i) => ({ id: i, ...r }))}
+                    columns={expectedCsvCols.map((col) => ({
+                      field: col,
+                      headerName: col.replace(/([A-Z])/g, " $1"),
+                      flex: 1,
+                    }))}
+                    pageSizeOptions={[5]}
+                  />
+                </Box>
                 <Button
                   variant="outlined"
                   color="success"
