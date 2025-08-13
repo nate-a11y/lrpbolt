@@ -3,15 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { Box, CircularProgress, Alert } from "@mui/material";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-
-// Firestore Timestamp -> JS Date (or null)
-const tsToDate = (ts) => {
-  if (!ts) return null;
-  if (typeof ts.toDate === "function") return ts.toDate();
-  // fallback if already serialized
-  if (ts.seconds != null) return new Date(ts.seconds * 1000);
-  return null;
-};
+import { tsToDate, fmtDateTime } from "../../utils/timeUtilsSafe";
 
 export default function ShootoutStatsTab() {
   const [stats, setStats] = useState(null);
@@ -51,7 +43,7 @@ export default function ShootoutStatsTab() {
       flex: 1,
       minWidth: 170,
       valueGetter: (p) => p?.row?.startTime ?? null,
-      valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "endTime",
@@ -59,7 +51,7 @@ export default function ShootoutStatsTab() {
       flex: 1,
       minWidth: 170,
       valueGetter: (p) => p?.row?.endTime ?? null,
-      valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "createdAt",
@@ -67,7 +59,7 @@ export default function ShootoutStatsTab() {
       flex: 1,
       minWidth: 170,
       valueGetter: (p) => p?.row?.createdAt ?? null,
-      valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
   ];
 

@@ -3,6 +3,7 @@ import React from "react";
 import { Chip } from "@mui/material";
 
 export default function StatusCell({ value }) {
-  const color = value === "open" ? "success" : value === "closed" ? "default" : "warning";
+  const lower = (value || "").toLowerCase();
+  const color = lower === "open" ? "success" : lower === "closed" ? "default" : "warning";
   return <Chip size="small" label={value ?? "—"} color={color} />;
 }
