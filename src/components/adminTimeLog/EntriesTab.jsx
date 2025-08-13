@@ -1,16 +1,34 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useState } from "react";
-import { Box, Paper, CircularProgress, Alert } from "@mui/material";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  Box,
+  Paper,
+  CircularProgress,
+  Alert,
+  Stack,
+  Typography,
+  useMediaQuery,
+} from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { onSnapshot, collection, query, orderBy } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { isNil, tsToDate, fmtDateTime } from "../../utils/timeUtilsSafe";
 import { normalizeTimeLog } from "../../utils/normalizeTimeLog";
+import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+
+  const handleEdit = useCallback((row) => {
+    console.log("edit", row);
+  }, []);
+
+  const handleDelete = useCallback((row) => {
+    console.log("delete", row);
+  }, []);
 
   useEffect(() => {
     try {
@@ -135,8 +153,21 @@ export default function EntriesTab() {
           return da - db;
         },
       },
+      {
+        field: "tools",
+        headerName: "",
+        width: 80,
+        sortable: false,
+        renderCell: (params = {}) => (
+          <ToolsCell
+            row={params?.row}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ),
+      },
     ],
-    []
+    [handleEdit, handleDelete]
   );
 
   if (loading) {
@@ -156,25 +187,53 @@ export default function EntriesTab() {
 
   return (
     <Paper sx={{ p: 1 }}>
-      <div style={{ height: 640, width: "100%" }}>
-        <DataGrid
-          rows={rows ?? []}
-          getRowId={(r) => r?.id ?? String(Math.random())}
-          columns={columns}
-          disableRowSelectionOnClick
-          initialState={{
-            sorting: { sortModel: [{ field: "createdAt", sort: "desc" }] },
-            columns: { columnVisibilityModel: { createdAt: false } },
-          }}
-          slots={{ toolbar: GridToolbar }}
-          slotProps={{
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 300, placeholder: "Search" },
-            },
-          }}
-        />
-      </div>
+      {isSmall ? (
+        <Stack spacing={2}>
+          {(rows ?? []).map((r) => (
+            <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle2">{r.driverDisplay}</Typography>
+                  <Typography variant="body2">Ride ID: {r.rideId ?? "—"}</Typography>
+                  <Typography variant="body2">Mode: {r.mode ?? "—"}</Typography>
+                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">
+                    Duration: {isNil(r.durationMin) ? "—" : `${r.durationMin} min`}
+                  </Typography>
+                  <Typography variant="body2">Status: {r.status ?? "—"}</Typography>
+                  <Typography variant="body2">Logged: {fmtDateTime(r.createdAt)}</Typography>
+                </Stack>
+                <ToolsCell
+                  row={r}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
+      ) : (
+        <div style={{ height: 640, width: "100%" }}>
+          <DataGrid
+            rows={rows ?? []}
+            getRowId={(r) => r?.id ?? String(Math.random())}
+            columns={columns}
+            disableRowSelectionOnClick
+            initialState={{
+              sorting: { sortModel: [{ field: "createdAt", sort: "desc" }] },
+              columns: { columnVisibilityModel: { createdAt: false } },
+            }}
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300, placeholder: "Search" },
+              },
+            }}
+          />
+        </div>
+      )}
     </Paper>
   );
 }
