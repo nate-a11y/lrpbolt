@@ -217,11 +217,9 @@ const ClaimedRidesGrid = () => {
                   {r.RideNotes && (
                     <Typography variant="body2">Notes: {r.RideNotes}</Typography>
                   )}
-                  {r.ClaimedBy && (
-                    <Typography variant="body2">
-                      Claimed By: {r.ClaimedBy}
-                    </Typography>
-                  )}
+                  <Typography variant="body2">
+                    Claimed By: {r.ClaimedBy || "Unknown"}
+                  </Typography>
                 </Box>
                 <IconButton
                   color="error"
@@ -251,7 +249,16 @@ const ClaimedRidesGrid = () => {
             }}
             loading={loading}
             sx={{ bgcolor: 'background.paper' }}
-            columnVisibilityModel={isSmall ? { RideNotes: false, CreatedBy: false, LastModifiedBy: false, ClaimedBy: false, ClaimedAt: false } : undefined}
+            columnVisibilityModel={
+              isSmall
+                ? {
+                    RideNotes: false,
+                    CreatedBy: false,
+                    LastModifiedBy: false,
+                    ClaimedAt: false,
+                  }
+                : undefined
+            }
           />
         </Box>
       )}
