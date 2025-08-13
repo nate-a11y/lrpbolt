@@ -24,6 +24,9 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  IconButton,
+  Stack,
+  Paper,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -278,44 +281,110 @@ const EditableRideGrid = ({
 
   return (
     <>
-      {isMobile && (
-        <Box
-          textAlign="center"
-          py={1}
-          sx={{ bgcolor: (t) => t.palette.warning.light, color: (t) => t.palette.warning.dark }}
-        >
-          👉 Swipe horizontally to view more columns
+      {isMobile ? (
+        <>
+          <Box textAlign="right" mb={1}>
+            <Button
+              onClick={refreshRides}
+              disabled={loading}
+              variant="outlined"
+              size="small"
+              startIcon={
+                loading ? (
+                  <CircularProgress size={16} sx={{ color: "inherit" }} />
+                ) : (
+                  <RefreshIcon />
+                )
+              }
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </Box>
+          <Stack spacing={2}>
+            {rows.map((row) => (
+              <Paper
+                key={row.id}
+                variant="outlined"
+                sx={{ p: 2 }}
+                className={row.fading ? "fade-out" : ""}
+              >
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="flex-start"
+                >
+                  <Box>
+                    <Typography variant="subtitle2">{row.TripID}</Typography>
+                    <Typography variant="body2">Date: {row.Date}</Typography>
+                    <Typography variant="body2">
+                      Pickup: {row.PickupTime}
+                    </Typography>
+                    <Typography variant="body2">
+                      Duration: {row.RideDuration}
+                    </Typography>
+                    <Typography variant="body2">Type: {row.RideType}</Typography>
+                    <Typography variant="body2">
+                      Vehicle: {row.Vehicle}
+                    </Typography>
+                    {row.RideNotes && (
+                      <Typography variant="body2">
+                        Notes: {row.RideNotes}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Stack direction="row" spacing={1}>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSelectedRow(row);
+                        handleStartEdit(row);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => onDelete(row.id)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
+        </>
+      ) : (
+        <Box sx={{ width: "100%", overflowX: "auto" }}>
+          <DataGrid
+            getRowId={(row) => row.id}
+            rows={rows}
+            columns={columns}
+            autoHeight
+            pageSize={5}
+            loading={loading}
+            disableRowSelectionOnClick
+            onRowClick={(params) => {
+              setEditMode(false); // just in case
+              setSelectedRow(params.row);
+              setViewMode(true);
+            }}
+            columnVisibilityModel={columnVisibilityModel}
+            onColumnVisibilityModelChange={setColumnVisibilityModel}
+            components={{ Toolbar: CustomToolbar }}
+            getRowClassName={(params) => (params.row.fading ? "fade-out" : "")}
+            sx={{
+              "& .MuiDataGrid-columnHeaders": {
+                position: "sticky",
+                top: 0,
+                zIndex: 1,
+                bgcolor: "background.paper",
+              },
+            }}
+          />
         </Box>
       )}
-
-      <Box sx={{ width: "100%", overflowX: "auto" }}>
-        <DataGrid
-          getRowId={(row) => row.id}
-          rows={rows}
-          columns={columns}
-          autoHeight
-          pageSize={5}
-          loading={loading}
-          disableRowSelectionOnClick
-          onRowClick={(params) => {
-            setEditMode(false); // just in case
-            setSelectedRow(params.row);
-            setViewMode(true);
-          }}
-          columnVisibilityModel={columnVisibilityModel}
-          onColumnVisibilityModelChange={setColumnVisibilityModel}
-          components={{ Toolbar: CustomToolbar }}
-          getRowClassName={(params) => (params.row.fading ? "fade-out" : "")}
-          sx={{
-            "& .MuiDataGrid-columnHeaders": {
-              position: "sticky",
-              top: 0,
-              zIndex: 1,
-              bgcolor: "background.paper",
-            },
-          }}
-        />
-      </Box>
 
       <style>
         {`

@@ -197,15 +197,43 @@ const ClaimedRidesGrid = () => {
       {isSmall ? (
         <Stack spacing={2} sx={{ mb: 2 }}>
           {rows.map((r) => (
-            <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="subtitle2">{r.TripID}</Typography>
-              <Typography variant="body2">Pickup: {r.PickupTime}</Typography>
-              <Typography variant="body2">Duration: {r.RideDuration}</Typography>
-              <Typography variant="body2">Type: {r.RideType}</Typography>
-              <Typography variant="body2">Vehicle: {r.Vehicle}</Typography>
-              {r.RideNotes && (
-                <Typography variant="body2">Notes: {r.RideNotes}</Typography>
-              )}
+            <Paper
+              key={r.id}
+              variant="outlined"
+              sx={{ p: 2 }}
+              className={r.fading ? "fade-out" : ""}
+            >
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="flex-start"
+              >
+                <Box>
+                  <Typography variant="subtitle2">{r.TripID}</Typography>
+                  <Typography variant="body2">Pickup: {r.PickupTime}</Typography>
+                  <Typography variant="body2">Duration: {r.RideDuration}</Typography>
+                  <Typography variant="body2">Type: {r.RideType}</Typography>
+                  <Typography variant="body2">Vehicle: {r.Vehicle}</Typography>
+                  {r.RideNotes && (
+                    <Typography variant="body2">Notes: {r.RideNotes}</Typography>
+                  )}
+                  {r.ClaimedBy && (
+                    <Typography variant="body2">
+                      Claimed By: {r.ClaimedBy}
+                    </Typography>
+                  )}
+                </Box>
+                <IconButton
+                  color="error"
+                  size="small"
+                  onClick={() => {
+                    setSelectedRow(r);
+                    setConfirmOpen(true);
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
             </Paper>
           ))}
         </Stack>
