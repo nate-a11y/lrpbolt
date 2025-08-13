@@ -11,6 +11,7 @@ import {
   Stack,
   Box,
   useMediaQuery,
+  MenuItem,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { subscribeUserAccess } from "../hooks/api";
@@ -30,6 +31,11 @@ export default function AdminUserManager() {
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    access: "driver",
+  });
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -129,6 +135,88 @@ export default function AdminUserManager() {
     });
   };
 
+  // ➕ Add a single user manually
+  const handleManualAdd = async () => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      return;
+    }
+
+    const name = newUser.name.trim();
+    const email = newUser.email.trim().toLowerCase();
+    const access = newUser.access.trim().toLowerCase();
+
+    if (!name || !email || !email.includes("@")) {
+      setSnackbar({
+        open: true,
+        message: "Invalid name or email",
+        severity: "error",
+      });
+      return;
+    }
+    if (!["admin", "driver"].includes(access)) {
+      setSnackbar({
+        open: true,
+        message: "Access must be admin or driver",
+        severity: "error",
+      });
+      return;
+    }
+
+    try {
+      await createUser({ name, email, access });
+      setNewUser({ name: "", email: "", access: "driver" });
+      setSnackbar({
+        open: true,
+        message: "User added",
+        severity: "success",
+      });
+    } catch (err) {
+      logError(err, "AdminUserManager:handleManualAdd");
+      setSnackbar({
+        open: true,
+        message: err?.message || "Add failed",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleMobileFieldChange = (id, field, value) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const handleMobileUpdate = async (id) => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      return;
+    }
+    const row = rows.find((r) => r.id === id);
+    try {
+      await updateUser({
+        email: id,
+        name: row.name,
+        access: row.access,
+      });
+    } catch (err) {
+      logError(err, "AdminUserManager:handleMobileUpdate");
+      setSnackbar({
+        open: true,
+        message: err?.message || "Update failed",
+        severity: "error",
+      });
+    }
+  };
+
   // ✏️ Edit user role directly in table
   const handleProcessRowUpdate = async (newRow, oldRow) => {
     if (!isAdmin) {
@@ -190,6 +278,47 @@ export default function AdminUserManager() {
             Admin access required to modify users
           </Typography>
         )}
+        <Stack
+          direction={isSmall ? "column" : "row"}
+          spacing={2}
+          alignItems="center"
+        >
+          <TextField
+            label="Name"
+            value={newUser.name}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, name: e.target.value }))
+            }
+            fullWidth
+          />
+          <TextField
+            label="Email"
+            value={newUser.email}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, email: e.target.value }))
+            }
+            fullWidth
+          />
+          <TextField
+            label="Access"
+            select
+            value={newUser.access}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, access: e.target.value }))
+            }
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="driver">driver</MenuItem>
+            <MenuItem value="admin">admin</MenuItem>
+          </TextField>
+          <Button
+            variant="contained"
+            onClick={handleManualAdd}
+            disabled={!isAdmin}
+          >
+            Add User
+          </Button>
+        </Stack>
 
         <TextField
           label="Users CSV"
@@ -203,21 +332,62 @@ export default function AdminUserManager() {
           Add Users
         </Button>
 
-        <Box sx={{ width: '100%', overflowX: 'auto' }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            autoHeight
-            loading={loading}
-            disableRowSelectionOnClick
-            processRowUpdate={handleProcessRowUpdate}
-            isCellEditable={(params) => isAdmin && params.field !== 'email'}
-            pageSizeOptions={[5, 10, 25]}
-            getRowId={(r) => r.id || r.email} // safety net
-            experimentalFeatures={{ newEditingApi: true }}
-            columnVisibilityModel={isSmall ? { access: false } : undefined}
-          />
-        </Box>
+        {isSmall ? (
+          <Stack spacing={1}>
+            {rows.map((r) => (
+              <Stack
+                key={r.id}
+                spacing={1}
+                sx={{
+                  p: 1,
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: 1,
+                }}
+              >
+                <TextField
+                  label="Name"
+                  value={r.name}
+                  disabled={!isAdmin}
+                  onChange={(e) =>
+                    handleMobileFieldChange(r.id, "name", e.target.value)
+                  }
+                  onBlur={() => handleMobileUpdate(r.id)}
+                />
+                <TextField label="Email" value={r.email} disabled />
+                <TextField
+                  label="Access"
+                  select
+                  value={r.access}
+                  disabled={!isAdmin}
+                  onChange={(e) => {
+                    handleMobileFieldChange(r.id, "access", e.target.value);
+                    handleMobileUpdate(r.id);
+                  }}
+                >
+                  <MenuItem value="driver">driver</MenuItem>
+                  <MenuItem value="admin">admin</MenuItem>
+                </TextField>
+              </Stack>
+            ))}
+          </Stack>
+        ) : (
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              autoHeight
+              loading={loading}
+              disableRowSelectionOnClick
+              processRowUpdate={handleProcessRowUpdate}
+              isCellEditable={(params) => isAdmin && params.field !== 'email'}
+              pageSizeOptions={[5, 10, 25]}
+              getRowId={(r) => r.id || r.email} // safety net
+              experimentalFeatures={{ newEditingApi: true }}
+              columnVisibilityModel={isSmall ? { access: false } : undefined}
+            />
+          </Box>
+        )}
       </Stack>
 
       <Snackbar
