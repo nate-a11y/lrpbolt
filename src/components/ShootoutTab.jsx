@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
   Box, Card, CardContent, CardHeader, Typography, Stack, IconButton,
-  Button, Divider, Snackbar, Alert, Chip
+  Button, Divider, Snackbar, Alert, Chip, Paper, useMediaQuery,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
@@ -40,6 +40,7 @@ export default function ShootoutTab() {
   const [vehicle, setVehicle] = useState("");
   const [history, setHistory] = useState([]);
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
+  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
 
   useEffect(() => {
     isMounted.current = true;
@@ -196,7 +197,12 @@ export default function ShootoutTab() {
         </Stack>
 
         {/* Step 2: Start / Stop */}
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          flexWrap="wrap"
+        >
           <Typography variant="h6">Elapsed: {elapsed}</Typography>
 
           <Button
@@ -217,7 +223,11 @@ export default function ShootoutTab() {
             Stop
           </Button>
 
-          <Divider flexItem sx={{ mx: 2 }} />
+          <Divider
+            flexItem
+            orientation={isSmall ? "horizontal" : "vertical"}
+            sx={{ mx: isSmall ? 0 : 2, my: isSmall ? 2 : 0 }}
+          />
 
           <Stack direction="row" spacing={1} alignItems="center">
             <DirectionsCarIcon />
@@ -225,7 +235,12 @@ export default function ShootoutTab() {
           </Stack>
 
           {/* Step 3: Passenger quick-add (also +1 trip) */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: 1 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ ml: isSmall ? 0 : 1 }}
+          >
             <PeopleIcon sx={{ opacity: 0.7 }} />
             {[1,2,3,4,5,6,7].map((n) => (
               <Chip
@@ -240,7 +255,12 @@ export default function ShootoutTab() {
           </Stack>
 
           {/* Manual adjust (optional) */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ ml: { sm: "auto" } }}
+          >
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography>Passengers</Typography>
               <IconButton onClick={() => inc("passengers", -1)} disabled={!isRunning}><RemoveIcon /></IconButton>
@@ -260,17 +280,42 @@ export default function ShootoutTab() {
 
         {/* History grid */}
         <Typography variant="subtitle2" sx={{ mb: 1 }}>History (latest first)</Typography>
-        <Box sx={{ width: "100%" }}>
-          <DataGrid
-            autoHeight
-            rows={rows}
-            columns={cols}
-            density="compact"
-            pageSizeOptions={[5, 10, 25]}
-            initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
-            disableRowSelectionOnClick
-          />
-        </Box>
+        {isSmall ? (
+          <Stack spacing={1}>
+            {rows.map((r) => (
+              <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
+                <Typography variant="body2">Start: {r.start}</Typography>
+                <Typography variant="body2">End: {r.end}</Typography>
+                <Typography variant="body2">Duration: {r.duration}</Typography>
+                <Typography variant="body2">Trips: {r.trips}</Typography>
+                <Typography variant="body2">Passengers: {r.pax}</Typography>
+                <Typography variant="body2">Vehicle: {r.vehicle}</Typography>
+              </Paper>
+            ))}
+            {rows.length === 0 && (
+              <Typography textAlign="center" color="text.secondary" mt={2}>
+                No sessions found.
+              </Typography>
+            )}
+          </Stack>
+        ) : (
+          <Box sx={{ width: "100%" }}>
+            <DataGrid
+              autoHeight
+              rows={rows}
+              columns={cols}
+              density="compact"
+              pageSizeOptions={[5, 10, 25]}
+              initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
+              disableRowSelectionOnClick
+            />
+            {rows.length === 0 && (
+              <Typography textAlign="center" color="text.secondary" mt={2}>
+                No sessions found.
+              </Typography>
+            )}
+          </Box>
+        )}
       </CardContent>
 
       <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack((s) => ({ ...s, open: false }))}>
