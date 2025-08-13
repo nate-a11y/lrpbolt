@@ -56,7 +56,7 @@ export default function EntriesTab() {
   const columnVisibilityModel = useMemo(() => {
     const base = { note: false, createdAt: false, updatedAt: false };
     if (isSmall) {
-      return { ...base, rideId: false, mode: false, startTime: false, endTime: false };
+      return { ...base, rideId: false, mode: false };
     }
     return base;
   }, [isSmall]);
@@ -152,12 +152,29 @@ export default function EntriesTab() {
       { field: "driver", headerName: "Driver", flex: 1, minWidth: 160 },
       { field: "rideId", headerName: "Ride ID", width: 120 },
       { field: "mode", headerName: "Mode", width: 110 },
-      { field: "startTime", headerName: "Start", minWidth: 180,
-        valueGetter: (p) => p?.row?.startTime ?? null, renderCell: (p) => fmt(p.value) },
-      { field: "endTime", headerName: "End", minWidth: 180,
-        valueGetter: (p) => p?.row?.endTime ?? null, renderCell: (p) => fmt(p.value) },
-      { field: "duration", headerName: "Duration", minWidth: 120,
-        valueGetter: (p) => calcDuration(p?.row?.startTime, p?.row?.endTime, p?.row?.duration) },
+      {
+        field: "startTime",
+        headerName: "Start",
+        flex: 1,
+        minWidth: 170,
+        valueGetter: (p) => p?.row?.startTime ?? null,
+        renderCell: (p) => fmt(p.value),
+      },
+      {
+        field: "endTime",
+        headerName: "End",
+        flex: 1,
+        minWidth: 170,
+        valueGetter: (p) => p?.row?.endTime ?? null,
+        renderCell: (p) => fmt(p.value),
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        width: 110,
+        valueGetter: (p) =>
+          calcDuration(p?.row?.startTime, p?.row?.endTime, p?.row?.duration),
+      },
       {
         field: "status",
         headerName: "Status",
@@ -168,7 +185,7 @@ export default function EntriesTab() {
       {
         field: "actions",
         headerName: "Actions",
-        width: 220,
+        width: 160,
         sortable: false,
         filterable: false,
         renderCell: (params) => (
@@ -197,7 +214,10 @@ export default function EntriesTab() {
           disableRowSelectionOnClick
           slots={{ toolbar: GridToolbar }}
           slotProps={{
-            toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
+            toolbar: {
+              showQuickFilter: true,
+              quickFilterProps: { debounceMs: 300, placeholder: "Search" },
+            },
           }}
           columnVisibilityModel={columnVisibilityModel}
           initialState={{

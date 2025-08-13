@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useMemo, useState } from "react";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import { Box, CircularProgress, Alert, useMediaQuery } from "@mui/material";
+import { Box, CircularProgress, Alert } from "@mui/material";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 
 // Firestore Timestamp -> JS Date (or null)
@@ -16,7 +16,6 @@ const tsToDate = (ts) => {
 export default function ShootoutStatsTab() {
   const [stats, setStats] = useState(null);
   const [err, setErr] = useState(null);
-  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
@@ -49,21 +48,24 @@ export default function ShootoutStatsTab() {
     {
       field: "startTime",
       headerName: "Start",
-      width: 170,
+      flex: 1,
+      minWidth: 170,
       valueGetter: (p) => p.row.startTime,
       valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
     },
     {
       field: "endTime",
       headerName: "End",
-      width: 170,
+      flex: 1,
+      minWidth: 170,
       valueGetter: (p) => p.row.endTime,
       valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
     },
     {
       field: "createdAt",
       headerName: "Created",
-      width: 170,
+      flex: 1,
+      minWidth: 170,
       valueGetter: (p) => p.row.createdAt,
       valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
     },
@@ -78,13 +80,17 @@ export default function ShootoutStatsTab() {
         rows={rows}
         columns={columns}
         density="compact"
-        columnVisibilityModel={isSmall ? { startTime: false, endTime: false, createdAt: false } : undefined}
         initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
         pageSizeOptions={[5, 10, 25]}
         disableRowSelectionOnClick
         autoHeight
         slots={{ toolbar: GridToolbar }}
-        slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }}
+        slotProps={{
+          toolbar: {
+            showQuickFilter: true,
+            quickFilterProps: { debounceMs: 300, placeholder: "Search" },
+          },
+        }}
       />
     </Box>
   );

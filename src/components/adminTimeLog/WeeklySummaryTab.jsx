@@ -64,7 +64,12 @@ export default function WeeklySummaryTab() {
         density="compact"
         disableRowSelectionOnClick
         slots={{ toolbar: GridToolbar }}
-        slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }}
+        slotProps={{
+          toolbar: {
+            showQuickFilter: true,
+            quickFilterProps: { debounceMs: 300, placeholder: "Search" },
+          },
+        }}
         initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
         pageSizeOptions={[5, 10, 25]}
       />
