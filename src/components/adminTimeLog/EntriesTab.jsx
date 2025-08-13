@@ -1,195 +1,171 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Box,
-  Stack,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Snackbar,
-  Alert,
-  useMediaQuery,
-} from "@mui/material";
+import { Box, Paper, CircularProgress, Alert } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import { subscribeTimeLogs } from "../../hooks/firestore";
-import ToolsCell from "./cells/ToolsCell.jsx";
-import StatusCell from "./cells/StatusCell.jsx";
-import { db } from "../../utils/firebaseInit";
-import { doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { isNil, fmtDateTime, diffMinutes } from "../../utils/timeUtilsSafe";
+import { onSnapshot, collection, query, orderBy } from "firebase/firestore";
+import { db } from "../../utils/firebaseInit"; // adjust if needed
+import { isNil, tsToDate, fmtDateTime } from "../../utils/timeUtilsSafe";
+import { normalizeTimeLog } from "../../utils/normalizeTimeLog";
 
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
-  const columnVisibilityModel = useMemo(() => {
-    const base = { note: false, createdAt: false, updatedAt: false };
-    if (isSmall) {
-      return { ...base, rideId: false, mode: false };
-    }
-    return base;
-  }, [isSmall]);
-
-  // edit modal state
-  const [editOpen, setEditOpen] = useState(false);
-  const [editRow, setEditRow] = useState(null);
-  const [form, setForm] = useState({ rideId: "", note: "", mode: "" });
-  const [saving, setSaving] = useState(false);
-
-  // toast
-  const [toast, setToast] = useState({ open: false, msg: "", severity: "success" });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const unsub = subscribeTimeLogs((data) => {
-      const mapped = (data || []).map((snap, i) => {
-        // DocumentSnapshot[] or plain objects[]
-        const d = typeof snap?.data === "function" ? snap.data() : snap || {};
-        const docId = snap?.id || d.id; // keep Firestore id
-        const id = docId || `${d.userEmail || d.driver || "row"}-${d.startTime?.seconds ?? i}`;
-
-        const startTime = d.startTime ?? null;
-        const endTime = d.endTime ?? null;
-        const duration = typeof d.duration === "number" ? d.duration : null;
-
-        const driver = d.driverEmail || d.driver || "";
-        const status = endTime ? "Closed" : "Open";
-
-        return {
-          id,
-          docId, // <— needed for edit/delete
-          driver,
-          rideId: d.rideId || "",
-          mode: d.mode || "RIDE",
-          startTime,
-          endTime,
-          duration,
-          note: d.note || "",
-          status,
-          createdAt: d.createdAt || null,
-          updatedAt: d.updatedAt || null,
-        };
-      });
-
-      setRows(mapped);
+    try {
+      // 🔁 Change "timeLogs" if your collection name differs.
+      const qRef = query(collection(db, "timeLogs"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(
+        qRef,
+        (snap) => {
+          const data = [];
+          snap.forEach((doc) => data.push(normalizeTimeLog(doc.id, doc.data() || {})));
+          setRows(Array.isArray(data) ? data : []);
+          setLoading(false);
+        },
+        (err) => {
+          setError(err?.message || "Failed to load time logs.");
+          setLoading(false);
+        }
+      );
+      return () => unsub();
+    } catch (e) {
+      setError(e?.message || "Failed to subscribe to time logs.");
       setLoading(false);
-    });
-
-    return () => { if (typeof unsub === "function") unsub(); };
+    }
   }, []);
-
-  const handleEdit = (row) => {
-    setEditRow(row);
-    setForm({ rideId: row.rideId || "", note: row.note || "", mode: row.mode || "RIDE" });
-    setEditOpen(true);
-  };
-
-  const handleDelete = async (row) => {
-    if (!row?.docId) {
-      setToast({ open: true, msg: "Missing document id.", severity: "error" });
-      return;
-    }
-    if (!window.confirm("Delete this time log? This cannot be undone.")) return;
-    try {
-      await deleteDoc(doc(db, "timeLogs", row.docId));
-      setToast({ open: true, msg: "Deleted.", severity: "success" });
-    } catch (e) {
-      setToast({ open: true, msg: e?.message || "Delete failed.", severity: "error" });
-    }
-  };
-
-  const saveEdit = async () => {
-    if (!editRow?.docId) return;
-    setSaving(true);
-    try {
-      await updateDoc(doc(db, "timeLogs", editRow.docId), {
-        rideId: (form.rideId || "").trim().toUpperCase(),
-        note: form.note || "",
-        mode: form.mode || "RIDE",
-      });
-      setToast({ open: true, msg: "Saved.", severity: "success" });
-      setEditOpen(false);
-      setEditRow(null);
-    } catch (e) {
-      setToast({ open: true, msg: e?.message || "Save failed.", severity: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const columns = useMemo(
     () => [
-      { field: "driver", headerName: "Driver", flex: 1, minWidth: 160 },
-      { field: "rideId", headerName: "Ride ID", width: 120 },
-      { field: "mode", headerName: "Mode", width: 110 },
+      {
+        field: "driverDisplay",
+        headerName: "Driver",
+        flex: 1,
+        minWidth: 160,
+        valueGetter: (params = {}) => params?.row?.driverDisplay ?? null,
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) || v === "" ? "—" : String(v);
+        },
+      },
+      {
+        field: "rideId",
+        headerName: "Ride ID",
+        flex: 0.8,
+        minWidth: 110,
+        valueGetter: (params = {}) => params?.row?.rideId ?? null,
+        valueFormatter: (params = {}) => {
+          const v = params?.value;
+          return isNil(v) || v === "" ? "—" : String(v);
+        },
+      },
+      {
+        field: "mode",
+        headerName: "Mode",
+        flex: 0.8,
+        minWidth: 100,
+        valueGetter: (params = {}) => params?.row?.mode ?? null,
+        valueFormatter: (params = {}) => (isNil(params?.value) ? "—" : String(params.value)),
+      },
       {
         field: "startTime",
         headerName: "Start",
+        type: "dateTime",
         flex: 1,
-        minWidth: 170,
+        minWidth: 190,
         valueGetter: (params = {}) => params?.row?.startTime ?? null,
         valueFormatter: (params = {}) => fmtDateTime(params?.value),
+        sortComparator: (a, b) => {
+          const da = tsToDate(a)?.getTime() ?? -1;
+          const db = tsToDate(b)?.getTime() ?? -1;
+          return da - db;
+        },
       },
       {
         field: "endTime",
         headerName: "End",
+        type: "dateTime",
         flex: 1,
-        minWidth: 170,
+        minWidth: 190,
         valueGetter: (params = {}) => params?.row?.endTime ?? null,
         valueFormatter: (params = {}) => fmtDateTime(params?.value),
+        sortComparator: (a, b) => {
+          const da = tsToDate(a)?.getTime() ?? -1;
+          const db = tsToDate(b)?.getTime() ?? -1;
+          return da - db;
+        },
       },
       {
-        field: "duration",
+        field: "durationMin",
         headerName: "Duration",
-        width: 110,
+        description: "Stored or computed (minutes)",
+        flex: 0.7,
+        minWidth: 120,
         valueGetter: (params = {}) => {
-          const r = params?.row || {};
-          const { startTime, endTime, duration } = r;
-          if (typeof duration === "number") return `${Math.round(duration)}m`;
-          const mins = diffMinutes(startTime, endTime ?? new Date());
-          return isNil(mins) ? "" : `${mins}m`;
+          const v = params?.row?.durationMin;
+          return isNil(v) ? null : Number(v);
+        },
+        valueFormatter: (params = {}) => (isNil(params?.value) ? "—" : `${params.value} min`),
+        sortComparator: (a, b) => {
+          const na = isNil(a) ? -1 : Number(a);
+          const nb = isNil(b) ? -1 : Number(b);
+          return na - nb;
         },
       },
       {
         field: "status",
         headerName: "Status",
-        width: 120,
-        renderCell: (params = {}) => <StatusCell value={params?.value} />,
-        sortable: true,
+        flex: 0.7,
+        minWidth: 110,
+        valueGetter: (params = {}) => params?.row?.status ?? null,
+        valueFormatter: (params = {}) => (isNil(params?.value) ? "—" : String(params.value)),
       },
       {
-        field: "actions",
-        headerName: "Actions",
-        width: 160,
-        sortable: false,
-        filterable: false,
-        renderCell: (params = {}) => (
-          <ToolsCell
-            row={params?.row}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        ),
+        field: "createdAt",
+        headerName: "Logged",
+        type: "dateTime",
+        flex: 1,
+        minWidth: 190,
+        valueGetter: (params = {}) => params?.row?.createdAt ?? null,
+        valueFormatter: (params = {}) => fmtDateTime(params?.value),
+        sortComparator: (a, b) => {
+          const da = tsToDate(a)?.getTime() ?? -1;
+          const db = tsToDate(b)?.getTime() ?? -1;
+          return da - db;
+        },
       },
     ],
-    [] // columns are static
+    []
   );
 
+  if (loading) {
+    return (
+      <Box p={2}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+  if (error) {
+    return (
+      <Box p={2}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
   return (
-    <Stack spacing={2}>
-      <Box sx={{ width: "100%" }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>Time Log Entries</Typography>
+    <Paper sx={{ p: 1 }}>
+      <div style={{ height: 640, width: "100%" }}>
         <DataGrid
-          autoHeight
-          rows={rows}
+          rows={rows ?? []}
+          getRowId={(r) => r?.id ?? String(Math.random())}
           columns={columns}
-          loading={loading}
-          getRowId={(r) => r?.id}
-          density="compact"
           disableRowSelectionOnClick
+          initialState={{
+            sorting: { sortModel: [{ field: "createdAt", sort: "desc" }] },
+            columns: { columnVisibilityModel: { createdAt: false } },
+          }}
           slots={{ toolbar: GridToolbar }}
           slotProps={{
             toolbar: {
@@ -197,55 +173,9 @@ export default function EntriesTab() {
               quickFilterProps: { debounceMs: 300, placeholder: "Search" },
             },
           }}
-          columnVisibilityModel={columnVisibilityModel}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10 } },
-          }}
-          pageSizeOptions={[5, 10, 25, 50]}
         />
-      </Box>
-
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Time Log</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="Ride ID"
-              value={form.rideId}
-              onChange={(e) => setForm((f) => ({ ...f, rideId: e.target.value }))}
-            />
-            <TextField
-              label="Mode"
-              value={form.mode}
-              onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value }))}
-              helperText='e.g. "RIDE", "N/A", "MULTI"'
-            />
-            <TextField
-              label="Note"
-              multiline
-              minRows={3}
-              value={form.note}
-              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button onClick={saveEdit} disabled={saving} variant="contained">Save</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
-        onClose={() => setToast((t) => ({ ...t, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity={toast.severity} variant="filled" onClose={() => setToast((t) => ({ ...t, open: false }))}>
-          {toast.msg}
-        </Alert>
-      </Snackbar>
-    </Stack>
+      </div>
+    </Paper>
   );
 }
+
