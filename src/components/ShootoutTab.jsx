@@ -40,6 +40,7 @@ export default function ShootoutTab() {
   const [vehicle, setVehicle] = useState("");
   const [history, setHistory] = useState([]);
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
+  const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
 
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function ShootoutTab() {
           setTrips(toNumber(open.trips, 0));
           setPassengers(toNumber(open.passengers, 0));
           setVehicle(toString(open.vehicle, "")); // rehydrate selection
+          setTick(0);
         } else {
           setCurrentId(null);
           setStartTime(null);
@@ -70,6 +72,7 @@ export default function ShootoutTab() {
           setTrips(0);
           setPassengers(0);
           setVehicle("");
+          setTick(0);
         }
       },
       onError: () => setSnack({ open: true, msg: "Permissions error loading shootout stats.", severity: "error" }),
@@ -78,12 +81,18 @@ export default function ShootoutTab() {
     return () => { isMounted.current = false; unsub && unsub(); };
   }, [authLoading, driverEmail]);
 
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
+
   const elapsed = useMemo(() => {
     if (!startTime || !isRunning) return "00:00:00";
     const diff = dayjs().diff(dayjs(startTime), "second");
     const d = dayjs.duration(diff, "seconds");
     return [d.hours(), d.minutes(), d.seconds()].map((n) => String(n).padStart(2, "0")).join(":");
-  }, [startTime, isRunning]);
+  }, [startTime, isRunning, tick]);
 
   async function handleStart() {
     if (authLoading || !driverEmail || currentId) return;
@@ -102,6 +111,7 @@ export default function ShootoutTab() {
       setCurrentId(id);
       setStartTime(new Date());
       setIsRunning(true);
+      setTick(0);
       setSnack({ open: true, msg: "Session started.", severity: "success" });
     } catch (e) {
       logError("handleStart", e);
