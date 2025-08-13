@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
+  Stack,
   Typography,
   Paper,
   Divider,
@@ -154,9 +155,12 @@ export default function TicketViewer() {
           🔁 Return: {ticket.scannedReturn ? "Scanned" : "Not Scanned"}
         </Typography>
 
-        <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ mt: 2 }}
+        >
           <Button
-            fullWidth
             variant="contained"
             color="success"
             disabled={ticket.scannedOutbound}
@@ -165,7 +169,6 @@ export default function TicketViewer() {
             Scan Outbound
           </Button>
           <Button
-            fullWidth
             variant="contained"
             color="primary"
             disabled={ticket.scannedReturn}
@@ -173,7 +176,7 @@ export default function TicketViewer() {
           >
             Scan Return
           </Button>
-        </Box>
+        </Stack>
       </Paper>
 
       <Snackbar
