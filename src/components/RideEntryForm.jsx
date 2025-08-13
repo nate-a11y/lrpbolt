@@ -836,7 +836,7 @@ if (totalMinutes <= 0) {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <Grid container spacing={2} sx={{ mb: 3 }}>
+    <Grid container spacing={2} sx={{ mb: isMobile ? 2 : 3 }}>
       <Grid item xs={12} md={4}>
         <Button
           variant="outlined"
@@ -876,12 +876,12 @@ if (totalMinutes <= 0) {
   // ---------- Render ----------
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ maxWidth: 1180, mx: "auto", p: { xs: 2, sm: 3 } }}>
+      <Box sx={{ maxWidth: 1180, mx: "auto", p: isMobile ? 2 : 3 }}>
         <Paper
           elevation={3}
           sx={{
-            p: { xs: 2, sm: 3 },
-            mb: 4,
+            p: isMobile ? 2 : 3,
+            mb: isMobile ? 3 : 4,
             bgcolor: (t) =>
               t.palette.mode === "dark" ? "background.paper" : "background.default",
             borderRadius: 3,
@@ -907,7 +907,7 @@ if (totalMinutes <= 0) {
 
         {/* SINGLE RIDE TAB */}
         {rideTab === 0 && (
-          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 3 }}>
+          <Paper elevation={3} sx={{ p: isMobile ? 2 : 3, borderRadius: 3, mb: isMobile ? 2 : 3 }}>
             <Typography variant="h6" fontWeight={700} gutterBottom>
               SINGLE RIDE
             </Typography>
@@ -920,15 +920,20 @@ if (totalMinutes <= 0) {
             />
 
             <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              sx={{ mt: 3 }}
-              alignItems={{ xs: "stretch", sm: "center" }}
+              direction={isMobile ? "column" : "row"}
+              spacing={isMobile ? 1.5 : 2}
+              sx={{ mt: isMobile ? 2 : 3 }}
+              alignItems={isMobile ? "stretch" : "center"}
             >
-              <Button variant="outlined" onClick={onResetSingle} sx={{ minHeight: 48 }}>
+              <Button
+                variant="outlined"
+                onClick={onResetSingle}
+                sx={{ minHeight: 48 }}
+                fullWidth={isMobile}
+              >
                 Reset
               </Button>
-              <Box sx={{ flexGrow: 1 }} />
+              <Box sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }} />
               <Button
                 variant="contained"
                 color="success"
@@ -936,6 +941,7 @@ if (totalMinutes <= 0) {
                 sx={{ minHeight: 48 }}
                 disabled={singleSubmitting || !isSingleValid}
                 startIcon={<RocketLaunchIcon />}
+                fullWidth={isMobile}
               >
                 Submit
               </Button>
@@ -946,7 +952,7 @@ if (totalMinutes <= 0) {
         {/* MULTI RIDE UPLOAD TAB */}
         {rideTab === 1 && (
           <>
-            <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 3 }}>
+            <Paper elevation={3} sx={{ p: isMobile ? 2 : 3, borderRadius: 3, mb: isMobile ? 2 : 3 }}>
               <Typography variant="h6" fontWeight={700} gutterBottom>
                 MULTI RIDE UPLOAD
               </Typography>
@@ -983,20 +989,21 @@ if (totalMinutes <= 0) {
               />
 
               <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={2}
-                sx={{ mt: 3 }}
-                alignItems={{ xs: "stretch", sm: "center" }}
+                direction={isMobile ? "column" : "row"}
+                spacing={isMobile ? 1.5 : 2}
+                sx={{ mt: isMobile ? 2 : 3 }}
+                alignItems={isMobile ? "stretch" : "center"}
               >
                 <Button
                   variant="outlined"
                   onClick={onAddToList}
                   startIcon={<AddIcon />}
                   sx={{ minHeight: 48 }}
+                  fullWidth={isMobile}
                 >
                   Add to List
                 </Button>
-                <Box sx={{ flexGrow: 1 }} />
+                <Box sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }} />
                 <Button
                   variant="contained"
                   color="success"
@@ -1004,6 +1011,7 @@ if (totalMinutes <= 0) {
                   startIcon={<RocketLaunchIcon />}
                   sx={{ minHeight: 48 }}
                   disabled={submitDisabled}
+                  fullWidth={isMobile}
                 >
                   Submit All Rides
                 </Button>
@@ -1039,6 +1047,7 @@ if (totalMinutes <= 0) {
                       <UploadFileIcon />
                     )
                   }
+                  fullWidth={isMobile}
                 >
                   Import Rides
                 </Button>
@@ -1049,7 +1058,11 @@ if (totalMinutes <= 0) {
 
         {/* Admin: daily drop + status */}
         <Box sx={{ mb: 2 }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={isMobile ? 1.5 : 2}
+            alignItems="stretch"
+          >
             {isAdmin && (
               <Tooltip title="Run daily drop now (admin only)">
                 <span>
@@ -1059,13 +1072,14 @@ if (totalMinutes <= 0) {
                     startIcon={<RocketLaunchIcon />}
                     onClick={onDropNow}
                     disabled={dropping}
+                    fullWidth={isMobile}
                   >
                     {dropping ? "Running…" : "Drop Daily Rides Now"}
                   </Button>
                 </span>
               </Tooltip>
             )}
-            <Box sx={{ flex: 1, minWidth: 320 }}>
+            <Box sx={{ flex: 1, minWidth: 320, mt: isMobile ? 2 : 0 }}>
 <Accordion
   expanded={dropOpen}
   onChange={(_, exp) => {
