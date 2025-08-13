@@ -96,19 +96,21 @@ const LiveRidesGrid = () => {
   };
 
   return (
-    <Box>
-      <EditableRideGrid
-        rows={rows}
-        loading={loading}
-        onDelete={(id) => {
-          const row = rows.find((r) => r.id === id);
-          setDeletingId(id);
-          setDeletingTripId(row?.tripId || "");
-          setConfirmOpen(true);
-        }}
-        refreshRides={refreshRides}
-        sheetName="Sheet1"
-      />
+    <>
+      <Box sx={{ width: "100%", overflowX: "auto" }}>
+        <EditableRideGrid
+          rows={rows}
+          loading={loading}
+          onDelete={(id) => {
+            const row = rows.find((r) => r.id === id);
+            setDeletingId(id);
+            setDeletingTripId(row?.tripId || "");
+            setConfirmOpen(true);
+          }}
+          refreshRides={refreshRides}
+          sheetName="Sheet1"
+        />
+      </Box>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Delete Ride?</DialogTitle>
         <DialogContent>
@@ -155,7 +157,7 @@ const LiveRidesGrid = () => {
           }
         `}
       </style>
-    </Box>
+    </>
   );
 };
 
