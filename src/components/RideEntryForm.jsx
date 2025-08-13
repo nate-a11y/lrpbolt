@@ -1112,7 +1112,10 @@ if (totalMinutes <= 0) {
             value={dataTab}
             onChange={(e, val) => setDataTab(val)}
             TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
-            sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: 120 } }}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: { xs: "auto", sm: 120 } } }}
           >
             <Tab
               label={
