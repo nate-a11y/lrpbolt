@@ -15,39 +15,12 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import dayjs from "dayjs";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import ToolsCell from "./cells/ToolsCell.jsx";
 import StatusCell from "./cells/StatusCell.jsx";
 import { db } from "../../utils/firebaseInit";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
-
-// helper guards
-const tsToDate = (v) => {
-  try {
-    if (!v) return null;
-    if (v.toDate) return v.toDate();
-    if (v.seconds != null) return new Date(v.seconds * 1000);
-    if (typeof v === "number" || typeof v === "string" || v instanceof Date) return new Date(v);
-  } catch (_) {}
-  return null;
-};
-
-const fmt = (v) => {
-  const d = tsToDate(v);
-  return d ? dayjs(d).format("MM/DD/YYYY h:mm A") : "—";
-};
-
-const calcDuration = (start, end, duration) => {
-  const s = tsToDate(start);
-  if (!s) return "";
-  if (typeof duration === "number") {
-    return `${Math.round(duration)}m`;
-  }
-  const e = tsToDate(end) || new Date();
-  const mins = Math.max(0, Math.round((e - s) / 60000));
-  return `${mins}m`;
-};
+import { isNil, fmtDateTime, diffMinutes } from "../../utils/timeUtilsSafe";
 
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
@@ -158,7 +131,7 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 170,
         valueGetter: (p) => p?.row?.startTime ?? null,
-        renderCell: (p) => fmt(p.value),
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
         field: "endTime",
@@ -166,14 +139,18 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 170,
         valueGetter: (p) => p?.row?.endTime ?? null,
-        renderCell: (p) => fmt(p.value),
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
         field: "duration",
         headerName: "Duration",
         width: 110,
-        valueGetter: (p) =>
-          calcDuration(p?.row?.startTime, p?.row?.endTime, p?.row?.duration),
+        valueGetter: (p) => {
+          const { startTime, endTime, duration } = p.row || {};
+          if (typeof duration === "number") return `${Math.round(duration)}m`;
+          const mins = diffMinutes(startTime, endTime ?? new Date());
+          return isNil(mins) ? "" : `${mins}m`;
+        },
       },
       {
         field: "status",

@@ -11,10 +11,11 @@ import {
 import { db } from "src/utils/firebaseInit";
 
 import { logError } from "../utils/logError";
+import { diffMinutes } from "../utils/timeUtilsSafe";
 
 // Realtime listener for timeLogs collection
 export function subscribeTimeLogs(onData, onError) {
-  const q = query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+  const q = query(collection(db, "timeLogs"), orderBy("createdAt", "desc"));
   const unsub = onSnapshot(
     q,
     (snapshot) => {
@@ -53,20 +54,12 @@ export async function fetchWeeklySummary({ days = 7 } = {}) {
 
     const q = query(
       collection(db, "timeLogs"),
-      where("loggedAt", ">=", Timestamp.fromDate(since)),
-      orderBy("loggedAt", "desc")
+      where("startTime", ">=", Timestamp.fromDate(since)),
+      orderBy("startTime", "desc"),
     );
 
     const snap = await getDocs(q);
     const rows = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    const toDate = (v) => {
-      if (!v) return null;
-      if (typeof v.toDate === "function") return v.toDate();
-      if (typeof v.seconds === "number") return new Date(v.seconds * 1000);
-      if (v instanceof Date) return v;
-      return null;
-    };
 
     const byDriver = new Map();
 
@@ -78,18 +71,20 @@ export async function fetchWeeklySummary({ days = 7 } = {}) {
       if (typeof r.duration === "number" && r.duration >= 0) {
         minutes = Math.round(r.duration);
       } else {
-        const start = toDate(r.start);
-        const end = toDate(r.end);
-        if (start && end) minutes = Math.round((end - start) / 60000);
+        const m = diffMinutes(r.startTime, r.endTime);
+        minutes = m ?? 0;
       }
 
-      const prev = byDriver.get(driver) || 0;
-      byDriver.set(driver, prev + minutes);
+      const prev = byDriver.get(driver) || { totalMinutes: 0, entries: 0 };
+      prev.totalMinutes += minutes;
+      prev.entries += 1;
+      byDriver.set(driver, prev);
     }
 
-    return Array.from(byDriver.entries()).map(([driver, minutes]) => ({
+    return Array.from(byDriver.entries()).map(([driver, v]) => ({
       driver,
-      minutes,
+      totalMinutes: v.totalMinutes,
+      entries: v.entries,
     }));
   } catch (e) {
     logError(e, { area: "FirestoreFetch", comp: "fetchWeeklySummary" });
