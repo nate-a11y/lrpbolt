@@ -50,7 +50,7 @@ export default function ShootoutStatsTab() {
       headerName: "Start",
       flex: 1,
       minWidth: 170,
-      valueGetter: (p) => p.row.startTime,
+      valueGetter: (p) => p?.row?.startTime ?? null,
       valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
     },
     {
@@ -58,7 +58,7 @@ export default function ShootoutStatsTab() {
       headerName: "End",
       flex: 1,
       minWidth: 170,
-      valueGetter: (p) => p.row.endTime,
+      valueGetter: (p) => p?.row?.endTime ?? null,
       valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
     },
     {
@@ -66,7 +66,7 @@ export default function ShootoutStatsTab() {
       headerName: "Created",
       flex: 1,
       minWidth: 170,
-      valueGetter: (p) => p.row.createdAt,
+      valueGetter: (p) => p?.row?.createdAt ?? null,
       valueFormatter: (p) => (p.value ? p.value.toLocaleString() : "—"),
     },
   ];
