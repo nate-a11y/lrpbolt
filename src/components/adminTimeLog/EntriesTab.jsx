@@ -8,9 +8,19 @@ import {
   Stack,
   Typography,
   useMediaQuery,
+  TextField,
 } from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
-import { onSnapshot, collection, query, orderBy } from "firebase/firestore";
+import {
+  onSnapshot,
+  collection,
+  query,
+  orderBy,
+  doc,
+  deleteDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { isNil, tsToDate, fmtDateTime } from "../../utils/timeUtilsSafe";
 import { normalizeTimeLog } from "../../utils/normalizeTimeLog";
@@ -21,13 +31,26 @@ export default function EntriesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
-
-  const handleEdit = useCallback((row) => {
-    console.log("edit", row);
+  const [driverFilter, setDriverFilter] = useState("");
+  const [startFilter, setStartFilter] = useState(null);
+  const [endFilter, setEndFilter] = useState(null);
+  const handleEdit = useCallback(async (row) => {
+    const newDriver = window.prompt("Driver", row?.driverDisplay || "");
+    if (!newDriver) return;
+    try {
+      await updateDoc(doc(db, "timeLogs", row.id), { driver: newDriver });
+    } catch (e) {
+      alert("Failed to update time log");
+    }
   }, []);
 
-  const handleDelete = useCallback((row) => {
-    console.log("delete", row);
+  const handleDelete = useCallback(async (row) => {
+    if (!window.confirm("Delete this time log?")) return;
+    try {
+      await deleteDoc(doc(db, "timeLogs", row.id));
+    } catch (e) {
+      alert("Failed to delete time log");
+    }
   }, []);
 
   useEffect(() => {
@@ -57,7 +80,7 @@ export default function EntriesTab() {
   const columns = useMemo(
     () => [
       {
-        field: "driverDisplay",
+        field: "driver",
         headerName: "Driver",
         flex: 1,
         minWidth: 160,
@@ -77,14 +100,6 @@ export default function EntriesTab() {
           const v = params?.value;
           return isNil(v) || v === "" ? "—" : String(v);
         },
-      },
-      {
-        field: "mode",
-        headerName: "Mode",
-        flex: 0.8,
-        minWidth: 100,
-        valueGetter: (params = {}) => params?.row?.mode ?? null,
-        valueFormatter: (params = {}) => (isNil(params?.value) ? "—" : String(params.value)),
       },
       {
         field: "startTime",
@@ -115,9 +130,9 @@ export default function EntriesTab() {
         },
       },
       {
-        field: "durationMin",
+        field: "duration",
         headerName: "Duration",
-        description: "Stored or computed (minutes)",
+        description: "Minutes",
         flex: 0.7,
         minWidth: 120,
         valueGetter: (params = {}) => {
@@ -132,15 +147,7 @@ export default function EntriesTab() {
         },
       },
       {
-        field: "status",
-        headerName: "Status",
-        flex: 0.7,
-        minWidth: 110,
-        valueGetter: (params = {}) => params?.row?.status ?? null,
-        valueFormatter: (params = {}) => (isNil(params?.value) ? "—" : String(params.value)),
-      },
-      {
-        field: "createdAt",
+        field: "loggedAt",
         headerName: "Logged",
         type: "dateTime",
         flex: 1,
@@ -170,6 +177,22 @@ export default function EntriesTab() {
     [handleEdit, handleDelete]
   );
 
+  const filteredRows = useMemo(() => {
+    return (rows || []).filter((r) => {
+      const driverMatch = driverFilter
+        ? r.driverDisplay?.toLowerCase().includes(driverFilter.toLowerCase())
+        : true;
+      const startMatch = startFilter
+        ? tsToDate(r.startTime)?.getTime() >= startFilter.toDate().getTime()
+        : true;
+      const endMatch = endFilter
+        ? tsToDate(r.endTime ?? r.startTime)?.getTime() <=
+          endFilter.toDate().getTime()
+        : true;
+      return driverMatch && startMatch && endMatch;
+    });
+  }, [rows, driverFilter, startFilter, endFilter]);
+
   if (loading) {
     return (
       <Box p={2}>
@@ -187,21 +210,41 @@ export default function EntriesTab() {
 
   return (
     <Paper sx={{ p: 1 }}>
+      <Box
+        sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}
+      >
+        <TextField
+          label="Driver"
+          value={driverFilter}
+          onChange={(e) => setDriverFilter(e.target.value)}
+          size="small"
+        />
+        <DatePicker
+          label="Start after"
+          value={startFilter}
+          onChange={(v) => setStartFilter(v)}
+          slotProps={{ textField: { size: "small" } }}
+        />
+        <DatePicker
+          label="End before"
+          value={endFilter}
+          onChange={(v) => setEndFilter(v)}
+          slotProps={{ textField: { size: "small" } }}
+        />
+      </Box>
       {isSmall ? (
         <Stack spacing={2}>
-          {(rows ?? []).map((r) => (
+          {(filteredRows ?? []).map((r) => (
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">{r.driverDisplay}</Typography>
                   <Typography variant="body2">Ride ID: {r.rideId ?? "—"}</Typography>
-                  <Typography variant="body2">Mode: {r.mode ?? "—"}</Typography>
                   <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
                   <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
                   <Typography variant="body2">
                     Duration: {isNil(r.durationMin) ? "—" : `${r.durationMin} min`}
                   </Typography>
-                  <Typography variant="body2">Status: {r.status ?? "—"}</Typography>
                   <Typography variant="body2">Logged: {fmtDateTime(r.createdAt)}</Typography>
                 </Stack>
                 <ToolsCell
@@ -216,13 +259,13 @@ export default function EntriesTab() {
       ) : (
         <div style={{ height: 640, width: "100%" }}>
           <DataGrid
-            rows={rows ?? []}
+            rows={filteredRows ?? []}
             getRowId={(r) => r?.id ?? String(Math.random())}
             columns={columns}
             disableRowSelectionOnClick
             initialState={{
-              sorting: { sortModel: [{ field: "createdAt", sort: "desc" }] },
-              columns: { columnVisibilityModel: { createdAt: false } },
+              sorting: { sortModel: [{ field: "loggedAt", sort: "desc" }] },
+              columns: { columnVisibilityModel: { loggedAt: false } },
             }}
             slots={{ toolbar: GridToolbar }}
             slotProps={{

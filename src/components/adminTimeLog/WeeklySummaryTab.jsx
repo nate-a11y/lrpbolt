@@ -9,6 +9,7 @@ import {
   Stack,
   Paper,
   useMediaQuery,
+  TextField,
 } from "@mui/material";
 import { fetchWeeklySummary } from "../../hooks/firestore";
 import ToolsCell from "./cells/ToolsCell.jsx";
@@ -17,13 +18,28 @@ export default function WeeklySummaryTab() {
   const [summary, setSummary] = useState(null);
   const [err, setErr] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+  const [driverFilter, setDriverFilter] = useState("");
 
-  const handleEdit = useCallback((row) => {
-    console.log("edit", row);
-  }, []);
+  const handleEdit = useCallback(
+    (row) => {
+      const trips = Number(window.prompt("Trips", row.trips));
+      if (!Number.isFinite(trips)) return;
+      const hours = Number(window.prompt("Hours", row.hours));
+      if (!Number.isFinite(hours)) return;
+      setSummary((prev) =>
+        prev.map((s) =>
+          s.driver === row.driver
+            ? { ...s, entries: trips, totalMinutes: hours * 60 }
+            : s,
+        ),
+      );
+    },
+    [],
+  );
 
   const handleDelete = useCallback((row) => {
-    console.log("delete", row);
+    if (!window.confirm("Remove this driver?")) return;
+    setSummary((prev) => prev.filter((s) => s.driver !== row.driver));
   }, []);
 
   useEffect(() => {
@@ -45,6 +61,14 @@ export default function WeeklySummaryTab() {
       hours: (item.totalMinutes ?? 0) / 60,
     }));
   }, [summary]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((r) =>
+      driverFilter
+        ? r.driver.toLowerCase().includes(driverFilter.toLowerCase())
+        : true,
+    );
+  }, [rows, driverFilter]);
 
   const columns = useMemo(
     () => [
@@ -93,9 +117,17 @@ export default function WeeklySummaryTab() {
       <Typography variant="h6" sx={{ mb: 2 }}>
         Weekly Driver Summary
       </Typography>
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+        <TextField
+          label="Driver"
+          value={driverFilter}
+          onChange={(e) => setDriverFilter(e.target.value)}
+          size="small"
+        />
+      </Box>
       {isSmall ? (
         <Stack spacing={2}>
-          {rows.map((r) => (
+          {filteredRows.map((r) => (
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
@@ -115,7 +147,7 @@ export default function WeeklySummaryTab() {
       ) : (
         <DataGrid
           autoHeight
-          rows={rows}
+          rows={filteredRows}
           columns={columns}
           density="compact"
           disableRowSelectionOnClick
