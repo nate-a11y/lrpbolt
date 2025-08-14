@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 
-import { subscribeLiveRides } from "./api";
+import { subscribeRides } from "../services/firestoreService";
+import { COLLECTIONS } from "../constants";
 
 export default function useLiveRides() {
   const [rides, setRides] = useState([]);
 
   useEffect(() => {
-    const unsub = subscribeLiveRides(setRides);
+    const unsub = subscribeRides(COLLECTIONS.LIVE_RIDES, setRides);
     return () => unsub();
   }, []);
 

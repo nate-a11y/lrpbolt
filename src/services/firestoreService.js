@@ -1,13 +1,15 @@
+// src/services/firestoreService.js
 import {
   collection,
-  doc,
-  addDoc,
   deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
+  doc,
+  getDoc,
   getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
   Timestamp,
 } from "firebase/firestore";
 import dayjs from "dayjs";
@@ -15,46 +17,16 @@ import duration from "dayjs/plugin/duration";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 
-import { COLLECTIONS, TIMEZONE } from "../constants";
+import { TIMEZONE } from "../constants";
 import { db } from "../utils/firebaseInit";
-import { subscribeFirestore } from "../utils/listenerRegistry";
+import { logError } from "../utils/logError";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(duration);
 
-// Prepare ride data for Firestore writes
-const prepareRideData = (ride) => {
-  const data = {
-    tripId: ride.tripId || ride.TripID,
-    pickupTime: ride.pickupTime || ride.PickupTime,
-    rideDuration: ride.rideDuration || ride.RideDuration,
-    rideType: ride.rideType || ride.RideType,
-    vehicle: ride.vehicle || ride.Vehicle,
-    rideNotes: ride.rideNotes || ride.RideNotes || null,
-    claimedBy: ride.claimedBy || ride.ClaimedBy || null,
-    claimedAt: ride.claimedAt || ride.ClaimedAt || null,
-    createdBy: ride.createdBy || ride.CreatedBy,
-    lastModifiedBy: ride.lastModifiedBy || ride.LastModifiedBy,
-  };
-
-  if (data.pickupTime && !(data.pickupTime instanceof Timestamp)) {
-    data.pickupTime = Timestamp.fromDate(new Date(data.pickupTime));
-  }
-  if (data.claimedAt && !(data.claimedAt instanceof Timestamp)) {
-    data.claimedAt = Timestamp.fromDate(new Date(data.claimedAt));
-  }
-  if (data.rideDuration !== undefined) {
-    data.rideDuration = Number(data.rideDuration);
-  }
-
-  return Object.fromEntries(
-    Object.entries(data).filter(([, value]) => value !== undefined),
-  );
-};
-
 // Convert Firestore ride document into UI-friendly structure
-export const normalizeRideData = (ride) => {
+function normalizeRideData(ride) {
   const tripId = ride.tripId || ride.TripID || ride.id;
   const pickupTs = ride.pickupTime || ride.PickupTime;
   const claimedTs = ride.claimedAt || ride.ClaimedAt;
@@ -64,20 +36,12 @@ export const normalizeRideData = (ride) => {
   else if (pickupTs) pickupDate = new Date(pickupTs);
   if (claimedTs instanceof Timestamp) claimedDate = claimedTs.toDate();
   else if (claimedTs) claimedDate = new Date(claimedTs);
-
-  if (!tripId || !pickupDate) {
-    console.warn("normalizeRideData: missing required fields", {
-      tripId,
-      pickupTs,
-    });
-  }
-
   const durationMinutes =
     ride.rideDuration !== undefined ? ride.rideDuration : ride.RideDuration;
   const formattedDuration =
     typeof durationMinutes === "number"
       ? dayjs.duration(durationMinutes, "minutes").format("HH:mm")
-      : "N/A";
+      : ride.RideDuration || "N/A";
 
   return {
     id: ride.id,
@@ -109,90 +73,74 @@ export const normalizeRideData = (ride) => {
       ? dayjs(claimedDate).tz(TIMEZONE).format("MM/DD/YYYY h:mm A")
       : "N/A",
   };
-};
+}
 
-// Map Firestore documents to normalized objects
 const mapDoc = (d) => normalizeRideData({ id: d.id, ...d.data() });
 
-const buildKey = (col, filters) => `${col}:${JSON.stringify(filters || {})}`;
-
-// Build a query with optional filters
-const buildRideQuery = (col, { driver, day, vehicle, limitCount } = {}) => {
-  const constraints = [orderBy("pickupTime", "asc")];
-  if (driver) constraints.push(where("claimedBy", "==", driver));
-  if (vehicle) constraints.push(where("vehicle", "==", vehicle));
-  if (day) {
-    const start = new Date(day);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(day);
-    end.setHours(23, 59, 59, 999);
-    constraints.push(where("pickupTime", ">=", Timestamp.fromDate(start)));
-    constraints.push(where("pickupTime", "<=", Timestamp.fromDate(end)));
+export async function getRides(collectionName) {
+  try {
+    const q = query(collection(db, collectionName), orderBy("pickupTime", "asc"));
+    const snap = await getDocs(q);
+    return snap.docs.map(mapDoc);
+  } catch (err) {
+    logError(err, `getRides:${collectionName}`);
+    return [];
   }
-  if (limitCount) constraints.push(limit(limitCount));
-  return query(collection(db, col), ...constraints);
-};
+}
 
-// ---------- Live Rides ----------
-export const subscribeLiveRides = (callback, filters, onError) =>
-  subscribeFirestore(
-    buildKey(COLLECTIONS.LIVE_RIDES, filters),
-    buildRideQuery(COLLECTIONS.LIVE_RIDES, filters),
-    (snap) => callback(snap.docs.map(mapDoc)),
-    onError,
-  );
+export function subscribeRides(collectionName, callback, onError) {
+  try {
+    const q = query(collection(db, collectionName), orderBy("pickupTime", "asc"));
+    return onSnapshot(
+      q,
+      (snap) => callback(snap.docs.map(mapDoc)),
+      (err) => {
+        logError(err, `subscribeRides:${collectionName}`);
+        onError?.(err);
+      },
+    );
+  } catch (err) {
+    logError(err, `subscribeRidesInit:${collectionName}`);
+    onError?.(err);
+    return () => {};
+  }
+}
 
-export const getLiveRides = async (filters) => {
-  const snap = await getDocs(buildRideQuery(COLLECTIONS.LIVE_RIDES, filters));
-  return snap.docs.map(mapDoc);
-};
+export async function updateRide(collectionName, docId, data) {
+  const ref = doc(db, collectionName, docId);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const snap = await getDoc(ref);
+      const payload = { ...data, updatedAt: serverTimestamp() };
+      if (!snap.exists()) {
+        console.warn(
+          `updateRide: ${collectionName}/${docId} does not exist. Creating new document.`,
+        );
+        await setDoc(
+          ref,
+          { ...payload, createdAt: serverTimestamp() },
+          { merge: true },
+        );
+      } else {
+        await setDoc(ref, payload, { merge: true });
+      }
+      return { success: true };
+    } catch (err) {
+      if (attempt === 3) {
+        logError(err, `updateRide:${collectionName}/${docId}`);
+        throw err;
+      }
+    }
+  }
+  return { success: false };
+}
 
-export const addLiveRide = async (ride) =>
-  addDoc(collection(db, COLLECTIONS.LIVE_RIDES), prepareRideData(ride));
+export async function deleteRide(collectionName, docId) {
+  try {
+    await deleteDoc(doc(db, collectionName, docId));
+  } catch (err) {
+    logError(err, `deleteRide:${collectionName}/${docId}`);
+    throw err;
+  }
+}
 
-export const deleteLiveRide = async (id) =>
-  deleteDoc(doc(db, COLLECTIONS.LIVE_RIDES, id));
-
-export const restoreLiveRide = async (ride) => addLiveRide(ride);
-
-// ---------- Ride Queue ----------
-export const subscribeRideQueue = (callback, filters, onError) =>
-  subscribeFirestore(
-    buildKey(COLLECTIONS.RIDE_QUEUE, filters),
-    buildRideQuery(COLLECTIONS.RIDE_QUEUE, filters),
-    (snap) => callback(snap.docs.map(mapDoc)),
-    onError,
-  );
-
-export const getRideQueue = async (filters) => {
-  const snap = await getDocs(buildRideQuery(COLLECTIONS.RIDE_QUEUE, filters));
-  return snap.docs.map(mapDoc);
-};
-
-export const addRideToQueue = async (ride) =>
-  addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), prepareRideData(ride));
-
-export const deleteRideFromQueue = async (id) =>
-  deleteDoc(doc(db, COLLECTIONS.RIDE_QUEUE, id));
-
-// ---------- Claimed Rides ----------
-export const subscribeClaimedRides = (callback, filters, onError) =>
-  subscribeFirestore(
-    buildKey(COLLECTIONS.CLAIMED_RIDES, filters),
-    buildRideQuery(COLLECTIONS.CLAIMED_RIDES, filters),
-    (snap) => callback(snap.docs.map(mapDoc)),
-    onError,
-  );
-
-export const getClaimedRides = async (filters) => {
-  const snap = await getDocs(
-    buildRideQuery(COLLECTIONS.CLAIMED_RIDES, filters),
-  );
-  return snap.docs.map(mapDoc);
-};
-
-export const deleteClaimedRide = async (id) =>
-  deleteDoc(doc(db, COLLECTIONS.CLAIMED_RIDES, id));
-
-// Restore a ride back to the queue
-export const restoreRide = async (ride) => addRideToQueue(ride);

@@ -1,11 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState } from "react";
 
-import {
-  getRideQueue,
-  getLiveRides,
-  getClaimedRides,
-} from "../services/firestoreService";
+import { getRides } from "../services/firestoreService";
+import { COLLECTIONS } from "../constants";
 
 let ridesCache = {
   rideQueue: [],
@@ -18,9 +15,9 @@ let initialized = false;
 
 export async function fetchRides() {
   const [queue, live, claimed] = await Promise.all([
-    getRideQueue(),
-    getLiveRides(),
-    getClaimedRides(),
+    getRides(COLLECTIONS.RIDE_QUEUE),
+    getRides(COLLECTIONS.LIVE_RIDES),
+    getRides(COLLECTIONS.CLAIMED_RIDES),
   ]);
 
   ridesCache = {
