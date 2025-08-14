@@ -13,12 +13,17 @@ export default function ToolsCell({ row, onEdit, onDelete }) {
   return (
     <Stack direction="row" spacing={1}>
       <Tooltip title="Edit">
-        <IconButton size={size} onClick={() => onEdit?.(row)}>
+        <IconButton
+          aria-label="edit entry"
+          size={size}
+          onClick={() => onEdit?.(row)}
+        >
           <EditIcon />
         </IconButton>
       </Tooltip>
       <Tooltip title="Delete">
         <IconButton
+          aria-label="delete entry"
           size={size}
           color="error"
           onClick={() => onDelete?.(row)}
