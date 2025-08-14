@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "../context/AuthContext.jsx";
-
-import { subscribeRideQueue } from "./api";
+import { subscribeRides } from "../services/firestoreService";
+import { COLLECTIONS } from "../constants";
 
 export default function useRideQueue() {
   const [rides, setRides] = useState([]);
@@ -10,7 +10,7 @@ export default function useRideQueue() {
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    const unsub = subscribeRideQueue(setRides, undefined, () => {});
+    const unsub = subscribeRides(COLLECTIONS.RIDE_QUEUE, setRides, () => {});
     return () => unsub();
   }, [authLoading, user?.email]);
 

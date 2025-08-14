@@ -20,10 +20,11 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DataGrid } from "@mui/x-data-grid";
 import {
-  subscribeClaimedRides,
-  deleteClaimedRide,
-  restoreRide,
+  subscribeRides,
+  deleteRide,
+  updateRide,
 } from "../services/firestoreService";
+import { COLLECTIONS } from "../constants";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -43,12 +44,12 @@ const ClaimedRidesGrid = () => {
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    const unsub = subscribeClaimedRides(
+    const unsub = subscribeRides(
+      COLLECTIONS.CLAIMED_RIDES,
       (data) => {
         setRows(data.map((r) => ({ ...r, fading: false })));
         setLoading(false);
       },
-      undefined,
       () => {
         showToast("Permissions issue loading claimed rides", "error");
         setLoading(false);
@@ -68,9 +69,10 @@ const ClaimedRidesGrid = () => {
     );
     setTimeout(async () => {
       try {
-        await deleteClaimedRide(selectedRow.id);
+        await deleteRide(COLLECTIONS.CLAIMED_RIDES, selectedRow.id);
         showToast("🗑️ Ride deleted", "info");
       } catch (err) {
+        logError(err, "ClaimedRidesGrid:delete");
         showToast(`❌ ${err?.message || "Delete failed"}`, "error");
       }
       setLoading(false);
@@ -89,7 +91,9 @@ const ClaimedRidesGrid = () => {
     );
     setTimeout(async () => {
       try {
-        await Promise.all(selectedRows.map((id) => deleteClaimedRide(id)));
+        await Promise.all(
+          selectedRows.map((id) => deleteRide(COLLECTIONS.CLAIMED_RIDES, id)),
+        );
         showToast("✅ Selected rides deleted", "info");
         setSelectedRows([]);
       } catch (err) {
@@ -113,8 +117,9 @@ const ClaimedRidesGrid = () => {
     await Promise.all(
       undoBuffer.map(async (ride) => {
         try {
-          await restoreRide(ride);
+          await updateRide(COLLECTIONS.RIDE_QUEUE, ride.id, ride);
         } catch (err) {
+          logError(err, "ClaimedRidesGrid:undo");
           failed.push(ride.TripID);
         }
       }),
