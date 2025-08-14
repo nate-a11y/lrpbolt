@@ -14,6 +14,9 @@ import {
   MenuItem,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
+import { ROLES, ROLE_LABELS } from "../constants/roles.js";
+import { db } from "../utils/firebaseInit";
+import { doc, setDoc } from "firebase/firestore";
 import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -22,11 +25,11 @@ import { logError } from "../utils/logError";
 
 export default function AdminUserManager() {
   const { driver } = useDriver();
-  const role = driver?.access || "user";
+  const { user, role: currentRole, authLoading, roleLoading } = useAuth();
+  const role = driver?.access || currentRole || "user";
   const isAdmin = role === "admin";
-
-  const { user, authLoading } = useAuth();
   const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
+  if (authLoading || roleLoading || currentRole === 'shootout') return null;
 
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
@@ -49,7 +52,6 @@ export default function AdminUserManager() {
 
     const unsubscribe = subscribeUserAccess(
       (list = []) => {
-        // Ensure every row has a stable id for DataGrid
         const mapped = list.map((r) => ({
           id: r.id || r.email,
           email: (r.email || r.id || "").toLowerCase(),
@@ -59,7 +61,7 @@ export default function AdminUserManager() {
         setRows(mapped);
         setLoading(false);
       },
-      { roles: ["admin", "driver"] },
+      { roles: ROLES },
       () => {
         setSnackbar({
           open: true,
@@ -87,7 +89,8 @@ export default function AdminUserManager() {
     }
 
     const lines = input
-      .split("\n")
+      .split("
+")
       .map((line) => line.trim())
       .filter(Boolean);
 
@@ -102,8 +105,8 @@ export default function AdminUserManager() {
         invalids.push(`Line ${idx + 1}: Invalid name, email, or access`);
         return;
       }
-      if (!["admin", "driver"].includes(lcAccess)) {
-        invalids.push(`Line ${idx + 1}: Access must be admin or driver`);
+      if (!ROLES.includes(lcAccess)) {
+        invalids.push(`Line ${idx + 1}: Access must be admin, driver, or shootout`);
         return;
       }
       validUsers.push({ name: name.trim(), email: lcEmail, access: lcAccess });
@@ -122,6 +125,7 @@ export default function AdminUserManager() {
     for (const u of validUsers) {
       try {
         await createUser(u);
+        await setDoc(doc(db, 'users', u.email), { name: u.name, email: u.email, role: u.access }, { merge: true });
       } catch (err) {
         logError(err, "AdminUserManager:createUser");
         errors.push(`${u.email}: ${err?.message || JSON.stringify(err)}`);
@@ -158,10 +162,10 @@ export default function AdminUserManager() {
       });
       return;
     }
-    if (!["admin", "driver"].includes(access)) {
+    if (!ROLES.includes(access)) {
       setSnackbar({
         open: true,
-        message: "Access must be admin or driver",
+        message: "Access must be admin, driver, or shootout",
         severity: "error",
       });
       return;
@@ -169,6 +173,7 @@ export default function AdminUserManager() {
 
     try {
       await createUser({ name, email, access });
+      await setDoc(doc(db, 'users', email), { name, email, role: access }, { merge: true });
       setNewUser({ name: "", email: "", access: "driver" });
       setSnackbar({
         open: true,
@@ -180,38 +185,6 @@ export default function AdminUserManager() {
       setSnackbar({
         open: true,
         message: err?.message || "Add failed",
-        severity: "error",
-      });
-    }
-  };
-
-  const handleMobileFieldChange = (id, field, value) => {
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-    );
-  };
-
-  const handleMobileUpdate = async (id) => {
-    if (!isAdmin) {
-      setSnackbar({
-        open: true,
-        message: "Admin access required",
-        severity: "error",
-      });
-      return;
-    }
-    const row = rows.find((r) => r.id === id);
-    try {
-      await updateUser({
-        email: id,
-        name: row.name,
-        access: row.access,
-      });
-    } catch (err) {
-      logError(err, "AdminUserManager:handleMobileUpdate");
-      setSnackbar({
-        open: true,
-        message: err?.message || "Update failed",
         severity: "error",
       });
     }
@@ -233,6 +206,7 @@ export default function AdminUserManager() {
         access: newRow.access,
         name: newRow.name,
       });
+      await setDoc(doc(db, 'users', newRow.email), { name: newRow.name, email: newRow.email, role: newRow.access }, { merge: true });
       return newRow;
     } catch (err) {
       logError(err, "AdminUserManager:updateUser");
@@ -241,7 +215,34 @@ export default function AdminUserManager() {
         message: err?.message || "Update failed",
         severity: "error",
       });
-      return oldRow; // revert on error
+      return oldRow;
+    }
+  };
+
+  const handleMobileUpdate = async (id) => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      return;
+    }
+    const row = rows.find((r) => r.id === id);
+    try {
+      await updateUser({
+        email: id,
+        name: row.name,
+        access: row.access,
+      });
+      await setDoc(doc(db, 'users', row.email), { name: row.name, email: row.email, role: row.access }, { merge: true });
+    } catch (err) {
+      logError(err, "AdminUserManager:handleMobileUpdate");
+      setSnackbar({
+        open: true,
+        message: err?.message || "Update failed",
+        severity: "error",
+      });
     }
   };
 
@@ -266,7 +267,7 @@ export default function AdminUserManager() {
       width: 120,
       editable: isAdmin,
       type: "singleSelect",
-      valueOptions: ["admin", "driver"],
+      valueOptions: ROLES,
     },
   ];
 
@@ -274,48 +275,37 @@ export default function AdminUserManager() {
     <Card sx={{ p: 2, m: "auto", maxWidth: 900 }}>
       <Stack spacing={2}>
         {!isAdmin && (
-          <Typography color="error">
-            Admin access required to modify users
-          </Typography>
+          <Typography color="error">Admin access required to modify users</Typography>
         )}
-        <Stack
-          direction={isSmall ? "column" : "row"}
-          spacing={2}
-          alignItems="center"
-        >
+
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
             label="Name"
             value={newUser.name}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, name: e.target.value }))
-            }
+            onChange={(e) => setNewUser((u) => ({ ...u, name: e.target.value }))}
             fullWidth
           />
           <TextField
             label="Email"
             value={newUser.email}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, email: e.target.value }))
-            }
+            onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
             fullWidth
           />
           <TextField
             label="Access"
             select
             value={newUser.access}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, access: e.target.value }))
-            }
-            sx={{ minWidth: 120 }}
+            onChange={(e) => setNewUser((u) => ({ ...u, access: e.target.value }))}
+            sx={{ minWidth: 160 }}
+            helperText="Shootout = only Shootout Ride & Time Tracker"
           >
-            <MenuItem value="driver">driver</MenuItem>
-            <MenuItem value="admin">admin</MenuItem>
+            {ROLES.map((r) => (
+              <MenuItem key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </MenuItem>
+            ))}
           </TextField>
-          <Button
-            variant="contained"
-            onClick={handleManualAdd}
-            disabled={!isAdmin}
-          >
+          <Button variant="contained" onClick={handleManualAdd} disabled={!isAdmin}>
             Add User
           </Button>
         </Stack>
@@ -338,20 +328,13 @@ export default function AdminUserManager() {
               <Stack
                 key={r.id}
                 spacing={1}
-                sx={{
-                  p: 1,
-                  border: 1,
-                  borderColor: "divider",
-                  borderRadius: 1,
-                }}
+                sx={{ p: 1, border: 1, borderColor: "divider", borderRadius: 1 }}
               >
                 <TextField
                   label="Name"
                   value={r.name}
                   disabled={!isAdmin}
-                  onChange={(e) =>
-                    handleMobileFieldChange(r.id, "name", e.target.value)
-                  }
+                  onChange={(e) => handleMobileFieldChange(r.id, "name", e.target.value)}
                   onBlur={() => handleMobileUpdate(r.id)}
                 />
                 <TextField label="Email" value={r.email} disabled />
@@ -365,8 +348,11 @@ export default function AdminUserManager() {
                     handleMobileUpdate(r.id);
                   }}
                 >
-                  <MenuItem value="driver">driver</MenuItem>
-                  <MenuItem value="admin">admin</MenuItem>
+                  {ROLES.map((r0) => (
+                    <MenuItem key={r0} value={r0}>
+                      {ROLE_LABELS[r0]}
+                    </MenuItem>
+                  ))}
                 </TextField>
               </Stack>
             ))}
@@ -382,7 +368,7 @@ export default function AdminUserManager() {
               processRowUpdate={handleProcessRowUpdate}
               isCellEditable={(params) => isAdmin && params.field !== 'email'}
               pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) => r?.id || r?.email} // safety net
+              getRowId={(r) => r?.id || r?.email}
               experimentalFeatures={{ newEditingApi: true }}
               columnVisibilityModel={isSmall ? { access: false } : undefined}
             />
@@ -391,7 +377,7 @@ export default function AdminUserManager() {
       </Stack>
 
       <Snackbar
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         open={snackbar.open}
         autoHideDuration={3000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
@@ -399,7 +385,7 @@ export default function AdminUserManager() {
         <Alert
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
           severity={snackbar.severity}
-          sx={{ width: "100%" }}
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>

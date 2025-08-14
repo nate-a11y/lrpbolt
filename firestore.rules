@@ -30,6 +30,10 @@ service cloud.firestore {
         : "";
     }
 
+    function userRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
     function isAdmin()  { return authed() && lower(role()) == "admin"; }
     function isDriver() { return authed() && lower(role()) == "driver"; }
 
@@ -144,10 +148,10 @@ service cloud.firestore {
           (k=='createdAt'   && v is timestamp);
       }
 
-      allow read: if authed();
+      allow read: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout'];
 
       // Create: minimal "start" snapshot
-      allow create: if authed()
+      allow create: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout']
         && request.resource.data.keys().hasOnly(allowedKeys())
         && request.resource.data.driverEmail is string
         && request.resource.data.vehicle is string
@@ -158,13 +162,13 @@ service cloud.firestore {
         && (!('endTime' in request.resource.data) || request.resource.data.endTime is timestamp);
 
       // Partial-safe update
-      allow update: if authed()
+      allow update: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout']
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
         && request.resource.data.diff(resource.data).changedKeys()
              .map(k, isValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
-      allow delete: if authed();
+      allow delete: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout'];
     }
 
     // ---------- adminLogs ----------
