@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Drawer,
   List,
@@ -20,13 +20,17 @@ import { iconMap } from "../utils/iconMap";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useColorMode } from "../context/ColorModeContext.jsx";
+import { canSeeNav } from "../utils/roleGuards";
 
-export default function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }) {
-  const { user } = useAuth?.() || {};
-  const { driverName, role, logout: signOut } = useDriver?.() || {};
+function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }) {
+  const { user, role } = useAuth();
+  const { driverName, logout: signOut } = useDriver?.() || {};
   const { mode, toggle } = useColorMode();
   const location = useLocation();
-  const items = NAV_ITEMS.filter((it) => !it.admin || role?.toLowerCase?.() === "admin");
+  const items = useMemo(
+    () => NAV_ITEMS.filter((it) => canSeeNav(it.id, role)),
+    [role],
+  );
 
   const drawerSx = {
     width: DRAWER_WIDTH,
@@ -55,12 +59,12 @@ export default function MainNav({ variant = "permanent", open = true, onClose, o
   const drawerContent = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <List sx={{ py: 1 }}>
-        {items.map(({ to, label, icon }) => {
+        {items.map(({ id, to, label, icon }) => {
           const Icon = iconMap[icon] || iconMap.ChevronRight;
           const selected = location.pathname === to;
           return (
             <ListItemButton
-              key={to}
+              key={id}
               component={NavLink}
               to={to}
               onClick={handleItemClick}
@@ -87,7 +91,7 @@ export default function MainNav({ variant = "permanent", open = true, onClose, o
               Driver:
             </Typography>
             <Chip size="small" label={driverName || user?.displayName || "Unknown"} />
-            {role?.toLowerCase?.() === "admin" && (
+            {role === "admin" && (
               <Chip size="small" color="success" label="Admin" />
             )}
           </Stack>
@@ -119,3 +123,5 @@ export default function MainNav({ variant = "permanent", open = true, onClose, o
     </Drawer>
   );
 }
+
+export default React.memo(MainNav);
