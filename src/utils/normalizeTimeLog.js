@@ -1,12 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import { isNil, diffMinutes } from "./timeUtilsSafe";
-
-const first = (o, keys) => {
-  for (const k of keys) {
-    if (o && o[k] !== undefined) return o[k];
-  }
-  return null;
-};
+import { isNil, diffMinutes, firstKey } from "./timeUtilsSafe";
 
 const deriveMode = (rideId, explicit) => {
   const m = (explicit ?? "").toString().toUpperCase();
@@ -17,67 +10,48 @@ const deriveMode = (rideId, explicit) => {
   return id ? "RIDE" : "N/A";
 };
 
-const deriveStatus = (endTime, explicit) => {
-  if (explicit) return explicit;
-  return isNil(endTime) ? "Open" : "Closed";
-};
+const deriveStatus = (endTime, explicit) => (explicit ? explicit : isNil(endTime) ? "Open" : "Closed");
 
-/** Normalize one document from the timeLogs collection. */
 export const normalizeTimeLog = (docId, d = {}) => {
-  const driver = first(d, ["driverEmail", "driver", "userEmail", "user"]);
-  const rideId = first(d, ["rideId", "RideID", "tripId", "TripID"]);
-  const startTime = first(d, ["startTime", "start", "clockIn", "startedAt"]);
-  const endTime = first(d, ["endTime", "end", "clockOut", "endedAt"]);
-  const createdAt = first(d, ["createdAt", "loggedAt", "startTime"]);
-  const mode = deriveMode(rideId, d?.mode);
-  const status = deriveStatus(endTime, d?.status);
+  const driver     = firstKey(d, ["driverEmail", "driver", "userEmail", "user"]);
+  const rideId     = firstKey(d, ["rideId", "RideID", "tripId", "TripID"]);
+  const startTime  = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
+  const endTime    = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
+  const createdAt  = firstKey(d, ["createdAt", "loggedAt", "startTime"]);
+  const mode       = deriveMode(rideId, d?.mode);
+  const status     = deriveStatus(endTime, d?.status);
 
-  // Duration: prefer stored number, else compute from timestamps.
-  let durationMin = null;
-  const stored = first(d, ["duration", "durationMin"]);
-  if (!isNil(stored)) {
-    const n = Number(stored);
-    durationMin = Number.isFinite(n) ? Math.max(0, Math.round(n)) : null;
-  } else {
-    durationMin = diffMinutes(startTime, endTime);
-  }
-
-  const trips = isNil(d?.trips) ? null : Number(d.trips);
-  const passengers = isNil(d?.passengers) ? null : Number(d.passengers);
+  const storedDur  = firstKey(d, ["duration", "durationMin"]);
+  const durationMin = !isNil(storedDur)
+    ? (Number.isFinite(Number(storedDur)) ? Math.max(0, Math.round(Number(storedDur))) : null)
+    : diffMinutes(startTime, endTime);
 
   return {
     id: docId,
+    _raw: d,                      // keep raw for last-resort rendering
     driverDisplay: driver || "—",
     rideId: rideId ?? null,
-    mode,
-    startTime,
-    endTime,
+    startTime, endTime, createdAt,
     durationMin,
-    status,
-    trips,
-    passengers,
-    createdAt,
+    mode, status,
+    trips: isNil(d?.trips) ? null : Number(d.trips),
+    passengers: isNil(d?.passengers) ? null : Number(d.passengers),
   };
 };
 
-/** Normalize one document from the shootoutStats collection. */
 export const normalizeShootout = (docId, d = {}) => {
-  const driver = first(d, ["driverEmail", "driver", "userEmail", "user"]);
-  const startTime = first(d, ["startTime", "startedAt"]);
-  const endTime = first(d, ["endTime", "endedAt"]);
-  const createdAt = first(d, ["createdAt", "loggedAt", "startTime"]);
-
-  let durationMin = null;
-  const stored = first(d, ["duration", "durationMin"]);
-  if (!isNil(stored)) {
-    const n = Number(stored);
-    durationMin = Number.isFinite(n) ? Math.max(0, Math.round(n)) : null;
-  } else {
-    durationMin = diffMinutes(startTime, endTime);
-  }
+  const driver    = firstKey(d, ["driverEmail", "driver", "userEmail", "user"]);
+  const startTime = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
+  const endTime   = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
+  const createdAt = firstKey(d, ["createdAt", "loggedAt", "startTime"]);
+  const storedDur = firstKey(d, ["duration", "durationMin"]);
+  const durationMin = !isNil(storedDur)
+    ? (Number.isFinite(Number(storedDur)) ? Math.max(0, Math.round(Number(storedDur))) : null)
+    : diffMinutes(startTime, endTime);
 
   return {
     id: docId,
+    _raw: d,
     driverDisplay: driver || "—",
     trips: isNil(d?.trips) ? null : Number(d.trips),
     passengers: isNil(d?.passengers) ? null : Number(d.passengers),
