@@ -165,9 +165,9 @@ export default function EntriesTab() {
         headerName: "",
         width: 80,
         sortable: false,
-        renderCell: (params = {}) => (
+        renderCell: ({ row }) => (
           <ToolsCell
-            row={params?.row}
+            row={row}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
