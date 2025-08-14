@@ -23,6 +23,24 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
 
+// --- helpers: robust parsing for lines and "email,role" ---
+function parseUserLines(input) {
+  const raw = typeof input === "string" ? input : "";
+  return raw
+    .split(/\r?\n|\r/g)     // CRLF/CR/LF safe
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function parseCsvLine(line) {
+  // Accept comma OR tab: "Name,email,access" OR "Name\temail\taccess"
+  const [nameRaw, emailRaw, accessRaw] = line.split(/[,\t]/).map((s) => (s || "").trim());
+  const name = nameRaw || "";
+  const email = (emailRaw || "").toLowerCase();
+  const access = (accessRaw || "").toLowerCase();
+  return { name, email, access };
+}
+
 export default function AdminUserManager() {
   const { driver } = useDriver();
   const { user, role: currentRole, authLoading, roleLoading } = useAuth();
@@ -88,29 +106,23 @@ export default function AdminUserManager() {
       return;
     }
 
-    const lines = input
-      .split("
-")
-      .map((line) => line.trim())
-      .filter(Boolean);
+  const lines = parseUserLines(input);
 
     const invalids = [];
     const validUsers = [];
 
-    lines.forEach((line, idx) => {
-      const [name, email, access] = line.split(",").map((s) => s.trim());
-      const lcEmail = email?.toLowerCase();
-      const lcAccess = access?.toLowerCase();
-      if (!name || !email || !access || !email.includes("@")) {
-        invalids.push(`Line ${idx + 1}: Invalid name, email, or access`);
-        return;
-      }
-      if (!ROLES.includes(lcAccess)) {
-        invalids.push(`Line ${idx + 1}: Access must be admin, driver, or shootout`);
-        return;
-      }
-      validUsers.push({ name: name.trim(), email: lcEmail, access: lcAccess });
-    });
+lines.forEach((line, idx) => {
+  const { name, email, access } = parseCsvLine(line);
+  if (!name || !email || !email.includes("@")) {
+    invalids.push(`Line ${idx + 1}: Invalid name or email`);
+    return;
+  }
+  if (!ROLES.includes(access)) {
+    invalids.push(`Line ${idx + 1}: Access must be one of ${ROLES.join(", ")}`);
+    return;
+  }
+  validUsers.push({ name: name.trim(), email, access });
+});
 
     if (invalids.length) {
       setSnackbar({
@@ -218,6 +230,12 @@ export default function AdminUserManager() {
       return oldRow;
     }
   };
+
+  const handleMobileFieldChange = (id, field, value) => {
+  setRows((prev) =>
+    prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+  );
+};
 
   const handleMobileUpdate = async (id) => {
     if (!isAdmin) {
