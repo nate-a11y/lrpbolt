@@ -84,10 +84,10 @@ export default function ShootoutStatsTab() {
     () =>
       (stats || []).map((r, i) => ({
         id: r.id || i,
-        driverEmail: r.driverEmail || "",
-        trips: Number(r.trips || 0),
-        passengers: Number(r.passengers || 0),
-        duration: Number(r.duration || 0),
+        driver: r.driverDisplay || "",
+        trips: Number(r.trips ?? 0),
+        passengers: Number(r.passengers ?? 0),
+        durationMin: Number(r.durationMin ?? 0),
         status: r.status || "",
         startTime: tsToDate(r.startTime),
         endTime: tsToDate(r.endTime),
@@ -98,15 +98,15 @@ export default function ShootoutStatsTab() {
 
   const columns = useMemo(
     () => [
-      { field: "driverEmail", headerName: "Driver", flex: 1 },
+      { field: "driver", headerName: "Driver", flex: 1 },
       { field: "trips", headerName: "Trips", width: 90, type: "number" },
       { field: "passengers", headerName: "Pax", width: 90, type: "number" },
       {
-        field: "duration",
+        field: "durationMin",
         headerName: "Duration",
         width: 110,
         type: "number",
-        valueFormatter: (p = {}) => `${Math.round((p.value || 0) / 60)} min`,
+        valueFormatter: (p = {}) => `${p.value || 0} min`,
       },
       { field: "status", headerName: "Status", width: 110, editable: true },
       {
@@ -156,7 +156,7 @@ export default function ShootoutStatsTab() {
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       const driverMatch = driverFilter
-        ? r.driverEmail?.toLowerCase().includes(driverFilter.toLowerCase())
+        ? r.driver?.toLowerCase().includes(driverFilter.toLowerCase())
         : true;
       const startMatch = startFilter
         ? r.startTime?.getTime() >= startFilter.toDate().getTime()
@@ -166,11 +166,11 @@ export default function ShootoutStatsTab() {
         : true;
       const searchMatch = search
         ? [
-            r.driverEmail,
+            r.driver,
             r.status,
             r.trips,
             r.passengers,
-            r.duration,
+            r.durationMin,
             fmtDateTime(r.startTime),
             fmtDateTime(r.endTime),
             fmtDateTime(r.createdAt),
@@ -221,11 +221,11 @@ export default function ShootoutStatsTab() {
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">{r.driverEmail}</Typography>
+                  <Typography variant="subtitle2">{r.driver}</Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Passengers: {r.passengers}</Typography>
                   <Typography variant="body2">
-                    Duration: {Math.round(r.duration / 60)} min
+                    Duration: {r.durationMin} min
                   </Typography>
                   <Typography variant="body2">Status: {r.status}</Typography>
                   <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
