@@ -82,22 +82,33 @@ const EditableRideGrid = ({
     "https://lakeridepros.xyz/Color%20logo%20-%20no%20background.png";
 
   const handleStartEdit = useCallback(
-    (row) => {
-      const parsed = parseDuration(row?.RideDuration || "");
-      const rawTime = dayjs(
-        `2000-01-01 ${row?.PickupTime}`,
+    (row = {}) => {
+      // Use raw Firestore values when available to avoid parsing issues
+      const pickup = dayjs(row.pickupTime || row.PickupTime, [
+        dayjs.ISO_8601,
         "YYYY-MM-DD h:mm A",
-      );
-      const time24 = rawTime.isValid() ? rawTime.format("HH:mm") : "";
-      const rawDate = dayjs(row?.Date, ["MM/DD/YYYY", "YYYY-MM-DD"]);
-      const dateISO = rawDate.isValid() ? rawDate.format("YYYY-MM-DD") : "";
+      ]);
+      const time24 = pickup.isValid()
+        ? pickup.tz(TIMEZONE).format("HH:mm")
+        : "";
+      const dateISO = pickup.isValid()
+        ? pickup.tz(TIMEZONE).format("YYYY-MM-DD")
+        : "";
 
+      // Prefer numeric duration minutes, fall back to formatted string
+      const minutes = typeof row.rideDuration === "number" ? row.rideDuration : 0;
+      const dur = minutes
+        ? { hours: Math.floor(minutes / 60), minutes: minutes % 60 }
+        : parseDuration(row?.RideDuration || "");
+
+      setSelectedRow(row);
       setEditedRow({
         ...row,
         PickupTime: time24,
         Date: dateISO,
-        DurationHours: parsed.hours,
-        DurationMinutes: parsed.minutes,
+        DurationHours: dur.hours,
+        DurationMinutes: dur.minutes,
+        RideNotes: row.RideNotes === "N/A" ? "" : row.RideNotes,
       });
 
       setEditMode(true);
