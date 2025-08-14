@@ -36,7 +36,7 @@ import { motion } from "framer-motion";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import useAuth from "../hooks/useAuth.js";
 import { TIMEZONE, COLLECTIONS } from "../constants";
-import { updateRide } from "../hooks/api";
+import { updateRide } from "../services/firestoreService";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -64,7 +64,7 @@ const EditableRideGrid = ({
   onDelete,
   loading = false,
   refreshRides,
-  sheetName = COLLECTIONS.RIDE_QUEUE,
+  collectionName = COLLECTIONS.RIDE_QUEUE,
 }) => {
   const isMobile = useMediaQuery("(max-width:600px)");
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
@@ -166,7 +166,7 @@ const EditableRideGrid = ({
     }
 
     try {
-      const result = await updateRide(editedRow.id, payload, sheetName);
+      const result = await updateRide(collectionName, editedRow.id, payload);
       if (!result.success) throw new Error(result.message || "Update failed");
 
       setSnack({

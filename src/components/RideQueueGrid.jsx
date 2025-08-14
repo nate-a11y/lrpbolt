@@ -2,10 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { Box, Snackbar, Alert } from "@mui/material";
 import {
-  subscribeRideQueue,
-  deleteRideFromQueue,
-  addRideToQueue,
-  getRideQueue,
+  subscribeRides,
+  deleteRide,
+  updateRide,
+  getRides,
 } from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
@@ -37,12 +37,12 @@ const RideQueueGrid = () => {
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    const unsub = subscribeRideQueue(
+    const unsub = subscribeRides(
+      COLLECTIONS.RIDE_QUEUE,
       (data) => {
         setRows(data);
         setLoading(false);
       },
-      undefined,
       () => {
         setToast({
           open: true,
@@ -57,7 +57,7 @@ const RideQueueGrid = () => {
 
   const refreshRides = async () => {
     setLoading(true);
-    const data = await getRideQueue();
+    const data = await getRides(COLLECTIONS.RIDE_QUEUE);
     setRows(data);
     setLoading(false);
   };
@@ -75,7 +75,7 @@ const RideQueueGrid = () => {
 
     setTimeout(async () => {
       try {
-        await deleteRideFromQueue(deletingId);
+        await deleteRide(COLLECTIONS.RIDE_QUEUE, deletingId);
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         setToast({
           open: true,
@@ -101,7 +101,7 @@ const RideQueueGrid = () => {
   const handleUndo = async () => {
     if (!undoRow) return;
     try {
-      await addRideToQueue(undoRow);
+      await updateRide(COLLECTIONS.RIDE_QUEUE, undoRow.id, undoRow);
       setUndoRow(null);
       setToast({
         open: true,
@@ -131,7 +131,7 @@ const RideQueueGrid = () => {
             setConfirmOpen(true);
           }}
           refreshRides={refreshRides}
-          sheetName={COLLECTIONS.RIDE_QUEUE}
+          collectionName={COLLECTIONS.RIDE_QUEUE}
         />
       </Box>
 

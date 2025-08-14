@@ -12,15 +12,17 @@ import {
   Button,
 } from "@mui/material";
 import {
-  subscribeLiveRides,
-  deleteLiveRide,
-  restoreLiveRide,
-  getLiveRides,
+  subscribeRides,
+  deleteRide,
+  updateRide,
+  getRides,
 } from "../services/firestoreService";
 import EditableRideGrid from "../components/EditableRideGrid";
 import useToast from "../hooks/useToast";
 import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
+import { COLLECTIONS } from "../constants";
+import { logError } from "../utils/logError";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -35,12 +37,12 @@ const LiveRidesGrid = () => {
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    const unsub = subscribeLiveRides(
+    const unsub = subscribeRides(
+      COLLECTIONS.LIVE_RIDES,
       (data) => {
         setRows(data);
         setLoading(false);
       },
-      undefined,
       () => {
         showToast("Permissions issue loading live rides", "error");
         setLoading(false);
@@ -51,7 +53,7 @@ const LiveRidesGrid = () => {
 
   const refreshRides = async () => {
     setLoading(true);
-    const data = await getLiveRides();
+    const data = await getRides(COLLECTIONS.LIVE_RIDES);
     setRows(data);
     setLoading(false);
   };
@@ -67,7 +69,7 @@ const LiveRidesGrid = () => {
     );
     setTimeout(async () => {
       try {
-        await deleteLiveRide(deletingId);
+        await deleteRide(COLLECTIONS.LIVE_RIDES, deletingId);
         setRows((prev) => prev.filter((row) => row.id !== deletingId));
         showToast(`🗑️ Deleted Trip ${safe(deletingTripId, "")}`, "info");
       } catch (err) {
@@ -77,6 +79,7 @@ const LiveRidesGrid = () => {
           ),
         );
         setUndoRow(null);
+        logError(err, "LiveRidesGrid:delete");
         showToast(`❌ ${err?.message || "Failed to delete ride"}`, "error");
       }
       setDeleting(false);
@@ -87,10 +90,11 @@ const LiveRidesGrid = () => {
   const handleUndo = async () => {
     if (!undoRow) return;
     try {
-      await restoreLiveRide(undoRow);
+      await updateRide(COLLECTIONS.LIVE_RIDES, undoRow.id, undoRow);
       setUndoRow(null);
       showToast("✅ Ride restored", "success");
     } catch (err) {
+      logError(err, "LiveRidesGrid:undo");
       showToast(`❌ ${err?.message || "Restore failed"}`, "error");
     }
   };
@@ -108,7 +112,7 @@ const LiveRidesGrid = () => {
             setConfirmOpen(true);
           }}
           refreshRides={refreshRides}
-          sheetName="Sheet1"
+          collectionName={COLLECTIONS.LIVE_RIDES}
         />
       </Box>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
