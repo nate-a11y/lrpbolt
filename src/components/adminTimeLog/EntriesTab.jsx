@@ -9,9 +9,14 @@ import {
   Typography,
   useMediaQuery,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
 import {
   onSnapshot,
   collection,
@@ -31,19 +36,41 @@ export default function EntriesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+  const apiRef = useGridApiRef();
   const [driverFilter, setDriverFilter] = useState("");
   const [startFilter, setStartFilter] = useState(null);
   const [endFilter, setEndFilter] = useState(null);
   const [search, setSearch] = useState("");
-  const handleEdit = useCallback(async (row) => {
-    const newDriver = window.prompt("Driver", row?.driverDisplay || "");
-    if (!newDriver) return;
+  const [editRow, setEditRow] = useState(null);
+
+  const handleEdit = useCallback(
+    (row) => {
+      if (isSmall) {
+        setEditRow(row);
+      } else {
+        apiRef.current.startRowEditMode({ id: row.id });
+      }
+    },
+    [isSmall, apiRef],
+  );
+
+  const processRowUpdate = useCallback(async (newRow) => {
+    await updateDoc(doc(db, "timeLogs", newRow.id), {
+      driver: newRow.driverDisplay,
+    });
+    return newRow;
+  }, []);
+
+  const handleEditSave = useCallback(async () => {
     try {
-      await updateDoc(doc(db, "timeLogs", row.id), { driver: newDriver });
+      await updateDoc(doc(db, "timeLogs", editRow.id), {
+        driver: editRow.driverDisplay,
+      });
+      setEditRow(null);
     } catch (e) {
       alert("Failed to update time log");
     }
-  }, []);
+  }, [editRow]);
 
   const handleDelete = useCallback(async (row) => {
     if (!window.confirm("Delete this time log?")) return;
@@ -81,11 +108,11 @@ export default function EntriesTab() {
   const columns = useMemo(
     () => [
       {
-        field: "driver",
+        field: "driverDisplay",
         headerName: "Driver",
         flex: 1,
         minWidth: 160,
-        valueGetter: (params = {}) => params?.row?.driverDisplay ?? null,
+        editable: true,
         valueFormatter: (params = {}) => {
           const v = params?.value;
           return isNil(v) || v === "" ? "—" : String(v);
@@ -283,6 +310,12 @@ export default function EntriesTab() {
       ) : (
         <div style={{ height: 640, width: "100%" }}>
           <DataGrid
+            apiRef={apiRef}
+            editMode="row"
+            processRowUpdate={processRowUpdate}
+            onProcessRowUpdateError={() =>
+              alert("Failed to update time log")
+            }
             rows={filteredRows ?? []}
             getRowId={(r) => r?.id ?? String(Math.random())}
             columns={columns}
@@ -301,6 +334,27 @@ export default function EntriesTab() {
           />
         </div>
       )}
+      <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
+        <DialogTitle>Edit Driver</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Driver"
+            value={editRow?.driverDisplay || ""}
+            onChange={(e) =>
+              setEditRow((r) => ({ ...r, driverDisplay: e.target.value }))
+            }
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditRow(null)}>Cancel</Button>
+          <Button onClick={handleEditSave} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

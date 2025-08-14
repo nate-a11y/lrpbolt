@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
 import {
   Box,
   CircularProgress,
@@ -10,6 +10,11 @@ import {
   Paper,
   useMediaQuery,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
 import { fetchWeeklySummary } from "../../hooks/firestore";
 import ToolsCell from "./cells/ToolsCell.jsx";
@@ -18,25 +23,46 @@ export default function WeeklySummaryTab() {
   const [summary, setSummary] = useState(null);
   const [err, setErr] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+  const apiRef = useGridApiRef();
   const [driverFilter, setDriverFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [editRow, setEditRow] = useState(null);
 
   const handleEdit = useCallback(
     (row) => {
-      const trips = Number(window.prompt("Trips", row.trips));
-      if (!Number.isFinite(trips)) return;
-      const hours = Number(window.prompt("Hours", row.hours));
-      if (!Number.isFinite(hours)) return;
+      if (isSmall) {
+        setEditRow(row);
+      } else {
+        apiRef.current.startRowEditMode({ id: row.id });
+      }
+    },
+    [isSmall, apiRef],
+  );
+
+  const processRowUpdate = useCallback(
+    (newRow) => {
       setSummary((prev) =>
         prev.map((s) =>
-          s.driver === row.driver
-            ? { ...s, entries: trips, totalMinutes: hours * 60 }
+          s.driver === newRow.driver
+            ? { ...s, entries: newRow.trips, totalMinutes: newRow.hours * 60 }
             : s,
         ),
       );
+      return newRow;
     },
     [],
   );
+
+  const handleEditSave = useCallback(() => {
+    setSummary((prev) =>
+      prev.map((s) =>
+        s.driver === editRow.driver
+          ? { ...s, entries: editRow.trips, totalMinutes: editRow.hours * 60 }
+          : s,
+      ),
+    );
+    setEditRow(null);
+  }, [editRow]);
 
   const handleDelete = useCallback((row) => {
     if (!window.confirm("Remove this driver?")) return;
@@ -82,12 +108,13 @@ export default function WeeklySummaryTab() {
   const columns = useMemo(
     () => [
       { field: "driver", headerName: "Driver", flex: 1, minWidth: 200 },
-      { field: "trips", headerName: "Trips", width: 110, type: "number" },
+      { field: "trips", headerName: "Trips", width: 110, type: "number", editable: true },
       {
         field: "hours",
         headerName: "Hours",
         width: 120,
         type: "number",
+        editable: true,
         valueFormatter: (params = {}) => {
           const v = params?.value;
           return (typeof v === "number" ? v : 0).toFixed(2);
@@ -164,6 +191,10 @@ export default function WeeklySummaryTab() {
         </Stack>
       ) : (
         <DataGrid
+          apiRef={apiRef}
+          editMode="row"
+          processRowUpdate={processRowUpdate}
+          onProcessRowUpdateError={() => alert("Failed to update summary")}
           autoHeight
           rows={filteredRows}
           columns={columns}
@@ -180,6 +211,38 @@ export default function WeeklySummaryTab() {
           pageSizeOptions={[5, 10, 25]}
         />
       )}
+      <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
+        <DialogTitle>Edit Summary</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Trips"
+            type="number"
+            value={editRow?.trips ?? ""}
+            onChange={(e) =>
+              setEditRow((r) => ({ ...r, trips: Number(e.target.value) }))
+            }
+            fullWidth
+          />
+          <TextField
+            margin="dense"
+            label="Hours"
+            type="number"
+            value={editRow?.hours ?? ""}
+            onChange={(e) =>
+              setEditRow((r) => ({ ...r, hours: Number(e.target.value) }))
+            }
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditRow(null)}>Cancel</Button>
+          <Button onClick={handleEditSave} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
