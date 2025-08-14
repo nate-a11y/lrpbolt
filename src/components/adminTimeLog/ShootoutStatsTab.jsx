@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
 import {
   Box,
   CircularProgress,
@@ -10,6 +10,11 @@ import {
   Typography,
   useMediaQuery,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
@@ -22,20 +27,41 @@ export default function ShootoutStatsTab() {
   const [stats, setStats] = useState(null);
   const [err, setErr] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+  const apiRef = useGridApiRef();
   const [driverFilter, setDriverFilter] = useState("");
   const [startFilter, setStartFilter] = useState(null);
   const [endFilter, setEndFilter] = useState(null);
   const [search, setSearch] = useState("");
+  const [editRow, setEditRow] = useState(null);
 
-  const handleEdit = useCallback(async (row) => {
-    const newStatus = window.prompt("Status", row?.status || "");
-    if (!newStatus) return;
+  const handleEdit = useCallback(
+    (row) => {
+      if (isSmall) {
+        setEditRow(row);
+      } else {
+        apiRef.current.startRowEditMode({ id: row.id });
+      }
+    },
+    [isSmall, apiRef],
+  );
+
+  const processRowUpdate = useCallback(async (newRow) => {
+    await updateDoc(doc(db, "shootoutStats", newRow.id), {
+      status: newRow.status,
+    });
+    return newRow;
+  }, []);
+
+  const handleEditSave = useCallback(async () => {
     try {
-      await updateDoc(doc(db, "shootoutStats", row.id), { status: newStatus });
+      await updateDoc(doc(db, "shootoutStats", editRow.id), {
+        status: editRow.status,
+      });
+      setEditRow(null);
     } catch (e) {
       alert("Failed to update stat");
     }
-  }, []);
+  }, [editRow]);
 
   const handleDelete = useCallback(async (row) => {
     if (!window.confirm("Delete this stat?")) return;
@@ -82,7 +108,7 @@ export default function ShootoutStatsTab() {
         type: "number",
         valueFormatter: (p = {}) => `${Math.round((p.value || 0) / 60)} min`,
       },
-      { field: "status", headerName: "Status", width: 110 },
+      { field: "status", headerName: "Status", width: 110, editable: true },
       {
         field: "startTime",
         headerName: "Start",
@@ -217,6 +243,10 @@ export default function ShootoutStatsTab() {
         </Stack>
       ) : (
         <DataGrid
+          apiRef={apiRef}
+          editMode="row"
+          processRowUpdate={processRowUpdate}
+          onProcessRowUpdateError={() => alert("Failed to update stat")}
           rows={filteredRows}
           columns={columns}
           density="compact"
@@ -233,6 +263,27 @@ export default function ShootoutStatsTab() {
           }}
         />
       )}
+      <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
+        <DialogTitle>Edit Status</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Status"
+            value={editRow?.status || ""}
+            onChange={(e) =>
+              setEditRow((r) => ({ ...r, status: e.target.value }))
+            }
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditRow(null)}>Cancel</Button>
+          <Button onClick={handleEditSave} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
