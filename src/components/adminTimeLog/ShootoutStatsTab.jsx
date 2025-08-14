@@ -25,6 +25,7 @@ export default function ShootoutStatsTab() {
   const [driverFilter, setDriverFilter] = useState("");
   const [startFilter, setStartFilter] = useState(null);
   const [endFilter, setEndFilter] = useState(null);
+  const [search, setSearch] = useState("");
 
   const handleEdit = useCallback(async (row) => {
     const newStatus = window.prompt("Status", row?.status || "");
@@ -111,9 +112,12 @@ export default function ShootoutStatsTab() {
         headerName: "",
         width: 80,
         sortable: false,
-        renderCell: ({ row }) => (
+        filterable: false,
+        disableColumnMenu: true,
+        align: "center",
+        renderCell: (params) => (
           <ToolsCell
-            row={row}
+            row={params.row}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
@@ -134,9 +138,25 @@ export default function ShootoutStatsTab() {
       const endMatch = endFilter
         ? r.endTime?.getTime() <= endFilter.toDate().getTime()
         : true;
-      return driverMatch && startMatch && endMatch;
+      const searchMatch = search
+        ? [
+            r.driverEmail,
+            r.status,
+            r.trips,
+            r.passengers,
+            r.duration,
+            fmtDateTime(r.startTime),
+            fmtDateTime(r.endTime),
+            fmtDateTime(r.createdAt),
+          ]
+            .filter(Boolean)
+            .some((v) =>
+              String(v).toLowerCase().includes(search.toLowerCase()),
+            )
+        : true;
+      return driverMatch && startMatch && endMatch && searchMatch;
     });
-  }, [rows, driverFilter, startFilter, endFilter]);
+  }, [rows, driverFilter, startFilter, endFilter, search]);
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
   if (!stats) return <CircularProgress sx={{ m: 2 }} />;
@@ -144,6 +164,12 @@ export default function ShootoutStatsTab() {
   return (
     <Box sx={{ width: "100%" }}>
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+        <TextField
+          label="Search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          size="small"
+        />
         <TextField
           label="Driver"
           value={driverFilter}

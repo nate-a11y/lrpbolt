@@ -19,6 +19,7 @@ export default function WeeklySummaryTab() {
   const [err, setErr] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
   const [driverFilter, setDriverFilter] = useState("");
+  const [search, setSearch] = useState("");
 
   const handleEdit = useCallback(
     (row) => {
@@ -63,12 +64,20 @@ export default function WeeklySummaryTab() {
   }, [summary]);
 
   const filteredRows = useMemo(() => {
-    return rows.filter((r) =>
-      driverFilter
+    return rows.filter((r) => {
+      const driverMatch = driverFilter
         ? r.driver.toLowerCase().includes(driverFilter.toLowerCase())
-        : true,
-    );
-  }, [rows, driverFilter]);
+        : true;
+      const searchMatch = search
+        ? [r.driver, r.trips, r.hours]
+            .filter(Boolean)
+            .some((v) =>
+              String(v).toLowerCase().includes(search.toLowerCase()),
+            )
+        : true;
+      return driverMatch && searchMatch;
+    });
+  }, [rows, driverFilter, search]);
 
   const columns = useMemo(
     () => [
@@ -89,9 +98,12 @@ export default function WeeklySummaryTab() {
         headerName: "",
         width: 80,
         sortable: false,
-        renderCell: ({ row }) => (
+        filterable: false,
+        disableColumnMenu: true,
+        align: "center",
+        renderCell: (params) => (
           <ToolsCell
-            row={row}
+            row={params.row}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
@@ -118,6 +130,12 @@ export default function WeeklySummaryTab() {
         Weekly Driver Summary
       </Typography>
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+        <TextField
+          label="Search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          size="small"
+        />
         <TextField
           label="Driver"
           value={driverFilter}
