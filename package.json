@@ -1,6 +1,6 @@
 {
   "name": "ride-claim-portal",
-  "version": "0.0.2",
+  "version": "3.0.0",
   "engines": {
     "node": "20",
     "npm": ">=10"
