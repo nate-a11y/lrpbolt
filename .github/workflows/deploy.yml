@@ -103,25 +103,14 @@ jobs:
           DATE=$(date +"%Y-%m-%d")
           DATE_TAG=$(date +"%Y%m%d")
 
-          # Prepare build count file (kept in workspace)
-          COUNT_FILE=".buildcount"
-          if [ -f "$COUNT_FILE" ]; then
-          LAST_DATE=$(cut -d',' -f1 "$COUNT_FILE")
-          COUNT=$(cut -d',' -f2 "$COUNT_FILE")
-          if [ "$LAST_DATE" = "$DATE_TAG" ]; then
-          COUNT=$((COUNT + 1))
-          else
-          COUNT=1
-          fi
-          else
-          COUNT=1
-          fi
-          echo "$DATE_TAG,$COUNT" > "$COUNT_FILE"
+          # Use GitHub Actions run number as build count
+          COUNT=${GITHUB_RUN_NUMBER}
 
           # Compose final version
           FINAL_VERSION="${BASE_VERSION}-${DATE_TAG}.${COUNT}"
 
-          # Save to .env for Vite
+          # Replace existing VITE_APP_VERSION entry in .env (avoid duplicates)
+          sed -i '/^VITE_APP_VERSION=/d' .env 2>/dev/null || true
           echo "VITE_APP_VERSION=$FINAL_VERSION" >> .env
 
           # Pretty print for Actions log
@@ -134,7 +123,7 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
 
-          # Set as GitHub Actions output (optional)
+          # Set as GitHub Actions output
           echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
