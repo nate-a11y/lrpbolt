@@ -2,16 +2,24 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
-try { admin.initializeApp(); } catch { /* already initialized */ }
+try {
+  admin.initializeApp();
+} catch (e) {
+  void e;
+}
+const db = admin.firestore();
+void db;
 
-exports.smsOnCreate = functions.firestore
-  .document("outboundMessages/{id}")
-  .onCreate(async (snap) => {
+exports.smsOnCreate = functions
+  .runWith({ secrets: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"] })
+  // .region("us-central1") // uncomment if you want a specific region
+  .firestore.document("outboundMessages/{id}")
+  .onCreate(async (snap, ctx) => {
+    void ctx;
     const msg = snap.data();
 
-    const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM } = process.env;
-    if (!msg || msg.channel !== "sms") return null;
-
+    const env = process.env;
+    const missing = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"].filter(k => !env[k]);
     const fail = async (error) => {
       await snap.ref.update({
         status: "error",
@@ -23,26 +31,20 @@ exports.smsOnCreate = functions.firestore
       return null;
     };
 
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_FROM) {
-      return fail("Missing Twilio env vars");
-    }
-    if (!msg.to || !msg.body) {
-      return fail("Missing to/body");
-    }
+    if (!msg || msg.channel !== "sms") return null;
+    if (missing.length) return fail(`Missing Twilio env vars: ${missing.join(", ")}`);
+    if (!msg.to || !msg.body) return fail("Missing to/body");
 
     try {
       const client = axios.create({
-        baseURL: `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}`,
-        auth: { username: TWILIO_ACCOUNT_SID, password: TWILIO_AUTH_TOKEN },
+        baseURL: `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}`,
+        auth: { username: env.TWILIO_ACCOUNT_SID, password: env.TWILIO_AUTH_TOKEN },
         timeout: 12000,
       });
 
-      const form = new URLSearchParams({
-        To: msg.to,
-        Body: msg.body,
-      });
-      if (String(TWILIO_FROM).startsWith("MG")) form.set("MessagingServiceSid", TWILIO_FROM);
-      else form.set("From", TWILIO_FROM);
+      const form = new URLSearchParams({ To: msg.to, Body: msg.body });
+      if (String(env.TWILIO_FROM).startsWith("MG")) form.set("MessagingServiceSid", env.TWILIO_FROM);
+      else form.set("From", env.TWILIO_FROM);
 
       const { data } = await client.post("/Messages.json", form);
 
