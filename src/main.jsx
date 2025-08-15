@@ -7,6 +7,7 @@ import "./sw-updater.js";
 import { registerFCM } from "./utils/registerFCM";
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
+import SmsConsent from "./pages/SmsConsent.jsx";
 import PrivateRoute from "./components/PrivateRoute.jsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
@@ -33,6 +34,7 @@ const Root = () => {
             <Suspense fallback={<LoadingScreen />}> 
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/sms-consent" element={<SmsConsent />} />
                 <Route element={<PrivateRoute />}>
                   <Route path="/*" element={<AppRoot />} />
                 </Route>
