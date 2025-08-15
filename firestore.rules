@@ -360,6 +360,15 @@ service cloud.firestore {
       allow delete: if authed();
     }
 
+    match /outboundMessages/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.channel == "sms"
+        && request.resource.data.to is string
+        && request.resource.data.body is string;
+      allow read: if false;
+      allow update, delete: if false;
+    }
+
     // ---------- default deny (kept for reference; overridden by wide-open) ----------
     match /{document=**} {
       allow read, write: if false;
