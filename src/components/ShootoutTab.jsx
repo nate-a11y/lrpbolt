@@ -140,12 +140,8 @@ export default function ShootoutTab() {
     }
   }
 
-  function currentChargePct() {
-    return null;
-  }
-
   async function finalizeStopAndMaybeSms(payload) {
-    const { isDropoff, vehicleNumber, needsWash, needsInterior, issues } = payload;
+    const { isDropoff, vehicleNumber, chargePercent, needsWash, needsInterior, issues } = payload;
 
     try {
       await stopCurrentSessionSafely();
@@ -161,7 +157,7 @@ export default function ShootoutTab() {
 
     const lines = [
       `Vehicle: #${vehicleNumber}`,
-      `Charge %: ${typeof currentChargePct === "function" ? (currentChargePct() ?? "N/A") : "N/A"}`,
+      `Charge %: ${chargePercent || "N/A"}`,
       `Needs Car Wash? ${needsWash ? "Y" : "N"}`,
       `Needs Interior Clean? ${needsInterior ? "Y" : "N"}`,
       `Issues: ${issues || "None"}`,
