@@ -24,6 +24,7 @@ import { COLLECTIONS } from "../constants";
 import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
+import { minutesBetween } from "../utils/dates";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
@@ -420,25 +421,102 @@ export async function emailTicket(ticketId, email, attachment) {
  * TIME LOGS
  * -----------------------------
  */
-export function subscribeTimeLogs(callback, driver, max = 100) {
-  const constraints = [orderBy("loggedAt", "desc"), limit(max)];
-  if (driver) constraints.push(where("driver", "==", driver));
-  const q = query(collection(db, COLLECTIONS.TIME_LOGS), ...constraints);
-  const key = `${COLLECTIONS.TIME_LOGS}:${driver || "all"}:${max}`;
-  const unsub = subscribeFirestore(key, q, (snapshot) => {
-    callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  });
-  return () => {
-    unsub();
-  };
+export function subscribeTimeLogs(onData, onError) {
+  const q = query(collection(db, "timeLogs"), orderBy("startTime", "desc"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const rows = [];
+      snap.forEach((doc) => {
+        const d = doc.data() || {};
+        const start = d.startTime || null;
+        const end = d.endTime || null;
+        const durationMin =
+          typeof d.duration === "number" ? d.duration : minutesBetween(start, end);
+
+        rows.push({
+          id: doc.id,
+          driver: d.driver || "",
+          driverEmail: d.driverEmail || "",
+          rideId: d.rideId || "",
+          startTime: start,
+          endTime: end,
+          durationMin,
+          note: d.note || "",
+          createdAt: d.loggedAt || null,
+        });
+      });
+      onData(rows);
+    },
+    (e) => onError?.(e)
+  );
 }
 
-export async function fetchTimeLogs(driver) {
-  const snapshot = await getDocs(collection(db, COLLECTIONS.TIME_LOGS));
-  let logs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  if (driver) logs = logs.filter((log) => log.driver === driver);
-  return logs;
+// Weekly summary helper (grouped totals by driver within date range)
+export async function fetchWeeklySummary({ startTs, endTs }) {
+  const { getDocs } = await import("firebase/firestore");
+  const { query, collection, where, orderBy } = await import("firebase/firestore");
+  const q = query(
+    collection(db, "timeLogs"),
+    where("startTime", ">=", startTs),
+    where("startTime", "<", endTs),
+    orderBy("startTime", "asc")
+  );
+  const snap = await getDocs(q);
+  const byDriver = new Map();
+  snap.forEach((doc) => {
+    const d = doc.data() || {};
+    const driver = d.driver || d.driverEmail || "Unknown";
+    const mins =
+      typeof d.duration === "number"
+        ? d.duration
+        : minutesBetween(d.startTime, d.endTime);
+
+    const prev =
+      byDriver.get(driver) ||
+      { driver, sessions: 0, minutes: 0, trips: 0, passengers: 0 };
+    byDriver.set(driver, {
+      driver,
+      sessions: prev.sessions + 1,
+      minutes: prev.minutes + mins,
+      trips: prev.trips + Number(d.trips || 0),
+      passengers: prev.passengers + Number(d.passengers || 0),
+    });
+  });
+  return Array.from(byDriver.values()).map((r) => ({
+    ...r,
+    hours: +(r.minutes / 60).toFixed(2),
+  }));
 }
+
+// Realtime listener for shootout stats
+export function subscribeShootoutStats(onData, onError) {
+  const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const rows = [];
+      snap.forEach((doc) => {
+        const d = doc.data() || {};
+        rows.push({
+          id: doc.id,
+          driverEmail: d.driverEmail || "",
+          vehicle: d.vehicle || "",
+          startTime: d.startTime || null,
+          endTime: d.endTime || null,
+          trips: Number(d.trips || 0),
+          passengers: Number(d.passengers || 0),
+          durationMin: minutesBetween(d.startTime, d.endTime),
+          createdAt: d.createdAt || null,
+          status: d.endTime ? "Closed" : "Open",
+        });
+      });
+      onData(rows);
+    },
+    (e) => onError?.(e)
+  );
+}
+
 
 export async function addTimeLog(logData) {
   const data = cleanData({
