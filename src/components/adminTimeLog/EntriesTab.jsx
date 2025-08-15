@@ -135,7 +135,7 @@ export default function EntriesTab() {
         headerName: "Logged",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.createdAt ?? null,
+        valueGetter: (p) => r(p)?.loggedAt ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
@@ -176,7 +176,7 @@ export default function EntriesTab() {
             r.rideId,
             fmtDateTime(r.startTime),
             fmtDateTime(r.endTime),
-            fmtDateTime(r.createdAt),
+            fmtDateTime(r.loggedAt),
             fmtDuration(r.durationMs),
           ]
             .filter(Boolean)
@@ -251,7 +251,7 @@ export default function EntriesTab() {
                   <Typography variant="body2">
                     Duration: {fmtDuration(r.durationMs)}
                   </Typography>
-                  <Typography variant="body2">Logged: {fmtDateTime(r.createdAt)}</Typography>
+                  <Typography variant="body2">Logged: {fmtDateTime(r.loggedAt)}</Typography>
                 </Stack>
                 <ToolsCell
                   row={r}
@@ -273,9 +273,9 @@ export default function EntriesTab() {
             }
             rows={safeRows}
             getRowId={(r) =>
-              r.id ||
-              r.docId ||
-              `${r.driverEmail || "unk"}-${r.createdAt?.valueOf?.() || Math.random()}`
+            r.id ||
+            r.docId ||
+            `${r.driverEmail || "unk"}-${r.loggedAt?.valueOf?.() || Math.random()}`
             }
             columns={columns}
             disableRowSelectionOnClick

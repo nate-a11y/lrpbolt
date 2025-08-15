@@ -20,7 +20,7 @@ export default function useWeeklySummary({
     const unsub = subscribeTimeLogs((logs) => {
       const byDriver = new Map();
       logs.forEach((r) => {
-        if (!inWeek(r.startTime || r.createdAt, weekStart)) return;
+        if (!inWeek(r.startTime || r.loggedAt, weekStart)) return;
         if (driverFilter && r.driverEmail !== driverFilter) return;
         const key = r.driverEmail || "Unknown";
         const prev = byDriver.get(key) || { driver: key, trips: 0, hoursMs: 0 };
