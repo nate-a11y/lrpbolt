@@ -13,7 +13,15 @@ const deriveMode = (rideId, explicit) => {
 const deriveStatus = (endTime, explicit) => (explicit ? explicit : isNil(endTime) ? "Open" : "Closed");
 
 export const normalizeTimeLog = (docId, d = {}) => {
-  const driver     = firstKey(d, ["driverEmail", "driver", "userEmail", "user", "email", "driverName"]);
+  const driver     = firstKey(d, [
+    "driverDisplay",
+    "driverEmail",
+    "driver",
+    "userEmail",
+    "user",
+    "email",
+    "driverName",
+  ]);
   const rideId     = firstKey(d, ["rideId", "RideID", "tripId", "TripID"]);
   const startTime  = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
   const endTime    = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
@@ -40,7 +48,15 @@ export const normalizeTimeLog = (docId, d = {}) => {
 };
 
 export const normalizeShootout = (docId, d = {}) => {
-  const driver    = firstKey(d, ["driverEmail", "driver", "userEmail", "user", "email", "driverName"]);
+  const driver    = firstKey(d, [
+    "driverDisplay",
+    "driverEmail",
+    "driver",
+    "userEmail",
+    "user",
+    "email",
+    "driverName",
+  ]);
   const startTime = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
   const endTime   = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
   const createdAt = firstKey(d, ["createdAt", "loggedAt", "startTime"]);
