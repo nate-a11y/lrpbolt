@@ -191,11 +191,7 @@ export default function WeeklySummaryTab() {
           onProcessRowUpdateError={() => alert("Failed to update summary")}
           autoHeight
           rows={safeRows}
-          getRowId={(r) =>
-            r.id ||
-            r.docId ||
-            `${r.driverEmail || "unk"}-${r.createdAt?.valueOf?.() || Math.random()}`
-          }
+          getRowId={(r) => r.id || r.docId || r.driver || Math.random()}
           columns={columns}
           density="compact"
           disableRowSelectionOnClick

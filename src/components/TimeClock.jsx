@@ -53,12 +53,13 @@ async function logTimeCreate(payload) {
 
   return addDoc(collection(db, "timeLogs"), {
     userEmail,
+    driverEmail: userEmail,
     driverId: payload.driverId ?? null,
     startTime: payload.startTime instanceof Timestamp ? payload.startTime : serverTimestamp(),
     endTime: payload.endTime ?? null,
     rideId: payload.rideId ?? null,
     mode: payload.mode ?? "N/A",
-    createdAt: serverTimestamp(),
+    loggedAt: serverTimestamp(),
   });
 }
 
