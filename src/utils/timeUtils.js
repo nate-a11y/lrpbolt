@@ -32,12 +32,13 @@ export const normalizeTime = (timeStr) => {
 };
 
 export const formatDate = (val) => {
-  const parsed = dayjs(val, ["YYYY-MM-DD", dayjs.ISO_8601]).tz(TIMEZONE);
+  const parsed = dayjs.tz(val, ["YYYY-MM-DD", dayjs.ISO_8601], TIMEZONE);
   return parsed.isValid() ? parsed.format("MMM D, YYYY") : val;
 };
 
 export const formatTime = (val) => {
-  const parsed = dayjs(val, ["HH:mm", "h:mm A", dayjs.ISO_8601]).tz(TIMEZONE);
+  const input = val?.includes("T") ? val : `2000-01-01 ${val}`;
+  const parsed = dayjs.tz(input, [dayjs.ISO_8601, "YYYY-MM-DD HH:mm", "YYYY-MM-DD h:mm A", "h:mm A", "H:mm", "HH:mm"], TIMEZONE);
   return parsed.isValid() ? parsed.format("h:mm A") : val;
 };
 
@@ -91,8 +92,8 @@ export const parseDuration = (str) => {
 
 export const toTimeString12Hr = (t) => {
   if (!t) return "";
-  const parsed = dayjs(`2000-01-01 ${t}`, ["h:mm A", "H:mm", "HH:mm"]);
-  return parsed.isValid() ? parsed.tz(TIMEZONE).format("h:mm A") : t;
+  const parsed = dayjs.tz(`2000-01-01 ${t}`, ["h:mm A", "H:mm", "HH:mm"], TIMEZONE);
+  return parsed.isValid() ? parsed.format("h:mm A") : t;
 };
 
 // Persist sync timestamp in localStorage.
