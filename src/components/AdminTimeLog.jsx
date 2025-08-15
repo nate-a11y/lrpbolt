@@ -13,24 +13,24 @@ import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 
 import PageContainer from "./PageContainer.jsx";
 import dayjs from "../utils/dates";
-import {
-  fmtDate,
-  fmtTime,
-  humanDuration,
-  tsToDayjs,
-} from "../utils/dates";
+import { fmtDateTime, humanDuration, tsToDayjs } from "../utils/dates";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
   fetchWeeklySummary,
 } from "../hooks/api";
 
+// Defensive wrappers prevent "Cannot destructure ... of null"
+const safeVF = (fn) => (params) => { try { return fn(params || {}); } catch (e) { return "—"; } };
+const safeVG = (fn) => (params) => { try { return fn(params || {}); } catch (e) { return undefined; } };
+const safeSC = (fn) => (a, b) => { try { return fn(a, b); } catch (e) { return 0; } };
+
 export default function AdminTimeLog() {
   const [tab, setTab] = useState(0);
 
   // ---- Entries ----
   const [entryRows, setEntryRows] = useState([]);
-  const [entryLoading, setEntryLoading] = useState(true);
+  const [loadingEntries, setLoadingEntries] = useState(true);
   const [entryError, setEntryError] = useState("");
   const [entryDriver, setEntryDriver] = useState("");
   const [entryStartAfter, setEntryStartAfter] = useState(null);
@@ -41,68 +41,36 @@ export default function AdminTimeLog() {
     const unsub = subscribeTimeLogs(
       (rows) => {
         setEntryRows(Array.isArray(rows) ? rows : []);
-        setEntryLoading(false);
+        setLoadingEntries(false);
       },
       (e) => {
         console.error(e);
         setEntryError("Failed to load time logs.");
-        setEntryLoading(false);
+        setLoadingEntries(false);
       },
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
-  const entryColumns = useMemo(
-    () => [
-      {
-        field: "driver",
-        headerName: "Driver",
-        flex: 1,
-        valueGetter: ({ row }) => row?.driver || "—",
-      },
-      {
-        field: "rideId",
-        headerName: "Ride ID",
-        flex: 1,
-        valueGetter: ({ row }) => row?.rideId || "—",
-      },
-      {
-        field: "startTime",
-        headerName: "Start",
-        flex: 1.2,
-        sortComparator: (a, b) =>
-          (tsToDayjs(a)?.valueOf() || 0) - (tsToDayjs(b)?.valueOf() || 0),
-        valueFormatter: ({ value }) =>
-          `${fmtDate(value)} ${fmtTime(value)}`.replace(/^— —$/, "—"),
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        flex: 1.2,
-        sortComparator: (a, b) =>
-          (tsToDayjs(a)?.valueOf() || 0) - (tsToDayjs(b)?.valueOf() || 0),
-        valueFormatter: ({ value }) =>
-          value ? `${fmtDate(value)} ${fmtTime(value)}` : "—",
-      },
-      {
-        field: "durationMin",
-        headerName: "Duration",
-        width: 140,
-        type: "number",
-        valueGetter: ({ row }) => Number(row?.durationMin || 0),
-        valueFormatter: ({ value }) => humanDuration(value),
-      },
-      { field: "note", headerName: "Note", flex: 1, valueGetter: ({ row }) => row?.note || "" },
-      {
-        field: "createdAt",
-        headerName: "Logged",
-        width: 160,
-        valueFormatter: ({ value }) =>
-          `${fmtDate(value)} ${fmtTime(value)}`.replace(/^— —$/, "—"),
-      },
-    ],
-    [],
-  );
+  const entryColumns = [
+    { field: "driver", headerName: "Driver", flex: 1,
+      valueGetter: safeVG((p) => p.row?.driver ?? "—") },
+    { field: "rideId", headerName: "Ride ID", flex: 1,
+      valueGetter: safeVG((p) => p.row?.rideId ?? "—") },
+    { field: "startTime", headerName: "Start", flex: 1.2,
+      sortComparator: safeSC((a, b) => (tsToDayjs(a)?.valueOf() || 0) - (tsToDayjs(b)?.valueOf() || 0)),
+      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
+    { field: "endTime", headerName: "End", flex: 1.2,
+      sortComparator: safeSC((a, b) => (tsToDayjs(a)?.valueOf() || 0) - (tsToDayjs(b)?.valueOf() || 0)),
+      valueFormatter: safeVF((p) => p.value ? fmtDateTime(p.value) : "—") },
+    { field: "durationMin", headerName: "Duration", width: 140, type: "number",
+      valueGetter: safeVG((p) => Number(p.row?.durationMin ?? 0)),
+      valueFormatter: safeVF((p) => humanDuration(p.value)) },
+    { field: "note", headerName: "Note", flex: 1,
+      valueGetter: safeVG((p) => p.row?.note ?? "") },
+    { field: "createdAt", headerName: "Logged", width: 170,
+      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
+  ];
 
   const entryFiltered = useMemo(() => {
     return entryRows.filter((r) => {
@@ -126,8 +94,8 @@ export default function AdminTimeLog() {
   }, [entryRows, entryDriver, entryStartAfter, entryEndBefore, entrySearch]);
 
   // ---- Shootout Stats ----
-  const [shootRows, setShootRows] = useState([]);
-  const [shootLoading, setShootLoading] = useState(true);
+  const [shootoutRows, setShootoutRows] = useState([]);
+  const [loadingShootout, setLoadingShootout] = useState(true);
   const [shootError, setShootError] = useState("");
   const [shootDriver, setShootDriver] = useState("");
   const [shootStartAfter, setShootStartAfter] = useState(null);
@@ -137,68 +105,39 @@ export default function AdminTimeLog() {
   useEffect(() => {
     const unsub = subscribeShootoutStats(
       (rows) => {
-        setShootRows(Array.isArray(rows) ? rows : []);
-        setShootLoading(false);
+        setShootoutRows(Array.isArray(rows) ? rows : []);
+        setLoadingShootout(false);
       },
       (e) => {
         console.error(e);
         setShootError("Failed to load shootout stats.");
-        setShootLoading(false);
+        setLoadingShootout(false);
       },
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
-  const shootoutColumns = useMemo(
-    () => [
-      {
-        field: "driverEmail",
-        headerName: "Driver",
-        flex: 1,
-        valueGetter: ({ row }) => row?.driverEmail || "—",
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        flex: 1,
-        valueGetter: ({ row }) => row?.vehicle || "—",
-      },
-      { field: "trips", headerName: "Trips", width: 90, type: "number" },
-      { field: "passengers", headerName: "Pax", width: 90, type: "number" },
-      {
-        field: "durationMin",
-        headerName: "Duration",
-        width: 140,
-        valueFormatter: ({ value }) => humanDuration(value),
-      },
-      { field: "status", headerName: "Status", width: 110 },
-      {
-        field: "startTime",
-        headerName: "Start",
-        flex: 1.2,
-        valueFormatter: ({ value }) =>
-          `${fmtDate(value)} ${fmtTime(value)}`.replace(/^— —$/, "—"),
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        flex: 1.2,
-        valueFormatter: ({ value }) =>
-          value ? `${fmtDate(value)} ${fmtTime(value)}` : "—",
-      },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        width: 160,
-        valueFormatter: ({ value }) =>
-          `${fmtDate(value)} ${fmtTime(value)}`.replace(/^— —$/, "—"),
-      },
-    ],
-    [],
-  );
+  const shootoutColumns = [
+    { field: "driverEmail", headerName: "Driver", flex: 1,
+      valueGetter: safeVG((p) => p.row?.driverEmail ?? "—") },
+    { field: "vehicle", headerName: "Vehicle", flex: 1,
+      valueGetter: safeVG((p) => p.row?.vehicle ?? "—") },
+    { field: "trips", headerName: "Trips", width: 90, type: "number" },
+    { field: "passengers", headerName: "Pax", width: 90, type: "number" },
+    { field: "durationMin", headerName: "Duration", width: 140,
+      valueFormatter: safeVF((p) => humanDuration(p.value)) },
+    { field: "status", headerName: "Status", width: 110,
+      valueGetter: safeVG((p) => p.row?.status ?? "Open") },
+    { field: "startTime", headerName: "Start", flex: 1.2,
+      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
+    { field: "endTime", headerName: "End", flex: 1.2,
+      valueFormatter: safeVF((p) => p.value ? fmtDateTime(p.value) : "—") },
+    { field: "createdAt", headerName: "Created", width: 170,
+      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
+  ];
 
   const shootFiltered = useMemo(() => {
-    return shootRows.filter((r) => {
+    return shootoutRows.filter((r) => {
       if (
         shootDriver &&
         !r.driverEmail?.toLowerCase().includes(shootDriver.toLowerCase())
@@ -219,7 +158,7 @@ export default function AdminTimeLog() {
       }
       return true;
     });
-  }, [shootRows, shootDriver, shootStartAfter, shootEndBefore, shootSearch]);
+  }, [shootoutRows, shootDriver, shootStartAfter, shootEndBefore, shootSearch]);
 
   // ---- Weekly Summary ----
   const [weekStart, setWeekStart] = useState(dayjs().startOf("week"));
@@ -292,11 +231,11 @@ export default function AdminTimeLog() {
             />
           </Box>
           <DataGrid
-            rows={entryFiltered}
+            rows={Array.isArray(entryFiltered) ? entryFiltered : []}
             columns={entryColumns}
-            loading={entryLoading}
+            getRowId={(r) => r?.id ?? `${r?.driver ?? "row"}-${Math.random()}`}
+            loading={!!loadingEntries}
             disableRowSelectionOnClick
-            getRowId={(r) => r.id}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
@@ -369,11 +308,11 @@ export default function AdminTimeLog() {
             />
           </Box>
           <DataGrid
-            rows={shootFiltered}
+            rows={Array.isArray(shootFiltered) ? shootFiltered : []}
             columns={shootoutColumns}
-            loading={shootLoading}
+            getRowId={(r) => r?.id ?? `${r?.driverEmail ?? "row"}-${Math.random()}`}
+            loading={!!loadingShootout}
             disableRowSelectionOnClick
-            getRowId={(r) => r.id}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {

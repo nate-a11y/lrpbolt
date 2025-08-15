@@ -38,11 +38,10 @@ import { DataGrid } from "@mui/x-data-grid";
 import { LocalizationProvider, DatePicker, TimeField } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
-import dayjs from "dayjs";
-import customParseFormat from "dayjs/plugin/customParseFormat";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import dayjs from "../utils/dates"; // ← our extended dayjs
 import Papa from "papaparse";
+import { toISOorNull } from "../utils/dateSafe";
+import { isValidDayjs } from "../utils/dates";
 
 import LiveRidesGrid from "./LiveRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
@@ -72,9 +71,6 @@ import {
   doc,
 } from "firebase/firestore";
 
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 function coerceTimeToDayjs(timeInput, dateInput = dayjs(), tz = (dayjs.tz && dayjs.tz.guess && dayjs.tz.guess()) || undefined) {
   const datePart = dayjs.isDayjs(dateInput) ? dateInput : dayjs(dateInput);
@@ -92,7 +88,18 @@ function coerceTimeToDayjs(timeInput, dateInput = dayjs(), tz = (dayjs.tz && day
   return tz && merged.tz ? merged.tz(tz) : merged;
 }
 function mergeDateAndTime(dateInput, timeInput) {
-  return coerceTimeToDayjs(timeInput, dateInput);
+  const d = dayjs.isDayjs(dateInput) ? dateInput : dayjs(dateInput);
+  const t = dayjs.isDayjs(timeInput) ? timeInput : dayjs(timeInput);
+  if (!d?.isValid() || !t?.isValid()) return null;
+  return dayjs({
+    year: d.year(),
+    month: d.month(),
+    date: d.date(),
+    hour: t.hour(),
+    minute: t.minute(),
+    second: 0,
+    millisecond: 0,
+  });
 }
 function formatTimeDisplay(d) {
   if (!d) return "";
@@ -342,7 +349,7 @@ export default function RideEntryForm() {
     formData.Date ? dayjs(formData.Date) : dayjs()
   );
   const [pickupTime, setPickupTime] = useState(() =>
-    formData.PickupTime ? coerceTimeToDayjs(formData.PickupTime, formData.Date) : null
+    formData.PickupTime ? dayjs(formData.PickupTime) : null
   );
   const [durationHours, setDurationHours] = useState(
     formData.DurationHours === "" ? 0 : Number(formData.DurationHours)
@@ -386,8 +393,8 @@ export default function RideEntryForm() {
   const { driver } = useDriver();
   const isAdmin = (driver?.access || "").toLowerCase() === "admin";
 
-  if (import.meta && import.meta.env && import.meta.env.DEV) {
-    pickupTime && console.debug("[RideEntryForm] pickupTime:", pickupTime.format("YYYY-MM-DD HH:mm"));
+  if (import.meta.env.DEV) {
+    pickupTime && console.debug("[RideEntryForm] pickup", pickupTime.format("YYYY-MM-DD HH:mm"));
   }
 
   // Dropzone
@@ -484,8 +491,8 @@ if (totalMinutes <= 0) {
   useEffect(() => {
     const toStore = {
       ...formData,
-      Date: rideDate ? rideDate.toISOString() : "",
-      PickupTime: pickupTime ? pickupTime.toISOString() : "",
+      Date: toISOorNull(rideDate),
+      PickupTime: toISOorNull(pickupTime),
       DurationHours: durationHours === "" ? "" : durationHours,
       DurationMinutes: durationMinutes === "" ? "" : durationMinutes,
     };
@@ -647,13 +654,9 @@ if (totalMinutes <= 0) {
     }
   };
 
-  const handleSubmit = useCallback(async () => {
-    if (
-      !rideDate ||
-      !pickupTime ||
-      !rideDate.isValid?.() ||
-      !pickupTime.isValid?.()
-    ) {
+  const handleSubmit = useCallback(async (e) => {
+    e?.preventDefault?.();
+    if (!isValidDayjs(rideDate) || !isValidDayjs(pickupTime)) {
       setFormToast({
         open: true,
         message: "⚠️ Please correct required fields",
@@ -1309,16 +1312,16 @@ if (totalMinutes <= 0) {
           <DialogTitle>Confirm Ride</DialogTitle>
           <DialogContent dividers>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>Date:</strong> {rideDate?.format?.("MM/DD/YYYY") || ""}
+              <strong>Date:</strong> {rideDate?.format?.("MM/DD/YYYY") || "—"}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>Pickup Time:</strong> {formatTimeDisplay(pickupTime)}
+              <strong>Pickup Time:</strong> {isValidDayjs(pickupTime) ? pickupTime.format("h:mm A") : "—"}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>Duration Hours:</strong> {durationHours ?? 0}
+              <strong>Duration Hours:</strong> {Number(durationHours) || 0}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>Duration Minutes:</strong> {durationMinutes ?? 0}
+              <strong>Duration Minutes:</strong> {Number(durationMinutes) || 0}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
               <strong>Trip ID:</strong> {formData.TripID || ""}

@@ -17,7 +17,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { db } from "src/utils/firebaseInit";
+import { db } from "../utils/firebaseInit";
 
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
@@ -429,18 +429,17 @@ export function subscribeTimeLogs(onData, onError) {
       const rows = [];
       snap.forEach((doc) => {
         const d = doc.data() || {};
-        const start = d.startTime || null;
-        const end = d.endTime || null;
-        const durationMin =
-          typeof d.duration === "number" ? d.duration : minutesBetween(start, end);
+        const durationMin = typeof d.duration === "number"
+          ? d.duration
+          : minutesBetween(d.startTime, d.endTime);
 
         rows.push({
           id: doc.id,
           driver: d.driver || "",
           driverEmail: d.driverEmail || "",
           rideId: d.rideId || "",
-          startTime: start,
-          endTime: end,
+          startTime: d.startTime || null,
+          endTime: d.endTime || null,
           durationMin,
           note: d.note || "",
           createdAt: d.loggedAt || null,
@@ -452,44 +451,6 @@ export function subscribeTimeLogs(onData, onError) {
   );
 }
 
-// Weekly summary helper (grouped totals by driver within date range)
-export async function fetchWeeklySummary({ startTs, endTs }) {
-  const { getDocs } = await import("firebase/firestore");
-  const { query, collection, where, orderBy } = await import("firebase/firestore");
-  const q = query(
-    collection(db, "timeLogs"),
-    where("startTime", ">=", startTs),
-    where("startTime", "<", endTs),
-    orderBy("startTime", "asc")
-  );
-  const snap = await getDocs(q);
-  const byDriver = new Map();
-  snap.forEach((doc) => {
-    const d = doc.data() || {};
-    const driver = d.driver || d.driverEmail || "Unknown";
-    const mins =
-      typeof d.duration === "number"
-        ? d.duration
-        : minutesBetween(d.startTime, d.endTime);
-
-    const prev =
-      byDriver.get(driver) ||
-      { driver, sessions: 0, minutes: 0, trips: 0, passengers: 0 };
-    byDriver.set(driver, {
-      driver,
-      sessions: prev.sessions + 1,
-      minutes: prev.minutes + mins,
-      trips: prev.trips + Number(d.trips || 0),
-      passengers: prev.passengers + Number(d.passengers || 0),
-    });
-  });
-  return Array.from(byDriver.values()).map((r) => ({
-    ...r,
-    hours: +(r.minutes / 60).toFixed(2),
-  }));
-}
-
-// Realtime listener for shootout stats
 export function subscribeShootoutStats(onData, onError) {
   const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
   return onSnapshot(
@@ -515,6 +476,31 @@ export function subscribeShootoutStats(onData, onError) {
     },
     (e) => onError?.(e)
   );
+}
+
+export async function fetchWeeklySummary({ startTs, endTs }) {
+  const q = query(
+    collection(db, "timeLogs"),
+    where("startTime", ">=", startTs),
+    where("startTime", "<", endTs),
+    orderBy("startTime", "asc")
+  );
+  const snap = await getDocs(q);
+  const byDriver = new Map();
+  snap.forEach((doc) => {
+    const d = doc.data() || {};
+    const driver = d.driver || d.driverEmail || "Unknown";
+    const mins = typeof d.duration === "number" ? d.duration : minutesBetween(d.startTime, d.endTime);
+    const prev = byDriver.get(driver) || { driver, sessions: 0, minutes: 0, trips: 0, passengers: 0 };
+    byDriver.set(driver, {
+      driver,
+      sessions: prev.sessions + 1,
+      minutes: prev.minutes + mins,
+      trips: prev.trips + Number(d.trips || 0),
+      passengers: prev.passengers + Number(d.passengers || 0),
+    });
+  });
+  return Array.from(byDriver.values()).map((r) => ({ ...r, hours: +(r.minutes / 60).toFixed(2) }));
 }
 
 

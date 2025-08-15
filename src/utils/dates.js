@@ -1,40 +1,42 @@
+/* Proprietary and confidential. See LICENSE. */
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-
+dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// Default to Central Time
-try {
-  dayjs.tz.setDefault("America/Chicago");
-} catch (e) {
-  console.warn("Timezone setDefault failed", e);
-}
-
+// Accept Firestore Timestamp, JS Date, ISO/string, number → Dayjs or null
 export function tsToDayjs(ts) {
   if (!ts) return null;
   if (typeof ts.toDate === "function") return dayjs(ts.toDate());
   if (ts instanceof Date) return dayjs(ts);
-  return dayjs(ts);
+  return dayjs(ts); // ISO/string/number
 }
 
-export function fmtDate(dj, fmt = "MMM D, YYYY") {
-  const d = tsToDayjs(dj);
-  return d && d.isValid() ? d.format(fmt) : "—";
+export function isValidDayjs(d) {
+  return !!d && dayjs.isDayjs(d) && d.isValid();
 }
 
-export function fmtTime(dj, fmt = "h:mm A") {
-  const d = tsToDayjs(dj);
-  return d && d.isValid() ? d.format(fmt) : "—";
+export function fmtDate(d, fmt = "MMM D, YYYY") {
+  const dj = tsToDayjs(d);
+  return dj && dj.isValid() ? dj.format(fmt) : "—";
+}
+export function fmtTime(d, fmt = "h:mm A") {
+  const dj = tsToDayjs(d);
+  return dj && dj.isValid() ? dj.format(fmt) : "—";
+}
+export function fmtDateTime(d) {
+  const dj = tsToDayjs(d);
+  return dj && dj.isValid() ? `${dj.format("MMM D, YYYY")} ${dj.format("h:mm A")}` : "—";
 }
 
 export function minutesBetween(startTs, endTs) {
   const s = tsToDayjs(startTs);
-  const e = tsToDayjs(endTs);
+  const e = tsToDayjs(endTs) || dayjs();
   if (!s || !s.isValid()) return 0;
-  const end = e && e.isValid() ? e : dayjs();
-  const mins = Math.max(0, end.diff(s, "minute"));
+  const mins = Math.max(0, e.diff(s, "minute"));
   return Number.isFinite(mins) ? mins : 0;
 }
 
