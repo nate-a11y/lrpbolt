@@ -35,12 +35,12 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { DataGrid } from "@mui/x-data-grid";
-import { LocalizationProvider, DatePicker, TimeField } from "@mui/x-date-pickers";
+import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
 import dayjs from "../utils/dates"; // ← our extended dayjs
 import Papa from "papaparse";
-import { toISOorNull } from "../utils/dateSafe";
+import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe"; // eslint-disable-line no-unused-vars
 import { isValidDayjs } from "../utils/dates";
 
 import LiveRidesGrid from "./LiveRidesGrid";
@@ -72,40 +72,6 @@ import {
 } from "firebase/firestore";
 
 
-function coerceTimeToDayjs(timeInput, dateInput = dayjs(), tz = (dayjs.tz && dayjs.tz.guess && dayjs.tz.guess()) || undefined) {
-  const datePart = dayjs.isDayjs(dateInput) ? dateInput : dayjs(dateInput);
-  const parsed = dayjs(timeInput, ["HH:mm", "H:mm", "h:mm A", "hh:mm A"], true);
-  const base = parsed.isValid() ? parsed : dayjs("00:00", "HH:mm", true);
-  const merged = dayjs({
-    year: datePart.year(),
-    month: datePart.month(),
-    date: datePart.date(),
-    hour: base.hour(),
-    minute: base.minute(),
-    second: 0,
-    millisecond: 0,
-  });
-  return tz && merged.tz ? merged.tz(tz) : merged;
-}
-function mergeDateAndTime(dateInput, timeInput) {
-  const d = dayjs.isDayjs(dateInput) ? dateInput : dayjs(dateInput);
-  const t = dayjs.isDayjs(timeInput) ? timeInput : dayjs(timeInput);
-  if (!d?.isValid() || !t?.isValid()) return null;
-  return dayjs({
-    year: d.year(),
-    month: d.month(),
-    date: d.date(),
-    hour: t.hour(),
-    minute: t.minute(),
-    second: 0,
-    millisecond: 0,
-  });
-}
-function formatTimeDisplay(d) {
-  if (!d) return "";
-  const dj = dayjs.isDayjs(d) ? d : dayjs(d);
-  return dj.isValid() ? dj.format("h:mm A") : "";
-}
 
 // --- Shared field props ---
 const FIELD_PROPS = {
@@ -118,6 +84,7 @@ const defaultValues = {
   TripID: "",
   Date: "",
   PickupTime: "",
+  PickupAt: "",
   DurationHours: "",
   DurationMinutes: "",
   RideType: "",
@@ -215,48 +182,32 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 2: Date, Time, Duration (H/M short & same width) */}
-      <Grid item xs={12} sm={4} md={3}>
-        <DatePicker
-          label="Date"
-          value={value.date}
+      {/* Row 2: Pickup At, Duration (H/M short & same width) */}
+      <Grid item xs={12} sm={6} md={4}>
+        <DateTimePicker
+          label="Pickup At"
+          value={value.pickupAt}
           onChange={(val) => {
-            if (val) {
-              if (value.pickupTime) {
-                const carried = dayjs({
-                  year: val.year(),
-                  month: val.month(),
-                  date: val.date(),
-                  hour: value.pickupTime.hour(),
-                  minute: value.pickupTime.minute(),
-                  second: 0,
-                  millisecond: 0,
-                });
-                onChange({ ...value, date: val, pickupTime: carried });
-              } else {
-                onChange({ ...value, date: val });
-              }
-            } else {
-              onChange({ ...value, date: null });
-            }
-          }}
-          slotProps={{ textField: { ...FIELD_PROPS, onBlur: mark("date"), error: touched.date && !value.date, helperText: touched.date && !value.date ? "Required" : " " } }}
-        />
-      </Grid>
-
-      <Grid item xs={12} sm={4} md={3}>
-        <TimeField
-          label="Pickup Time"
-          format="HH:mm"
-          value={value.pickupTime}
-          onChange={(val) => {
-            if (!val || !value.date) {
-              onChange({ ...value, pickupTime: val });
+            if (!val || !val.isValid()) {
+              onChange({ ...value, pickupAt: null });
               return;
             }
-            onChange({ ...value, pickupTime: mergeDateAndTime(value.date, val) });
+            onChange({ ...value, pickupAt: val.second(0).millisecond(0) });
           }}
-          slotProps={{ textField: { ...FIELD_PROPS, onBlur: mark("pickupTime"), error: touched.pickupTime && !value.pickupTime, helperText: touched.pickupTime && !value.pickupTime ? "Required" : " " } }}
+          ampm={true}
+          minutesStep={5}
+          slotProps={{
+            textField: {
+              ...FIELD_PROPS,
+              onBlur: (e) => {
+                mark("pickupAt")();
+                if (value.pickupAt && !value.pickupAt.isValid()) onChange({ ...value, pickupAt: null });
+              },
+              error: touched.pickupAt && !value.pickupAt,
+              helperText: touched.pickupAt && !value.pickupAt ? "Required" : " ",
+              placeholder: "MM/DD/YYYY hh:mm A",
+            },
+          }}
         />
       </Grid>
 
@@ -345,11 +296,8 @@ export default function RideEntryForm() {
       return defaultValues;
     }
   });
-  const [rideDate, setRideDate] = useState(() =>
-    formData.Date ? dayjs(formData.Date) : dayjs()
-  );
-  const [pickupTime, setPickupTime] = useState(() =>
-    formData.PickupTime ? dayjs(formData.PickupTime) : null
+  const [pickupAt, setPickupAt] = useState(() =>
+    formData.PickupAt ? dayjs(formData.PickupAt) : dayjs()
   );
   const [durationHours, setDurationHours] = useState(
     formData.DurationHours === "" ? 0 : Number(formData.DurationHours)
@@ -394,7 +342,7 @@ export default function RideEntryForm() {
   const isAdmin = (driver?.access || "").toLowerCase() === "admin";
 
   if (import.meta.env.DEV) {
-    pickupTime && console.debug("[RideEntryForm] pickup", pickupTime.format("YYYY-MM-DD HH:mm"));
+    pickupAt && console.debug("[RideEntryForm] pickup", pickupAt.format("YYYY-MM-DD HH:mm"));
   }
 
   // Dropzone
@@ -491,13 +439,12 @@ if (totalMinutes <= 0) {
   useEffect(() => {
     const toStore = {
       ...formData,
-      Date: toISOorNull(rideDate),
-      PickupTime: toISOorNull(pickupTime),
+      PickupAt: toISOorNull(pickupAt),
       DurationHours: durationHours === "" ? "" : durationHours,
       DurationMinutes: durationMinutes === "" ? "" : durationMinutes,
     };
     localStorage.setItem("rideForm", JSON.stringify(toStore));
-  }, [formData, rideDate, pickupTime, durationHours, durationMinutes]);
+  }, [formData, pickupAt, durationHours, durationMinutes]);
 
   useEffect(() => {
     localStorage.setItem("rideTab", rideTab.toString());
@@ -656,7 +603,8 @@ if (totalMinutes <= 0) {
 
   const handleSubmit = useCallback(async (e) => {
     e?.preventDefault?.();
-    if (!isValidDayjs(rideDate) || !isValidDayjs(pickupTime)) {
+
+    if (!isValidDayjs(pickupAt)) {
       setFormToast({
         open: true,
         message: "⚠️ Please correct required fields",
@@ -664,32 +612,54 @@ if (totalMinutes <= 0) {
       });
       return;
     }
+
     setSaving(true);
     try {
+      const minutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
+
+      // (A) Store ISO strings:
+      // const payload = {
+      //   tripId: formData.TripID,
+      //   pickupAtISO: toISOorNull(pickupAt),
+      //   durationMinutes: minutes,
+      //   rideType: formData.RideType,
+      //   vehicle: formData.Vehicle,
+      //   rideNotes: formData.RideNotes || null,
+      //   claimedBy: null,
+      //   claimedAt: null,
+      //   createdBy: currentUser,
+      //   lastModifiedBy: currentUser,
+      //   createdAt: serverTimestamp(),
+      //   updatedAt: serverTimestamp(),
+      // };
+
+      // (B) Or store Firestore Timestamp directly:
       const payload = {
-        TripID: formData.TripID,
-        Date: rideDate.format("YYYY-MM-DD"),
-        PickupTime: pickupTime.format("HH:mm"),
-        DurationHours: String(durationHours),
-        DurationMinutes: String(durationMinutes),
-        RideType: formData.RideType,
-        Vehicle: formData.Vehicle,
-        RideNotes: formData.RideNotes,
+        tripId: formData.TripID,
+        pickupTime: toTimestampOrNull(pickupAt),
+        rideDuration: minutes,
+        rideType: formData.RideType,
+        vehicle: formData.Vehicle,
+        rideNotes: formData.RideNotes || null,
+        claimedBy: null,
+        claimedAt: null,
+        createdBy: currentUser,
+        lastModifiedBy: currentUser,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
-      const rideData = toRideDoc(payload);
-      if (!rideData) throw new Error("Invalid form data");
-      if (await tripExistsAnywhere(rideData.tripId)) {
-        throw new Error(`TripID ${rideData.tripId} already exists (Queue/Live).`);
+
+      if (await tripExistsAnywhere(payload.tripId)) {
+        throw new Error(`TripID ${payload.tripId} already exists (Queue/Live).`);
       }
-      await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), rideData);
+      await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), payload);
       setFormToast({
         open: true,
         message: `✅ Ride ${formData.TripID} submitted successfully`,
         severity: "success",
       });
       setFormData(defaultValues);
-      setRideDate(dayjs());
-      setPickupTime(null);
+      setPickupAt(dayjs());
       setDurationHours(0);
       setDurationMinutes(0);
       setConfirmOpen(false);
@@ -704,7 +674,7 @@ if (totalMinutes <= 0) {
     } finally {
       setSaving(false);
     }
-  }, [rideDate, pickupTime, durationHours, durationMinutes, formData, toRideDoc, tripExistsAnywhere, fetchRides]);
+  }, [pickupAt, durationHours, durationMinutes, formData, currentUser, tripExistsAnywhere, fetchRides]);
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
@@ -829,22 +799,21 @@ if (totalMinutes <= 0) {
   const singleRide = useMemo(
     () => ({
       tripId: formData.TripID,
-      date: rideDate,
-      pickupTime,
+      pickupAt,
       hours: durationHours,
       minutes: durationMinutes,
       rideType: formData.RideType,
       vehicle: formData.Vehicle,
       notes: formData.RideNotes,
     }),
-    [formData, rideDate, pickupTime, durationHours, durationMinutes]
+    [formData, pickupAt, durationHours, durationMinutes]
   );
 
-  const endTime = useMemo(() => {
-    if (!pickupTime) return null;
+  const endAt = useMemo(() => {
+    if (!isValidDayjs(pickupAt)) return null;
     const minutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
-    return pickupTime.add(minutes, "minute");
-  }, [pickupTime, durationHours, durationMinutes]);
+    return pickupAt.add(minutes, "minute");
+  }, [pickupAt, durationHours, durationMinutes]);
 
   const isSingleValid = useMemo(() => {
     const h = Number(durationHours || 0);
@@ -853,17 +822,12 @@ if (totalMinutes <= 0) {
     const tripOK = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(formData.TripID || "");
     return !!(
       tripOK &&
-      rideDate &&
-      rideDate.isValid &&
-      rideDate.isValid() &&
-      pickupTime &&
-      pickupTime.isValid &&
-      pickupTime.isValid() &&
+      isValidDayjs(pickupAt) &&
       formData.RideType &&
       formData.Vehicle &&
       durOK
     );
-  }, [formData, rideDate, pickupTime, durationHours, durationMinutes]);
+  }, [formData, pickupAt, durationHours, durationMinutes]);
 
   const setSingleRide = (val) => {
     setFormData((prev) => ({
@@ -872,17 +836,16 @@ if (totalMinutes <= 0) {
       RideType: val.rideType,
       Vehicle: val.vehicle,
       RideNotes: val.notes,
+      PickupAt: toISOorNull(val.pickupAt),
     }));
-    if ("date" in val) setRideDate(val.date);
-    if ("pickupTime" in val) setPickupTime(val.pickupTime);
+    if ("pickupAt" in val) setPickupAt(val.pickupAt);
     if ("hours" in val) setDurationHours(val.hours);
     if ("minutes" in val) setDurationMinutes(val.minutes);
   };
 
   const onResetSingle = () => {
     setFormData(defaultValues);
-    setRideDate(dayjs());
-    setPickupTime(null);
+    setPickupAt(dayjs());
     setDurationHours(0);
     setDurationMinutes(0);
   };
@@ -892,10 +855,10 @@ if (totalMinutes <= 0) {
   const builder = useMemo(
     () => ({
       tripId: csvBuilder.TripID,
-      date: csvBuilder.Date ? dayjs(csvBuilder.Date) : null,
-      pickupTime: csvBuilder.PickupTime
-        ? coerceTimeToDayjs(csvBuilder.PickupTime, csvBuilder.Date)
-        : null,
+      pickupAt:
+        csvBuilder.Date && csvBuilder.PickupTime
+          ? dayjs(`${csvBuilder.Date} ${csvBuilder.PickupTime}`)
+          : null,
       hours: csvBuilder.DurationHours === "" ? "" : Number(csvBuilder.DurationHours),
       minutes:
         csvBuilder.DurationMinutes === "" ? "" : Number(csvBuilder.DurationMinutes),
@@ -911,8 +874,8 @@ if (totalMinutes <= 0) {
       const next = {
         ...prev,
         TripID: val.tripId,
-        Date: val.date ? val.date.format("YYYY-MM-DD") : "",
-        PickupTime: val.pickupTime ? val.pickupTime.format("HH:mm") : "",
+        Date: val.pickupAt ? val.pickupAt.format("YYYY-MM-DD") : "",
+        PickupTime: val.pickupAt ? val.pickupAt.format("HH:mm") : "",
         DurationHours: val.hours === "" ? "" : String(val.hours),
         DurationMinutes: val.minutes === "" ? "" : String(val.minutes),
         RideType: val.rideType,
@@ -1312,10 +1275,7 @@ if (totalMinutes <= 0) {
           <DialogTitle>Confirm Ride</DialogTitle>
           <DialogContent dividers>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>Date:</strong> {rideDate?.format?.("MM/DD/YYYY") || "—"}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Pickup Time:</strong> {isValidDayjs(pickupTime) ? pickupTime.format("h:mm A") : "—"}
+              <strong>Pickup Time:</strong> {isValidDayjs(pickupAt) ? pickupAt.format("MM/DD/YYYY h:mm A") : "—"}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
               <strong>Duration Hours:</strong> {Number(durationHours) || 0}
@@ -1335,21 +1295,19 @@ if (totalMinutes <= 0) {
             <Typography sx={{ mb: 0.5 }}>
               <strong>Ride Notes:</strong> {formData.RideNotes || ""}
             </Typography>
-            {endTime && (
-              <Typography sx={{ mb: 0.5 }}>
-                <strong>End Time:</strong> {formatTimeDisplay(endTime)}
-              </Typography>
-            )}
+            <Typography sx={{ mb: 0.5 }}>
+              <strong>End Time:</strong> {endAt?.format?.("MM/DD/YYYY h:mm A") ?? "—"}
+            </Typography>
             <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
               <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
               <Button
                 variant="contained"
                 color="success"
                 onClick={handleSubmit}
-                disabled={saving}
+                disabled={saving || !isValidDayjs(pickupAt)}
                 startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined}
               >
-                Confirm & Submit
+                {saving ? "Saving…" : "Confirm & Submit"}
               </Button>
             </Box>
           </DialogContent>
