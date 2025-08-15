@@ -8,6 +8,7 @@ try { admin.initializeApp(); } catch { /* hot-reload safe */ }
 const db = admin.firestore();
 
 const { dropDailyFromQueue } = require("./src/jobs/dropDailyFromQueue");
+exports.smsOnCreate = require("./smsOnCreate").smsOnCreate;
 
 async function requireAdmin(emailLower) {
   const snap = await db.doc(`userAccess/${emailLower}`).get();
