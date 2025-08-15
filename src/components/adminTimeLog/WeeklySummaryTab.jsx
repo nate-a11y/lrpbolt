@@ -16,17 +16,22 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { fetchWeeklySummary } from "../../hooks/firestore";
+import useWeeklySummary from "../../hooks/useWeeklySummary";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function WeeklySummaryTab() {
-  const [summary, setSummary] = useState(null);
   const [err, setErr] = useState(null);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
   const apiRef = useGridApiRef();
   const [driverFilter, setDriverFilter] = useState("");
   const [search, setSearch] = useState("");
   const [editRow, setEditRow] = useState(null);
+
+  const summaryRows = useWeeklySummary({ driverFilter });
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    setRows(summaryRows);
+  }, [summaryRows]);
 
   const handleEdit = useCallback(
     (row) => {
@@ -39,55 +44,24 @@ export default function WeeklySummaryTab() {
     [isSmall, apiRef],
   );
 
-  const processRowUpdate = useCallback(
-    (newRow) => {
-      setSummary((prev) =>
-        prev.map((s) =>
-          s.driver === newRow.driver
-            ? { ...s, entries: newRow.trips, totalMinutes: newRow.hours * 60 }
-            : s,
-        ),
-      );
-      return newRow;
-    },
-    [],
-  );
+  const processRowUpdate = useCallback((newRow) => {
+    setRows((prev) => prev.map((r) => (r.id === newRow.id ? newRow : r)));
+    return newRow;
+  }, []);
 
   const handleEditSave = useCallback(() => {
-    setSummary((prev) =>
-      prev.map((s) =>
-        s.driver === editRow.driver
-          ? { ...s, entries: editRow.trips, totalMinutes: editRow.hours * 60 }
-          : s,
-      ),
-    );
+    setRows((prev) => prev.map((r) => (r.id === editRow.id ? editRow : r)));
     setEditRow(null);
   }, [editRow]);
 
   const handleDelete = useCallback((row) => {
     if (!window.confirm("Remove this driver?")) return;
-    setSummary((prev) => prev.filter((s) => s.driver !== row.driver));
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
   }, []);
 
   useEffect(() => {
-    let alive = true;
-    fetchWeeklySummary()
-      .then((data) => alive && setSummary(data))
-      .catch((e) => setErr(e?.message || "Failed to load summary"));
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const rows = useMemo(() => {
-    if (!summary) return [];
-    return summary.map((item, i) => ({
-      id: item.driver || i,
-      driver: item.driver || "Unknown",
-      trips: item.entries ?? 0,
-      hours: (item.totalMinutes ?? 0) / 60,
-    }));
-  }, [summary]);
+    if (rows) setErr(null);
+  }, [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -108,17 +82,13 @@ export default function WeeklySummaryTab() {
   const columns = useMemo(
     () => [
       { field: "driver", headerName: "Driver", flex: 1, minWidth: 200 },
-      { field: "trips", headerName: "Trips", width: 110, type: "number", editable: true },
+      { field: "trips", headerName: "Trips", width: 90, valueGetter: (p) => p.row.trips ?? 0 },
       {
         field: "hours",
         headerName: "Hours",
-        width: 120,
-        type: "number",
-        editable: true,
-        valueFormatter: (params = {}) => {
-          const v = params?.value;
-          return (typeof v === "number" ? v : 0).toFixed(2);
-        },
+        width: 110,
+        valueGetter: (p) => p.row.hours ?? 0,
+        valueFormatter: (p) => (Number.isFinite(p.value) ? p.value.toFixed(2) : "0.00"),
       },
       {
         field: "tools",
@@ -142,7 +112,7 @@ export default function WeeklySummaryTab() {
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
 
-  if (!summary) {
+  if (!rows.length) {
     return (
       <Box sx={{ p: 3, display: "flex", alignItems: "center", gap: 1 }}>
         <CircularProgress size={22} />

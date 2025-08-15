@@ -20,7 +20,7 @@ import { DatePicker } from "@mui/x-date-pickers";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-import { tsToDate, fmtDateTime } from "../../utils/timeUtilsSafe";
+import { fmtDateTime, fmtDuration } from "../../utils/ts";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function ShootoutStatsTab() {
@@ -80,58 +80,44 @@ export default function ShootoutStatsTab() {
     return () => typeof unsub === "function" && unsub();
   }, []);
 
-  const rows = useMemo(
-    () =>
-      (stats || []).map((r, i) => ({
-        id: r.id || i,
-        driver: r.driverDisplay || "",
-        trips: Number(r.trips ?? 0),
-        passengers: Number(r.passengers ?? 0),
-        durationMin: Number(r.durationMin ?? 0),
-        status: r.status || "",
-        startTime: tsToDate(r.startTime),
-        endTime: tsToDate(r.endTime),
-        createdAt: tsToDate(r.createdAt),
-      })),
-    [stats]
-  );
+  const rows = useMemo(() => stats || [], [stats]);
 
   const columns = useMemo(
     () => [
-      { field: "driver", headerName: "Driver", flex: 1 },
-      { field: "trips", headerName: "Trips", width: 90, type: "number" },
-      { field: "passengers", headerName: "Pax", width: 90, type: "number" },
+      { field: "driverEmail", headerName: "Driver", flex: 1, minWidth: 180 },
+      { field: "trips", headerName: "Trips", width: 90, valueGetter: (p) => p.row.trips ?? 0 },
+      { field: "pax", headerName: "Pax", width: 90, valueGetter: (p) => p.row.pax ?? 0 },
       {
-        field: "durationMin",
+        field: "durationMs",
         headerName: "Duration",
-        width: 110,
-        type: "number",
-        valueFormatter: (p = {}) => `${p.value || 0} min`,
+        width: 120,
+        valueGetter: (p) => p.row.durationMs ?? 0,
+        valueFormatter: (p) => fmtDuration(p.value),
       },
-      { field: "status", headerName: "Status", width: 110, editable: true },
+      { field: "status", headerName: "Status", width: 110, valueGetter: (p) => p.row.status || "—", editable: true },
       {
         field: "startTime",
         headerName: "Start",
         flex: 1,
-        minWidth: 170,
-        valueGetter: (params = {}) => params?.row?.startTime ?? null,
-        valueFormatter: (params = {}) => fmtDateTime(params?.value),
+        minWidth: 160,
+        valueGetter: (p) => p.row.startTime ?? null,
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
-        minWidth: 170,
-        valueGetter: (params = {}) => params?.row?.endTime ?? null,
-        valueFormatter: (params = {}) => fmtDateTime(params?.value),
+        minWidth: 160,
+        valueGetter: (p) => p.row.endTime ?? null,
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       {
         field: "createdAt",
         headerName: "Created",
         flex: 1,
-        minWidth: 170,
-        valueGetter: (params = {}) => params?.row?.createdAt ?? null,
-        valueFormatter: (params = {}) => fmtDateTime(params?.value),
+        minWidth: 160,
+        valueGetter: (p) => p.row.createdAt ?? null,
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       {
         field: "tools",
@@ -156,7 +142,7 @@ export default function ShootoutStatsTab() {
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       const driverMatch = driverFilter
-        ? r.driver?.toLowerCase().includes(driverFilter.toLowerCase())
+        ? r.driverEmail?.toLowerCase().includes(driverFilter.toLowerCase())
         : true;
       const startMatch = startFilter
         ? r.startTime?.getTime() >= startFilter.toDate().getTime()
@@ -166,11 +152,11 @@ export default function ShootoutStatsTab() {
         : true;
       const searchMatch = search
         ? [
-            r.driver,
+            r.driverEmail,
             r.status,
             r.trips,
-            r.passengers,
-            r.durationMin,
+            r.pax,
+            fmtDuration(r.durationMs),
             fmtDateTime(r.startTime),
             fmtDateTime(r.endTime),
             fmtDateTime(r.createdAt),
@@ -221,11 +207,11 @@ export default function ShootoutStatsTab() {
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">{r.driver}</Typography>
+                  <Typography variant="subtitle2">{r.driverEmail}</Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
-                  <Typography variant="body2">Passengers: {r.passengers}</Typography>
+                  <Typography variant="body2">Pax: {r.pax}</Typography>
                   <Typography variant="body2">
-                    Duration: {r.durationMin} min
+                    Duration: {fmtDuration(r.durationMs)}
                   </Typography>
                   <Typography variant="body2">Status: {r.status}</Typography>
                   <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
