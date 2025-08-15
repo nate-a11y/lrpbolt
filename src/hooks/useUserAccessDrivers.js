@@ -27,20 +27,22 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const data = snap.docs.map((d) => {
-          const x = d.data() ?? {};
-          const email = (x.email || d.id || "").trim();
-          const name =
-            (x.name || "").toString().trim() ||
-            (email.includes("@") ? email.split("@")[0] : email) ||
-            "Unknown";
-          return {
-            id: email, // use email as stable id
-            email,
-            name,
-            access: (x.access || "").toString().toLowerCase(),
-          };
-        });
+        const data = snap.docs
+          .map((d) => {
+            const x = d.data() ?? {};
+            const email = (x.email || d.id || "").trim();
+            const name =
+              (x.name || "").toString().trim() ||
+              (email.includes("@") ? email.split("@")[0] : email) ||
+              "Unknown";
+            return {
+              id: email, // use email as stable id
+              email,
+              name,
+              access: (x.access || "").toString().toLowerCase(),
+            };
+          })
+          .filter(Boolean);
         setRows(data);
         setLoading(false);
       },

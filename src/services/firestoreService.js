@@ -81,7 +81,7 @@ export async function getRides(collectionName) {
   try {
     const q = query(collection(db, collectionName), orderBy("pickupTime", "asc"));
     const snap = await getDocs(q);
-    return snap.docs.map(mapDoc);
+    return snap.docs.map(mapDoc).filter(Boolean);
   } catch (err) {
     logError(err, `getRides:${collectionName}`);
     return [];
@@ -93,7 +93,7 @@ export function subscribeRides(collectionName, callback, onError) {
     const q = query(collection(db, collectionName), orderBy("pickupTime", "asc"));
     return onSnapshot(
       q,
-      (snap) => callback(snap.docs.map(mapDoc)),
+      (snap) => callback(snap.docs.map(mapDoc).filter(Boolean)),
       (err) => {
         logError(err, `subscribeRides:${collectionName}`);
         onError?.(err);

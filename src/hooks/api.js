@@ -104,20 +104,22 @@ export function subscribeUserAccess(
   return onSnapshot(
     q,
     (snap) => {
-      const rows = snap.docs.map((d) => {
-        const x = d.data() ?? {};
-        const email = (x.email || d.id || "").trim();
-        const name =
-          (x.name || "").toString().trim() ||
-          (email.includes("@") ? email.split("@")[0] : email) ||
-          "Unknown";
-        return {
-          id: email,
-          email,
-          name,
-          access: (x.access || "").toString().toLowerCase(),
+      const rows = snap.docs
+        .map((d) => {
+          const x = d.data() ?? {};
+          const email = (x.email || d.id || "").trim();
+          const name =
+            (x.name || "").toString().trim() ||
+            (email.includes("@") ? email.split("@")[0] : email) ||
+            "Unknown";
+          return {
+            id: email,
+            email,
+            name,
+            access: (x.access || "").toString().toLowerCase(),
         };
-      });
+        })
+        .filter(Boolean);
       cb(rows);
     },
     (err) => {
@@ -146,7 +148,11 @@ export function subscribeRideQueue(callback, fromTime, onError) {
     key,
     q,
     (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      callback(
+        snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter(Boolean),
+      );
     },
     onError,
   );
@@ -674,15 +680,17 @@ export async function fetchShootoutHistory(status, max = 100) {
   constraints.push(orderBy("startTime", "desc"), limit(max));
   const q = query(collection(db, "shootoutStats"), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
-    const data = d.data() || {};
-    return {
-      id: d.id,
-      ...data,
-      startTime: tsToDate(data.startTime),
-      endTime: tsToDate(data.endTime),
-    };
-  });
+  return snap.docs
+    .map((d) => {
+      const data = d.data() || {};
+      return {
+        id: d.id,
+        ...data,
+        startTime: tsToDate(data.startTime),
+        endTime: tsToDate(data.endTime),
+      };
+    })
+    .filter(Boolean);
 }
 
 export function subscribeShootoutHistoryAll(
@@ -698,15 +706,17 @@ export function subscribeShootoutHistoryAll(
   const unsub = onSnapshot(
     q,
     (snap) => {
-      const rows = snap.docs.map((d) => {
-        const data = d.data() || {};
-        return {
-          id: d.id,
-          ...data,
-          startTime: tsToDate(data.startTime),
-          endTime: tsToDate(data.endTime),
-        };
-      });
+      const rows = snap.docs
+        .map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            ...data,
+            startTime: tsToDate(data.startTime),
+            endTime: tsToDate(data.endTime),
+          };
+        })
+        .filter(Boolean);
       callback(rows);
     },
     (e) => {

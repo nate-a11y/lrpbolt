@@ -49,7 +49,7 @@ export function subscribeShootoutStats({ driverEmail, onData, onError }) {
     return onSnapshot(
       q,
       (snap) => {
-        const rows = snap.docs.map(normalizeShootout);
+        const rows = snap.docs.map(normalizeShootout).filter(Boolean);
         onData(rows);
       },
       (err) => {
