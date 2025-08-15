@@ -21,6 +21,7 @@ import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { fmtDateTime, fmtDuration } from "../../utils/ts";
+import { row as r } from "../../utils/gridSafe";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function EntriesTab() {
@@ -95,44 +96,47 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => p.row.driverEmail || "",
+        valueGetter: (p) => r(p)?.driverEmail ?? "—",
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         width: 120,
-        valueGetter: (p) => p.row.rideId || "—",
+        valueGetter: (p) => r(p)?.rideId ?? "—",
       },
       {
         field: "startTime",
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => p.row.startTime ?? null,
-        valueFormatter: (p) => fmtDateTime(p.value),
+        valueGetter: (p) => r(p)?.startTime ?? null,
+        valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => p.row.endTime ?? null,
-        valueFormatter: (p) => fmtDateTime(p.value),
+        valueGetter: (p) => r(p)?.endTime ?? null,
+        valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
         field: "durationMs",
         headerName: "Duration",
         width: 120,
-        valueGetter: (p) => p.row.durationMs ?? 0,
-        valueFormatter: (p) => fmtDuration(p.value),
+        valueGetter: (p) => {
+          const ms = r(p)?.durationMs;
+          return Number.isFinite(ms) ? ms : 0;
+        },
+        valueFormatter: (p) => fmtDuration(p?.value || 0),
       },
       {
         field: "loggedAt",
         headerName: "Logged",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => p.row.createdAt ?? null,
-        valueFormatter: (p) => fmtDateTime(p.value),
+        valueGetter: (p) => r(p)?.createdAt ?? null,
+        valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
         field: "tools",
@@ -184,6 +188,11 @@ export default function EntriesTab() {
     });
   }, [rows, driverFilter, startFilter, endFilter, search]);
 
+  const safeRows = useMemo(
+    () => (filteredRows || []).filter(Boolean),
+    [filteredRows],
+  );
+
   if (loading) {
     return (
       <Box p={2}>
@@ -231,7 +240,7 @@ export default function EntriesTab() {
       </Box>
       {isSmall ? (
         <Stack spacing={2}>
-          {(filteredRows ?? []).map((r) => (
+          {safeRows.map((r) => (
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
@@ -262,8 +271,12 @@ export default function EntriesTab() {
             onProcessRowUpdateError={() =>
               alert("Failed to update time log")
             }
-            rows={filteredRows ?? []}
-            getRowId={(r) => r?.id ?? String(Math.random())}
+            rows={safeRows}
+            getRowId={(r) =>
+              r.id ||
+              r.docId ||
+              `${r.driverEmail || "unk"}-${r.createdAt?.valueOf?.() || Math.random()}`
+            }
             columns={columns}
             disableRowSelectionOnClick
             initialState={{

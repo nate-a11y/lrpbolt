@@ -17,6 +17,7 @@ import {
   Button,
 } from "@mui/material";
 import useWeeklySummary from "../../hooks/useWeeklySummary";
+import { row as r } from "../../utils/gridSafe";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function WeeklySummaryTab() {
@@ -79,16 +80,39 @@ export default function WeeklySummaryTab() {
     });
   }, [rows, driverFilter, search]);
 
+  const safeRows = useMemo(
+    () => (filteredRows || []).filter(Boolean),
+    [filteredRows],
+  );
+
   const columns = useMemo(
     () => [
-      { field: "driver", headerName: "Driver", flex: 1, minWidth: 200 },
-      { field: "trips", headerName: "Trips", width: 90, valueGetter: (p) => p.row.trips ?? 0 },
+      {
+        field: "driver",
+        headerName: "Driver",
+        flex: 1,
+        minWidth: 200,
+        valueGetter: (p) => r(p)?.driver ?? r(p)?.driverEmail ?? "—",
+      },
+      {
+        field: "trips",
+        headerName: "Trips",
+        width: 90,
+        valueGetter: (p) => {
+          const v = r(p)?.trips;
+          return Number.isFinite(v) ? v : 0;
+        },
+      },
       {
         field: "hours",
         headerName: "Hours",
         width: 110,
-        valueGetter: (p) => p.row.hours ?? 0,
-        valueFormatter: (p) => (Number.isFinite(p.value) ? p.value.toFixed(2) : "0.00"),
+        valueGetter: (p) => {
+          const v = r(p)?.hours;
+          return Number.isFinite(v) ? v : 0;
+        },
+        valueFormatter: (p) =>
+          Number.isFinite(p?.value) ? p.value.toFixed(2) : "0.00",
       },
       {
         field: "tools",
@@ -142,7 +166,7 @@ export default function WeeklySummaryTab() {
       </Box>
       {isSmall ? (
         <Stack spacing={2}>
-          {filteredRows.map((r) => (
+          {safeRows.map((r) => (
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
@@ -166,7 +190,12 @@ export default function WeeklySummaryTab() {
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update summary")}
           autoHeight
-          rows={filteredRows}
+          rows={safeRows}
+          getRowId={(r) =>
+            r.id ||
+            r.docId ||
+            `${r.driverEmail || "unk"}-${r.createdAt?.valueOf?.() || Math.random()}`
+          }
           columns={columns}
           density="compact"
           disableRowSelectionOnClick

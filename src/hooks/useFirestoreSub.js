@@ -23,7 +23,11 @@ export function useFirestoreSub(makeQuery, deps) {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setDocs(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter(Boolean),
+        );
         setError(null);
       },
       (e) => {
