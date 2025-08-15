@@ -24,6 +24,9 @@ import {
 import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
+import DropoffDialog from "../components/DropoffDialog.jsx";
+import { enqueueSms, watchMessage } from "../services/messaging.js";
+import { resolveSmsTo } from "../services/smsRecipients.js";
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
 
@@ -40,6 +43,9 @@ export default function ShootoutTab() {
   const [vehicle, setVehicle] = useState("");
   const [history, setHistory] = useState([]);
   const [snack, setSnack] = useState({ open: false, msg: "", severity: "success" });
+  const [dropDialogOpen, setDropDialogOpen] = useState(false);
+  const snackOpen = (m, s = "info") => setSnack({ open: true, msg: m, severity: s });
+  const snackClose = () => setSnack((x) => ({ ...x, open: false }));
   const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
 
@@ -119,15 +125,83 @@ export default function ShootoutTab() {
     }
   }
 
-  async function handleStop() {
+  function onStopClick() {
+    setDropDialogOpen(true);
+  }
+
+  async function stopCurrentSessionSafely() {
     if (!currentId) return;
     try {
       await updateShootoutSession(currentId, { endTime: new Date(), trips, passengers });
       setIsRunning(false);
-      setSnack({ open: true, msg: "Session stopped.", severity: "success" });
     } catch (e) {
-      logError("handleStop", e);
-      setSnack({ open: true, msg: "Failed to stop session.", severity: "error" });
+      logError("stopCurrentSessionSafely", e);
+      throw e;
+    }
+  }
+
+  function currentChargePct() {
+    return null;
+  }
+
+  async function finalizeStopAndMaybeSms(payload) {
+    const { isDropoff, vehicleNumber, needsWash, needsInterior, issues } = payload;
+
+    try {
+      await stopCurrentSessionSafely();
+    } catch (e) {
+      snackOpen("Failed to stop session.", "error");
+      return;
+    }
+
+    if (!isDropoff) {
+      snackOpen("Session stopped.", "success");
+      return;
+    }
+
+    const lines = [
+      `Vehicle: #${vehicleNumber}`,
+      `Charge %: ${typeof currentChargePct === "function" ? (currentChargePct() ?? "N/A") : "N/A"}`,
+      `Needs Car Wash? ${needsWash ? "Y" : "N"}`,
+      `Needs Interior Clean? ${needsInterior ? "Y" : "N"}`,
+      `Issues: ${issues || "None"}`,
+      `Reply STOP to opt out, HELP for help.`,
+    ];
+    const body = lines.join("\n");
+
+    const to = await resolveSmsTo({ vehicleNumber });
+    if (!to) {
+      snackOpen("No SMS recipient configured (config/sms).", "error");
+      return;
+    }
+
+    try {
+      const ref = await enqueueSms({
+        to,
+        body,
+        context: {
+          source: "shootoutDropoff",
+          vehicleNumber,
+          needsWash,
+          needsInterior,
+          issues,
+          actorEmail: user?.email || "unknown",
+        },
+      });
+
+      snackOpen("Text queued…", "info");
+
+      const unsub = watchMessage(ref, (d) => {
+        if (d?.status === "sent") {
+          snackOpen("Text sent ✅", "success");
+          unsub();
+        } else if (d?.status === "error") {
+          snackOpen(`Text failed ❌: ${String(d.error).slice(0, 140)}`, "error");
+          unsub();
+        }
+      });
+    } catch (e) {
+      snackOpen(`Queue failed: ${String(e?.message || e)}`, "error");
     }
   }
 
@@ -227,7 +301,7 @@ export default function ShootoutTab() {
             startIcon={<StopIcon />}
             variant="outlined"
             color="error"
-            onClick={handleStop}
+            onClick={onStopClick}
             disabled={!isRunning}
           >
             Stop
@@ -328,8 +402,19 @@ export default function ShootoutTab() {
         )}
       </CardContent>
 
-      <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack((s) => ({ ...s, open: false }))}>
-        <Alert severity={snack.severity} variant="filled">{snack.msg}</Alert>
+      <DropoffDialog
+        open={dropDialogOpen}
+        onClose={() => setDropDialogOpen(false)}
+        onSubmit={finalizeStopAndMaybeSms}
+      />
+
+      <Snackbar
+        open={snack.open}
+        onClose={snackClose}
+        autoHideDuration={4000}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={snackClose} severity={snack.severity} variant="filled">{snack.msg}</Alert>
       </Snackbar>
     </Card>
   );
