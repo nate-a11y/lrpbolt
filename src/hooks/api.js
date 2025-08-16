@@ -428,7 +428,7 @@ export function subscribeTimeLogs(onRows, onError) {
     (snap) => {
       const rows = snap.docs.map((d) => {
         const data = d.data() || {};
-        return { id: d.id, ...data };
+        return { ...data, id: d.id };
       });
       onRows(rows);
     },
@@ -446,7 +446,7 @@ export function subscribeShootoutStats(onRows, onError) {
     (snap) => {
       const rows = snap.docs.map((d) => {
         const data = d.data() || {};
-        return { id: d.id, ...data };
+        return { ...data, id: d.id };
       });
       onRows(rows);
     },

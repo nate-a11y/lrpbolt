@@ -28,7 +28,7 @@ import PageContainer from "./PageContainer.jsx";
 import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/api";
 
 // Firestore ops (update/delete) – uses your initialized db
-import { doc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, collection, onSnapshot } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { db } from "../utils/firebaseInit";
 
@@ -86,22 +86,17 @@ function fmtDuration(ms) {
 function useNameMap() {
   const [map, setMap] = useState({});
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const snap = await getDocs(collection(db, "users"));
-        const next = {};
-        snap.forEach((d) => {
-          const data = d.data() || {};
-          const email = (data.email || d.id || "").toLowerCase();
-          const name = data.name || data.displayName || "";
-          if (email) next[email] = name;
-        });
-        setMap(next);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    fetchUsers();
+    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+      const next = {};
+      snap.forEach((d) => {
+        const data = d.data() || {};
+        const email = (data.email || d.id || "").toLowerCase();
+        const name = data.name || data.displayName || "";
+        if (email) next[email] = name;
+      });
+      setMap(next);
+    });
+    return () => unsub && unsub();
   }, []);
   return map;
 }
@@ -267,10 +262,11 @@ export default function AdminTimeLog() {
   );
 
   const onEntryCellEditCommit = async (params) => {
-    const row = params.row || {};
-    if (!(row?._id || row?.id)) return;
-    const ref = refFor(row);
-    const { field, value } = params;
+    const { id, field, value } = params;
+    const row = entryRows.find((r) => r.id === id);
+    if (!row) return;
+
+    const ref = doc(db, "timeLogs", row._id || row.id);
     const patch = {};
 
     if (field === "driverEmail") {
@@ -358,10 +354,11 @@ export default function AdminTimeLog() {
   );
 
   const onShootCellEditCommit = async (params) => {
-    const row = params.row || {};
-    if (!(row?._id || row?.id)) return;
-    const ref = refFor(row);
-    const { field, value } = params;
+    const { id, field, value } = params;
+    const row = shootoutRows.find((r) => r.id === id);
+    if (!row) return;
+
+    const ref = doc(db, "shootoutStats", row._id || row.id);
     const patch = {};
 
     if (field === "driverEmail") patch.driverEmail = String(value || "");
@@ -661,6 +658,7 @@ export default function AdminTimeLog() {
             density="compact"
             rows={entryFiltered}
             columns={entryColumns}
+            getRowId={(r) => r._id || r.id}
             loading={!!loadingEntries}
             disableRowSelectionOnClick
             editMode="cell"
@@ -770,6 +768,7 @@ export default function AdminTimeLog() {
             density="compact"
             rows={shootFiltered}
             columns={shootoutColumns}
+            getRowId={(r) => r._id || r.id}
             loading={!!loadingShootout}
             disableRowSelectionOnClick
             editMode="cell"
