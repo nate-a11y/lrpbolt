@@ -118,7 +118,7 @@ export function subscribeUserAccess(
             email,
             name,
             access: (x.access || "").toString().toLowerCase(),
-        };
+          };
         })
         .filter(Boolean);
       cb(rows);
@@ -421,54 +421,24 @@ export async function emailTicket(ticketId, email, attachment) {
  * TIME LOGS
  * -----------------------------
  */
-export function subscribeTimeLogs(onData, onError) {
+export function subscribeTimeLogs(onRows, onError) {
   const q = query(collection(db, "timeLogs"), orderBy("startTime", "desc"));
   return onSnapshot(
     q,
-    (snapshot) => {
-      const rows = snapshot.docs.map((d) => {
-        const data = d.data() || {};
-        return {
-          id: d.id,
-          ...data,
-          driverEmail: data.driverEmail ?? "",
-          vehicle: data.vehicle ?? "",
-          startTime: data.startTime ?? null,
-          endTime: data.endTime ?? null,
-          trips: Number.isFinite(data.trips) ? data.trips : 0,
-          passengers: Number.isFinite(data.passengers) ? data.passengers : 0,
-          createdAt: data.createdAt ?? null,
-        };
-      });
-      onData(rows);
-    },
-    (e) => onError?.(e),
+    (snap) => onRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    onError,
   );
 }
 
-export function subscribeShootoutStats(onData, onError) {
-  const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
+export function subscribeShootoutStats(onRows, onError) {
+  const q = query(
+    collection(db, "shootoutStats"),
+    orderBy("startTime", "desc"),
+  );
   return onSnapshot(
     q,
-    (snapshot) => {
-      const rows = snapshot.docs.map((d) => {
-        const data = d.data() || {};
-        return {
-          id: d.id,
-          ...data,
-          driverEmail: data.driverEmail ?? "",
-          vehicle: data.vehicle ?? "",
-          startTime: data.startTime ?? null,
-          endTime: data.endTime ?? null,
-          trips: Number.isFinite(data.trips) ? data.trips : 0,
-          passengers: Number.isFinite(data.passengers) ? data.passengers : 0,
-          createdAt: data.createdAt ?? null,
-          status: data.endTime ? "Closed" : "Open",
-        };
-      });
-      onData(rows);
-    },
-    (e) => onError?.(e),
+    (snap) => onRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    onError,
   );
 }
 
@@ -477,15 +447,24 @@ export async function fetchWeeklySummary({ startTs, endTs }) {
     collection(db, "timeLogs"),
     where("startTime", ">=", startTs),
     where("startTime", "<", endTs),
-    orderBy("startTime", "asc")
+    orderBy("startTime", "asc"),
   );
   const snap = await getDocs(q);
   const byDriver = new Map();
   snap.forEach((doc) => {
     const d = doc.data() || {};
     const driver = d.driver || d.driverEmail || "Unknown";
-    const mins = typeof d.duration === "number" ? d.duration : minutesBetween(d.startTime, d.endTime);
-    const prev = byDriver.get(driver) || { driver, sessions: 0, minutes: 0, trips: 0, passengers: 0 };
+    const mins =
+      typeof d.duration === "number"
+        ? d.duration
+        : minutesBetween(d.startTime, d.endTime);
+    const prev = byDriver.get(driver) || {
+      driver,
+      sessions: 0,
+      minutes: 0,
+      trips: 0,
+      passengers: 0,
+    };
     byDriver.set(driver, {
       driver,
       sessions: prev.sessions + 1,
@@ -494,9 +473,11 @@ export async function fetchWeeklySummary({ startTs, endTs }) {
       passengers: prev.passengers + Number(d.passengers || 0),
     });
   });
-  return Array.from(byDriver.values()).map((r) => ({ ...r, hours: +(r.minutes / 60).toFixed(2) }));
+  return Array.from(byDriver.values()).map((r) => ({
+    ...r,
+    hours: +(r.minutes / 60).toFixed(2),
+  }));
 }
-
 
 export async function addTimeLog(logData) {
   const data = cleanData({

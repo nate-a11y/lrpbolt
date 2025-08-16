@@ -17,11 +17,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
-import {
-  DataGrid,
-  GridToolbar,
-  GridActionsCellItem,
-} from "@mui/x-data-grid";
+import { DataGrid, GridToolbar, GridActionsCellItem } from "@mui/x-data-grid";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -85,9 +81,6 @@ function toMs(input) {
   } catch (_) {}
   return null;
 }
-function fromMsToTimestamp(ms) {
-  return Number.isFinite(ms) ? Timestamp.fromMillis(ms) : null;
-}
 function fmtDateTimeMs(ms) {
   if (!Number.isFinite(ms)) return "";
   return dayjs.tz(ms, TZ).format("MMM D, h:mm A");
@@ -127,22 +120,26 @@ function useUserDirectory() {
 function normalizeTimeLog(r) {
   const startMs = toMs(r.startTime);
   const endMs = toMs(r.endTime);
+  const realId = r.id || r._id || r.docId || r.uid || r.key || null;
   const durationMs =
     Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
       ? endMs - startMs
       : Number.isFinite(r.duration)
-      ? // if duration stored in minutes, keep it in ms
-        (r.duration > 100000 ? r.duration : Math.floor(Number(r.duration) * 60 * 1000))
-      : null;
+        ? r.duration > 100000
+          ? r.duration
+          : Math.floor(Number(r.duration) * 60 * 1000)
+        : null;
 
   return {
     _col: "timeLogs",
-    _id: r.id, // REAL Firestore id expected from subscribeTimeLogs
+    _id: realId,
     id:
-      r.id ??
-      `${(r.driverEmail || r.driver || "row").toLowerCase()}-${startMs ?? toMs(r.loggedAt) ?? 0}-${endMs ?? 0}`,
+      realId ??
+      `${(r.driverEmail || r.driver || "row").toLowerCase()}-${startMs ?? toMs(r.loggedAt) ?? 0}-${
+        endMs ?? 0
+      }`,
     driverEmail: r.driverEmail || r.driver || "",
-    vehicle: r.vehicle || r.rideId || "", // display
+    vehicle: r.vehicle || r.rideId || "",
     startTime: startMs,
     endTime: endMs,
     duration: durationMs,
@@ -152,21 +149,26 @@ function normalizeTimeLog(r) {
     raw: r,
   };
 }
+
 function normalizeShootout(r) {
   const start = toMs(r.startTime);
   const end = toMs(r.endTime);
+  const realId = r.id || r._id || r.docId || r.uid || r.key || null;
+
   return {
     _col: "shootoutStats",
-    _id: r.id,
+    _id: realId,
     id:
-      r.id ??
+      realId ??
       `${(r.driverEmail || "row").toLowerCase()}-${start ?? toMs(r.createdAt) ?? 0}-${end ?? 0}`,
     driverEmail: r.driverEmail || "",
     vehicle: r.vehicle || "",
     startTime: start,
     endTime: end,
     duration:
-      Number.isFinite(start) && Number.isFinite(end) && end >= start ? end - start : null,
+      Number.isFinite(start) && Number.isFinite(end) && end >= start
+        ? end - start
+        : null,
     trips: Number.isFinite(r.trips) ? r.trips : 0,
     passengers: Number.isFinite(r.passengers) ? r.passengers : 0,
     createdAt: toMs(r.createdAt),
@@ -184,7 +186,8 @@ const startCol = (field = "startTime") => ({
   valueGetter: (p) => p?.row?.[field],
   valueFormatter: (p) => fmtDateTimeMs(p?.value),
   renderCell: (p) => fmtDateTimeMs(p?.row?.[field]),
-  sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+  sortComparator: (a, b) =>
+    (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
 });
 const endCol = (field = "endTime") => ({
   field,
@@ -194,7 +197,8 @@ const endCol = (field = "endTime") => ({
   valueGetter: (p) => p?.row?.[field],
   valueFormatter: (p) => fmtDateTimeMs(p?.value),
   renderCell: (p) => fmtDateTimeMs(p?.row?.[field]),
-  sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+  sortComparator: (a, b) =>
+    (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
 });
 const durationCol = (field = "duration") => ({
   field,
@@ -204,7 +208,8 @@ const durationCol = (field = "duration") => ({
   valueGetter: (p) => p?.row?.[field] ?? null,
   valueFormatter: (p) => fmtDuration(p?.value),
   renderCell: (p) => fmtDuration(p?.row?.[field]),
-  sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+  sortComparator: (a, b) =>
+    (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
 });
 
 export default function AdminTimeLog() {
@@ -251,14 +256,14 @@ export default function AdminTimeLog() {
         console.error(e);
         setEntryError("Failed to load time logs.");
         setLoadingEntries(false);
-      }
+      },
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
   const entryRows = useMemo(
     () => (Array.isArray(rawTimeLogs) ? rawTimeLogs.map(normalizeTimeLog) : []),
-    [rawTimeLogs]
+    [rawTimeLogs],
   );
 
   // inline update handler (only simple text/number fields inline)
@@ -278,8 +283,10 @@ export default function AdminTimeLog() {
         // In timeLogs, this is rideId (you don’t store vehicle here)
         patch.rideId = String(newRow.vehicle || "");
       }
-      if (newRow.trips !== oldRow.trips) patch.trips = Number(newRow.trips || 0);
-      if (newRow.passengers !== oldRow.passengers) patch.passengers = Number(newRow.passengers || 0);
+      if (newRow.trips !== oldRow.trips)
+        patch.trips = Number(newRow.trips || 0);
+      if (newRow.passengers !== oldRow.passengers)
+        patch.passengers = Number(newRow.passengers || 0);
       if (newRow.note !== oldRow.note) patch.note = String(newRow.note || "");
 
       if (Object.keys(patch).length) {
@@ -287,7 +294,7 @@ export default function AdminTimeLog() {
       }
       return newRow;
     },
-    [isAdmin]
+    [isAdmin],
   );
 
   const entryColumns = useMemo(
@@ -310,6 +317,12 @@ export default function AdminTimeLog() {
         },
       },
       {
+        field: "_id",
+        headerName: "DocId",
+        width: 140,
+        valueGetter: (p) => p.row?._id || "",
+      },
+      {
         field: "vehicle",
         headerName: "Vehicle / Ride",
         flex: 1,
@@ -319,22 +332,40 @@ export default function AdminTimeLog() {
       startCol("startTime"),
       endCol("endTime"),
       durationCol("duration"),
-      { field: "trips", headerName: "Trips", type: "number", width: 90, editable: isAdmin },
-      { field: "passengers", headerName: "Pax", type: "number", width: 90, editable: isAdmin },
-      { field: "note", headerName: "Note", flex: 1, minWidth: 160, editable: isAdmin },
+      {
+        field: "trips",
+        headerName: "Trips",
+        type: "number",
+        width: 90,
+        editable: isAdmin,
+      },
+      {
+        field: "passengers",
+        headerName: "Pax",
+        type: "number",
+        width: 90,
+        editable: isAdmin,
+      },
+      {
+        field: "note",
+        headerName: "Note",
+        flex: 1,
+        minWidth: 160,
+        editable: isAdmin,
+      },
       {
         field: "actions",
         type: "actions",
         headerName: "",
         width: 90,
         getActions: (params) => {
-          const dis = !isAdmin || !params.row?._id;
+          const disabled = !params.row?._id;
           return [
             <GridActionsCellItem
               key="edit"
               icon={<EditIcon />}
               label="Edit times"
-              disabled={dis}
+              disabled={disabled || !isAdmin}
               onClick={() => openEditModal(params.row)}
               showInMenu={false}
             />,
@@ -342,7 +373,7 @@ export default function AdminTimeLog() {
               key="del"
               icon={<DeleteIcon />}
               label="Delete"
-              disabled={dis}
+              disabled={disabled || !isAdmin}
               onClick={() => handleDelete(params.row)}
               showInMenu={false}
             />,
@@ -350,7 +381,7 @@ export default function AdminTimeLog() {
         },
       },
     ],
-    [isAdmin, getName]
+    [isAdmin, getName],
   );
 
   const entryFiltered = useMemo(() => {
@@ -358,24 +389,35 @@ export default function AdminTimeLog() {
       if (entryDriver) {
         const match =
           r.driverEmail.toLowerCase().includes(entryDriver.toLowerCase()) ||
-          getName(r.driverEmail).toLowerCase().includes(entryDriver.toLowerCase());
+          getName(r.driverEmail)
+            .toLowerCase()
+            .includes(entryDriver.toLowerCase());
         if (!match) return false;
       }
       const startDj = Number.isFinite(r.startTime) ? dayjs(r.startTime) : null;
       const endDj = Number.isFinite(r.endTime) ? dayjs(r.endTime) : null;
-      if (entryStartAfter && (!startDj || !startDj.isAfter(entryStartAfter))) return false;
+      if (entryStartAfter && (!startDj || !startDj.isAfter(entryStartAfter)))
+        return false;
       if (entryEndBefore) {
         const compareDj = endDj || startDj;
         if (!compareDj || !compareDj.isBefore(entryEndBefore)) return false;
       }
       if (entrySearch) {
         const q = entrySearch.toLowerCase();
-        const text = `${r.driverEmail} ${getName(r.driverEmail)} ${r.vehicle} ${r.note}`.toLowerCase();
+        const text =
+          `${r.driverEmail} ${getName(r.driverEmail)} ${r.vehicle} ${r.note}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
     });
-  }, [entryRows, entryDriver, entryStartAfter, entryEndBefore, entrySearch, getName]);
+  }, [
+    entryRows,
+    entryDriver,
+    entryStartAfter,
+    entryEndBefore,
+    entrySearch,
+    getName,
+  ]);
 
   /** ---------------- Shootout (shootoutStats) ---------------- */
   const [rawShootout, setRawShootout] = useState([]);
@@ -397,14 +439,15 @@ export default function AdminTimeLog() {
         console.error(e);
         setShootError("Failed to load shootout stats.");
         setLoadingShootout(false);
-      }
+      },
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
   const shootoutRows = useMemo(
-    () => (Array.isArray(rawShootout) ? rawShootout.map(normalizeShootout) : []),
-    [rawShootout]
+    () =>
+      Array.isArray(rawShootout) ? rawShootout.map(normalizeShootout) : [],
+    [rawShootout],
   );
 
   const processShootoutUpdate = useCallback(
@@ -416,16 +459,19 @@ export default function AdminTimeLog() {
       const patch = {};
       if (newRow.driverEmail !== oldRow.driverEmail)
         patch.driverEmail = String(newRow.driverEmail || "");
-      if (newRow.vehicle !== oldRow.vehicle) patch.vehicle = String(newRow.vehicle || "");
-      if (newRow.trips !== oldRow.trips) patch.trips = Number(newRow.trips || 0);
+      if (newRow.vehicle !== oldRow.vehicle)
+        patch.vehicle = String(newRow.vehicle || "");
+      if (newRow.trips !== oldRow.trips)
+        patch.trips = Number(newRow.trips || 0);
       if (newRow.passengers !== oldRow.passengers)
         patch.passengers = Number(newRow.passengers || 0);
-      if (newRow.status !== oldRow.status) patch.status = String(newRow.status || "");
+      if (newRow.status !== oldRow.status)
+        patch.status = String(newRow.status || "");
 
       if (Object.keys(patch).length) await updateDoc(ref, patch);
       return newRow;
     },
-    [isAdmin]
+    [isAdmin],
   );
 
   const shootoutColumns = useMemo(
@@ -440,15 +486,43 @@ export default function AdminTimeLog() {
           const email = p.row?.driverEmail || "";
           const name = getName(email);
           if (!name) return email;
-          return <Tooltip title={email}><span>{name}</span></Tooltip>;
+          return (
+            <Tooltip title={email}>
+              <span>{name}</span>
+            </Tooltip>
+          );
         },
       },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 140, editable: isAdmin },
+      {
+        field: "_id",
+        headerName: "DocId",
+        width: 140,
+        valueGetter: (p) => p.row?._id || "",
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 140,
+        editable: isAdmin,
+      },
       startCol("startTime"),
       endCol("endTime"),
       durationCol("duration"),
-      { field: "trips", headerName: "Trips", type: "number", width: 90, editable: isAdmin },
-      { field: "passengers", headerName: "Pax", type: "number", width: 90, editable: isAdmin },
+      {
+        field: "trips",
+        headerName: "Trips",
+        type: "number",
+        width: 90,
+        editable: isAdmin,
+      },
+      {
+        field: "passengers",
+        headerName: "Pax",
+        type: "number",
+        width: 90,
+        editable: isAdmin,
+      },
       { field: "status", headerName: "Status", width: 120, editable: isAdmin },
       {
         field: "createdAt",
@@ -463,13 +537,13 @@ export default function AdminTimeLog() {
         headerName: "",
         width: 90,
         getActions: (params) => {
-          const dis = !isAdmin || !params.row?._id;
+          const disabled = !params.row?._id;
           return [
             <GridActionsCellItem
               key="edit"
               icon={<EditIcon />}
               label="Edit times"
-              disabled={dis}
+              disabled={disabled || !isAdmin}
               onClick={() => openEditModal(params.row)}
               showInMenu={false}
             />,
@@ -477,7 +551,7 @@ export default function AdminTimeLog() {
               key="del"
               icon={<DeleteIcon />}
               label="Delete"
-              disabled={dis}
+              disabled={disabled || !isAdmin}
               onClick={() => handleDelete(params.row)}
               showInMenu={false}
             />,
@@ -485,7 +559,7 @@ export default function AdminTimeLog() {
         },
       },
     ],
-    [isAdmin, getName]
+    [isAdmin, getName],
   );
 
   const shootFiltered = useMemo(() => {
@@ -493,24 +567,35 @@ export default function AdminTimeLog() {
       if (shootDriver) {
         const match =
           r.driverEmail.toLowerCase().includes(shootDriver.toLowerCase()) ||
-          getName(r.driverEmail).toLowerCase().includes(shootDriver.toLowerCase());
+          getName(r.driverEmail)
+            .toLowerCase()
+            .includes(shootDriver.toLowerCase());
         if (!match) return false;
       }
       const startDj = Number.isFinite(r.startTime) ? dayjs(r.startTime) : null;
       const endDj = Number.isFinite(r.endTime) ? dayjs(r.endTime) : null;
-      if (shootStartAfter && (!startDj || !startDj.isAfter(shootStartAfter))) return false;
+      if (shootStartAfter && (!startDj || !startDj.isAfter(shootStartAfter)))
+        return false;
       if (shootEndBefore) {
         const compareDj = endDj || startDj;
         if (!compareDj || !compareDj.isBefore(shootEndBefore)) return false;
       }
       if (shootSearch) {
         const q = shootSearch.toLowerCase();
-        const text = `${r.driverEmail} ${getName(r.driverEmail)} ${r.vehicle} ${r.status}`.toLowerCase();
+        const text =
+          `${r.driverEmail} ${getName(r.driverEmail)} ${r.vehicle} ${r.status}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
     });
-  }, [shootoutRows, shootDriver, shootStartAfter, shootEndBefore, shootSearch, getName]);
+  }, [
+    shootoutRows,
+    shootDriver,
+    shootStartAfter,
+    shootEndBefore,
+    shootSearch,
+    getName,
+  ]);
 
   /** ---------------- Weekly Summary (unchanged) ---------------- */
   const [tab, setTab] = useState(0);
@@ -521,7 +606,9 @@ export default function AdminTimeLog() {
     const inWeek = entryRows.filter((r) => {
       const s = Number.isFinite(r.startTime) ? dayjs(r.startTime) : null;
       if (!s) return false;
-      return (s.isAfter(weekStart) || s.isSame(weekStart)) && s.isBefore(weekEnd);
+      return (
+        (s.isAfter(weekStart) || s.isSame(weekStart)) && s.isBefore(weekEnd)
+      );
     });
     const byDriver = new Map();
     for (const r of inWeek) {
@@ -563,19 +650,19 @@ export default function AdminTimeLog() {
   const saveEditModal = async () => {
     try {
       if (!isAdmin || !editRow?._id) return;
-      const ref = doc(db, editRow._col, editRow._id);
       const patch = {};
       if (Number.isFinite(editRow.startTime))
-        patch.startTime = fromMsToTimestamp(editRow.startTime);
+        patch.startTime = Timestamp.fromMillis(editRow.startTime);
       if (Number.isFinite(editRow.endTime))
-        patch.endTime = fromMsToTimestamp(editRow.endTime);
-      // recompute duration field if this is timeLogs and you store it
-      if (editRow._col === "timeLogs") {
-        if (Number.isFinite(editRow.startTime) && Number.isFinite(editRow.endTime)) {
-          patch.duration = Math.max(0, Math.floor((editRow.endTime - editRow.startTime)));
-        }
+        patch.endTime = Timestamp.fromMillis(editRow.endTime);
+      if (
+        editRow._col === "timeLogs" &&
+        Number.isFinite(editRow.startTime) &&
+        Number.isFinite(editRow.endTime)
+      ) {
+        patch.duration = Math.max(0, editRow.endTime - editRow.startTime);
       }
-      await updateDoc(ref, patch);
+      await updateDoc(doc(db, editRow._col, editRow._id), patch);
     } catch (e) {
       console.error(e);
     } finally {
@@ -653,7 +740,10 @@ export default function AdminTimeLog() {
             onProcessRowUpdateError={(e) => console.error(e)}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
-              toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300 },
+              },
             }}
             initialState={{
               sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
@@ -683,10 +773,30 @@ export default function AdminTimeLog() {
               rows={weekly}
               columns={[
                 { field: "driver", headerName: "Driver", flex: 1 },
-                { field: "sessions", headerName: "Sessions", width: 120, type: "number" },
-                { field: "hours", headerName: "Hours", width: 110, type: "number" },
-                { field: "trips", headerName: "Trips", width: 110, type: "number" },
-                { field: "passengers", headerName: "Pax", width: 110, type: "number" },
+                {
+                  field: "sessions",
+                  headerName: "Sessions",
+                  width: 120,
+                  type: "number",
+                },
+                {
+                  field: "hours",
+                  headerName: "Hours",
+                  width: 110,
+                  type: "number",
+                },
+                {
+                  field: "trips",
+                  headerName: "Trips",
+                  width: 110,
+                  type: "number",
+                },
+                {
+                  field: "passengers",
+                  headerName: "Pax",
+                  width: 110,
+                  type: "number",
+                },
               ]}
               hideFooterSelectedRowCount
               initialState={{
@@ -740,7 +850,10 @@ export default function AdminTimeLog() {
             onProcessRowUpdateError={(e) => console.error(e)}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
-              toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300 },
+              },
             }}
             initialState={{
               sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
@@ -759,28 +872,43 @@ export default function AdminTimeLog() {
               <TextField
                 label="Driver (email)"
                 value={editRow.driverEmail || ""}
-                onChange={(e) => setEditRow((r) => ({ ...r, driverEmail: e.target.value }))}
+                onChange={(e) =>
+                  setEditRow((r) => ({ ...r, driverEmail: e.target.value }))
+                }
                 size="small"
                 disabled={!isAdmin}
               />
               <TextField
                 label={editRow._col === "timeLogs" ? "Ride ID" : "Vehicle"}
                 value={editRow.vehicle || ""}
-                onChange={(e) => setEditRow((r) => ({ ...r, vehicle: e.target.value }))}
+                onChange={(e) =>
+                  setEditRow((r) => ({ ...r, vehicle: e.target.value }))
+                }
                 size="small"
                 disabled={!isAdmin}
               />
               <DateTimePicker
                 label="Start time"
-                value={Number.isFinite(editRow.startTime) ? dayjs(editRow.startTime) : null}
+                value={
+                  Number.isFinite(editRow.startTime)
+                    ? dayjs(editRow.startTime)
+                    : null
+                }
                 onChange={(v) =>
-                  setEditRow((r) => ({ ...r, startTime: v ? v.valueOf() : null }))
+                  setEditRow((r) => ({
+                    ...r,
+                    startTime: v ? v.valueOf() : null,
+                  }))
                 }
                 slotProps={{ textField: { size: "small" } }}
               />
               <DateTimePicker
                 label="End time"
-                value={Number.isFinite(editRow.endTime) ? dayjs(editRow.endTime) : null}
+                value={
+                  Number.isFinite(editRow.endTime)
+                    ? dayjs(editRow.endTime)
+                    : null
+                }
                 onChange={(v) =>
                   setEditRow((r) => ({ ...r, endTime: v ? v.valueOf() : null }))
                 }
@@ -791,7 +919,11 @@ export default function AdminTimeLog() {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeEditModal}>Cancel</Button>
-          <Button onClick={saveEditModal} disabled={!isAdmin} variant="contained">
+          <Button
+            onClick={saveEditModal}
+            disabled={!isAdmin}
+            variant="contained"
+          >
             Save
           </Button>
         </DialogActions>
