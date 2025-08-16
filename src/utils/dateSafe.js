@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "./dates";
 import { Timestamp } from "firebase/firestore";
-import { isValidDayjs } from "./dates";
+
+import dayjs, { isValidDayjs } from "./dates";
 
 void dayjs;
 

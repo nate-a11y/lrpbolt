@@ -17,8 +17,8 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { db } from "../utils/firebaseInit";
 
+import { db } from "../utils/firebaseInit";
 import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
 import { ensureTicketShapeOnCreate } from "../services/db";
@@ -425,29 +425,24 @@ export function subscribeTimeLogs(onData, onError) {
   const q = query(collection(db, "timeLogs"), orderBy("startTime", "desc"));
   return onSnapshot(
     q,
-    (snap) => {
-      const rows = [];
-      snap.forEach((doc) => {
-        const d = doc.data() || {};
-        const durationMin = typeof d.duration === "number"
-          ? d.duration
-          : minutesBetween(d.startTime, d.endTime);
-
-        rows.push({
-          id: doc.id,
-          driver: d.driver || "",
-          driverEmail: d.driverEmail || "",
-          rideId: d.rideId || "",
-          startTime: d.startTime || null,
-          endTime: d.endTime || null,
-          durationMin,
-          note: d.note || "",
-          createdAt: d.loggedAt || null,
-        });
+    (snapshot) => {
+      const rows = snapshot.docs.map((d) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          ...data,
+          driverEmail: data.driverEmail ?? "",
+          vehicle: data.vehicle ?? "",
+          startTime: data.startTime ?? null,
+          endTime: data.endTime ?? null,
+          trips: Number.isFinite(data.trips) ? data.trips : 0,
+          passengers: Number.isFinite(data.passengers) ? data.passengers : 0,
+          createdAt: data.createdAt ?? null,
+        };
       });
       onData(rows);
     },
-    (e) => onError?.(e)
+    (e) => onError?.(e),
   );
 }
 
@@ -455,26 +450,25 @@ export function subscribeShootoutStats(onData, onError) {
   const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
   return onSnapshot(
     q,
-    (snap) => {
-      const rows = [];
-      snap.forEach((doc) => {
-        const d = doc.data() || {};
-        rows.push({
-          id: doc.id,
-          driverEmail: d.driverEmail || "",
-          vehicle: d.vehicle || "",
-          startTime: d.startTime || null,
-          endTime: d.endTime || null,
-          trips: Number(d.trips || 0),
-          passengers: Number(d.passengers || 0),
-          durationMin: minutesBetween(d.startTime, d.endTime),
-          createdAt: d.createdAt || null,
-          status: d.endTime ? "Closed" : "Open",
-        });
+    (snapshot) => {
+      const rows = snapshot.docs.map((d) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          ...data,
+          driverEmail: data.driverEmail ?? "",
+          vehicle: data.vehicle ?? "",
+          startTime: data.startTime ?? null,
+          endTime: data.endTime ?? null,
+          trips: Number.isFinite(data.trips) ? data.trips : 0,
+          passengers: Number.isFinite(data.passengers) ? data.passengers : 0,
+          createdAt: data.createdAt ?? null,
+          status: data.endTime ? "Closed" : "Open",
+        };
       });
       onData(rows);
     },
-    (e) => onError?.(e)
+    (e) => onError?.(e),
   );
 }
 
