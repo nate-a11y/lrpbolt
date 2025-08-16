@@ -27,29 +27,45 @@ dayjs.extend(timezone);
 const TZ = "America/Chicago";
 
 function toMs(input) {
-  if (!input) return null;
+  if (input == null) return null;
   try {
-    if (typeof input === "object" && input.seconds != null && input.nanoseconds != null) {
-      return input.seconds * 1000 + Math.floor(input.nanoseconds / 1e6);
+    // Firestore Timestamp instance (SDK) — has .toDate()
+    if (typeof input === "object" && typeof input.toDate === "function") {
+      const t = input.toDate().getTime();
+      return Number.isFinite(t) ? t : null;
     }
-    if (input.toDate && typeof input.toDate === "function") {
-      const d = input.toDate();
-      const ms = d?.getTime?.();
-      return Number.isFinite(ms) ? ms : null;
+    // Firestore Timestamp-like POJOs
+    if (typeof input === "object") {
+      // seconds/nanoseconds
+      if (Number.isFinite(input.seconds)) {
+        const ns = Number.isFinite(input.nanoseconds) ? input.nanoseconds : 0;
+        return input.seconds * 1000 + Math.floor(ns / 1e6);
+      }
+      // _seconds/_nanoseconds
+      if (Number.isFinite(input._seconds)) {
+        const ns = Number.isFinite(input._nanoseconds) ? input._nanoseconds : 0;
+        return input._seconds * 1000 + Math.floor(ns / 1e6);
+      }
+      // { millis: 1723567200000 } (rare, but seen in some serializers)
+      if (Number.isFinite(input.millis)) return input.millis;
     }
+    // JS Date
     if (input instanceof Date) {
-      const ms = input.getTime();
-      return Number.isFinite(ms) ? ms : null;
+      const t = input.getTime();
+      return Number.isFinite(t) ? t : null;
     }
-    if (typeof input === "number" && Number.isFinite(input)) {
-      return input;
-    }
+    // number or numeric string
+    if (typeof input === "number" && Number.isFinite(input)) return input;
     if (typeof input === "string") {
-      const ms = Date.parse(input);
-      return Number.isFinite(ms) ? ms : null;
+      // Try numeric string first
+      const n = Number(input);
+      if (Number.isFinite(n)) return n;
+      // Fallback: Date.parse(ISO)
+      const t = Date.parse(input);
+      return Number.isFinite(t) ? t : null;
     }
-  } catch {
-    // ignore malformed inputs
+  } catch (err) {
+    // no-throw; fall through to null
   }
   return null;
 }
@@ -57,13 +73,6 @@ function toMs(input) {
 function fmtDateTimeMs(ms) {
   if (!Number.isFinite(ms)) return "";
   return dayjs.tz(ms, TZ).format("MMM D, h:mm A");
-}
-
-function durationMs(startMs, endMs) {
-  if (!Number.isFinite(startMs)) return null;
-  if (!Number.isFinite(endMs)) return null;
-  const diff = endMs - startMs;
-  return diff >= 0 ? diff : null;
 }
 
 function fmtDuration(ms) {
@@ -124,11 +133,14 @@ export default function AdminTimeLog() {
       minWidth: 160,
       valueGetter: (p) => toMs(p?.row?.startTime),
       valueFormatter: (p) => fmtDateTimeMs(p?.value),
-      sortComparator: (v1, v2) => {
-        const a = Number.isFinite(v1) ? v1 : -1;
-        const b = Number.isFinite(v2) ? v2 : -1;
-        return a - b;
+      renderCell: (p) => {
+        const ms = Number.isFinite(p.value)
+          ? p.value
+          : toMs(p?.row?.startTime);
+        return fmtDateTimeMs(ms);
       },
+      sortComparator: (a, b) =>
+        (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
     },
     {
       field: "endTime",
@@ -137,11 +149,14 @@ export default function AdminTimeLog() {
       minWidth: 160,
       valueGetter: (p) => toMs(p?.row?.endTime),
       valueFormatter: (p) => fmtDateTimeMs(p?.value),
-      sortComparator: (v1, v2) => {
-        const a = Number.isFinite(v1) ? v1 : -1;
-        const b = Number.isFinite(v2) ? v2 : -1;
-        return a - b;
+      renderCell: (p) => {
+        const ms = Number.isFinite(p.value)
+          ? p.value
+          : toMs(p?.row?.endTime);
+        return fmtDateTimeMs(ms);
       },
+      sortComparator: (a, b) =>
+        (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
     },
     {
       field: "duration",
@@ -151,15 +166,26 @@ export default function AdminTimeLog() {
       valueGetter: (p) => {
         const s = toMs(p?.row?.startTime);
         const e = toMs(p?.row?.endTime);
-        const d = durationMs(s, e);
-        return Number.isFinite(d) ? d : null;
+        const d = Number.isFinite(s) && Number.isFinite(e) ? e - s : null;
+        return Number.isFinite(d) && d >= 0 ? d : null;
       },
       valueFormatter: (p) => fmtDuration(p?.value),
-      sortComparator: (v1, v2) => {
-        const a = Number.isFinite(v1) ? v1 : -1;
-        const b = Number.isFinite(v2) ? v2 : -1;
-        return a - b;
-      },
+      renderCell: (p) =>
+        fmtDuration(
+          Number.isFinite(p.value)
+            ? p.value
+            : (() => {
+                const s = toMs(p?.row?.startTime);
+                const e = toMs(p?.row?.endTime);
+                return Number.isFinite(s) &&
+                  Number.isFinite(e) &&
+                  e >= s
+                  ? e - s
+                  : null;
+              })(),
+        ),
+      sortComparator: (a, b) =>
+        (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
     },
     {
       field: "trips",
@@ -252,11 +278,14 @@ export default function AdminTimeLog() {
       minWidth: 160,
       valueGetter: (p) => toMs(p?.row?.startTime),
       valueFormatter: (p) => fmtDateTimeMs(p?.value),
-      sortComparator: (v1, v2) => {
-        const a = Number.isFinite(v1) ? v1 : -1;
-        const b = Number.isFinite(v2) ? v2 : -1;
-        return a - b;
+      renderCell: (p) => {
+        const ms = Number.isFinite(p.value)
+          ? p.value
+          : toMs(p?.row?.startTime);
+        return fmtDateTimeMs(ms);
       },
+      sortComparator: (a, b) =>
+        (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
     },
     {
       field: "endTime",
@@ -265,11 +294,14 @@ export default function AdminTimeLog() {
       minWidth: 160,
       valueGetter: (p) => toMs(p?.row?.endTime),
       valueFormatter: (p) => fmtDateTimeMs(p?.value),
-      sortComparator: (v1, v2) => {
-        const a = Number.isFinite(v1) ? v1 : -1;
-        const b = Number.isFinite(v2) ? v2 : -1;
-        return a - b;
+      renderCell: (p) => {
+        const ms = Number.isFinite(p.value)
+          ? p.value
+          : toMs(p?.row?.endTime);
+        return fmtDateTimeMs(ms);
       },
+      sortComparator: (a, b) =>
+        (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
     },
     {
       field: "duration",
@@ -279,15 +311,26 @@ export default function AdminTimeLog() {
       valueGetter: (p) => {
         const s = toMs(p?.row?.startTime);
         const e = toMs(p?.row?.endTime);
-        const d = durationMs(s, e);
-        return Number.isFinite(d) ? d : null;
+        const d = Number.isFinite(s) && Number.isFinite(e) ? e - s : null;
+        return Number.isFinite(d) && d >= 0 ? d : null;
       },
       valueFormatter: (p) => fmtDuration(p?.value),
-      sortComparator: (v1, v2) => {
-        const a = Number.isFinite(v1) ? v1 : -1;
-        const b = Number.isFinite(v2) ? v2 : -1;
-        return a - b;
-      },
+      renderCell: (p) =>
+        fmtDuration(
+          Number.isFinite(p.value)
+            ? p.value
+            : (() => {
+                const s = toMs(p?.row?.startTime);
+                const e = toMs(p?.row?.endTime);
+                return Number.isFinite(s) &&
+                  Number.isFinite(e) &&
+                  e >= s
+                  ? e - s
+                  : null;
+              })(),
+        ),
+      sortComparator: (a, b) =>
+        (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
     },
     {
       field: "trips",
