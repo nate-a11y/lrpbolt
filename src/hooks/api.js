@@ -25,6 +25,7 @@ import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
 import { minutesBetween } from "../utils/dates";
+import { normalizeTimeLog } from "../utils/normalizeTimeLog";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
@@ -495,6 +496,41 @@ export function subscribeTimeLogs(onRows, onError) {
       const rows = snap.docs.map((d) => {
         const data = d.data() || {};
         return { ...data, id: d.id };
+      });
+      onRows(rows);
+    },
+    onError,
+  );
+}
+
+export function subscribeMyTimeLogs(onRows, onError) {
+  const email = currentEmail();
+  if (!email) {
+    onRows([]);
+    return () => {};
+  }
+  const q = query(
+    collection(db, "timeLogs"),
+    where("userEmail", "==", email),
+    orderBy("startTime", "desc"),
+    limit(200),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const rows = snap.docs.map((d) => {
+        const data = d.data() || {};
+        const n = normalizeTimeLog(d.id, data);
+        return {
+          id: n.id,
+          driverEmail: email,
+          rideId: n.rideId || "",
+          note: data.note || "",
+          startTime: n.startTime,
+          endTime: n.endTime,
+          duration: n.durationMin || 0,
+          loggedAt: n.createdAt,
+        };
       });
       onRows(rows);
     },

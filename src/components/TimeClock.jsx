@@ -1,5 +1,5 @@
 // src/components/TimeClockGodMode.jsx
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
   import {
     Box,
     Paper,
@@ -25,10 +25,6 @@ import {
   addDoc,
   updateDoc,
   collection,
-  query,
-  where,
-  orderBy,
-  limit,
   serverTimestamp,
   Timestamp,
   doc,
@@ -41,7 +37,8 @@ import { toNumber, toString, tsToDate } from "../utils/safe";
 import { safeGetter, safeFormatter } from "../utils/datagridSafe";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import ErrorBanner from "./ErrorBanner";
-import { useRole, useFirestoreSub } from "@/hooks";
+import { useRole } from "@/hooks";
+import { subscribeMyTimeLogs } from "@/hooks/api";
 import { useAuth } from "../context/AuthContext.jsx";
 import RoleDebug from "@/components/RoleDebug";
 
@@ -96,63 +93,29 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const { user } = useAuth();
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
-  const logQuery = useMemo(() => {
-    if (roleLoading) return null;
-    if (!(isAdmin || isDriver) || !user?.email) return null;
-    const base = collection(db, "timeLogs");
-    return isAdmin
-      ? query(base, orderBy("startTime", "desc"), limit(500))
-      : query(
-          base,
-          where("userEmail", "==", user.email.toLowerCase()),
-          orderBy("startTime", "desc"),
-          limit(200),
-        );
-  }, [roleLoading, isAdmin, isDriver, user?.email]);
-  const { docs: logDocs, error, ready } = useFirestoreSub(
-    () => logQuery,
-    [logQuery],
-  );
+  const [error, setError] = useState(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!logDocs) return;
-    const rows = logDocs.map((snap) => {
-      // Support both shapes: DocumentSnapshot[] or plain data[]
-      const data = typeof snap?.data === "function" ? snap.data() : snap || {};
-      const id = snap?.id || data.id || `${data.userEmail || data.driver || "row"}-${data.startTime?.seconds || Math.random()}`;
+    if (!user?.email) return;
+    setReady(false);
+    const unsub = subscribeMyTimeLogs(
+      (logs) => {
+        setRows(logs);
+        setReady(true);
+      },
+      (err) => {
+        logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
+        setError(err);
+        setReady(true);
+      },
+    );
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [user?.email]);
 
-      // Normalize legacy vs new fields
-      const driverEmail = toString(data.userEmail ?? data.driverEmail ?? data.driver ?? "");
-      const st = data.startTime ?? null;
-      const et = data.endTime ?? null;
-
-      // duration: prefer stored, else compute from timestamps
-      let duration = toNumber(data.duration, 0);
-      if (!duration && st && et) {
-        const s = tsToDate(st)?.getTime();
-        const e = tsToDate(et)?.getTime();
-        if (s && e) duration = Math.max(0, Math.round((e - s) / 60000));
-      }
-
-      return {
-        id,
-        driverEmail,
-        rideId: toString(data.rideId ?? ""),
-        note: toString(data.note ?? ""),
-        startTime: st,
-        endTime: et,
-        duration,
-        loggedAt: data.loggedAt ?? data.createdAt ?? null,
-      };
-    });
-    setRows(rows);
-  }, [logDocs]);
-
-  useEffect(() => {
-    if (error) {
-      logError(error, { area: "FirestoreSubscribe", comp: "TimeClock" });
-    }
-  }, [error]);
+  // logs are populated via subscribeMyTimeLogs
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
