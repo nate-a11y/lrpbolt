@@ -25,6 +25,7 @@ import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
 import DropoffDialog from "../components/DropoffDialog.jsx";
+import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
 import { resolveSmsTo } from "../services/smsRecipients.js";
 
@@ -256,146 +257,150 @@ export default function ShootoutTab() {
     <Card sx={{ borderRadius: 3 }}>
       <CardHeader title="Shootout Tracker" />
       <CardContent>
-        {/* Step 1: Select Vehicle */}
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
-          <Typography variant="subtitle1" sx={{ mr: 1 }}>Select Vehicle</Typography>
-          {VEHICLES.map((v) => {
-            const selected = vehicle === v;
-            return (
-              <Chip
-                key={v}
-                label={v}
-                clickable
-                onClick={() => !isRunning && setVehicle(v)}
-                color={selected ? "primary" : "default"}
-                variant={selected ? "filled" : "outlined"}
-                sx={{ fontWeight: 700 }}
-                disabled={isRunning} // lock while running
-              />
-            );
-          })}
-        </Stack>
-
-        {/* Step 2: Start / Stop */}
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          alignItems={{ xs: "stretch", sm: "center" }}
-          flexWrap="wrap"
-        >
-          <Typography variant="h6">Elapsed: {elapsed}</Typography>
-
-          <Button
-            startIcon={<PlayArrowIcon />}
-            variant="contained"
-            onClick={handleStart}
-            disabled={isRunning || !vehicle}              // require vehicle
-          >
-            Start
-          </Button>
-          <Button
-            startIcon={<StopIcon />}
-            variant="outlined"
-            color="error"
-            onClick={onStopClick}
-            disabled={!isRunning}
-          >
-            Stop
-          </Button>
-
-          <Divider
-            flexItem
-            orientation={isSmall ? "horizontal" : "vertical"}
-            sx={{ mx: isSmall ? 0 : 2, my: isSmall ? 2 : 0 }}
-          />
-
-          <Stack direction="row" spacing={1} alignItems="center">
-            <DirectionsCarIcon />
-            <Typography variant="body2">{vehicle || "No vehicle"}</Typography>
+        <Box sx={{ mb: 2 }}>
+          {/* Step 1: Select Vehicle */}
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1" sx={{ mr: 1 }}>Select Vehicle</Typography>
+            {VEHICLES.map((v) => {
+              const selected = vehicle === v;
+              return (
+                <Chip
+                  key={v}
+                  label={v}
+                  clickable
+                  onClick={() => !isRunning && setVehicle(v)}
+                  color={selected ? "primary" : "default"}
+                  variant={selected ? "filled" : "outlined"}
+                  sx={{ fontWeight: 700 }}
+                  disabled={isRunning} // lock while running
+                />
+              );
+            })}
           </Stack>
 
-          {/* Step 3: Passenger quick-add (also +1 trip) */}
+          {/* Step 2: Start / Stop */}
           <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ ml: isSmall ? 0 : 1 }}
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            flexWrap="wrap"
           >
-            <PeopleIcon sx={{ opacity: 0.7 }} />
-            {[1,2,3,4,5,6,7].map((n) => (
-              <Chip
-                key={n}
-                label={n}
-                clickable
-                disabled={!isRunning}
-                onClick={() => addPaxAndTrip(n)}
-                sx={{ fontWeight: 700 }}
-              />
-            ))}
-          </Stack>
+            <Typography variant="h6">Elapsed: {elapsed}</Typography>
 
-          {/* Manual adjust (optional) */}
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ ml: { sm: "auto" } }}
-          >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography>Passengers</Typography>
-              <IconButton onClick={() => inc("passengers", -1)} disabled={!isRunning}><RemoveIcon /></IconButton>
-              <Typography>{passengers}</Typography>
-              <IconButton onClick={() => inc("passengers", +1)} disabled={!isRunning}><AddIcon /></IconButton>
-            </Stack>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography>Trips</Typography>
-              <IconButton onClick={() => inc("trips", -1)} disabled={!isRunning}><RemoveIcon /></IconButton>
-              <Typography>{trips}</Typography>
-              <IconButton onClick={() => inc("trips", +1)} disabled={!isRunning}><AddIcon /></IconButton>
-            </Stack>
-          </Stack>
-        </Stack>
+            <Button
+              startIcon={<PlayArrowIcon />}
+              variant="contained"
+              onClick={handleStart}
+              disabled={isRunning || !vehicle}              // require vehicle
+            >
+              Start
+            </Button>
+            <Button
+              startIcon={<StopIcon />}
+              variant="outlined"
+              color="error"
+              onClick={onStopClick}
+              disabled={!isRunning}
+            >
+              Stop
+            </Button>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* History grid */}
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>History (latest first)</Typography>
-        {isSmall ? (
-          <Stack spacing={1}>
-            {rows.map((r) => (
-              <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
-                <Typography variant="body2">Start: {r.start}</Typography>
-                <Typography variant="body2">End: {r.end}</Typography>
-                <Typography variant="body2">Duration: {r.duration}</Typography>
-                <Typography variant="body2">Trips: {r.trips}</Typography>
-                <Typography variant="body2">Passengers: {r.pax}</Typography>
-                <Typography variant="body2">Vehicle: {r.vehicle}</Typography>
-              </Paper>
-            ))}
-            {rows.length === 0 && (
-              <Typography textAlign="center" color="text.secondary" mt={2}>
-                No sessions found.
-              </Typography>
-            )}
-          </Stack>
-        ) : (
-          <Box sx={{ width: "100%" }}>
-            <DataGrid
-              autoHeight
-              rows={rows}
-              columns={cols}
-              density="compact"
-              pageSizeOptions={[5, 10, 25]}
-              initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
-              disableRowSelectionOnClick
+            <Divider
+              flexItem
+              orientation={isSmall ? "horizontal" : "vertical"}
+              sx={{ mx: isSmall ? 0 : 2, my: isSmall ? 2 : 0 }}
             />
-            {rows.length === 0 && (
-              <Typography textAlign="center" color="text.secondary" mt={2}>
-                No sessions found.
-              </Typography>
-            )}
-          </Box>
-        )}
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <DirectionsCarIcon />
+              <Typography variant="body2">{vehicle || "No vehicle"}</Typography>
+            </Stack>
+
+            {/* Step 3: Passenger quick-add (also +1 trip) */}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ ml: isSmall ? 0 : 1 }}
+            >
+              <PeopleIcon sx={{ opacity: 0.7 }} />
+              {[1,2,3,4,5,6,7].map((n) => (
+                <Chip
+                  key={n}
+                  label={n}
+                  clickable
+                  disabled={!isRunning}
+                  onClick={() => addPaxAndTrip(n)}
+                  sx={{ fontWeight: 700 }}
+                />
+              ))}
+            </Stack>
+
+            {/* Manual adjust (optional) */}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ ml: { sm: "auto" } }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography>Passengers</Typography>
+                <IconButton onClick={() => inc("passengers", -1)} disabled={!isRunning}><RemoveIcon /></IconButton>
+                <Typography>{passengers}</Typography>
+                <IconButton onClick={() => inc("passengers", +1)} disabled={!isRunning}><AddIcon /></IconButton>
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography>Trips</Typography>
+                <IconButton onClick={() => inc("trips", -1)} disabled={!isRunning}><RemoveIcon /></IconButton>
+                <Typography>{trips}</Typography>
+                <IconButton onClick={() => inc("trips", +1)} disabled={!isRunning}><AddIcon /></IconButton>
+              </Stack>
+            </Stack>
+          </Stack>
+        </Box>
+
+        <CadillacEVQuickStarts />
+
+        <Box sx={{ mt: 2 }}>
+          {/* History grid */}
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>History (latest first)</Typography>
+          {isSmall ? (
+            <Stack spacing={1}>
+              {rows.map((r) => (
+                <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
+                  <Typography variant="body2">Start: {r.start}</Typography>
+                  <Typography variant="body2">End: {r.end}</Typography>
+                  <Typography variant="body2">Duration: {r.duration}</Typography>
+                  <Typography variant="body2">Trips: {r.trips}</Typography>
+                  <Typography variant="body2">Passengers: {r.pax}</Typography>
+                  <Typography variant="body2">Vehicle: {r.vehicle}</Typography>
+                </Paper>
+              ))}
+              {rows.length === 0 && (
+                <Typography textAlign="center" color="text.secondary" mt={2}>
+                  No sessions found.
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            <Box sx={{ width: "100%" }}>
+              <DataGrid
+                autoHeight
+                rows={rows}
+                columns={cols}
+                density="compact"
+                pageSizeOptions={[5, 10, 25]}
+                initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
+                disableRowSelectionOnClick
+              />
+              {rows.length === 0 && (
+                <Typography textAlign="center" color="text.secondary" mt={2}>
+                  No sessions found.
+                </Typography>
+              )}
+            </Box>
+          )}
+        </Box>
       </CardContent>
 
       <DropoffDialog
