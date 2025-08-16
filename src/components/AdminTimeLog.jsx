@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Tabs,
@@ -115,19 +115,19 @@ function normalizeTimeLog(r) {
     Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
       ? endMs - startMs
       : Number.isFinite(r.duration)
-        ? r.duration > 100000
-          ? r.duration
-          : Math.floor(Number(r.duration) * 60 * 1000)
-        : null;
+      ? r.duration > 100000
+        ? r.duration
+        : Math.floor(Number(r.duration) * 60 * 1000)
+      : null;
 
   return {
     _col: "timeLogs",
     _id: realId,
     id:
       realId ??
-      `${(r.driverEmail || r.driver || "row").toLowerCase()}-${startMs ?? toMs(r.loggedAt) ?? 0}-${
-        endMs ?? 0
-      }`,
+      `${(r.driverEmail || r.driver || "row").toLowerCase()}-${
+        startMs ?? toMs(r.loggedAt) ?? 0
+      }-${endMs ?? 0}`,
     driverEmail: r.driverEmail || r.driver || "",
     vehicle: r.vehicle || r.rideId || "",
     startTime: startMs,
@@ -136,7 +136,6 @@ function normalizeTimeLog(r) {
     trips: Number.isFinite(r.trips) ? r.trips : 0,
     passengers: Number.isFinite(r.passengers) ? r.passengers : 0,
     note: r.note || "",
-    raw: r,
   };
 }
 
@@ -144,13 +143,14 @@ function normalizeShootout(r) {
   const start = toMs(r.startTime);
   const end = toMs(r.endTime);
   const realId = r.id || r._id || r.docId || r.uid || r.key || null;
-
   return {
     _col: "shootoutStats",
     _id: realId,
     id:
       realId ??
-      `${(r.driverEmail || "row").toLowerCase()}-${start ?? toMs(r.createdAt) ?? 0}-${end ?? 0}`,
+      `${(r.driverEmail || "row").toLowerCase()}-${
+        start ?? toMs(r.createdAt) ?? 0
+      }-${end ?? 0}`,
     driverEmail: r.driverEmail || "",
     vehicle: r.vehicle || "",
     startTime: start,
@@ -163,7 +163,6 @@ function normalizeShootout(r) {
     passengers: Number.isFinite(r.passengers) ? r.passengers : 0,
     createdAt: toMs(r.createdAt),
     status: r.status || "",
-    raw: r,
   };
 }
 
@@ -202,8 +201,40 @@ const durationCol = (field = "duration") => ({
     (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
 });
 
+const actionsCol = (openEditModal, handleDelete) => ({
+  field: "__actions",
+  headerName: "",
+  width: 96,
+  sortable: false,
+  filterable: false,
+  renderCell: (p) => {
+    const row = p.row;
+    const dis = !(row?._id || row?.id);
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <IconButton
+          size="small"
+          disabled={dis}
+          onClick={() => openEditModal(row)}
+        >
+          <EditIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
+          disabled={dis}
+          onClick={() => handleDelete(row)}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    );
+  },
+});
+
 export default function AdminTimeLog() {
   const nameMap = useNameMap();
+
+  const refFor = (row) => doc(db, row._col, row._id || row.id);
 
   /** ---------------- Entries (timeLogs) ---------------- */
   const [rawTimeLogs, setRawTimeLogs] = useState([]);
@@ -235,109 +266,28 @@ export default function AdminTimeLog() {
     [rawTimeLogs],
   );
 
-  const handleEntryEditCommit = useCallback(
-    async (params) => {
-      try {
-        const row = entryRows.find((r) => r.id === params.id);
-        if (!row?._id) return;
-        const field = params.field;
-        let value = params.value;
-        if (field === "trips" || field === "passengers") {
-          value = Number(value || 0);
-        } else {
-          value = String(value || "");
-        }
-        await updateDoc(doc(db, row._col, row._id), { [field]: value });
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    [entryRows],
-  );
+  const onEntryCellEditCommit = async (params) => {
+    const row = params.row || {};
+    if (!(row?._id || row?.id)) return;
+    const ref = refFor(row);
+    const { field, value } = params;
+    const patch = {};
 
-  const entryColumns = useMemo(
-    () => [
-      {
-        field: "driverEmail",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 180,
-        editable: true,
-        renderCell: (p) => {
-          const email = p.row?.driverEmail || "";
-          const name = nameMap[email.toLowerCase()];
-          if (!name) return email;
-          return (
-            <Tooltip title={email}>
-              <span>{name}</span>
-            </Tooltip>
-          );
-        },
-      },
-      {
-        field: "_id",
-        headerName: "DocId",
-        width: 140,
-        valueGetter: (p) => p.row?._id || "",
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle / Ride",
-        flex: 1,
-        minWidth: 160,
-        editable: true,
-      },
-      startCol("startTime"),
-      endCol("endTime"),
-      durationCol("duration"),
-      {
-        field: "trips",
-        headerName: "Trips",
-        type: "number",
-        width: 90,
-        editable: true,
-      },
-      {
-        field: "passengers",
-        headerName: "Pax",
-        type: "number",
-        width: 90,
-        editable: true,
-      },
-      {
-        field: "note",
-        headerName: "Note",
-        flex: 1,
-        minWidth: 160,
-        editable: true,
-      },
-      {
-        field: "actions",
-        headerName: "",
-        width: 90,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        renderCell: (params) => (
-          <>
-            <IconButton
-              size="small"
-              onClick={() => openEditModal(params.row)}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => handleDelete(params.row)}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </>
-        ),
-      },
-    ],
-    [nameMap],
-  );
+    if (field === "driverEmail") {
+      patch.driverEmail = String(value || "");
+      patch.driver = String(value || "");
+    } else if (field === "vehicle") {
+      patch.rideId = String(value || "");
+    } else if (field === "trips") {
+      patch.trips = Number(value || 0);
+    } else if (field === "passengers") {
+      patch.passengers = Number(value || 0);
+    } else if (field === "note") {
+      patch.note = String(value || "");
+    }
+
+    if (Object.keys(patch).length) await updateDoc(ref, patch);
+  };
 
   const entryFiltered = useMemo(() => {
     return entryRows.filter((r) => {
@@ -407,110 +357,30 @@ export default function AdminTimeLog() {
     [rawShootout],
   );
 
-  const handleShootoutEditCommit = useCallback(
-    async (params) => {
-      try {
-        const row = shootoutRows.find((r) => r.id === params.id);
-        if (!row?._id) return;
-        const field = params.field;
-        let value = params.value;
-        if (field === "trips" || field === "passengers") {
-          value = Number(value || 0);
-        } else {
-          value = String(value || "");
-        }
-        await updateDoc(doc(db, row._col, row._id), { [field]: value });
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    [shootoutRows],
-  );
+  const onShootCellEditCommit = async (params) => {
+    const row = params.row || {};
+    if (!(row?._id || row?.id)) return;
+    const ref = refFor(row);
+    const { field, value } = params;
+    const patch = {};
 
-  const shootoutColumns = useMemo(
-    () => [
-      {
-        field: "driverEmail",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 180,
-        editable: true,
-        renderCell: (p) => {
-          const email = p.row?.driverEmail || "";
-          const name = nameMap[email.toLowerCase()];
-          if (!name) return email;
-          return (
-            <Tooltip title={email}>
-              <span>{name}</span>
-            </Tooltip>
-          );
-        },
-      },
-      {
-        field: "_id",
-        headerName: "DocId",
-        width: 140,
-        valueGetter: (p) => p.row?._id || "",
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        flex: 1,
-        minWidth: 140,
-        editable: true,
-      },
-      startCol("startTime"),
-      endCol("endTime"),
-      durationCol("duration"),
-      {
-        field: "trips",
-        headerName: "Trips",
-        type: "number",
-        width: 90,
-        editable: true,
-      },
-      {
-        field: "passengers",
-        headerName: "Pax",
-        type: "number",
-        width: 90,
-        editable: true,
-      },
-      { field: "status", headerName: "Status", width: 120, editable: true },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        minWidth: 170,
-        valueGetter: (p) => p?.row?.createdAt,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-      },
-      {
-        field: "actions",
-        headerName: "",
-        width: 90,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        renderCell: (params) => (
-          <>
-            <IconButton
-              size="small"
-              onClick={() => openEditModal(params.row)}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              onClick={() => handleDelete(params.row)}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </>
-        ),
-      },
-    ],
-    [nameMap],
-  );
+    if (field === "driverEmail") patch.driverEmail = String(value || "");
+    else if (field === "vehicle") patch.vehicle = String(value || "");
+    else if (field === "trips") patch.trips = Number(value || 0);
+    else if (field === "passengers") patch.passengers = Number(value || 0);
+    else if (field === "status") patch.status = String(value || "");
+
+    if (Object.keys(patch).length) await updateDoc(ref, patch);
+  };
+
+  useEffect(() => {
+    if (entryRows.length) {
+      console.log("[entries] sample", entryRows.slice(0, 3));
+    }
+    if (shootoutRows.length) {
+      console.log("[shootout] sample", shootoutRows.slice(0, 3));
+    }
+  }, [entryRows, shootoutRows]);
 
   const shootFiltered = useMemo(() => {
     return shootoutRows.filter((r) => {
@@ -600,39 +470,145 @@ export default function AdminTimeLog() {
     setEditRow(null);
   };
   const saveEditModal = async () => {
-    try {
-      if (!editRow?._id) return;
-      const patch = {};
-      if (Number.isFinite(editRow.startTime))
-        patch.startTime = Timestamp.fromMillis(editRow.startTime);
-      if (Number.isFinite(editRow.endTime))
-        patch.endTime = Timestamp.fromMillis(editRow.endTime);
-      if (
-        editRow._col === "timeLogs" &&
-        Number.isFinite(editRow.startTime) &&
-        Number.isFinite(editRow.endTime)
-      ) {
-        patch.duration = Math.max(0, editRow.endTime - editRow.startTime);
-      }
-      await updateDoc(doc(db, editRow._col, editRow._id), patch);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      closeEditModal();
+    if (!(editRow?._id || editRow?.id)) return;
+    const ref = refFor(editRow);
+    const patch = {};
+    if (Number.isFinite(editRow.startTime))
+      patch.startTime = Timestamp.fromMillis(editRow.startTime);
+    if (Number.isFinite(editRow.endTime))
+      patch.endTime = Timestamp.fromMillis(editRow.endTime);
+    if (
+      editRow._col === "timeLogs" &&
+      Number.isFinite(editRow.startTime) &&
+      Number.isFinite(editRow.endTime)
+    ) {
+      patch.duration = Math.max(0, editRow.endTime - editRow.startTime);
     }
+    await updateDoc(ref, patch);
+    setEditOpen(false);
   };
 
   /** ---------------- Delete ---------------- */
   const handleDelete = async (row) => {
-    try {
-      if (!row?._id) return;
-      const ok = window.confirm("Delete this record?");
-      if (!ok) return;
-      await deleteDoc(doc(db, row._col, row._id));
-    } catch (e) {
-      console.error(e);
-    }
+    if (!(row?._id || row?.id)) return;
+    if (!window.confirm("Delete this record?")) return;
+    await deleteDoc(refFor(row));
   };
+
+  const entryColumns = useMemo(
+    () => [
+      {
+        field: "driverEmail",
+        headerName: "Driver",
+        flex: 1,
+        minWidth: 180,
+        editable: true,
+        renderCell: (p) => {
+          const email = p.row?.driverEmail || "";
+          const name = nameMap[email.toLowerCase()];
+          if (!name) return email;
+          return (
+            <Tooltip title={email}>
+              <span>{name}</span>
+            </Tooltip>
+          );
+        },
+      },
+      { field: "_id", headerName: "_id", width: 140, valueGetter: (p) => p.row?._id || "" },
+      { field: "id", headerName: "id", width: 140, valueGetter: (p) => p.row?.id || "" },
+      {
+        field: "vehicle",
+        headerName: "Vehicle / Ride",
+        flex: 1,
+        minWidth: 160,
+        editable: true,
+      },
+      startCol("startTime"),
+      endCol("endTime"),
+      durationCol("duration"),
+      {
+        field: "trips",
+        headerName: "Trips",
+        type: "number",
+        width: 90,
+        editable: true,
+      },
+      {
+        field: "passengers",
+        headerName: "Pax",
+        type: "number",
+        width: 90,
+        editable: true,
+      },
+      {
+        field: "note",
+        headerName: "Note",
+        flex: 1,
+        minWidth: 160,
+        editable: true,
+      },
+      actionsCol(openEditModal, handleDelete),
+    ],
+    [nameMap],
+  );
+
+  const shootoutColumns = useMemo(
+    () => [
+      {
+        field: "driverEmail",
+        headerName: "Driver",
+        flex: 1,
+        minWidth: 180,
+        editable: true,
+        renderCell: (p) => {
+          const email = p.row?.driverEmail || "";
+          const name = nameMap[email.toLowerCase()];
+          if (!name) return email;
+          return (
+            <Tooltip title={email}>
+              <span>{name}</span>
+            </Tooltip>
+          );
+        },
+      },
+      { field: "_id", headerName: "_id", width: 140, valueGetter: (p) => p.row?._id || "" },
+      { field: "id", headerName: "id", width: 140, valueGetter: (p) => p.row?.id || "" },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 140,
+        editable: true,
+      },
+      startCol("startTime"),
+      endCol("endTime"),
+      durationCol("duration"),
+      {
+        field: "trips",
+        headerName: "Trips",
+        type: "number",
+        width: 90,
+        editable: true,
+      },
+      {
+        field: "passengers",
+        headerName: "Pax",
+        type: "number",
+        width: 90,
+        editable: true,
+      },
+      { field: "status", headerName: "Status", width: 120, editable: true },
+      {
+        field: "createdAt",
+        headerName: "Created",
+        minWidth: 170,
+        valueGetter: (p) => p?.row?.createdAt,
+        valueFormatter: (p) => fmtDateTimeMs(p?.value),
+      },
+      actionsCol(openEditModal, handleDelete),
+    ],
+    [nameMap],
+  );
 
   return (
     <PageContainer pt={2} pb={4}>
@@ -688,7 +664,7 @@ export default function AdminTimeLog() {
             loading={!!loadingEntries}
             disableRowSelectionOnClick
             editMode="cell"
-            onCellEditCommit={handleEntryEditCommit}
+            onCellEditCommit={onEntryCellEditCommit}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
@@ -797,7 +773,7 @@ export default function AdminTimeLog() {
             loading={!!loadingShootout}
             disableRowSelectionOnClick
             editMode="cell"
-            onCellEditCommit={handleShootoutEditCommit}
+            onCellEditCommit={onShootCellEditCommit}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
