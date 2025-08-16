@@ -102,15 +102,16 @@ function normalizeTimeLog(r) {
     ? Math.round((endMs - startMs) / 60000)
     : null;
   const realId = r.id || r._id || r.docId || null;
+  const driverVal = r.driver || r.driverEmail || r.userEmail || "";
   return {
     _col: "timeLogs",
     _id: realId,
     id:
       realId ??
-      `${(r.driver || "row").toLowerCase()}-${
+      `${(driverVal || "row").toLowerCase()}-${
         startMs ?? toMs(r.loggedAt) ?? 0
       }-${endMs ?? 0}`,
-    driver: r.driver || "",
+    driver: driverVal,
     rideId: r.rideId || "",
     startTime: startMs,
     endTime: endMs,
