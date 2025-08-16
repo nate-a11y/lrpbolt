@@ -42,7 +42,7 @@ export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
 
 /**
  * -----------------------------
- * USER ACCESS
+ * USER / DISPLAY NAMES
  * -----------------------------
  */
 export async function getUserAccess(email) {
@@ -128,6 +128,72 @@ export function subscribeUserAccess(
       if (onError) onError(err);
     },
   );
+}
+
+/**
+ * subscribeDisplayNameMap(cb, onError?)
+ * Emits a merged map { [lowercasedEmail]: displayName } from `users` and `userAccess`.
+ * Names from `users` override `userAccess`.
+ */
+export function subscribeDisplayNameMap(cb, onError) {
+  const usersRef = collection(db, "users");
+  const accessRef = collection(db, "userAccess");
+
+  let usersMap = {};
+  let accessMap = {};
+
+  const safeName = (email, name) => {
+    const e = (email || "").trim();
+    const n = (name || "").trim();
+    if (n) return n;
+    if (e.includes("@")) return e.split("@")[0];
+    return e || "Unknown";
+  };
+
+  const emit = () => {
+    // Priority: users > userAccess
+    const merged = { ...accessMap, ...usersMap };
+    cb(merged);
+  };
+
+  const unsubUsers = onSnapshot(
+    usersRef,
+    (snap) => {
+      const next = {};
+      snap.forEach((d) => {
+        const x = d.data() || {};
+        const email = (x.email || d.id || "").toLowerCase().trim();
+        if (!email) return;
+        next[email] =
+          x.name || x.displayName || x.fullName || safeName(email, "");
+      });
+      usersMap = next;
+      emit();
+    },
+    (err) => onError?.(err),
+  );
+
+  const unsubAccess = onSnapshot(
+    accessRef,
+    (snap) => {
+      const next = {};
+      snap.forEach((d) => {
+        const x = d.data() || {};
+        const email = (x.email || d.id || "").toLowerCase().trim();
+        if (!email) return;
+        next[email] =
+          x.name || x.displayName || x.fullName || safeName(email, "");
+      });
+      accessMap = next;
+      emit();
+    },
+    (err) => onError?.(err),
+  );
+
+  return () => {
+    unsubUsers && unsubUsers();
+    unsubAccess && unsubAccess();
+  };
 }
 
 /**
@@ -779,4 +845,73 @@ export function subscribeShootoutHistoryAll(
     },
   );
   return () => unsub();
+}
+
+/**
+ * -----------------------------
+ * PATCH HELPERS (typed coercion for grids)
+ * -----------------------------
+ */
+
+// Update a single timeLogs doc with proper Timestamp / minutes handling.
+export async function patchTimeLog(id, updates) {
+  if (!id) throw new Error("patchTimeLog: missing id");
+  const ref = doc(db, "timeLogs", id);
+  const coerceTs = (v) =>
+    v == null ? null : v instanceof Timestamp ? v : Timestamp.fromMillis(Number(v));
+
+  const data = cleanData({
+    driver: updates.driver,
+    rideId: updates.rideId,
+    startTime:
+      updates.startTime !== undefined ? coerceTs(updates.startTime) : undefined,
+    endTime:
+      updates.endTime !== undefined ? coerceTs(updates.endTime) : undefined,
+    loggedAt:
+      updates.loggedAt !== undefined ? coerceTs(updates.loggedAt) : undefined,
+    // stored as minutes in Firestore
+    duration:
+      updates.durationMin !== undefined
+        ? Number.isFinite(Number(updates.durationMin))
+          ? Math.round(Number(updates.durationMin))
+          : 0
+        : undefined,
+  });
+
+  // keep duration consistent if both times present (wins over manual duration)
+  const s = data.startTime?.toMillis?.();
+  const e = data.endTime?.toMillis?.();
+  if (Number.isFinite(s) && Number.isFinite(e) && e >= s) {
+    data.duration = Math.round((e - s) / 60000);
+  }
+
+  await updateDoc(ref, data);
+}
+
+// Update a single shootoutStats doc with proper Timestamp / integer handling.
+export async function patchShootoutStat(id, updates) {
+  if (!id) throw new Error("patchShootoutStat: missing id");
+  const ref = doc(db, "shootoutStats", id);
+  const coerceTs = (v) =>
+    v == null ? null : v instanceof Timestamp ? v : Timestamp.fromMillis(Number(v));
+  const asInt = (v, d = 0) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n) : d;
+  };
+
+  const data = cleanData({
+    driverEmail: updates.driverEmail,
+    vehicle: updates.vehicle,
+    trips: updates.trips !== undefined ? asInt(updates.trips, 0) : undefined,
+    passengers:
+      updates.passengers !== undefined ? asInt(updates.passengers, 0) : undefined,
+    startTime:
+      updates.startTime !== undefined ? coerceTs(updates.startTime) : undefined,
+    endTime:
+      updates.endTime !== undefined ? coerceTs(updates.endTime) : undefined,
+    createdAt:
+      updates.createdAt !== undefined ? coerceTs(updates.createdAt) : undefined,
+  });
+
+  await updateDoc(ref, data);
 }
