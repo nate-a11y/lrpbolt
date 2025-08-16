@@ -1,9 +1,20 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box, Tabs, Tab, TextField, Typography, Alert,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button,
-  Stack, Tooltip, IconButton
+  Box,
+  Tabs,
+  Tab,
+  TextField,
+  Typography,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Stack,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
@@ -14,10 +25,15 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 import PageContainer from "./PageContainer.jsx";
-import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/api";
+import {
+  subscribeTimeLogs,
+  subscribeShootoutStats,
+  subscribeDisplayNameMap,
+  patchTimeLog,
+  patchShootoutStat,
+} from "../hooks/api";
 
-import { doc, updateDoc, deleteDoc, collection, onSnapshot } from "firebase/firestore";
-import { Timestamp } from "firebase/firestore";
+import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "../utils/firebaseInit";
 
 dayjs.extend(utc);
@@ -47,12 +63,15 @@ function toMs(input) {
       if (Number.isFinite(input.millis)) return input.millis;
     }
     if (input instanceof Date) {
-      const t = input.getTime(); return Number.isFinite(t) ? t : null;
+      const t = input.getTime();
+      return Number.isFinite(t) ? t : null;
     }
     if (typeof input === "number" && Number.isFinite(input)) return input;
     if (typeof input === "string") {
-      const n = Number(input); if (Number.isFinite(n)) return n;
-      const t = Date.parse(input); return Number.isFinite(t) ? t : null;
+      const n = Number(input);
+      if (Number.isFinite(n)) return n;
+      const t = Date.parse(input);
+      return Number.isFinite(t) ? t : null;
     }
   } catch {}
   return null;
@@ -72,35 +91,6 @@ const asInt = (v, d = 0) => {
   return Number.isFinite(n) ? Math.round(n) : d;
 };
 
-/* ---------------- live name map from users + userAccess ---------------- */
-function useNameMap() {
-  const [map, setMap] = useState({});
-  useEffect(() => {
-    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      const next = {};
-      snap.forEach((d) => {
-        const data = d.data() || {};
-        const email = (data.email || d.id || "").toLowerCase();
-        const name = data.name || data.displayName || data.fullName || "";
-        if (email) next[email] = name;
-      });
-      setMap((prev) => ({ ...prev, ...next }));
-    });
-    const unsubAccess = onSnapshot(collection(db, "userAccess"), (snap) => {
-      const next = {};
-      snap.forEach((d) => {
-        const data = d.data() || {};
-        const email = (data.email || d.id || "").toLowerCase();
-        const name = data.name || data.displayName || data.fullName || "";
-        if (email && name) next[email] = name;
-      });
-      setMap((prev) => ({ ...prev, ...next }));
-    });
-    return () => { unsubUsers && unsubUsers(); unsubAccess && unsubAccess(); };
-  }, []);
-  return map;
-}
-
 /* ---------------- normalizers (strict to each collection) ---------------- */
 // timeLogs fields: driver (string), duration (minutes), endTime (ts), loggedAt (ts), rideId (string), startTime (ts)
 function normalizeTimeLog(r) {
@@ -115,12 +105,16 @@ function normalizeTimeLog(r) {
   return {
     _col: "timeLogs",
     _id: realId,
-    id: realId ?? `${(r.driver || "row").toLowerCase()}-${startMs ?? toMs(r.loggedAt) ?? 0}-${endMs ?? 0}`,
+    id:
+      realId ??
+      `${(r.driver || "row").toLowerCase()}-${
+        startMs ?? toMs(r.loggedAt) ?? 0
+      }-${endMs ?? 0}`,
     driver: r.driver || "",
     rideId: r.rideId || "",
     startTime: startMs,
     endTime: endMs,
-    durationMin: durMin,
+    durationMin: durMin, // UI uses minutes; API helper converts when patching
     loggedAt: toMs(r.loggedAt),
   };
 }
@@ -131,7 +125,11 @@ function normalizeShootout(r) {
   return {
     _col: "shootoutStats",
     _id: realId,
-    id: realId ?? `${(r.driverEmail || "row").toLowerCase()}-${toMs(r.startTime) ?? 0}`,
+    id:
+      realId ??
+      `${(r.driverEmail || "row").toLowerCase()}-${
+        toMs(r.startTime) ?? 0
+      }`,
     driverEmail: r.driverEmail || "",
     vehicle: r.vehicle || "",
     startTime: toMs(r.startTime),
@@ -149,9 +147,9 @@ function DateTimeEditCell(props) {
   return (
     <DateTimePicker
       value={v}
-      onChange={(nv) => {
-        api.setEditCellValue({ id, field, value: nv ? nv.valueOf() : null }, event);
-      }}
+      onChange={(nv) =>
+        api.setEditCellValue({ id, field, value: nv ? nv.valueOf() : null })
+      }
       ampm
       slotProps={{ textField: { size: "small" } }}
     />
@@ -164,7 +162,9 @@ function NumberEditCell(props) {
       size="small"
       type="number"
       value={value ?? ""}
-      onChange={(e) => api.setEditCellValue({ id, field, value: e.target.value }, event)}
+      onChange={(e) =>
+        api.setEditCellValue({ id, field, value: e.target.value })
+      }
       inputProps={{ step: 1 }}
       fullWidth
     />
@@ -173,10 +173,16 @@ function NumberEditCell(props) {
 
 /* ---------------- component ---------------- */
 export default function AdminTimeLog() {
-  const nameMap = useNameMap();
+  /* ----- Display name map from API hook (users + userAccess) ----- */
+  const [nameMap, setNameMap] = useState({});
+  useEffect(() => {
+    const unsub = subscribeDisplayNameMap(setNameMap);
+    return () => unsub && unsub();
+  }, []);
+
   const refFor = (row) => doc(db, row._col, row._id || row.id);
 
-  /* -------- Entries -------- */
+  /* -------- Entries (timeLogs) -------- */
   const [rawTimeLogs, setRawTimeLogs] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [entryError, setEntryError] = useState("");
@@ -188,64 +194,79 @@ export default function AdminTimeLog() {
 
   useEffect(() => {
     const unsub = subscribeTimeLogs(
-      (rows) => { setRawTimeLogs(Array.isArray(rows) ? rows : []); setLoadingEntries(false); },
-      (e) => { console.error(e); setEntryError("Failed to load time logs."); setLoadingEntries(false); }
+      (rows) => {
+        setRawTimeLogs(Array.isArray(rows) ? rows : []);
+        setLoadingEntries(false);
+      },
+      (e) => {
+        console.error(e);
+        setEntryError("Failed to load time logs.");
+        setLoadingEntries(false);
+      },
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
   const entryRows = useMemo(
     () => (Array.isArray(rawTimeLogs) ? rawTimeLogs.map(normalizeTimeLog) : []),
-    [rawTimeLogs]
+    [rawTimeLogs],
   );
 
-  // Inline commit for ALL fields in timeLogs
-  const onEntryCellEditCommit = async (params) => {
-    const { id, field, value } = params;
+  // Inline commit for ALL fields in timeLogs -> use API helper
+  const onEntryCellEditCommit = async ({ id, field, value }) => {
     const row = entryRows.find((r) => r.id === id);
     if (!row) return;
-    const ref = doc(db, "timeLogs", row._id || row.id);
-    const patch = {};
-
-    if (field === "driver") patch.driver = String(value || "");
-    else if (field === "rideId") patch.rideId = String(value || "");
-    else if (field === "startTime") patch.startTime = value ? Timestamp.fromMillis(Number(value)) : null;
-    else if (field === "endTime") patch.endTime = value ? Timestamp.fromMillis(Number(value)) : null;
-    else if (field === "durationMin") patch.duration = asInt(value, 0); // stored as minutes
-    else if (field === "loggedAt") patch.loggedAt = value ? Timestamp.fromMillis(Number(value)) : null;
-
-    // If start/end changed, recompute duration minutes here to keep consistent
-    if (("startTime" in patch) || ("endTime" in patch)) {
-      const s = ("startTime" in patch) ? (patch.startTime ? patch.startTime.toMillis() : null) : row.startTime;
-      const e = ("endTime" in patch) ? (patch.endTime ? patch.endTime.toMillis() : null) : row.endTime;
-      if (Number.isFinite(s) && Number.isFinite(e) && e >= s) {
-        patch.duration = Math.round((e - s) / 60000);
-      }
+    const payload = {};
+    if (field === "driver") payload.driver = String(value || "");
+    else if (field === "rideId") payload.rideId = String(value || "");
+    else if (field === "startTime")
+      payload.startTime = value == null ? null : Number(value);
+    else if (field === "endTime")
+      payload.endTime = value == null ? null : Number(value);
+    else if (field === "durationMin")
+      payload.durationMin = asInt(value, 0);
+    else if (field === "loggedAt")
+      payload.loggedAt = value == null ? null : Number(value);
+    if (Object.keys(payload).length) {
+      await patchTimeLog(row._id || row.id, payload);
     }
-
-    if (Object.keys(patch).length) await updateDoc(ref, patch);
   };
 
   const entryFiltered = useMemo(() => {
     return entryRows.filter((r) => {
       if (entryDriver) {
-        const disp = isEmail(r.driver) ? (nameMap[r.driver.toLowerCase()] || r.driver) : r.driver;
+        const disp = isEmail(r.driver)
+          ? nameMap[r.driver.toLowerCase()] || r.driver
+          : r.driver;
         const hay = `${r.driver} ${disp}`.toLowerCase();
         if (!hay.includes(entryDriver.toLowerCase())) return false;
       }
       const sDj = Number.isFinite(r.startTime) ? dayjs(r.startTime) : null;
       const eDj = Number.isFinite(r.endTime) ? dayjs(r.endTime) : null;
-      if (entryStartAfter && (!sDj || !sDj.isAfter(entryStartAfter))) return false;
-      if (entryEndBefore) { const cmp = eDj || sDj; if (!cmp || !cmp.isBefore(entryEndBefore)) return false; }
+      if (entryStartAfter && (!sDj || !sDj.isAfter(entryStartAfter)))
+        return false;
+      if (entryEndBefore) {
+        const cmp = eDj || sDj;
+        if (!cmp || !cmp.isBefore(entryEndBefore)) return false;
+      }
       if (entrySearch) {
-        const text = [r.driver, isEmail(r.driver) ? nameMap[r.driver.toLowerCase()] || "" : "", r.rideId].join(" ").toLowerCase();
+        const text = [r.driver, isEmail(r.driver) ? nameMap[r.driver.toLowerCase()] || "" : "", r.rideId]
+          .join(" ")
+          .toLowerCase();
         if (!text.includes(entrySearch.toLowerCase())) return false;
       }
       return true;
     });
-  }, [entryRows, entryDriver, entryStartAfter, entryEndBefore, entrySearch, nameMap]);
+  }, [
+    entryRows,
+    entryDriver,
+    entryStartAfter,
+    entryEndBefore,
+    entrySearch,
+    nameMap,
+  ]);
 
-  /* -------- Shootout -------- */
+  /* -------- Shootout (shootoutStats) -------- */
   const [rawShootout, setRawShootout] = useState([]);
   const [loadingShootout, setLoadingShootout] = useState(true);
   const [shootError, setShootError] = useState("");
@@ -257,70 +278,86 @@ export default function AdminTimeLog() {
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
-      (rows) => { setRawShootout(Array.isArray(rows) ? rows : []); setLoadingShootout(false); },
-      (e) => { console.error(e); setShootError("Failed to load shootout stats."); setLoadingShootout(false); }
+      (rows) => {
+        setRawShootout(Array.isArray(rows) ? rows : []);
+        setLoadingShootout(false);
+      },
+      (e) => {
+        console.error(e);
+        setShootError("Failed to load shootout stats.");
+        setLoadingShootout(false);
+      },
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
   const shootoutRows = useMemo(
     () => (Array.isArray(rawShootout) ? rawShootout.map(normalizeShootout) : []),
-    [rawShootout]
+    [rawShootout],
   );
 
-  // Inline commit for ALL fields in shootoutStats
-  const onShootCellEditCommit = async (params) => {
-    const { id, field, value } = params;
+  // Inline commit for ALL fields in shootoutStats -> use API helper
+  const onShootCellEditCommit = async ({ id, field, value }) => {
     const row = shootoutRows.find((r) => r.id === id);
     if (!row) return;
-    const ref = doc(db, "shootoutStats", row._id || row.id);
-    const patch = {};
+    const payload = {};
+    if (field === "driverEmail") payload.driverEmail = String(value || "");
+    else if (field === "vehicle") payload.vehicle = String(value || "");
+    else if (field === "trips") payload.trips = asInt(value, 0);
+    else if (field === "passengers") payload.passengers = asInt(value, 0);
+    else if (field === "startTime")
+      payload.startTime = value == null ? null : Number(value);
+    else if (field === "endTime")
+      payload.endTime = value == null ? null : Number(value);
+    else if (field === "createdAt")
+      payload.createdAt = value == null ? null : Number(value);
 
-    if (field === "driverEmail") patch.driverEmail = String(value || "");
-    else if (field === "vehicle") patch.vehicle = String(value || "");
-    else if (field === "trips") patch.trips = asInt(value, 0);
-    else if (field === "passengers") patch.passengers = asInt(value, 0);
-    else if (field === "startTime") patch.startTime = value ? Timestamp.fromMillis(Number(value)) : null;
-    else if (field === "endTime") patch.endTime = value ? Timestamp.fromMillis(Number(value)) : null;
-    else if (field === "createdAt") patch.createdAt = value ? Timestamp.fromMillis(Number(value)) : null;
-
-    if (Object.keys(patch).length) await updateDoc(ref, patch);
+    if (Object.keys(payload).length) {
+      await patchShootoutStat(row._id || row.id, payload);
+    }
   };
 
   /* -------- Modal (edit ALL fields for the selected row) -------- */
   const [tab, setTab] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
-  const openEditModal = (row) => { setEditRow(row); setEditOpen(true); };
-  const closeEditModal = () => { setEditOpen(false); setEditRow(null); };
+  const openEditModal = (row) => {
+    setEditRow(row);
+    setEditOpen(true);
+  };
+  const closeEditModal = () => {
+    setEditOpen(false);
+    setEditRow(null);
+  };
 
   const setEdit = (k, v) => setEditRow((r) => ({ ...r, [k]: v }));
 
   const saveEditModal = async () => {
     if (!(editRow?._id || editRow?.id)) return;
-    const ref = refFor(editRow);
-    const patch = {};
     if (editRow._col === "timeLogs") {
-      if ("driver" in editRow) patch.driver = String(editRow.driver || "");
-      if ("rideId" in editRow) patch.rideId = String(editRow.rideId || "");
-      if ("startTime" in editRow) patch.startTime = Number.isFinite(editRow.startTime) ? Timestamp.fromMillis(editRow.startTime) : null;
-      if ("endTime" in editRow) patch.endTime = Number.isFinite(editRow.endTime) ? Timestamp.fromMillis(editRow.endTime) : null;
-      if ("loggedAt" in editRow) patch.loggedAt = Number.isFinite(editRow.loggedAt) ? Timestamp.fromMillis(editRow.loggedAt) : null;
-      if ("durationMin" in editRow) patch.duration = asInt(editRow.durationMin, 0);
-      // keep duration in sync if both times present
-      if (Number.isFinite(editRow.startTime) && Number.isFinite(editRow.endTime)) {
-        patch.duration = Math.round((editRow.endTime - editRow.startTime) / 60000);
-      }
+      await patchTimeLog(editRow._id || editRow.id, {
+        driver: editRow.driver,
+        rideId: editRow.rideId,
+        startTime: Number.isFinite(editRow.startTime) ? editRow.startTime : null,
+        endTime: Number.isFinite(editRow.endTime) ? editRow.endTime : null,
+        loggedAt: Number.isFinite(editRow.loggedAt) ? editRow.loggedAt : null,
+        durationMin: Number.isFinite(editRow.durationMin)
+          ? editRow.durationMin
+          : undefined,
+      });
     } else if (editRow._col === "shootoutStats") {
-      if ("driverEmail" in editRow) patch.driverEmail = String(editRow.driverEmail || "");
-      if ("vehicle" in editRow) patch.vehicle = String(editRow.vehicle || "");
-      if ("trips" in editRow) patch.trips = asInt(editRow.trips, 0);
-      if ("passengers" in editRow) patch.passengers = asInt(editRow.passengers, 0);
-      if ("startTime" in editRow) patch.startTime = Number.isFinite(editRow.startTime) ? Timestamp.fromMillis(editRow.startTime) : null;
-      if ("endTime" in editRow) patch.endTime = Number.isFinite(editRow.endTime) ? Timestamp.fromMillis(editRow.endTime) : null;
-      if ("createdAt" in editRow) patch.createdAt = Number.isFinite(editRow.createdAt) ? Timestamp.fromMillis(editRow.createdAt) : null;
+      await patchShootoutStat(editRow._id || editRow.id, {
+        driverEmail: editRow.driverEmail,
+        vehicle: editRow.vehicle,
+        trips: editRow.trips,
+        passengers: editRow.passengers,
+        startTime: Number.isFinite(editRow.startTime) ? editRow.startTime : null,
+        endTime: Number.isFinite(editRow.endTime) ? editRow.endTime : null,
+        createdAt: Number.isFinite(editRow.createdAt)
+          ? editRow.createdAt
+          : null,
+      });
     }
-    await updateDoc(ref, patch);
     setEditOpen(false);
   };
 
@@ -330,7 +367,7 @@ export default function AdminTimeLog() {
     await deleteDoc(refFor(row));
   };
 
-  /* -------- Columns (all fields editable) -------- */
+  /* -------- Columns (only the real fields per collection) -------- */
   const entryColumns = useMemo(
     () => [
       {
@@ -343,39 +380,70 @@ export default function AdminTimeLog() {
           const d = p.row?.driver || "";
           if (!isEmail(d)) return d || "";
           const name = nameMap[d.toLowerCase()];
-          return name ? <Tooltip title={d}><span>{name}</span></Tooltip> : d;
+          return name ? (
+            <Tooltip title={d}>
+              <span>{name}</span>
+            </Tooltip>
+          ) : (
+            d
+          );
         },
       },
-      { field: "rideId", headerName: "Ride ID", flex: 0.9, minWidth: 140, editable: true },
       {
-        field: "startTime", headerName: "Start", flex: 1, minWidth: 160, editable: true,
+        field: "rideId",
+        headerName: "Ride ID",
+        flex: 0.9,
+        minWidth: 140,
+        editable: true,
+      },
+      {
+        field: "startTime",
+        headerName: "Start",
+        flex: 1,
+        minWidth: 160,
+        editable: true,
         valueGetter: (p) => p?.row?.startTime,
         valueFormatter: (p) => fmtDateTimeMs(p?.value),
         renderCell: (p) => fmtDateTimeMs(p?.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
-        field: "endTime", headerName: "End", flex: 1, minWidth: 160, editable: true,
+        field: "endTime",
+        headerName: "End",
+        flex: 1,
+        minWidth: 160,
+        editable: true,
         valueGetter: (p) => p?.row?.endTime,
         valueFormatter: (p) => fmtDateTimeMs(p?.value),
         renderCell: (p) => fmtDateTimeMs(p?.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
-        field: "durationMin", headerName: "Duration", width: 120, editable: true,
+        field: "durationMin",
+        headerName: "Duration",
+        width: 120,
+        editable: true,
         valueFormatter: (p) => fmtMinutes(p?.value),
         renderEditCell: (params) => <NumberEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
-        field: "loggedAt", headerName: "Logged At", flex: 0.9, minWidth: 160, editable: true,
+        field: "loggedAt",
+        headerName: "Logged At",
+        flex: 0.9,
+        minWidth: 160,
+        editable: true,
         valueGetter: (p) => p?.row?.loggedAt,
         valueFormatter: (p) => fmtDateTimeMs(p?.value),
         renderCell: (p) => fmtDateTimeMs(p?.row?.loggedAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
         field: "__actions",
@@ -388,52 +456,109 @@ export default function AdminTimeLog() {
           const dis = !(row?._id || row?.id);
           return (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <IconButton size="small" disabled={dis} onClick={() => openEditModal(row)}><EditIcon fontSize="small" /></IconButton>
-              <IconButton size="small" disabled={dis} onClick={() => handleDelete(row)}><DeleteIcon fontSize="small" /></IconButton>
+              <IconButton
+                size="small"
+                disabled={dis}
+                onClick={() => openEditModal(row)}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                disabled={dis}
+                onClick={() => handleDelete(row)}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
             </Box>
           );
         },
       },
     ],
-    [nameMap]
+    [nameMap],
   );
 
   const shootoutColumns = useMemo(
     () => [
       {
-        field: "driverEmail", headerName: "Driver", flex: 1, minWidth: 180, editable: true,
+        field: "driverEmail",
+        headerName: "Driver",
+        flex: 1,
+        minWidth: 180,
+        editable: true,
         renderCell: (p) => {
           const email = p.row?.driverEmail || "";
           const name = email ? nameMap[email.toLowerCase()] : "";
-          return name ? <Tooltip title={email}><span>{name}</span></Tooltip> : email;
+          return name ? (
+            <Tooltip title={email}>
+              <span>{name}</span>
+            </Tooltip>
+          ) : (
+            email
+          );
         },
       },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 140, editable: true },
       {
-        field: "startTime", headerName: "Start", flex: 1, minWidth: 160, editable: true,
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 140,
+        editable: true,
+      },
+      {
+        field: "startTime",
+        headerName: "Start",
+        flex: 1,
+        minWidth: 160,
+        editable: true,
         valueGetter: (p) => p?.row?.startTime,
         valueFormatter: (p) => fmtDateTimeMs(p?.value),
         renderCell: (p) => fmtDateTimeMs(p?.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
-        field: "endTime", headerName: "End", flex: 1, minWidth: 160, editable: true,
+        field: "endTime",
+        headerName: "End",
+        flex: 1,
+        minWidth: 160,
+        editable: true,
         valueGetter: (p) => p?.row?.endTime,
         valueFormatter: (p) => fmtDateTimeMs(p?.value),
         renderCell: (p) => fmtDateTimeMs(p?.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
-      { field: "trips", headerName: "Trips", type: "number", width: 110, editable: true, renderEditCell: (p) => <NumberEditCell {...p} /> },
-      { field: "passengers", headerName: "Pax", type: "number", width: 110, editable: true, renderEditCell: (p) => <NumberEditCell {...p} /> },
       {
-        field: "createdAt", headerName: "Created", flex: 0.9, minWidth: 170, editable: true,
+        field: "trips",
+        headerName: "Trips",
+        type: "number",
+        width: 110,
+        editable: true,
+        renderEditCell: (p) => <NumberEditCell {...p} />,
+      },
+      {
+        field: "passengers",
+        headerName: "Pax",
+        type: "number",
+        width: 110,
+        editable: true,
+        renderEditCell: (p) => <NumberEditCell {...p} />,
+      },
+      {
+        field: "createdAt",
+        headerName: "Created",
+        flex: 0.9,
+        minWidth: 170,
+        editable: true,
         valueGetter: (p) => p?.row?.createdAt,
         valueFormatter: (p) => fmtDateTimeMs(p?.value),
         renderCell: (p) => fmtDateTimeMs(p?.row?.createdAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) => (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
         field: "__actions",
@@ -446,17 +571,29 @@ export default function AdminTimeLog() {
           const dis = !(row?._id || row?.id);
           return (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <IconButton size="small" disabled={dis} onClick={() => openEditModal(row)}><EditIcon fontSize="small" /></IconButton>
-              <IconButton size="small" disabled={dis} onClick={() => handleDelete(row)}><DeleteIcon fontSize="small" /></IconButton>
+              <IconButton
+                size="small"
+                disabled={dis}
+                onClick={() => openEditModal(row)}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                disabled={dis}
+                onClick={() => handleDelete(row)}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
             </Box>
           );
         },
       },
     ],
-    [nameMap]
+    [nameMap],
   );
 
-  /* -------- Weekly Summary (unchanged; uses entryRows) -------- */
+  /* -------- Weekly Summary (timeLogs only) -------- */
   const [weekStart, setWeekStart] = useState(dayjs().startOf("week"));
   const weekEnd = useMemo(() => weekStart.add(1, "week"), [weekStart]);
   const weekly = useMemo(() => {
@@ -467,19 +604,37 @@ export default function AdminTimeLog() {
     });
     const by = new Map();
     for (const r of inWeek) {
-      const key = isEmail(r.driver) ? r.driver.toLowerCase() : r.driver || "Unknown";
-      const prev = by.get(key) || { driver: isEmail(key) ? nameMap[key] || key : key, sessions: 0, min: 0 };
+      const key = isEmail(r.driver)
+        ? r.driver.toLowerCase()
+        : r.driver || "Unknown";
+      const prev =
+        by.get(key) || {
+          driver: isEmail(key) ? nameMap[key] || key : key,
+          sessions: 0,
+          min: 0,
+        };
       prev.sessions += 1;
       prev.min += Number.isFinite(r.durationMin) ? r.durationMin : 0;
       by.set(key, prev);
     }
-    return Array.from(by.values()).map((v, i) => ({ id: i, driver: v.driver, sessions: v.sessions, hours: Number((v.min / 60).toFixed(2)) }));
+    return Array.from(by.values()).map((v, i) => ({
+      id: i,
+      driver: v.driver,
+      sessions: v.sessions,
+      hours: Number((v.min / 60).toFixed(2)),
+    }));
   }, [entryRows, weekStart, weekEnd, nameMap]);
 
   return (
     <PageContainer pt={2} pb={4}>
       <Box sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+        >
           <Tab label="Entries" />
           <Tab label="Weekly Summary" />
           <Tab label="Shootout Stats" />
@@ -491,21 +646,48 @@ export default function AdminTimeLog() {
         <Box>
           {entryError && <Alert severity="error">{entryError}</Alert>}
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
-            <TextField label="Search" value={entrySearch} onChange={(e) => setEntrySearch(e.target.value)} size="small" />
-            <TextField label="Driver" value={entryDriver} onChange={(e) => setEntryDriver(e.target.value)} size="small" />
-            <DatePicker label="Start after" value={entryStartAfter} onChange={(v) => setEntryStartAfter(v)} slotProps={{ textField: { size: "small" } }} />
-            <DatePicker label="End before" value={entryEndBefore} onChange={(v) => setEntryEndBefore(v)} slotProps={{ textField: { size: "small" } }} />
+            <TextField
+              label="Search"
+              value={entrySearch}
+              onChange={(e) => setEntrySearch(e.target.value)}
+              size="small"
+            />
+            <TextField
+              label="Driver"
+              value={entryDriver}
+              onChange={(e) => setEntryDriver(e.target.value)}
+              size="small"
+            />
+            <DatePicker
+              label="Start after"
+              value={entryStartAfter}
+              onChange={(v) => setEntryStartAfter(v)}
+              slotProps={{ textField: { size: "small" } }}
+            />
+            <DatePicker
+              label="End before"
+              value={entryEndBefore}
+              onChange={(v) => setEntryEndBefore(v)}
+              slotProps={{ textField: { size: "small" } }}
+            />
           </Box>
           <DataGrid
-            autoHeight density="compact"
-            rows={entryFiltered} columns={entryColumns}
+            autoHeight
+            density="compact"
+            rows={entryFiltered}
+            columns={entryColumns}
             getRowId={(r) => r._id || r.id}
             loading={!!loadingEntries}
             disableRowSelectionOnClick
             editMode="cell"
             onCellEditCommit={onEntryCellEditCommit}
             slots={{ toolbar: GridToolbar }}
-            slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300 },
+              },
+            }}
             initialState={{
               sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
               pagination: { paginationModel: { pageSize: 10 } },
@@ -518,21 +700,42 @@ export default function AdminTimeLog() {
       {tab === 1 && (
         <Box>
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
-            <DatePicker label="Week of" value={weekStart} onChange={(v) => v && setWeekStart(v.startOf("week"))} slotProps={{ textField: { size: "small" } }} />
+            <DatePicker
+              label="Week of"
+              value={weekStart}
+              onChange={(v) => v && setWeekStart(v.startOf("week"))}
+              slotProps={{ textField: { size: "small" } }}
+            />
           </Box>
           {weekly.length === 0 ? (
-            <Typography variant="body2">No data for selected week.</Typography>
+            <Typography variant="body2">
+              No data for selected week.
+            </Typography>
           ) : (
             <DataGrid
-              autoHeight density="compact"
+              autoHeight
+              density="compact"
               rows={weekly}
               columns={[
                 { field: "driver", headerName: "Driver", flex: 1 },
-                { field: "sessions", headerName: "Sessions", width: 120, type: "number" },
-                { field: "hours", headerName: "Hours", width: 110, type: "number" },
+                {
+                  field: "sessions",
+                  headerName: "Sessions",
+                  width: 120,
+                  type: "number",
+                },
+                {
+                  field: "hours",
+                  headerName: "Hours",
+                  width: 110,
+                  type: "number",
+                },
               ]}
               hideFooterSelectedRowCount
-              initialState={{ sorting: { sortModel: [{ field: "hours", sort: "desc" }] }, pagination: { paginationModel: { pageSize: 10 } } }}
+              initialState={{
+                sorting: { sortModel: [{ field: "hours", sort: "desc" }] },
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
             />
           )}
         </Box>
@@ -543,25 +746,55 @@ export default function AdminTimeLog() {
         <Box>
           {shootError && <Alert severity="error">{shootError}</Alert>}
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
-            <TextField label="Search" value={shootSearch} onChange={(e) => setShootSearch(e.target.value)} size="small" />
-            <TextField label="Driver" value={shootDriver} onChange={(e) => setShootDriver(e.target.value)} size="small" />
-            <DatePicker label="Start after" value={shootStartAfter} onChange={(v) => setShootStartAfter(v)} slotProps={{ textField: { size: "small" } }} />
-            <DatePicker label="End before" value={shootEndBefore} onChange={(v) => setShootEndBefore(v)} slotProps={{ textField: { size: "small" } }} />
+            <TextField
+              label="Search"
+              value={shootSearch}
+              onChange={(e) => setShootSearch(e.target.value)}
+              size="small"
+            />
+            <TextField
+              label="Driver"
+              value={shootDriver}
+              onChange={(e) => setShootDriver(e.target.value)}
+              size="small"
+            />
+            <DatePicker
+              label="Start after"
+              value={shootStartAfter}
+              onChange={(v) => setShootStartAfter(v)}
+              slotProps={{ textField: { size: "small" } }}
+            />
+            <DatePicker
+              label="End before"
+              value={shootEndBefore}
+              onChange={(v) => setShootEndBefore(v)}
+              slotProps={{ textField: { size: "small" } }}
+            />
           </Box>
           <DataGrid
-            autoHeight density="compact"
+            autoHeight
+            density="compact"
             rows={shootoutRows.filter((r) => {
               if (shootDriver) {
-                const disp = nameMap[r.driverEmail.toLowerCase()] || r.driverEmail;
+                const disp =
+                  nameMap[r.driverEmail.toLowerCase()] || r.driverEmail;
                 const hay = `${r.driverEmail} ${disp}`.toLowerCase();
                 if (!hay.includes(shootDriver.toLowerCase())) return false;
               }
-              const sDj = Number.isFinite(r.startTime) ? dayjs(r.startTime) : null;
+              const sDj = Number.isFinite(r.startTime)
+                ? dayjs(r.startTime)
+                : null;
               const eDj = Number.isFinite(r.endTime) ? dayjs(r.endTime) : null;
-              if (shootStartAfter && (!sDj || !sDj.isAfter(shootStartAfter))) return false;
-              if (shootEndBefore) { const cmp = eDj || sDj; if (!cmp || !cmp.isBefore(shootEndBefore)) return false; }
+              if (shootStartAfter && (!sDj || !sDj.isAfter(shootStartAfter)))
+                return false;
+              if (shootEndBefore) {
+                const cmp = eDj || sDj;
+                if (!cmp || !cmp.isBefore(shootEndBefore)) return false;
+              }
               if (shootSearch) {
-                const text = `${r.driverEmail} ${nameMap[r.driverEmail.toLowerCase()] || ""} ${r.vehicle}`.toLowerCase();
+                const text = `${r.driverEmail} ${
+                  nameMap[r.driverEmail.toLowerCase()] || ""
+                } ${r.vehicle}`.toLowerCase();
                 if (!text.includes(shootSearch.toLowerCase())) return false;
               }
               return true;
@@ -573,7 +806,12 @@ export default function AdminTimeLog() {
             editMode="cell"
             onCellEditCommit={onShootCellEditCommit}
             slots={{ toolbar: GridToolbar }}
-            slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300 },
+              },
+            }}
             initialState={{
               sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
               pagination: { paginationModel: { pageSize: 10 } },
@@ -590,22 +828,130 @@ export default function AdminTimeLog() {
             <Stack spacing={2} sx={{ pt: 1 }}>
               {editRow._col === "timeLogs" ? (
                 <>
-                  <TextField label="Driver" value={editRow.driver ?? ""} onChange={(e) => setEdit("driver", e.target.value)} size="small" />
-                  <TextField label="Ride ID" value={editRow.rideId ?? ""} onChange={(e) => setEdit("rideId", e.target.value)} size="small" />
-                  <DateTimePicker label="Start time" value={Number.isFinite(editRow.startTime) ? dayjs(editRow.startTime) : null} onChange={(v) => setEdit("startTime", v ? v.valueOf() : null)} slotProps={{ textField: { size: "small" } }} />
-                  <DateTimePicker label="End time" value={Number.isFinite(editRow.endTime) ? dayjs(editRow.endTime) : null} onChange={(v) => setEdit("endTime", v ? v.valueOf() : null)} slotProps={{ textField: { size: "small" } }} />
-                  <TextField label="Duration (minutes)" type="number" value={editRow.durationMin ?? ""} onChange={(e) => setEdit("durationMin", asInt(e.target.value))} size="small" />
-                  <DateTimePicker label="Logged At" value={Number.isFinite(editRow.loggedAt) ? dayjs(editRow.loggedAt) : null} onChange={(v) => setEdit("loggedAt", v ? v.valueOf() : null)} slotProps={{ textField: { size: "small" } }} />
+                  <TextField
+                    label="Driver"
+                    value={editRow.driver ?? ""}
+                    onChange={(e) => setEdit("driver", e.target.value)}
+                    size="small"
+                  />
+                  <TextField
+                    label="Ride ID"
+                    value={editRow.rideId ?? ""}
+                    onChange={(e) => setEdit("rideId", e.target.value)}
+                    size="small"
+                  />
+                  <DateTimePicker
+                    label="Start time"
+                    value={
+                      Number.isFinite(editRow.startTime)
+                        ? dayjs(editRow.startTime)
+                        : null
+                    }
+                    onChange={(v) =>
+                      setEdit("startTime", v ? v.valueOf() : null)
+                    }
+                    slotProps={{ textField: { size: "small" } }}
+                  />
+                  <DateTimePicker
+                    label="End time"
+                    value={
+                      Number.isFinite(editRow.endTime)
+                        ? dayjs(editRow.endTime)
+                        : null
+                    }
+                    onChange={(v) =>
+                      setEdit("endTime", v ? v.valueOf() : null)
+                    }
+                    slotProps={{ textField: { size: "small" } }}
+                  />
+                  <TextField
+                    label="Duration (minutes)"
+                    type="number"
+                    value={editRow.durationMin ?? ""}
+                    onChange={(e) =>
+                      setEdit("durationMin", asInt(e.target.value))
+                    }
+                    size="small"
+                  />
+                  <DateTimePicker
+                    label="Logged At"
+                    value={
+                      Number.isFinite(editRow.loggedAt)
+                        ? dayjs(editRow.loggedAt)
+                        : null
+                    }
+                    onChange={(v) =>
+                      setEdit("loggedAt", v ? v.valueOf() : null)
+                    }
+                    slotProps={{ textField: { size: "small" } }}
+                  />
                 </>
               ) : (
                 <>
-                  <TextField label="Driver Email" value={editRow.driverEmail ?? ""} onChange={(e) => setEdit("driverEmail", e.target.value)} size="small" />
-                  <TextField label="Vehicle" value={editRow.vehicle ?? ""} onChange={(e) => setEdit("vehicle", e.target.value)} size="small" />
-                  <DateTimePicker label="Start time" value={Number.isFinite(editRow.startTime) ? dayjs(editRow.startTime) : null} onChange={(v) => setEdit("startTime", v ? v.valueOf() : null)} slotProps={{ textField: { size: "small" } }} />
-                  <DateTimePicker label="End time" value={Number.isFinite(editRow.endTime) ? dayjs(editRow.endTime) : null} onChange={(v) => setEdit("endTime", v ? v.valueOf() : null)} slotProps={{ textField: { size: "small" } }} />
-                  <TextField label="Trips" type="number" value={editRow.trips ?? ""} onChange={(e) => setEdit("trips", asInt(e.target.value))} size="small" />
-                  <TextField label="Passengers" type="number" value={editRow.passengers ?? ""} onChange={(e) => setEdit("passengers", asInt(e.target.value))} size="small" />
-                  <DateTimePicker label="Created At" value={Number.isFinite(editRow.createdAt) ? dayjs(editRow.createdAt) : null} onChange={(v) => setEdit("createdAt", v ? v.valueOf() : null)} slotProps={{ textField: { size: "small" } }} />
+                  <TextField
+                    label="Driver Email"
+                    value={editRow.driverEmail ?? ""}
+                    onChange={(e) => setEdit("driverEmail", e.target.value)}
+                    size="small"
+                  />
+                  <TextField
+                    label="Vehicle"
+                    value={editRow.vehicle ?? ""}
+                    onChange={(e) => setEdit("vehicle", e.target.value)}
+                    size="small"
+                  />
+                  <DateTimePicker
+                    label="Start time"
+                    value={
+                      Number.isFinite(editRow.startTime)
+                        ? dayjs(editRow.startTime)
+                        : null
+                    }
+                    onChange={(v) =>
+                      setEdit("startTime", v ? v.valueOf() : null)
+                    }
+                    slotProps={{ textField: { size: "small" } }}
+                  />
+                  <DateTimePicker
+                    label="End time"
+                    value={
+                      Number.isFinite(editRow.endTime)
+                        ? dayjs(editRow.endTime)
+                        : null
+                    }
+                    onChange={(v) =>
+                      setEdit("endTime", v ? v.valueOf() : null)
+                    }
+                    slotProps={{ textField: { size: "small" } }}
+                  />
+                  <TextField
+                    label="Trips"
+                    type="number"
+                    value={editRow.trips ?? ""}
+                    onChange={(e) => setEdit("trips", asInt(e.target.value))}
+                    size="small"
+                  />
+                  <TextField
+                    label="Passengers"
+                    type="number"
+                    value={editRow.passengers ?? ""}
+                    onChange={(e) =>
+                      setEdit("passengers", asInt(e.target.value))
+                    }
+                    size="small"
+                  />
+                  <DateTimePicker
+                    label="Created At"
+                    value={
+                      Number.isFinite(editRow.createdAt)
+                        ? dayjs(editRow.createdAt)
+                        : null
+                    }
+                    onChange={(v) =>
+                      setEdit("createdAt", v ? v.valueOf() : null)
+                    }
+                    slotProps={{ textField: { size: "small" } }}
+                  />
                 </>
               )}
             </Stack>
@@ -613,7 +959,9 @@ export default function AdminTimeLog() {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeEditModal}>Cancel</Button>
-          <Button onClick={saveEditModal} variant="contained">Save</Button>
+          <Button onClick={saveEditModal} variant="contained">
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
     </PageContainer>
