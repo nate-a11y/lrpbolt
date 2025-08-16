@@ -425,7 +425,13 @@ export function subscribeTimeLogs(onRows, onError) {
   const q = query(collection(db, "timeLogs"), orderBy("startTime", "desc"));
   return onSnapshot(
     q,
-    (snap) => onRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (snap) => {
+      const rows = snap.docs.map((d) => {
+        const data = d.data() || {};
+        return { id: d.id, ...data };
+      });
+      onRows(rows);
+    },
     onError,
   );
 }
@@ -437,7 +443,13 @@ export function subscribeShootoutStats(onRows, onError) {
   );
   return onSnapshot(
     q,
-    (snap) => onRows(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (snap) => {
+      const rows = snap.docs.map((d) => {
+        const data = d.data() || {};
+        return { id: d.id, ...data };
+      });
+      onRows(rows);
+    },
     onError,
   );
 }
