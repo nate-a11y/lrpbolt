@@ -17,7 +17,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
-import { DataGrid, GridToolbar, GridActionsCellItem } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -25,21 +25,10 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 import PageContainer from "./PageContainer.jsx";
-import {
-  subscribeTimeLogs,
-  subscribeShootoutStats,
-  subscribeUserAccess, // if you have this already; else we gate on email === admin@…
-} from "../hooks/api";
-import { useAuth } from "../context/AuthContext.jsx";
+import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/api";
 
 // Firestore ops (update/delete) – uses your initialized db
-import {
-  doc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  collection,
-} from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { db } from "../utils/firebaseInit";
 
@@ -93,27 +82,28 @@ function fmtDuration(ms) {
   return h >= 1 ? `${h}h ${m}m` : `${m}m`;
 }
 
-/** ---------- User directory (email → name) from userAccess ---------- */
-function useUserDirectory() {
-  const [map, setMap] = useState(() => new Map());
+/** ---------- Driver name lookup ---------- */
+function useNameMap() {
+  const [map, setMap] = useState({});
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "userAccess"), (snap) => {
-      const next = new Map();
-      snap.forEach((d) => {
-        const data = d.data() || {};
-        const email = (data.email || d.id || "").toLowerCase();
-        const name = data.name || "";
-        if (email) next.set(email, name);
-      });
-      setMap(next);
-    });
-    return () => unsub && unsub();
+    async function fetchUsers() {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const next = {};
+        snap.forEach((d) => {
+          const data = d.data() || {};
+          const email = (data.email || d.id || "").toLowerCase();
+          const name = data.name || data.displayName || "";
+          if (email) next[email] = name;
+        });
+        setMap(next);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchUsers();
   }, []);
-  const getName = useCallback(
-    (email) => (email ? map.get(String(email).toLowerCase()) || "" : ""),
-    [map],
-  );
-  return { getName };
+  return map;
 }
 
 /** ---------- Normalizers ---------- */
@@ -213,28 +203,7 @@ const durationCol = (field = "duration") => ({
 });
 
 export default function AdminTimeLog() {
-  const { currentUser } = useAuth() || {};
-  const myEmail = (currentUser?.email || "").toLowerCase();
-  const { getName } = useUserDirectory();
-
-  // ---- determine admin permission (from userAccess) ----
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    let unsub;
-    try {
-      // live read of your record in userAccess
-      if (myEmail) {
-        unsub = onSnapshot(doc(db, "userAccess", myEmail), (snap) => {
-          const access = (snap.data()?.access || "").toLowerCase();
-          setIsAdmin(access === "admin");
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      setIsAdmin(false);
-    }
-    return () => unsub && unsub();
-  }, [myEmail]);
+  const nameMap = useNameMap();
 
   /** ---------------- Entries (timeLogs) ---------------- */
   const [rawTimeLogs, setRawTimeLogs] = useState([]);
@@ -266,35 +235,24 @@ export default function AdminTimeLog() {
     [rawTimeLogs],
   );
 
-  // inline update handler (only simple text/number fields inline)
-  const processEntryUpdate = useCallback(
-    async (newRow, oldRow) => {
-      if (!isAdmin) return oldRow;
-      if (!newRow?._id) return oldRow; // need real doc id
-      const ref = doc(db, "timeLogs", newRow._id);
-
-      // Map display fields back to schema: driver/driverEmail, rideId
-      const patch = {};
-      if (newRow.driverEmail !== oldRow.driverEmail) {
-        patch.driver = String(newRow.driverEmail || "");
-        patch.driverEmail = String(newRow.driverEmail || "");
+  const handleEntryEditCommit = useCallback(
+    async (params) => {
+      try {
+        const row = entryRows.find((r) => r.id === params.id);
+        if (!row?._id) return;
+        const field = params.field;
+        let value = params.value;
+        if (field === "trips" || field === "passengers") {
+          value = Number(value || 0);
+        } else {
+          value = String(value || "");
+        }
+        await updateDoc(doc(db, row._col, row._id), { [field]: value });
+      } catch (e) {
+        console.error(e);
       }
-      if (newRow.vehicle !== oldRow.vehicle) {
-        // In timeLogs, this is rideId (you don’t store vehicle here)
-        patch.rideId = String(newRow.vehicle || "");
-      }
-      if (newRow.trips !== oldRow.trips)
-        patch.trips = Number(newRow.trips || 0);
-      if (newRow.passengers !== oldRow.passengers)
-        patch.passengers = Number(newRow.passengers || 0);
-      if (newRow.note !== oldRow.note) patch.note = String(newRow.note || "");
-
-      if (Object.keys(patch).length) {
-        await updateDoc(ref, patch);
-      }
-      return newRow;
     },
-    [isAdmin],
+    [entryRows],
   );
 
   const entryColumns = useMemo(
@@ -304,10 +262,10 @@ export default function AdminTimeLog() {
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        editable: isAdmin,
+        editable: true,
         renderCell: (p) => {
           const email = p.row?.driverEmail || "";
-          const name = getName(email);
+          const name = nameMap[email.toLowerCase()];
           if (!name) return email;
           return (
             <Tooltip title={email}>
@@ -327,7 +285,7 @@ export default function AdminTimeLog() {
         headerName: "Vehicle / Ride",
         flex: 1,
         minWidth: 160,
-        editable: isAdmin, // writes to rideId
+        editable: true,
       },
       startCol("startTime"),
       endCol("endTime"),
@@ -337,51 +295,48 @@ export default function AdminTimeLog() {
         headerName: "Trips",
         type: "number",
         width: 90,
-        editable: isAdmin,
+        editable: true,
       },
       {
         field: "passengers",
         headerName: "Pax",
         type: "number",
         width: 90,
-        editable: isAdmin,
+        editable: true,
       },
       {
         field: "note",
         headerName: "Note",
         flex: 1,
         minWidth: 160,
-        editable: isAdmin,
+        editable: true,
       },
       {
         field: "actions",
-        type: "actions",
         headerName: "",
         width: 90,
-        getActions: (params) => {
-          const disabled = !params.row?._id;
-          return [
-            <GridActionsCellItem
-              key="edit"
-              icon={<EditIcon />}
-              label="Edit times"
-              disabled={disabled || !isAdmin}
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params) => (
+          <>
+            <IconButton
+              size="small"
               onClick={() => openEditModal(params.row)}
-              showInMenu={false}
-            />,
-            <GridActionsCellItem
-              key="del"
-              icon={<DeleteIcon />}
-              label="Delete"
-              disabled={disabled || !isAdmin}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
               onClick={() => handleDelete(params.row)}
-              showInMenu={false}
-            />,
-          ];
-        },
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </>
+        ),
       },
     ],
-    [isAdmin, getName],
+    [nameMap],
   );
 
   const entryFiltered = useMemo(() => {
@@ -389,7 +344,7 @@ export default function AdminTimeLog() {
       if (entryDriver) {
         const match =
           r.driverEmail.toLowerCase().includes(entryDriver.toLowerCase()) ||
-          getName(r.driverEmail)
+          (nameMap[r.driverEmail.toLowerCase()] || "")
             .toLowerCase()
             .includes(entryDriver.toLowerCase());
         if (!match) return false;
@@ -405,7 +360,9 @@ export default function AdminTimeLog() {
       if (entrySearch) {
         const q = entrySearch.toLowerCase();
         const text =
-          `${r.driverEmail} ${getName(r.driverEmail)} ${r.vehicle} ${r.note}`.toLowerCase();
+          `${r.driverEmail} ${
+            nameMap[r.driverEmail.toLowerCase()] || ""
+          } ${r.vehicle} ${r.note}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -416,7 +373,7 @@ export default function AdminTimeLog() {
     entryStartAfter,
     entryEndBefore,
     entrySearch,
-    getName,
+    nameMap,
   ]);
 
   /** ---------------- Shootout (shootoutStats) ---------------- */
@@ -450,28 +407,24 @@ export default function AdminTimeLog() {
     [rawShootout],
   );
 
-  const processShootoutUpdate = useCallback(
-    async (newRow, oldRow) => {
-      if (!isAdmin) return oldRow;
-      if (!newRow?._id) return oldRow;
-      const ref = doc(db, "shootoutStats", newRow._id);
-
-      const patch = {};
-      if (newRow.driverEmail !== oldRow.driverEmail)
-        patch.driverEmail = String(newRow.driverEmail || "");
-      if (newRow.vehicle !== oldRow.vehicle)
-        patch.vehicle = String(newRow.vehicle || "");
-      if (newRow.trips !== oldRow.trips)
-        patch.trips = Number(newRow.trips || 0);
-      if (newRow.passengers !== oldRow.passengers)
-        patch.passengers = Number(newRow.passengers || 0);
-      if (newRow.status !== oldRow.status)
-        patch.status = String(newRow.status || "");
-
-      if (Object.keys(patch).length) await updateDoc(ref, patch);
-      return newRow;
+  const handleShootoutEditCommit = useCallback(
+    async (params) => {
+      try {
+        const row = shootoutRows.find((r) => r.id === params.id);
+        if (!row?._id) return;
+        const field = params.field;
+        let value = params.value;
+        if (field === "trips" || field === "passengers") {
+          value = Number(value || 0);
+        } else {
+          value = String(value || "");
+        }
+        await updateDoc(doc(db, row._col, row._id), { [field]: value });
+      } catch (e) {
+        console.error(e);
+      }
     },
-    [isAdmin],
+    [shootoutRows],
   );
 
   const shootoutColumns = useMemo(
@@ -481,10 +434,10 @@ export default function AdminTimeLog() {
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        editable: isAdmin,
+        editable: true,
         renderCell: (p) => {
           const email = p.row?.driverEmail || "";
-          const name = getName(email);
+          const name = nameMap[email.toLowerCase()];
           if (!name) return email;
           return (
             <Tooltip title={email}>
@@ -504,7 +457,7 @@ export default function AdminTimeLog() {
         headerName: "Vehicle",
         flex: 1,
         minWidth: 140,
-        editable: isAdmin,
+        editable: true,
       },
       startCol("startTime"),
       endCol("endTime"),
@@ -514,16 +467,16 @@ export default function AdminTimeLog() {
         headerName: "Trips",
         type: "number",
         width: 90,
-        editable: isAdmin,
+        editable: true,
       },
       {
         field: "passengers",
         headerName: "Pax",
         type: "number",
         width: 90,
-        editable: isAdmin,
+        editable: true,
       },
-      { field: "status", headerName: "Status", width: 120, editable: isAdmin },
+      { field: "status", headerName: "Status", width: 120, editable: true },
       {
         field: "createdAt",
         headerName: "Created",
@@ -533,33 +486,30 @@ export default function AdminTimeLog() {
       },
       {
         field: "actions",
-        type: "actions",
         headerName: "",
         width: 90,
-        getActions: (params) => {
-          const disabled = !params.row?._id;
-          return [
-            <GridActionsCellItem
-              key="edit"
-              icon={<EditIcon />}
-              label="Edit times"
-              disabled={disabled || !isAdmin}
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params) => (
+          <>
+            <IconButton
+              size="small"
               onClick={() => openEditModal(params.row)}
-              showInMenu={false}
-            />,
-            <GridActionsCellItem
-              key="del"
-              icon={<DeleteIcon />}
-              label="Delete"
-              disabled={disabled || !isAdmin}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
               onClick={() => handleDelete(params.row)}
-              showInMenu={false}
-            />,
-          ];
-        },
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </>
+        ),
       },
     ],
-    [isAdmin, getName],
+    [nameMap],
   );
 
   const shootFiltered = useMemo(() => {
@@ -567,7 +517,7 @@ export default function AdminTimeLog() {
       if (shootDriver) {
         const match =
           r.driverEmail.toLowerCase().includes(shootDriver.toLowerCase()) ||
-          getName(r.driverEmail)
+          (nameMap[r.driverEmail.toLowerCase()] || "")
             .toLowerCase()
             .includes(shootDriver.toLowerCase());
         if (!match) return false;
@@ -583,7 +533,9 @@ export default function AdminTimeLog() {
       if (shootSearch) {
         const q = shootSearch.toLowerCase();
         const text =
-          `${r.driverEmail} ${getName(r.driverEmail)} ${r.vehicle} ${r.status}`.toLowerCase();
+          `${r.driverEmail} ${
+            nameMap[r.driverEmail.toLowerCase()] || ""
+          } ${r.vehicle} ${r.status}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -594,7 +546,7 @@ export default function AdminTimeLog() {
     shootStartAfter,
     shootEndBefore,
     shootSearch,
-    getName,
+    nameMap,
   ]);
 
   /** ---------------- Weekly Summary (unchanged) ---------------- */
@@ -614,7 +566,7 @@ export default function AdminTimeLog() {
     for (const r of inWeek) {
       const key = r.driverEmail || "Unknown";
       const prev = byDriver.get(key) || {
-        driver: getName(key) || key,
+        driver: nameMap[key.toLowerCase()] || key,
         sessions: 0,
         ms: 0,
         trips: 0,
@@ -634,7 +586,7 @@ export default function AdminTimeLog() {
       trips: v.trips,
       passengers: v.passengers,
     }));
-  }, [entryRows, weekStart, weekEnd, getName]);
+  }, [entryRows, weekStart, weekEnd, nameMap]);
 
   /** ---------------- Edit Modal (times) ---------------- */
   const [editOpen, setEditOpen] = useState(false);
@@ -649,7 +601,7 @@ export default function AdminTimeLog() {
   };
   const saveEditModal = async () => {
     try {
-      if (!isAdmin || !editRow?._id) return;
+      if (!editRow?._id) return;
       const patch = {};
       if (Number.isFinite(editRow.startTime))
         patch.startTime = Timestamp.fromMillis(editRow.startTime);
@@ -673,7 +625,7 @@ export default function AdminTimeLog() {
   /** ---------------- Delete ---------------- */
   const handleDelete = async (row) => {
     try {
-      if (!isAdmin || !row?._id) return;
+      if (!row?._id) return;
       const ok = window.confirm("Delete this record?");
       if (!ok) return;
       await deleteDoc(doc(db, row._col, row._id));
@@ -735,9 +687,8 @@ export default function AdminTimeLog() {
             columns={entryColumns}
             loading={!!loadingEntries}
             disableRowSelectionOnClick
-            editMode="row"
-            processRowUpdate={processEntryUpdate}
-            onProcessRowUpdateError={(e) => console.error(e)}
+            editMode="cell"
+            onCellEditCommit={handleEntryEditCommit}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
@@ -845,9 +796,8 @@ export default function AdminTimeLog() {
             columns={shootoutColumns}
             loading={!!loadingShootout}
             disableRowSelectionOnClick
-            editMode="row"
-            processRowUpdate={processShootoutUpdate}
-            onProcessRowUpdateError={(e) => console.error(e)}
+            editMode="cell"
+            onCellEditCommit={handleShootoutEditCommit}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
@@ -869,24 +819,6 @@ export default function AdminTimeLog() {
         <DialogContent>
           {editRow && (
             <Stack spacing={2} sx={{ pt: 1 }}>
-              <TextField
-                label="Driver (email)"
-                value={editRow.driverEmail || ""}
-                onChange={(e) =>
-                  setEditRow((r) => ({ ...r, driverEmail: e.target.value }))
-                }
-                size="small"
-                disabled={!isAdmin}
-              />
-              <TextField
-                label={editRow._col === "timeLogs" ? "Ride ID" : "Vehicle"}
-                value={editRow.vehicle || ""}
-                onChange={(e) =>
-                  setEditRow((r) => ({ ...r, vehicle: e.target.value }))
-                }
-                size="small"
-                disabled={!isAdmin}
-              />
               <DateTimePicker
                 label="Start time"
                 value={
@@ -910,7 +842,10 @@ export default function AdminTimeLog() {
                     : null
                 }
                 onChange={(v) =>
-                  setEditRow((r) => ({ ...r, endTime: v ? v.valueOf() : null }))
+                  setEditRow((r) => ({
+                    ...r,
+                    endTime: v ? v.valueOf() : null,
+                  }))
                 }
                 slotProps={{ textField: { size: "small" } }}
               />
@@ -919,11 +854,7 @@ export default function AdminTimeLog() {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeEditModal}>Cancel</Button>
-          <Button
-            onClick={saveEditModal}
-            disabled={!isAdmin}
-            variant="contained"
-          >
+          <Button onClick={saveEditModal} variant="contained">
             Save
           </Button>
         </DialogActions>
