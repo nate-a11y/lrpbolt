@@ -12,18 +12,68 @@ import { DatePicker } from "@mui/x-date-pickers";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 
 import PageContainer from "./PageContainer.jsx";
-import dayjs from "../utils/dates";
-import { fmtDateTime, humanDuration, tsToDayjs } from "../utils/dates";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
   fetchWeeklySummary,
 } from "../hooks/api";
 
-// Defensive wrappers prevent "Cannot destructure ... of null"
-const safeVF = (fn) => (params) => { try { return fn(params || {}); } catch (e) { return "—"; } };
-const safeVG = (fn) => (params) => { try { return fn(params || {}); } catch (e) { return undefined; } };
-const safeSC = (fn) => (a, b) => { try { return fn(a, b); } catch (e) { return 0; } };
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const TZ = "America/Chicago";
+
+function toMs(input) {
+  if (!input) return null;
+  try {
+    if (typeof input === "object" && input.seconds != null && input.nanoseconds != null) {
+      return input.seconds * 1000 + Math.floor(input.nanoseconds / 1e6);
+    }
+    if (input.toDate && typeof input.toDate === "function") {
+      const d = input.toDate();
+      const ms = d?.getTime?.();
+      return Number.isFinite(ms) ? ms : null;
+    }
+    if (input instanceof Date) {
+      const ms = input.getTime();
+      return Number.isFinite(ms) ? ms : null;
+    }
+    if (typeof input === "number" && Number.isFinite(input)) {
+      return input;
+    }
+    if (typeof input === "string") {
+      const ms = Date.parse(input);
+      return Number.isFinite(ms) ? ms : null;
+    }
+  } catch {
+    // ignore malformed inputs
+  }
+  return null;
+}
+
+function fmtDateTimeMs(ms) {
+  if (!Number.isFinite(ms)) return "";
+  return dayjs.tz(ms, TZ).format("MMM D, h:mm A");
+}
+
+function durationMs(startMs, endMs) {
+  if (!Number.isFinite(startMs)) return null;
+  if (!Number.isFinite(endMs)) return null;
+  const diff = endMs - startMs;
+  return diff >= 0 ? diff : null;
+}
+
+function fmtDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return "";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (h >= 1) return `${h}h ${m}m`;
+  return `${m}m`;
+}
 
 export default function AdminTimeLog() {
   const [tab, setTab] = useState(0);
@@ -53,40 +103,105 @@ export default function AdminTimeLog() {
   }, []);
 
   const entryColumns = [
-    { field: "driver", headerName: "Driver", flex: 1,
-      valueGetter: safeVG((p) => p.row?.driver ?? "—") },
-    { field: "rideId", headerName: "Ride ID", flex: 1,
-      valueGetter: safeVG((p) => p.row?.rideId ?? "—") },
-    { field: "startTime", headerName: "Start", flex: 1.2,
-      sortComparator: safeSC((a, b) => (tsToDayjs(a)?.valueOf() || 0) - (tsToDayjs(b)?.valueOf() || 0)),
-      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
-    { field: "endTime", headerName: "End", flex: 1.2,
-      sortComparator: safeSC((a, b) => (tsToDayjs(a)?.valueOf() || 0) - (tsToDayjs(b)?.valueOf() || 0)),
-      valueFormatter: safeVF((p) => p.value ? fmtDateTime(p.value) : "—") },
-    { field: "durationMin", headerName: "Duration", width: 140, type: "number",
-      valueGetter: safeVG((p) => Number(p.row?.durationMin ?? 0)),
-      valueFormatter: safeVF((p) => humanDuration(p.value)) },
-    { field: "note", headerName: "Note", flex: 1,
-      valueGetter: safeVG((p) => p.row?.note ?? "") },
-    { field: "createdAt", headerName: "Logged", width: 170,
-      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
+    {
+      field: "driverEmail",
+      headerName: "Driver",
+      flex: 1,
+      minWidth: 180,
+      valueGetter: (p) => p?.row?.driverEmail ?? "",
+    },
+    {
+      field: "vehicle",
+      headerName: "Vehicle",
+      flex: 1,
+      minWidth: 140,
+      valueGetter: (p) => p?.row?.vehicle ?? "",
+    },
+    {
+      field: "startTime",
+      headerName: "Start",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: (p) => toMs(p?.row?.startTime),
+      valueFormatter: (p) => fmtDateTimeMs(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
+    {
+      field: "endTime",
+      headerName: "End",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: (p) => toMs(p?.row?.endTime),
+      valueFormatter: (p) => fmtDateTimeMs(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
+    {
+      field: "duration",
+      headerName: "Duration",
+      flex: 0.6,
+      minWidth: 120,
+      valueGetter: (p) => {
+        const s = toMs(p?.row?.startTime);
+        const e = toMs(p?.row?.endTime);
+        const d = durationMs(s, e);
+        return Number.isFinite(d) ? d : null;
+      },
+      valueFormatter: (p) => fmtDuration(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
+    {
+      field: "trips",
+      headerName: "Trips",
+      type: "number",
+      width: 90,
+      valueGetter: (p) => (Number.isFinite(p?.row?.trips) ? p.row.trips : 0),
+    },
+    {
+      field: "passengers",
+      headerName: "Pax",
+      type: "number",
+      width: 90,
+      valueGetter: (p) =>
+        Number.isFinite(p?.row?.passengers) ? p.row.passengers : 0,
+    },
   ];
 
   const entryFiltered = useMemo(() => {
     return entryRows.filter((r) => {
-      if (entryDriver && !(r.driver || "").toLowerCase().includes(entryDriver.toLowerCase()))
+      if (
+        entryDriver &&
+        !(r.driverEmail || "")
+          .toLowerCase()
+          .includes(entryDriver.toLowerCase())
+      )
         return false;
-      const startDj = tsToDayjs(r.startTime);
+      const startMs = toMs(r.startTime);
+      const startDj = Number.isFinite(startMs) ? dayjs(startMs) : null;
       if (entryStartAfter && (!startDj || !startDj.isAfter(entryStartAfter))) return false;
-      const endDj = tsToDayjs(r.endTime);
+      const endMs = toMs(r.endTime);
+      const endDj = Number.isFinite(endMs) ? dayjs(endMs) : null;
       if (
         entryEndBefore &&
-        !(endDj ? endDj.isBefore(entryEndBefore) : startDj && startDj.isBefore(entryEndBefore))
+        !(endDj
+          ? endDj.isBefore(entryEndBefore)
+          : startDj && startDj.isBefore(entryEndBefore))
       )
         return false;
       if (entrySearch) {
         const q = entrySearch.toLowerCase();
-        const text = `${r.driver || ""} ${r.rideId || ""} ${r.note || ""}`.toLowerCase();
+        const text = `${r.driverEmail || ""} ${r.vehicle || ""} ${r.note || ""}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -118,22 +233,95 @@ export default function AdminTimeLog() {
   }, []);
 
   const shootoutColumns = [
-    { field: "driverEmail", headerName: "Driver", flex: 1,
-      valueGetter: safeVG((p) => p.row?.driverEmail ?? "—") },
-    { field: "vehicle", headerName: "Vehicle", flex: 1,
-      valueGetter: safeVG((p) => p.row?.vehicle ?? "—") },
-    { field: "trips", headerName: "Trips", width: 90, type: "number" },
-    { field: "passengers", headerName: "Pax", width: 90, type: "number" },
-    { field: "durationMin", headerName: "Duration", width: 140,
-      valueFormatter: safeVF((p) => humanDuration(p.value)) },
-    { field: "status", headerName: "Status", width: 110,
-      valueGetter: safeVG((p) => p.row?.status ?? "Open") },
-    { field: "startTime", headerName: "Start", flex: 1.2,
-      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
-    { field: "endTime", headerName: "End", flex: 1.2,
-      valueFormatter: safeVF((p) => p.value ? fmtDateTime(p.value) : "—") },
-    { field: "createdAt", headerName: "Created", width: 170,
-      valueFormatter: safeVF((p) => fmtDateTime(p.value)) },
+    {
+      field: "driverEmail",
+      headerName: "Driver",
+      flex: 1,
+      valueGetter: (p) => p?.row?.driverEmail ?? "",
+    },
+    {
+      field: "vehicle",
+      headerName: "Vehicle",
+      flex: 1,
+      valueGetter: (p) => p?.row?.vehicle ?? "",
+    },
+    {
+      field: "startTime",
+      headerName: "Start",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: (p) => toMs(p?.row?.startTime),
+      valueFormatter: (p) => fmtDateTimeMs(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
+    {
+      field: "endTime",
+      headerName: "End",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: (p) => toMs(p?.row?.endTime),
+      valueFormatter: (p) => fmtDateTimeMs(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
+    {
+      field: "duration",
+      headerName: "Duration",
+      flex: 0.6,
+      minWidth: 120,
+      valueGetter: (p) => {
+        const s = toMs(p?.row?.startTime);
+        const e = toMs(p?.row?.endTime);
+        const d = durationMs(s, e);
+        return Number.isFinite(d) ? d : null;
+      },
+      valueFormatter: (p) => fmtDuration(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
+    {
+      field: "trips",
+      headerName: "Trips",
+      type: "number",
+      width: 90,
+      valueGetter: (p) => (Number.isFinite(p?.row?.trips) ? p.row.trips : 0),
+    },
+    {
+      field: "passengers",
+      headerName: "Pax",
+      type: "number",
+      width: 90,
+      valueGetter: (p) =>
+        Number.isFinite(p?.row?.passengers) ? p.row.passengers : 0,
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 110,
+      valueGetter: (p) => p?.row?.status ?? "",
+    },
+    {
+      field: "createdAt",
+      headerName: "Created",
+      minWidth: 170,
+      valueGetter: (p) => toMs(p?.row?.createdAt),
+      valueFormatter: (p) => fmtDateTimeMs(p?.value),
+      sortComparator: (v1, v2) => {
+        const a = Number.isFinite(v1) ? v1 : -1;
+        const b = Number.isFinite(v2) ? v2 : -1;
+        return a - b;
+      },
+    },
   ];
 
   const shootFiltered = useMemo(() => {
@@ -143,12 +331,16 @@ export default function AdminTimeLog() {
         !r.driverEmail?.toLowerCase().includes(shootDriver.toLowerCase())
       )
         return false;
-      const startDj = tsToDayjs(r.startTime);
+      const startMs = toMs(r.startTime);
+      const startDj = Number.isFinite(startMs) ? dayjs(startMs) : null;
       if (shootStartAfter && (!startDj || !startDj.isAfter(shootStartAfter))) return false;
-      const endDj = tsToDayjs(r.endTime);
+      const endMs = toMs(r.endTime);
+      const endDj = Number.isFinite(endMs) ? dayjs(endMs) : null;
       if (
         shootEndBefore &&
-        !(endDj ? endDj.isBefore(shootEndBefore) : startDj && startDj.isBefore(shootEndBefore))
+        !(endDj
+          ? endDj.isBefore(shootEndBefore)
+          : startDj && startDj.isBefore(shootEndBefore))
       )
         return false;
       if (shootSearch) {
@@ -231,9 +423,13 @@ export default function AdminTimeLog() {
             />
           </Box>
           <DataGrid
-            rows={Array.isArray(entryFiltered) ? entryFiltered : []}
+            autoHeight
+            density="compact"
+            rows={entryFiltered || []}
             columns={entryColumns}
-            getRowId={(r) => r?.id ?? `${r?.driver ?? "row"}-${Math.random()}`}
+            getRowId={(r) =>
+              r?.id ?? `${r?.driverEmail ?? "row"}-${Math.random()}`
+            }
             loading={!!loadingEntries}
             disableRowSelectionOnClick
             slots={{ toolbar: GridToolbar }}
@@ -243,7 +439,10 @@ export default function AdminTimeLog() {
                 quickFilterProps: { debounceMs: 300 },
               },
             }}
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            initialState={{
+              sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
+              pagination: { paginationModel: { pageSize: 10 } },
+            }}
           />
         </Box>
       )}
@@ -308,9 +507,13 @@ export default function AdminTimeLog() {
             />
           </Box>
           <DataGrid
-            rows={Array.isArray(shootFiltered) ? shootFiltered : []}
+            autoHeight
+            density="compact"
+            rows={shootFiltered || []}
             columns={shootoutColumns}
-            getRowId={(r) => r?.id ?? `${r?.driverEmail ?? "row"}-${Math.random()}`}
+            getRowId={(r) =>
+              r?.id ?? `${r?.driverEmail ?? "row"}-${Math.random()}`
+            }
             loading={!!loadingShootout}
             disableRowSelectionOnClick
             slots={{ toolbar: GridToolbar }}
@@ -320,7 +523,10 @@ export default function AdminTimeLog() {
                 quickFilterProps: { debounceMs: 300 },
               },
             }}
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+            initialState={{
+              sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
+              pagination: { paginationModel: { pageSize: 10 } },
+            }}
           />
         </Box>
       )}
