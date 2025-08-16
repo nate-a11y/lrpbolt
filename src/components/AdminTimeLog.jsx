@@ -471,7 +471,10 @@ export default function AdminTimeLog() {
             rows={entryFiltered || []}
             columns={entryColumns}
             getRowId={(r) =>
-              r?.id ?? `${r?.driverEmail ?? "row"}-${Math.random()}`
+              r?.id ??
+              `${r?.driverEmail ?? "row"}-${
+                toMs(r?.startTime) ?? toMs(r?.createdAt) ?? 0
+              }-${toMs(r?.endTime) ?? 0}`
             }
             loading={!!loadingEntries}
             disableRowSelectionOnClick
@@ -555,7 +558,10 @@ export default function AdminTimeLog() {
             rows={shootFiltered || []}
             columns={shootoutColumns}
             getRowId={(r) =>
-              r?.id ?? `${r?.driverEmail ?? "row"}-${Math.random()}`
+              r?.id ??
+              `${r?.driverEmail ?? "row"}-${
+                toMs(r?.startTime) ?? toMs(r?.createdAt) ?? 0
+              }-${toMs(r?.endTime) ?? 0}`
             }
             loading={!!loadingShootout}
             disableRowSelectionOnClick
