@@ -297,7 +297,7 @@ export default function RideEntryForm() {
     }
   });
   const [pickupAt, setPickupAt] = useState(() =>
-    formData.PickupAt ? dayjs(formData.PickupAt) : dayjs()
+    formData.PickupAt ? dayjs(formData.PickupAt) : null
   );
   const [durationHours, setDurationHours] = useState(
     formData.DurationHours === "" ? 0 : Number(formData.DurationHours)
@@ -659,7 +659,7 @@ if (totalMinutes <= 0) {
         severity: "success",
       });
       setFormData(defaultValues);
-      setPickupAt(dayjs());
+      setPickupAt(null);
       setDurationHours(0);
       setDurationMinutes(0);
       setConfirmOpen(false);
@@ -845,7 +845,7 @@ if (totalMinutes <= 0) {
 
   const onResetSingle = () => {
     setFormData(defaultValues);
-    setPickupAt(dayjs());
+    setPickupAt(null);
     setDurationHours(0);
     setDurationMinutes(0);
   };
