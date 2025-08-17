@@ -675,7 +675,7 @@ export default function AdminTimeLog() {
           <DataGrid
             autoHeight
             density="compact"
-            rows={entryFiltered}
+            rows={entryFiltered || []}
             columns={entryColumns}
             getRowId={(r) => r._id || r.id}
             loading={!!loadingEntries}
@@ -716,7 +716,7 @@ export default function AdminTimeLog() {
             <DataGrid
               autoHeight
               density="compact"
-              rows={weekly}
+              rows={weekly || []}
               columns={[
                 { field: "driver", headerName: "Driver", flex: 1 },
                 {

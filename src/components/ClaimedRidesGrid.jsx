@@ -29,9 +29,11 @@ import { useAuth } from "../context/AuthContext.jsx";
 import EditRideDialog from "./EditRideDialog";
 import {
   getPickupTime,
+  getRideDuration,
   fmtDate,
   fmtTime,
-  getRideDuration,
+  minutesToHHMM,
+  safeVF,
 } from "../utils/gridFormatters";
 
 const ClaimedRidesGrid = () => {
@@ -163,26 +165,21 @@ const ClaimedRidesGrid = () => {
       headerName: "Date",
       flex: 1,
       valueGetter: getPickupTime,
-      valueFormatter: ({ value }) => fmtDate(value),
+      valueFormatter: safeVF(fmtDate),
     },
     {
       field: "pickupTimeDisplay",
       headerName: "Pickup Time",
       flex: 1,
       valueGetter: getPickupTime,
-      valueFormatter: ({ value }) => fmtTime(value),
+      valueFormatter: safeVF(fmtTime),
     },
     {
       field: "rideDuration",
       headerName: "Duration",
       flex: 1,
       valueGetter: getRideDuration,
-      valueFormatter: ({ value }) =>
-        Number.isFinite(value)
-          ? `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(
-              value % 60,
-            ).padStart(2, "0")}`
-          : "N/A",
+      valueFormatter: safeVF((v) => minutesToHHMM(v)),
     },
     { field: "rideType", headerName: "Ride Type", flex: 1 },
     { field: "vehicle", headerName: "Vehicle", flex: 1 },
@@ -292,7 +289,7 @@ const ClaimedRidesGrid = () => {
       ) : (
         <Box sx={{ width: '100%', overflowX: 'auto' }}>
           <DataGrid
-            rows={rows}
+            rows={rows || []}
             columns={columns}
             autoHeight
             checkboxSelection

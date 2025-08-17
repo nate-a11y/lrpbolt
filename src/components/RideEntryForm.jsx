@@ -1097,7 +1097,7 @@ if (totalMinutes <= 0) {
                   <DataGrid
                     autoHeight
                     density="compact"
-                    rows={(uploadedRows || []).map((r, i) => ({ id: i, ...(r || {}) }))}
+                    rows={Array.isArray(uploadedRows) ? uploadedRows.map((r, i) => ({ id: i, ...(r || {}) })) : []}
                     columns={expectedCsvCols.map((col) => ({
                       field: col,
                       headerName: col.replace(/([A-Z])/g, " $1"),
