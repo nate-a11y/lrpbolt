@@ -8,37 +8,41 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      injectRegister: "auto",
-      registerType: "prompt",
-      includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
-      workbox: {
-        navigateFallbackDenylist: [/^\/__\/firebase/],
-        runtimeCaching: [
+      registerType: 'autoUpdate',
+      includeAssets: [
+        'Color logo with background.svg',
+        'robots.txt',
+        'apple-touch-icon.png',
+        'android-chrome-192x192.png',
+        'icons/icon-512.png',
+      ],
+      manifest: {
+        name: 'LRP Driver Portal',
+        short_name: 'LRP Portal',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        background_color: '#111111',
+        theme_color: '#00c853',
+        icons: [
+          { src: 'android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           {
-            urlPattern: ({ url }) => /google-analytics\.com/.test(url.hostname),
-            handler: "NetworkOnly",
-            options: { cacheName: "ga-network-only" },
-          },
-          {
-            urlPattern: ({ url }) => /www\.googletagmanager\.com/.test(url.hostname),
-            handler: "NetworkOnly",
-            options: { cacheName: "gtm-network-only" },
+            src: 'icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        navigateFallback: '/index.html',
+        // bump if you ship large bundles
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+      },
       devOptions: { enabled: false },
-      manifest: {
-        name: "LRP Driver Portal",
-        short_name: "LRP",
-        start_url: "/",
-        display: "standalone",
-        background_color: "#101418",
-        theme_color: "#101418",
-        icons: [
-          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
-        ]
-      }
     })
   ],
   resolve: {
@@ -48,7 +52,7 @@ export default defineConfig({
       timeUtils: path.resolve(__dirname, "src/utils/timeUtils.js"),
     },
     dedupe: ["react", "react-dom"],
-    extensions: [".js", ".jsx"],
+    extensions: [".js", ".jsx", ".ts", ".tsx"],
   },
   build: {
     outDir: "dist",
@@ -62,10 +66,6 @@ export default defineConfig({
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'sw.js') return '[name].[ext]';
-          return 'assets/[name]-[hash][extname]';
-        },
         manualChunks: {
           react: ["react", "react-dom", "react-router-dom"],
           mui: ["@mui/material", "@emotion/react", "@emotion/styled"],
