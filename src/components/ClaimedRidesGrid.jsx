@@ -18,13 +18,16 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { DataGrid } from "@mui/x-data-grid";
+import EditIcon from "@mui/icons-material/Edit";
+import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
-import { COLLECTIONS } from "../constants";
+import { COLLECTIONS, TIMEZONE } from "../constants";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
+import dayjs from "../utils/dates";
+import EditRideDialog from "./EditRideDialog";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -38,6 +41,38 @@ const ClaimedRidesGrid = () => {
   const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
   const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
+  const [editing, setEditing] = useState({ open: false, row: null });
+
+  const fmtDate = (value) => {
+    if (!value) return "N/A";
+    try {
+      const d = value.toDate ? value.toDate() : value;
+      const dj = dayjs(d);
+      return dj.isValid() ? dj.tz(TIMEZONE).format("MM/DD/YYYY") : "N/A";
+    } catch {
+      return "N/A";
+    }
+  };
+
+  const fmtTime = (value) => {
+    if (!value) return "N/A";
+    try {
+      const d = value.toDate ? value.toDate() : value;
+      const dj = dayjs(d);
+      return dj.isValid() ? dj.tz(TIMEZONE).format("h:mm A") : "N/A";
+    } catch {
+      return "N/A";
+    }
+  };
+
+  function openEdit(row) {
+    setEditing({ open: true, row });
+  }
+
+  function closeEdit(didSave) {
+    setEditing({ open: false, row: null });
+    // Claimed rides subscribe to snapshot; no refresh needed
+  }
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
@@ -138,35 +173,49 @@ const ClaimedRidesGrid = () => {
   };
 
   const columns = [
-    { field: "TripID", headerName: "Trip ID", flex: 1 },
-    { field: "PickupTime", headerName: "Pickup Time", flex: 1 },
-    { field: "RideDuration", headerName: "Duration", flex: 1 },
-    { field: "RideType", headerName: "Ride Type", flex: 1 },
-    { field: "Vehicle", headerName: "Vehicle", flex: 1 },
-    { field: "RideNotes", headerName: "Notes", flex: 1 },
-    { field: "CreatedBy", headerName: "Created By", flex: 1 },
-    { field: "LastModifiedBy", headerName: "Modified By", flex: 1 },
-    { field: "ClaimedBy", headerName: "Claimed By", flex: 1 },
-    { field: "ClaimedAt", headerName: "Claimed At", flex: 1 },
+    { field: "tripId", headerName: "Trip ID", flex: 1 },
+    {
+      field: "pickupDate",
+      headerName: "Date",
+      flex: 1,
+      valueGetter: ({ row }) => row.pickupTime || null,
+      valueFormatter: ({ value }) => fmtDate(value),
+    },
+    {
+      field: "pickupTime",
+      headerName: "Pickup Time",
+      flex: 1,
+      valueGetter: ({ row }) => row.pickupTime || null,
+      valueFormatter: ({ value }) => fmtTime(value),
+    },
+    { field: "rideDuration", headerName: "Duration", flex: 1 },
+    { field: "rideType", headerName: "Ride Type", flex: 1 },
+    { field: "vehicle", headerName: "Vehicle", flex: 1 },
+    { field: "rideNotes", headerName: "Notes", flex: 1 },
+    { field: "createdBy", headerName: "Created By", flex: 1 },
+    { field: "lastModifiedBy", headerName: "Modified By", flex: 1 },
+    { field: "claimedBy", headerName: "Claimed By", flex: 1 },
     {
       field: "actions",
-      headerName: "",
+      type: "actions",
       width: 80,
-      sortable: false,
-      renderCell: (params = {}) => {
-        const row = params?.row;
-        return (
-          <IconButton
-            color="error"
-            onClick={() => {
-              setSelectedRow(row);
-              setConfirmOpen(true);
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
-        );
-      },
+      getActions: (params) => [
+        <GridActionsCellItem
+          key="edit"
+          icon={<EditIcon />}
+          label="Edit"
+          onClick={() => openEdit(params.row)}
+        />,
+        <GridActionsCellItem
+          key="delete"
+          icon={<DeleteIcon />}
+          label="Delete"
+          onClick={() => {
+            setSelectedRow(params.row);
+            setConfirmOpen(true);
+          }}
+        />,
+      ],
     },
   ];
 
@@ -262,10 +311,9 @@ const ClaimedRidesGrid = () => {
             columnVisibilityModel={
               isSmall
                 ? {
-                    RideNotes: false,
-                    CreatedBy: false,
-                    LastModifiedBy: false,
-                    ClaimedAt: false,
+                    rideNotes: false,
+                    createdBy: false,
+                    lastModifiedBy: false,
                   }
                 : undefined
             }
@@ -367,6 +415,15 @@ const ClaimedRidesGrid = () => {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {editing.open && (
+        <EditRideDialog
+          open={editing.open}
+          ride={editing.row}
+          collectionName={COLLECTIONS.CLAIMED_RIDES}
+          onClose={closeEdit}
+        />
+      )}
 
       <style>
         {`

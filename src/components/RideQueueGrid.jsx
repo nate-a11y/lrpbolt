@@ -10,7 +10,6 @@ import {
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
 import { COLLECTIONS } from "../constants";
-import { patchRide } from "../services/rides";
 import {
   Dialog,
   DialogTitle,
@@ -21,6 +20,7 @@ import {
 } from "@mui/material";
 import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
+import EditRideDialog from "./EditRideDialog";
 
 const RideQueueGrid = () => {
   const [rows, setRows] = useState([]);
@@ -35,6 +35,16 @@ const RideQueueGrid = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [deletingTripId, setDeletingTripId] = useState(null);
   const [undoRow, setUndoRow] = useState(null);
+  const [editing, setEditing] = useState({ open: false, row: null });
+
+  function openEdit(row) {
+    setEditing({ open: true, row });
+  }
+
+  function closeEdit(didSave) {
+    setEditing({ open: false, row: null });
+    if (didSave) refreshRides();
+  }
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
@@ -119,15 +129,6 @@ const RideQueueGrid = () => {
     }
   };
 
-  const onSave = async (rideId, changes) => {
-    await patchRide(
-      COLLECTIONS.RIDE_QUEUE,
-      rideId,
-      changes,
-      user?.email || "Unknown",
-    );
-  };
-
   return (
     <>
       <Box sx={{ width: "100%", overflowX: "auto" }}>
@@ -141,8 +142,7 @@ const RideQueueGrid = () => {
             setConfirmOpen(true);
           }}
           refreshRides={refreshRides}
-          collectionName={COLLECTIONS.RIDE_QUEUE}
-          onSave={onSave}
+          onEdit={openEdit}
         />
       </Box>
 
@@ -182,6 +182,15 @@ const RideQueueGrid = () => {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {editing.open && (
+        <EditRideDialog
+          open={editing.open}
+          ride={editing.row}
+          collectionName={COLLECTIONS.RIDE_QUEUE}
+          onClose={closeEdit}
+        />
+      )}
 
       <style>
         {`
