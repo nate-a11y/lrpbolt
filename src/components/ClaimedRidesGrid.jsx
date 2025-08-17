@@ -19,11 +19,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { DataGrid } from "@mui/x-data-grid";
-import {
-  subscribeRides,
-  deleteRide,
-  updateRide,
-} from "../services/firestoreService";
+import { subscribeRides, deleteRide } from "../services/firestoreService";
+import { patchRide } from "../services/rides";
 import { COLLECTIONS } from "../constants";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
@@ -117,7 +114,12 @@ const ClaimedRidesGrid = () => {
     await Promise.all(
       undoBuffer.map(async (ride) => {
         try {
-          await updateRide(COLLECTIONS.RIDE_QUEUE, ride.id, ride);
+          await patchRide(
+            COLLECTIONS.RIDE_QUEUE,
+            ride.id,
+            ride,
+            user?.email || "Unknown",
+          );
         } catch (err) {
           logError(err, "ClaimedRidesGrid:undo");
           failed.push(ride.TripID);

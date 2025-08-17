@@ -48,6 +48,40 @@ service cloud.firestore {
     function isTsOrNull(v)  { return (v is timestamp) || (v == null); }
     function isNumOrNull(v) { return (v is number) || (v == null); }
 
+    // ---------- Shared helpers for ride docs ----------
+    function rideAllowedKeysBase() {
+      return [
+        // core
+        'tripId','pickupTime','rideDuration','rideType','vehicle','rideNotes',
+        // claim (new + legacy tolerated)
+        'claimedBy','claimedAt','ClaimedBy','ClaimedAt',
+        // status & system
+        'status','importedFromQueueAt',
+        // audit
+        'createdAt','createdBy','updatedAt','lastModifiedBy'
+      ];
+    }
+
+    function rideIsValid(k, v) {
+      return
+        (k=='tripId'              && isStrOrNull(v)) ||
+        (k=='pickupTime'          && v is timestamp) ||
+        (k=='rideDuration'        && isNumOrNull(v)) ||
+        (k=='rideType'            && isStrOrNull(v)) ||
+        (k=='vehicle'             && isStrOrNull(v)) ||
+        (k=='rideNotes'           && isStrOrNull(v)) ||
+        (k=='claimedBy'           && isStrOrNull(v)) ||
+        (k=='ClaimedBy'           && isStrOrNull(v)) ||
+        (k=='claimedAt'           && isTsOrNull(v))  ||
+        (k=='ClaimedAt'           && isTsOrNull(v))  ||
+        (k=='status'              && isStrOrNull(v)) ||
+        (k=='importedFromQueueAt' && isTsOrNull(v))  ||
+        (k=='createdAt'           && v is timestamp) ||
+        (k=='createdBy'           && isStrOrNull(v)) ||
+        (k=='updatedAt'           && isTsOrNull(v))  ||
+        (k=='lastModifiedBy'      && isStrOrNull(v));
+    }
+
     // tolerate legacy "ClaimedBy"/"ClaimedAt"
     function claimedByLower(d) {
       return lower((d.claimedBy != null ? d.claimedBy :
@@ -178,78 +212,19 @@ service cloud.firestore {
 
     // ---------- rideQueue ----------
     match /rideQueue/{rideId} {
-      function allowedKeys() {
-        return [
-          'pickupTime','rideDuration','rideType','vehicle','rideNotes',
-          'claimedBy','ClaimedBy','claimedAt','ClaimedAt'
-        ];
-      }
-      function isValid(k, v) {
-        return
-          (k=='pickupTime' && v is timestamp) ||
-          (k=='rideDuration' && isNumOrNull(v)) ||
-          (k=='rideType' && isStrOrNull(v)) ||
-          (k=='vehicle' && isStrOrNull(v)) ||
-          (k=='rideNotes' && isStrOrNull(v)) ||
-          (k=='claimedBy' && isStrOrNull(v)) ||
-          (k=='ClaimedBy' && isStrOrNull(v)) ||
-          (k=='claimedAt' && isTsOrNull(v)) ||
-          (k=='ClaimedAt' && isTsOrNull(v));
-      }
-
       allow read: if authed();
 
       allow create: if authed()
-        && request.resource.data.keys().hasOnly(allowedKeys())
-        && request.resource.data.pickupTime is timestamp;
-
-      // Partial-safe update
-      allow update: if authed()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, isValid(k, request.resource.data[k]))
-             .hasOnly([true]);
-
-      allow delete: if authed();
-    }
-
-    // ---------- claimedRides ----------
-    match /claimedRides/{rideId} {
-      function allowedKeys() {
-        return [
-          'pickupTime','rideDuration','rideType','vehicle','rideNotes',
-          'claimedBy','ClaimedBy','claimedAt','ClaimedAt'
-        ];
-      }
-      function isValid(k, v) {
-        return
-          (k=='pickupTime' && v is timestamp) ||
-          (k=='rideDuration' && isNumOrNull(v)) ||
-          (k=='rideType' && isStrOrNull(v)) ||
-          (k=='vehicle' && isStrOrNull(v)) ||
-          (k=='rideNotes' && isStrOrNull(v)) ||
-          (k=='claimedBy' && isStrOrNull(v)) ||
-          (k=='ClaimedBy' && isStrOrNull(v)) ||
-          (k=='claimedAt' && isTsOrNull(v)) ||
-          (k=='ClaimedAt' && isTsOrNull(v));
-      }
-
-      allow read: if authed();
-
-      // Require claimedBy/claimedAt on create (legacy keys allowed)
-      allow create: if authed()
-        && request.resource.data.keys().hasOnly(allowedKeys())
+        && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
         && request.resource.data.pickupTime is timestamp
-        && (
-             (request.resource.data.claimedBy is string && request.resource.data.claimedAt is timestamp) ||
-             (request.resource.data.ClaimedBy is string && request.resource.data.ClaimedAt is timestamp)
-           );
+        && request.resource.data.tripId is string
+        && request.resource.data.createdAt is timestamp;
 
       // Partial-safe update
       allow update: if authed()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, isValid(k, request.resource.data[k]))
+             .map(k, rideIsValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();
@@ -257,36 +232,42 @@ service cloud.firestore {
 
     // ---------- liveRides ----------
     match /liveRides/{rideId} {
-      function allowedKeys() {
-        return [
-          'pickupTime','rideDuration','rideType','vehicle','rideNotes',
-          'claimedBy','ClaimedBy','claimedAt','ClaimedAt'
-        ];
-      }
-      function isValid(k, v) {
-        return
-          (k=='pickupTime' && v is timestamp) ||
-          (k=='rideDuration' && isNumOrNull(v)) ||
-          (k=='rideType' && isStrOrNull(v)) ||
-          (k=='vehicle' && isStrOrNull(v)) ||
-          (k=='rideNotes' && isStrOrNull(v)) ||
-          (k=='claimedBy' && isStrOrNull(v)) ||
-          (k=='ClaimedBy' && isStrOrNull(v)) ||
-          (k=='claimedAt' && isTsOrNull(v)) ||
-          (k=='ClaimedAt' && isTsOrNull(v));
-      }
-
       allow read: if authed();
 
       allow create: if authed()
-        && request.resource.data.keys().hasOnly(allowedKeys())
-        && request.resource.data.pickupTime is timestamp;
+        && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.tripId is string
+        && request.resource.data.createdAt is timestamp;
 
-      // Partial-safe update
       allow update: if authed()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
         && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, isValid(k, request.resource.data[k]))
+             .map(k, rideIsValid(k, request.resource.data[k]))
+             .hasOnly([true]);
+
+      allow delete: if authed();
+    }
+
+    // ---------- claimedRides ----------
+    match /claimedRides/{rideId} {
+      allow read: if authed();
+
+      // require claimed on create (new or legacy)
+      allow create: if authed()
+        && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
+        && request.resource.data.pickupTime is timestamp
+        && request.resource.data.tripId is string
+        && request.resource.data.createdAt is timestamp
+        && (
+             (request.resource.data.claimedBy is string && request.resource.data.claimedAt is timestamp) ||
+             (request.resource.data.ClaimedBy is string && request.resource.data.ClaimedAt is timestamp)
+           );
+
+      allow update: if authed()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
+        && request.resource.data.diff(resource.data).changedKeys()
+             .map(k, rideIsValid(k, request.resource.data[k]))
              .hasOnly([true]);
 
       allow delete: if authed();

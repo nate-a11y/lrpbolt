@@ -10,6 +10,7 @@ import {
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
 import { COLLECTIONS } from "../constants";
+import { patchRide } from "../services/rides";
 import {
   Dialog,
   DialogTitle,
@@ -118,6 +119,15 @@ const RideQueueGrid = () => {
     }
   };
 
+  const onSave = async (rideId, changes) => {
+    await patchRide(
+      COLLECTIONS.RIDE_QUEUE,
+      rideId,
+      changes,
+      user?.email || "Unknown",
+    );
+  };
+
   return (
     <>
       <Box sx={{ width: "100%", overflowX: "auto" }}>
@@ -132,6 +142,7 @@ const RideQueueGrid = () => {
           }}
           refreshRides={refreshRides}
           collectionName={COLLECTIONS.RIDE_QUEUE}
+          onSave={onSave}
         />
       </Box>
 
