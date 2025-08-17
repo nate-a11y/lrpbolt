@@ -22,12 +22,17 @@ import EditIcon from "@mui/icons-material/Edit";
 import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
-import { COLLECTIONS, TIMEZONE } from "../constants";
+import { COLLECTIONS } from "../constants";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
-import dayjs from "../utils/dates";
 import EditRideDialog from "./EditRideDialog";
+import {
+  getPickupTime,
+  fmtDate,
+  fmtTime,
+  getRideDuration,
+} from "../utils/gridFormatters";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -43,27 +48,6 @@ const ClaimedRidesGrid = () => {
   const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
   const [editing, setEditing] = useState({ open: false, row: null });
 
-  const fmtDate = (value) => {
-    if (!value) return "N/A";
-    try {
-      const d = value.toDate ? value.toDate() : value;
-      const dj = dayjs(d);
-      return dj.isValid() ? dj.tz(TIMEZONE).format("MM/DD/YYYY") : "N/A";
-    } catch {
-      return "N/A";
-    }
-  };
-
-  const fmtTime = (value) => {
-    if (!value) return "N/A";
-    try {
-      const d = value.toDate ? value.toDate() : value;
-      const dj = dayjs(d);
-      return dj.isValid() ? dj.tz(TIMEZONE).format("h:mm A") : "N/A";
-    } catch {
-      return "N/A";
-    }
-  };
 
   function openEdit(row) {
     setEditing({ open: true, row });
@@ -178,17 +162,28 @@ const ClaimedRidesGrid = () => {
       field: "pickupDate",
       headerName: "Date",
       flex: 1,
-      valueGetter: ({ row }) => row.pickupTime || null,
+      valueGetter: getPickupTime,
       valueFormatter: ({ value }) => fmtDate(value),
     },
     {
-      field: "pickupTime",
+      field: "pickupTimeDisplay",
       headerName: "Pickup Time",
       flex: 1,
-      valueGetter: ({ row }) => row.pickupTime || null,
+      valueGetter: getPickupTime,
       valueFormatter: ({ value }) => fmtTime(value),
     },
-    { field: "rideDuration", headerName: "Duration", flex: 1 },
+    {
+      field: "rideDuration",
+      headerName: "Duration",
+      flex: 1,
+      valueGetter: getRideDuration,
+      valueFormatter: ({ value }) =>
+        Number.isFinite(value)
+          ? `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(
+              value % 60,
+            ).padStart(2, "0")}`
+          : "N/A",
+    },
     { field: "rideType", headerName: "Ride Type", flex: 1 },
     { field: "vehicle", headerName: "Vehicle", flex: 1 },
     { field: "rideNotes", headerName: "Notes", flex: 1 },

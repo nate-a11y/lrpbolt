@@ -21,7 +21,7 @@ import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { fmtDateTime, fmtDuration } from "../../utils/ts";
-import { row as r } from "../../utils/gridSafe";
+import { getRow } from "../../utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function ShootoutStatsTab() {
@@ -90,28 +90,28 @@ export default function ShootoutStatsTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        valueGetter: (p) => r(p)?.driverEmail ?? "—",
+        valueGetter: (p) => getRow(p)?.driverEmail ?? "—",
       },
       {
         field: "trips",
         headerName: "Trips",
         width: 90,
         valueGetter: (p) =>
-          Number.isFinite(r(p)?.trips) ? r(p).trips : 0,
+          Number.isFinite(getRow(p)?.trips) ? getRow(p).trips : 0,
       },
       {
         field: "pax",
         headerName: "Pax",
         width: 90,
         valueGetter: (p) =>
-          Number.isFinite(r(p)?.pax) ? r(p).pax : 0,
+          Number.isFinite(getRow(p)?.pax) ? getRow(p).pax : 0,
       },
       {
         field: "durationMs",
         headerName: "Duration",
         width: 120,
         valueGetter: (p) =>
-          Number.isFinite(r(p)?.durationMs) ? r(p).durationMs : 0,
+          Number.isFinite(getRow(p)?.durationMs) ? getRow(p).durationMs : 0,
         valueFormatter: (p) => fmtDuration(p?.value || 0),
       },
       {
@@ -119,7 +119,7 @@ export default function ShootoutStatsTab() {
         headerName: "Status",
         width: 110,
         valueGetter: (p) =>
-          r(p)?.status ?? (r(p)?.endTime ? "Closed" : "Open"),
+          getRow(p)?.status ?? (getRow(p)?.endTime ? "Closed" : "Open"),
         editable: true,
       },
       {
@@ -127,7 +127,7 @@ export default function ShootoutStatsTab() {
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.startTime ?? null,
+        valueGetter: (p) => getRow(p)?.startTime ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
@@ -135,7 +135,7 @@ export default function ShootoutStatsTab() {
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.endTime ?? null,
+        valueGetter: (p) => getRow(p)?.endTime ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
@@ -143,7 +143,7 @@ export default function ShootoutStatsTab() {
         headerName: "Created",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.createdAt ?? null,
+        valueGetter: (p) => getRow(p)?.createdAt ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {

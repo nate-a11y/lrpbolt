@@ -21,7 +21,7 @@ import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { fmtDateTime, fmtDuration } from "../../utils/ts";
-import { row as r } from "../../utils/gridSafe";
+import { getRow } from "../../utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function EntriesTab() {
@@ -96,20 +96,20 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => r(p)?.driverEmail ?? "—",
+        valueGetter: (p) => getRow(p)?.driverEmail ?? "—",
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         width: 120,
-        valueGetter: (p) => r(p)?.rideId ?? "—",
+        valueGetter: (p) => getRow(p)?.rideId ?? "—",
       },
       {
         field: "startTime",
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.startTime ?? null,
+        valueGetter: (p) => getRow(p)?.startTime ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
@@ -117,7 +117,7 @@ export default function EntriesTab() {
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.endTime ?? null,
+        valueGetter: (p) => getRow(p)?.endTime ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
@@ -125,7 +125,7 @@ export default function EntriesTab() {
         headerName: "Duration",
         width: 120,
         valueGetter: (p) => {
-          const ms = r(p)?.durationMs;
+          const ms = getRow(p)?.durationMs;
           return Number.isFinite(ms) ? ms : 0;
         },
         valueFormatter: (p) => fmtDuration(p?.value || 0),
@@ -135,7 +135,7 @@ export default function EntriesTab() {
         headerName: "Logged",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => r(p)?.loggedAt ?? null,
+        valueGetter: (p) => getRow(p)?.loggedAt ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
