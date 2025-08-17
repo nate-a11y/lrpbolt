@@ -24,6 +24,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { COLLECTIONS } from "../constants";
 import { logError } from "../utils/logError";
 import EditRideDialog from "./EditRideDialog";
+import { shapeRideRow } from "../services/shapeRideRow";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -51,7 +52,8 @@ const LiveRidesGrid = () => {
     const unsub = subscribeRides(
       COLLECTIONS.LIVE_RIDES,
       (data) => {
-        setRows(data);
+        const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
+        setRows(rows);
         setLoading(false);
       },
       () => {
@@ -65,7 +67,8 @@ const LiveRidesGrid = () => {
   const refreshRides = async () => {
     setLoading(true);
     const data = await getRides(COLLECTIONS.LIVE_RIDES);
-    setRows(data);
+    const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
+    setRows(rows);
     setLoading(false);
   };
 
@@ -114,7 +117,7 @@ const LiveRidesGrid = () => {
     <>
       <Box sx={{ width: "100%", overflowX: "auto" }}>
         <EditableRideGrid
-          rows={rows}
+          rows={rows || []}
           loading={loading}
           onDelete={(id) => {
             const row = rows.find((r) => r.id === id);

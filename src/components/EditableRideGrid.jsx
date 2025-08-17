@@ -15,7 +15,6 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { fmtDateTS, fmtTimeTS, minutesHHMM } from "../utils/gridFx";
 
 export default function EditableRideGrid({
   rows,
@@ -28,35 +27,22 @@ export default function EditableRideGrid({
     () => [
       { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
       {
-        field: "pickupDate",
+        field: "pickupDateStr",
         headerName: "Date",
         flex: 0.9,
         minWidth: 120,
-        valueGetter: (params) => params?.row?.pickupTime ?? null,
-        valueFormatter: (params) => fmtDateTS(params?.value),
-        sortable: true,
       },
       {
-        field: "pickupTimeDisplay",
+        field: "pickupTimeStr",
         headerName: "Pickup Time",
         flex: 0.9,
         minWidth: 130,
-        valueGetter: (params) => params?.row?.pickupTime ?? null,
-        valueFormatter: (params) => fmtTimeTS(params?.value),
-        sortable: true,
       },
       {
-        field: "rideDurationDisplay",
+        field: "rideDurationStr",
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
-        valueGetter: (params) => {
-          const v = params?.row?.rideDuration;
-          const n = typeof v === "number" ? v : Number(v);
-          return Number.isFinite(n) ? n : null;
-        },
-        valueFormatter: (params) => minutesHHMM(params?.value),
-        sortable: true,
       },
       { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
       { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },

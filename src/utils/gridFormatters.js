@@ -1,7 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "./dates";
-import { TIMEZONE } from "../constants";
 import { Timestamp as FBTimestamp } from "firebase/firestore";
+
+import { TIMEZONE } from "../constants";
+
+import dayjs from "./dates";
 
 /** Null-safe param accessors */
 export const getParams = (p) => (p && typeof p === "object" ? p : null);

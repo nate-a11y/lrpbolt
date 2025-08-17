@@ -27,7 +27,7 @@ import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import EditRideDialog from "./EditRideDialog";
-import { fmtDateTS, fmtTimeTS, minutesHHMM } from "../utils/gridFx";
+import { shapeRideRow } from "../services/shapeRideRow";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -58,7 +58,11 @@ const ClaimedRidesGrid = () => {
     const unsub = subscribeRides(
       COLLECTIONS.CLAIMED_RIDES,
       (data) => {
-        setRows(data.map((r) => ({ ...r, fading: false })));
+        const rows = data.map((r) => ({
+          ...shapeRideRow({ id: r.id, data: () => r }),
+          fading: false,
+        }));
+        setRows(rows);
         setLoading(false);
       },
       () => {
@@ -153,36 +157,18 @@ const ClaimedRidesGrid = () => {
 
   const columns = [
     { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
+    { field: "pickupDateStr", headerName: "Date", flex: 0.9, minWidth: 120 },
     {
-      field: "pickupDate",
-      headerName: "Date",
-      flex: 0.9,
-      minWidth: 120,
-      valueGetter: (params) => params?.row?.pickupTime ?? null,
-      valueFormatter: (params) => fmtDateTS(params?.value),
-      sortable: true,
-    },
-    {
-      field: "pickupTimeDisplay",
+      field: "pickupTimeStr",
       headerName: "Pickup Time",
       flex: 0.9,
       minWidth: 130,
-      valueGetter: (params) => params?.row?.pickupTime ?? null,
-      valueFormatter: (params) => fmtTimeTS(params?.value),
-      sortable: true,
     },
     {
-      field: "rideDurationDisplay",
+      field: "rideDurationStr",
       headerName: "Duration",
       flex: 0.7,
       minWidth: 110,
-      valueGetter: (params) => {
-        const v = params?.row?.rideDuration;
-        const n = typeof v === "number" ? v : Number(v);
-        return Number.isFinite(n) ? n : null;
-      },
-      valueFormatter: (params) => minutesHHMM(params?.value),
-      sortable: true,
     },
     { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
     { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
