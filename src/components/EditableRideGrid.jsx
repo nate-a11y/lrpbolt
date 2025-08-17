@@ -34,9 +34,9 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { motion } from "framer-motion";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import useAuth from "../hooks/useAuth.js";
 import { TIMEZONE, COLLECTIONS } from "../constants";
-import { updateRide } from "../services/firestoreService";
+import { patchRide } from "../services/rides";
+import useAuth from "../hooks/useAuth.js";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -44,12 +44,7 @@ import { logError } from "../utils/logError";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-import {
-  normalizeDate,
-  normalizeTime,
-  parseDuration,
-  formatDuration,
-} from "../utils/timeUtils";
+import { parseDuration } from "../utils/timeUtils";
 
 const vehicleOptions = [
   "LRPBus - Limo Bus",
@@ -65,6 +60,7 @@ const EditableRideGrid = ({
   loading = false,
   refreshRides,
   collectionName = COLLECTIONS.RIDE_QUEUE,
+  onSave,
 }) => {
   const isMobile = useMediaQuery("(max-width:600px)");
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
@@ -117,7 +113,6 @@ const EditableRideGrid = ({
   );
 
   const { user } = useAuth();
-  const currentUser = user?.email || "Unknown";
 
   const validationErrors = useMemo(() => {
     if (!editedRow) return {};
@@ -136,34 +131,30 @@ const EditableRideGrid = ({
     if (!isValid) return;
     setSaving(true);
 
-    const finalDuration = formatDuration(
-      editedRow.DurationHours,
-      editedRow.DurationMinutes,
-    );
-    const formattedTime = dayjs(
-      `2000-01-01 ${editedRow.PickupTime}`,
-      "YYYY-MM-DD HH:mm",
-    )
-      .tz(TIMEZONE)
-      .format("h:mm A");
-    const formattedDate = dayjs(editedRow.Date).format("MM/DD/YYYY");
+    const rideDurationMinutes =
+      parseInt(editedRow.DurationHours || 0, 10) * 60 +
+      parseInt(editedRow.DurationMinutes || 0, 10);
 
-    const payload = {
-      Date: formattedDate,
-      PickupTime: formattedTime,
-      RideDuration: finalDuration,
-      RideType: editedRow.RideType,
-      Vehicle: editedRow.Vehicle,
-      RideNotes: editedRow.RideNotes,
-      LastModifiedBy: currentUser,
+    const pickup = dayjs(
+      `${editedRow.Date} ${editedRow.PickupTime}`,
+      "YYYY-MM-DD HH:mm",
+    ).tz(TIMEZONE);
+
+    const patch = {
+      tripId: editedRow.TripID,
+      pickupTime: pickup.isValid() ? pickup.toDate() : null,
+      rideDuration: rideDurationMinutes,
+      rideType: editedRow.RideType,
+      vehicle: editedRow.Vehicle,
+      rideNotes: editedRow.RideNotes,
     };
 
-    const hasChanges = Object.entries(payload).some(([key, newVal]) => {
-      const originalVal =
-        key === "RideDuration"
-          ? selectedRow[key]
-          : selectedRow[key]?.toString().trim();
-      return newVal !== originalVal;
+    const hasChanges = Object.entries(patch).some(([key, newVal]) => {
+      const originalVal = selectedRow[key];
+      if (newVal instanceof Date && originalVal instanceof Date) {
+        return newVal.getTime() !== originalVal.getTime();
+      }
+      return newVal !== (originalVal ?? null);
     });
 
     if (!hasChanges) {
@@ -177,8 +168,16 @@ const EditableRideGrid = ({
     }
 
     try {
-      const result = await updateRide(collectionName, editedRow.id, payload);
-      if (!result.success) throw new Error(result.message || "Update failed");
+      if (onSave) {
+        await onSave(editedRow.id, patch);
+      } else {
+        await patchRide(
+          collectionName,
+          editedRow.id,
+          patch,
+          user?.email || "Unknown",
+        );
+      }
 
       setSnack({
         open: true,

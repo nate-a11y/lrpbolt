@@ -23,6 +23,7 @@ import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
 import { COLLECTIONS } from "../constants";
 import { logError } from "../utils/logError";
+import { patchRide } from "../services/rides";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -99,6 +100,15 @@ const LiveRidesGrid = () => {
     }
   };
 
+  const onSave = async (rideId, changes) => {
+    await patchRide(
+      COLLECTIONS.LIVE_RIDES,
+      rideId,
+      changes,
+      user?.email || "Unknown",
+    );
+  };
+
   return (
     <>
       <Box sx={{ width: "100%", overflowX: "auto" }}>
@@ -113,6 +123,7 @@ const LiveRidesGrid = () => {
           }}
           refreshRides={refreshRides}
           collectionName={COLLECTIONS.LIVE_RIDES}
+          onSave={onSave}
         />
       </Box>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
