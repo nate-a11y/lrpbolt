@@ -15,30 +15,12 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import dayjs from "../utils/dates";
-import { TIMEZONE } from "../constants";
-
-const fmtDate = (value) => {
-  if (!value) return "N/A";
-  try {
-    const d = value.toDate ? value.toDate() : value;
-    const dj = dayjs(d);
-    return dj.isValid() ? dj.tz(TIMEZONE).format("MM/DD/YYYY") : "N/A";
-  } catch {
-    return "N/A";
-  }
-};
-
-const fmtTime = (value) => {
-  if (!value) return "N/A";
-  try {
-    const d = value.toDate ? value.toDate() : value;
-    const dj = dayjs(d);
-    return dj.isValid() ? dj.tz(TIMEZONE).format("h:mm A") : "N/A";
-  } catch {
-    return "N/A";
-  }
-};
+import {
+  getPickupTime,
+  fmtDate,
+  fmtTime,
+  getRideDuration,
+} from "../utils/gridFormatters";
 
 export default function EditableRideGrid({
   rows,
@@ -54,21 +36,28 @@ export default function EditableRideGrid({
         field: "pickupDate",
         headerName: "Date",
         flex: 1,
-        valueGetter: ({ row }) => row.pickupTime || null,
+        valueGetter: getPickupTime,
         valueFormatter: ({ value }) => fmtDate(value),
       },
       {
-        field: "pickupTime",
+        field: "pickupTimeDisplay",
         headerName: "Pickup Time",
         flex: 1,
-        valueGetter: ({ row }) => row.pickupTime || null,
+        valueGetter: getPickupTime,
         valueFormatter: ({ value }) => fmtTime(value),
       },
       {
         field: "rideDuration",
-        headerName: "Duration (min)",
+        headerName: "Duration",
         minWidth: 110,
         flex: 1,
+        valueGetter: getRideDuration,
+        valueFormatter: ({ value }) =>
+          Number.isFinite(value)
+            ? `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(
+                value % 60,
+              ).padStart(2, "0")}`
+            : "N/A",
       },
       { field: "rideType", headerName: "Ride Type", minWidth: 120, flex: 1 },
       { field: "vehicle", headerName: "Vehicle", minWidth: 150, flex: 1.5 },

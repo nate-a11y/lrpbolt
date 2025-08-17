@@ -17,7 +17,7 @@ import {
   Button,
 } from "@mui/material";
 import useWeeklySummary from "../../hooks/useWeeklySummary";
-import { row as r } from "../../utils/gridSafe";
+import { getRow } from "../../utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function WeeklySummaryTab() {
@@ -92,14 +92,14 @@ export default function WeeklySummaryTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 200,
-        valueGetter: (p) => r(p)?.driver ?? r(p)?.driverEmail ?? "—",
+        valueGetter: (p) => getRow(p)?.driver ?? getRow(p)?.driverEmail ?? "—",
       },
       {
         field: "trips",
         headerName: "Trips",
         width: 90,
         valueGetter: (p) => {
-          const v = r(p)?.trips;
+          const v = getRow(p)?.trips;
           return Number.isFinite(v) ? v : 0;
         },
       },
@@ -108,7 +108,7 @@ export default function WeeklySummaryTab() {
         headerName: "Hours",
         width: 110,
         valueGetter: (p) => {
-          const v = r(p)?.hours;
+          const v = getRow(p)?.hours;
           return Number.isFinite(v) ? v : 0;
         },
         valueFormatter: (p) =>
