@@ -3,7 +3,7 @@ import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "./utils/firebaseInit.js"; // keep first
 import { killRogueServiceWorkers } from "./utils/killRogueSW";
-import "./sw-updater.js";
+import "./pwa";
 import { registerFCM } from "./utils/registerFCM";
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
