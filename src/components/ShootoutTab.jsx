@@ -386,7 +386,7 @@ export default function ShootoutTab() {
             <Box sx={{ width: "100%" }}>
               <DataGrid
                 autoHeight
-                rows={rows}
+                rows={rows || []}
                 columns={cols}
                 density="compact"
                 pageSizeOptions={[5, 10, 25]}

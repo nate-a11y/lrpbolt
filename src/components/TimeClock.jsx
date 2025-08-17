@@ -392,7 +392,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
             <DataGrid
               autoHeight
-              rows={rows}
+              rows={rows || []}
               columns={columns}
               getRowId={(r) => r?.id}
               pageSizeOptions={[5]}

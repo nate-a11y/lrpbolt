@@ -17,9 +17,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import {
   getPickupTime,
+  getRideDuration,
   fmtDate,
   fmtTime,
-  getRideDuration,
+  minutesToHHMM,
+  safeVF,
 } from "../utils/gridFormatters";
 
 export default function EditableRideGrid({
@@ -37,14 +39,14 @@ export default function EditableRideGrid({
         headerName: "Date",
         flex: 1,
         valueGetter: getPickupTime,
-        valueFormatter: ({ value }) => fmtDate(value),
+        valueFormatter: safeVF(fmtDate),
       },
       {
         field: "pickupTimeDisplay",
         headerName: "Pickup Time",
         flex: 1,
         valueGetter: getPickupTime,
-        valueFormatter: ({ value }) => fmtTime(value),
+        valueFormatter: safeVF(fmtTime),
       },
       {
         field: "rideDuration",
@@ -52,12 +54,7 @@ export default function EditableRideGrid({
         minWidth: 110,
         flex: 1,
         valueGetter: getRideDuration,
-        valueFormatter: ({ value }) =>
-          Number.isFinite(value)
-            ? `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(
-                value % 60,
-              ).padStart(2, "0")}`
-            : "N/A",
+        valueFormatter: safeVF((v) => minutesToHHMM(v)),
       },
       { field: "rideType", headerName: "Ride Type", minWidth: 120, flex: 1 },
       { field: "vehicle", headerName: "Vehicle", minWidth: 150, flex: 1.5 },
@@ -118,7 +115,7 @@ export default function EditableRideGrid({
   return (
     <Box sx={{ width: "100%", height: 600 }}>
       <DataGrid
-        rows={rows}
+        rows={rows || []}
         columns={columns}
         loading={loading}
         disableRowSelectionOnClick

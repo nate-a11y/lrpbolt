@@ -378,7 +378,7 @@ lines.forEach((line, idx) => {
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
             <DataGrid
-              rows={rows}
+              rows={rows || []}
               columns={columns}
               autoHeight
               loading={loading}
