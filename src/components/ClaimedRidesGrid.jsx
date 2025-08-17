@@ -27,14 +27,7 @@ import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import EditRideDialog from "./EditRideDialog";
-import {
-  getPickupTime,
-  getRideDuration,
-  fmtDate,
-  fmtTime,
-  minutesToHHMM,
-  safeVF,
-} from "../utils/gridFormatters";
+import { fmtDateTS, fmtTimeTS, minutesHHMM } from "../utils/gridFx";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -165,8 +158,8 @@ const ClaimedRidesGrid = () => {
       headerName: "Date",
       flex: 0.9,
       minWidth: 120,
-      valueGetter: getPickupTime,
-      valueFormatter: safeVF((v) => fmtDate(v)),
+      valueGetter: (params) => params?.row?.pickupTime ?? null,
+      valueFormatter: (params) => fmtDateTS(params?.value),
       sortable: true,
     },
     {
@@ -174,17 +167,21 @@ const ClaimedRidesGrid = () => {
       headerName: "Pickup Time",
       flex: 0.9,
       minWidth: 130,
-      valueGetter: getPickupTime,
-      valueFormatter: safeVF((v) => fmtTime(v)),
+      valueGetter: (params) => params?.row?.pickupTime ?? null,
+      valueFormatter: (params) => fmtTimeTS(params?.value),
       sortable: true,
     },
     {
-      field: "rideDuration",
+      field: "rideDurationDisplay",
       headerName: "Duration",
       flex: 0.7,
       minWidth: 110,
-      valueGetter: getRideDuration,
-      valueFormatter: safeVF((v) => minutesToHHMM(v)),
+      valueGetter: (params) => {
+        const v = params?.row?.rideDuration;
+        const n = typeof v === "number" ? v : Number(v);
+        return Number.isFinite(n) ? n : null;
+      },
+      valueFormatter: (params) => minutesHHMM(params?.value),
       sortable: true,
     },
     { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
@@ -194,7 +191,7 @@ const ClaimedRidesGrid = () => {
       headerName: "Notes",
       flex: 1.2,
       minWidth: 180,
-      valueFormatter: safeVF((v) => (v ? String(v) : "N/A")),
+      valueFormatter: (p) => (p?.value ? String(p.value) : "N/A"),
     },
     { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160 },
     {
@@ -279,10 +276,10 @@ const ClaimedRidesGrid = () => {
                 <Box>
                   <Typography variant="subtitle2">{r.tripId}</Typography>
                   <Typography variant="body2">
-                    Pickup: {fmtTime(r.pickupTime)}
+                    Pickup: {fmtTimeTS(r.pickupTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {minutesToHHMM(r.rideDuration)}
+                    Duration: {minutesHHMM(r.rideDuration)}
                   </Typography>
                   <Typography variant="body2">Type: {r.rideType}</Typography>
                   <Typography variant="body2">Vehicle: {r.vehicle}</Typography>

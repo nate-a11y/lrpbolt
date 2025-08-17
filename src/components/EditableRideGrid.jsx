@@ -15,14 +15,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import {
-  getPickupTime,
-  getRideDuration,
-  fmtDate,
-  fmtTime,
-  minutesToHHMM,
-  safeVF,
-} from "../utils/gridFormatters";
+import { fmtDateTS, fmtTimeTS, minutesHHMM } from "../utils/gridFx";
 
 export default function EditableRideGrid({
   rows,
@@ -39,8 +32,8 @@ export default function EditableRideGrid({
         headerName: "Date",
         flex: 0.9,
         minWidth: 120,
-        valueGetter: getPickupTime,
-        valueFormatter: safeVF((v) => fmtDate(v)),
+        valueGetter: (params) => params?.row?.pickupTime ?? null,
+        valueFormatter: (params) => fmtDateTS(params?.value),
         sortable: true,
       },
       {
@@ -48,17 +41,21 @@ export default function EditableRideGrid({
         headerName: "Pickup Time",
         flex: 0.9,
         minWidth: 130,
-        valueGetter: getPickupTime,
-        valueFormatter: safeVF((v) => fmtTime(v)),
+        valueGetter: (params) => params?.row?.pickupTime ?? null,
+        valueFormatter: (params) => fmtTimeTS(params?.value),
         sortable: true,
       },
       {
-        field: "rideDuration",
+        field: "rideDurationDisplay",
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
-        valueGetter: getRideDuration,
-        valueFormatter: safeVF((v) => minutesToHHMM(v)),
+        valueGetter: (params) => {
+          const v = params?.row?.rideDuration;
+          const n = typeof v === "number" ? v : Number(v);
+          return Number.isFinite(n) ? n : null;
+        },
+        valueFormatter: (params) => minutesHHMM(params?.value),
         sortable: true,
       },
       { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
@@ -68,7 +65,7 @@ export default function EditableRideGrid({
         headerName: "Notes",
         flex: 1.2,
         minWidth: 180,
-        valueFormatter: safeVF((v) => (v ? String(v) : "N/A")),
+        valueFormatter: (p) => (p?.value ? String(p.value) : "N/A"),
       },
       { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160 },
       { field: "lastModifiedBy", headerName: "Modified By", flex: 1, minWidth: 160 },
