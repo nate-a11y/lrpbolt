@@ -143,7 +143,7 @@ const ClaimedRidesGrid = () => {
           );
         } catch (err) {
           logError(err, "ClaimedRidesGrid:undo");
-          failed.push(ride.TripID);
+          failed.push(ride.tripId);
         }
       }),
     );
@@ -159,34 +159,51 @@ const ClaimedRidesGrid = () => {
   };
 
   const columns = [
-    { field: "tripId", headerName: "Trip ID", flex: 1 },
+    { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
     {
       field: "pickupDate",
       headerName: "Date",
-      flex: 1,
+      flex: 0.9,
+      minWidth: 120,
       valueGetter: getPickupTime,
-      valueFormatter: safeVF(fmtDate),
+      valueFormatter: safeVF((v) => fmtDate(v)),
+      sortable: true,
     },
     {
       field: "pickupTimeDisplay",
       headerName: "Pickup Time",
-      flex: 1,
+      flex: 0.9,
+      minWidth: 130,
       valueGetter: getPickupTime,
-      valueFormatter: safeVF(fmtTime),
+      valueFormatter: safeVF((v) => fmtTime(v)),
+      sortable: true,
     },
     {
       field: "rideDuration",
       headerName: "Duration",
-      flex: 1,
+      flex: 0.7,
+      minWidth: 110,
       valueGetter: getRideDuration,
       valueFormatter: safeVF((v) => minutesToHHMM(v)),
+      sortable: true,
     },
-    { field: "rideType", headerName: "Ride Type", flex: 1 },
-    { field: "vehicle", headerName: "Vehicle", flex: 1 },
-    { field: "rideNotes", headerName: "Notes", flex: 1 },
-    { field: "createdBy", headerName: "Created By", flex: 1 },
-    { field: "lastModifiedBy", headerName: "Modified By", flex: 1 },
-    { field: "claimedBy", headerName: "Claimed By", flex: 1 },
+    { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
+    { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
+    {
+      field: "rideNotes",
+      headerName: "Notes",
+      flex: 1.2,
+      minWidth: 180,
+      valueFormatter: safeVF((v) => (v ? String(v) : "N/A")),
+    },
+    { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160 },
+    {
+      field: "lastModifiedBy",
+      headerName: "Modified By",
+      flex: 1,
+      minWidth: 160,
+    },
+    { field: "claimedBy", headerName: "Claimed By", flex: 1, minWidth: 160 },
     {
       field: "actions",
       type: "actions",
@@ -260,16 +277,20 @@ const ClaimedRidesGrid = () => {
                 alignItems="flex-start"
               >
                 <Box>
-                  <Typography variant="subtitle2">{r.TripID}</Typography>
-                  <Typography variant="body2">Pickup: {r.PickupTime}</Typography>
-                  <Typography variant="body2">Duration: {r.RideDuration}</Typography>
-                  <Typography variant="body2">Type: {r.RideType}</Typography>
-                  <Typography variant="body2">Vehicle: {r.Vehicle}</Typography>
-                  {r.RideNotes && (
-                    <Typography variant="body2">Notes: {r.RideNotes}</Typography>
+                  <Typography variant="subtitle2">{r.tripId}</Typography>
+                  <Typography variant="body2">
+                    Pickup: {fmtTime(r.pickupTime)}
+                  </Typography>
+                  <Typography variant="body2">
+                    Duration: {minutesToHHMM(r.rideDuration)}
+                  </Typography>
+                  <Typography variant="body2">Type: {r.rideType}</Typography>
+                  <Typography variant="body2">Vehicle: {r.vehicle}</Typography>
+                  {r.rideNotes && (
+                    <Typography variant="body2">Notes: {r.rideNotes}</Typography>
                   )}
                   <Typography variant="body2">
-                    Claimed By: {r.ClaimedBy || "Unknown"}
+                    Claimed By: {r.claimedBy || "Unknown"}
                   </Typography>
                 </Box>
                 <IconButton
@@ -318,7 +339,7 @@ const ClaimedRidesGrid = () => {
         <DialogContent>
           <Typography>
             Are you sure you want to delete{" "}
-            <strong>{selectedRow?.TripID}</strong>?
+            <strong>{selectedRow?.tripId}</strong>?
           </Typography>
         </DialogContent>
         <DialogActions>
