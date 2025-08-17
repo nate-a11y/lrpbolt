@@ -23,7 +23,7 @@ import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
 import { COLLECTIONS } from "../constants";
 import { logError } from "../utils/logError";
-import { patchRide } from "../services/rides";
+import EditRideDialog from "./EditRideDialog";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -35,6 +35,16 @@ const LiveRidesGrid = () => {
   const [deletingTripId, setDeletingTripId] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [undoRow, setUndoRow] = useState(null);
+  const [editing, setEditing] = useState({ open: false, row: null });
+
+  function openEdit(row) {
+    setEditing({ open: true, row });
+  }
+
+  function closeEdit(didSave) {
+    setEditing({ open: false, row: null });
+    if (didSave) refreshRides();
+  }
 
   useEffect(() => {
     if (authLoading || !user?.email) return;
@@ -100,15 +110,6 @@ const LiveRidesGrid = () => {
     }
   };
 
-  const onSave = async (rideId, changes) => {
-    await patchRide(
-      COLLECTIONS.LIVE_RIDES,
-      rideId,
-      changes,
-      user?.email || "Unknown",
-    );
-  };
-
   return (
     <>
       <Box sx={{ width: "100%", overflowX: "auto" }}>
@@ -122,8 +123,7 @@ const LiveRidesGrid = () => {
             setConfirmOpen(true);
           }}
           refreshRides={refreshRides}
-          collectionName={COLLECTIONS.LIVE_RIDES}
-          onSave={onSave}
+          onEdit={openEdit}
         />
       </Box>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
@@ -163,6 +163,15 @@ const LiveRidesGrid = () => {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {editing.open && (
+        <EditRideDialog
+          open={editing.open}
+          ride={editing.row}
+          collectionName={COLLECTIONS.LIVE_RIDES}
+          onClose={closeEdit}
+        />
+      )}
 
       <style>
         {`
