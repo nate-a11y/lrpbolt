@@ -10,6 +10,7 @@ import {
 import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
 import { COLLECTIONS } from "../constants";
+import { shapeRideRow } from "../services/shapeRideRow";
 import {
   Dialog,
   DialogTitle,
@@ -51,7 +52,8 @@ const RideQueueGrid = () => {
     const unsub = subscribeRides(
       COLLECTIONS.RIDE_QUEUE,
       (data) => {
-        setRows(data);
+        const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
+        setRows(rows);
         setLoading(false);
       },
       () => {
@@ -69,7 +71,8 @@ const RideQueueGrid = () => {
   const refreshRides = async () => {
     setLoading(true);
     const data = await getRides(COLLECTIONS.RIDE_QUEUE);
-    setRows(data);
+    const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
+    setRows(rows);
     setLoading(false);
   };
 
@@ -133,7 +136,7 @@ const RideQueueGrid = () => {
     <>
       <Box sx={{ width: "100%", overflowX: "auto" }}>
         <EditableRideGrid
-          rows={rows}
+          rows={rows || []}
           loading={loading}
           onDelete={(id) => {
             const row = rows.find((r) => r.id === id);
