@@ -30,6 +30,6 @@ export async function resolveSmsTo({ vehicleNumber }) {
   if (cfg.vehicleMap && vehicleNumber && cfg.vehicleMap[vehicleNumber]) {
     return cfg.vehicleMap[vehicleNumber];
   }
-  return cfg.defaultTo; // final fallback
+  return import.meta.env.VITE_SMS_DEFAULT_TO || cfg.defaultTo || "+14173809953"; // final fallback
 }
 
