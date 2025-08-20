@@ -1,4 +1,4 @@
-name: Build & Deploy LRP (beast mode)
+name: Build & Deploy LRP (beastmode)
 
 on:
   push:
