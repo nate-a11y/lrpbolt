@@ -21,7 +21,14 @@ import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
-import { fmtDow, fmtTime, safe, groupKey } from "../utils/rideFormatters";
+import {
+  fmtDow,
+  fmtTime,
+  fmtDate,
+  fmtDurationHM,
+  safe,
+  groupKey,
+} from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import dayjs from "dayjs";
@@ -133,9 +140,12 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           const phone = record?.phone;
           if (phone) {
             const body =
-              `Ride ${ride.tripId} claimed on ${fmtDow(pickupTime)} at ${fmtTime(pickupTime)}\n` +
-              `Vehicle: ${safe(ride.vehicle)} | Type: ${safe(ride.rideType)}\n` +
-              `Notes: ${safe(ride.rideNotes, "none")}`;
+              `Trip ID: ${ride.tripId}\n` +
+              `Date/Time: ${fmtDate(pickupTime)} ${fmtTime(pickupTime)}\n` +
+              `Duration: ${fmtDurationHM(Number(ride.rideDuration ?? 0))}\n` +
+              `Trip Type: ${safe(ride.rideType)}\n` +
+              `Trip Notes: ${safe(ride.rideNotes, "none")}\n\n` +
+              `Claimed At: ${fmtDate(new Date())} ${fmtTime(new Date())}`;
             await enqueueSms({ to: phone, body, context: { tripId: ride.tripId } });
           }
         }
@@ -145,7 +155,14 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
       setClaimLog((prev) => [
         ...prev,
-        { tripId, time: new Date().toLocaleTimeString() },
+        {
+          tripId: ride.tripId,
+          pickupTime,
+          rideDuration: Number(ride.rideDuration ?? 0),
+          rideType: ride.rideType,
+          rideNotes: ride.rideNotes,
+          claimedAt: new Date(),
+        },
       ]);
       return true;
     },
@@ -298,6 +315,29 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {claimLog.length > 0 && (
+        <Box mt={4} data-testid="claim-log">
+          {claimLog.map((entry, idx) => (
+            <Box key={idx} mb={3}>
+              <Typography>Trip ID: {entry.tripId}</Typography>
+              <Typography>
+                Date/Time: {fmtDate(entry.pickupTime)} {fmtTime(entry.pickupTime)}
+              </Typography>
+              <Typography>
+                Duration: {fmtDurationHM(entry.rideDuration)}
+              </Typography>
+              <Typography>Trip Type: {safe(entry.rideType)}</Typography>
+              <Typography>
+                Trip Notes: {safe(entry.rideNotes, "none")}
+              </Typography>
+              <Typography mt={2}>
+                Claimed At: {fmtDate(entry.claimedAt)} {fmtTime(entry.claimedAt)}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };
