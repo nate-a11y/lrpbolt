@@ -33,12 +33,15 @@ function parseUserLines(input) {
 }
 
 function parseCsvLine(line) {
-  // Accept comma OR tab: "Name,email,access" OR "Name\temail\taccess"
-  const [nameRaw, emailRaw, accessRaw] = line.split(/[,\t]/).map((s) => (s || "").trim());
+  // Accept comma OR tab: "Name,email,phone,access" OR "Name\temail\tphone\taccess"
+  const [nameRaw, emailRaw, phoneRaw, accessRaw] = line
+    .split(/[,\t]/)
+    .map((s) => (s || "").trim());
   const name = nameRaw || "";
   const email = (emailRaw || "").toLowerCase();
+  const phone = phoneRaw || "";
   const access = (accessRaw || "").toLowerCase();
-  return { name, email, access };
+  return { name, email, phone, access };
 }
 
 export default function AdminUserManager() {
@@ -55,6 +58,7 @@ export default function AdminUserManager() {
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
+    phone: "",
     access: "driver",
   });
 
@@ -74,6 +78,7 @@ export default function AdminUserManager() {
           id: r.id || r.email,
           email: (r.email || r.id || "").toLowerCase(),
           name: r.name || "",
+          phone: r.phone || "",
           access: (r.access || "").toLowerCase(),
         }));
         setRows(mapped);
@@ -112,16 +117,20 @@ export default function AdminUserManager() {
     const validUsers = [];
 
 lines.forEach((line, idx) => {
-  const { name, email, access } = parseCsvLine(line);
+  const { name, email, phone, access } = parseCsvLine(line);
   if (!name || !email || !email.includes("@")) {
     invalids.push(`Line ${idx + 1}: Invalid name or email`);
+    return;
+  }
+  if (!phone) {
+    invalids.push(`Line ${idx + 1}: Missing phone`);
     return;
   }
   if (!ROLES.includes(access)) {
     invalids.push(`Line ${idx + 1}: Access must be one of ${ROLES.join(", ")}`);
     return;
   }
-  validUsers.push({ name: name.trim(), email, access });
+  validUsers.push({ name: name.trim(), email, phone: phone.trim(), access });
 });
 
     if (invalids.length) {
@@ -137,7 +146,11 @@ lines.forEach((line, idx) => {
     for (const u of validUsers) {
       try {
         await createUser(u);
-        await setDoc(doc(db, 'users', u.email), { name: u.name, email: u.email, role: u.access }, { merge: true });
+        await setDoc(
+          doc(db, 'users', u.email),
+          { name: u.name, email: u.email, phone: u.phone, role: u.access },
+          { merge: true }
+        );
       } catch (err) {
         logError(err, "AdminUserManager:createUser");
         errors.push(`${u.email}: ${err?.message || JSON.stringify(err)}`);
@@ -164,12 +177,13 @@ lines.forEach((line, idx) => {
 
     const name = newUser.name.trim();
     const email = newUser.email.trim().toLowerCase();
+    const phone = newUser.phone.trim();
     const access = newUser.access.trim().toLowerCase();
 
-    if (!name || !email || !email.includes("@")) {
+    if (!name || !email || !email.includes("@") || !phone) {
       setSnackbar({
         open: true,
-        message: "Invalid name or email",
+        message: "Invalid name, email, or phone",
         severity: "error",
       });
       return;
@@ -184,9 +198,13 @@ lines.forEach((line, idx) => {
     }
 
     try {
-      await createUser({ name, email, access });
-      await setDoc(doc(db, 'users', email), { name, email, role: access }, { merge: true });
-      setNewUser({ name: "", email: "", access: "driver" });
+      await createUser({ name, email, phone, access });
+      await setDoc(
+        doc(db, 'users', email),
+        { name, email, phone, role: access },
+        { merge: true }
+      );
+      setNewUser({ name: "", email: "", phone: "", access: "driver" });
       setSnackbar({
         open: true,
         message: "User added",
@@ -217,8 +235,13 @@ lines.forEach((line, idx) => {
         email: oldRow.id, // doc id is lowercase email
         access: newRow.access,
         name: newRow.name,
+        phone: newRow.phone,
       });
-      await setDoc(doc(db, 'users', newRow.email), { name: newRow.name, email: newRow.email, role: newRow.access }, { merge: true });
+      await setDoc(
+        doc(db, 'users', newRow.email),
+        { name: newRow.name, email: newRow.email, phone: newRow.phone, role: newRow.access },
+        { merge: true }
+      );
       return newRow;
     } catch (err) {
       logError(err, "AdminUserManager:updateUser");
@@ -252,8 +275,13 @@ lines.forEach((line, idx) => {
         email: id,
         name: row.name,
         access: row.access,
+        phone: row.phone,
       });
-      await setDoc(doc(db, 'users', row.email), { name: row.name, email: row.email, role: row.access }, { merge: true });
+      await setDoc(
+        doc(db, 'users', row.email),
+        { name: row.name, email: row.email, phone: row.phone, role: row.access },
+        { merge: true }
+      );
     } catch (err) {
       logError(err, "AdminUserManager:handleMobileUpdate");
       setSnackbar({
@@ -278,6 +306,13 @@ lines.forEach((line, idx) => {
       flex: 1,
       minWidth: 200,
       editable: false,
+    },
+    {
+      field: "phone",
+      headerName: "Phone",
+      flex: 1,
+      minWidth: 150,
+      editable: isAdmin,
     },
     {
       field: "access",
@@ -310,6 +345,12 @@ lines.forEach((line, idx) => {
             fullWidth
           />
           <TextField
+            label="Phone"
+            value={newUser.phone}
+            onChange={(e) => setNewUser((u) => ({ ...u, phone: e.target.value }))}
+            fullWidth
+          />
+          <TextField
             label="Access"
             select
             value={newUser.access}
@@ -330,7 +371,7 @@ lines.forEach((line, idx) => {
 
         <TextField
           label="Users CSV"
-          placeholder="Name,email,access"
+          placeholder="Name,email,phone,access"
           multiline
           minRows={4}
           value={input}
@@ -348,19 +389,26 @@ lines.forEach((line, idx) => {
                 spacing={1}
                 sx={{ p: 1, border: 1, borderColor: "divider", borderRadius: 1 }}
               >
-                <TextField
-                  label="Name"
-                  value={r.name}
-                  disabled={!isAdmin}
-                  onChange={(e) => handleMobileFieldChange(r.id, "name", e.target.value)}
-                  onBlur={() => handleMobileUpdate(r.id)}
-                />
-                <TextField label="Email" value={r.email} disabled />
-                <TextField
-                  label="Access"
-                  select
-                  value={r.access}
-                  disabled={!isAdmin}
+              <TextField
+                label="Name"
+                value={r.name}
+                disabled={!isAdmin}
+                onChange={(e) => handleMobileFieldChange(r.id, "name", e.target.value)}
+                onBlur={() => handleMobileUpdate(r.id)}
+              />
+              <TextField label="Email" value={r.email} disabled />
+              <TextField
+                label="Phone"
+                value={r.phone}
+                disabled={!isAdmin}
+                onChange={(e) => handleMobileFieldChange(r.id, "phone", e.target.value)}
+                onBlur={() => handleMobileUpdate(r.id)}
+              />
+              <TextField
+                label="Access"
+                select
+                value={r.access}
+                disabled={!isAdmin}
                   onChange={(e) => {
                     handleMobileFieldChange(r.id, "access", e.target.value);
                     handleMobileUpdate(r.id);
@@ -388,7 +436,7 @@ lines.forEach((line, idx) => {
               pageSizeOptions={[5, 10, 25]}
               getRowId={(r) => r?.id || r?.email}
               experimentalFeatures={{ newEditingApi: true }}
-              columnVisibilityModel={isSmall ? { access: false } : undefined}
+              columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
             />
           </Box>
         )}
