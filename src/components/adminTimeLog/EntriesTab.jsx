@@ -15,8 +15,8 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers";
-import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
+import { DatePicker } from "@mui/x-date-pickers-pro";
+import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -264,7 +264,7 @@ export default function EntriesTab() {
         </Stack>
       ) : (
         <div style={{ height: 640, width: "100%" }}>
-          <DataGrid
+          <DataGridPro
             apiRef={apiRef}
             editMode="row"
             processRowUpdate={processRowUpdate}

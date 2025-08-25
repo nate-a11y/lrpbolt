@@ -21,8 +21,8 @@ import {
   InputLabel,
   useMediaQuery,
 } from "@mui/material";
-import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { DatePicker, DateTimePicker } from "@mui/x-date-pickers-pro";
+import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -844,7 +844,7 @@ export default function AdminTimeLog() {
             />
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
-            <DataGrid
+            <DataGridPro
               autoHeight
               density="compact"
               rows={entryFiltered || []}
@@ -902,7 +902,7 @@ export default function AdminTimeLog() {
             />
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
-            <DataGrid
+            <DataGridPro
               autoHeight
               density="compact"
               rows={shootSummaryFiltered}
@@ -952,7 +952,7 @@ export default function AdminTimeLog() {
             </Typography>
           ) : (
             <Box sx={{ width: 1, overflowX: "auto" }}>
-              <DataGrid
+              <DataGridPro
                 autoHeight
                 density="compact"
                 rows={weekly || []}
@@ -1037,7 +1037,7 @@ export default function AdminTimeLog() {
             />
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
-            <DataGrid
+            <DataGridPro
               autoHeight
               density="compact"
               rows={shootoutFiltered}

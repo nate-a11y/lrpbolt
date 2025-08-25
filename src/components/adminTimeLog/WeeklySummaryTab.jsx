@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
+import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import {
   Box,
   CircularProgress,
@@ -184,7 +184,7 @@ export default function WeeklySummaryTab() {
           ))}
         </Stack>
       ) : (
-        <DataGrid
+        <DataGridPro
           apiRef={apiRef}
           editMode="row"
           processRowUpdate={processRowUpdate}

@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
+import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import {
   Box,
   CircularProgress,
@@ -16,7 +16,7 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers";
+import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
@@ -260,7 +260,7 @@ export default function ShootoutStatsTab() {
           ))}
         </Stack>
       ) : (
-        <DataGrid
+        <DataGridPro
           apiRef={apiRef}
           editMode="row"
           processRowUpdate={processRowUpdate}

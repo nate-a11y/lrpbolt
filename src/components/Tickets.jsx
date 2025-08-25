@@ -33,7 +33,7 @@ import {
   useMediaQuery,
   Stack,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGridPro } from "@mui/x-data-grid-pro";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -510,7 +510,7 @@ export default function Tickets() {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <DataGrid
+            <DataGridPro
               rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
               columns={columns}
               getRowId={(r) => r?.id ?? `${r?.ticketId}-${r?.date ?? Math.random()}`}

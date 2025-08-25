@@ -1,11 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo } from "react";
 import {
-  DataGrid,
+  DataGridPro,
   GridActionsCellItem,
   GridToolbarColumnsButton,
   GridToolbarContainer,
-} from "@mui/x-data-grid";
+} from "@mui/x-data-grid-pro";
 import {
   Box,
   Button,
@@ -108,7 +108,7 @@ export default function EditableRideGrid({
 
   return (
     <Box sx={{ width: "100%", height: 600 }}>
-      <DataGrid
+      <DataGridPro
         rows={rows || []}
         columns={columns}
         loading={loading}

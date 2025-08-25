@@ -1,8 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField } from "@mui/material";
-import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
+import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import dayjs from "../utils/dates";           // your extended dayjs with tz
 import { isValidDayjs } from "../utils/dates";
 import { patchRide } from "../services/rides";

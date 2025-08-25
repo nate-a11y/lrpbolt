@@ -15,7 +15,7 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 dayjs.extend(durationPlugin);
 
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGridPro } from "@mui/x-data-grid-pro";
 import {
   subscribeShootoutStats,
   createShootoutSession,
@@ -384,7 +384,7 @@ export default function ShootoutTab() {
             </Stack>
           ) : (
             <Box sx={{ width: "100%" }}>
-              <DataGrid
+              <DataGridPro
                 autoHeight
                 rows={rows || []}
                 columns={cols}

@@ -34,9 +34,9 @@ import AddIcon from "@mui/icons-material/Add";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { DataGrid } from "@mui/x-data-grid";
-import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DataGridPro } from "@mui/x-data-grid-pro";
+import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
+import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
 import dayjs from "../utils/dates"; // ← our extended dayjs
 import Papa from "papaparse";
@@ -1094,7 +1094,7 @@ if (totalMinutes <= 0) {
                   </Box>
                 )}
                 <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
-                  <DataGrid
+                  <DataGridPro
                     autoHeight
                     density="compact"
                     rows={Array.isArray(uploadedRows) ? uploadedRows.map((r, i) => ({ id: i, ...(r || {}) })) : []}

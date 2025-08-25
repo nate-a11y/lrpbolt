@@ -15,7 +15,7 @@ import React, { useState, useEffect, useRef } from "react";
     useMediaQuery,
   } from "@mui/material";
   import PageContainer from "./PageContainer.jsx";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGridPro } from "@mui/x-data-grid-pro";
 import {
   PlayArrow as PlayArrowIcon,
   Stop as StopIcon,
@@ -390,7 +390,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <DataGrid
+            <DataGridPro
               autoHeight
               rows={rows || []}
               columns={columns}
