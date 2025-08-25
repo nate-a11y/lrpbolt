@@ -23,7 +23,6 @@ import {
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
 import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
-import { gridFilteredSortedRowEntriesSelector } from "@mui/x-data-grid/hooks/features/filter";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -98,6 +97,12 @@ const asInt = (v, d = 0) => {
   return Number.isFinite(n) ? Math.round(n) : d;
 };
 
+function getVisibleRowsSafe(apiRef) {
+  const api = apiRef?.current;
+  if (!api || typeof api.getVisibleRowModels !== "function") return [];
+  return Array.from(api.getVisibleRowModels().values());
+}
+
 function exportCsv(rows, filename) {
   if (!Array.isArray(rows) || rows.length === 0) return;
   const csv = Papa.unparse(rows);
@@ -164,13 +169,17 @@ function normalizeShootout(r) {
 
 /* ---------------- custom edit cells ---------------- */
 function DateTimeEditCell(props) {
-  const { id, field, value, api } = props;
+  const { id, field, value, apiRef } = props;
   const v = Number.isFinite(value) ? dayjs(value) : null;
   return (
     <DateTimePicker
       value={v}
       onChange={(nv) =>
-        api.setEditCellValue({ id, field, value: nv ? nv.valueOf() : null })
+        apiRef.current.setEditCellValue({
+          id,
+          field,
+          value: nv ? nv.valueOf() : null,
+        })
       }
       ampm
       slotProps={{ textField: { size: "small" } }}
@@ -178,14 +187,14 @@ function DateTimeEditCell(props) {
   );
 }
 function NumberEditCell(props) {
-  const { id, field, value, api } = props;
+  const { id, field, value, apiRef } = props;
   return (
     <TextField
       size="small"
       type="number"
       value={value ?? ""}
       onChange={(e) =>
-        api.setEditCellValue({ id, field, value: e.target.value })
+        apiRef.current.setEditCellValue({ id, field, value: e.target.value })
       }
       inputProps={{ step: 1 }}
       fullWidth
@@ -283,10 +292,7 @@ export default function AdminTimeLog() {
   const entryApiRef = useGridApiRef();
   const [entryTotals, setEntryTotals] = useState({ sessions: 0, hours: 0 });
   const updateEntryTotals = useCallback(() => {
-    if (!entryApiRef.current) return;
-    const rows = gridFilteredSortedRowEntriesSelector(entryApiRef).map(
-      (r) => r.model,
-    );
+    const rows = getVisibleRowsSafe(entryApiRef);
     let totalMin = 0;
     rows.forEach((r) => {
       let min = Number(r.durationMin);
@@ -395,15 +401,12 @@ export default function AdminTimeLog() {
     hours: 0,
   });
   const updateShootTotals = useCallback(() => {
-    if (!shootApiRef.current) return;
-    const rows = gridFilteredSortedRowEntriesSelector(shootApiRef)
-      .map((r) => r.model)
-      .filter(
-        (r) =>
-          Number.isFinite(r.startTime) &&
-          Number.isFinite(r.endTime) &&
-          r.endTime >= r.startTime,
-      );
+    const rows = getVisibleRowsSafe(shootApiRef).filter(
+      (r) =>
+        Number.isFinite(r.startTime) &&
+        Number.isFinite(r.endTime) &&
+        r.endTime >= r.startTime,
+    );
     let trips = 0;
     let passengers = 0;
     let min = 0;
@@ -472,9 +475,7 @@ export default function AdminTimeLog() {
     hours: 0,
   });
   const updateShootSummaryTotals = useCallback(() => {
-    const rows = gridFilteredSortedRowEntriesSelector(
-      shootSummaryApiRef,
-    ).map((r) => r.model);
+    const rows = getVisibleRowsSafe(shootSummaryApiRef);
     let sessions = 0;
     let trips = 0;
     let passengers = 0;
@@ -606,7 +607,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (value) => value,
+        valueGetter: (v) => v,
         valueFormatter: (value) => fmtDateTimeMs(value),
         renderCell: (params) => fmtDateTimeMs(params.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
@@ -619,7 +620,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (value) => value,
+        valueGetter: (v) => v,
         valueFormatter: (value) => fmtDateTimeMs(value),
         renderCell: (params) => fmtDateTimeMs(params.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
@@ -650,7 +651,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 160,
         editable: true,
-        valueGetter: (value) => value,
+        valueGetter: (v) => v,
         valueFormatter: (value) => fmtDateTimeMs(value),
         renderCell: (params) => fmtDateTimeMs(params.row?.loggedAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
@@ -723,7 +724,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (value) => value,
+        valueGetter: (v) => v,
         valueFormatter: (value) => fmtDateTimeMs(value),
         renderCell: (params) => fmtDateTimeMs(params.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
@@ -736,7 +737,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (value) => value,
+        valueGetter: (v) => v,
         valueFormatter: (value) => fmtDateTimeMs(value),
         renderCell: (params) => fmtDateTimeMs(params.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
@@ -755,6 +756,8 @@ export default function AdminTimeLog() {
             : null;
         },
         valueFormatter: (value) => fmtMinutes(value),
+        sortComparator: (a, b) =>
+          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
         field: "trips",
@@ -778,7 +781,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 170,
         editable: true,
-        valueGetter: (value) => value,
+        valueGetter: (v) => v,
         valueFormatter: (value) => fmtDateTimeMs(value),
         renderCell: (params) => fmtDateTimeMs(params.row?.createdAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
@@ -853,9 +856,7 @@ export default function AdminTimeLog() {
   const weeklyApiRef = useGridApiRef();
   const [weeklyTotals, setWeeklyTotals] = useState({ sessions: 0, hours: 0 });
   const updateWeeklyTotals = useCallback(() => {
-    const rows = gridFilteredSortedRowEntriesSelector(weeklyApiRef).map(
-      (r) => r.model,
-    );
+    const rows = getVisibleRowsSafe(weeklyApiRef);
     let sessions = 0;
     let hours = 0;
     rows.forEach((r) => {
