@@ -22,7 +22,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
-import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -96,12 +96,6 @@ const asInt = (v, d = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.round(n) : d;
 };
-
-function getVisibleRowsSafe(apiRef) {
-  const api = apiRef?.current;
-  if (!api || typeof api.getVisibleRowModels !== "function") return [];
-  return Array.from(api.getVisibleRowModels().values());
-}
 
 function exportCsv(rows, filename) {
   if (!Array.isArray(rows) || rows.length === 0) return;
@@ -289,31 +283,6 @@ export default function AdminTimeLog() {
     nameMap,
   ]);
 
-  const entryApiRef = useGridApiRef();
-  const [entryTotals, setEntryTotals] = useState({ sessions: 0, hours: 0 });
-  const updateEntryTotals = useCallback(() => {
-    const rows = getVisibleRowsSafe(entryApiRef);
-    let totalMin = 0;
-    rows.forEach((r) => {
-      let min = Number(r.durationMin);
-      if (
-        !Number.isFinite(min) &&
-        Number.isFinite(r.startTime) &&
-        Number.isFinite(r.endTime) &&
-        r.endTime >= r.startTime
-      ) {
-        min = Math.round((r.endTime - r.startTime) / 60000);
-      }
-      totalMin += Number.isFinite(min) ? min : 0;
-    });
-    setEntryTotals({
-      sessions: rows.length,
-      hours: Number((totalMin / 60).toFixed(2)),
-    });
-  }, [entryApiRef]);
-  useEffect(() => {
-    updateEntryTotals();
-  }, [entryFiltered, updateEntryTotals]);
 
   /* -------- Shootout (shootoutStats) -------- */
   const [rawShootout, setRawShootout] = useState([]);
@@ -393,38 +362,6 @@ export default function AdminTimeLog() {
     ],
   );
 
-  const shootApiRef = useGridApiRef();
-  const [shootTotals, setShootTotals] = useState({
-    sessions: 0,
-    trips: 0,
-    passengers: 0,
-    hours: 0,
-  });
-  const updateShootTotals = useCallback(() => {
-    const rows = getVisibleRowsSafe(shootApiRef).filter(
-      (r) =>
-        Number.isFinite(r.startTime) &&
-        Number.isFinite(r.endTime) &&
-        r.endTime >= r.startTime,
-    );
-    let trips = 0;
-    let passengers = 0;
-    let min = 0;
-    rows.forEach((r) => {
-      trips += Number(r.trips) || 0;
-      passengers += Number(r.passengers) || 0;
-      min += Math.round((r.endTime - r.startTime) / 60000);
-    });
-    setShootTotals({
-      sessions: rows.length,
-      trips,
-      passengers,
-      hours: Number((min / 60).toFixed(2)),
-    });
-  }, [shootApiRef]);
-  useEffect(() => {
-    updateShootTotals();
-  }, [shootoutFiltered, updateShootTotals]);
 
   const shootSummaryRows = useMemo(() => {
     const by = new Map();
@@ -467,35 +404,6 @@ export default function AdminTimeLog() {
     );
   }, [shootSummaryRows, shootSumSearch]);
 
-  const shootSummaryApiRef = useGridApiRef();
-  const [shootSummaryTotals, setShootSummaryTotals] = useState({
-    sessions: 0,
-    trips: 0,
-    passengers: 0,
-    hours: 0,
-  });
-  const updateShootSummaryTotals = useCallback(() => {
-    const rows = getVisibleRowsSafe(shootSummaryApiRef);
-    let sessions = 0;
-    let trips = 0;
-    let passengers = 0;
-    let hours = 0;
-    rows.forEach((r) => {
-      sessions += Number(r.sessions) || 0;
-      trips += Number(r.trips) || 0;
-      passengers += Number(r.passengers) || 0;
-      hours += Number(r.hours) || 0;
-    });
-    setShootSummaryTotals({
-      sessions,
-      trips,
-      passengers,
-      hours: Number(hours.toFixed(2)),
-    });
-  }, [shootSummaryApiRef]);
-  useEffect(() => {
-    updateShootSummaryTotals();
-  }, [shootSummaryFiltered, updateShootSummaryTotals]);
 
   const shootSummaryColumns = useMemo(
     () => [
@@ -853,24 +761,6 @@ export default function AdminTimeLog() {
     }));
   }, [entryRows, weekStart, weekEnd, nameMap]);
 
-  const weeklyApiRef = useGridApiRef();
-  const [weeklyTotals, setWeeklyTotals] = useState({ sessions: 0, hours: 0 });
-  const updateWeeklyTotals = useCallback(() => {
-    const rows = getVisibleRowsSafe(weeklyApiRef);
-    let sessions = 0;
-    let hours = 0;
-    rows.forEach((r) => {
-      sessions += Number(r.sessions) || 0;
-      hours += Number(r.hours) || 0;
-    });
-    setWeeklyTotals({
-      sessions,
-      hours: Number(hours.toFixed(2)),
-    });
-  }, [weeklyApiRef]);
-  useEffect(() => {
-    updateWeeklyTotals();
-  }, [weekly, updateWeeklyTotals]);
 
   return (
     <PageContainer pt={2} pb={4}>
@@ -955,8 +845,6 @@ export default function AdminTimeLog() {
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGrid
-              apiRef={entryApiRef}
-              onStateChange={updateEntryTotals}
               autoHeight
               density="compact"
               rows={entryFiltered || []}
@@ -982,9 +870,6 @@ export default function AdminTimeLog() {
               }}
             />
           </Box>
-          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
-            Sessions: {entryTotals.sessions} | Hours: {entryTotals.hours}
-          </Typography>
         </Box>
       )}
 
@@ -1018,8 +903,6 @@ export default function AdminTimeLog() {
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGrid
-              apiRef={shootSummaryApiRef}
-              onStateChange={updateShootSummaryTotals}
               autoHeight
               density="compact"
               rows={shootSummaryFiltered}
@@ -1033,12 +916,6 @@ export default function AdminTimeLog() {
               slots={{ toolbar: GridToolbar }}
             />
           </Box>
-          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
-            Sessions: {shootSummaryTotals.sessions} | Trips:
-            {" "}
-            {shootSummaryTotals.trips} | Pax: {shootSummaryTotals.passengers} |
-            Hours: {shootSummaryTotals.hours}
-          </Typography>
         </Box>
       )}
 
@@ -1076,8 +953,6 @@ export default function AdminTimeLog() {
           ) : (
             <Box sx={{ width: 1, overflowX: "auto" }}>
               <DataGrid
-                apiRef={weeklyApiRef}
-                onStateChange={updateWeeklyTotals}
                 autoHeight
                 density="compact"
                 rows={weekly || []}
@@ -1104,9 +979,6 @@ export default function AdminTimeLog() {
               />
             </Box>
           )}
-          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
-            Sessions: {weeklyTotals.sessions} | Hours: {weeklyTotals.hours}
-          </Typography>
         </Box>
       )}
 
@@ -1166,8 +1038,6 @@ export default function AdminTimeLog() {
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGrid
-              apiRef={shootApiRef}
-              onStateChange={updateShootTotals}
               autoHeight
               density="compact"
               rows={shootoutFiltered}
@@ -1193,11 +1063,6 @@ export default function AdminTimeLog() {
               }}
             />
           </Box>
-          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
-            Sessions: {shootTotals.sessions} | Trips: {shootTotals.trips} | Pax:
-            {" "}
-            {shootTotals.passengers} | Hours: {shootTotals.hours}
-          </Typography>
         </Box>
       )}
 
