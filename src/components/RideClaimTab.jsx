@@ -41,6 +41,19 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 const CST = TIMEZONE;
 
+export const formatClaimSms = (
+  ride,
+  pickupTime,
+  claimTime = new Date(),
+) =>
+  `Trip ID: ${ride.tripId}\n` +
+  `Vehicle: ${safe(ride.vehicle)}\n` +
+  `Date/Time: ${fmtDate(pickupTime)} ${fmtTime(pickupTime)}\n` +
+  `Duration: ${fmtDurationHM(Number(ride.rideDuration ?? 0))}\n` +
+  `Trip Type: ${safe(ride.rideType)}\n` +
+  `Trip Notes: ${safe(ride.rideNotes, "none")}\n\n` +
+  `Claimed At: ${fmtDate(claimTime)} ${fmtTime(claimTime)}`;
+
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -139,13 +152,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           const record = await getUserAccess(email);
           const phone = record?.phone;
           if (phone) {
-            const body =
-              `Trip ID: ${ride.tripId}\n` +
-              `Date/Time: ${fmtDate(pickupTime)} ${fmtTime(pickupTime)}\n` +
-              `Duration: ${fmtDurationHM(Number(ride.rideDuration ?? 0))}\n` +
-              `Trip Type: ${safe(ride.rideType)}\n` +
-              `Trip Notes: ${safe(ride.rideNotes, "none")}\n\n` +
-              `Claimed At: ${fmtDate(new Date())} ${fmtTime(new Date())}`;
+            const body = formatClaimSms(ride, pickupTime);
             await enqueueSms({ to: phone, body, context: { tripId: ride.tripId } });
           }
         }
@@ -157,6 +164,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         ...prev,
         {
           tripId: ride.tripId,
+          vehicle: ride.vehicle,
           pickupTime,
           rideDuration: Number(ride.rideDuration ?? 0),
           rideType: ride.rideType,
@@ -321,6 +329,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           {claimLog.map((entry, idx) => (
             <Box key={idx} mb={3}>
               <Typography>Trip ID: {entry.tripId}</Typography>
+              <Typography>Vehicle: {safe(entry.vehicle)}</Typography>
               <Typography>
                 Date/Time: {fmtDate(entry.pickupTime)} {fmtTime(entry.pickupTime)}
               </Typography>
