@@ -23,6 +23,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import Papa from "papaparse";
 
 import PageContainer from "./PageContainer.jsx";
 import {
@@ -90,6 +91,19 @@ const asInt = (v, d = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.round(n) : d;
 };
+
+function exportCsv(rows, filename) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.setAttribute("download", filename);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 /* ---------------- normalizers (strict to each collection) ---------------- */
 // timeLogs fields: driver (string), duration (minutes), endTime (ts), loggedAt (ts), rideId (string), startTime (ts)
@@ -213,24 +227,16 @@ export default function AdminTimeLog() {
     [rawTimeLogs],
   );
 
-  // Inline commit for ALL fields in timeLogs -> use API helper
-  const onEntryCellEditCommit = async ({ id, field, value }) => {
-    const row = entryRows.find((r) => r.id === id);
-    if (!row) return;
-    const payload = {};
-    if (field === "driver") payload.driver = String(value || "");
-    else if (field === "rideId") payload.rideId = String(value || "");
-    else if (field === "startTime")
-      payload.startTime = value == null ? null : Number(value);
-    else if (field === "endTime")
-      payload.endTime = value == null ? null : Number(value);
-    else if (field === "durationMin")
-      payload.durationMin = asInt(value, 0);
-    else if (field === "loggedAt")
-      payload.loggedAt = value == null ? null : Number(value);
-    if (Object.keys(payload).length) {
-      await patchTimeLog(row._id || row.id, payload);
-    }
+  const processEntryUpdate = async (newRow) => {
+    await patchTimeLog(newRow._id || newRow.id, {
+      driver: newRow.driver,
+      rideId: newRow.rideId,
+      startTime: newRow.startTime,
+      endTime: newRow.endTime,
+      durationMin: newRow.durationMin,
+      loggedAt: newRow.loggedAt,
+    });
+    return newRow;
   };
 
   const entryFiltered = useMemo(() => {
@@ -276,6 +282,7 @@ export default function AdminTimeLog() {
   const [shootDriver, setShootDriver] = useState("");
   const [shootStartAfter, setShootStartAfter] = useState(null);
   const [shootEndBefore, setShootEndBefore] = useState(null);
+  const [shootSumSearch, setShootSumSearch] = useState("");
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
@@ -297,26 +304,117 @@ export default function AdminTimeLog() {
     [rawShootout],
   );
 
-  // Inline commit for ALL fields in shootoutStats -> use API helper
-  const onShootCellEditCommit = async ({ id, field, value }) => {
-    const row = shootoutRows.find((r) => r.id === id);
-    if (!row) return;
-    const payload = {};
-    if (field === "driverEmail") payload.driverEmail = String(value || "");
-    else if (field === "vehicle") payload.vehicle = String(value || "");
-    else if (field === "trips") payload.trips = asInt(value, 0);
-    else if (field === "passengers") payload.passengers = asInt(value, 0);
-    else if (field === "startTime")
-      payload.startTime = value == null ? null : Number(value);
-    else if (field === "endTime")
-      payload.endTime = value == null ? null : Number(value);
-    else if (field === "createdAt")
-      payload.createdAt = value == null ? null : Number(value);
-
-    if (Object.keys(payload).length) {
-      await patchShootoutStat(row._id || row.id, payload);
-    }
+  const processShootoutUpdate = async (newRow) => {
+    await patchShootoutStat(newRow._id || newRow.id, {
+      driverEmail: newRow.driverEmail,
+      vehicle: newRow.vehicle,
+      trips: newRow.trips,
+      passengers: newRow.passengers,
+      startTime: newRow.startTime,
+      endTime: newRow.endTime,
+      createdAt: newRow.createdAt,
+    });
+    return newRow;
   };
+
+  const shootoutFiltered = useMemo(
+    () =>
+      shootoutRows.filter((r) => {
+        if (shootDriver) {
+          const disp = nameMap[r.driverEmail.toLowerCase()] || r.driverEmail;
+          const hay = `${r.driverEmail} ${disp}`.toLowerCase();
+          if (!hay.includes(shootDriver.toLowerCase())) return false;
+        }
+        const sDj = Number.isFinite(r.startTime) ? dayjs(r.startTime) : null;
+        const eDj = Number.isFinite(r.endTime) ? dayjs(r.endTime) : null;
+        if (shootStartAfter && (!sDj || !sDj.isAfter(shootStartAfter)))
+          return false;
+        if (shootEndBefore) {
+          const cmp = eDj || sDj;
+          if (!cmp || !cmp.isBefore(shootEndBefore)) return false;
+        }
+        if (shootSearch) {
+          const text = `${r.driverEmail} ${
+            nameMap[r.driverEmail.toLowerCase()] || ""
+          } ${r.vehicle}`.toLowerCase();
+          if (!text.includes(shootSearch.toLowerCase())) return false;
+        }
+        return true;
+      }),
+    [
+      shootoutRows,
+      shootDriver,
+      shootStartAfter,
+      shootEndBefore,
+      shootSearch,
+      nameMap,
+    ],
+  );
+
+  const shootSummaryRows = useMemo(() => {
+    const by = new Map();
+    shootoutRows.forEach((r) => {
+      const email = (r.driverEmail || "").toLowerCase();
+      if (!email) return;
+      const cur =
+        by.get(email) || {
+          id: email,
+          driverEmail: r.driverEmail || "",
+          sessions: 0,
+          trips: 0,
+          passengers: 0,
+          durationMs: 0,
+        };
+      cur.sessions += 1;
+      cur.trips += Number(r.trips) || 0;
+      cur.passengers += Number(r.passengers) || 0;
+      if (
+        Number.isFinite(r.startTime) &&
+        Number.isFinite(r.endTime) &&
+        r.endTime >= r.startTime
+      ) {
+        cur.durationMs += r.endTime - r.startTime;
+      }
+      by.set(email, cur);
+    });
+    return Array.from(by.values()).map((v) => ({
+      ...v,
+      driver: nameMap[v.driverEmail.toLowerCase()] || v.driverEmail,
+      hours: Number((v.durationMs / 3600000).toFixed(2)),
+    }));
+  }, [shootoutRows, nameMap]);
+
+  const shootSummaryFiltered = useMemo(() => {
+    if (!shootSumSearch) return shootSummaryRows;
+    const s = shootSumSearch.toLowerCase();
+    return shootSummaryRows.filter((r) =>
+      `${r.driverEmail} ${r.driver}`.toLowerCase().includes(s),
+    );
+  }, [shootSummaryRows, shootSumSearch]);
+
+  const shootSummaryColumns = useMemo(
+    () => [
+      { field: "driver", headerName: "Driver", flex: 1, minWidth: 180 },
+      { field: "sessions", headerName: "Sessions", width: 110, type: "number" },
+      { field: "trips", headerName: "Trips", width: 110, type: "number" },
+      {
+        field: "passengers",
+        headerName: "Passengers",
+        width: 140,
+        type: "number",
+      },
+      {
+        field: "durationMin",
+        headerName: "Duration",
+        width: 130,
+        valueGetter: (p) =>
+          Math.round((p?.row?.durationMs || 0) / 60000),
+        valueFormatter: (p) => fmtMinutes(p?.value),
+      },
+      { field: "hours", headerName: "Hours", width: 110, type: "number" },
+    ],
+    [],
+  );
 
   /* -------- Modal (edit ALL fields for the selected row) -------- */
   const [tab, setTab] = useState(0);
@@ -533,6 +631,19 @@ export default function AdminTimeLog() {
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
+        field: "durationMin",
+        headerName: "Duration",
+        width: 130,
+        valueGetter: (p) => {
+          const s = p?.row?.startTime;
+          const e = p?.row?.endTime;
+          return Number.isFinite(s) && Number.isFinite(e) && e >= s
+            ? Math.round((e - s) / 60000)
+            : null;
+        },
+        valueFormatter: (p) => fmtMinutes(p?.value),
+      },
+      {
         field: "trips",
         headerName: "Trips",
         type: "number",
@@ -639,6 +750,7 @@ export default function AdminTimeLog() {
           <Tab label="Entries" />
           <Tab label="Weekly Summary" />
           <Tab label="Shootout Stats" />
+          <Tab label="Shootout Summary" />
         </Tabs>
       </Box>
 
@@ -647,6 +759,23 @@ export default function AdminTimeLog() {
         <Box>
           {entryError && <Alert severity="error">{entryError}</Alert>}
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() =>
+                exportCsv(
+                  entryFiltered.map(({ _col, _id, ...rest }) => ({
+                    ...rest,
+                    startTime: fmtDateTimeMs(rest.startTime),
+                    endTime: fmtDateTimeMs(rest.endTime),
+                    loggedAt: fmtDateTimeMs(rest.loggedAt),
+                  })),
+                  "timeLogs.csv",
+                )
+              }
+            >
+              Export CSV
+            </Button>
             <TextField
               label="Search"
               value={entrySearch}
@@ -680,8 +809,11 @@ export default function AdminTimeLog() {
             getRowId={(r) => r._id || r.id}
             loading={!!loadingEntries}
             disableRowSelectionOnClick
-            editMode="cell"
-            onCellEditCommit={onEntryCellEditCommit}
+            editMode="row"
+            processRowUpdate={processEntryUpdate}
+            onProcessRowUpdateError={() =>
+              alert("Failed to update time log")
+            }
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
@@ -697,10 +829,70 @@ export default function AdminTimeLog() {
         </Box>
       )}
 
+      {/* Shootout Summary */}
+      {tab === 3 && (
+        <Box>
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() =>
+                exportCsv(
+                  shootSummaryFiltered.map(
+                    ({ durationMs, driverEmail, ...rest }) => ({
+                      ...rest,
+                      duration: fmtMinutes(Math.round((durationMs || 0) / 60000)),
+                    }),
+                  ),
+                  "shootoutSummary.csv",
+                )
+              }
+            >
+              Export CSV
+            </Button>
+            <TextField
+              label="Search"
+              value={shootSumSearch}
+              onChange={(e) => setShootSumSearch(e.target.value)}
+              size="small"
+            />
+          </Box>
+          <DataGrid
+            autoHeight
+            density="compact"
+            rows={shootSummaryFiltered}
+            columns={shootSummaryColumns}
+            getRowId={(r) => r.id}
+            disableRowSelectionOnClick
+            initialState={{
+              sorting: { sortModel: [{ field: "trips", sort: "desc" }] },
+              pagination: { paginationModel: { pageSize: 10 } },
+            }}
+            slots={{ toolbar: GridToolbar }}
+          />
+        </Box>
+      )}
+
       {/* Weekly */}
       {tab === 1 && (
         <Box>
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() =>
+                exportCsv(
+                  weekly.map(({ driver, sessions, hours }) => ({
+                    driver,
+                    sessions,
+                    hours,
+                  })),
+                  "weeklySummary.csv",
+                )
+              }
+            >
+              Export CSV
+            </Button>
             <DatePicker
               label="Week of"
               value={weekStart}
@@ -747,6 +939,30 @@ export default function AdminTimeLog() {
         <Box>
           {shootError && <Alert severity="error">{shootError}</Alert>}
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() =>
+                exportCsv(
+                  shootoutFiltered.map(({ _col, _id, ...rest }) => ({
+                    ...rest,
+                    startTime: fmtDateTimeMs(rest.startTime),
+                    endTime: fmtDateTimeMs(rest.endTime),
+                    createdAt: fmtDateTimeMs(rest.createdAt),
+                    duration: fmtMinutes(
+                      Number.isFinite(rest.startTime) &&
+                      Number.isFinite(rest.endTime) &&
+                      rest.endTime >= rest.startTime
+                        ? Math.round((rest.endTime - rest.startTime) / 60000)
+                        : null,
+                    ),
+                  })),
+                  "shootoutStats.csv",
+                )
+              }
+            >
+              Export CSV
+            </Button>
             <TextField
               label="Search"
               value={shootSearch}
@@ -775,37 +991,16 @@ export default function AdminTimeLog() {
           <DataGrid
             autoHeight
             density="compact"
-            rows={shootoutRows.filter((r) => {
-              if (shootDriver) {
-                const disp =
-                  nameMap[r.driverEmail.toLowerCase()] || r.driverEmail;
-                const hay = `${r.driverEmail} ${disp}`.toLowerCase();
-                if (!hay.includes(shootDriver.toLowerCase())) return false;
-              }
-              const sDj = Number.isFinite(r.startTime)
-                ? dayjs(r.startTime)
-                : null;
-              const eDj = Number.isFinite(r.endTime) ? dayjs(r.endTime) : null;
-              if (shootStartAfter && (!sDj || !sDj.isAfter(shootStartAfter)))
-                return false;
-              if (shootEndBefore) {
-                const cmp = eDj || sDj;
-                if (!cmp || !cmp.isBefore(shootEndBefore)) return false;
-              }
-              if (shootSearch) {
-                const text = `${r.driverEmail} ${
-                  nameMap[r.driverEmail.toLowerCase()] || ""
-                } ${r.vehicle}`.toLowerCase();
-                if (!text.includes(shootSearch.toLowerCase())) return false;
-              }
-              return true;
-            })}
+            rows={shootoutFiltered}
             columns={shootoutColumns}
             getRowId={(r) => r._id || r.id}
             loading={!!loadingShootout}
             disableRowSelectionOnClick
-            editMode="cell"
-            onCellEditCommit={onShootCellEditCommit}
+            editMode="row"
+            processRowUpdate={processShootoutUpdate}
+            onProcessRowUpdateError={() =>
+              alert("Failed to update shootout stat")
+            }
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
