@@ -107,7 +107,7 @@ const COLL = "userAccess";
  * Fields required by rules: name, email, access ("admin" | "driver")
  * Extra fields (active, createdAt/updatedAt) are allowed.
  */
-export async function createUser({ name, email, access, active = true }) {
+export async function createUser({ name, email, access, phone, active = true }) {
   const lcEmail = (email || "").toLowerCase();
   const lcAccess = (access || "").toLowerCase();
   const ref = doc(db, COLL, lcEmail);
@@ -117,6 +117,7 @@ export async function createUser({ name, email, access, active = true }) {
       name: String(name || "").trim(),
       email: lcEmail,
       access: lcAccess,
+      phone: String(phone || "").trim(),
       active: Boolean(active),
       createdAt: new Date(),
     },
@@ -124,11 +125,12 @@ export async function createUser({ name, email, access, active = true }) {
   );
 }
 
-export async function updateUser({ email, access, name, active }) {
+export async function updateUser({ email, access, name, phone, active }) {
   const lcEmail = (email || "").toLowerCase();
   const patch = {};
   if (typeof name === "string") patch.name = name.trim();
   if (typeof access === "string") patch.access = access.toLowerCase();
+  if (typeof phone === "string") patch.phone = phone.trim();
   if (typeof active === "boolean") patch.active = active;
   patch.updatedAt = new Date();
   await updateDoc(doc(db, COLL, lcEmail), patch);

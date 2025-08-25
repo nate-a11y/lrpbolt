@@ -19,6 +19,19 @@ This document defines the expected structure, required fields, and field types f
 | name     | string | ✅       | Display name of the user.        |
 | email    | string | ✅       | Login email.                     |
 | access   | string | ✅       | `"admin"` or `"driver"`.         |
+| phone    | string | Optional | SMS-capable phone number.        |
+
+---
+
+### **`users`**
+**Purpose:** Stores user profiles and roles. Mirrors some fields from `userAccess` and allows additional info.
+
+| Field | Type   | Required | Notes                            |
+| ----- | ------ | -------- | -------------------------------- |
+| name  | string | Optional | Display name of the user.        |
+| email | string | ✅       | Login email.                     |
+| role  | string | Optional | `"admin"` or `"driver"`.         |
+| phone | string | Optional | SMS-capable phone number.        |
 
 ---
 

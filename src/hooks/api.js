@@ -90,7 +90,7 @@ export async function fetchUserAccess(activeOnly = false) {
 
 /**
  * subscribeUserAccess(cb, { roles }, onError?)
- * Emits array of { id: email, name, email, access }
+ * Emits array of { id: email, name, email, phone, access }
  */
 export function subscribeUserAccess(
   cb,
@@ -118,6 +118,7 @@ export function subscribeUserAccess(
             id: email,
             email,
             name,
+            phone: (x.phone || "").toString().trim(),
             access: (x.access || "").toString().toLowerCase(),
           };
         })
