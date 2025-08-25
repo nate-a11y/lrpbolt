@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Tabs,
@@ -22,7 +22,8 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
-import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { DataGrid, GridToolbar, useGridApiRef } from "@mui/x-data-grid";
+import { gridFilteredSortedRowEntriesSelector } from "@mui/x-data-grid/hooks/features/filter";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -279,6 +280,34 @@ export default function AdminTimeLog() {
     nameMap,
   ]);
 
+  const entryApiRef = useGridApiRef();
+  const [entryTotals, setEntryTotals] = useState({ sessions: 0, hours: 0 });
+  const updateEntryTotals = useCallback(() => {
+    const rows = gridFilteredSortedRowEntriesSelector(entryApiRef).map(
+      (r) => r.model,
+    );
+    let totalMin = 0;
+    rows.forEach((r) => {
+      let min = Number(r.durationMin);
+      if (
+        !Number.isFinite(min) &&
+        Number.isFinite(r.startTime) &&
+        Number.isFinite(r.endTime) &&
+        r.endTime >= r.startTime
+      ) {
+        min = Math.round((r.endTime - r.startTime) / 60000);
+      }
+      totalMin += Number.isFinite(min) ? min : 0;
+    });
+    setEntryTotals({
+      sessions: rows.length,
+      hours: Number((totalMin / 60).toFixed(2)),
+    });
+  }, [entryApiRef]);
+  useEffect(() => {
+    updateEntryTotals();
+  }, [entryFiltered, updateEntryTotals]);
+
   /* -------- Shootout (shootoutStats) -------- */
   const [rawShootout, setRawShootout] = useState([]);
   const [loadingShootout, setLoadingShootout] = useState(true);
@@ -357,6 +386,42 @@ export default function AdminTimeLog() {
     ],
   );
 
+  const shootApiRef = useGridApiRef();
+  const [shootTotals, setShootTotals] = useState({
+    sessions: 0,
+    trips: 0,
+    passengers: 0,
+    hours: 0,
+  });
+  const updateShootTotals = useCallback(() => {
+    const rows = gridFilteredSortedRowEntriesSelector(shootApiRef).map(
+      (r) => r.model,
+    );
+    let trips = 0;
+    let passengers = 0;
+    let min = 0;
+    rows.forEach((r) => {
+      trips += Number(r.trips) || 0;
+      passengers += Number(r.passengers) || 0;
+      if (
+        Number.isFinite(r.startTime) &&
+        Number.isFinite(r.endTime) &&
+        r.endTime >= r.startTime
+      ) {
+        min += Math.round((r.endTime - r.startTime) / 60000);
+      }
+    });
+    setShootTotals({
+      sessions: rows.length,
+      trips,
+      passengers,
+      hours: Number((min / 60).toFixed(2)),
+    });
+  }, [shootApiRef]);
+  useEffect(() => {
+    updateShootTotals();
+  }, [shootoutFiltered, updateShootTotals]);
+
   const shootSummaryRows = useMemo(() => {
     const by = new Map();
     shootoutRows.forEach((r) => {
@@ -397,6 +462,38 @@ export default function AdminTimeLog() {
       `${r.driverEmail} ${r.driver}`.toLowerCase().includes(s),
     );
   }, [shootSummaryRows, shootSumSearch]);
+
+  const shootSummaryApiRef = useGridApiRef();
+  const [shootSummaryTotals, setShootSummaryTotals] = useState({
+    sessions: 0,
+    trips: 0,
+    passengers: 0,
+    hours: 0,
+  });
+  const updateShootSummaryTotals = useCallback(() => {
+    const rows = gridFilteredSortedRowEntriesSelector(
+      shootSummaryApiRef,
+    ).map((r) => r.model);
+    let sessions = 0;
+    let trips = 0;
+    let passengers = 0;
+    let hours = 0;
+    rows.forEach((r) => {
+      sessions += Number(r.sessions) || 0;
+      trips += Number(r.trips) || 0;
+      passengers += Number(r.passengers) || 0;
+      hours += Number(r.hours) || 0;
+    });
+    setShootSummaryTotals({
+      sessions,
+      trips,
+      passengers,
+      hours: Number(hours.toFixed(2)),
+    });
+  }, [shootSummaryApiRef]);
+  useEffect(() => {
+    updateShootSummaryTotals();
+  }, [shootSummaryFiltered, updateShootSummaryTotals]);
 
   const shootSummaryColumns = useMemo(
     () => [
@@ -752,6 +849,27 @@ export default function AdminTimeLog() {
     }));
   }, [entryRows, weekStart, weekEnd, nameMap]);
 
+  const weeklyApiRef = useGridApiRef();
+  const [weeklyTotals, setWeeklyTotals] = useState({ sessions: 0, hours: 0 });
+  const updateWeeklyTotals = useCallback(() => {
+    const rows = gridFilteredSortedRowEntriesSelector(weeklyApiRef).map(
+      (r) => r.model,
+    );
+    let sessions = 0;
+    let hours = 0;
+    rows.forEach((r) => {
+      sessions += Number(r.sessions) || 0;
+      hours += Number(r.hours) || 0;
+    });
+    setWeeklyTotals({
+      sessions,
+      hours: Number(hours.toFixed(2)),
+    });
+  }, [weeklyApiRef]);
+  useEffect(() => {
+    updateWeeklyTotals();
+  }, [weekly, updateWeeklyTotals]);
+
   return (
     <PageContainer pt={2} pb={4}>
       <Box sx={{ mb: 2 }}>
@@ -833,31 +951,38 @@ export default function AdminTimeLog() {
               slotProps={{ textField: { size: "small" } }}
             />
           </Box>
-          <DataGrid
-            autoHeight
-            density="compact"
-            rows={entryFiltered || []}
-            columns={entryColumns}
-            getRowId={(r) => r._id || r.id}
-            loading={!!loadingEntries}
-            disableRowSelectionOnClick
-            editMode="row"
-            processRowUpdate={processEntryUpdate}
-            onProcessRowUpdateError={() =>
-              alert("Failed to update time log")
-            }
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 300 },
-              },
-            }}
-            initialState={{
-              sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
-              pagination: { paginationModel: { pageSize: 10 } },
-            }}
-          />
+          <Box sx={{ width: 1, overflowX: "auto" }}>
+            <DataGrid
+              apiRef={entryApiRef}
+              onStateChange={updateEntryTotals}
+              autoHeight
+              density="compact"
+              rows={entryFiltered || []}
+              columns={entryColumns}
+              getRowId={(r) => r._id || r.id}
+              loading={!!loadingEntries}
+              disableRowSelectionOnClick
+              editMode="row"
+              processRowUpdate={processEntryUpdate}
+              onProcessRowUpdateError={() =>
+                alert("Failed to update time log")
+              }
+              slots={{ toolbar: GridToolbar }}
+              slotProps={{
+                toolbar: {
+                  showQuickFilter: true,
+                  quickFilterProps: { debounceMs: 300 },
+                },
+              }}
+              initialState={{
+                sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+            />
+          </Box>
+          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
+            Sessions: {entryTotals.sessions} | Hours: {entryTotals.hours}
+          </Typography>
         </Box>
       )}
 
@@ -889,19 +1014,29 @@ export default function AdminTimeLog() {
               size="small"
             />
           </Box>
-          <DataGrid
-            autoHeight
-            density="compact"
-            rows={shootSummaryFiltered}
-            columns={shootSummaryColumns}
-            getRowId={(r) => r.id}
-            disableRowSelectionOnClick
-            initialState={{
-              sorting: { sortModel: [{ field: "trips", sort: "desc" }] },
-              pagination: { paginationModel: { pageSize: 10 } },
-            }}
-            slots={{ toolbar: GridToolbar }}
-          />
+          <Box sx={{ width: 1, overflowX: "auto" }}>
+            <DataGrid
+              apiRef={shootSummaryApiRef}
+              onStateChange={updateShootSummaryTotals}
+              autoHeight
+              density="compact"
+              rows={shootSummaryFiltered}
+              columns={shootSummaryColumns}
+              getRowId={(r) => r.id}
+              disableRowSelectionOnClick
+              initialState={{
+                sorting: { sortModel: [{ field: "trips", sort: "desc" }] },
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+              slots={{ toolbar: GridToolbar }}
+            />
+          </Box>
+          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
+            Sessions: {shootSummaryTotals.sessions} | Trips:
+            {" "}
+            {shootSummaryTotals.trips} | Pax: {shootSummaryTotals.passengers} |
+            Hours: {shootSummaryTotals.hours}
+          </Typography>
         </Box>
       )}
 
@@ -937,32 +1072,39 @@ export default function AdminTimeLog() {
               No data for selected week.
             </Typography>
           ) : (
-            <DataGrid
-              autoHeight
-              density="compact"
-              rows={weekly || []}
-              columns={[
-                { field: "driver", headerName: "Driver", flex: 1 },
-                {
-                  field: "sessions",
-                  headerName: "Sessions",
-                  width: 120,
-                  type: "number",
-                },
-                {
-                  field: "hours",
-                  headerName: "Hours",
-                  width: 110,
-                  type: "number",
-                },
-              ]}
-              hideFooterSelectedRowCount
-              initialState={{
-                sorting: { sortModel: [{ field: "hours", sort: "desc" }] },
-                pagination: { paginationModel: { pageSize: 10 } },
-              }}
-            />
+            <Box sx={{ width: 1, overflowX: "auto" }}>
+              <DataGrid
+                apiRef={weeklyApiRef}
+                onStateChange={updateWeeklyTotals}
+                autoHeight
+                density="compact"
+                rows={weekly || []}
+                columns={[
+                  { field: "driver", headerName: "Driver", flex: 1 },
+                  {
+                    field: "sessions",
+                    headerName: "Sessions",
+                    width: 120,
+                    type: "number",
+                  },
+                  {
+                    field: "hours",
+                    headerName: "Hours",
+                    width: 110,
+                    type: "number",
+                  },
+                ]}
+                hideFooterSelectedRowCount
+                initialState={{
+                  sorting: { sortModel: [{ field: "hours", sort: "desc" }] },
+                  pagination: { paginationModel: { pageSize: 10 } },
+                }}
+              />
+            </Box>
           )}
+          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
+            Sessions: {weeklyTotals.sessions} | Hours: {weeklyTotals.hours}
+          </Typography>
         </Box>
       )}
 
@@ -1020,31 +1162,40 @@ export default function AdminTimeLog() {
               slotProps={{ textField: { size: "small" } }}
             />
           </Box>
-          <DataGrid
-            autoHeight
-            density="compact"
-            rows={shootoutFiltered}
-            columns={shootoutColumns}
-            getRowId={(r) => r._id || r.id}
-            loading={!!loadingShootout}
-            disableRowSelectionOnClick
-            editMode="row"
-            processRowUpdate={processShootoutUpdate}
-            onProcessRowUpdateError={() =>
-              alert("Failed to update shootout stat")
-            }
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 300 },
-              },
-            }}
-            initialState={{
-              sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
-              pagination: { paginationModel: { pageSize: 10 } },
-            }}
-          />
+          <Box sx={{ width: 1, overflowX: "auto" }}>
+            <DataGrid
+              apiRef={shootApiRef}
+              onStateChange={updateShootTotals}
+              autoHeight
+              density="compact"
+              rows={shootoutFiltered}
+              columns={shootoutColumns}
+              getRowId={(r) => r._id || r.id}
+              loading={!!loadingShootout}
+              disableRowSelectionOnClick
+              editMode="row"
+              processRowUpdate={processShootoutUpdate}
+              onProcessRowUpdateError={() =>
+                alert("Failed to update shootout stat")
+              }
+              slots={{ toolbar: GridToolbar }}
+              slotProps={{
+                toolbar: {
+                  showQuickFilter: true,
+                  quickFilterProps: { debounceMs: 300 },
+                },
+              }}
+              initialState={{
+                sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
+                pagination: { paginationModel: { pageSize: 10 } },
+              }}
+            />
+          </Box>
+          <Typography variant="body2" align="right" sx={{ mt: 0.5 }}>
+            Sessions: {shootTotals.sessions} | Trips: {shootTotals.trips} | Pax:
+            {" "}
+            {shootTotals.passengers} | Hours: {shootTotals.hours}
+          </Typography>
         </Box>
       )}
 
