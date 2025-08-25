@@ -257,14 +257,14 @@ jobs:
           if [ -n "$TWILIO_AUTH_TOKEN"  ]; then firebase functions:secrets:set TWILIO_AUTH_TOKEN  <<< "$TWILIO_AUTH_TOKEN";  fi
           if [ -n "$TWILIO_FROM"        ]; then firebase functions:secrets:set TWILIO_FROM        <<< "$TWILIO_FROM";        fi
 
-      - name: Deploy Firestore Rules
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      - name: Deploy Firestore Rules 
+        run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive 
+        env: 
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }} 
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }} 
+        
+      - name: Deploy Functions 
+        run: firebase deploy --only functions:smsOnCreate --project "$FIREBASE_PROJECT_ID" --non-interactive 
+        env: 
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }} 
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
-
-      - name: Deploy Functions
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        run: firebase deploy --only functions:smsOnCreate --project "$FIREBASE_PROJECT_ID" --non-interactive
