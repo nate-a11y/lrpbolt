@@ -283,6 +283,7 @@ export default function AdminTimeLog() {
   const entryApiRef = useGridApiRef();
   const [entryTotals, setEntryTotals] = useState({ sessions: 0, hours: 0 });
   const updateEntryTotals = useCallback(() => {
+    if (!entryApiRef.current) return;
     const rows = gridFilteredSortedRowEntriesSelector(entryApiRef).map(
       (r) => r.model,
     );
