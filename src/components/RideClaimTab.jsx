@@ -19,9 +19,11 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
-import { claimRideAtomic } from "../hooks/api";
+import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
-import { fmtDow, safe, groupKey } from "../utils/rideFormatters";
+import { fmtDow, fmtTime, safe, groupKey } from "../utils/rideFormatters";
+import { enqueueSms } from "../services/messaging";
+import { useDriver } from "../context/DriverContext.jsx";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -46,6 +48,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     severity: "success",
   });
   const [selectedRides, setSelectedRides] = useState(new Set());
+  const { driver: driverProfile } = useDriver();
 
   const groupedRides = useMemo(() => {
     const grouped = {};
@@ -123,13 +126,30 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         rideDuration: Number(ride.rideDuration ?? 0),
       });
 
+      try {
+        const email = driverProfile?.email;
+        if (email) {
+          const record = await getUserAccess(email);
+          const phone = record?.phone;
+          if (phone) {
+            const body =
+              `Ride ${ride.tripId} claimed on ${fmtDow(pickupTime)} at ${fmtTime(pickupTime)}\n` +
+              `Vehicle: ${safe(ride.vehicle)} | Type: ${safe(ride.rideType)}\n` +
+              `Notes: ${safe(ride.rideNotes, "none")}`;
+            await enqueueSms({ to: phone, body, context: { tripId: ride.tripId } });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to enqueue SMS", err);
+      }
+
       setClaimLog((prev) => [
         ...prev,
         { tripId, time: new Date().toLocaleTimeString() },
       ]);
       return true;
     },
-    [rides, driver],
+    [rides, driver, driverProfile],
   );
 
   return (
