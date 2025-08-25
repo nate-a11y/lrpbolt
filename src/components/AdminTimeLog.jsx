@@ -15,6 +15,11 @@ import {
   Stack,
   Tooltip,
   IconButton,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
+  useMediaQuery,
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
@@ -419,6 +424,7 @@ export default function AdminTimeLog() {
 
   /* -------- Modal (edit ALL fields for the selected row) -------- */
   const [tab, setTab] = useState(0);
+  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
   const openEditModal = (row) => {
@@ -749,18 +755,35 @@ export default function AdminTimeLog() {
   return (
     <PageContainer pt={2} pb={4}>
       <Box sx={{ mb: 2 }}>
-        <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
-        >
-          <Tab label="Entries" />
-          <Tab label="Weekly Summary" />
-          <Tab label="Shootout Stats" />
-          <Tab label="Shootout Summary" />
-        </Tabs>
+        {isSmall ? (
+          <FormControl size="small" fullWidth>
+            <InputLabel id="admin-time-log-tab">View</InputLabel>
+            <Select
+              labelId="admin-time-log-tab"
+              label="View"
+              value={tab}
+              onChange={(e) => setTab(Number(e.target.value))}
+            >
+              <MenuItem value={0}>Entries</MenuItem>
+              <MenuItem value={1}>Weekly Summary</MenuItem>
+              <MenuItem value={2}>Shootout Stats</MenuItem>
+              <MenuItem value={3}>Shootout Summary</MenuItem>
+            </Select>
+          </FormControl>
+        ) : (
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+          >
+            <Tab label="Entries" />
+            <Tab label="Weekly Summary" />
+            <Tab label="Shootout Stats" />
+            <Tab label="Shootout Summary" />
+          </Tabs>
+        )}
       </Box>
 
       {/* Entries */}
