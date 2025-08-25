@@ -110,8 +110,9 @@ function exportCsv(rows, filename) {
 function normalizeTimeLog(r) {
   const startMs = toMs(r.startTime);
   const endMs = toMs(r.endTime);
-  const durMin = Number.isFinite(r.duration)
-    ? Number(r.duration)
+  const d = Number(r.duration);
+  const durMin = Number.isFinite(d)
+    ? d
     : Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
     ? Math.round((endMs - startMs) / 60000)
     : null;
@@ -407,9 +408,9 @@ export default function AdminTimeLog() {
         field: "durationMin",
         headerName: "Duration",
         width: 130,
-        valueGetter: (p) =>
-          Math.round((p?.row?.durationMs || 0) / 60000),
-        valueFormatter: (p) => fmtMinutes(p?.value),
+        valueGetter: (_, row) =>
+          Math.round((row?.durationMs || 0) / 60000),
+        valueFormatter: (value) => fmtMinutes(value),
       },
       { field: "hours", headerName: "Hours", width: 110, type: "number" },
     ],
@@ -501,9 +502,9 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => p?.row?.startTime,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-        renderCell: (p) => fmtDateTimeMs(p?.row?.startTime),
+        valueGetter: (value) => value,
+        valueFormatter: (value) => fmtDateTimeMs(value),
+        renderCell: (params) => fmtDateTimeMs(params.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -514,9 +515,9 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => p?.row?.endTime,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-        renderCell: (p) => fmtDateTimeMs(p?.row?.endTime),
+        valueGetter: (value) => value,
+        valueFormatter: (value) => fmtDateTimeMs(value),
+        renderCell: (params) => fmtDateTimeMs(params.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -526,7 +527,15 @@ export default function AdminTimeLog() {
         headerName: "Duration",
         width: 120,
         editable: true,
-        valueFormatter: (p) => fmtMinutes(p?.value),
+        valueGetter: (value, row) => {
+          if (Number.isFinite(value)) return value;
+          const s = row?.startTime;
+          const e = row?.endTime;
+          return Number.isFinite(s) && Number.isFinite(e) && e >= s
+            ? Math.round((e - s) / 60000)
+            : null;
+        },
+        valueFormatter: (value) => fmtMinutes(value),
         renderEditCell: (params) => <NumberEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -537,9 +546,9 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => p?.row?.loggedAt,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-        renderCell: (p) => fmtDateTimeMs(p?.row?.loggedAt),
+        valueGetter: (value) => value,
+        valueFormatter: (value) => fmtDateTimeMs(value),
+        renderCell: (params) => fmtDateTimeMs(params.row?.loggedAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -610,9 +619,9 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => p?.row?.startTime,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-        renderCell: (p) => fmtDateTimeMs(p?.row?.startTime),
+        valueGetter: (value) => value,
+        valueFormatter: (value) => fmtDateTimeMs(value),
+        renderCell: (params) => fmtDateTimeMs(params.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -623,9 +632,9 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => p?.row?.endTime,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-        renderCell: (p) => fmtDateTimeMs(p?.row?.endTime),
+        valueGetter: (value) => value,
+        valueFormatter: (value) => fmtDateTimeMs(value),
+        renderCell: (params) => fmtDateTimeMs(params.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -634,14 +643,14 @@ export default function AdminTimeLog() {
         field: "durationMin",
         headerName: "Duration",
         width: 130,
-        valueGetter: (p) => {
-          const s = p?.row?.startTime;
-          const e = p?.row?.endTime;
+        valueGetter: (value, row) => {
+          const s = row?.startTime;
+          const e = row?.endTime;
           return Number.isFinite(s) && Number.isFinite(e) && e >= s
             ? Math.round((e - s) / 60000)
             : null;
         },
-        valueFormatter: (p) => fmtMinutes(p?.value),
+        valueFormatter: (value) => fmtMinutes(value),
       },
       {
         field: "trips",
@@ -665,9 +674,9 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 170,
         editable: true,
-        valueGetter: (p) => p?.row?.createdAt,
-        valueFormatter: (p) => fmtDateTimeMs(p?.value),
-        renderCell: (p) => fmtDateTimeMs(p?.row?.createdAt),
+        valueGetter: (value) => value,
+        valueFormatter: (value) => fmtDateTimeMs(value),
+        renderCell: (params) => fmtDateTimeMs(params.row?.createdAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
