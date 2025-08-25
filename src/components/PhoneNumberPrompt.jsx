@@ -25,12 +25,22 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
   }, [open]);
 
   const handleSave = useCallback(async () => {
-    const trimmed = phone.trim();
-    const digits = trimmed.replace(/\D/g, "");
-    if (digits.length < 10) {
-      setError("Enter a valid phone number.");
+    let trimmed = phone.trim();
+    let digits = trimmed.replace(/\D/g, "");
+
+    if (trimmed.startsWith("+")) {
+      trimmed = "+" + digits;
+    } else if (digits.length === 10) {
+      trimmed = `+1${digits}`;
+    } else {
+      trimmed = `+${digits}`;
+    }
+
+    if (!/^\+[1-9]\d{9,14}$/.test(trimmed)) {
+      setError("Enter phone number in +1234567890 format.");
       return;
     }
+
     try {
       setLoading(true);
       await setDoc(doc(db, "userAccess", email.toLowerCase()), { phone: trimmed }, { merge: true });
@@ -48,7 +58,7 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
       <DialogTitle>Enter Phone Number</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography>Please provide a phone number for notifications.</Typography>
+          <Typography>Please provide a phone number for notifications in international format.</Typography>
           <TextField
             label="Phone"
             value={phone}
