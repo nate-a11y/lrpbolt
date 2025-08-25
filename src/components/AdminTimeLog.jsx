@@ -395,22 +395,22 @@ export default function AdminTimeLog() {
     hours: 0,
   });
   const updateShootTotals = useCallback(() => {
-    const rows = gridFilteredSortedRowEntriesSelector(shootApiRef).map(
-      (r) => r.model,
-    );
+    if (!shootApiRef.current) return;
+    const rows = gridFilteredSortedRowEntriesSelector(shootApiRef)
+      .map((r) => r.model)
+      .filter(
+        (r) =>
+          Number.isFinite(r.startTime) &&
+          Number.isFinite(r.endTime) &&
+          r.endTime >= r.startTime,
+      );
     let trips = 0;
     let passengers = 0;
     let min = 0;
     rows.forEach((r) => {
       trips += Number(r.trips) || 0;
       passengers += Number(r.passengers) || 0;
-      if (
-        Number.isFinite(r.startTime) &&
-        Number.isFinite(r.endTime) &&
-        r.endTime >= r.startTime
-      ) {
-        min += Math.round((r.endTime - r.startTime) / 60000);
-      }
+      min += Math.round((r.endTime - r.startTime) / 60000);
     });
     setShootTotals({
       sessions: rows.length,
