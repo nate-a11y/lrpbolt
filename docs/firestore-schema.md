@@ -19,7 +19,7 @@ This document defines the expected structure, required fields, and field types f
 | name     | string | ✅       | Display name of the user.        |
 | email    | string | ✅       | Login email.                     |
 | access   | string | ✅       | `"admin"` or `"driver"`.         |
-| phone    | string | Optional | SMS-capable phone number.        |
+| phone    | string | Optional | E.164 formatted phone number.    |
 
 ---
 
@@ -31,7 +31,7 @@ This document defines the expected structure, required fields, and field types f
 | name  | string | Optional | Display name of the user.        |
 | email | string | ✅       | Login email.                     |
 | role  | string | Optional | `"admin"` or `"driver"`.         |
-| phone | string | Optional | SMS-capable phone number.        |
+| phone | string | Optional | E.164 formatted phone number.    |
 
 ---
 
