@@ -44,13 +44,6 @@ function parseCsvLine(line) {
   return { name, email, phone, access };
 }
 
-function formatPhoneNumber(phone) {
-  const digits = String(phone || "").replace(/\D/g, "");
-  if (!digits) return "";
-  if (digits.length === 10) return `+1${digits}`;
-  return `+${digits}`;
-}
-
 export default function AdminUserManager() {
   const { driver } = useDriver();
   const { user, role: currentRole, authLoading, roleLoading } = useAuth();
@@ -320,7 +313,6 @@ lines.forEach((line, idx) => {
       flex: 1,
       minWidth: 150,
       editable: isAdmin,
-      valueFormatter: ({ value }) => formatPhoneNumber(value),
     },
     {
       field: "access",
@@ -407,7 +399,7 @@ lines.forEach((line, idx) => {
               <TextField label="Email" value={r.email} disabled />
               <TextField
                 label="Phone"
-                value={isAdmin ? r.phone : formatPhoneNumber(r.phone)}
+                value={r.phone}
                 disabled={!isAdmin}
                 onChange={(e) => handleMobileFieldChange(r.id, "phone", e.target.value)}
                 onBlur={() => handleMobileUpdate(r.id)}
