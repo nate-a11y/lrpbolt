@@ -48,6 +48,7 @@ import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
 import { initAnalytics, trackPageView } from "./utils/analytics";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
+import PhoneNumberPrompt from "./components/PhoneNumberPrompt.jsx";
 import {
   BLACKOUT_START_HOUR,
   BLACKOUT_END_HOUR,
@@ -107,6 +108,7 @@ function App() {
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
   const [isLockedOut, setIsLockedOut] = useState(isInLockoutWindow());
   const [isAppReady, setIsAppReady] = useState(false);
+  const [phonePromptOpen, setPhonePromptOpen] = useState(false);
   const isFullyReady = isAppReady && !!driver;
   const hasFetchedRef = useRef(false);
   const hadUserRef = useRef(!!localStorage.getItem("lrpUser"));
@@ -163,6 +165,9 @@ function App() {
             console.log("Authenticated:", user.email, "role:", access);
           }
           fetchDrivers();
+          if (!String(record.phone || "").trim()) {
+            setPhonePromptOpen(true);
+          }
         } else {
           showToast("Access denied", "error");
           await logout();
@@ -321,6 +326,11 @@ function App() {
               open={showOffline}
               onRetry={retryConnection}
               onClose={dismissOffline}
+            />
+            <PhoneNumberPrompt
+              open={phonePromptOpen}
+              email={user.email}
+              onClose={() => setPhonePromptOpen(false)}
             />
             <NotificationsOptInDialog user={user} />
             <FcmToaster />
