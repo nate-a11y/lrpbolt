@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { DataGrid, GridActionsCellItem } from "@mui/x-data-grid";
+import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
 import { COLLECTIONS } from "../constants";
@@ -292,7 +292,7 @@ const ClaimedRidesGrid = () => {
         </Stack>
       ) : (
         <Box sx={{ width: '100%', overflowX: 'auto' }}>
-          <DataGrid
+          <DataGridPro
             rows={rows || []}
             columns={columns}
             autoHeight

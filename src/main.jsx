@@ -15,6 +15,9 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
+import { LicenseInfo } from "@mui/x-license";
+
+LicenseInfo.setLicenseKey(import.meta.env.VITE_MUI_PRO_KEY);
 
 if (typeof window !== "undefined") {
   killRogueServiceWorkers();

@@ -13,7 +13,7 @@ import {
   useMediaQuery,
   MenuItem,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGridPro } from "@mui/x-data-grid-pro";
 import { ROLES, ROLE_LABELS } from "../constants/roles.js";
 import { db } from "../utils/firebaseInit";
 import { doc, setDoc } from "firebase/firestore";
@@ -425,7 +425,7 @@ lines.forEach((line, idx) => {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <DataGrid
+            <DataGridPro
               rows={rows || []}
               columns={columns}
               autoHeight

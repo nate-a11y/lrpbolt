@@ -16,8 +16,8 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers-pro";
+import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
