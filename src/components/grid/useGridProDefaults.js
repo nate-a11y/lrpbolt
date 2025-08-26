@@ -34,14 +34,20 @@ export default function useGridProDefaults({ gridId, pageSize = 25 }) {
   const [order, setOrder] = usePersist(`${gridId}_order`, []);
   const [sort, setSort] = usePersist(`${gridId}_sort`, []);
   const [page, setPage] = usePersist(`${gridId}_page`, { page: 0, pageSize });
+  const [density, setDensity] = usePersist(
+    `${gridId}_density`,
+    isXs ? "compact" : "standard",
+  );
   const reset = () => {
     setCvm({});
     setOrder([]);
     setSort([]);
     setPage({ page: 0, pageSize });
+    setDensity(isXs ? "compact" : "standard");
   };
   return {
-    density: isXs ? "compact" : "standard",
+    density,
+    onDensityChange: setDensity,
     autoHeight: true,
     disableRowSelectionOnClick: true,
     rowBuffer: isXs ? 3 : 5,

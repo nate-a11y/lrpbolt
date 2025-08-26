@@ -1,15 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo } from "react";
-import {
-  DataGridPro,
-  GridActionsCellItem,
-  GridToolbarColumnsButton,
-  GridToolbarContainer,
-} from "@mui/x-data-grid-pro";
+import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
 import {
   Box,
-  Button,
-  Tooltip,
   CircularProgress,
   useMediaQuery,
   useTheme,
@@ -103,34 +96,6 @@ export default function EditableRideGrid({
     [onDelete, onEdit]
   );
 
-  const CustomToolbar = () => (
-    <GridToolbarContainer sx={{ justifyContent: "space-between", px: 1 }}>
-      <GridToolbarColumnsButton />
-      {refreshRides && (
-        <Tooltip title="Reload ride data from Google Sheets">
-          <span>
-            <Button
-              onClick={refreshRides}
-              disabled={loading}
-              variant="outlined"
-              color="primary"
-              size="small"
-              startIcon={
-                loading ? (
-                  <CircularProgress size={16} sx={{ color: "inherit" }} />
-                ) : (
-                  <RefreshIcon />
-                )
-              }
-            >
-              Refresh
-            </Button>
-          </span>
-        </Tooltip>
-      )}
-    </GridToolbarContainer>
-  );
-
   return (
     <Box sx={{ width: "100%", height: 600 }}>
       <DataGridPro
@@ -138,7 +103,24 @@ export default function EditableRideGrid({
         rows={rows ?? []}
         columns={columns}
         loading={loading}
-        slots={{ toolbar: CustomToolbar }}
+        slotProps={{
+          ...grid.slotProps,
+          toolbar: {
+            ...grid.slotProps?.toolbar,
+            ...(refreshRides && {
+              rightAction: refreshRides,
+              rightActionLabel: "Refresh",
+              rightActionProps: {
+                disabled: loading,
+                startIcon: loading ? (
+                  <CircularProgress size={16} sx={{ color: "inherit" }} />
+                ) : (
+                  <RefreshIcon />
+                ),
+              },
+            }),
+          },
+        }}
         getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
         initialState={initialState}
       />
