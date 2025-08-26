@@ -16,8 +16,6 @@ import {
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import { safeRow } from "@/utils/gridUtils";
-
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
 import { COLLECTIONS } from "../constants";
@@ -25,12 +23,11 @@ import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { shapeRideRow } from "../services/shapeRideRow";
-import { fmtDuration } from "../utils/timeUtils";
-import { withSafeColumns } from "../utils/gridFormatters";
+import { fmtDateTime, fmtText, fmtMinutes } from "@/utils/timeUtils";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import EditRideDialog from "./EditRideDialog";
-import actionsColFactory from "./grid/actionsCol";
+import actionsCol from "./grid/actionsCol.jsx";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -53,63 +50,45 @@ const ClaimedRidesGrid = () => {
     // Claimed rides subscribe to snapshot; no refresh needed
   }
 
-  const rawColumns = useMemo(
+  const columns = useMemo(
     () => [
-      { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
-      { field: "pickupDateStr", headerName: "Date", flex: 0.9, minWidth: 120 },
       {
-        field: "pickupTimeStr",
-        headerName: "Pickup Time",
-        flex: 0.9,
-        minWidth: 130,
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        flex: 0.7,
-        minWidth: 110,
-        valueGetter: (p) => {
-          const r = safeRow(p);
-          if (!r) return null;
-          return {
-            s: r.pickupTime,
-            e:
-              r.pickupTime && r.rideDuration
-                ? r.pickupTime + r.rideDuration * 60000
-                : null,
-          };
-        },
-        valueFormatter: (params = {}) =>
-          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
-        sortComparator: (a, b) => {
-          const da = (a?.e ?? 0) - (a?.s ?? 0);
-          const db = (b?.e ?? 0) - (b?.s ?? 0);
-          return da - db;
-        },
-      },
-      { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
-      { field: "rideNotes", headerName: "Notes", flex: 1.2, minWidth: 180 },
-      { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160 },
-      {
-        field: "lastModifiedBy",
-        headerName: "Modified By",
+        field: 'pickupTime',
+        headerName: 'Pickup',
         flex: 1,
-        minWidth: 160,
+        valueGetter: ({ row }) => row.pickupTime,
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
-      { field: "claimedBy", headerName: "Claimed By", flex: 1, minWidth: 160 },
-      actionsColFactory({
-        onEdit: (_id, row) => openEdit(row),
-        onDelete: (_id, row) => {
-          setSelectedRow(row);
-          setConfirmOpen(true);
-        },
+      {
+        field: 'vehicle',
+        headerName: 'Vehicle',
+        flex: 1,
+        valueFormatter: ({ value }) => fmtText(value),
+      },
+      {
+        field: 'rideType',
+        headerName: 'Type',
+        flex: 1,
+        valueFormatter: ({ value }) => fmtText(value),
+      },
+      {
+        field: 'rideDuration',
+        headerName: 'Duration',
+        width: 110,
+        valueFormatter: ({ value }) => fmtMinutes(value),
+      },
+      {
+        field: 'rideNotes',
+        headerName: 'Notes',
+        flex: 1.5,
+        valueFormatter: ({ value }) => fmtText(value),
+      },
+      actionsCol({
+        onDelete: (row) => handleDelete(row),
       }),
     ],
-    [openEdit],
+    [handleDelete],
   );
-
-  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
 
   const { dedupeRows } = useGridDoctor({ name: "ClaimedRidesGrid", rows, columns });
 
@@ -134,7 +113,12 @@ const ClaimedRidesGrid = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback((row) => {
+    setSelectedRow(row);
+    setConfirmOpen(true);
+  }, []);
+
+  const confirmDelete = async () => {
     if (!selectedRow?.id) return;
     setLoading(true);
     setUndoBuffer([selectedRow]);
@@ -301,7 +285,7 @@ const ClaimedRidesGrid = () => {
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
           <Button
-            onClick={handleDelete}
+            onClick={confirmDelete}
             variant="contained"
             color="error"
             disabled={loading}

@@ -19,10 +19,8 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { safeRow } from "@/utils/gridUtils";
-import { withSafeColumns, fmtDateTimeCell, toJSDate, dateSort } from "@/utils/gridFormatters";
-
-import { fmtDuration } from "../../utils/timeUtils";
+import { fmtDateTime, fmtText } from "@/utils/timeUtils";
+import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 
@@ -90,83 +88,41 @@ export default function ShootoutStatsTab() {
 
   const rows = useMemo(() => stats || [], [stats]);
 
-  const fmt = fmtDateTimeCell({ timeZone: "America/Chicago" });
-
-  const rawColumns = useMemo(
-    () => [
-      {
-        field: "driverEmail",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 180,
-      },
-      { field: "trips", headerName: "Trips", width: 90 },
-      { field: "pax", headerName: "Pax", width: 90 },
-      {
-        field: "duration",
-        headerName: "Duration",
-        width: 120,
-        valueGetter: (p) => {
-          const r = safeRow(p);
-          return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) };
-        },
-        valueFormatter: (params = {}) =>
-          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
-      },
-      {
-        field: "status",
-        headerName: "Status",
-        width: 110,
-        valueGetter: (p) => {
-          const r = safeRow(p);
-          return r?.status ?? (r?.endTime ? "Closed" : "Open");
-        },
-        editable: true,
-      },
-      {
-        field: "startTime",
-        headerName: "Start",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-        valueFormatter: fmt,
-        sortComparator: dateSort,
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-        valueFormatter: fmt,
-        sortComparator: dateSort,
-      },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => toJSDate(safeRow(p)?.createdAt),
-        valueFormatter: fmt,
-        sortComparator: dateSort,
-      },
-      {
-        field: "tools",
-        headerName: "",
-        width: 80,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        align: "center",
-        renderCell: (params) => (
-          <ToolsCell row={params.row} onEdit={handleEdit} onDelete={handleDelete} />
-        ),
-      },
-    ],
-    [handleEdit, handleDelete],
-  );
-
-  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+  const columns = [
+    {
+      field: 'driverEmail',
+      headerName: 'Driver',
+      flex: 1,
+      valueFormatter: ({ value }) => fmtText(value?.split?.('@')?.[0] ?? value),
+    },
+    {
+      field: 'vehicle',
+      headerName: 'Vehicle',
+      flex: 1,
+      valueFormatter: ({ value }) => fmtText(value),
+    },
+    {
+      field: 'startTime',
+      headerName: 'Start',
+      width: 180,
+      valueFormatter: ({ value }) => fmtDateTime(value),
+    },
+    {
+      field: 'endTime',
+      headerName: 'End',
+      width: 180,
+      valueFormatter: ({ value }) => fmtDateTime(value),
+    },
+    { field: 'trips', headerName: 'Trips', width: 90 },
+    { field: 'passengers', headerName: 'Pax', width: 90 },
+    {
+      field: 'createdAt',
+      headerName: 'Created',
+      width: 180,
+      valueFormatter: ({ value }) => fmtDateTime(value),
+    },
+    actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
+  ];
 
 
   const filteredRows = useMemo(() => {
@@ -183,13 +139,12 @@ export default function ShootoutStatsTab() {
       const searchMatch = search
         ? [
             r.driverEmail,
-            r.status,
+            r.vehicle,
             r.trips,
-            r.pax,
-            fmtDuration(r.startTime, r.endTime),
-            fmt({ value: r.startTime }),
-            fmt({ value: r.endTime }),
-            fmt({ value: r.createdAt }),
+            r.passengers,
+            fmtDateTime(r.startTime),
+            fmtDateTime(r.endTime),
+            fmtDateTime(r.createdAt),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -242,22 +197,15 @@ export default function ShootoutStatsTab() {
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">{r.driverEmail}</Typography>
+                  <Typography variant="subtitle2">
+                    {fmtText(r.driverEmail?.split?.('@')?.[0] ?? r.driverEmail)}
+                  </Typography>
+                  <Typography variant="body2">Vehicle: {fmtText(r.vehicle)}</Typography>
+                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
-                  <Typography variant="body2">Pax: {r.pax}</Typography>
-                  <Typography variant="body2">
-                    Duration: {fmtDuration(r.startTime, r.endTime)}
-                  </Typography>
-                  <Typography variant="body2">Status: {r.status}</Typography>
-                  <Typography variant="body2">
-                    Start: {fmt({ value: toJSDate(r.startTime) })}
-                  </Typography>
-                  <Typography variant="body2">
-                    End: {fmt({ value: toJSDate(r.endTime) })}
-                  </Typography>
-                  <Typography variant="body2">
-                    Created: {fmt({ value: toJSDate(r.createdAt) })}
-                  </Typography>
+                  <Typography variant="body2">Pax: {r.passengers}</Typography>
+                  <Typography variant="body2">Created: {fmtDateTime(r.createdAt)}</Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

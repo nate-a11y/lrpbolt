@@ -40,7 +40,7 @@ import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
-import { fmtDuration, toDayjs } from "../utils/timeUtils";
+import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import { safeRow } from "@/utils/gridUtils";
@@ -74,6 +74,13 @@ function ProToolbar({ onBulkClaim, selectedCount }) {
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+const fmtDuration = (start, end) => {
+  const s = toDayjs(start);
+  const e = toDayjs(end);
+  if (!s || !e) return EM_DASH;
+  return fmtMinutes(e.diff(s, 'minute'));
+};
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const theme = useTheme();

@@ -19,10 +19,8 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { safeRow } from "@/utils/gridUtils";
-import { withSafeColumns, fmtDateTimeCell, toJSDate, dateSort } from "@/utils/gridFormatters";
-
-import { fmtDuration } from "../../utils/timeUtils";
+import { fmtDateTime, fmtText, fmtMinutes } from "@/utils/timeUtils";
+import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 
@@ -80,77 +78,15 @@ export default function EntriesTab() {
       }
     }, []);
 
-    const fmt = fmtDateTimeCell({ timeZone: "America/Chicago" });
-
-    const rawColumns = useMemo(
-      () => [
-        {
-          field: "driverEmail",
-          headerName: "Driver",
-          flex: 1,
-          minWidth: 180,
-          editable: true,
-        },
-        { field: "rideId", headerName: "Ride ID", width: 120 },
-        {
-          field: "startTime",
-          headerName: "Start",
-          flex: 1,
-          minWidth: 160,
-          valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-          valueFormatter: fmt,
-          sortComparator: dateSort,
-        },
-        {
-          field: "endTime",
-          headerName: "End",
-          flex: 1,
-          minWidth: 160,
-          valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-          valueFormatter: fmt,
-          sortComparator: dateSort,
-        },
-        {
-          field: "duration",
-          headerName: "Duration",
-          width: 120,
-          valueGetter: (p) => {
-            const r = safeRow(p);
-            return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) };
-          },
-          valueFormatter: (params = {}) =>
-            params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
-        },
-        {
-          field: "loggedAt",
-          headerName: "Logged",
-          flex: 1,
-          minWidth: 160,
-          valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
-          valueFormatter: fmt,
-          sortComparator: dateSort,
-        },
-        {
-          field: "tools",
-          headerName: "",
-          width: 80,
-          sortable: false,
-          filterable: false,
-          disableColumnMenu: true,
-          align: "center",
-          renderCell: (params) => (
-            <ToolsCell
-              row={params.row}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
-          ),
-        },
-      ],
-      [handleEdit, handleDelete],
-    );
-
-    const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+    const columns = [
+      { field: 'driverId', headerName: 'Driver', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
+      { field: 'rideId', headerName: 'Ride ID', width: 140, valueFormatter: ({ value }) => fmtText(value) },
+      { field: 'startTime', headerName: 'Start', width: 180, valueFormatter: ({ value }) => fmtDateTime(value) },
+      { field: 'endTime', headerName: 'End', width: 180, valueFormatter: ({ value }) => fmtDateTime(value) },
+      { field: 'rideDuration', headerName: 'Duration', width: 110, valueFormatter: ({ value }) => fmtMinutes(value) },
+      { field: 'loggedAt', headerName: 'Logged At', width: 180, valueFormatter: ({ value }) => fmtDateTime(value) },
+      actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
+    ];
 
     useEffect(() => {
       const unsub = subscribeTimeLogs(
@@ -168,8 +104,10 @@ export default function EntriesTab() {
 
     const filteredRows = useMemo(() => {
       return (rows || []).filter((r) => {
-        const driverMatch = driverFilter
-        ? r.driverEmail?.toLowerCase().includes(driverFilter.toLowerCase())
+      const driverMatch = driverFilter
+        ? (r.driverId ?? r.driverEmail)
+            ?.toLowerCase()
+            .includes(driverFilter.toLowerCase())
         : true;
       const startMatch = startFilter
         ? r.startTime?.getTime() >= startFilter.toDate().getTime()
@@ -180,12 +118,12 @@ export default function EntriesTab() {
         : true;
       const searchMatch = search
         ? [
-            r.driverEmail,
+            r.driverId ?? r.driverEmail,
             r.rideId,
-            fmt({ value: r.startTime }),
-            fmt({ value: r.endTime }),
-            fmt({ value: r.loggedAt }),
-            fmtDuration(r.startTime, r.endTime),
+            fmtDateTime(r.startTime),
+            fmtDateTime(r.endTime),
+            fmtDateTime(r.loggedAt),
+            fmtMinutes(r.rideDuration),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -252,14 +190,12 @@ export default function EntriesTab() {
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">{r.driverEmail}</Typography>
-                  <Typography variant="body2">Ride ID: {r.rideId || "—"}</Typography>
-                  <Typography variant="body2">Start: {fmt({ value: toJSDate(r.startTime) })}</Typography>
-                  <Typography variant="body2">End: {fmt({ value: toJSDate(r.endTime) })}</Typography>
-                  <Typography variant="body2">
-                    Duration: {fmtDuration(r.startTime, r.endTime)}
-                  </Typography>
-                  <Typography variant="body2">Logged: {fmt({ value: toJSDate(r.loggedAt) })}</Typography>
+                  <Typography variant="subtitle2">{fmtText(r.driverId)}</Typography>
+                  <Typography variant="body2">Ride ID: {fmtText(r.rideId)}</Typography>
+                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">Duration: {fmtMinutes(r.rideDuration)}</Typography>
+                  <Typography variant="body2">Logged: {fmtDateTime(r.loggedAt)}</Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

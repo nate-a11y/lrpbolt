@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { describe, expect, it } from "vitest";
 
-import { toDayjs, fmtDateTime, fmtDuration } from "../../src/utils/timeUtils.js";
+import { toDayjs, fmtDateTime, fmtMinutes } from "../../src/utils/timeUtils.js";
 
 describe("timeUtils", () => {
   it("toDayjs returns null for invalid", () => {
@@ -13,10 +13,8 @@ describe("timeUtils", () => {
     expect(fmtDateTime(d, "MM/DD/YYYY")).toBe("01/01/2024");
   });
 
-  it("fmtDuration computes hours and minutes", () => {
-    const start = new Date("2024-01-01T00:00:00Z");
-    const end = new Date("2024-01-01T02:15:00Z");
-    expect(fmtDuration(start, end)).toBe("2h 15m");
+  it("fmtMinutes outputs minutes", () => {
+    expect(fmtMinutes(125)).toBe("125");
   });
 
   it("toDayjs handles seconds/nanoseconds object", () => {

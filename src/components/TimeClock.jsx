@@ -34,7 +34,7 @@ import { db } from "src/utils/firebaseInit";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
-import { fmtDuration } from "../utils/timeUtils";
+import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
@@ -74,6 +74,13 @@ function tsToMillis(v) {
   const d = tsToDate(v);
   return d ? d.getTime() : null;
 }
+
+const fmtDuration = (start, end) => {
+  const s = toDayjs(start);
+  const e = toDayjs(end);
+  if (!s || !e) return EM_DASH;
+  return fmtMinutes(e.diff(s, 'minute'));
+};
 
 export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [rideId, setRideId] = useState("");

@@ -3,10 +3,8 @@ import { useMemo, useEffect, useCallback } from "react";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 
-import { safeRow } from "@/utils/gridUtils";
-import { fmtDuration } from "../utils/timeUtils";
-import { withSafeColumns } from "../utils/gridFormatters";
-import actionsColFactory from "./grid/actionsCol";
+import { fmtDateTime, fmtText, fmtMinutes } from "@/utils/timeUtils";
+import actionsCol from "./grid/actionsCol.jsx";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function EditableRideGrid({
@@ -43,52 +41,46 @@ export default function EditableRideGrid({
     [onDelete],
   );
 
-  const rawColumns = useMemo(
+  const columns = useMemo(
     () => [
-      { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
-      { field: "pickupDateStr", headerName: "Date", flex: 0.9, minWidth: 120 },
       {
-        field: "pickupTimeStr",
-        headerName: "Pickup Time",
-        flex: 0.9,
-        minWidth: 130,
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        flex: 0.7,
-        minWidth: 110,
-        valueGetter: (p) => {
-          const r = safeRow(p);
-          return r ? { s: 0, e: r.rideDuration ? r.rideDuration * 60000 : 0 } : null;
-        },
-        valueFormatter: (params = {}) =>
-          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
-        sortComparator: (a, b) => {
-          const da = (a?.e ?? 0) - (a?.s ?? 0);
-          const db = (b?.e ?? 0) - (b?.s ?? 0);
-          return da - db;
-        },
-      },
-      { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
-      { field: "rideNotes", headerName: "Notes", flex: 1.2, minWidth: 180 },
-      { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160 },
-      {
-        field: "lastModifiedBy",
-        headerName: "Modified By",
+        field: 'pickupTime',
+        headerName: 'Pickup',
         flex: 1,
-        minWidth: 160,
+        valueGetter: ({ row }) => row.pickupTime,
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
-      actionsColFactory({
-        onEdit: (_id, row) => handleEdit(row),
-        onDelete: (_id, row) => handleDelete(row.id),
+      {
+        field: 'vehicle',
+        headerName: 'Vehicle',
+        flex: 1,
+        valueFormatter: ({ value }) => fmtText(value),
+      },
+      {
+        field: 'rideType',
+        headerName: 'Type',
+        flex: 1,
+        valueFormatter: ({ value }) => fmtText(value),
+      },
+      {
+        field: 'rideDuration',
+        headerName: 'Duration',
+        width: 110,
+        valueFormatter: ({ value }) => fmtMinutes(value),
+      },
+      {
+        field: 'rideNotes',
+        headerName: 'Notes',
+        flex: 1.5,
+        valueFormatter: ({ value }) => fmtText(value),
+      },
+      actionsCol({
+        onEdit: (row) => handleEdit(row),
+        onDelete: (row) => handleDelete(row.id),
       }),
     ],
     [handleEdit, handleDelete],
   );
-
-  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
 
   const stableRows = useMemo(() => rows ?? [], [rows]);
 
