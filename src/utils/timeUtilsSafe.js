@@ -7,6 +7,13 @@ export const tsToDate = (v) => {
   if (isNil(v)) return null;
   try {
     if (typeof v?.toDate === "function") return v.toDate(); // Firestore Timestamp
+    if (
+      typeof v === "object" &&
+      typeof v.seconds === "number" &&
+      typeof v.nanoseconds === "number"
+    ) {
+      return new Date(v.seconds * 1000 + v.nanoseconds / 1e6);
+    }
     const d = new Date(v);
     return Number.isNaN(d?.getTime()) ? null : d;
   } catch {
