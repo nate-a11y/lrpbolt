@@ -3,6 +3,8 @@ import { useTheme, useMediaQuery } from "@mui/material";
 
 import ProToolbar from "./ProToolbar.jsx";
 const LS = "lrp_grid_";
+
+const isEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function usePersist(key, initial) {
   const [v, setV] = React.useState(() => {
     try {
@@ -47,22 +49,34 @@ export default function useGridProDefaults({ gridId, pageSize = 25 }) {
   };
   return {
     density,
-    onDensityChange: setDensity,
+    onDensityChange: (d) => {
+      if (d !== density) setDensity(d);
+    },
     autoHeight: true,
     disableRowSelectionOnClick: true,
     rowBuffer: isXs ? 3 : 5,
     columnBuffer: isXs ? 2 : 4,
     pagination: true,
     paginationModel: page,
-    onPaginationModelChange: setPage,
+    onPaginationModelChange: (model) => {
+      if (page.page !== model.page || page.pageSize !== model.pageSize) {
+        setPage(model);
+      }
+    },
     initialState: {
       columns: { columnVisibilityModel: cvm },
       sorting: { sortModel: sort },
       columnOrder: order,
     },
-    onColumnVisibilityModelChange: setCvm,
-    onSortModelChange: setSort,
-    onColumnOrderChange: setOrder,
+    onColumnVisibilityModelChange: (model) => {
+      if (!isEqual(cvm, model)) setCvm(model);
+    },
+    onSortModelChange: (model) => {
+      if (!isEqual(sort, model)) setSort(model);
+    },
+    onColumnOrderChange: (newOrder) => {
+      if (!isEqual(order, newOrder)) setOrder(newOrder);
+    },
     getRowId: (r) =>
       r.id ??
       r._id ??

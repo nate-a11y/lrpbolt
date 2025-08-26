@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -44,9 +44,9 @@ const ClaimedRidesGrid = () => {
   const gridProps = useGridProDefaults({ gridId: "ClaimedRides" });
 
 
-  function openEdit(row) {
+  const openEdit = useCallback((row) => {
     setEditing({ open: true, row });
-  }
+  }, []);
 
   function closeEdit(didSave) {
     setEditing({ open: false, row: null });
@@ -58,12 +58,17 @@ const ClaimedRidesGrid = () => {
     const unsub = subscribeRides(
       COLLECTIONS.CLAIMED_RIDES,
       (data) => {
-        const rows = data.map((r) => ({
+        const shaped = data.map((r) => ({
           ...shapeRideRow({ id: r.id, data: () => r }),
           fading: false,
         }));
-        setRows(rows);
-        warnMissingFields(columns, rows);
+        warnMissingFields(columns, shaped);
+        setRows((prev) => {
+          const sameLength = prev.length === shaped.length;
+          const sameIds =
+            sameLength && prev.every((p, i) => p.id === shaped[i].id);
+          return sameIds ? prev : shaped;
+        });
         setLoading(false);
       },
       () => {
@@ -72,7 +77,7 @@ const ClaimedRidesGrid = () => {
       },
     );
     return unsub;
-  }, [authLoading, user?.email]);
+  }, [authLoading, user?.email, columns]);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;
@@ -156,78 +161,109 @@ const ClaimedRidesGrid = () => {
     setLoading(false);
   };
 
-  const columns = [
-    { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
-    { field: "pickupDateStr", headerName: "Date", flex: 0.9, minWidth: 120 },
-    {
-      field: "pickupTimeStr",
-      headerName: "Pickup Time",
-      flex: 0.9,
-      minWidth: 130,
-    },
+  const columns = useMemo(
+    () => [
+      { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
+      { field: "pickupDateStr", headerName: "Date", flex: 0.9, minWidth: 120 },
+      {
+        field: "pickupTimeStr",
+        headerName: "Pickup Time",
+        flex: 0.9,
+        minWidth: 130,
+      },
       {
         field: "rideDuration",
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
         valueGetter: (p) => {
-          const r = safeRow(p)
-          if (!r) return null
+          const r = safeRow(p);
+          if (!r) return null;
           return {
             s: r.pickupTime,
-            e: r.pickupTime && r.rideDuration
-              ? r.pickupTime + r.rideDuration * 60000
-              : null,
-          }
+            e:
+              r.pickupTime && r.rideDuration
+                ? r.pickupTime + r.rideDuration * 60000
+                : null,
+          };
         },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
+        valueFormatter: (params) =>
+          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
           return da - db;
         },
       },
-    { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140, valueFormatter: fmtPlain("—") },
-    { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
-    {
-      field: "rideNotes",
-      headerName: "Notes",
-      flex: 1.2,
-      minWidth: 180,
-      valueFormatter: fmtPlain("—"),
-    },
-    { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
-    {
-      field: "lastModifiedBy",
-      headerName: "Modified By",
-      flex: 1,
-      minWidth: 160,
-      valueFormatter: fmtPlain("—"),
-    },
-    { field: "claimedBy", headerName: "Claimed By", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
-    {
-      field: "actions",
-      type: "actions",
-      width: 80,
-      getActions: (params) => [
-        <GridActionsCellItem
-          key="edit"
-          icon={<EditIcon />}
-          label="Edit"
-          onClick={() => openEdit(params.row)}
-        />,
-        <GridActionsCellItem
-          key="delete"
-          icon={<DeleteIcon />}
-          label="Delete"
-          onClick={() => {
-            setSelectedRow(params.row);
-            setConfirmOpen(true);
-          }}
-        />,
-      ],
-    },
-  ];
+      {
+        field: "rideType",
+        headerName: "Ride Type",
+        flex: 1,
+        minWidth: 140,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        flex: 1.2,
+        minWidth: 180,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "createdBy",
+        headerName: "Created By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "lastModifiedBy",
+        headerName: "Modified By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "claimedBy",
+        headerName: "Claimed By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "actions",
+        type: "actions",
+        width: 80,
+        getActions: (params) => [
+          <GridActionsCellItem
+            key="edit"
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => openEdit(params.row)}
+          />,
+          <GridActionsCellItem
+            key="delete"
+            icon={<DeleteIcon />}
+            label="Delete"
+            onClick={() => {
+              setSelectedRow(params.row);
+              setConfirmOpen(true);
+            }}
+          />,
+        ],
+      },
+    ],
+    [openEdit],
+  );
+
+  const stableRows = useMemo(() => rows ?? [], [rows]);
 
   const summaryRow = useMemo(() => {
     const total = rows.reduce(
@@ -288,7 +324,7 @@ const ClaimedRidesGrid = () => {
       )}
 
       <DataGridPro
-        rows={rows ?? []}
+        rows={stableRows}
         columns={columns}
         checkboxSelection
         getRowClassName={(params = {}) =>

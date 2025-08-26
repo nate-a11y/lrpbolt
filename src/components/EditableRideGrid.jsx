@@ -105,15 +105,17 @@ export default function EditableRideGrid({
     [onDelete, onEdit]
   );
 
+  const stableRows = useMemo(() => rows ?? [], [rows]);
+
   useEffect(() => {
-    warnMissingFields(columns, rows ?? []);
-  }, [rows]);
+    warnMissingFields(columns, stableRows);
+  }, [stableRows, columns]);
 
   return (
     <Box sx={{ width: "100%", height: 600 }}>
       <DataGridPro
         {...grid}
-        rows={rows ?? []}
+        rows={stableRows}
         columns={columns}
         loading={loading}
         slotProps={{

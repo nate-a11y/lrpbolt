@@ -55,7 +55,7 @@ export const warnMissingFields = (columns, rows, sample = 10) => {
   if (!Array.isArray(columns) || !Array.isArray(rows) || !rows.length) return;
   const r = rows.slice(0, sample);
   columns.forEach((c) => {
-    if (!c.field) return;
+    if (!c.field || c.type === "actions") return;
     const anyHas = r.some((row) => Object.prototype.hasOwnProperty.call(row, c.field));
     if (!anyHas && !c.valueGetter) {
       console.warn(`[DataGrid] Field "${c.field}" not found on rows and no valueGetter provided.`);
