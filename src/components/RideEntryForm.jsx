@@ -48,7 +48,6 @@ import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import DropDailyWidget from "./DropDailyWidget";
 
-import { setSyncTime } from "../utils/timeUtils";
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
@@ -455,7 +454,11 @@ if (totalMinutes <= 0) {
   }, [dataTab]);
 
   useEffect(() => {
-    setSyncTime(dayjs().format("hh:mm A"));
+    try {
+      localStorage.setItem("lrp_sync_time", dayjs().format("hh:mm A"));
+    } catch {
+      // ignore storage errors
+    }
   }, [counts]);
 
   // ---------- Handlers ----------

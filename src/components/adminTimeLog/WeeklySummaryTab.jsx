@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
+import useGridProDefaults from "../grid/useGridProDefaults.js";
 import {
   Box,
   CircularProgress,
@@ -33,6 +34,8 @@ export default function WeeklySummaryTab() {
   useEffect(() => {
     setRows(summaryRows);
   }, [summaryRows]);
+
+  const grid = useGridProDefaults({ gridId: "weeklySummary", pageSize: 10 });
 
   const handleEdit = useCallback(
     (row) => {
@@ -185,16 +188,13 @@ export default function WeeklySummaryTab() {
         </Stack>
       ) : (
         <DataGridPro
+          {...grid}
           apiRef={apiRef}
           editMode="row"
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update summary")}
-          autoHeight
           rows={safeRows}
-          getRowId={(r) => r.id || r.docId || r.driver || Math.random()}
           columns={columns}
-          density="compact"
-          disableRowSelectionOnClick
           slots={{ toolbar: GridToolbar }}
           slotProps={{
             toolbar: {
@@ -202,7 +202,7 @@ export default function WeeklySummaryTab() {
               quickFilterProps: { debounceMs: 300, placeholder: "Search" },
             },
           }}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+          initialState={grid.initialState}
           pageSizeOptions={[5, 10, 25]}
         />
       )}

@@ -35,15 +35,20 @@ import { keyframes } from "@mui/system";
 import { Link } from "react-router-dom";
 import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
-import {
-  normalizeDate,
-  normalizeTime,
-  formatDate,
-  formatTime,
-} from "../utils/timeUtils";
+import { toDayjs } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";
 import { logError } from "../utils/logError";
+
+const formatDate = (v) => {
+  const d = toDayjs(v);
+  return d ? d.format("MMM D, YYYY") : "—";
+};
+
+const formatTime = (v) => {
+  const d = toDayjs(v);
+  return d ? d.format("h:mm A") : "—";
+};
 
 export default function TicketScanner() {
   const [ticket, setTicket] = useState(null);

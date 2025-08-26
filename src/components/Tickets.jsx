@@ -34,6 +34,7 @@ import {
   Stack,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -79,6 +80,22 @@ export default function Tickets() {
   const { user, authLoading } = useAuth();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+  const grid = useGridProDefaults({ gridId: "tickets" });
+  const initialState = React.useMemo(
+    () => ({
+      ...grid.initialState,
+      columns: {
+        ...grid.initialState.columns,
+        columnVisibilityModel: {
+          link: !isSmall,
+          scanStatus: !isSmall,
+          pickup: !isSmall,
+          ...grid.initialState.columns.columnVisibilityModel,
+        },
+      },
+    }),
+    [grid.initialState, isSmall],
+  );
 
   // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
@@ -510,17 +527,19 @@ export default function Tickets() {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <DataGridPro
-              rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
-              columns={columns}
-              getRowId={(r) => r?.id ?? `${r?.ticketId}-${r?.date ?? Math.random()}`}
+              <DataGridPro
+                {...grid}
+                rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
+                columns={columns}
+                getRowId={(r) => r?.id ?? `${r?.ticketId}-${r?.date ?? Math.random()}`}
               autoHeight
               checkboxSelection
               pageSizeOptions={[5, 10, 25, 100]}
               density="compact"
               disableRowSelectionOnClick
               onRowSelectionModelChange={(model) => setRowSelectionModel(model)}
-              rowSelectionModel={rowSelectionModel}
+                rowSelectionModel={rowSelectionModel}
+                initialState={initialState}
               sx={{
                 "& .MuiDataGrid-row:nth-of-type(odd)": {
                   backgroundColor: "rgba(255,255,255,0.04)",
