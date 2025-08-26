@@ -21,12 +21,13 @@ import { toPng } from "html-to-image";
 import { v4 as uuidv4 } from "uuid";
 import { Timestamp } from "firebase/firestore";
 
-import PageContainer from "./PageContainer.jsx";
 import {
   addTicket as apiAddTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
 import { logError } from "../utils/logError";
+
+import PageContainer from "./PageContainer.jsx";
 
 const getStoredLocations = (key) =>
   JSON.parse(localStorage.getItem(key) || "[]");

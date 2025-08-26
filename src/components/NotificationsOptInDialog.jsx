@@ -2,9 +2,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  Stack, Typography, Alert, useTheme
+  Stack, Typography, Alert
 } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+
 import useNotificationPermission from "../hooks/useNotificationPermission";
 import { enableFcmForUser } from "../utils/fcm";
 
@@ -13,7 +14,6 @@ import { enableFcmForUser } from "../utils/fcm";
  * Persists "snooze" in localStorage and respects blocked state.
  */
 export default function NotificationsOptInDialog({ user }) {
-  const theme = useTheme();
   const { supported, permission } = useNotificationPermission();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);

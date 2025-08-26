@@ -2,9 +2,11 @@ import { useState, useCallback } from "react";
 import { Box, IconButton, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
+
 import Header from "../components/Header";
 import MainNav from "../components/MainNav";
-import { APP_BAR_HEIGHT, DRAWER_WIDTH } from "./constants";
+
+import { APP_BAR_HEIGHT } from "./constants";
 
 export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const theme = useTheme();

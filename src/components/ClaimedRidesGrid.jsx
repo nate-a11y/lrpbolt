@@ -16,6 +16,9 @@ import {
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { dateCol, durationMinutes } from "@/utils/datetime";
+
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
 import { COLLECTIONS } from "../constants";
@@ -23,9 +26,8 @@ import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { shapeRideRow } from "../services/shapeRideRow";
-import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
 import { useGridDoctor } from "../utils/useGridDoctor";
-import { dateCol, durationMinutes } from "@/utils/datetime";
+
 
 import EditRideDialog from "./EditRideDialog";
 import actionsCol from "./grid/actionsCol.jsx";
@@ -42,9 +44,6 @@ const ClaimedRidesGrid = () => {
   const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
   const [editing, setEditing] = useState({ open: false, row: null });
-  const openEdit = useCallback((row) => {
-    setEditing({ open: true, row });
-  }, []);
 
   function closeEdit() {
     setEditing({ open: false, row: null });

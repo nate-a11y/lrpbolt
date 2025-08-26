@@ -54,6 +54,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
 import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
+
 import PageContainer from "./PageContainer.jsx";
 
 export default function Tickets() {
@@ -159,7 +160,7 @@ export default function Tickets() {
     }
   };
 
-  const handleDelete = async (ticketId) => {
+  const handleDelete = useCallback(async (ticketId) => {
     const confirmDelete = window.confirm(`Delete ticket ${ticketId}?`);
     if (!confirmDelete) return;
 
@@ -186,7 +187,7 @@ export default function Tickets() {
     } finally {
       setDeletingId(null);
     }
-  };
+  }, []);
 
   const bulkDownload = async () => {
     const selected = tickets.filter((t) => selectedIds.includes(t.ticketId));

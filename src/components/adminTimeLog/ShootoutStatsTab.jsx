@@ -20,10 +20,11 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
 import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { durationMinutes, friendlyDateTime } from "@/utils/datetime";
+
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-import { durationMinutes, friendlyDateTime } from "@/utils/datetime";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 

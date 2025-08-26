@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
+import { setDoc } from "firebase/firestore";
 
 import PhoneNumberPrompt from "../../src/components/PhoneNumberPrompt.jsx";
 
@@ -9,8 +10,6 @@ vi.mock("firebase/firestore", () => ({
   setDoc: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("src/utils/firebaseInit", () => ({ db: {} }));
-
-import { setDoc } from "firebase/firestore";
 
 beforeEach(() => {
   vi.clearAllMocks();

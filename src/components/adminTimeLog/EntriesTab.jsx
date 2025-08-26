@@ -20,10 +20,11 @@ import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
 import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { friendlyDateTime, durationMinutes } from "@/utils/datetime";
+
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
-import { friendlyDateTime, durationMinutes } from "@/utils/datetime";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 

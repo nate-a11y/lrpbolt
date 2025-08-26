@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Stack } from "@mui/material";
+
 import { loginWithPopup, loginWithRedirect } from "../services/auth";
 import { logError } from "../utils/logError";
 

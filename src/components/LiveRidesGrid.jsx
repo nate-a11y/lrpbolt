@@ -11,6 +11,7 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
+
 import {
   subscribeRides,
   deleteRide,
@@ -23,8 +24,9 @@ import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
 import { COLLECTIONS } from "../constants";
 import { logError } from "../utils/logError";
-import EditRideDialog from "./EditRideDialog";
 import { shapeRideRow } from "../services/shapeRideRow";
+
+import EditRideDialog from "./EditRideDialog";
 
 const LiveRidesGrid = () => {
   const [rows, setRows] = useState([]);
