@@ -49,6 +49,7 @@ import timezone from "dayjs/plugin/timezone";
 import { COLLECTIONS } from "../constants";
 import { Timestamp, orderBy } from "firebase/firestore";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
+import { asArray } from "../utils/arrays.js";
 
 function ProToolbar({ onBulkClaim, selectedCount }) {
   return (
@@ -288,7 +289,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       : "";
   };
 
-  const selectedSet = useMemo(() => new Set(selectionModel), [selectionModel]);
+  const selectedSet = useMemo(
+    () => new Set(selectionModel ?? []),
+    [selectionModel],
+  );
   const selectedCount = selectedSet.size;
   const selectedMinutes = useMemo(
     () =>
@@ -500,8 +504,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
               sorting: { sortModel: [{ field: "pickupTime", sort: "asc" }] },
               columns: { columnVisibilityModel: { rideNotes: !isMobile } },
             }}
-            onRowSelectionModelChange={setSelectionModel}
-            rowSelectionModel={selectionModel}
+            onRowSelectionModelChange={(m) => setSelectionModel(asArray(m))}
+            rowSelectionModel={selectionModel ?? []}
             slots={{ toolbar: ProToolbar }}
             slotProps={{ toolbar: { onBulkClaim, selectedCount } }}
             getRowClassName={getRowClassName}
