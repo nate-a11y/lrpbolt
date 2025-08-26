@@ -4,7 +4,9 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
-try { admin.initializeApp(); } catch { /* hot-reload safe */ }
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 const db = admin.firestore();
 
 const { dropDailyFromQueue } = require("./src/jobs/dropDailyFromQueue");

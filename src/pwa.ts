@@ -13,7 +13,10 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       wb.addEventListener('waiting', async () => {
         try {
           await wb.messageSW({ type: 'SKIP_WAITING' });
-        } catch {}
+        } catch (err) {
+          void err;
+          /* no-op for hot reload */
+        }
         window.location.reload();
       });
 
@@ -30,7 +33,12 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         if (!installing) return;
         installing.addEventListener('statechange', async () => {
           if (installing.state === 'redundant' && reg.active == null) {
-            try { await reg.unregister(); } catch {}
+            try {
+              await reg.unregister();
+            } catch (err) {
+              void err;
+              /* no-op for hot reload */
+            }
             // Force a reload to fetch the new sw.js + manifest
             window.location.reload();
           }
@@ -38,13 +46,22 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       });
 
       // periodic update check (default 30m)
-      setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+      setInterval(
+        () =>
+          reg.update().catch(() => {
+            /* no-op for hot reload */
+          }),
+        30 * 60 * 1000,
+      );
     } catch (e) {
       // Last-ditch: if anything goes wrong, attempt to unregister and reload
       try {
         const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
-      } catch {}
+        await Promise.all(regs.map((r) => r.unregister()));
+      } catch (err) {
+        void err;
+        /* no-op for hot reload */
+      }
       // don’t loop; user refresh is enough
     }
   })();

@@ -85,7 +85,9 @@ function toMs(input) {
       const t = Date.parse(input);
       return Number.isFinite(t) ? t : null;
     }
-  } catch {}
+  } catch (err) {
+    /* no-op for hot reload */
+  }
   return null;
 }
 function fmtDateTimeMs(ms) {
