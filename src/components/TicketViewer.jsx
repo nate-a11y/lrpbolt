@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -19,7 +19,6 @@ import { logError } from "../utils/logError";
 export default function TicketViewer() {
   const { ticketId } = useParams();
   const [ticket, setTicket] = useState(null);
-  const [updated, setUpdated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [snackbar, setSnackbar] = useState({

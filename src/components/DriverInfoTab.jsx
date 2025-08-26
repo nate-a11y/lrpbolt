@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -79,7 +79,7 @@ export default function DriverInfoTab() {
     try {
       await navigator.clipboard.writeText(FLW_URL);
     } catch (e) {
-      // clipboard may be blocked
+      console.error(e);
     }
   };
 

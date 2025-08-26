@@ -1,12 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import {
   Box,
   Typography,
   Button,
   IconButton,
   Slide,
-  useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -18,7 +17,6 @@ const isIosSafari = () => {
 };
 
 const InstallBanner = () => {
-  const isMobile = useMediaQuery("(max-width:600px)");
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [visible, setVisible] = useState(false);
   const [isIos, setIsIos] = useState(false);
@@ -108,4 +106,4 @@ const InstallBanner = () => {
   );
 };
 
-export default React.memo(InstallBanner);
+export default memo(InstallBanner);

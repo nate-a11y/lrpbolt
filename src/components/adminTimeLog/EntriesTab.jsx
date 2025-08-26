@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Box,
   Paper,
@@ -18,11 +18,12 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../utils/firebaseInit"; // adjust if needed
-import { subscribeTimeLogs } from "../../hooks/firestore";
 import { fmtDuration } from "../../utils/timeUtils";
+
+import { db } from "../../utils/firebaseInit";
+import { subscribeTimeLogs } from "../../hooks/firestore";
+import { safeRow } from "@/utils/gridUtils";
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
-import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function EntriesTab() {
@@ -62,6 +63,7 @@ export default function EntriesTab() {
       });
       setEditRow(null);
     } catch (e) {
+      console.error(e);
       alert("Failed to update time log");
     }
   }, [editRow]);
@@ -71,9 +73,12 @@ export default function EntriesTab() {
       try {
         await deleteDoc(doc(db, "timeLogs", row.id));
       } catch (e) {
+        console.error(e);
         alert("Failed to delete time log");
       }
     }, []);
+
+    const fmt = fmtDateTimeCell("America/Chicago", "—");
 
     const columns = useMemo(
       () => [
@@ -97,7 +102,7 @@ export default function EntriesTab() {
           flex: 1,
           minWidth: 160,
           valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          valueFormatter: fmt,
           sortComparator: dateSort,
         },
         {
@@ -106,7 +111,7 @@ export default function EntriesTab() {
           flex: 1,
           minWidth: 160,
           valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          valueFormatter: fmt,
           sortComparator: dateSort,
         },
         {
@@ -162,7 +167,7 @@ export default function EntriesTab() {
       },
     );
     return () => typeof unsub === "function" && unsub();
-  }, []);
+  }, [columns]);
 
     const filteredRows = useMemo(() => {
       return (rows || []).filter((r) => {
@@ -252,12 +257,12 @@ export default function EntriesTab() {
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">{r.driverEmail}</Typography>
                   <Typography variant="body2">Ride ID: {r.rideId || "—"}</Typography>
-                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">Start: {fmt({ value: toJSDate(r.startTime) })}</Typography>
+                  <Typography variant="body2">End: {fmt({ value: toJSDate(r.endTime) })}</Typography>
                   <Typography variant="body2">
                     Duration: {fmtDuration(r.startTime, r.endTime)}
                   </Typography>
-                  <Typography variant="body2">Logged: {fmtDateTime(r.loggedAt)}</Typography>
+                  <Typography variant="body2">Logged: {fmt({ value: toJSDate(r.loggedAt) })}</Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

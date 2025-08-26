@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
-import useFirestoreListener from "../../src/hooks/useFirestoreListener.js";
 import { orderBy } from "firebase/firestore";
+
+import useFirestoreListener from "../../src/hooks/useFirestoreListener.js";
 
 // Mock firebase/firestore
 var onSnapshotMock;

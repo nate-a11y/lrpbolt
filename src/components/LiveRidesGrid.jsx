@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import {
   Box,
   Snackbar,
@@ -62,7 +62,7 @@ const LiveRidesGrid = () => {
       },
     );
     return unsub;
-  }, [authLoading, user?.email]);
+  }, [authLoading, user?.email, showToast]);
 
     async function refreshRides() {
       setLoading(true);
@@ -188,4 +188,4 @@ const LiveRidesGrid = () => {
   );
 };
 
-export default React.memo(LiveRidesGrid);
+export default memo(LiveRidesGrid);

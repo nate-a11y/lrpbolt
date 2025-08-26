@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useEffect, useCallback } from "react";
+import { useMemo, useEffect, useCallback } from "react";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import {
@@ -11,17 +11,11 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
+
+import { safeRow } from "@/utils/gridUtils";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
-import { safeRow } from '@/utils/gridUtils'
-import {
-  fmtPlain,
-  fmtDateTimeCell,
-  dateSort,
-  toJSDate,
-  getNested,
-  warnMissingFields,
-} from "../utils/gridFormatters";
+import { fmtPlain, warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function EditableRideGrid({
@@ -152,12 +146,12 @@ export default function EditableRideGrid({
         ],
       },
     ],
-    [],
+    [handleEdit, handleDelete],
   );
 
   const stableRows = useMemo(() => rows ?? [], [rows]);
 
-  const { dedupeRows } = useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
+  useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") warnMissingFields(columns, stableRows);

@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Email, Download, Search, Summary, Scanner Status
-import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom/client";
 import dayjs from "dayjs";
 import QRCode from "react-qr-code";
@@ -35,18 +35,16 @@ import {
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
-import useGridProDefaults from "./grid/useGridProDefaults.js";
-import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DownloadIcon from "@mui/icons-material/Download";
-import EmailIcon from "@mui/icons-material/Email";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import PageContainer from "./PageContainer.jsx";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
+import PageContainer from "./PageContainer.jsx";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 import {
   subscribeTickets,
   deleteTicket as apiDeleteTicket,
@@ -55,28 +53,18 @@ import {
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
-import { safeRow } from '@/utils/gridUtils'
-import {
-  fmtPlain,
-  fmtDateTimeCell,
-  dateSort,
-  toJSDate,
-  getNested,
-  warnMissingFields,
-} from "../utils/gridFormatters";
+import { safeRow } from "@/utils/gridUtils";
+import { fmtPlain, warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [filteredDate, setFilteredDate] = useState("All Dates");
-  const [editOpen, setEditOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "info",
   });
-  const [deletingId, setDeletingId] = useState(null);
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
@@ -89,7 +77,7 @@ export default function Tickets() {
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
   const grid = useGridProDefaults({ gridId: "tickets" });
-  const initialState = React.useMemo(
+  const initialState = useMemo(
     () => ({
       ...grid.initialState,
       columns: {
@@ -320,7 +308,6 @@ export default function Tickets() {
     setEmailAddress("");
   };
 
-  const handleEdit = useCallback((row) => setSelectedTicket(row), []);
   const handleDeleteClick = useCallback((row) => handleDelete(row.ticketId), [handleDelete]);
   const handleDownload = useCallback((row) => setPreviewTicket(row), []);
 
@@ -375,13 +362,6 @@ export default function Tickets() {
         minWidth: 120,
         getActions: (params) => [
           <GridActionsCellItem
-            key="edit"
-            icon={<EditIcon />}
-            label="Edit"
-            onClick={() => handleEdit(params.row)}
-            showInMenu={false}
-          />,
-          <GridActionsCellItem
             key="delete"
             icon={<DeleteIcon />}
             label="Delete"
@@ -398,14 +378,14 @@ export default function Tickets() {
         ],
       },
     ],
-    [],
+    [handleDeleteClick, handleDownload],
   );
 
   const rows = useMemo(
     () => (filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t })),
     [filteredTickets],
   );
-  const { dedupeRows } = useGridDoctor({ name: "Tickets", rows, columns });
+  useGridDoctor({ name: "Tickets", rows, columns });
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);

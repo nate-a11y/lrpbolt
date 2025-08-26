@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { styled, useTheme } from "@mui/material/styles";
 import {
   AppBar as MuiAppBar,
@@ -44,9 +44,8 @@ const drawerPaperSx = (t, expanded) => ({
 
 export default function LayoutShell({ children, railItems, onNavigate }) {
   const theme = useTheme();
-  const smUp = theme?.breakpoints
-    ? useMediaQuery(theme.breakpoints.up("sm"), { noSsr: true })
-    : useMediaQuery("(min-width:600px)", { noSsr: true });
+  const query = theme?.breakpoints?.up("sm") || "(min-width:600px)";
+  const smUp = useMediaQuery(query, { noSsr: true });
   const [expanded, setExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 

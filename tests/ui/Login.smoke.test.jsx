@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import React from "react";
+
 import BlackoutOverlay from "../../src/components/BlackoutOverlay.jsx";
 
 describe("<BlackoutOverlay />", () => {

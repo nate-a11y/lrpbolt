@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import useGridProDefaults from "../grid/useGridProDefaults.js";
 import {
@@ -136,7 +136,7 @@ export default function WeeklySummaryTab() {
 
   useEffect(() => {
     warnMissingFields(columns, rows);
-  }, [rows]);
+  }, [rows, columns]);
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
 

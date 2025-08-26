@@ -1,13 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/TicketScanner.jsx — BEYOND GOD MODE ⚡ DOM LOCK EDITION
-import React, {
+import {
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
   useCallback,
 } from "react";
-import { sanitize } from "../utils/sanitize";
 import {
   Box,
   Typography,
@@ -35,6 +34,8 @@ import { keyframes } from "@mui/system";
 import { Link } from "react-router-dom";
 import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
+
+import { sanitize } from "../utils/sanitize";
 import { toDayjs } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";
@@ -61,7 +62,6 @@ export default function TicketScanner() {
   const [cameraError, setCameraError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [cameras, setCameras] = useState([]);
   const [currentCameraId, setCurrentCameraId] = useState(null);
   const [torchOn, setTorchOn] = useState(false);
   const [scanType, setScanType] = useState("outbound");
@@ -132,13 +132,12 @@ export default function TicketScanner() {
     let alive = true;
     async function load() {
       try {
-        const devices = await Html5Qrcode.getCameras();
-        if (!alive) return;
-        const rearCamera =
-          devices.find((d) => d.label.toLowerCase().includes("back")) ||
-          devices[0];
-        setCameras(devices);
-        setCurrentCameraId(rearCamera?.id || null);
+    const devices = await Html5Qrcode.getCameras();
+    if (!alive) return;
+    const rearCamera =
+      devices.find((d) => d.label.toLowerCase().includes("back")) ||
+      devices[0];
+    setCurrentCameraId(rearCamera?.id || null);
       } catch (err) {
         logError(err, "TicketScanner:getCameras");
         if (alive) setCameraError(true);

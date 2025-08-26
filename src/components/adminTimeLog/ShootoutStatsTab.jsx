@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import {
   Box,
@@ -18,10 +18,11 @@ import {
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { fmtDuration } from "../../utils/timeUtils";
+
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-import { fmtDuration } from "../../utils/timeUtils";
-import { safeRow } from '@/utils/gridUtils'
+import { safeRow } from "@/utils/gridUtils";
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -62,6 +63,7 @@ export default function ShootoutStatsTab() {
       });
       setEditRow(null);
     } catch (e) {
+      console.error(e);
       alert("Failed to update stat");
     }
   }, [editRow]);
@@ -71,6 +73,7 @@ export default function ShootoutStatsTab() {
     try {
       await deleteDoc(doc(db, "shootoutStats", row.id));
     } catch (e) {
+      console.error(e);
       alert("Failed to delete stat");
     }
   }, []);
@@ -84,6 +87,8 @@ export default function ShootoutStatsTab() {
   }, []);
 
   const rows = useMemo(() => stats || [], [stats]);
+
+  const fmt = fmtDateTimeCell("America/Chicago", "—");
 
   const columns = useMemo(
     () => [
@@ -131,7 +136,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueFormatter: fmt,
         sortComparator: dateSort,
       },
       {
@@ -140,7 +145,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueFormatter: fmt,
         sortComparator: dateSort,
       },
       {
@@ -149,7 +154,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => toJSDate(safeRow(p)?.createdAt),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueFormatter: fmt,
         sortComparator: dateSort,
       },
       {
@@ -174,7 +179,7 @@ export default function ShootoutStatsTab() {
 
   useEffect(() => {
     warnMissingFields(columns, rows);
-  }, [rows]);
+  }, [rows, columns]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -257,13 +262,13 @@ export default function ShootoutStatsTab() {
                   </Typography>
                   <Typography variant="body2">Status: {r.status}</Typography>
                   <Typography variant="body2">
-                    Start: {fmtDateTime(r.startTime, "MMM D, h:mm A")}
+                    Start: {fmt({ value: toJSDate(r.startTime) })}
                   </Typography>
                   <Typography variant="body2">
-                    End: {fmtDateTime(r.endTime, "MMM D, h:mm A")}
+                    End: {fmt({ value: toJSDate(r.endTime) })}
                   </Typography>
                   <Typography variant="body2">
-                    Created: {fmtDateTime(r.createdAt, "MMM D, h:mm A")}
+                    Created: {fmt({ value: toJSDate(r.createdAt) })}
                   </Typography>
                 </Stack>
                 <ToolsCell

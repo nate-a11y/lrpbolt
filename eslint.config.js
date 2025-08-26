@@ -26,8 +26,8 @@ export default [
       },
       globals: {
         ...globals.browser,
-        ...globals.node,
-        ...globals.vitest
+        ...globals.es2021,
+        ...globals.jest
       }
     },
     plugins: {
@@ -42,14 +42,32 @@ export default [
       ...js.configs.recommended.rules,
       ...pluginReact.configs.recommended.rules,
       ...pluginReactHooks.configs.recommended.rules,
+      ...pluginImport.configs.recommended.rules,
 
+      "react/react-in-jsx-scope": "off",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+      "import/order": [
+        "warn",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+            "object",
+            "type"
+          ],
+          "newlines-between": "always"
+        }
+      ],
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
 
       // LRP portal prefs:
-      "no-empty": ["error", { "allowEmptyCatch": false }],
-      "import/order": ["warn", { "newlines-between": "always" }],
-      "react/prop-types": "off", // if you're on JS without PropTypes
+      "no-empty": ["error", { allowEmptyCatch: false }],
+      "react/prop-types": "off",
       "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
       "import/no-cycle": "warn"
     }
