@@ -14,8 +14,9 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
-import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
-import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
+import { fmtPlain, warnMissingFields } from '@/utils/gridFormatters';
+import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from '@/utils/datetime';
+import { fmtMinutes } from '@/utils/grid/datetime';
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -78,18 +79,21 @@ export default function ShootoutTab() {
             flex: 1,
             valueGetter: (p) => toDateAny(p.row?.start ?? p.row?.startTime),
           }),
-          dateCol("endTime", "End", {
+          dateCol('endTime', 'End', {
             minWidth: 170,
             flex: 1,
-            valueGetter: (p) => toDateAny(p.row?.end ?? p.row?.endTime),
+            valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
           }),
           {
             field: "duration",
             headerName: "Duration",
             width: 150,
-            valueGetter: ({ row }) =>
-              durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
-            valueFormatter: ({ value }) => (value == null ? "—" : `${value}m`),
+            valueGetter: (p) =>
+              durationMinutes(
+                p?.row?.start ?? p?.row?.startTime,
+                p?.row?.end ?? p?.row?.endTime,
+              ),
+            valueFormatter: (p) => fmtMinutes(p.value),
             sortable: true,
           },
           { field: "trips", headerName: "Trips", width: 90, type: "number" },

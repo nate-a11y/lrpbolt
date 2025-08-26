@@ -16,7 +16,9 @@ import {
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { getField } from '@/utils/gridCells';
+import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
+import { asText } from '@/utils/grid/cell';
 import { dateCol, durationMinutes } from "@/utils/datetime";
 
 import { subscribeRides, deleteRide } from "../services/firestoreService";
@@ -52,44 +54,48 @@ const ClaimedRidesGrid = () => {
 
   const columns = useMemo(
     () => [
-      dateCol("pickupTime", "Pickup", {
+      dateCol('pickupTime', 'Pickup', {
         flex: 1,
-        valueGetter: ({ row }) => getField(row, "pickupTime"),
-        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'pickupTime'),
+        valueFormatter: (p) => fmtDateTime(p.value),
       }),
       {
         field: "vehicle",
         headerName: "Vehicle",
         flex: 1,
-        valueGetter: ({ row }) => getField(row, "vehicle"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'vehicle'),
+        renderCell: (p) => asText(p.value),
       },
       {
         field: "rideType",
         headerName: "Type",
         flex: 1,
-        valueGetter: ({ row }) => getField(row, "rideType"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideType'),
+        renderCell: (p) => asText(p.value),
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         width: 110,
-        valueGetter: ({ row }) =>
-          getField(row, "rideDuration") ??
-          durationMinutes(
-            getField(row, "pickupTime"),
-            getField(row, "endTime") ?? getField(row, "dropoffTime"),
-          ),
-        valueFormatter: ({ value }) => fmtMinutes(value) ?? "",
+        valueGetter: (p) => {
+          const r = p?.row ?? null;
+          return (
+            getField(r, 'rideDuration') ??
+            durationMinutes(
+              getField(r, 'pickupTime'),
+              getField(r, 'endTime') ?? getField(r, 'dropoffTime'),
+            )
+          );
+        },
+        valueFormatter: (p) => fmtMinutes(p.value),
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         flex: 1.5,
-        valueGetter: ({ row }) => getField(row, "rideNotes"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideNotes'),
+        renderCell: (p) => asText(p.value),
       },
       actionsCol({
         onDelete: (row) => handleDelete(row),
