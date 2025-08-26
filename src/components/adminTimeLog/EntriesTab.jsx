@@ -23,7 +23,8 @@ import { fmtText } from "@/utils/timeUtils";
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
-import { dateCol, friendlyDateTime, durationMinutes } from "@/utils/datetime";
+import { friendlyDateTime, durationMinutes } from "@/utils/datetime";
+import { fmtDateTimeCell, dateSort } from "@/utils/gridFormatters";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -80,19 +81,62 @@ export default function EntriesTab() {
     }, []);
 
     const columns = [
-      { field: 'driverEmail', headerName: 'Driver', flex: 1, minWidth: 120 },
-      { field: 'rideId', headerName: 'Ride ID', width: 120 },
-      dateCol('startTime', 'Start'),
-      dateCol('endTime', 'End'),
+      {
+        field: 'driverEmail',
+        headerName: 'Driver',
+        flex: 1,
+        minWidth: 120,
+        valueGetter: (p) => p?.row?.driverEmail ?? '',
+        renderCell: (p) => fmtText(p?.value),
+      },
+      {
+        field: 'rideId',
+        headerName: 'Ride ID',
+        width: 120,
+        valueGetter: (p) => p?.row?.rideId ?? '',
+        renderCell: (p) => fmtText(p?.value),
+      },
+      {
+        field: 'startTime',
+        headerName: 'Start',
+        type: 'dateTime',
+        minWidth: 170,
+        valueGetter: (p) => p?.row?.startTime ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || '',
+        sortComparator: dateSort,
+      },
+      {
+        field: 'endTime',
+        headerName: 'End',
+        type: 'dateTime',
+        minWidth: 170,
+        valueGetter: (p) => p?.row?.endTime ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || '',
+        sortComparator: dateSort,
+      },
       {
         field: 'duration',
         headerName: 'Duration',
         width: 110,
-        valueGetter: ({ row }) => durationMinutes(row?.startTime, row?.endTime),
-        valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
+        valueGetter: (p) => durationMinutes(p?.row?.startTime, p?.row?.endTime),
+        renderCell: (p) => {
+          const v = p?.value;
+          if (v == null) return '';
+          const mins = Number(v);
+          if (Number.isNaN(mins)) return '';
+          return `${mins}m`;
+        },
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
-      dateCol('loggedAt', 'Logged At'),
+      {
+        field: 'loggedAt',
+        headerName: 'Logged At',
+        type: 'dateTime',
+        minWidth: 170,
+        valueGetter: (p) => p?.row?.loggedAt ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || '',
+        sortComparator: dateSort,
+      },
       actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
     ];
 
