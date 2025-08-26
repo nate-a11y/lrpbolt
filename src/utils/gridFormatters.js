@@ -1,73 +1,64 @@
-/* Proprietary and confidential. See LICENSE. */
-import dayjs from "./dates";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import tz from "dayjs/plugin/timezone";
+dayjs.extend(utc);
+dayjs.extend(tz);
 
-// Normalize Firestore Timestamps, JS Dates, epoch seconds, or ISO strings -> Date | null
 export const toJSDate = (raw) => {
-  try {
-    if (!raw) return null;
-    if (raw instanceof Date) return isNaN(raw) ? null : raw;
-    if (typeof raw === "number") {
-      const ms = raw < 1e12 ? raw * 1000 : raw;
-      const d = new Date(ms);
-      return isNaN(d) ? null : d;
-    }
-    if (typeof raw === "string") {
-      const d = new Date(raw);
-      return isNaN(d) ? null : d;
-    }
-    if (typeof raw === "object") {
-      if (typeof raw.toDate === "function") return toJSDate(raw.toDate());
-      if ("seconds" in raw && "nanoseconds" in raw)
-        return new Date(raw.seconds * 1000 + raw.nanoseconds / 1e6);
-    }
-  } catch {
-    return null;
+  if (!raw) return null;
+  if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+  if (typeof raw?.toDate === "function") return raw.toDate();
+  if (typeof raw?.seconds === "number") return new Date(raw.seconds * 1000);
+  if (typeof raw === "number") return new Date(raw);
+  if (typeof raw === "string") {
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
   }
   return null;
 };
 
-// Formatter for date cells with timezone & fallback
-export const fmtDateTimeCell = (tz = "UTC", fallback = "—") => (params) => {
-  const d = toJSDate(params?.value);
-  if (!d) return fallback;
-  try {
-    return dayjs(d).tz(tz).format("MMM D, h:mm A");
-  } catch {
-    return fallback;
-  }
-};
-
-// Plain string formatter with fallback
 export const fmtPlain = (fallback = "—") => (params) => {
-  const v = params?.value;
-  if (v === undefined || v === null || v === "") return fallback;
-  return String(v);
-};
-
-// Safely get nested property from row
-export const getNested = (path, fallback = null) => (params) => {
-  const row = params?.row;
-  if (!row) return fallback;
-  const parts = path.split(".");
-  let cur = row;
-  for (const p of parts) {
-    if (cur == null) return fallback;
-    cur = cur[p];
+  if (!params) return fallback;
+  if (Object.prototype.hasOwnProperty.call(params, "value")) {
+    const v = params.value;
+    return v === null || v === undefined ? fallback : String(v);
   }
-  return cur ?? fallback;
+  const v = params.row?.[params.field];
+  return v === null || v === undefined ? fallback : String(v);
 };
 
-// Date comparator tolerant of nulls
+export const fmtDateTimeCell = (tzName = "America/Chicago", fallback = "—") => (params) => {
+  const v = Object.prototype.hasOwnProperty.call(params ?? {}, "value")
+    ? params?.value
+    : params?.row?.[params?.field];
+  const d = toJSDate(v);
+  if (!d) return fallback;
+  return dayjs(d).tz(tzName).format("MMM D, YYYY h:mm A");
+};
+
+export const getNested = (path, fallback = null) => (params) => {
+  let obj = params?.row;
+  for (const key of path.split(".")) {
+    if (obj == null) return fallback;
+    obj = obj[key];
+  }
+  return obj ?? fallback;
+};
+
 export const dateSort = (a, b) => {
-  const ta = toJSDate(a)?.getTime() ?? 0;
-  const tb = toJSDate(b)?.getTime() ?? 0;
+  const ta = a instanceof Date ? a.getTime() : toJSDate(a)?.getTime() ?? 0;
+  const tb = b instanceof Date ? b.getTime() : toJSDate(b)?.getTime() ?? 0;
   return ta - tb;
 };
 
-export default {
-  toJSDate,
-  fmtDateTimeCell,
-  fmtPlain,
-  getNested,
-  dateSort,
+export const warnMissingFields = (columns, rows, sample = 10) => {
+  if (!Array.isArray(columns) || !Array.isArray(rows) || !rows.length) return;
+  const r = rows.slice(0, sample);
+  columns.forEach((c) => {
+    if (!c.field) return;
+    const anyHas = r.some((row) => Object.prototype.hasOwnProperty.call(row, c.field));
+    if (!anyHas && !c.valueGetter) {
+      console.warn(`[DataGrid] Field "${c.field}" not found on rows and no valueGetter provided.`);
+    }
+  });
 };

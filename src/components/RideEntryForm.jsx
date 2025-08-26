@@ -48,7 +48,6 @@ import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import DropDailyWidget from "./DropDailyWidget";
 
-import { safeRow } from '@/utils/gridUtils'
 import { fmtPlain } from "@/utils/gridFormatters";
 
 import { logError } from "../utils/logError";
@@ -1108,10 +1107,6 @@ if (totalMinutes <= 0) {
                       field: col,
                       headerName: col.replace(/([A-Z])/g, " $1"),
                       flex: 1,
-                      valueGetter: (p) => {
-                        const r = safeRow(p)
-                        return r ? r[col] ?? null : null
-                      },
                       valueFormatter: fmtPlain("—"),
                     }))}
                     pageSizeOptions={[5]}

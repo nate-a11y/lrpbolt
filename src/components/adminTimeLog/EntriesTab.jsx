@@ -21,7 +21,7 @@ import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { fmtDuration } from "../../utils/timeUtils";
-import { fmtDateTimeCell, fmtPlain, getNested, toJSDate, dateSort } from "@/utils/gridFormatters";
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -79,6 +79,7 @@ export default function EntriesTab() {
     const unsub = subscribeTimeLogs(
       (logs) => {
         setRows(logs || []);
+        warnMissingFields(columns, logs || []);
         setLoading(false);
       },
       (err) => {
@@ -97,14 +98,12 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: getNested("driverEmail"),
         valueFormatter: fmtPlain("—"),
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         width: 120,
-        valueGetter: getNested("rideId"),
         valueFormatter: fmtPlain("—"),
       },
       {

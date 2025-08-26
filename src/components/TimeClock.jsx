@@ -36,7 +36,7 @@ import { logError } from "../utils/logError";
 import { toString, tsToDate } from "../utils/safe";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, getNested, toJSDate, dateSort } from "@/utils/gridFormatters";
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import ErrorBanner from "./ErrorBanner";
 import { useRole } from "@/hooks";
@@ -104,6 +104,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const unsub = subscribeMyTimeLogs(
       (logs) => {
         setRows(logs);
+        warnMissingFields(columns, logs);
         setReady(true);
       },
       (err) => {
@@ -276,7 +277,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       field: "rideId",
       headerName: "Ride ID",
       flex: 1,
-      valueGetter: getNested("rideId"),
       valueFormatter: fmtPlain("—"),
     },
     {
@@ -309,7 +309,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       field: "note",
       headerName: "Note",
       flex: 1,
-      valueGetter: getNested("note"),
       valueFormatter: fmtPlain("—"),
     },
   ];

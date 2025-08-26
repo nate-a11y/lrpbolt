@@ -38,7 +38,7 @@ import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort } from "@/utils/gridFormatters";
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -137,6 +137,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   }, [rides, dateRange]);
 
   useEffect(() => {
+    warnMissingFields(columns, rows);
     if (rows?.[0]) console.debug("claim rows sample", rows[0]);
   }, [rows]);
 

@@ -22,6 +22,7 @@ import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
+import { warnMissingFields } from "@/utils/gridFormatters";
 
 // --- helpers: robust parsing for lines and "email,role" ---
 function parseUserLines(input) {
@@ -82,6 +83,7 @@ export default function AdminUserManager() {
           access: (r.access || "").toLowerCase(),
         }));
         setRows(mapped);
+        warnMissingFields(columns, mapped);
         setLoading(false);
       },
       { roles: ROLES },

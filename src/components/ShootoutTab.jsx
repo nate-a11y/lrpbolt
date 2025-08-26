@@ -27,7 +27,7 @@ import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort } from "@/utils/gridFormatters";
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
@@ -78,6 +78,7 @@ export default function ShootoutTab() {
       onData: (rows) => {
         if (!isMounted.current) return;
         setHistory(rows);
+        warnMissingFields(cols, rows);
         const open = rows.find(
           (r) => r.driverEmail?.toLowerCase() === driverEmail?.toLowerCase() && !r.endTime
         );
