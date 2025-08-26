@@ -29,4 +29,15 @@ describe("timeUtils", () => {
     const d = new Date("2024-01-01T12:00:00Z");
     expect(formatLocalShort(d)).toContain("Jan");
   });
+
+  it("toDayjs handles seconds/nanoseconds object", () => {
+    const ts = { seconds: 1700000000, nanoseconds: 0 };
+    const d = toDayjs(ts);
+    expect(d?.isValid()).toBe(true);
+  });
+
+  it("formatLocalShort handles seconds/nanoseconds object", () => {
+    const ts = { seconds: 1700000000, nanoseconds: 0 };
+    expect(formatLocalShort(ts)).not.toBe("—");
+  });
 });

@@ -11,6 +11,13 @@ dayjs.extend(timezone);
 export function tsToDayjs(ts) {
   if (!ts) return null;
   if (typeof ts.toDate === "function") return dayjs(ts.toDate());
+  if (
+    typeof ts === "object" &&
+    typeof ts.seconds === "number" &&
+    typeof ts.nanoseconds === "number"
+  ) {
+    return dayjs(new Date(ts.seconds * 1000 + ts.nanoseconds / 1e6));
+  }
   if (ts instanceof Date) return dayjs(ts);
   return dayjs(ts); // ISO/string/number
 }

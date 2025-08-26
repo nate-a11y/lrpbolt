@@ -7,10 +7,19 @@ dayjsLib.extend(tz);
 
 const TZ = "America/Chicago";
 
-// Normalize Firestore Timestamp | Date | string to dayjs or null
+// Normalize Firestore Timestamp | Date | {seconds,nanoseconds} | string to dayjs or null
 export function toDayjs(value, tzName = TZ) {
   if (!value) return null;
-  const raw = value?.toDate ? value.toDate() : value;
+  let raw = value;
+  if (typeof value?.toDate === "function") {
+    raw = value.toDate();
+  } else if (
+    typeof value === "object" &&
+    typeof value.seconds === "number" &&
+    typeof value.nanoseconds === "number"
+  ) {
+    raw = new Date(value.seconds * 1000 + value.nanoseconds / 1e6);
+  }
   const d = dayjsLib(raw);
   if (!d.isValid()) return null;
   return tzName ? d.tz(tzName) : d;
