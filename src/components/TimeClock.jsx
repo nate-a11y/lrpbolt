@@ -30,7 +30,8 @@ import {
 } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
-import { vfText, vfDateTime, vfDuration, safeVG } from "@/utils/gridFormatters";
+  import { vfText, vfDateTime, vfDuration, safeVG } from "@/utils/gridFormatters";
+  import { fmtMinutes } from "@/utils/datetime";
 import { useRole } from "@/hooks";
 import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";

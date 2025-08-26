@@ -14,13 +14,14 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
-import {
-  vfText,
-  vfDateTime,
-  vfDuration,
-  vfNumber,
-  safeVG,
-} from "@/utils/gridFormatters";
+  import {
+    vfText,
+    vfDateTime,
+    vfDuration,
+    vfNumber,
+    safeVG,
+  } from "@/utils/gridFormatters";
+  import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
