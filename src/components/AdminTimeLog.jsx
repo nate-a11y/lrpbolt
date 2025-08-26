@@ -657,7 +657,9 @@ export default function AdminTimeLog() {
         valueGetter: (p) =>
           durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
         valueFormatter: (p) =>
-          durationHumanFloor(p?.row?.startTime, p?.row?.endTime),
+          p?.value == null
+            ? "—"
+            : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       {
@@ -837,7 +839,7 @@ export default function AdminTimeLog() {
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGridPro
               {...entryGrid}
-              rows={entryFiltered || []}
+              rows={entryFiltered ?? []}
               columns={entryColumns}
               loading={!!loadingEntries}
               editMode="row"
@@ -894,7 +896,7 @@ export default function AdminTimeLog() {
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGridPro
               {...shootSummaryGrid}
-              rows={shootSummaryFiltered}
+              rows={shootSummaryFiltered ?? []}
               columns={shootSummaryColumns}
               slots={{ toolbar: GridToolbar }}
               initialState={{
@@ -941,7 +943,7 @@ export default function AdminTimeLog() {
             <Box sx={{ width: 1, overflowX: "auto" }}>
               <DataGridPro
                 {...weeklyGrid}
-                rows={weekly || []}
+                rows={weekly ?? []}
                 columns={[
                   { field: "driver", headerName: "Driver", flex: 1 },
                   {
@@ -1022,7 +1024,7 @@ export default function AdminTimeLog() {
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGridPro
               {...shootGrid}
-              rows={shootoutFiltered}
+              rows={shootoutFiltered ?? []}
               columns={shootoutColumns}
               loading={!!loadingShootout}
               editMode="row"

@@ -282,7 +282,9 @@ export default function ShootoutTab() {
       valueGetter: (p) =>
         durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
       valueFormatter: (p) =>
-        durationHumanFloor(p?.row?.startTime, p?.row?.endTime),
+        p?.value == null
+          ? "—"
+          : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
       sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
     },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
@@ -436,7 +438,7 @@ export default function ShootoutTab() {
             <Box sx={{ width: "100%" }}>
               <DataGridPro
                 {...grid}
-                rows={rows || []}
+                rows={rows ?? []}
                 columns={cols}
                 pageSizeOptions={[5, 10, 25]}
                 initialState={initialState}

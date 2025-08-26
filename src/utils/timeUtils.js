@@ -32,14 +32,14 @@ function coerceDate(value) {
   return null;
 }
 
-export function toDayjs(value, tzName = TZ) {
+function toDayjs(value, tzName = TZ) {
   const d = coerceDate(value);
   if (!d) return null;
   const j = tzName ? dayjsLib(d).tz(tzName) : dayjsLib(d);
   return j.isValid() ? j : null;
 }
 
-export function durationMinutesFloor(start, end, tzName = TZ) {
+function durationMinutesFloor(start, end, tzName = TZ) {
   const s = toDayjs(start, tzName), e = toDayjs(end, tzName);
   if (!s || !e) return null;
   const s0 = s.second(0).millisecond(0), e0 = e.second(0).millisecond(0);
@@ -47,14 +47,27 @@ export function durationMinutesFloor(start, end, tzName = TZ) {
   return Math.floor(e0.diff(s0) / 60000);
 }
 
-export function durationHumanFloor(start, end, tzName = TZ) {
+function durationHumanFloor(start, end, tzName = TZ) {
   const m = durationMinutesFloor(start, end, tzName);
   if (m == null) return "—";
   const h = Math.floor(m / 60), r = m % 60;
   return `${h}h ${r}m`;
 }
 
-export function formatLocalShort(value, tzName = TZ) {
+function formatLocalShort(value, tzName = TZ) {
   const d = toDayjs(value, tzName);
   return d ? d.format("MMM D, h:mm A") : "—";
 }
+
+function coerceDatePublic(v) {
+  const j = toDayjs(v);
+  return j ? j.toDate() : null;
+}
+
+export {
+  toDayjs,
+  durationMinutesFloor,
+  durationHumanFloor,
+  formatLocalShort,
+  coerceDatePublic,
+};

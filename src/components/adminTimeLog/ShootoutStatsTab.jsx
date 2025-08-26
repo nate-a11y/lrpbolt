@@ -117,7 +117,9 @@ export default function ShootoutStatsTab() {
         valueGetter: (p) =>
           durationMinutesFloor(getRow(p)?.startTime, getRow(p)?.endTime),
         valueFormatter: (p) =>
-          durationHumanFloor(getRow(p)?.startTime, getRow(p)?.endTime),
+          p?.value == null
+            ? "—"
+            : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       {
@@ -277,7 +279,7 @@ export default function ShootoutStatsTab() {
           editMode="row"
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update stat")}
-          rows={safeRows}
+          rows={safeRows ?? []}
           getRowId={(r) =>
             r.id ||
             r.docId ||

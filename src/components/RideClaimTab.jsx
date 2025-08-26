@@ -41,6 +41,7 @@ import {
   safe,
   groupKey,
 } from "../utils/rideFormatters";
+import { formatLocalShort, coerceDatePublic } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import dayjs from "dayjs";
@@ -115,11 +116,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     return rides
       .map((r) => {
         const id = r.id || r.tripId;
-        const dt =
-          r.pickupTime instanceof Timestamp
-            ? r.pickupTime.toDate()
-            : new Date(r.pickupTime);
-        if (Number.isNaN(dt?.getTime?.())) return null;
+        const dt = coerceDatePublic(r.pickupTime);
+        if (!dt) return null;
         return {
           id,
           tripId: r.tripId,
@@ -129,7 +127,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           timeBucket: groupKey(dt),
           rideType: safe(r.rideType),
           rideNotes: safe(r.rideNotes, "none"),
-          durationMin: Number(r.rideDuration ?? 0),
+          rideDuration: Number(r.rideDuration ?? 0),
         };
       })
       .filter(Boolean)
@@ -142,6 +140,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         return okStart && okEnd;
       });
   }, [rides, dateRange]);
+
+  useEffect(() => {
+    if (rows?.[0]) console.debug("claim rows sample", rows[0]);
+  }, [rows]);
 
   const showToast = (message, severity = "success") =>
     setToast({ open: true, message, severity });
@@ -238,28 +240,24 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       {
         field: "pickupTime",
         headerName: "Pickup",
+        type: "dateTime",
         minWidth: 180,
         flex: 1,
-        valueFormatter: (p) =>
-          p?.value ? `${fmtDate(p.value)} ${fmtTime(p.value)}` : "—",
+        valueGetter: (p) => coerceDatePublic(p?.row?.pickupTime),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         sortComparator: (a, b) => (a && b ? new Date(a) - new Date(b) : 0),
       },
       { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
       { field: "rideType", headerName: "Type", minWidth: 120 },
       {
-        field: "durationMin",
+        field: "rideDuration",
         headerName: "Duration",
         width: 120,
-        valueFormatter: (p) =>
-          p?.value == null ? "—" : fmtDurationHM(Number(p.value)),
+        valueGetter: (p) => Number(p?.row?.rideDuration ?? 0),
+        valueFormatter: (p) => (p?.value ? fmtDurationHM(p.value) : "—"),
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
-      {
-        field: "rideNotes",
-        headerName: "Notes",
-        minWidth: 220,
-        flex: 2,
-      },
+      { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2 },
       {
         field: "actions",
         type: "actions",
@@ -297,7 +295,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const selectedMinutes = useMemo(
     () =>
       rows.reduce(
-        (sum, r) => sum + (selectedSet.has(r.id) ? r.durationMin || 0 : 0),
+        (sum, r) => sum + (selectedSet.has(r.id) ? r.rideDuration || 0 : 0),
         0,
       ),
     [rows, selectedSet],
@@ -309,7 +307,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         vehicle: "Selected",
         rideType: "",
         rideNotes: `${selectedCount} ride(s) selected`,
-        durationMin: selectedMinutes,
+        rideDuration: selectedMinutes,
         pickupTime: null,
       },
     ],
@@ -491,7 +489,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           }}
         >
           <DataGridPro
-            rows={rows}
+            rows={rows ?? []}
             columns={columns}
             loading={loadingRides}
             checkboxSelection

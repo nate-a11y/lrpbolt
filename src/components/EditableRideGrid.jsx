@@ -18,6 +18,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
+import { fmtDurationHM } from "../utils/rideFormatters";
 
 export default function EditableRideGrid({
   rows,
@@ -60,10 +61,13 @@ export default function EditableRideGrid({
         minWidth: 130,
       },
       {
-        field: "rideDurationStr",
+        field: "rideDuration",
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
+        valueGetter: (p) => Number(p?.row?.rideDuration ?? 0),
+        valueFormatter: (p) => (p?.value ? fmtDurationHM(p.value) : "—"),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
       { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
@@ -131,7 +135,7 @@ export default function EditableRideGrid({
     <Box sx={{ width: "100%", height: 600 }}>
       <DataGridPro
         {...grid}
-        rows={rows || []}
+        rows={rows ?? []}
         columns={columns}
         loading={loading}
         slots={{ toolbar: CustomToolbar }}
