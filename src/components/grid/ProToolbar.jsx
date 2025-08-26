@@ -6,9 +6,15 @@ import {
   GridToolbarExport,
   GridToolbarQuickFilter,
 } from "@mui/x-data-grid-pro";
-import { Stack, Button } from "@mui/material";
+import { Stack, Button, Tooltip } from "@mui/material";
 
-export default function ProToolbar({ onReset, rightAction, rightActionLabel }) {
+export default function ProToolbar({
+  onReset,
+  rightAction,
+  rightActionLabel,
+  rightActionProps,
+  rightActionTooltip,
+}) {
   return (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1 }}>
       <GridToolbarColumnsButton />
@@ -18,9 +24,29 @@ export default function ProToolbar({ onReset, rightAction, rightActionLabel }) {
       <GridToolbarQuickFilter debounceMs={400} />
       <span style={{ flex: 1 }} />
       {rightAction ? (
-        <Button size="small" variant="contained" onClick={rightAction}>
-          {rightActionLabel || "Action"}
-        </Button>
+        rightActionTooltip ? (
+          <Tooltip title={rightActionTooltip}>
+            <span>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={rightAction}
+                {...rightActionProps}
+              >
+                {rightActionLabel || "Action"}
+              </Button>
+            </span>
+          </Tooltip>
+        ) : (
+          <Button
+            size="small"
+            variant="contained"
+            onClick={rightAction}
+            {...rightActionProps}
+          >
+            {rightActionLabel || "Action"}
+          </Button>
+        )
       ) : null}
       {onReset ? (
         <Button size="small" onClick={onReset}>
