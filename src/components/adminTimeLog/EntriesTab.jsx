@@ -19,10 +19,11 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime, fmtText, fmtMinutes } from "@/utils/timeUtils";
+import { fmtText } from "@/utils/timeUtils";
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
+import { dateCol, friendlyDateTime, durationMinutes } from "@/utils/datetime";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -79,12 +80,19 @@ export default function EntriesTab() {
     }, []);
 
     const columns = [
-      { field: 'driverId', headerName: 'Driver', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
-      { field: 'rideId', headerName: 'Ride ID', width: 140, valueFormatter: ({ value }) => fmtText(value) },
-      { field: 'startTime', headerName: 'Start', width: 180, valueFormatter: ({ value }) => fmtDateTime(value) },
-      { field: 'endTime', headerName: 'End', width: 180, valueFormatter: ({ value }) => fmtDateTime(value) },
-      { field: 'rideDuration', headerName: 'Duration', width: 110, valueFormatter: ({ value }) => fmtMinutes(value) },
-      { field: 'loggedAt', headerName: 'Logged At', width: 180, valueFormatter: ({ value }) => fmtDateTime(value) },
+      { field: 'driverEmail', headerName: 'Driver', flex: 1, minWidth: 120 },
+      { field: 'rideId', headerName: 'Ride ID', width: 120 },
+      dateCol('startTime', 'Start'),
+      dateCol('endTime', 'End'),
+      {
+        field: 'duration',
+        headerName: 'Duration',
+        width: 110,
+        valueGetter: ({ row }) => durationMinutes(row?.startTime, row?.endTime),
+        valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+      },
+      dateCol('loggedAt', 'Logged At'),
       actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
     ];
 
@@ -120,10 +128,10 @@ export default function EntriesTab() {
         ? [
             r.driverId ?? r.driverEmail,
             r.rideId,
-            fmtDateTime(r.startTime),
-            fmtDateTime(r.endTime),
-            fmtDateTime(r.loggedAt),
-            fmtMinutes(r.rideDuration),
+            friendlyDateTime(r.startTime),
+            friendlyDateTime(r.endTime),
+            friendlyDateTime(r.loggedAt),
+            durationMinutes(r.startTime, r.endTime),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -192,10 +200,10 @@ export default function EntriesTab() {
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">{fmtText(r.driverId)}</Typography>
                   <Typography variant="body2">Ride ID: {fmtText(r.rideId)}</Typography>
-                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
-                  <Typography variant="body2">Duration: {fmtMinutes(r.rideDuration)}</Typography>
-                  <Typography variant="body2">Logged: {fmtDateTime(r.loggedAt)}</Typography>
+                  <Typography variant="body2">Start: {friendlyDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {friendlyDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">Duration: {(() => { const m = durationMinutes(r.startTime, r.endTime); return m == null ? '—' : `${m}m`; })()}</Typography>
+                  <Typography variant="body2">Logged: {friendlyDateTime(r.loggedAt)}</Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

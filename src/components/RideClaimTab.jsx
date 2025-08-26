@@ -40,11 +40,10 @@ import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
-import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
-import { safeRow } from "@/utils/gridUtils";
-import { withSafeColumns, fmtDateTimeCell, dateSort, toJSDate } from "../utils/gridFormatters";
+import { withSafeColumns } from "../utils/gridFormatters";
+import { dateCol, durationMinutes, toDateAny } from "@/utils/datetime";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
@@ -74,13 +73,6 @@ function ProToolbar({ onBulkClaim, selectedCount }) {
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-const fmtDuration = (start, end) => {
-  const s = toDayjs(start);
-  const e = toDayjs(end);
-  if (!s || !e) return EM_DASH;
-  return fmtMinutes(e.diff(s, 'minute'));
-};
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const theme = useTheme();
@@ -121,7 +113,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     return rides
       .map((r) => {
         const id = r.id || r.tripId;
-        const dt = toDayjs(r.pickupTime ?? r.PickupTime)?.toDate();
+        const dt = toDateAny(r.pickupTime ?? r.PickupTime);
         if (!dt) return null;
         return {
           id,
@@ -189,7 +181,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       if (!ride) throw new Error("Ride not found");
 
       const rawPickup = ride.pickupTime ?? ride.PickupTime;
-      const pickupDate = toDayjs(rawPickup)?.toDate();
+      const pickupDate = toDateAny(rawPickup);
       const pickupTime =
         rawPickup instanceof Timestamp
           ? rawPickup
@@ -240,38 +232,21 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const rawColumns = useMemo(
     () => [
-      {
-        field: "pickupTime",
-        headerName: "Pickup",
-        type: "dateTime",
-        minWidth: 180,
-        flex: 1,
-        valueGetter: (p) => toJSDate(safeRow(p)?.pickupTime),
-        valueFormatter: fmtDateTimeCell({ timeZone: "America/Chicago" }),
-        sortComparator: dateSort,
-      },
+      dateCol("pickupTime", "Pickup", { minWidth: 180, flex: 1 }),
       { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
       { field: "rideType", headerName: "Type", minWidth: 120 },
       {
         field: "rideDuration",
         headerName: "Duration",
         width: 120,
-        valueGetter: (p) => {
-          const r = safeRow(p);
-          if (!r) return null;
-          return {
-            s: r.pickupTime,
-            e: r.pickupTime && r.rideDuration
-              ? r.pickupTime + r.rideDuration * 60000
-              : null,
-          };
-        },
-        valueFormatter: (params = {}) =>
-          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
-        sortComparator: (a, b) => {
-          const da = (a?.e ?? 0) - (a?.s ?? 0);
-          const db = (b?.e ?? 0) - (b?.s ?? 0);
-          return da - db;
+        valueFormatter: ({ value, api, id }) => {
+          if (Number.isFinite(value)) return `${value}m`;
+          const row = api.getRow(id);
+          const mins = durationMinutes(
+            row?.pickupTime,
+            row?.endTime ?? row?.dropoffTime,
+          );
+          return mins == null ? "—" : `${mins}m`;
         },
       },
       { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2 },
@@ -572,10 +547,15 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
                 Date/Time: {fmtDate(entry.pickupTime)} {fmtTime(entry.pickupTime)}
               </Typography>
               <Typography>
-                Duration: {fmtDuration(
-                  entry.pickupTime,
-                  entry.pickupTime + entry.rideDuration * 60000,
-                )}
+                Duration: {
+                  (() => {
+                    const m = durationMinutes(
+                      entry.pickupTime,
+                      entry.pickupTime + entry.rideDuration * 60000,
+                    );
+                    return m == null ? "—" : `${m}m`;
+                  })()
+                }
               </Typography>
               <Typography>Trip Type: {safe(entry.rideType)}</Typography>
               <Typography>

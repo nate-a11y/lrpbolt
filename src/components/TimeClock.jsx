@@ -34,9 +34,8 @@ import { db } from "src/utils/firebaseInit";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
-import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
-import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
+import { dateCol, durationMinutes, toDateAny } from "@/utils/datetime";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import ErrorBanner from "./ErrorBanner";
 import { useRole } from "@/hooks";
@@ -75,12 +74,6 @@ function tsToMillis(v) {
   return d ? d.getTime() : null;
 }
 
-const fmtDuration = (start, end) => {
-  const s = toDayjs(start);
-  const e = toDayjs(end);
-  if (!s || !e) return EM_DASH;
-  return fmtMinutes(e.diff(s, 'minute'));
-};
 
 export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [rideId, setRideId] = useState("");
@@ -107,47 +100,24 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
     const columns = useMemo(
       () => [
-        {
-          field: "rideId",
-          headerName: "Ride ID",
-          flex: 1,
-          valueFormatter: fmtPlain("—"),
-        },
-        {
-          field: "startTime",
-          headerName: "Start",
+        { field: "rideId", headerName: "Ride ID", flex: 1, valueFormatter: fmtPlain("—") },
+        dateCol("startTime", "Start", {
           width: 160,
-          valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-          sortComparator: dateSort,
-        },
-        {
-          field: "endTime",
-          headerName: "End",
+          valueGetter: (p) => toDateAny(p.row?.start ?? p.row?.startTime),
+        }),
+        dateCol("endTime", "End", {
           width: 160,
-          valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-          sortComparator: dateSort,
-        },
+          valueGetter: (p) => toDateAny(p.row?.end ?? p.row?.endTime),
+        }),
         {
           field: "duration",
           headerName: "Duration",
           width: 140,
-          valueGetter: (p) => {
-            const r = safeRow(p);
-            return r
-              ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) }
-              : null;
-          },
-          valueFormatter: (params) =>
-            params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
+          valueGetter: ({ row }) =>
+            durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
+          valueFormatter: ({ value }) => (value == null ? "—" : `${value}m`),
         },
-        {
-          field: "note",
-          headerName: "Note",
-          flex: 1,
-          valueFormatter: fmtPlain("—"),
-        },
+        { field: "note", headerName: "Note", flex: 1, valueFormatter: fmtPlain("—") },
       ],
       [],
     );

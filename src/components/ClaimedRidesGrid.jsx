@@ -23,8 +23,9 @@ import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { shapeRideRow } from "../services/shapeRideRow";
-import { fmtDateTime, fmtText, fmtMinutes } from "@/utils/timeUtils";
+import { fmtText } from "@/utils/timeUtils";
 import { useGridDoctor } from "../utils/useGridDoctor";
+import { dateCol, durationMinutes } from "@/utils/datetime";
 
 import EditRideDialog from "./EditRideDialog";
 import actionsCol from "./grid/actionsCol.jsx";
@@ -52,37 +53,21 @@ const ClaimedRidesGrid = () => {
 
   const columns = useMemo(
     () => [
-      {
-        field: 'pickupTime',
-        headerName: 'Pickup',
-        flex: 1,
-        valueGetter: ({ row }) => row.pickupTime,
-        valueFormatter: ({ value }) => fmtDateTime(value),
-      },
-      {
-        field: 'vehicle',
-        headerName: 'Vehicle',
-        flex: 1,
-        valueFormatter: ({ value }) => fmtText(value),
-      },
-      {
-        field: 'rideType',
-        headerName: 'Type',
-        flex: 1,
-        valueFormatter: ({ value }) => fmtText(value),
-      },
+      dateCol('pickupTime', 'Pickup', { flex: 1 }),
+      { field: 'vehicle', headerName: 'Vehicle', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
+      { field: 'rideType', headerName: 'Type', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
       {
         field: 'rideDuration',
         headerName: 'Duration',
         width: 110,
-        valueFormatter: ({ value }) => fmtMinutes(value),
+        valueFormatter: ({ value, api, id }) => {
+          if (Number.isFinite(value)) return `${value}m`;
+          const row = api.getRow(id);
+          const mins = durationMinutes(row?.pickupTime, row?.endTime ?? row?.dropoffTime);
+          return mins == null ? '—' : `${mins}m`;
+        },
       },
-      {
-        field: 'rideNotes',
-        headerName: 'Notes',
-        flex: 1.5,
-        valueFormatter: ({ value }) => fmtText(value),
-      },
+      { field: 'rideNotes', headerName: 'Notes', flex: 1.5, valueFormatter: ({ value }) => fmtText(value) },
       actionsCol({
         onDelete: (row) => handleDelete(row),
       }),

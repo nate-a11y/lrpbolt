@@ -3,9 +3,10 @@ import { useMemo, useEffect, useCallback } from "react";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 
-import { fmtDateTime, fmtText, fmtMinutes } from "@/utils/timeUtils";
+import { fmtText } from "@/utils/timeUtils";
 import actionsCol from "./grid/actionsCol.jsx";
 import { useGridDoctor } from "../utils/useGridDoctor";
+import { dateCol, durationMinutes } from "@/utils/datetime";
 
 export default function EditableRideGrid({
   rows,
@@ -43,37 +44,21 @@ export default function EditableRideGrid({
 
   const columns = useMemo(
     () => [
-      {
-        field: 'pickupTime',
-        headerName: 'Pickup',
-        flex: 1,
-        valueGetter: ({ row }) => row.pickupTime,
-        valueFormatter: ({ value }) => fmtDateTime(value),
-      },
-      {
-        field: 'vehicle',
-        headerName: 'Vehicle',
-        flex: 1,
-        valueFormatter: ({ value }) => fmtText(value),
-      },
-      {
-        field: 'rideType',
-        headerName: 'Type',
-        flex: 1,
-        valueFormatter: ({ value }) => fmtText(value),
-      },
+      dateCol('pickupTime', 'Pickup', { flex: 1 }),
+      { field: 'vehicle', headerName: 'Vehicle', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
+      { field: 'rideType', headerName: 'Type', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
       {
         field: 'rideDuration',
         headerName: 'Duration',
         width: 110,
-        valueFormatter: ({ value }) => fmtMinutes(value),
+        valueFormatter: ({ value, api, id }) => {
+          if (Number.isFinite(value)) return `${value}m`;
+          const row = api.getRow(id);
+          const mins = durationMinutes(row?.pickupTime, row?.endTime ?? row?.dropoffTime);
+          return mins == null ? '—' : `${mins}m`;
+        },
       },
-      {
-        field: 'rideNotes',
-        headerName: 'Notes',
-        flex: 1.5,
-        valueFormatter: ({ value }) => fmtText(value),
-      },
+      { field: 'rideNotes', headerName: 'Notes', flex: 1.5, valueFormatter: ({ value }) => fmtText(value) },
       actionsCol({
         onEdit: (row) => handleEdit(row),
         onDelete: (row) => handleDelete(row.id),

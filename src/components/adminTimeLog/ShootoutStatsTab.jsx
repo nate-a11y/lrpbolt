@@ -19,10 +19,11 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime, fmtText } from "@/utils/timeUtils";
+import { fmtText } from "@/utils/timeUtils";
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
+import { dateCol, durationMinutes, friendlyDateTime } from "@/utils/datetime";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -95,32 +96,19 @@ export default function ShootoutStatsTab() {
       flex: 1,
       valueFormatter: ({ value }) => fmtText(value?.split?.('@')?.[0] ?? value),
     },
+    { field: 'vehicle', headerName: 'Vehicle', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
+    dateCol('startTime', 'Start'),
+    dateCol('endTime', 'End'),
     {
-      field: 'vehicle',
-      headerName: 'Vehicle',
-      flex: 1,
-      valueFormatter: ({ value }) => fmtText(value),
-    },
-    {
-      field: 'startTime',
-      headerName: 'Start',
-      width: 180,
-      valueFormatter: ({ value }) => fmtDateTime(value),
-    },
-    {
-      field: 'endTime',
-      headerName: 'End',
-      width: 180,
-      valueFormatter: ({ value }) => fmtDateTime(value),
+      field: 'duration',
+      headerName: 'Duration',
+      width: 110,
+      valueGetter: ({ row }) => durationMinutes(row?.startTime, row?.endTime),
+      valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
     },
     { field: 'trips', headerName: 'Trips', width: 90 },
     { field: 'passengers', headerName: 'Pax', width: 90 },
-    {
-      field: 'createdAt',
-      headerName: 'Created',
-      width: 180,
-      valueFormatter: ({ value }) => fmtDateTime(value),
-    },
+    dateCol('createdAt', 'Created'),
     actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
   ];
 
@@ -142,9 +130,9 @@ export default function ShootoutStatsTab() {
             r.vehicle,
             r.trips,
             r.passengers,
-            fmtDateTime(r.startTime),
-            fmtDateTime(r.endTime),
-            fmtDateTime(r.createdAt),
+            friendlyDateTime(r.startTime),
+            friendlyDateTime(r.endTime),
+            friendlyDateTime(r.createdAt),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -201,11 +189,12 @@ export default function ShootoutStatsTab() {
                     {fmtText(r.driverEmail?.split?.('@')?.[0] ?? r.driverEmail)}
                   </Typography>
                   <Typography variant="body2">Vehicle: {fmtText(r.vehicle)}</Typography>
-                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">Start: {friendlyDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {friendlyDateTime(r.endTime)}</Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Pax: {r.passengers}</Typography>
-                  <Typography variant="body2">Created: {fmtDateTime(r.createdAt)}</Typography>
+                  <Typography variant="body2">Duration: {(() => { const m = durationMinutes(r.startTime, r.endTime); return m == null ? '—' : `${m}m`; })()}</Typography>
+                  <Typography variant="body2">Created: {friendlyDateTime(r.createdAt)}</Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

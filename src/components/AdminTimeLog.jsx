@@ -32,14 +32,8 @@ import Papa from "papaparse";
 import { doc, deleteDoc } from "firebase/firestore";
 
 import { safeRow } from "../utils/gridUtils";
-import {
-  fmtDateTimeCell,
-  fmtPlain,
-  toJSDate,
-  dateSort,
-  warnMissingFields,
-} from "../utils/gridFormatters";
-import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
+import { fmtPlain, warnMissingFields } from "../utils/gridFormatters";
+import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
@@ -62,10 +56,8 @@ const TZ = "America/Chicago";
 const isEmail = (s) => typeof s === "string" && s.includes("@");
 
 const fmtDuration = (start, end) => {
-  const s = toDayjs(start);
-  const e = toDayjs(end);
-  if (!s || !e) return EM_DASH;
-  return fmtMinutes(e.diff(s, 'minute'));
+  const m = durationMinutes(start, end);
+  return m == null ? '—' : `${m}m`;
 };
 
 function toMs(input) {
@@ -104,8 +96,7 @@ function toMs(input) {
   return null;
 }
 function fmtDateTimeMs(ms) {
-  const d = toJSDate(ms);
-  return d ? dayjs(d).tz(TZ).format("MMM D, h:mm A") : "";
+  return friendlyDateTime(ms);
 }
 function fmtMinutes(min) {
   if (!Number.isFinite(min) || min < 0) return "";
@@ -259,9 +250,7 @@ export default function AdminTimeLog() {
   );
 
   const processEntryUpdate = async (newRow) => {
-    const s = toDayjs(newRow.startTime);
-    const e = toDayjs(newRow.endTime);
-    const durationMin = s && e ? e.diff(s, "minute") : null;
+    const durationMin = durationMinutes(newRow.startTime, newRow.endTime);
     await patchTimeLog(newRow._id || newRow.id, {
       driver: newRow.driver,
       rideId: newRow.rideId,
@@ -480,15 +469,14 @@ export default function AdminTimeLog() {
   const saveEditModal = async () => {
     if (!(editRow?._id || editRow?.id)) return;
     if (editRow._col === "timeLogs") {
-      const s = toDayjs(editRow.startTime);
-      const e = toDayjs(editRow.endTime);
+      const durationMin = durationMinutes(editRow.startTime, editRow.endTime);
       await patchTimeLog(editRow._id || editRow.id, {
         driver: editRow.driver,
         rideId: editRow.rideId,
         startTime: Number.isFinite(editRow.startTime) ? editRow.startTime : null,
         endTime: Number.isFinite(editRow.endTime) ? editRow.endTime : null,
         loggedAt: Number.isFinite(editRow.loggedAt) ? editRow.loggedAt : null,
-        durationMin: s && e ? e.diff(s, "minute") : null,
+        durationMin,
       });
     } else if (editRow._col === "shootoutStats") {
       await patchShootoutStat(editRow._id || editRow.id, {
@@ -543,53 +531,36 @@ export default function AdminTimeLog() {
         editable: true,
         valueFormatter: fmtPlain("—"),
       },
-      {
-        field: "startTime",
-        headerName: "Start",
-        type: "dateTime",
+      dateCol("startTime", "Start", {
         minWidth: 180,
         flex: 1,
         editable: true,
-        valueGetter: (p) => toJSDate(p?.row?.start ?? p?.row?.startTime),
-        valueFormatter: fmtDateTimeCell(TZ, "—"),
+        valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: dateSort,
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        type: "dateTime",
+      }),
+      dateCol("endTime", "End", {
         minWidth: 180,
         flex: 1,
         editable: true,
-        valueGetter: (p) => toJSDate(p?.row?.end ?? p?.row?.endTime),
-        valueFormatter: fmtDateTimeCell(TZ, "—"),
+        valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: dateSort,
-      },
+      }),
       {
         field: "duration",
         headerName: "Duration",
         width: 120,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
-        },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
+        valueGetter: ({ row }) =>
+          durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
+        valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
         sortable: true,
       },
-      {
-        field: "loggedAt",
-        headerName: "Logged At",
-        type: "dateTime",
+      dateCol("loggedAt", "Logged At", {
         minWidth: 180,
         flex: 0.9,
         editable: true,
-        valueGetter: (p) => toJSDate(p?.row?.loggedAt),
-        valueFormatter: fmtDateTimeCell(TZ, "—"),
+        valueGetter: (p) => toDateAny(p?.row?.loggedAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: dateSort,
-      },
+      }),
       {
         field: "actions",
         type: "actions",
@@ -654,39 +625,27 @@ export default function AdminTimeLog() {
         editable: true,
         valueFormatter: fmtPlain("—"),
       },
-      {
-        field: "startTime",
-        headerName: "Start",
-        type: "dateTime",
+      dateCol("startTime", "Start", {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => toJSDate(p?.row?.start ?? p?.row?.startTime),
-        valueFormatter: fmtDateTimeCell(TZ, "—"),
+        valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: dateSort,
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        type: "dateTime",
+      }),
+      dateCol("endTime", "End", {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => toJSDate(p?.row?.end ?? p?.row?.endTime),
-        valueFormatter: fmtDateTimeCell(TZ, "—"),
+        valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: dateSort,
-      },
+      }),
       {
         field: "duration",
         headerName: "Duration",
         width: 130,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
-        },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
+        valueGetter: ({ row }) =>
+          durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
+        valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
         sortable: true,
       },
       {
@@ -705,18 +664,13 @@ export default function AdminTimeLog() {
         editable: true,
         renderEditCell: (p) => <NumberEditCell {...p} />,
       },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        type: "dateTime",
+      dateCol("createdAt", "Created", {
         flex: 0.9,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => toJSDate(p?.row?.createdAt),
-        valueFormatter: fmtDateTimeCell(TZ, "—"),
+        valueGetter: (p) => toDateAny(p?.row?.createdAt),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: dateSort,
-      },
+      }),
       {
         field: "actions",
         type: "actions",
