@@ -9,6 +9,9 @@ export function tsToDate(v) {
     if (!v) return null;
     if (v instanceof Date) return isNaN(v) ? null : v;
     if (typeof v.toDate === "function") return v.toDate(); // Firestore Timestamp
+    if (typeof v === "number") {
+      return new Date(v < 1e12 ? v * 1000 : v);
+    }
     if (typeof v.seconds === "number" && typeof v.nanoseconds === "number") {
       return new Date(v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6));
     }
