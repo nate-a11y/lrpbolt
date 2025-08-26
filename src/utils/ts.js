@@ -26,7 +26,7 @@ export const durationMs = (start, end) => {
 
 export const fmtDuration = (ms) => {
   if (!ms || ms <= 0) return "0 min";
-  const mins = Math.round(ms / 60000);
+  const mins = Math.floor(ms / 60000);
   if (mins < 60) return `${mins} min`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;

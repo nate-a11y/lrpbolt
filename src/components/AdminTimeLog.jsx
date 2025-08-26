@@ -29,6 +29,11 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
+import {
+  durationMinutesFloor,
+  durationHumanFloor,
+  formatLocalShort,
+} from "../utils/timeUtils";
 
 import PageContainer from "./PageContainer.jsx";
 import {
@@ -83,13 +88,12 @@ function toMs(input) {
   return null;
 }
 function fmtDateTimeMs(ms) {
-  if (!Number.isFinite(ms)) return "";
-  return dayjs.tz(ms, TZ).format("MMM D, h:mm A");
+  return formatLocalShort(ms);
 }
 function fmtMinutes(min) {
   if (!Number.isFinite(min) || min < 0) return "";
   const h = Math.floor(min / 60);
-  const m = Math.round(min - h * 60);
+  const m = Math.floor(min - h * 60);
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 const asInt = (v, d = 0) => {
@@ -385,14 +389,15 @@ export default function AdminTimeLog() {
         Number.isFinite(r.endTime) &&
         r.endTime >= r.startTime
       ) {
-        cur.durationMs += r.endTime - r.startTime;
+        cur.durationMs +=
+          Math.floor((r.endTime - r.startTime) / 60000) * 60000;
       }
       by.set(email, cur);
     });
     return Array.from(by.values()).map((v) => ({
       ...v,
       driver: nameMap[v.driverEmail.toLowerCase()] || v.driverEmail,
-      hours: Number((v.durationMs / 3600000).toFixed(2)),
+      hours: Math.floor((v.durationMs / 3600000) * 100) / 100,
     }));
   }, [shootoutRows, nameMap]);
 
@@ -421,7 +426,7 @@ export default function AdminTimeLog() {
         headerName: "Duration",
         width: 130,
         valueGetter: (_, row) =>
-          Math.round((row?.durationMs || 0) / 60000),
+          Math.floor((row?.durationMs || 0) / 60000),
         valueFormatter: (value) => fmtMinutes(value),
       },
       { field: "hours", headerName: "Hours", width: 110, type: "number" },
@@ -545,7 +550,7 @@ export default function AdminTimeLog() {
           const s = row?.startTime;
           const e = row?.endTime;
           return Number.isFinite(s) && Number.isFinite(e) && e >= s
-            ? Math.round((e - s) / 60000)
+            ? Math.floor((e - s) / 60000)
             : null;
         },
         valueFormatter: (value) => fmtMinutes(value),
@@ -633,8 +638,8 @@ export default function AdminTimeLog() {
         minWidth: 160,
         editable: true,
         valueGetter: (v) => v,
-        valueFormatter: (value) => fmtDateTimeMs(value),
-        renderCell: (params) => fmtDateTimeMs(params.row?.startTime),
+        valueFormatter: (p) => formatLocalShort(p.value),
+        renderCell: (params) => formatLocalShort(params.row?.startTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -646,8 +651,8 @@ export default function AdminTimeLog() {
         minWidth: 160,
         editable: true,
         valueGetter: (v) => v,
-        valueFormatter: (value) => fmtDateTimeMs(value),
-        renderCell: (params) => fmtDateTimeMs(params.row?.endTime),
+        valueFormatter: (p) => formatLocalShort(p.value),
+        renderCell: (params) => formatLocalShort(params.row?.endTime),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -656,16 +661,11 @@ export default function AdminTimeLog() {
         field: "durationMin",
         headerName: "Duration",
         width: 130,
-        valueGetter: (value, row) => {
-          const s = row?.startTime;
-          const e = row?.endTime;
-          return Number.isFinite(s) && Number.isFinite(e) && e >= s
-            ? Math.round((e - s) / 60000)
-            : null;
-        },
-        valueFormatter: (value) => fmtMinutes(value),
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        valueGetter: (params) =>
+          durationMinutesFloor(params.row.startTime, params.row.endTime),
+        valueFormatter: (params) =>
+          durationHumanFloor(params.row.startTime, params.row.endTime),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       {
         field: "trips",
@@ -757,7 +757,7 @@ export default function AdminTimeLog() {
       id: i,
       driver: v.driver,
       sessions: v.sessions,
-      hours: Number((v.min / 60).toFixed(2)),
+      hours: Math.floor((v.min / 60) * 100) / 100,
     }));
   }, [entryRows, weekStart, weekEnd, nameMap]);
 
@@ -885,7 +885,9 @@ export default function AdminTimeLog() {
                   shootSummaryFiltered.map(
                     ({ durationMs, driverEmail, ...rest }) => ({
                       ...rest,
-                      duration: fmtMinutes(Math.round((durationMs || 0) / 60000)),
+                      duration: fmtMinutes(
+                        Math.floor((durationMs || 0) / 60000),
+                      ),
                     }),
                   ),
                   "shootoutSummary.csv",
@@ -997,12 +999,9 @@ export default function AdminTimeLog() {
                     startTime: fmtDateTimeMs(rest.startTime),
                     endTime: fmtDateTimeMs(rest.endTime),
                     createdAt: fmtDateTimeMs(rest.createdAt),
-                    duration: fmtMinutes(
-                      Number.isFinite(rest.startTime) &&
-                      Number.isFinite(rest.endTime) &&
-                      rest.endTime >= rest.startTime
-                        ? Math.round((rest.endTime - rest.startTime) / 60000)
-                        : null,
+                    duration: durationHumanFloor(
+                      rest.startTime,
+                      rest.endTime,
                     ),
                   })),
                   "shootoutStats.csv",

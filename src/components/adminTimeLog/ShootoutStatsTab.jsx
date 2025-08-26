@@ -20,7 +20,11 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-import { fmtDateTime, fmtDuration } from "../../utils/ts";
+import {
+  durationMinutesFloor,
+  durationHumanFloor,
+  formatLocalShort,
+} from "../../utils/timeUtils";
 import { getRow } from "../../utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -107,12 +111,14 @@ export default function ShootoutStatsTab() {
           Number.isFinite(getRow(p)?.pax) ? getRow(p).pax : 0,
       },
       {
-        field: "durationMs",
+        field: "durationMin",
         headerName: "Duration",
         width: 120,
         valueGetter: (p) =>
-          Number.isFinite(getRow(p)?.durationMs) ? getRow(p).durationMs : 0,
-        valueFormatter: (p) => fmtDuration(p?.value || 0),
+          durationMinutesFloor(getRow(p)?.startTime, getRow(p)?.endTime),
+        valueFormatter: (p) =>
+          durationHumanFloor(getRow(p)?.startTime, getRow(p)?.endTime),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       {
         field: "status",
@@ -128,7 +134,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => getRow(p)?.startTime ?? null,
-        valueFormatter: (p) => fmtDateTime(p?.value),
+        valueFormatter: (p) => formatLocalShort(p?.value),
       },
       {
         field: "endTime",
@@ -136,7 +142,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => getRow(p)?.endTime ?? null,
-        valueFormatter: (p) => fmtDateTime(p?.value),
+        valueFormatter: (p) => formatLocalShort(p?.value),
       },
       {
         field: "createdAt",
@@ -144,7 +150,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => getRow(p)?.createdAt ?? null,
-        valueFormatter: (p) => fmtDateTime(p?.value),
+        valueFormatter: (p) => formatLocalShort(p?.value),
       },
       {
         field: "tools",
@@ -183,10 +189,10 @@ export default function ShootoutStatsTab() {
             r.status,
             r.trips,
             r.pax,
-            fmtDuration(r.durationMs),
-            fmtDateTime(r.startTime),
-            fmtDateTime(r.endTime),
-            fmtDateTime(r.createdAt),
+            durationHumanFloor(r.startTime, r.endTime),
+            formatLocalShort(r.startTime),
+            formatLocalShort(r.endTime),
+            formatLocalShort(r.createdAt),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -243,12 +249,18 @@ export default function ShootoutStatsTab() {
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Pax: {r.pax}</Typography>
                   <Typography variant="body2">
-                    Duration: {fmtDuration(r.durationMs)}
+                    Duration: {durationHumanFloor(r.startTime, r.endTime)}
                   </Typography>
                   <Typography variant="body2">Status: {r.status}</Typography>
-                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
-                  <Typography variant="body2">Created: {fmtDateTime(r.createdAt)}</Typography>
+                  <Typography variant="body2">
+                    Start: {formatLocalShort(r.startTime)}
+                  </Typography>
+                  <Typography variant="body2">
+                    End: {formatLocalShort(r.endTime)}
+                  </Typography>
+                  <Typography variant="body2">
+                    Created: {formatLocalShort(r.createdAt)}
+                  </Typography>
                 </Stack>
                 <ToolsCell
                   row={r}
