@@ -1,27 +1,20 @@
 import dayjs from "dayjs";
 
-// one place to control the friendly format:
 export const FRIENDLY_DT = "MM/DD/YYYY hh:mm A";
 
-// Accepts Firestore Timestamp, JS Date, epoch (ms|sec), ISO/string -> Date | null
+// Accept Firestore Timestamp, JS Date, epoch (ms|sec), ISO/string -> Date|null
 export function toDateAny(v) {
   if (!v) return null;
 
-  // Firestore Timestamp
-  if (typeof v === "object" && v !== null) {
-    if (typeof v.toDate === "function") return v.toDate();
-    if ("seconds" in v && typeof v.seconds === "number") {
-      // Timestamps sometimes arrive as plain objects {seconds,nanoseconds}
-      return new Date(Math.trunc(v.seconds * 1000));
-    }
+  // Firestore Timestamp-like
+  if (typeof v === "object") {
+    if (v && typeof v.toDate === "function") return v.toDate();
+    if (v && typeof v.seconds === "number") return new Date(Math.trunc(v.seconds * 1000));
+    if (v instanceof Date) return v;
   }
 
-  // Numbers (assume ms; if it's too small, treat as seconds)
-  if (typeof v === "number") {
-    return new Date(v < 1e12 ? v * 1000 : v);
-  }
+  if (typeof v === "number") return new Date(v < 1e12 ? v * 1000 : v);
 
-  // Strings (ISO or Date-parsable)
   if (typeof v === "string") {
     const d = dayjs(v);
     return d.isValid() ? d.toDate() : null;
@@ -30,27 +23,45 @@ export function toDateAny(v) {
   return null;
 }
 
-// For renderers only – never mutates, just formats
 export function friendlyDateTime(v) {
   const d = toDateAny(v);
   return d ? dayjs(d).format(FRIENDLY_DT) : "—";
 }
 
-// Standard dateTime column for MUI DataGrid
+function epoch(x) {
+  if (!x) return -Infinity;
+  if (x instanceof Date) return x.getTime();
+  const d = toDateAny(x);
+  return d ? d.getTime() : -Infinity;
+}
+
+// Standard dateTime column for MUI DataGrid (defensive)
 export function dateCol(field, headerName, extras = {}) {
   return {
     field,
     headerName,
     type: "dateTime",
-    // Normalize whatever we get into a real Date so sorting/filtering works
-    valueGetter: (params) => toDateAny(params.value),
-    valueFormatter: (params) => (params.value ? dayjs(params.value).format(FRIENDLY_DT) : "—"),
-    sortComparator: (a, b) => {
-      const ta = a instanceof Date ? a.getTime() : -Infinity;
-      const tb = b instanceof Date ? b.getTime() : -Infinity;
-      return ta - tb;
+
+    // ⬇︎ Guard everything – grid might call this before rows exist
+    valueGetter: (params) => {
+      const raw =
+        params?.value ??
+        params?.row?.[field] ?? // if your wrapper injects row
+        undefined;
+      return toDateAny(raw);
     },
-    // never edit inline via text; we have dialogs for that
+
+    valueFormatter: (params) => {
+      const raw =
+        params?.value ??
+        params?.row?.[field] ??
+        undefined;
+      const d = raw instanceof Date ? raw : toDateAny(raw);
+      return d ? dayjs(d).format(FRIENDLY_DT) : "—";
+    },
+
+    sortComparator: (a, b) => epoch(a) - epoch(b),
+
     editable: false,
     ...extras,
   };
@@ -61,8 +72,8 @@ export function durationMinutes(start, end) {
   const s = toDateAny(start);
   const e = toDateAny(end);
   if (!s || !e) return null;
-  const diffMs = e.getTime() - s.getTime();
-  if (!Number.isFinite(diffMs)) return null;
-  const mins = Math.round(diffMs / 60000);
-  return mins < 0 ? null : mins;
+  const diff = e.getTime() - s.getTime();
+  if (!Number.isFinite(diff) || diff < 0) return null;
+  return Math.round(diff / 60000);
 }
+
