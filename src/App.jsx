@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/App.jsx
-import React, {
+import {
   useEffect,
   useState,
   useRef,

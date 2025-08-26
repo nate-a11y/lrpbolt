@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, forwardRef, memo } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -20,7 +20,7 @@ import useAuthGuard from "../hooks/useAuthGuard";
 
 import DriverSelect from "./DriverSelect";
 
-const Transition = React.forwardRef(function Transition(props, ref) {
+const Transition = forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
@@ -173,4 +173,4 @@ const ChangeDriverModal = ({ open, onClose }) => {
   );
 };
 
-export default React.memo(ChangeDriverModal);
+export default memo(ChangeDriverModal);

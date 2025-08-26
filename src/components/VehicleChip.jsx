@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import { Chip, Tooltip } from "@mui/material";
 
 const COLOR_MAP = {
@@ -10,7 +10,7 @@ const COLOR_MAP = {
   shuttle: "success",
 };
 
-export default React.memo(function VehicleChip({ vehicle }) {
+export default memo(function VehicleChip({ vehicle }) {
   const color = COLOR_MAP[vehicle.toLowerCase()] || "default";
   return (
     <Tooltip title={vehicle}>

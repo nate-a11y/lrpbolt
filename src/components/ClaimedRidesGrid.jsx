@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import {
   Box,
   Typography,
@@ -15,8 +15,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { DataGridPro } from "@mui/x-data-grid-pro";
-import { GridActionsCellItem } from "@mui/x-data-grid-pro";
+import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
 
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
@@ -177,7 +176,7 @@ const ClaimedRidesGrid = () => {
           ...shapeRideRow({ id: r.id, data: () => r }),
           fading: false,
         }));
-        if (process.env.NODE_ENV !== "production") warnMissingFields(columns, shaped);
+        if (import.meta.env.MODE !== "production") warnMissingFields(columns, shaped);
         setRows((prev) => dedupeRows(prev, shaped));
         setLoading(false);
       },
@@ -473,4 +472,4 @@ const ClaimedRidesGrid = () => {
   );
 };
 
-export default React.memo(ClaimedRidesGrid);
+export default memo(ClaimedRidesGrid);

@@ -1,4 +1,3 @@
-import React from "react";
 import { Snackbar, Alert, Button } from "@mui/material";
 
 export default function OfflineNotice({ open, onRetry, onClose }) {

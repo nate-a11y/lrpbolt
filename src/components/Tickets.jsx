@@ -33,13 +33,13 @@ import {
   useMediaQuery,
   Stack,
 } from "@mui/material";
-import { DataGridPro } from "@mui/x-data-grid-pro";
-import { GridActionsCellItem } from "@mui/x-data-grid-pro";
+import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DownloadIcon from "@mui/icons-material/Download";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import EmailIcon from "@mui/icons-material/Email";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
@@ -388,7 +388,7 @@ export default function Tickets() {
   useGridDoctor({ name: "Tickets", rows, columns });
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);
+    if (import.meta.env.MODE !== "production") warnMissingFields(columns, rows);
   }, [rows, columns]);
   return (
     <PageContainer maxWidth={960}>

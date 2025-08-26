@@ -1,3 +1,5 @@
+/* eslint-env serviceworker */
+/* global importScripts, firebase */
 /* Proprietary and confidential. See LICENSE. */
 /**
  * Workbox injectManifest SW with safe defaults.

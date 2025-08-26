@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/BlackoutOverlay.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Typography, Button, Fade, CircularProgress } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 import HourglassBottomIcon from "@mui/icons-material/HourglassBottom";
@@ -160,7 +160,7 @@ export default function BlackoutOverlay({ isAdmin = false, isLocked, onUnlock })
             Unlocks at 8:00 PM (CT)
           </Button>
 
-          {process.env.NODE_ENV !== "production" && (
+          {import.meta.env.MODE !== "production" && (
             <Typography variant="caption" sx={{ display: "block", mt: 2, opacity: 0.7 }}>
               Debug: {now.format("YYYY-MM-DD hh:mm:ss A")} ({CST})
             </Typography>

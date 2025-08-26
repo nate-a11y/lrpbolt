@@ -1,4 +1,3 @@
-import React from "react";
 import { AppBar, Toolbar, Box, IconButton, Typography, Chip, Tooltip } from "@mui/material";
 import DarkModeIcon from "@mui/icons-material/Brightness4";
 import LightModeIcon from "@mui/icons-material/LightMode";

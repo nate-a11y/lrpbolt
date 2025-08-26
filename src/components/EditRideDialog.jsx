@@ -1,10 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
-import dayjs from "../utils/dates";           // your extended dayjs with tz
-import { isValidDayjs } from "../utils/dates";
+import dayjs, { isValidDayjs } from "../utils/dates"; // your extended dayjs with tz
 import { patchRide } from "../services/rides";
 import useAuth from "../hooks/useAuth";
 import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";

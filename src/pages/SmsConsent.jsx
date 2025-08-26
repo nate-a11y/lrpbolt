@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import {
   Container,
   Paper,

@@ -1,0 +1,76 @@
+{
+  "root": true,
+  "env": { "browser": true, "es2021": true, "jest": true },
+  "plugins": ["react", "react-hooks", "import"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:import/recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module"
+  },
+  "settings": {
+    "react": { "version": "detect" },
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx", ".mjs"]
+      },
+      "alias": {
+        "map": [
+          ["@", "./src"],
+          ["src", "./src"]
+        ],
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "import/order": ["warn", {
+      "groups": ["builtin", "external", "internal", "parent", "sibling", "index", "object", "type"],
+      "newlines-between": "always"
+    }],
+    "import/no-duplicates": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "functions/lib/**",
+    "coverage/**",
+    "src/mocks/**"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "vite.config.*",
+        "vitest.config.*",
+        "babel.config.*",
+        "jest.config.*",
+        "scripts/**",
+        "functions/**/*.js"
+      ],
+      "env": { "node": true, "es2021": true },
+      "parserOptions": { "sourceType": "module" },
+      "rules": {
+        "import/no-unresolved": "off",
+        "import/namespace": "off"
+      }
+    },
+    {
+      "files": ["src/sw.js"],
+      "env": { "browser": true, "serviceworker": true, "worker": true },
+      "rules": { "no-redeclare": "off" }
+    },
+    {
+      "files": ["tests/**"],
+      "env": { "browser": true, "jest": true },
+      "rules": { "import/named": "off" }
+    }
+  ]
+}

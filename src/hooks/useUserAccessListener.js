@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { collection, limit, orderBy, query, where } from "firebase/firestore";
 
-import "../utils/firebaseInit";
-
+import { db } from "../utils/firebaseInit";
 import { COLLECTIONS } from "../constants";
 import { useAuth } from "../context/AuthContext.jsx";
-import { db } from "../utils/firebaseInit";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 
 function getKey({ activeOnly, roles, max }) {

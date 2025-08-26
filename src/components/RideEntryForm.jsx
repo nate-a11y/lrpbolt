@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideEntryForm.jsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Accordion,
   AccordionSummary,
@@ -38,10 +38,9 @@ import { DataGridPro } from "@mui/x-data-grid-pro";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
-import dayjs from "../utils/dates"; // ← our extended dayjs
+import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
 import Papa from "papaparse";
 import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe"; // eslint-disable-line no-unused-vars
-import { isValidDayjs } from "../utils/dates";
 
 import LiveRidesGrid from "./LiveRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
@@ -147,7 +146,7 @@ function RideBuilderFields({
   vehicleOptions,
   disableTripId = false,
 }) {
-  const [touched, setTouched] = React.useState({});
+  const [touched, setTouched] = useState({});
   const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
