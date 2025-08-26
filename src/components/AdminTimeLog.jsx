@@ -31,9 +31,9 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
 import {
-  durationMinutesFloor,
-  durationHumanFloor,
-  formatLocalShort,
+  formatTime,
+  formatDuration,
+  toDayjs,
 } from "../utils/timeUtils";
 
 import PageContainer from "./PageContainer.jsx";
@@ -52,6 +52,8 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const TZ = "America/Chicago";
+
+const ROUND_TIMES = false;
 
 /* ---------------- helpers ---------------- */
 const isEmail = (s) => typeof s === "string" && s.includes("@");
@@ -92,7 +94,7 @@ function toMs(input) {
   return null;
 }
 function fmtDateTimeMs(ms) {
-  return formatLocalShort(ms);
+  return formatTime(ms, { fmt: "MMM D, h:mm A" });
 }
 function fmtMinutes(min) {
   if (!Number.isFinite(min) || min < 0) return "";
@@ -246,12 +248,15 @@ export default function AdminTimeLog() {
   );
 
   const processEntryUpdate = async (newRow) => {
+    const s = toDayjs(newRow.startTime);
+    const e = toDayjs(newRow.endTime);
+    const durationMin = s && e ? e.diff(s, "minute") : null;
     await patchTimeLog(newRow._id || newRow.id, {
       driver: newRow.driver,
       rideId: newRow.rideId,
       startTime: newRow.startTime,
       endTime: newRow.endTime,
-      durationMin: newRow.durationMin,
+      durationMin,
       loggedAt: newRow.loggedAt,
     });
     return newRow;
@@ -461,15 +466,15 @@ export default function AdminTimeLog() {
   const saveEditModal = async () => {
     if (!(editRow?._id || editRow?.id)) return;
     if (editRow._col === "timeLogs") {
+      const s = toDayjs(editRow.startTime);
+      const e = toDayjs(editRow.endTime);
       await patchTimeLog(editRow._id || editRow.id, {
         driver: editRow.driver,
         rideId: editRow.rideId,
         startTime: Number.isFinite(editRow.startTime) ? editRow.startTime : null,
         endTime: Number.isFinite(editRow.endTime) ? editRow.endTime : null,
         loggedAt: Number.isFinite(editRow.loggedAt) ? editRow.loggedAt : null,
-        durationMin: Number.isFinite(editRow.durationMin)
-          ? editRow.durationMin
-          : undefined,
+        durationMin: s && e ? e.diff(s, "minute") : null,
       });
     } else if (editRow._col === "shootoutStats") {
       await patchShootoutStat(editRow._id || editRow.id, {
@@ -528,7 +533,8 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueFormatter: (p) => formatLocalShort(p?.value),
+        valueFormatter: (p) =>
+          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -539,24 +545,19 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueFormatter: (p) => formatLocalShort(p?.value),
+        valueFormatter: (p) =>
+          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
-        field: "durationMin",
+        field: "duration",
         headerName: "Duration",
         width: 120,
-        editable: true,
         valueGetter: (p) =>
-          durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
-        valueFormatter: (p) =>
-          p?.value == null
-            ? "—"
-            : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
-        renderEditCell: (params) => <NumberEditCell {...params} />,
-        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+          formatDuration(p?.row?.startTime, p?.row?.endTime),
+        sortable: true,
       },
       {
         field: "loggedAt",
@@ -564,7 +565,8 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 0.9,
         editable: true,
-        valueFormatter: (p) => formatLocalShort(p?.value),
+        valueFormatter: (p) =>
+          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -635,7 +637,8 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueFormatter: (p) => formatLocalShort(p?.value),
+        valueFormatter: (p) =>
+          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -646,22 +649,19 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueFormatter: (p) => formatLocalShort(p?.value),
+        valueFormatter: (p) =>
+          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
       },
       {
-        field: "durationMin",
+        field: "duration",
         headerName: "Duration",
         width: 130,
         valueGetter: (p) =>
-          durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
-        valueFormatter: (p) =>
-          p?.value == null
-            ? "—"
-            : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
-        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+          formatDuration(p?.row?.startTime, p?.row?.endTime),
+        sortable: true,
       },
       {
         field: "trips",
@@ -685,7 +685,8 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 170,
         editable: true,
-        valueFormatter: (p) => formatLocalShort(p?.value),
+        valueFormatter: (p) =>
+          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -986,7 +987,7 @@ export default function AdminTimeLog() {
                     startTime: fmtDateTimeMs(rest.startTime),
                     endTime: fmtDateTimeMs(rest.endTime),
                     createdAt: fmtDateTimeMs(rest.createdAt),
-                    duration: durationHumanFloor(
+                    duration: formatDuration(
                       rest.startTime,
                       rest.endTime,
                     ),
@@ -1092,15 +1093,6 @@ export default function AdminTimeLog() {
                       setEdit("endTime", v ? v.valueOf() : null)
                     }
                     slotProps={{ textField: { size: "small" } }}
-                  />
-                  <TextField
-                    label="Duration (minutes)"
-                    type="number"
-                    value={editRow.durationMin ?? ""}
-                    onChange={(e) =>
-                      setEdit("durationMin", asInt(e.target.value))
-                    }
-                    size="small"
                   />
                   <DateTimePicker
                     label="Logged At"
