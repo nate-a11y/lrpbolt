@@ -54,6 +54,7 @@ import {
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { safeGetter } from "../utils/datagridSafe";
+import { asArray } from "../utils/arrays.js";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -68,11 +69,8 @@ export default function Tickets() {
   const [deletingId, setDeletingId] = useState(null);
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
-  const [rowSelectionModel, setRowSelectionModel] = useState({
-    type: "include",
-    ids: new Set(),
-  });
-  const selectedIds = Array.from(rowSelectionModel.ids);
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+  const selectedIds = rowSelectionModel;
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
@@ -532,15 +530,17 @@ export default function Tickets() {
                 rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
                 columns={columns}
                 getRowId={(r) => r?.id ?? `${r?.ticketId}-${r?.date ?? Math.random()}`}
-              autoHeight
-              checkboxSelection
-              pageSizeOptions={[5, 10, 25, 100]}
-              density="compact"
-              disableRowSelectionOnClick
-              onRowSelectionModelChange={(model) => setRowSelectionModel(model)}
-                rowSelectionModel={rowSelectionModel}
+                autoHeight
+                checkboxSelection
+                pageSizeOptions={[5, 10, 25, 100]}
+                density="compact"
+                disableRowSelectionOnClick
+                onRowSelectionModelChange={(model) =>
+                  setRowSelectionModel(asArray(model))
+                }
+                rowSelectionModel={rowSelectionModel ?? []}
                 initialState={initialState}
-              sx={{
+                sx={{
                 "& .MuiDataGrid-row:nth-of-type(odd)": {
                   backgroundColor: "rgba(255,255,255,0.04)",
                 },
