@@ -2,7 +2,7 @@
 // tests/unit/formatClaimSms.test.js
 import { expect, test } from "vitest";
 
-import { formatClaimSms } from "../../src/components/RideClaimTab.jsx";
+import { formatClaimSms } from "../../src/utils/formatClaimSms.js";
 import {
   fmtDate,
   fmtTime,
