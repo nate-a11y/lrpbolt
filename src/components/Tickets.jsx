@@ -55,7 +55,7 @@ import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtPlain, getNested } from "@/utils/gridFormatters";
+import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -329,17 +329,19 @@ export default function Tickets() {
       headerName: "Link",
       minWidth: 100,
       sortable: false,
-      valueGetter: getNested("ticketId"),
-      renderCell: (params = {}) => (
-        <a
-          href={`/ticket/${params?.value}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "#0af" }}
-        >
-          View
-        </a>
-      ),
+      renderCell: (p = {}) => {
+        const id = safeRow(p)?.ticketId;
+        return (
+          <a
+            href={`/ticket/${id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#0af" }}
+          >
+            View
+          </a>
+        );
+      },
     },
     {
       field: "scanStatus",
@@ -397,6 +399,11 @@ export default function Tickets() {
       },
     },
   ];
+
+  useEffect(() => {
+    const rows = tickets.map((t) => ({ id: t.ticketId, ...t }));
+    warnMissingFields(columns, rows);
+  }, [tickets]);
   return (
     <PageContainer maxWidth={960}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>

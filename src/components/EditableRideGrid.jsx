@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
 import {
   Box,
@@ -13,7 +13,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtPlain } from "@/utils/gridFormatters";
+import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
 
 export default function EditableRideGrid({
   rows,
@@ -104,6 +104,10 @@ export default function EditableRideGrid({
     ],
     [onDelete, onEdit]
   );
+
+  useEffect(() => {
+    warnMissingFields(columns, rows ?? []);
+  }, [rows]);
 
   return (
     <Box sx={{ width: "100%", height: 600 }}>

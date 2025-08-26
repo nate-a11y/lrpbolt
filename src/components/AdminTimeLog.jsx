@@ -32,7 +32,7 @@ import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
 import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, getNested, dateSort } from "@/utils/gridFormatters";
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 
 import PageContainer from "./PageContainer.jsx";
 import {
@@ -606,6 +606,12 @@ export default function AdminTimeLog() {
     [nameMap],
   );
 
+  useEffect(() => {
+    warnMissingFields(entryColumns, entryRows);
+    warnMissingFields(shootSummaryColumns, shootSummaryRows);
+    warnMissingFields(shootoutColumns, shootoutRows);
+  }, [entryRows, shootSummaryRows, shootoutRows]);
+
   const shootoutColumns = useMemo(
     () => [
       {
@@ -614,7 +620,6 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: getNested("driverEmail"),
         valueFormatter: fmtPlain("—"),
         renderCell: (p) => {
           const r = safeRow(p)

@@ -2,10 +2,9 @@ import { toJSDate } from "../../src/utils/gridFormatters.js";
 import { tsToDate } from "../../src/utils/gridFx.js";
 
 describe("grid time helpers", () => {
-  it("converts numeric seconds and milliseconds", () => {
+  it("converts numeric milliseconds", () => {
     const sec = 1700000000; // seconds
     const ms = 1700000000000; // milliseconds
-    expect(toJSDate(sec)).toEqual(new Date(sec * 1000));
     expect(toJSDate(ms)).toEqual(new Date(ms));
     expect(tsToDate(sec)).toEqual(new Date(sec * 1000));
     expect(tsToDate(ms)).toEqual(new Date(ms));

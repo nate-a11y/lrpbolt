@@ -20,7 +20,7 @@ import {
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
-import { fmtPlain } from "@/utils/gridFormatters";
+import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
 
 export default function WeeklySummaryTab() {
   const [err, setErr] = useState(null);
@@ -106,21 +106,11 @@ export default function WeeklySummaryTab() {
         field: "trips",
         headerName: "Trips",
         width: 90,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          const v = r?.trips
-          return Number.isFinite(v) ? v : 0
-        },
       },
       {
         field: "hours",
         headerName: "Hours",
         width: 110,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          const v = r?.hours
-          return Number.isFinite(v) ? v : 0
-        },
         valueFormatter: (p) =>
           Number.isFinite(p?.value) ? p.value.toFixed(2) : "0.00",
       },
@@ -143,6 +133,10 @@ export default function WeeklySummaryTab() {
     ],
     [handleEdit, handleDelete]
   );
+
+  useEffect(() => {
+    warnMissingFields(columns, rows);
+  }, [rows]);
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
 

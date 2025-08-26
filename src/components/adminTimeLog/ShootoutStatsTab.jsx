@@ -22,7 +22,7 @@ import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { fmtDuration } from "../../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, getNested, toJSDate, dateSort } from "@/utils/gridFormatters";
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 
@@ -92,26 +92,17 @@ export default function ShootoutStatsTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        valueGetter: getNested("driverEmail"),
         valueFormatter: fmtPlain("—"),
       },
       {
         field: "trips",
         headerName: "Trips",
         width: 90,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return Number.isFinite(r?.trips) ? r.trips : 0
-        },
       },
       {
         field: "pax",
         headerName: "Pax",
         width: 90,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return Number.isFinite(r?.pax) ? r.pax : 0
-        },
       },
       {
         field: "duration",
@@ -180,6 +171,10 @@ export default function ShootoutStatsTab() {
     ],
     [handleEdit, handleDelete]
   );
+
+  useEffect(() => {
+    warnMissingFields(columns, rows);
+  }, [rows]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {

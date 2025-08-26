@@ -27,7 +27,7 @@ import { shapeRideRow } from "../services/shapeRideRow";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtPlain } from "@/utils/gridFormatters";
+import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -63,6 +63,7 @@ const ClaimedRidesGrid = () => {
           fading: false,
         }));
         setRows(rows);
+        warnMissingFields(columns, rows);
         setLoading(false);
       },
       () => {
