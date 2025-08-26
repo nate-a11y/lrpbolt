@@ -39,7 +39,7 @@ import {
   dateSort,
   warnMissingFields,
 } from "../utils/gridFormatters";
-import { fmtDuration, toDayjs } from "../utils/timeUtils";
+import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
@@ -60,6 +60,13 @@ const TZ = "America/Chicago";
 
 /* ---------------- helpers ---------------- */
 const isEmail = (s) => typeof s === "string" && s.includes("@");
+
+const fmtDuration = (start, end) => {
+  const s = toDayjs(start);
+  const e = toDayjs(end);
+  if (!s || !e) return EM_DASH;
+  return fmtMinutes(e.diff(s, 'minute'));
+};
 
 function toMs(input) {
   if (input == null) return null;

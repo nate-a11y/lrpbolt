@@ -1,34 +1,46 @@
-import dayjs from "dayjs";
+// src/utils/timeUtils.js
+import dayjs from 'dayjs';
 
-export const toDayjs = (v) => {
-  if (!v) return null;
+export const EM_DASH = '—';
+
+export function toDayjs(any) {
+  if (any == null) return null;
+
   // Firestore Timestamp
-  if (typeof v?.toDate === "function") v = v.toDate();
-  // seconds / nanoseconds object
-  else if (typeof v === "object" && typeof v.seconds === "number") {
-    v = v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
-  } else if (typeof v === "object" && typeof v._seconds === "number") {
-    v = v._seconds * 1000 + Math.floor((v._nanoseconds || 0) / 1e6);
+  if (typeof any?.toDate === 'function') return dayjs(any.toDate());
+
+  // { seconds, nanoseconds }
+  if (typeof any === 'object' && any && 'seconds' in any) {
+    return dayjs(any.seconds * 1000);
   }
-  // Epoch seconds → ms
-  if (typeof v === "number" && v < 1e12) v = v * 1000;
-  const d = dayjs(v);
-  return d.isValid() ? d : null;
-};
 
-export const fmtDateTime = (v, fmt = "MM/DD/YYYY h:mm A") => {
-  const d = toDayjs(v);
-  return d ? d.format(fmt) : "—";
-};
+  // JS Date
+  if (any instanceof Date) return dayjs(any);
 
-export const fmtDuration = (start, end) => {
-  const s = toDayjs(start);
-  const e = toDayjs(end);
-  if (!s || !e) return "—";
-  const mins = e.diff(s, "minute");
-  if (mins < 0) return "—";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h ? `${h}h ${m}m` : `${m}m`;
-};
+  // number (ms or sec)
+  if (typeof any === 'number') return dayjs(any > 1e12 ? any : any * 1000);
 
+  // string (ISO or friendly)
+  if (typeof any === 'string') {
+    const d = dayjs(any);
+    return d.isValid() ? d : null;
+  }
+
+  return null;
+}
+
+export function fmtDateTime(value, fmt = 'MMM D, h:mm A') {
+  const d = toDayjs(value);
+  return d && d.isValid() ? d.format(fmt) : EM_DASH;
+}
+
+export function fmtText(value) {
+  return value == null || value === '' ? EM_DASH : String(value);
+}
+
+export function fmtMinutes(value) {
+  if (value == null) return EM_DASH;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return EM_DASH;
+  return `${n}`;
+}

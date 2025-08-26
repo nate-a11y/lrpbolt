@@ -17,12 +17,19 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 dayjs.extend(durationPlugin);
 
+const fmtDuration = (start, end) => {
+  const s = toDayjs(start);
+  const e = toDayjs(end);
+  if (!s || !e) return EM_DASH;
+  return fmtMinutes(e.diff(s, 'minute'));
+};
+
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
 import { safeRow } from '@/utils/gridUtils';
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 
-import { fmtDuration } from "../utils/timeUtils";
+import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
 import { toNumber, toString, tsToDate } from "../utils/safe";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { logError } from "../utils/logError";
