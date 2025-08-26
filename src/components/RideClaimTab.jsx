@@ -238,14 +238,19 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       {
         field: "rideDuration",
         headerName: "Duration",
-        width: 120,
-        valueFormatter: ({ value, api, id }) => {
-          if (Number.isFinite(value)) return `${value}m`;
-          const row = api.getRow(id);
-          const mins = durationMinutes(
-            row?.pickupTime,
-            row?.endTime ?? row?.dropoffTime,
-          );
+        width: 110,
+        valueFormatter: (params) => {
+          // if backend already provides a number
+          if (Number.isFinite(params?.value)) return `${params.value}m`;
+
+          // Try to get the row from either wrapper-provided row or the API
+          const row =
+            params?.row ??
+            (params?.api && params?.id && typeof params.api.getRow === "function"
+              ? params.api.getRow(params.id)
+              : undefined);
+
+          const mins = durationMinutes(row?.pickupTime, row?.endTime ?? row?.dropoffTime);
           return mins == null ? "—" : `${mins}m`;
         },
       },
