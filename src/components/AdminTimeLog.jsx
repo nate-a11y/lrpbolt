@@ -31,6 +31,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
 import { fmtDateTime, fmtDuration, toDayjs } from "../utils/timeUtils";
+import { safeRow } from '@/utils/gridUtils'
 
 import PageContainer from "./PageContainer.jsx";
 import {
@@ -429,7 +430,10 @@ export default function AdminTimeLog() {
         field: "durationMin",
         headerName: "Duration",
         width: 130,
-        valueGetter: (p) => Math.floor((p?.row?.durationMs || 0) / 60000),
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return Math.floor((r?.durationMs || 0) / 60000)
+        },
         valueFormatter: (p) => fmtMinutes(p?.value),
       },
       { field: "hours", headerName: "Hours", width: 110, type: "number" },
@@ -503,7 +507,8 @@ export default function AdminTimeLog() {
         minWidth: 180,
         editable: true,
         renderCell: (p) => {
-          const d = p?.row?.driver || "";
+          const r = safeRow(p)
+          const d = r?.driver || "";
           if (!isEmail(d)) return d || "";
           const name = nameMap[d.toLowerCase()];
           return name ? (
@@ -528,7 +533,10 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueGetter: ({ row }) => row.start ?? row.startTime,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? r.start ?? r.startTime : null
+        },
         valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
@@ -540,7 +548,10 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueGetter: ({ row }) => row.end ?? row.endTime,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? r.end ?? r.endTime : null
+        },
         valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
@@ -550,11 +561,11 @@ export default function AdminTimeLog() {
         field: "duration",
         headerName: "Duration",
         width: 120,
-        valueGetter: ({ row }) => ({
-          s: row.start ?? row.startTime,
-          e: row.end ?? row.endTime,
-        }),
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+        },
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
         sortable: true,
       },
       {
@@ -575,21 +586,21 @@ export default function AdminTimeLog() {
         sortable: false,
         filterable: false,
         renderCell: (p) => {
-          const row = p.row;
+          const row = safeRow(p)
           const dis = !(row?._id || row?.id);
           return (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <IconButton
                 size="small"
                 disabled={dis}
-                onClick={() => openEditModal(row)}
+                onClick={() => row && openEditModal(row)}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 size="small"
                 disabled={dis}
-                onClick={() => handleDelete(row)}
+                onClick={() => row && handleDelete(row)}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -610,7 +621,8 @@ export default function AdminTimeLog() {
         minWidth: 180,
         editable: true,
         renderCell: (p) => {
-          const email = p.row?.driverEmail || "";
+          const r = safeRow(p)
+          const email = r?.driverEmail || "";
           const name = email ? nameMap[email.toLowerCase()] : "";
           return name ? (
             <Tooltip title={email}>
@@ -634,7 +646,10 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: ({ row }) => row.start ?? row.startTime,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? r.start ?? r.startTime : null
+        },
         valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
@@ -646,7 +661,10 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: ({ row }) => row.end ?? row.endTime,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? r.end ?? r.endTime : null
+        },
         valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
@@ -656,11 +674,11 @@ export default function AdminTimeLog() {
         field: "duration",
         headerName: "Duration",
         width: 130,
-        valueGetter: ({ row }) => ({
-          s: row.start ?? row.startTime,
-          e: row.end ?? row.endTime,
-        }),
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+        },
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
         sortable: true,
       },
       {
@@ -697,21 +715,21 @@ export default function AdminTimeLog() {
         sortable: false,
         filterable: false,
         renderCell: (p) => {
-          const row = p.row;
+          const row = safeRow(p)
           const dis = !(row?._id || row?.id);
           return (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <IconButton
                 size="small"
                 disabled={dis}
-                onClick={() => openEditModal(row)}
+                onClick={() => row && openEditModal(row)}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 size="small"
                 disabled={dis}
-                onClick={() => handleDelete(row)}
+                onClick={() => row && handleDelete(row)}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -859,6 +877,7 @@ export default function AdminTimeLog() {
                 ...entryGrid.initialState,
                 sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
               }}
+              getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
             />
           </Box>
         </Box>
@@ -904,6 +923,7 @@ export default function AdminTimeLog() {
                 ...shootSummaryGrid.initialState,
                 sorting: { sortModel: [{ field: "trips", sort: "desc" }] },
               }}
+              getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
             />
           </Box>
         </Box>
@@ -965,6 +985,7 @@ export default function AdminTimeLog() {
                   ...weeklyGrid.initialState,
                   sorting: { sortModel: [{ field: "hours", sort: "desc" }] },
                 }}
+                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
               />
             </Box>
           )}
@@ -1044,6 +1065,7 @@ export default function AdminTimeLog() {
                 ...shootGrid.initialState,
                 sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
               }}
+              getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
             />
           </Box>
         </Box>

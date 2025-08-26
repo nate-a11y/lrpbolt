@@ -9,40 +9,23 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: [
-        'Color logo with background.svg',
-        'robots.txt',
-        'apple-touch-icon.png',
-        'android-chrome-192x192.png',
-        'icons/icon-512.png',
-      ],
-      manifest: {
-        name: 'LRP Driver Portal',
-        short_name: 'LRP Portal',
-        start_url: '/',
-        scope: '/',
-        display: 'standalone',
-        background_color: '#111111',
-        theme_color: '#00c853',
-        icons: [
-          { src: 'android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          {
-            src: 'icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
-        ],
-      },
+      includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       workbox: {
         cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        navigateFallback: '/index.html',
-        // bump if you ship large bundles
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        navigateFallback: 'index.html',
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
       },
-      devOptions: { enabled: false },
+      srcDir: 'src',
+      filename: 'sw.js',
+      strategies: 'injectManifest',
+      manifest: {
+        name: 'Lake Ride Pros',
+        short_name: 'LRP',
+        display: 'standalone',
+        start_url: '/',
+        background_color: '#060606',
+        theme_color: '#060606',
+      },
     })
   ],
   resolve: {

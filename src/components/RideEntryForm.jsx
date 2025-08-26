@@ -48,6 +48,8 @@ import RideQueueGrid from "./RideQueueGrid";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import DropDailyWidget from "./DropDailyWidget";
 
+import { safeRow } from '@/utils/gridUtils'
+
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
@@ -1105,10 +1107,13 @@ if (totalMinutes <= 0) {
                       field: col,
                       headerName: col.replace(/([A-Z])/g, " $1"),
                       flex: 1,
-                      valueGetter: (params) =>
-                        params && params.row ? params.row[col] ?? "" : "",
+                      valueGetter: (p) => {
+                        const r = safeRow(p)
+                        return r ? r[col] ?? "" : ""
+                      },
                     }))}
                     pageSizeOptions={[5]}
+                    getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
                   />
                 </Box>
                 <Button

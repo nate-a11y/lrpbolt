@@ -434,7 +434,7 @@ lines.forEach((line, idx) => {
               processRowUpdate={handleProcessRowUpdate}
               isCellEditable={(params) => isAdmin && params.field !== 'email'}
               pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) => r?.id || r?.email}
+              getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
               experimentalFeatures={{ newEditingApi: true }}
               columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
             />

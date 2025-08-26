@@ -26,6 +26,7 @@ import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
 import { fmtDateTime, fmtDuration } from "../utils/timeUtils";
+import { safeRow } from '@/utils/gridUtils'
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
@@ -263,7 +264,10 @@ export default function ShootoutTab() {
       headerName: "Start",
       minWidth: 170,
       flex: 1,
-      valueGetter: ({ row }) => row.start ?? row.startTime,
+      valueGetter: (p) => {
+        const r = safeRow(p)
+        return r ? r.start ?? r.startTime : null
+      },
       valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
@@ -271,18 +275,21 @@ export default function ShootoutTab() {
       headerName: "End",
       minWidth: 170,
       flex: 1,
-      valueGetter: ({ row }) => row.end ?? row.endTime,
+      valueGetter: (p) => {
+        const r = safeRow(p)
+        return r ? r.end ?? r.endTime : null
+      },
       valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "duration",
       headerName: "Duration",
       width: 150,
-      valueGetter: ({ row }) => ({
-        s: row.start ?? row.startTime,
-        e: row.end ?? row.endTime,
-      }),
-      valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+      valueGetter: (p) => {
+        const r = safeRow(p)
+        return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+      },
+      valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
       sortable: true,
     },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
@@ -440,6 +447,7 @@ export default function ShootoutTab() {
                 columns={cols}
                 pageSizeOptions={[5, 10, 25]}
                 initialState={initialState}
+                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
               />
               {rows.length === 0 && (
                 <Typography textAlign="center" color="text.secondary" mt={2}>

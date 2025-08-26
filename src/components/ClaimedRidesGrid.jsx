@@ -26,6 +26,7 @@ import EditRideDialog from "./EditRideDialog";
 import { shapeRideRow } from "../services/shapeRideRow";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
+import { safeRow } from '@/utils/gridUtils'
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -167,14 +168,17 @@ const ClaimedRidesGrid = () => {
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
-        valueGetter: ({ row }) => ({
-          s: row.pickupTime,
-          e:
-            row.pickupTime && row.rideDuration
-              ? row.pickupTime + row.rideDuration * 60000
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          if (!r) return null
+          return {
+            s: r.pickupTime,
+            e: r.pickupTime && r.rideDuration
+              ? r.pickupTime + r.rideDuration * 60000
               : null,
-        }),
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+          }
+        },
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
@@ -281,7 +285,7 @@ const ClaimedRidesGrid = () => {
       )}
 
       <DataGridPro
-        rows={rows || []}
+        rows={rows ?? []}
         columns={columns}
         checkboxSelection
         getRowClassName={(params = {}) =>
@@ -295,6 +299,7 @@ const ClaimedRidesGrid = () => {
         {...gridProps}
         initialState={initialState}
         sx={{ ...gridProps.sx, bgcolor: "background.paper" }}
+        getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
       />
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
