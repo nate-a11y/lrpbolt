@@ -17,9 +17,9 @@ import {
   Button,
 } from "@mui/material";
 import useWeeklySummary from "../../hooks/useWeeklySummary";
-import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 import { withSafeColumns } from "@/utils/gridFormatters";
+import { getField, asText } from "@/utils/gridCells";
 
 export default function WeeklySummaryTab() {
   const [err, setErr] = useState(null);
@@ -68,11 +68,14 @@ export default function WeeklySummaryTab() {
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
+      const driverVal = getField(r, "driver");
       const driverMatch = driverFilter
-        ? r.driver.toLowerCase().includes(driverFilter.toLowerCase())
+        ? asText(driverVal)
+            ?.toLowerCase()
+            .includes(driverFilter.toLowerCase())
         : true;
       const searchMatch = search
-        ? [r.driver, r.trips, r.hours]
+        ? [driverVal, r.trips, r.hours]
             .filter(Boolean)
             .some((v) =>
               String(v).toLowerCase().includes(search.toLowerCase()),
@@ -94,9 +97,11 @@ export default function WeeklySummaryTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 200,
-        valueGetter: (p) => {
-          const r = safeRow(p);
-          return r?.driver ?? r?.driverEmail ?? null;
+        valueGetter: ({ row }) => getField(row, "driver"),
+        renderCell: (p) => {
+          const v = p.value;
+          if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
+          return asText(v) ?? "";
         },
       },
       { field: "trips", headerName: "Trips", width: 90 },
@@ -162,9 +167,18 @@ export default function WeeklySummaryTab() {
             <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">{r.driver}</Typography>
+                  <Typography variant="subtitle2">
+                    {(() => {
+                      const v = getField(r, "driver");
+                      if (v && typeof v === "string" && v.includes("@"))
+                        return v.split("@")[0];
+                      return asText(v) ?? "";
+                    })()}
+                  </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
-                  <Typography variant="body2">Hours: {r.hours.toFixed(2)}</Typography>
+                  <Typography variant="body2">
+                    Hours: {Number.isFinite(r.hours) ? r.hours.toFixed(2) : "0.00"}
+                  </Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

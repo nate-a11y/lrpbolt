@@ -42,7 +42,8 @@ import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
-import { withSafeColumns, fmtDateTimeCell, dateSort } from "../utils/gridFormatters";
+import { withSafeColumns } from "../utils/gridFormatters";
+import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
 import { durationMinutes, toDateAny } from "@/utils/datetime";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
@@ -235,37 +236,38 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       {
         field: "pickupTime",
         headerName: "Pickup",
-        type: "dateTime",
-        minWidth: 180,
-        flex: 1,
-        valueGetter: (p) => p?.row?.pickupTime ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
-        sortComparator: dateSort,
+        minWidth: 170,
+        valueGetter: ({ row }) => getField(row, "pickupTime"),
+        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
       },
-      { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
-      { field: "rideType", headerName: "Type", minWidth: 120 },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        valueGetter: ({ row }) => getField(row, "vehicle"),
+        renderCell: (p) => asText(p.value) ?? "",
+      },
+      {
+        field: "rideType",
+        headerName: "Type",
+        minWidth: 140,
+        valueGetter: ({ row }) => getField(row, "rideType"),
+        renderCell: (p) => asText(p.value) ?? "",
+      },
       {
         field: "rideDuration",
         headerName: "Duration",
-        width: 110,
-        valueGetter: (p) => p?.row?.rideDuration ?? null,
-        renderCell: (p) => {
-          const v = p?.value;
-          if (v == null) return "";
-          const mins = Number(v);
-          if (Number.isNaN(mins)) return "";
-          const h = Math.floor(mins / 60);
-          const m = mins % 60;
-          return h ? `${h}h ${m}m` : `${m}m`;
-        },
+        minWidth: 120,
+        valueGetter: ({ row }) => getField(row, "rideDuration"),
+        valueFormatter: ({ value }) => fmtMinutes(value) ?? "",
+        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       {
         field: "rideNotes",
         headerName: "Notes",
-        minWidth: 220,
         flex: 2,
-        valueGetter: (p) => p?.row?.rideNotes ?? "",
-        renderCell: (p) => p?.value || "",
+        valueGetter: ({ row }) => getField(row, "rideNotes"),
+        renderCell: (p) => asText(p.value) ?? "",
       },
       {
         field: "actions",
