@@ -22,8 +22,12 @@ function coerceDate(value) {
     const ns = value.nanoseconds ?? value._nanoseconds ?? 0;
     if (typeof s === "number") return new Date(s * 1000 + Math.floor(ns / 1e6));
   }
+  // Handle numeric epoch values: treat numbers less than 1e12 as seconds
+  // and anything larger as milliseconds. Previously we used a 2e12 threshold
+  // which misclassified millisecond timestamps (≈1.7e12) as seconds, leading
+  // to invalid dates and grids showing em dashes instead of times.
   if (typeof value === "number")
-    return value < 2e12 ? new Date(value * 1000) : new Date(value);
+    return value < 1e12 ? new Date(value * 1000) : new Date(value);
   if (typeof value === "string") {
     const d = new Date(value);
     return Number.isNaN(d.getTime()) ? null : d;
