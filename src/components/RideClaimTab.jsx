@@ -44,7 +44,7 @@ import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import { safeRow } from "@/utils/gridUtils";
-import { fmtPlain, fmtDateTimeCell, dateSort, toJSDate, warnMissingFields } from "../utils/gridFormatters";
+import { withSafeColumns, fmtDateTimeCell, dateSort, toJSDate } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
@@ -231,7 +231,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [claimRide],
   );
 
-  const columns = useMemo(
+  const rawColumns = useMemo(
     () => [
       {
         field: "pickupTime",
@@ -240,22 +240,11 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         minWidth: 180,
         flex: 1,
         valueGetter: (p) => toJSDate(safeRow(p)?.pickupTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueFormatter: fmtDateTimeCell({ timeZone: "America/Chicago" }),
         sortComparator: dateSort,
       },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        minWidth: 140,
-        flex: 1,
-        valueFormatter: fmtPlain("—"),
-      },
-      {
-        field: "rideType",
-        headerName: "Type",
-        minWidth: 120,
-        valueFormatter: fmtPlain("—"),
-      },
+      { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
+      { field: "rideType", headerName: "Type", minWidth: 120 },
       {
         field: "rideDuration",
         headerName: "Duration",
@@ -270,7 +259,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
               : null,
           };
         },
-        valueFormatter: (params) =>
+        valueFormatter: (params = {}) =>
           params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
@@ -278,13 +267,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           return da - db;
         },
       },
-      {
-        field: "rideNotes",
-        headerName: "Notes",
-        minWidth: 220,
-        flex: 2,
-        valueFormatter: fmtPlain("—"),
-      },
+      { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2 },
       {
         field: "actions",
         type: "actions",
@@ -304,10 +287,11 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [handleClaim],
   );
 
+  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+
   useGridDoctor({ name: "RideClaimTab", rows, columns });
 
   useEffect(() => {
-    if (import.meta.env.MODE !== "production") warnMissingFields(columns, rows);
     if (rows?.[0]) console.debug("claim rows sample", rows[0]);
   }, [rows, columns]);
 

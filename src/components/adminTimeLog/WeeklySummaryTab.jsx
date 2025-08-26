@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
-import useGridProDefaults from "../grid/useGridProDefaults.js";
 import {
   Box,
   CircularProgress,
@@ -20,7 +19,7 @@ import {
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
-import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
+import { withSafeColumns } from "@/utils/gridFormatters";
 
 export default function WeeklySummaryTab() {
   const [err, setErr] = useState(null);
@@ -36,7 +35,6 @@ export default function WeeklySummaryTab() {
     setRows(summaryRows);
   }, [summaryRows]);
 
-  const grid = useGridProDefaults({ gridId: "weeklySummary", pageSize: 10 });
 
   const handleEdit = useCallback(
     (row) => {
@@ -89,7 +87,7 @@ export default function WeeklySummaryTab() {
     [filteredRows],
   );
 
-  const columns = useMemo(
+  const rawColumns = useMemo(
     () => [
       {
         field: "driver",
@@ -97,16 +95,11 @@ export default function WeeklySummaryTab() {
         flex: 1,
         minWidth: 200,
         valueGetter: (p) => {
-          const r = safeRow(p)
-          return r?.driver ?? r?.driverEmail ?? null
+          const r = safeRow(p);
+          return r?.driver ?? r?.driverEmail ?? null;
         },
-        valueFormatter: fmtPlain("—"),
       },
-      {
-        field: "trips",
-        headerName: "Trips",
-        width: 90,
-      },
+      { field: "trips", headerName: "Trips", width: 90 },
       {
         field: "hours",
         headerName: "Hours",
@@ -123,20 +116,15 @@ export default function WeeklySummaryTab() {
         disableColumnMenu: true,
         align: "center",
         renderCell: (params) => (
-          <ToolsCell
-            row={params.row}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <ToolsCell row={params.row} onEdit={handleEdit} onDelete={handleDelete} />
         ),
       },
     ],
-    [handleEdit, handleDelete]
+    [handleEdit, handleDelete],
   );
 
-  useEffect(() => {
-    warnMissingFields(columns, rows);
-  }, [rows, columns]);
+  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
 
@@ -189,7 +177,6 @@ export default function WeeklySummaryTab() {
         </Stack>
       ) : (
         <DataGridPro
-          {...grid}
           apiRef={apiRef}
           editMode="row"
           processRowUpdate={processRowUpdate}
@@ -203,7 +190,6 @@ export default function WeeklySummaryTab() {
               quickFilterProps: { debounceMs: 300, placeholder: "Search" },
             },
           }}
-          initialState={grid.initialState}
           pageSizeOptions={[5, 10, 25]}
           getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
         />
