@@ -8,6 +8,11 @@ import React, {
   lazy,
   useCallback,
 } from "react";
+import { motion } from "framer-motion";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import {
   Box,
   Typography,
@@ -19,6 +24,7 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 
+import "./index.css";
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
 import useToast from "./hooks/useToast";
@@ -34,13 +40,7 @@ import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
 import ContactEscalation from "./components/ContactEscalation";
-import { motion } from "framer-motion";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import { logout } from "./services/auth";
-import "./index.css";
 import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
@@ -53,6 +53,15 @@ import {
   BLACKOUT_START_HOUR,
   BLACKOUT_END_HOUR,
 } from "./components/BlackoutOverlay.jsx";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const CST = TIMEZONE;
+
+const APP_VERSION = import.meta.env.VITE_APP_VERSION;
+if (import.meta.env.PROD && typeof APP_VERSION !== "undefined") {
+  console.info("LRP version:", APP_VERSION);
+}
 
 const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
@@ -69,10 +78,6 @@ const TicketGenerator = lazy(() => import("./components/TicketGenerator"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
 const TicketScanner = lazy(() => import("./components/TicketScanner"));
 const Tickets = lazy(() => import("./components/Tickets"));
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-const CST = TIMEZONE;
 
 const isInLockoutWindow = () => {
   const now = dayjs().tz(CST);
@@ -115,7 +120,6 @@ function App() {
   const selectedDriver = driver?.name || "";
   const role = driver?.access || "";
   const isAdmin = role === "admin";
-  const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 
   const { 
     showOffline,
@@ -371,7 +375,7 @@ function App() {
                 >
                   🚀 Version:{" "}
                   <span style={{ fontFamily: "monospace" }}>
-                    v{import.meta.env.VITE_APP_VERSION || "dev"}
+                    v{APP_VERSION || "dev"}
                   </span>{" "}
                   • Lake Ride Pros © {new Date().getFullYear()}
                 </Typography>
