@@ -705,12 +705,23 @@ export async function claimRideAtomic(rideId, driver, extra = {}) {
       throw new Error("Ride not claimable");
     }
 
+    const now = serverTimestamp();
+    const { pickupTime, rideDuration, ...rest } = extra;
+    const pickup = pickupTime ?? data.pickupTime ?? data.PickupTime;
+    const duration = rideDuration ?? data.rideDuration ?? data.RideDuration;
     tx.set(dstRef, {
       ...data,
+      // Maintain both legacy and new field names for compatibility
+      claimedBy: driver,
       ClaimedBy: driver,
-      claimedAt: serverTimestamp(),
+      claimedAt: now,
+      ClaimedAt: now,
       status: "claimed",
-      ...extra,
+      pickupTime: pickup,
+      PickupTime: pickup,
+      rideDuration: duration,
+      RideDuration: duration,
+      ...rest,
     });
     tx.delete(srcRef);
   });

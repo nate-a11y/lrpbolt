@@ -116,7 +116,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     return rides
       .map((r) => {
         const id = r.id || r.tripId;
-        const dt = coerceDatePublic(r.pickupTime);
+        const dt = coerceDatePublic(r.pickupTime ?? r.PickupTime);
         if (!dt) return null;
         return {
           id,
@@ -127,7 +127,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           timeBucket: groupKey(dt),
           rideType: safe(r.rideType),
           rideNotes: safe(r.rideNotes, "none"),
-          rideDuration: Number(r.rideDuration ?? 0),
+          rideDuration: Number(r.rideDuration ?? r.RideDuration ?? 0),
         };
       })
       .filter(Boolean)
@@ -194,14 +194,16 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       const ride = rides.find((r) => r.tripId === tripId || r.id === tripId);
       if (!ride) throw new Error("Ride not found");
 
+      const rawPickup = ride.pickupTime ?? ride.PickupTime;
+      const pickupDate = coerceDatePublic(rawPickup);
       const pickupTime =
-        ride.pickupTime instanceof Timestamp
-          ? ride.pickupTime
-          : Timestamp.fromDate(new Date(ride.pickupTime));
+        rawPickup instanceof Timestamp
+          ? rawPickup
+          : Timestamp.fromDate(pickupDate || new Date());
 
       await claimRideAtomic(ride.id || ride.tripId, driver, {
         pickupTime,
-        rideDuration: Number(ride.rideDuration ?? 0),
+        rideDuration: Number(ride.rideDuration ?? ride.RideDuration ?? 0),
       });
 
       try {
@@ -224,7 +226,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           tripId: ride.tripId,
           vehicle: ride.vehicle,
           pickupTime,
-          rideDuration: Number(ride.rideDuration ?? 0),
+          rideDuration: Number(ride.rideDuration ?? ride.RideDuration ?? 0),
           rideType: ride.rideType,
           rideNotes: ride.rideNotes,
           claimedAt: new Date(),

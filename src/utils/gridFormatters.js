@@ -78,9 +78,10 @@ export const safeRC = (fn) => (params) => {
 /** Common getters from canonical Firestore fields */
 export const getPickupTime = safeVG((p) => {
   const row = getRow(p);
-  return row ? (row.pickupTime ?? null) : null;
+  return row ? row.pickupTime ?? row.PickupTime ?? null : null;
 });
 export const getRideDuration = safeVG((p) => {
   const row = getRow(p);
-  return row ? coerceMinutes(row.rideDuration) : null;
+  const dur = row ? row.rideDuration ?? row.RideDuration : null;
+  return row ? coerceMinutes(dur) : null;
 });
