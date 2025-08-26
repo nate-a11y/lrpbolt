@@ -14,14 +14,14 @@ import {
   TextField,
   Tooltip,
   Typography,
-  useTheme,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { collection, getDocs, query, where, addDoc, serverTimestamp} from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "src/utils/firebaseInit";
 import { sendPortalNotification } from "../../utils/notify";
+import { enqueueSms } from "../../services/messaging";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const SEGMENTS = [
@@ -30,16 +30,16 @@ const SEGMENTS = [
 ];
 
 export default function NotificationsCenter() {
-  const theme = useTheme();
   const { user } = useAuth();
-  const isDark = theme.palette.mode === "dark";
 
-  const [allUsers, setAllUsers] = useState([]); // {id,email,name,access}
+  const [allUsers, setAllUsers] = useState([]); // {id,email,name,access,phone}
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const [segment, setSegment] = useState(""); // "", "drivers", "admins", or "topic"
   const [topic, setTopic] = useState("");     // custom topic name
   const [emails, setEmails] = useState([]);   // [{email,name}] for direct send
+
+  const [channel, setChannel] = useState("push"); // "push" | "sms"
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -58,7 +58,8 @@ export default function NotificationsCenter() {
         const email = (x.email || d.id || "").trim();
         const name = (x.name || (email.split("@")[0] || "Unknown")).trim();
         const access = (x.access || "").toLowerCase();
-        return { id: email, email, name, access };
+        const phone = (x.phone || "").trim();
+        return { id: email, email, name, access, phone };
       });
       // sort by name
       rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -70,6 +71,10 @@ export default function NotificationsCenter() {
     }
   }
   useEffect(() => { fetchUsers(); }, []);
+
+  useEffect(() => {
+    if (channel === "sms" && segment === "topic") setSegment("");
+  }, [channel, segment]);
 
   const segmentCount = useMemo(() => {
     if (segment === "drivers") return allUsers.filter((u) => u.access === "driver").length;
@@ -94,10 +99,16 @@ export default function NotificationsCenter() {
   }
 
   const canSend =
-    !!title.trim() &&
-    !sending &&
-    ( (segment && (segment === "drivers" || segment === "admins" || (segment === "topic" && topic.trim()))) ||
-      (!segment && emails.length > 0) );
+    channel === "push" ?
+      !!title.trim() &&
+      !sending &&
+      ( (segment && (segment === "drivers" || segment === "admins" || (segment === "topic" && topic.trim()))) ||
+        (!segment && emails.length > 0) )
+    :
+      !!body.trim() &&
+      !sending &&
+      ( (segment && (segment === "drivers" || segment === "admins")) ||
+        (!segment && emails.length > 0) );
 
   async function logOutbox({ scope, recipients, result }) {
     try {
@@ -105,6 +116,7 @@ export default function NotificationsCenter() {
         createdAt: serverTimestamp(),
         createdBy: user?.email || "unknown",
         scope,                 // e.g., {type:"segment", value:"drivers"} or {type:"emails", count:n}
+        channel,
         title,
         body,
         icon: icon || null,
@@ -122,44 +134,73 @@ export default function NotificationsCenter() {
     if (!canSend) return;
     setSending(true);
     try {
-      const data = parseData();
+      if (channel === "push") {
+        const data = parseData();
 
-      // SEGMENT: drivers/admins
-      if (segment === "drivers" || segment === "admins") {
-        const label = segment === "drivers" ? "driver" : "admin";
-        // We’ll send by email batches using the callable (server finds tokens by email)
-        const targets = allUsers.filter((u) => u.access === label).map((u) => u.email);
-        let sent = 0;
-        for (const email of targets) {
-          const res = await sendPortalNotification({ email, title, body, icon, data });
-          sent += (res?.count || 0);
+        // SEGMENT: drivers/admins
+        if (segment === "drivers" || segment === "admins") {
+          const label = segment === "drivers" ? "driver" : "admin";
+          // We’ll send by email batches using the callable (server finds tokens by email)
+          const targets = allUsers.filter((u) => u.access === label).map((u) => u.email);
+          let sent = 0;
+          for (const email of targets) {
+            const res = await sendPortalNotification({ email, title, body, icon, data });
+            sent += (res?.count || 0);
+          }
+          await logOutbox({ scope: { type: "segment", value: segment }, recipients: targets, result: { sent } });
+          setToast({ kind: "success", msg: `Sent to ${sent} device(s) across ${targets.length} user(s).` });
         }
-        await logOutbox({ scope: { type: "segment", value: segment }, recipients: targets, result: { sent } });
-        setToast({ kind: "success", msg: `Sent to ${sent} device(s) across ${targets.length} user(s).` });
-      }
-      // SEGMENT: custom topic
-      else if (segment === "topic") {
-        const t = topic.trim();
-        const res = await sendPortalNotification({ topic: t, title, body, icon, data });
-        await logOutbox({ scope: { type: "topic", value: t }, recipients: [t], result: res });
-        setToast({ kind: "success", msg: `Topic "${t}" send ok.` });
-      }
-      // DIRECT: explicit emails
-      else {
-        let sent = 0;
-        for (const e of emails) {
-          const res = await sendPortalNotification({ email: e.email, title, body, icon, data });
-          sent += (res?.count || 0);
+        // SEGMENT: custom topic
+        else if (segment === "topic") {
+          const t = topic.trim();
+          const res = await sendPortalNotification({ topic: t, title, body, icon, data });
+          await logOutbox({ scope: { type: "topic", value: t }, recipients: [t], result: res });
+          setToast({ kind: "success", msg: `Topic "${t}" send ok.` });
         }
-        await logOutbox({ scope: { type: "emails", count: emails.length }, recipients: emails.map((x) => x.email), result: { sent } });
-        setToast({ kind: "success", msg: `Sent to ${sent} device(s) across ${emails.length} user(s).` });
+        // DIRECT: explicit emails
+        else {
+          let sent = 0;
+          for (const e of emails) {
+            const res = await sendPortalNotification({ email: e.email, title, body, icon, data });
+            sent += (res?.count || 0);
+          }
+          await logOutbox({ scope: { type: "emails", count: emails.length }, recipients: emails.map((x) => x.email), result: { sent } });
+          setToast({ kind: "success", msg: `Sent to ${sent} device(s) across ${emails.length} user(s).` });
+        }
+      } else {
+        // SMS
+        const text = body.trim() || title.trim();
+
+        if (segment === "drivers" || segment === "admins") {
+          const label = segment === "drivers" ? "driver" : "admin";
+          const targets = allUsers.filter((u) => u.access === label && u.phone).map((u) => ({ phone: u.phone, email: u.email }));
+          for (const t of targets) {
+            await enqueueSms({ to: t.phone, body: text, context: { email: t.email } });
+          }
+          await logOutbox({ scope: { type: "segment", value: segment }, recipients: targets.map((t) => t.phone), result: { queued: targets.length } });
+          setToast({ kind: "success", msg: `Queued SMS for ${targets.length} user(s).` });
+        } else {
+          const targets = emails.map((e) => {
+            const u = allUsers.find((x) => x.email === e.email);
+            return u && u.phone ? { phone: u.phone, email: u.email } : null;
+          }).filter(Boolean);
+          for (const t of targets) {
+            await enqueueSms({ to: t.phone, body: text, context: { email: t.email } });
+          }
+          await logOutbox({ scope: { type: "emails", count: targets.length }, recipients: targets.map((t) => t.phone), result: { queued: targets.length } });
+          setToast({ kind: "success", msg: `Queued SMS for ${targets.length} user(s).` });
+        }
       }
 
       // reset only non-structural fields
-      setTitle("");
-      setBody("");
-      setIcon("");
-      setDataText("");
+      if (channel === "push") {
+        setTitle("");
+        setBody("");
+        setIcon("");
+        setDataText("");
+      } else {
+        setBody("");
+      }
     } catch (e) {
       setToast({ kind: "error", msg: e.message || "Send failed" });
     } finally {
@@ -167,7 +208,7 @@ export default function NotificationsCenter() {
     }
   }
 
-  const userOptions = allUsers.map((u) => ({ label: `${u.name} (${u.email})`, email: u.email, name: u.name }));
+  const userOptions = allUsers.map((u) => ({ label: `${u.name} (${u.email})`, email: u.email, name: u.name, phone: u.phone }));
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 960, mx: "auto" }}>
@@ -191,7 +232,7 @@ export default function NotificationsCenter() {
         </Stack>
 
         <Alert severity="info" icon={<InfoOutlinedIcon /> } sx={{ mb: 2 }}>
-          Choose a segment or pick specific recipients. Title is required. Data must be JSON (key/value).
+          Choose a segment or pick specific recipients. For push notifications a title is required; for SMS a body is required. Data must be JSON (key/value).
         </Alert>
 
         <Grid container spacing={2}>
@@ -210,12 +251,14 @@ export default function NotificationsCenter() {
                     onClick={() => { setSegment(s.id); setTopic(""); }}
                   />
                 ))}
-                <Chip
-                  clickable
-                  color={segment === "topic" ? "primary" : "default"}
-                  label={segment === "topic" && topic ? `Topic: ${topic}` : "Custom Topic"}
-                  onClick={() => setSegment("topic")}
-                />
+                {channel === "push" && (
+                  <Chip
+                    clickable
+                    color={segment === "topic" ? "primary" : "default"}
+                    label={segment === "topic" && topic ? `Topic: ${topic}` : "Custom Topic"}
+                    onClick={() => setSegment("topic")}
+                  />
+                )}
                 <Chip
                   clickable
                   color={!segment ? "primary" : "default"}
@@ -258,18 +301,29 @@ export default function NotificationsCenter() {
           <Grid item xs={12} md={6}>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Message</Typography>
-              <Stack spacing={1.5}>
-                <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} />
-                <TextField label="Icon URL (optional)" value={icon} onChange={(e) => setIcon(e.target.value)} />
-                <TextField
-                  label='Data (JSON, e.g. {"tripId":"123"})'
-                  value={dataText}
-                  onChange={(e) => setDataText(e.target.value)}
-                  multiline
-                  minRows={2}
-                />
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mb: 1 }}>
+                <Chip clickable color={channel === "push" ? "primary" : "default"} label="Push" onClick={() => setChannel("push")} />
+                <Chip clickable color={channel === "sms" ? "primary" : "default"} label="SMS" onClick={() => setChannel("sms")} />
               </Stack>
+              {channel === "push" && (
+                <Stack spacing={1.5}>
+                  <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                  <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} />
+                  <TextField label="Icon URL (optional)" value={icon} onChange={(e) => setIcon(e.target.value)} />
+                  <TextField
+                    label='Data (JSON, e.g. {"tripId":"123"})'
+                    value={dataText}
+                    onChange={(e) => setDataText(e.target.value)}
+                    multiline
+                    minRows={2}
+                  />
+                </Stack>
+              )}
+              {channel === "sms" && (
+                <Stack spacing={1.5}>
+                  <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} required />
+                </Stack>
+              )}
             </Paper>
           </Grid>
         </Grid>
