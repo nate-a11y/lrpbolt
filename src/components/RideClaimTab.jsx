@@ -243,9 +243,13 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         type: "dateTime",
         minWidth: 180,
         flex: 1,
-        valueGetter: (p) => coerceDatePublic(p?.row?.pickupTime),
-        valueFormatter: (p) => formatLocalShort(p?.value),
-        sortComparator: (a, b) => (a && b ? new Date(a) - new Date(b) : 0),
+        valueFormatter: (p) =>
+          formatLocalShort(coerceDatePublic(p?.value ?? p?.row?.pickupTime)),
+        sortComparator: (a, b) => {
+          const da = coerceDatePublic(a);
+          const db = coerceDatePublic(b);
+          return da && db ? da - db : 0;
+        },
       },
       { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
       { field: "rideType", headerName: "Type", minWidth: 120 },
@@ -314,10 +318,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [selectedCount, selectedMinutes],
   );
 
-  const rowGroupingModel = useMemo(
-    () => ["vehicle", "weekday", "timeBucket"],
-    [],
-  );
+  // Group rides by date first, then vehicle for a tree view
+  const rowGroupingModel = useMemo(() => ["timeBucket", "vehicle"], []);
 
   const onBulkClaim = useCallback(async () => {
     for (const id of selectionModel) {
@@ -497,7 +499,14 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             autoHeight={false}
             density="compact"
             rowGroupingModel={rowGroupingModel}
-            groupingColDef={{ headerName: "Group", minWidth: 220 }}
+            groupingColDef={{
+              headerName: "Date / Vehicle",
+              minWidth: 220,
+              valueFormatter: (params) =>
+                params.rowNode?.groupingField === "timeBucket"
+                  ? fmtDate(params.value)
+                  : params.value,
+            }}
             initialState={{
               sorting: { sortModel: [{ field: "pickupTime", sort: "asc" }] },
               columns: { columnVisibilityModel: { rideNotes: !isMobile } },
