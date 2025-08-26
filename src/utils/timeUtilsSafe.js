@@ -14,6 +14,9 @@ export const tsToDate = (v) => {
     ) {
       return new Date(v.seconds * 1000 + v.nanoseconds / 1e6);
     }
+    if (typeof v === "number") {
+      return new Date(v < 1e12 ? v * 1000 : v);
+    }
     const d = new Date(v);
     return Number.isNaN(d?.getTime()) ? null : d;
   } catch {
