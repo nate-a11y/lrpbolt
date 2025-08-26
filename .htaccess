@@ -21,3 +21,11 @@ AddType text/css .css
   ExpiresByType image/png "access plus 1 year"
   ExpiresByType image/jpeg "access plus 1 year"
 </IfModule>
+
+# Make sure sw.js is NOT cached forever (so updates roll out)
+<Files "sw.js">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>
+<Files "firebase-messaging-sw.js">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>
