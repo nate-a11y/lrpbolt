@@ -14,8 +14,11 @@ exports.smsOnCreate = require("./smsOnCreate").smsOnCreate;
 
 async function requireAdmin(emailLower) {
   const snap = await db.doc(`userAccess/${emailLower}`).get();
-  const access = snap.exists ? String(snap.data().access || "").toLowerCase() : "";
-  if (access !== "admin") throw new HttpsError("permission-denied", "Admin only.");
+  const access = snap.exists
+    ? String(snap.data().access || "").toLowerCase()
+    : "";
+  if (access !== "admin")
+    throw new HttpsError("permission-denied", "Admin only.");
 }
 
 exports.sendPortalNotification = onCall(async (req) => {
@@ -26,11 +29,15 @@ exports.sendPortalNotification = onCall(async (req) => {
   // Admin check via userAccess
   const snap = await admin.firestore().doc(`userAccess/${authEmail}`).get();
   const access = (snap.data()?.access || "").toLowerCase();
-  if (access !== "admin") throw new HttpsError("permission-denied", "Admin only.");
+  if (access !== "admin")
+    throw new HttpsError("permission-denied", "Admin only.");
 
   const base = {
     notification: { title, body },
-    webpush: { notification: { icon: icon || "/icons/icon-192x192.png" }, data: data || {} },
+    webpush: {
+      notification: { icon: icon || "/icons/icon-192x192.png" },
+      data: data || {},
+    },
   };
 
   try {
@@ -46,8 +53,13 @@ exports.sendPortalNotification = onCall(async (req) => {
           err?.code === "messaging/registration-token-not-registered" ||
           err?.message?.includes("Requested entity was not found")
         ) {
-          const qs = await db.collection("fcmTokens").where("token", "==", token).get();
-          await Promise.all(qs.docs.map((d) => d.ref.delete().catch(() => undefined)));
+          const qs = await db
+            .collection("fcmTokens")
+            .where("token", "==", token)
+            .get();
+          await Promise.all(
+            qs.docs.map((d) => d.ref.delete().catch(() => undefined)),
+          );
           logger.info("Removed invalid token");
           return { ok: true, count: 0 };
         }
@@ -55,10 +67,15 @@ exports.sendPortalNotification = onCall(async (req) => {
       }
     }
     if (email) {
-      const qs = await db.collection("fcmTokens").where("email", "==", email).get();
+      const qs = await db
+        .collection("fcmTokens")
+        .where("email", "==", email)
+        .get();
       const tokens = qs.docs.map((d) => d.data().token).filter(Boolean);
       if (tokens.length === 0) return { ok: true, count: 0 };
-      const results = await Promise.allSettled(tokens.map((t) => messaging.send({ ...base, token: t })));
+      const results = await Promise.allSettled(
+        tokens.map((t) => messaging.send({ ...base, token: t })),
+      );
       let count = 0;
       for (let i = 0; i < results.length; i++) {
         const res = results[i];
@@ -73,7 +90,11 @@ exports.sendPortalNotification = onCall(async (req) => {
         ) {
           const t = tokens[i];
           const docId = `${email}__${t.slice(0, 16)}`;
-          await db.collection("fcmTokens").doc(docId).delete().catch(() => undefined);
+          await db
+            .collection("fcmTokens")
+            .doc(docId)
+            .delete()
+            .catch(() => undefined);
           continue;
         }
         throw err;
@@ -107,22 +128,58 @@ exports.dropDailyRidesNow = onCall({ region: "us-central1" }, async (req) => {
   }
 });
 
+exports.sendDailySms = onSchedule(
+  {
+    region: "us-central1",
+    schedule: "0 14 * * *",
+    timeZone: "America/Chicago",
+  },
+  async () => {
+    try {
+      await db.collection("outboundMessages").add({
+        to: "+15733532849",
+        body: "Hey Jim 👋 don’t forget to check the rides in Moovs, charge the deposits 💳, and add everything into the portal 📲✅.",
+        channel: "sms",
+        status: "queued",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log("sendDailySms queued");
+    } catch (err) {
+      console.error("sendDailySms error", err);
+    }
+  },
+);
+
 exports.scheduleDropDailyRides = onSchedule(
-  { region: "us-central1", schedule: "30 19 * * *", timeZone: "America/Chicago" },
+  {
+    region: "us-central1",
+    schedule: "30 19 * * *",
+    timeZone: "America/Chicago",
+  },
   async () => {
     try {
       const cfg = await db.doc("AdminMeta/config").get();
       const dropEnabled = cfg.exists ? cfg.data().dropEnabled !== false : true;
-      if (!dropEnabled) { console.log("dropDailyRides skipped by config"); return; }
+      if (!dropEnabled) {
+        console.log("dropDailyRides skipped by config");
+        return;
+      }
 
       const stats = await dropDailyFromQueue({ dryRun: false });
-      await db.doc("AdminMeta/lastDropDaily").set(
-        { ranAt: admin.firestore.FieldValue.serverTimestamp(), stats, v: 1, trigger: "schedule" },
-        { merge: true }
-      );
+      await db
+        .doc("AdminMeta/lastDropDaily")
+        .set(
+          {
+            ranAt: admin.firestore.FieldValue.serverTimestamp(),
+            stats,
+            v: 1,
+            trigger: "schedule",
+          },
+          { merge: true },
+        );
       console.log("dropDailyRides complete", stats);
     } catch (e) {
       console.error("scheduleDropDailyRides error", e);
     }
-  }
+  },
 );
