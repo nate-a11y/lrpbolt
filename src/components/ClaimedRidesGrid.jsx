@@ -14,6 +14,9 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+import { safeRow } from "@/utils/gridUtils";
 
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
@@ -27,9 +30,7 @@ import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import EditRideDialog from "./EditRideDialog";
-
 import { actionsColFactory } from "./grid/actionsCol";
-import { safeRow } from "@/utils/gridUtils";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
