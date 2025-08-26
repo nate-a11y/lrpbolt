@@ -549,9 +549,13 @@ export default function AdminTimeLog() {
         field: "duration",
         headerName: "Duration",
         width: 120,
-        valueGetter: ({ row }) =>
-          durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
-        valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
+        valueGetter: (p) =>
+          durationMinutes(
+            p?.row?.start ?? p?.row?.startTime,
+            p?.row?.end ?? p?.row?.endTime,
+          ),
+        valueFormatter: (p) => (p?.value == null ? "—" : `${p.value}m`),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
         sortable: true,
       },
       dateCol("loggedAt", "Logged At", {
@@ -643,9 +647,13 @@ export default function AdminTimeLog() {
         field: "duration",
         headerName: "Duration",
         width: 130,
-        valueGetter: ({ row }) =>
-          durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
-        valueFormatter: ({ value }) => (value == null ? '—' : `${value}m`),
+        valueGetter: (p) =>
+          durationMinutes(
+            p?.row?.start ?? p?.row?.startTime,
+            p?.row?.end ?? p?.row?.endTime,
+          ),
+        valueFormatter: (p) => (p?.value == null ? "—" : `${p.value}m`),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
         sortable: true,
       },
       {
