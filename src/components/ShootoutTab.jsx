@@ -25,17 +25,15 @@ import {
 import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
-import {
-  durationMinutesFloor,
-  durationHumanFloor,
-  formatLocalShort,
-} from "../utils/timeUtils";
+import { formatTime, formatDuration } from "../utils/timeUtils";
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
 import { resolveSmsTo } from "../services/smsRecipients.js";
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
+
+const ROUND_TIMES = false;
 
 export default function ShootoutTab() {
   const { user, authLoading } = useAuth();
@@ -266,26 +264,24 @@ export default function ShootoutTab() {
       headerName: "Start",
       minWidth: 170,
       flex: 1,
-      valueFormatter: (p) => formatLocalShort(p?.value),
+      valueFormatter: (p) =>
+        formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
     },
     {
       field: "endTime",
       headerName: "End",
       minWidth: 170,
       flex: 1,
-      valueFormatter: (p) => formatLocalShort(p?.value),
+      valueFormatter: (p) =>
+        formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
     },
     {
-      field: "durationMin",
+      field: "duration",
       headerName: "Duration",
       width: 150,
       valueGetter: (p) =>
-        durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
-      valueFormatter: (p) =>
-        p?.value == null
-          ? "—"
-          : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
-      sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+        formatDuration(p?.row?.startTime, p?.row?.endTime),
+      sortable: true,
     },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
     {
@@ -413,13 +409,13 @@ export default function ShootoutTab() {
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Start: {formatLocalShort(r.startTime)}
+                    Start: {formatTime(r.startTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
                   </Typography>
                   <Typography variant="body2">
-                    End: {formatLocalShort(r.endTime)}
+                    End: {formatTime(r.endTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {durationHumanFloor(r.startTime, r.endTime)}
+                    Duration: {formatDuration(r.startTime, r.endTime)}
                   </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">

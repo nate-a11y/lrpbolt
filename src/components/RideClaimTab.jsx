@@ -41,7 +41,7 @@ import {
   safe,
   groupKey,
 } from "../utils/rideFormatters";
-import { formatLocalShort, coerceDatePublic } from "../utils/timeUtils";
+import { formatTime, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import dayjs from "dayjs";
@@ -116,7 +116,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     return rides
       .map((r) => {
         const id = r.id || r.tripId;
-        const dt = coerceDatePublic(r.pickupTime ?? r.PickupTime);
+        const dt = toDayjs(r.pickupTime ?? r.PickupTime)?.toDate();
         if (!dt) return null;
         return {
           id,
@@ -195,7 +195,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       if (!ride) throw new Error("Ride not found");
 
       const rawPickup = ride.pickupTime ?? ride.PickupTime;
-      const pickupDate = coerceDatePublic(rawPickup);
+      const pickupDate = toDayjs(rawPickup)?.toDate();
       const pickupTime =
         rawPickup instanceof Timestamp
           ? rawPickup
@@ -246,11 +246,13 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         minWidth: 180,
         flex: 1,
         valueFormatter: (p) =>
-          formatLocalShort(coerceDatePublic(p?.value ?? p?.row?.pickupTime)),
+          formatTime(p?.value ?? p?.row?.pickupTime, {
+            fmt: "MMM D, h:mm A",
+          }),
         sortComparator: (a, b) => {
-          const da = coerceDatePublic(a);
-          const db = coerceDatePublic(b);
-          return da && db ? da - db : 0;
+          const da = toDayjs(a)?.valueOf();
+          const db = toDayjs(b)?.valueOf();
+          return (da ?? 0) - (db ?? 0);
         },
       },
       { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
