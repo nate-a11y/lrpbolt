@@ -13,14 +13,8 @@ aws s3 sync "$DIST/assets" "$BUCKET/assets" --delete \
 
 # Root files: no-cache
 aws s3 cp "$DIST/index.html" "$BUCKET/index.html" --cache-control "no-cache" --content-type "text/html"
-aws s3 cp "$DIST/manifest.webmanifest" "$BUCKET/manifest.webmanifest" --cache-control "no-cache" --content-type "application/manifest+json" || true
-aws s3 cp "$DIST/sw.js" "$BUCKET/sw.js" --cache-control "no-cache" --content-type "application/javascript"
-# Workbox helper chunks
-aws s3 cp "$DIST" "$BUCKET" --recursive --exclude "*" --include "workbox-*.js" \
-  --cache-control "no-cache" --content-type "application/javascript"
-
 # Any other root assets
-aws s3 sync "$DIST" "$BUCKET" --exclude "assets/*" --exclude "index.html" --exclude "sw.js" --exclude "workbox-*.js" \
+aws s3 sync "$DIST" "$BUCKET" --exclude "assets/*" --exclude "index.html" \
   --cache-control "no-cache"
 
 aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"

@@ -2,35 +2,9 @@ import path from "path";
 
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { VitePWA } from "vite-plugin-pwa";
-
 export default defineConfig({
   plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      srcDir: 'src',
-      filename: 'sw.js',
-      strategies: 'injectManifest',
-      injectManifest: {
-        globDirectory: 'dist',
-        globPatterns: ['assets/**/*.{js,css}', 'index.html'],
-      },
-      workbox: {
-        cleanupOutdatedCaches: true,
-        navigateFallbackDenylist: [/^\/api\//],
-      },
-      devOptions: { enabled: false },
-      includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
-      manifest: {
-        name: 'Lake Ride Pros',
-        short_name: 'LRP',
-        display: 'standalone',
-        start_url: '/',
-        background_color: '#060606',
-        theme_color: '#060606',
-      },
-    })
+    react()
   ],
   resolve: {
     alias: {

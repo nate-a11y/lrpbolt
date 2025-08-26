@@ -2,8 +2,6 @@
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "./utils/firebaseInit.js"; // keep first
-import { killRogueServiceWorkers } from "./utils/killRogueSW";
-import { registerFCM } from "./utils/registerFCM";
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import SmsConsent from "./pages/SmsConsent.jsx";
@@ -16,35 +14,33 @@ import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import { LicenseInfo } from "@mui/x-license";
 
+// --- SW KILL SWITCH: remove in the NEXT deploy once site is stable ---
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations?.().then(async (regs) => {
+    try {
+      for (const r of regs) {
+        try {
+          await r.unregister();
+        } catch (e) {
+          /* noop */
+        }
+      }
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      if (!sessionStorage.getItem("reloaded-after-sw-kill")) {
+        sessionStorage.setItem("reloaded-after-sw-kill", "1");
+        location.reload();
+      }
+    } catch (e) {
+      // swallow errors; the goal is to avoid blocking app start
+      console.warn("SW kill switch error:", e);
+    }
+  });
+}
+
 LicenseInfo.setLicenseKey(
   import.meta.env.VITE_MUI_PRO_KEY || import.meta.env.MUI_X_LICENSE_KEY,
 );
-
-if (typeof window !== "undefined") {
-  killRogueServiceWorkers();
-
-  if ("serviceWorker" in navigator) {
-    if (import.meta.env.PROD) {
-      navigator.serviceWorker.register("/sw.js").then((reg) => {
-        reg.addEventListener("updatefound", () => {
-          const newSW = reg.installing;
-          newSW?.addEventListener("statechange", () => {
-            if (newSW.state === "installed" && navigator.serviceWorker.controller) {
-              console.log("New version available; reload to update.");
-            }
-          });
-        });
-      });
-      registerFCM().then((res) => {
-        if (!res?.ok) console.info("[FCM]", res?.reason || "noop");
-      });
-    } else {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((regs) => regs.forEach((r) => r.unregister()));
-    }
-  }
-}
 
 const Root = () => {
   return (
