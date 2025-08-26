@@ -20,6 +20,7 @@ import {
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
+import { fmtPlain } from "@/utils/gridFormatters";
 
 export default function WeeklySummaryTab() {
   const [err, setErr] = useState(null);
@@ -97,8 +98,9 @@ export default function WeeklySummaryTab() {
         minWidth: 200,
         valueGetter: (p) => {
           const r = safeRow(p)
-          return r?.driver ?? r?.driverEmail ?? "—"
+          return r?.driver ?? r?.driverEmail ?? null
         },
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "trips",

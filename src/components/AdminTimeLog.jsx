@@ -30,8 +30,9 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
-import { fmtDateTime, fmtDuration, toDayjs } from "../utils/timeUtils";
+import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtDateTimeCell, fmtPlain, toJSDate, getNested, dateSort } from "@/utils/gridFormatters";
 
 import PageContainer from "./PageContainer.jsx";
 import {
@@ -417,7 +418,7 @@ export default function AdminTimeLog() {
 
   const shootSummaryColumns = useMemo(
     () => [
-      { field: "driver", headerName: "Driver", flex: 1, minWidth: 180 },
+      { field: "driver", headerName: "Driver", flex: 1, minWidth: 180, valueFormatter: fmtPlain("—") },
       { field: "sessions", headerName: "Sessions", width: 110, type: "number" },
       { field: "trips", headerName: "Trips", width: 110, type: "number" },
       {
@@ -526,6 +527,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 140,
         editable: true,
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "startTime",
@@ -533,14 +535,10 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? r.start ?? r.startTime : null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: dateSort,
       },
       {
         field: "endTime",
@@ -548,14 +546,10 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? r.end ?? r.endTime : null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: dateSort,
       },
       {
         field: "duration",
@@ -563,9 +557,9 @@ export default function AdminTimeLog() {
         width: 120,
         valueGetter: (p) => {
           const r = safeRow(p)
-          return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+          return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
         },
-        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
         sortable: true,
       },
       {
@@ -574,10 +568,10 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 0.9,
         editable: true,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: dateSort,
       },
       {
         field: "__actions",
@@ -620,6 +614,8 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 180,
         editable: true,
+        valueGetter: getNested("driverEmail"),
+        valueFormatter: fmtPlain("—"),
         renderCell: (p) => {
           const r = safeRow(p)
           const email = r?.driverEmail || "";
@@ -639,6 +635,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 140,
         editable: true,
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "startTime",
@@ -646,14 +643,10 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? r.start ?? r.startTime : null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: dateSort,
       },
       {
         field: "endTime",
@@ -661,14 +654,10 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? r.end ?? r.endTime : null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: dateSort,
       },
       {
         field: "duration",
@@ -676,9 +665,9 @@ export default function AdminTimeLog() {
         width: 130,
         valueGetter: (p) => {
           const r = safeRow(p)
-          return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+          return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
         },
-        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
         sortable: true,
       },
       {
@@ -703,10 +692,10 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 170,
         editable: true,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.createdAt),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: dateSort,
       },
       {
         field: "__actions",

@@ -25,8 +25,9 @@ import {
 import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
-import { fmtDateTime, fmtDuration } from "../utils/timeUtils";
+import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort } from "@/utils/gridFormatters";
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
@@ -264,22 +265,18 @@ export default function ShootoutTab() {
       headerName: "Start",
       minWidth: 170,
       flex: 1,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? r.start ?? r.startTime : null
-      },
-      valueFormatter: ({ value }) => fmtDateTime(value),
+      valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+      sortComparator: dateSort,
     },
     {
       field: "endTime",
       headerName: "End",
       minWidth: 170,
       flex: 1,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? r.end ?? r.endTime : null
-      },
-      valueFormatter: ({ value }) => fmtDateTime(value),
+      valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+      sortComparator: dateSort,
     },
     {
       field: "duration",
@@ -287,9 +284,9 @@ export default function ShootoutTab() {
       width: 150,
       valueGetter: (p) => {
         const r = safeRow(p)
-        return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+        return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
       },
-      valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+      valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
       sortable: true,
     },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
@@ -299,7 +296,7 @@ export default function ShootoutTab() {
       width: 120,
       type: "number",
     },
-    { field: "vehicle", headerName: "Vehicle", minWidth: 120, flex: 1 },
+    { field: "vehicle", headerName: "Vehicle", minWidth: 120, flex: 1, valueFormatter: fmtPlain("—") },
   ];
 
   return (

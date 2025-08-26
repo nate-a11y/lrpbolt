@@ -34,10 +34,11 @@ import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
-import { fmtDateTime, fmtDuration, toDayjs } from "../utils/timeUtils";
+import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort } from "@/utils/gridFormatters";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -239,19 +240,12 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         type: "dateTime",
         minWidth: 180,
         flex: 1,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? r.pickupTime : null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value, "MMM D, h:mm A"),
-        sortComparator: (a, b) => {
-          const da = toDayjs(a)?.valueOf();
-          const db = toDayjs(b)?.valueOf();
-          return (da ?? 0) - (db ?? 0);
-        },
+        valueGetter: (p) => toJSDate(safeRow(p)?.pickupTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
-      { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
-      { field: "rideType", headerName: "Type", minWidth: 120 },
+      { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1, valueFormatter: fmtPlain("—") },
+      { field: "rideType", headerName: "Type", minWidth: 120, valueFormatter: fmtPlain("—") },
       {
         field: "rideDuration",
         headerName: "Duration",
@@ -266,14 +260,14 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
               : null,
           }
         },
-        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
           return da - db;
         },
       },
-      { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2 },
+      { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2, valueFormatter: fmtPlain("—") },
       {
         field: "actions",
         type: "actions",
@@ -515,9 +509,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
               headerName: "Date / Vehicle",
               minWidth: 220,
               valueFormatter: (params) =>
-                params.rowNode?.groupingField === "timeBucket"
-                  ? fmtDate(params.value)
-                  : params.value,
+                params?.rowNode?.groupingField === "timeBucket"
+                  ? fmtDate(params?.value)
+                  : params?.value ?? "—",
             }}
             initialState={{
               sorting: { sortModel: [{ field: "pickupTime", sort: "asc" }] },

@@ -34,8 +34,9 @@ import { db } from "src/utils/firebaseInit";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
 import { toString, tsToDate } from "../utils/safe";
-import { fmtDateTime, fmtDuration } from "../utils/timeUtils";
+import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtDateTimeCell, fmtPlain, getNested, toJSDate, dateSort } from "@/utils/gridFormatters";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import ErrorBanner from "./ErrorBanner";
 import { useRole } from "@/hooks";
@@ -275,30 +276,24 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       field: "rideId",
       headerName: "Ride ID",
       flex: 1,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? toString(r.rideId) : null
-      },
+      valueGetter: getNested("rideId"),
+      valueFormatter: fmtPlain("—"),
     },
     {
       field: "startTime",
       headerName: "Start",
       width: 160,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? r.start ?? r.startTime : null
-      },
-      valueFormatter: ({ value }) => fmtDateTime(value),
+      valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+      sortComparator: dateSort,
     },
     {
       field: "endTime",
       headerName: "End",
       width: 160,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? r.end ?? r.endTime : null
-      },
-      valueFormatter: ({ value }) => fmtDateTime(value),
+      valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+      sortComparator: dateSort,
     },
     {
       field: "duration",
@@ -306,18 +301,16 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       width: 140,
       valueGetter: (p) => {
         const r = safeRow(p)
-        return r ? { s: r.start ?? r.startTime, e: r.end ?? r.endTime } : null
+        return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
       },
-      valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+      valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
     },
     {
       field: "note",
       headerName: "Note",
       flex: 1,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? r.note ?? "" : ""
-      },
+      valueGetter: getNested("note"),
+      valueFormatter: fmtPlain("—"),
     },
   ];
   const formatTS = (ts) => {

@@ -20,8 +20,9 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-import { fmtDateTime, fmtDuration } from "../../utils/timeUtils";
+import { fmtDuration } from "../../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtDateTimeCell, fmtPlain, getNested, toJSDate, dateSort } from "@/utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 
@@ -91,7 +92,8 @@ export default function ShootoutStatsTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        valueGetter: (p) => safeRow(p)?.driverEmail ?? "—",
+        valueGetter: getNested("driverEmail"),
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "trips",
@@ -117,9 +119,9 @@ export default function ShootoutStatsTab() {
         width: 120,
         valueGetter: (p) => {
           const r = safeRow(p)
-          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime }
+          return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) }
         },
-        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
       },
       {
         field: "status",
@@ -130,36 +132,34 @@ export default function ShootoutStatsTab() {
           return r?.status ?? (r?.endTime ? "Closed" : "Open")
         },
         editable: true,
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "startTime",
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r?.start ?? r?.startTime ?? null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r?.end ?? r?.endTime ?? null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
       {
         field: "createdAt",
         headerName: "Created",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => safeRow(p)?.createdAt ?? null,
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.createdAt),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
       {
         field: "tools",

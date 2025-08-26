@@ -13,6 +13,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtPlain } from "@/utils/gridFormatters";
 
 export default function EditableRideGrid({
   rows,
@@ -63,24 +64,24 @@ export default function EditableRideGrid({
           const r = safeRow(p)
           return r ? { s: 0, e: r.rideDuration ? r.rideDuration * 60000 : 0 } : null
         },
-        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
           return da - db;
         },
       },
-      { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
+      { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140, valueFormatter: fmtPlain("—") },
+      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
       {
         field: "rideNotes",
         headerName: "Notes",
         flex: 1.2,
         minWidth: 180,
-        valueFormatter: (p) => (p?.value ? String(p.value) : "N/A"),
+        valueFormatter: fmtPlain("—"),
       },
-      { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160 },
-      { field: "lastModifiedBy", headerName: "Modified By", flex: 1, minWidth: 160 },
+      { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
+      { field: "lastModifiedBy", headerName: "Modified By", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
       {
         field: "actions",
         type: "actions",

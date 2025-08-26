@@ -49,6 +49,7 @@ import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import DropDailyWidget from "./DropDailyWidget";
 
 import { safeRow } from '@/utils/gridUtils'
+import { fmtPlain } from "@/utils/gridFormatters";
 
 import { logError } from "../utils/logError";
 import useAuth from "../hooks/useAuth.js";
@@ -1109,8 +1110,9 @@ if (totalMinutes <= 0) {
                       flex: 1,
                       valueGetter: (p) => {
                         const r = safeRow(p)
-                        return r ? r[col] ?? "" : ""
+                        return r ? r[col] ?? null : null
                       },
+                      valueFormatter: fmtPlain("—"),
                     }))}
                     pageSizeOptions={[5]}
                     getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}

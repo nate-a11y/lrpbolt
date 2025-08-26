@@ -1,88 +1,73 @@
 /* Proprietary and confidential. See LICENSE. */
-import { Timestamp as FBTimestamp } from "firebase/firestore";
-
-import { TIMEZONE } from "../constants";
-
 import dayjs from "./dates";
 
-/** Null-safe param accessors */
-export const getParams = (p) => (p && typeof p === "object" ? p : null);
-export const getRow = (p) => (getParams(p) && getParams(p).row) ? getParams(p).row : null;
-export const getValue = (p) => (getParams(p) && "value" in p) ? p.value : null;
-
-/** Any -> Date or null (handles Firestore Timestamp, {seconds,nanoseconds}, Date, ISO, ms-epoch) */
-export const toDateAny = (v) => {
+// Normalize Firestore Timestamps, JS Dates, epoch seconds, or ISO strings -> Date | null
+export const toJSDate = (raw) => {
   try {
-    if (!v) return null;
-    if (v instanceof Date) return isNaN(v) ? null : v;
-    if (typeof v === "string") {
-      const d = new Date(v);
-      return isNaN(d) ? null : d;
-    }
-    if (typeof v === "number") {
-      const ms = v < 1e12 ? v * 1000 : v;
+    if (!raw) return null;
+    if (raw instanceof Date) return isNaN(raw) ? null : raw;
+    if (typeof raw === "number") {
+      const ms = raw < 1e12 ? raw * 1000 : raw;
       const d = new Date(ms);
       return isNaN(d) ? null : d;
     }
-    if (typeof v === "object") {
-      if (typeof v.toDate === "function") return v.toDate();
-      if ("seconds" in v && "nanoseconds" in v) {
-        return new FBTimestamp(v.seconds, v.nanoseconds).toDate();
-      }
+    if (typeof raw === "string") {
+      const d = new Date(raw);
+      return isNaN(d) ? null : d;
     }
-  } catch { /* no-op */ }
+    if (typeof raw === "object") {
+      if (typeof raw.toDate === "function") return toJSDate(raw.toDate());
+      if ("seconds" in raw && "nanoseconds" in raw)
+        return new Date(raw.seconds * 1000 + raw.nanoseconds / 1e6);
+    }
+  } catch {
+    return null;
+  }
   return null;
 };
 
-export const toDj = (v) => {
-  const d = toDateAny(v);
-  if (!d) return null;
-  const dj = dayjs(d);
-  return dj.isValid() ? dj : null;
+// Formatter for date cells with timezone & fallback
+export const fmtDateTimeCell = (tz = "UTC", fallback = "—") => (params) => {
+  const d = toJSDate(params?.value);
+  if (!d) return fallback;
+  try {
+    return dayjs(d).tz(tz).format("MMM D, h:mm A");
+  } catch {
+    return fallback;
+  }
 };
 
-export const fmtDate = (v) => {
-  const dj = toDj(v);
-  return dj ? dj.tz(TIMEZONE).format("MM/DD/YYYY") : "N/A";
+// Plain string formatter with fallback
+export const fmtPlain = (fallback = "—") => (params) => {
+  const v = params?.value;
+  if (v === undefined || v === null || v === "") return fallback;
+  return String(v);
 };
 
-export const fmtTime = (v) => {
-  const dj = toDj(v);
-  return dj ? dj.tz(TIMEZONE).format("h:mm A") : "N/A";
+// Safely get nested property from row
+export const getNested = (path, fallback = null) => (params) => {
+  const row = params?.row;
+  if (!row) return fallback;
+  const parts = path.split(".");
+  let cur = row;
+  for (const p of parts) {
+    if (cur == null) return fallback;
+    cur = cur[p];
+  }
+  return cur ?? fallback;
 };
 
-export const coerceMinutes = (v) => {
-  if (Number.isFinite(v)) return v;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+// Date comparator tolerant of nulls
+export const dateSort = (a, b) => {
+  const ta = toJSDate(a)?.getTime() ?? 0;
+  const tb = toJSDate(b)?.getTime() ?? 0;
+  return ta - tb;
 };
 
-export const minutesToHHMM = (mins) => {
-  const m = coerceMinutes(mins);
-  if (m == null) return "N/A";
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+export default {
+  toJSDate,
+  fmtDateTimeCell,
+  fmtPlain,
+  getNested,
+  dateSort,
 };
-
-/** Safe wrappers so MUI null-calls don't crash */
-export const safeVG = (fn) => (params) => {
-  try { return fn(getParams(params)); } catch { return null; }
-};
-export const safeVF = (fn) => (params) => {
-  try { return fn(getValue(params), getParams(params)); } catch { return "N/A"; }
-};
-export const safeRC = (fn) => (params) => {
-  try { return fn(getValue(params), getParams(params)); } catch { return null; }
-};
-
-/** Common getters from canonical Firestore fields */
-export const getPickupTime = safeVG((p) => {
-  const row = getRow(p);
-  return row ? row.pickupTime ?? row.PickupTime ?? null : null;
-});
-export const getRideDuration = safeVG((p) => {
-  const row = getRow(p);
-  const dur = row ? row.rideDuration ?? row.RideDuration : null;
-  return row ? coerceMinutes(dur) : null;
-});
