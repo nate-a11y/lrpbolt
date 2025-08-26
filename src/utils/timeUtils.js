@@ -118,3 +118,33 @@ export function getSyncTime() {
 // Null-safe Firestore Timestamp -> milliseconds conversion
 export const tsToMillis = (ts) =>
   ts && typeof ts.toMillis === 'function' ? ts.toMillis() : null;
+
+// Timezone-aware helpers for Shootout stats and similar features
+const TZ = "America/Chicago";
+
+export function toDayjs(value, tzName = TZ) {
+  if (!value) return dayjs.invalid();
+  const d = value?.toDate ? value.toDate() : value;
+  return dayjs(d).tz(tzName);
+}
+
+export function durationMinutesFloor(start, end, tzName = TZ) {
+  const s = toDayjs(start, tzName).second(0).millisecond(0);
+  const e = toDayjs(end, tzName).second(0).millisecond(0);
+  if (!s.isValid() || !e.isValid() || e.isBefore(s)) return null;
+  return Math.floor(e.diff(s) / 60000);
+}
+
+export function durationHumanFloor(start, end, tzName = TZ) {
+  const mins = durationMinutesFloor(start, end, tzName);
+  if (mins == null) return "—";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${m}m`;
+}
+
+export function formatLocalShort(value, tzName = TZ) {
+  const d = toDayjs(value, tzName);
+  if (!d.isValid()) return "—";
+  return d.format("MMM D, h:mm A");
+}

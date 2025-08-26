@@ -24,6 +24,11 @@ import {
 import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
+import {
+  durationMinutesFloor,
+  durationHumanFloor,
+  formatLocalShort,
+} from "../utils/timeUtils";
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
@@ -227,29 +232,51 @@ export default function ShootoutTab() {
   }
 
   // History grid
-  const rows = useMemo(() =>
-    history.map((h) => {
-      const st = tsToDate(h.startTime);
-      const et = tsToDate(h.endTime);
-      const durMin = st && et ? Math.max(0, Math.round((new Date(et) - new Date(st)) / 60000)) : null;
-      return {
+  const rows = useMemo(
+    () =>
+      history.map((h) => ({
         id: h.id,
-        start: st ? new Date(st).toLocaleString() : "—",
-        end: et ? new Date(et).toLocaleString() : "—",
-        duration: durMin ?? "—",
+        startTime: h.startTime,
+        endTime: h.endTime,
         trips: toNumber(h.trips, 0),
-        pax: toNumber(h.passengers, 0),
+        passengers: toNumber(h.passengers, 0),
         vehicle: toString(h.vehicle, ""),
-      };
-    }), [history]
+      })),
+    [history],
   );
 
   const cols = [
-    { field: "start", headerName: "Start", minWidth: 170, flex: 1 },
-    { field: "end", headerName: "End", minWidth: 170, flex: 1 },
-    { field: "duration", headerName: "Duration (min)", width: 150, type: "number" },
+    {
+      field: "startTime",
+      headerName: "Start",
+      minWidth: 170,
+      flex: 1,
+      valueFormatter: (p) => formatLocalShort(p.value),
+    },
+    {
+      field: "endTime",
+      headerName: "End",
+      minWidth: 170,
+      flex: 1,
+      valueFormatter: (p) => formatLocalShort(p.value),
+    },
+    {
+      field: "durationMin",
+      headerName: "Duration",
+      width: 150,
+      valueGetter: (p) =>
+        durationMinutesFloor(p.row.startTime, p.row.endTime),
+      valueFormatter: (p) =>
+        durationHumanFloor(p.row.startTime, p.row.endTime),
+      sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+    },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
-    { field: "pax", headerName: "Passengers", width: 120, type: "number" },
+    {
+      field: "passengers",
+      headerName: "Passengers",
+      width: 120,
+      type: "number",
+    },
     { field: "vehicle", headerName: "Vehicle", minWidth: 120, flex: 1 },
   ];
 
@@ -368,11 +395,19 @@ export default function ShootoutTab() {
             <Stack spacing={1}>
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
-                  <Typography variant="body2">Start: {r.start}</Typography>
-                  <Typography variant="body2">End: {r.end}</Typography>
-                  <Typography variant="body2">Duration: {r.duration}</Typography>
+                  <Typography variant="body2">
+                    Start: {formatLocalShort(r.startTime)}
+                  </Typography>
+                  <Typography variant="body2">
+                    End: {formatLocalShort(r.endTime)}
+                  </Typography>
+                  <Typography variant="body2">
+                    Duration: {durationHumanFloor(r.startTime, r.endTime)}
+                  </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
-                  <Typography variant="body2">Passengers: {r.pax}</Typography>
+                  <Typography variant="body2">
+                    Passengers: {r.passengers}
+                  </Typography>
                   <Typography variant="body2">Vehicle: {r.vehicle}</Typography>
                 </Paper>
               ))}

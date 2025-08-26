@@ -23,11 +23,12 @@ export default function useWeeklySummary({
         if (!inWeek(r.startTime || r.loggedAt, weekStart)) return;
         if (driverFilter && r.driverEmail !== driverFilter) return;
         const key = r.driverEmail || "Unknown";
-        const prev = byDriver.get(key) || { driver: key, trips: 0, hoursMs: 0 };
+        const prev = byDriver.get(key) || { driver: key, trips: 0, minutes: 0 };
+        const addMin = Math.floor((r.durationMs || 0) / 60000);
         byDriver.set(key, {
           driver: key,
           trips: prev.trips + (Number.isFinite(r.trips) ? r.trips : 0),
-          hoursMs: prev.hoursMs + (r.durationMs || 0),
+          minutes: prev.minutes + addMin,
         });
       });
       setRows(
@@ -35,7 +36,7 @@ export default function useWeeklySummary({
           id: x.driver,
           driver: x.driver,
           trips: x.trips,
-          hours: Math.round((x.hoursMs / 3600000) * 100) / 100,
+          hours: Math.floor((x.minutes / 60) * 100) / 100,
         })),
       );
     });
