@@ -19,7 +19,7 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime } from "@/utils/datetime";
+import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
 import {
   vfText,
   vfDateTime,
@@ -27,6 +27,7 @@ import {
   safeVG,
   actionsCol,
 } from "@/utils/gridFormatters";
+
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 

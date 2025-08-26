@@ -50,6 +50,63 @@ export const safeVG = (getter) => (params) => {
   }
 };
 
+// Wrap a valueFormatter to always return a string and never throw
+export const safeVF = (formatter) => (params) => {
+  try {
+    const v = params?.value;
+    if (v == null) return "";
+    const res = formatter(params);
+    return res == null ? "" : String(res);
+  } catch (err) {
+    console.warn("[Grid] valueFormatter error:", err);
+    return "";
+  }
+};
+
+// Safely wrap column callbacks (valueGetter/valueFormatter/renderCell)
+export function withSafeColumns(columns = []) {
+  return (columns || []).map((c) => {
+    const col = { ...c };
+    if (typeof col.valueGetter === "function") {
+      col.valueGetter = safeVG(col.valueGetter);
+    }
+    if (typeof col.valueFormatter === "function") {
+      const vf = col.valueFormatter;
+      col.valueFormatter = safeVF((p) => vf(p));
+    }
+    if (typeof col.renderCell === "function") {
+      const rc = col.renderCell;
+      col.renderCell = (p) => {
+        try {
+          return rc(p);
+        } catch (err) {
+          console.warn("[Grid] renderCell error:", err);
+          return null;
+        }
+      };
+    }
+    return col;
+  });
+}
+
+// Debug utility: warn when rows are missing fields referenced by columns
+export function warnMissingFields(columns = [], rows = []) {
+  try {
+    const fields = columns.map((c) => c.field).filter(Boolean);
+    const missing = new Set();
+    rows.forEach((r) => {
+      fields.forEach((f) => {
+        if (r?.[f] === undefined) missing.add(f);
+      });
+    });
+    if (missing.size) {
+      console.warn("[Grid] Missing fields:", Array.from(missing));
+    }
+  } catch (err) {
+    console.warn("[Grid] warnMissingFields error:", err);
+  }
+}
+
 // Reusable actions column factory (avoids “__actions not found”)
 export const actionsCol = (render) => ({
   field: "__actions",
