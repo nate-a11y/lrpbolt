@@ -78,10 +78,11 @@ function toMs(input) {
       const t = input.getTime();
       return Number.isFinite(t) ? t : null;
     }
-    if (typeof input === "number" && Number.isFinite(input)) return input;
+    if (typeof input === "number" && Number.isFinite(input))
+      return input < 1e12 ? input * 1000 : input;
     if (typeof input === "string") {
       const n = Number(input);
-      if (Number.isFinite(n)) return n;
+      if (Number.isFinite(n)) return n < 1e12 ? n * 1000 : n;
       const t = Date.parse(input);
       return Number.isFinite(t) ? t : null;
     }
