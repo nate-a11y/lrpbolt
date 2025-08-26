@@ -20,7 +20,8 @@ import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
-import { fmtDateTime, fmtDuration } from "../../utils/timeUtils";
+import { fmtDuration } from "../../utils/timeUtils";
+import { fmtDateTimeCell, fmtPlain, getNested, toJSDate, dateSort } from "@/utils/gridFormatters";
 import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -96,35 +97,33 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => safeRow(p)?.driverEmail ?? "—",
+        valueGetter: getNested("driverEmail"),
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         width: 120,
-        valueGetter: (p) => safeRow(p)?.rideId ?? "—",
+        valueGetter: getNested("rideId"),
+        valueFormatter: fmtPlain("—"),
       },
       {
         field: "startTime",
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r?.start ?? r?.startTime ?? null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return r?.end ?? r?.endTime ?? null
-        },
-        valueFormatter: ({ value }) => fmtDateTime(value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
       {
         field: "duration",
@@ -132,17 +131,18 @@ export default function EntriesTab() {
         width: 120,
         valueGetter: (p) => {
           const r = safeRow(p)
-          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime }
+          return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) }
         },
-        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
+        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
       },
       {
         field: "loggedAt",
         headerName: "Logged",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => safeRow(p)?.loggedAt ?? null,
-        valueFormatter: (p) => fmtDateTime(p?.value),
+        valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
+        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        sortComparator: dateSort,
       },
       {
         field: "tools",

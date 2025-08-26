@@ -55,6 +55,7 @@ import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
 import { safeRow } from '@/utils/gridUtils'
+import { fmtPlain, getNested } from "@/utils/gridFormatters";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -321,17 +322,14 @@ export default function Tickets() {
         <Typography fontWeight="bold">{params?.value}</Typography>
       ),
     },
-    { field: "date", headerName: "Date", minWidth: 110 },
-    { field: "pickup", headerName: "Pickup", minWidth: 110 },
+    { field: "date", headerName: "Date", minWidth: 110, valueFormatter: fmtPlain("—") },
+    { field: "pickup", headerName: "Pickup", minWidth: 110, valueFormatter: fmtPlain("—") },
     {
       field: "link",
       headerName: "Link",
       minWidth: 100,
       sortable: false,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? r.ticketId ?? null : null
-      },
+      valueGetter: getNested("ticketId"),
       renderCell: (params = {}) => (
         <a
           href={`/ticket/${params?.value}`}
