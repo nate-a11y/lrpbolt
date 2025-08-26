@@ -33,8 +33,9 @@ import {
 import { db } from "src/utils/firebaseInit";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
-import { toNumber, toString, tsToDate } from "../utils/safe";
-import { safeGetter, safeFormatter } from "../utils/datagridSafe";
+import { toString, tsToDate } from "../utils/safe";
+import { safeGetter } from "../utils/datagridSafe";
+import { fmtDateTime, fmtDuration } from "../utils/timeUtils";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import ErrorBanner from "./ErrorBanner";
 import { useRole } from "@/hooks";
@@ -280,29 +281,25 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       field: "startTime",
       headerName: "Start",
       width: 160,
-      valueGetter: safeGetter((p) => p?.row?.startTime || null),
-      valueFormatter: safeFormatter((p) => {
-        const dt = tsToDate(p.value);
-        return dt ? new Date(dt).toLocaleString() : "";
-      }),
+      valueGetter: ({ row }) => row.start ?? row.startTime,
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "endTime",
       headerName: "End",
       width: 160,
-      valueGetter: safeGetter((p) => p?.row?.endTime || null),
-      valueFormatter: safeFormatter((p) => {
-        const dt = tsToDate(p.value);
-          return dt ? new Date(dt).toLocaleString() : "—";
-      }),
+      valueGetter: ({ row }) => row.end ?? row.endTime,
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "duration",
-      headerName: "Duration (min)",
-      type: "number",
+      headerName: "Duration",
       width: 140,
-      valueGetter: safeGetter((p) => toNumber(p?.row?.duration, 0)),
-      valueFormatter: safeFormatter((p) => `${toNumber(p.value, 0).toFixed(1)}`),
+      valueGetter: ({ row }) => ({
+        s: row.start ?? row.startTime,
+        e: row.end ?? row.endTime,
+      }),
+      valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
     },
     {
       field: "note",

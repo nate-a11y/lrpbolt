@@ -25,7 +25,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import EditRideDialog from "./EditRideDialog";
 import { shapeRideRow } from "../services/shapeRideRow";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
-import { minutesHHMM } from "../utils/gridFx.js";
+import { fmtDuration } from "../utils/timeUtils";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -162,15 +162,25 @@ const ClaimedRidesGrid = () => {
       flex: 0.9,
       minWidth: 130,
     },
-    {
-      field: "rideDuration",
-      headerName: "Duration",
-      flex: 0.7,
-      minWidth: 110,
-      valueFormatter: (p) =>
-        Number.isFinite(p.value) ? minutesHHMM(p.value) : "N/A",
-      sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
-    },
+      {
+        field: "rideDuration",
+        headerName: "Duration",
+        flex: 0.7,
+        minWidth: 110,
+        valueGetter: ({ row }) => ({
+          s: row.pickupTime,
+          e:
+            row.pickupTime && row.rideDuration
+              ? row.pickupTime + row.rideDuration * 60000
+              : null,
+        }),
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        sortComparator: (a, b) => {
+          const da = (a?.e ?? 0) - (a?.s ?? 0);
+          const db = (b?.e ?? 0) - (b?.s ?? 0);
+          return da - db;
+        },
+      },
     { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
     { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
     {
