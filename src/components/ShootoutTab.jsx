@@ -25,7 +25,7 @@ import {
 import { logError } from "../utils/logError";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { toNumber, toString, tsToDate } from "../utils/safe";
-import { formatTime, formatDuration } from "../utils/timeUtils";
+import { fmtDateTime, fmtDuration } from "../utils/timeUtils";
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
@@ -33,7 +33,6 @@ import { resolveSmsTo } from "../services/smsRecipients.js";
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
 
-const ROUND_TIMES = false;
 
 export default function ShootoutTab() {
   const { user, authLoading } = useAuth();
@@ -264,23 +263,26 @@ export default function ShootoutTab() {
       headerName: "Start",
       minWidth: 170,
       flex: 1,
-      valueFormatter: (p) =>
-        formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+      valueGetter: ({ row }) => row.start ?? row.startTime,
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "endTime",
       headerName: "End",
       minWidth: 170,
       flex: 1,
-      valueFormatter: (p) =>
-        formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+      valueGetter: ({ row }) => row.end ?? row.endTime,
+      valueFormatter: ({ value }) => fmtDateTime(value),
     },
     {
       field: "duration",
       headerName: "Duration",
       width: 150,
-      valueGetter: (p) =>
-        formatDuration(p?.row?.startTime, p?.row?.endTime),
+      valueGetter: ({ row }) => ({
+        s: row.start ?? row.startTime,
+        e: row.end ?? row.endTime,
+      }),
+      valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
       sortable: true,
     },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
@@ -409,13 +411,13 @@ export default function ShootoutTab() {
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Start: {formatTime(r.startTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
+                    Start: {fmtDateTime(r.startTime, "MMM D, h:mm A")}
                   </Typography>
                   <Typography variant="body2">
-                    End: {formatTime(r.endTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
+                    End: {fmtDateTime(r.endTime, "MMM D, h:mm A")}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {formatDuration(r.startTime, r.endTime)}
+                    Duration: {fmtDuration(r.startTime, r.endTime)}
                   </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">

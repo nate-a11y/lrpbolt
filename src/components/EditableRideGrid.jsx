@@ -11,7 +11,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
-import { fmtDurationHM } from "../utils/rideFormatters";
+import { fmtDuration } from "../utils/timeUtils";
 
 export default function EditableRideGrid({
   rows,
@@ -58,9 +58,16 @@ export default function EditableRideGrid({
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
-        valueGetter: (p) => Number(p?.row?.rideDuration ?? 0),
-        valueFormatter: (p) => (p?.value ? fmtDurationHM(p.value) : "—"),
-        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+        valueGetter: ({ row }) => ({
+          s: 0,
+          e: row.rideDuration ? row.rideDuration * 60000 : 0,
+        }),
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        sortComparator: (a, b) => {
+          const da = (a?.e ?? 0) - (a?.s ?? 0);
+          const db = (b?.e ?? 0) - (b?.s ?? 0);
+          return da - db;
+        },
       },
       { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
       { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },

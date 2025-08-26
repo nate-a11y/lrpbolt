@@ -20,7 +20,7 @@ import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
-import { fmtDateTime, fmtDuration } from "../../utils/ts";
+import { fmtDateTime, fmtDuration } from "../../utils/timeUtils";
 import { getRow } from "../../utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -109,26 +109,32 @@ export default function EntriesTab() {
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => getRow(p)?.startTime ?? null,
-        valueFormatter: (p) => fmtDateTime(p?.value),
+        valueGetter: (p) => {
+          const r = getRow(p);
+          return r?.start ?? r?.startTime ?? null;
+        },
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => getRow(p)?.endTime ?? null,
-        valueFormatter: (p) => fmtDateTime(p?.value),
+        valueGetter: (p) => {
+          const r = getRow(p);
+          return r?.end ?? r?.endTime ?? null;
+        },
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
-        field: "durationMs",
+        field: "duration",
         headerName: "Duration",
         width: 120,
         valueGetter: (p) => {
-          const ms = getRow(p)?.durationMs;
-          return Number.isFinite(ms) ? ms : 0;
+          const r = getRow(p);
+          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime };
         },
-        valueFormatter: (p) => fmtDuration(p?.value || 0),
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
       },
       {
         field: "loggedAt",
@@ -177,7 +183,7 @@ export default function EntriesTab() {
             fmtDateTime(r.startTime),
             fmtDateTime(r.endTime),
             fmtDateTime(r.loggedAt),
-            fmtDuration(r.durationMs),
+            fmtDuration(r.startTime, r.endTime),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -249,7 +255,7 @@ export default function EntriesTab() {
                   <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
                   <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
                   <Typography variant="body2">
-                    Duration: {fmtDuration(r.durationMs)}
+                    Duration: {fmtDuration(r.startTime, r.endTime)}
                   </Typography>
                   <Typography variant="body2">Logged: {fmtDateTime(r.loggedAt)}</Typography>
                 </Stack>

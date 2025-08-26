@@ -20,14 +20,10 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
-import {
-  formatTime,
-  formatDuration,
-} from "../../utils/timeUtils";
+import { fmtDateTime, fmtDuration } from "../../utils/timeUtils";
 import { getRow } from "../../utils/gridFormatters";
 import ToolsCell from "./cells/ToolsCell.jsx";
 
-const ROUND_TIMES = false;
 
 export default function ShootoutStatsTab() {
   const [stats, setStats] = useState(null);
@@ -115,8 +111,11 @@ export default function ShootoutStatsTab() {
         field: "duration",
         headerName: "Duration",
         width: 120,
-        valueGetter: (p) =>
-          formatDuration(getRow(p)?.startTime, getRow(p)?.endTime),
+        valueGetter: (p) => {
+          const r = getRow(p);
+          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime };
+        },
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
       },
       {
         field: "status",
@@ -131,18 +130,22 @@ export default function ShootoutStatsTab() {
         headerName: "Start",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => getRow(p)?.startTime ?? null,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueGetter: (p) => {
+          const r = getRow(p);
+          return r?.start ?? r?.startTime ?? null;
+        },
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => getRow(p)?.endTime ?? null,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueGetter: (p) => {
+          const r = getRow(p);
+          return r?.end ?? r?.endTime ?? null;
+        },
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
         field: "createdAt",
@@ -150,8 +153,7 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => getRow(p)?.createdAt ?? null,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
         field: "tools",
@@ -190,10 +192,10 @@ export default function ShootoutStatsTab() {
             r.status,
             r.trips,
             r.pax,
-            formatDuration(r.startTime, r.endTime),
-            formatTime(r.startTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
-            formatTime(r.endTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
-            formatTime(r.createdAt, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+            fmtDuration(r.startTime, r.endTime),
+            fmtDateTime(r.startTime, "MMM D, h:mm A"),
+            fmtDateTime(r.endTime, "MMM D, h:mm A"),
+            fmtDateTime(r.createdAt, "MMM D, h:mm A"),
           ]
             .filter(Boolean)
             .some((v) =>
@@ -250,17 +252,17 @@ export default function ShootoutStatsTab() {
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Pax: {r.pax}</Typography>
                   <Typography variant="body2">
-                    Duration: {formatDuration(r.startTime, r.endTime)}
+                    Duration: {fmtDuration(r.startTime, r.endTime)}
                   </Typography>
                   <Typography variant="body2">Status: {r.status}</Typography>
                   <Typography variant="body2">
-                    Start: {formatTime(r.startTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
+                    Start: {fmtDateTime(r.startTime, "MMM D, h:mm A")}
                   </Typography>
                   <Typography variant="body2">
-                    End: {formatTime(r.endTime, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
+                    End: {fmtDateTime(r.endTime, "MMM D, h:mm A")}
                   </Typography>
                   <Typography variant="body2">
-                    Created: {formatTime(r.createdAt, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" })}
+                    Created: {fmtDateTime(r.createdAt, "MMM D, h:mm A")}
                   </Typography>
                 </Stack>
                 <ToolsCell

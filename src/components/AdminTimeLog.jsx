@@ -30,11 +30,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
-import {
-  formatTime,
-  formatDuration,
-  toDayjs,
-} from "../utils/timeUtils";
+import { fmtDateTime, fmtDuration, toDayjs } from "../utils/timeUtils";
 
 import PageContainer from "./PageContainer.jsx";
 import {
@@ -53,7 +49,6 @@ dayjs.extend(timezone);
 
 const TZ = "America/Chicago";
 
-const ROUND_TIMES = false;
 
 /* ---------------- helpers ---------------- */
 const isEmail = (s) => typeof s === "string" && s.includes("@");
@@ -94,7 +89,7 @@ function toMs(input) {
   return null;
 }
 function fmtDateTimeMs(ms) {
-  return formatTime(ms, { fmt: "MMM D, h:mm A" });
+  return fmtDateTime(ms, "MMM D, h:mm A");
 }
 function fmtMinutes(min) {
   if (!Number.isFinite(min) || min < 0) return "";
@@ -533,8 +528,8 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueGetter: ({ row }) => row.start ?? row.startTime,
+        valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -545,8 +540,8 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 1,
         editable: true,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueGetter: ({ row }) => row.end ?? row.endTime,
+        valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -555,8 +550,11 @@ export default function AdminTimeLog() {
         field: "duration",
         headerName: "Duration",
         width: 120,
-        valueGetter: (p) =>
-          formatDuration(p?.row?.startTime, p?.row?.endTime),
+        valueGetter: ({ row }) => ({
+          s: row.start ?? row.startTime,
+          e: row.end ?? row.endTime,
+        }),
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
         sortable: true,
       },
       {
@@ -565,8 +563,7 @@ export default function AdminTimeLog() {
         minWidth: 160,
         flex: 0.9,
         editable: true,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -637,8 +634,8 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueGetter: ({ row }) => row.start ?? row.startTime,
+        valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -649,8 +646,8 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueGetter: ({ row }) => row.end ?? row.endTime,
+        valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -659,8 +656,11 @@ export default function AdminTimeLog() {
         field: "duration",
         headerName: "Duration",
         width: 130,
-        valueGetter: (p) =>
-          formatDuration(p?.row?.startTime, p?.row?.endTime),
+        valueGetter: ({ row }) => ({
+          s: row.start ?? row.startTime,
+          e: row.end ?? row.endTime,
+        }),
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
         sortable: true,
       },
       {
@@ -685,8 +685,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 170,
         editable: true,
-        valueFormatter: (p) =>
-          formatTime(p?.value, { round: ROUND_TIMES, fmt: "MMM D, h:mm A" }),
+        valueFormatter: ({ value }) => fmtDateTime(value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -987,7 +986,7 @@ export default function AdminTimeLog() {
                     startTime: fmtDateTimeMs(rest.startTime),
                     endTime: fmtDateTimeMs(rest.endTime),
                     createdAt: fmtDateTimeMs(rest.createdAt),
-                    duration: formatDuration(
+                    duration: fmtDuration(
                       rest.startTime,
                       rest.endTime,
                     ),

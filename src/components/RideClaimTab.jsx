@@ -33,15 +33,8 @@ import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
-import {
-  fmtDow,
-  fmtTime,
-  fmtDate,
-  fmtDurationHM,
-  safe,
-  groupKey,
-} from "../utils/rideFormatters";
-import { formatTime, toDayjs } from "../utils/timeUtils";
+import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
+import { fmtDateTime, fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import dayjs from "dayjs";
@@ -245,10 +238,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         type: "dateTime",
         minWidth: 180,
         flex: 1,
-        valueFormatter: (p) =>
-          formatTime(p?.value ?? p?.row?.pickupTime, {
-            fmt: "MMM D, h:mm A",
-          }),
+        valueGetter: ({ row }) => row.pickupTime,
+        valueFormatter: ({ value }) => fmtDateTime(value, "MMM D, h:mm A"),
         sortComparator: (a, b) => {
           const da = toDayjs(a)?.valueOf();
           const db = toDayjs(b)?.valueOf();
@@ -261,9 +252,19 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         field: "rideDuration",
         headerName: "Duration",
         width: 120,
-        valueGetter: (p) => Number(p?.row?.rideDuration ?? 0),
-        valueFormatter: (p) => (p?.value ? fmtDurationHM(p.value) : "—"),
-        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
+        valueGetter: ({ row }) => ({
+          s: row.pickupTime,
+          e:
+            row.pickupTime && row.rideDuration
+              ? row.pickupTime + row.rideDuration * 60000
+              : null,
+        }),
+        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        sortComparator: (a, b) => {
+          const da = (a?.e ?? 0) - (a?.s ?? 0);
+          const db = (b?.e ?? 0) - (b?.s ?? 0);
+          return da - db;
+        },
       },
       { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2 },
       {
@@ -546,7 +547,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
                 Date/Time: {fmtDate(entry.pickupTime)} {fmtTime(entry.pickupTime)}
               </Typography>
               <Typography>
-                Duration: {fmtDurationHM(entry.rideDuration)}
+                Duration: {fmtDuration(
+                  entry.pickupTime,
+                  entry.pickupTime + entry.rideDuration * 60000,
+                )}
               </Typography>
               <Typography>Trip Type: {safe(entry.rideType)}</Typography>
               <Typography>
