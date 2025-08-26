@@ -9,15 +9,19 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
-      workbox: {
-        cleanupOutdatedCaches: true,
-        navigateFallback: 'index.html',
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-      },
       srcDir: 'src',
       filename: 'sw.js',
       strategies: 'injectManifest',
+      injectManifest: {
+        globDirectory: 'dist',
+        globPatterns: ['assets/**/*.{js,css}', 'index.html'],
+      },
+      workbox: {
+        cleanupOutdatedCaches: true,
+        navigateFallbackDenylist: [/^\/api\//],
+      },
+      devOptions: { enabled: false },
+      includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
         name: 'Lake Ride Pros',
         short_name: 'LRP',
@@ -41,7 +45,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
-    sourcemap: false,
+    sourcemap: true,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),

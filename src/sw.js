@@ -1,30 +1,26 @@
+// sw.js
 import { clientsClaim } from 'workbox-core';
-import { precacheAndRoute } from 'workbox-precaching';
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies';
+import { StaleWhileRevalidate } from 'workbox-strategies';
 
-if (process.env.NODE_ENV === 'production') {
-  self.skipWaiting();
-  clientsClaim();
-}
+self.skipWaiting();
+clientsClaim();
+cleanupOutdatedCaches();
 
-// Injected at build: do not hardcode hashed asset names
-precacheAndRoute(self.__WB_MANIFEST || []);
+// Injected at build time by Workbox/Vite
+precacheAndRoute(self.__WB_MANIFEST || [], {
+  ignoreURLParametersMatching: [/^utm_/, /^fbclid$/],
+});
 
-// Bypass SW for Google/Firestore/Analytics
-const isThirdParty = (url) =>
-  url.origin.includes('googleapis.com') ||
-  url.origin.includes('google-analytics.com') ||
-  url.origin.includes('gstatic.com') ||
-  url.origin.includes('firebaseinstallations.googleapis.com');
-
-registerRoute(({ url }) => isThirdParty(url), new NetworkOnly(), 'GET');
-registerRoute(({ url }) => isThirdParty(url), new NetworkOnly(), 'POST');
-
-// Same-origin assets (JS/CSS) → stale-while-revalidate
+// Runtime cache for same-origin assets (JS/CSS)
 registerRoute(
-  ({ request, url }) =>
-    url.origin === self.location.origin &&
-    ['script', 'style', 'worker'].includes(request.destination),
-  new StaleWhileRevalidate()
+  ({ request }) => request.destination === 'script' || request.destination === 'style',
+  new StaleWhileRevalidate({ cacheName: 'lrp-static' })
+);
+
+// Runtime cache for images
+registerRoute(
+  ({ request }) => request.destination === 'image',
+  new StaleWhileRevalidate({ cacheName: 'lrp-images' })
 );
