@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/ClaimedRidesGrid.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -12,10 +12,6 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  IconButton,
-  Stack,
-  Paper,
-  useMediaQuery,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -28,6 +24,8 @@ import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import EditRideDialog from "./EditRideDialog";
 import { shapeRideRow } from "../services/shapeRideRow";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
+import { minutesHHMM } from "../utils/gridFx.js";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -40,8 +38,8 @@ const ClaimedRidesGrid = () => {
   const [loading, setLoading] = useState(true);
   const { user, authLoading } = useAuth();
   const [undoBuffer, setUndoBuffer] = useState([]);
-  const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
   const [editing, setEditing] = useState({ open: false, row: null });
+  const gridProps = useGridProDefaults({ gridId: "ClaimedRides" });
 
 
   function openEdit(row) {
@@ -165,10 +163,13 @@ const ClaimedRidesGrid = () => {
       minWidth: 130,
     },
     {
-      field: "rideDurationStr",
+      field: "rideDuration",
       headerName: "Duration",
       flex: 0.7,
       minWidth: 110,
+      valueFormatter: (p) =>
+        Number.isFinite(p.value) ? minutesHHMM(p.value) : "N/A",
+      sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
     },
     { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140 },
     { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160 },
@@ -211,6 +212,30 @@ const ClaimedRidesGrid = () => {
     },
   ];
 
+  const summaryRow = useMemo(() => {
+    const total = rows.reduce(
+      (sum, r) => sum + (Number.isFinite(r.rideDuration) ? r.rideDuration : 0),
+      0,
+    );
+    return { id: "summary", tripId: "Totals", rideDuration: total };
+  }, [rows]);
+
+  const initialState = useMemo(
+    () => ({
+      ...gridProps.initialState,
+      columns: {
+        ...gridProps.initialState.columns,
+        columnVisibilityModel: {
+          rideNotes: false,
+          createdBy: false,
+          lastModifiedBy: false,
+          ...gridProps.initialState.columns.columnVisibilityModel,
+        },
+      },
+    }),
+    [gridProps.initialState],
+  );
+
   return (
     <Box>
       {selectedRows.length > 0 && (
@@ -245,77 +270,22 @@ const ClaimedRidesGrid = () => {
         </Box>
       )}
 
-      {isSmall ? (
-        <Stack spacing={2} sx={{ mb: 2 }}>
-          {rows.map((r) => (
-            <Paper
-              key={r.id}
-              variant="outlined"
-              sx={{ p: 2 }}
-              className={r.fading ? "fade-out" : ""}
-            >
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="flex-start"
-              >
-                <Box>
-                  <Typography variant="subtitle2">{r.tripId}</Typography>
-                  <Typography variant="body2">
-                    Pickup: {fmtTimeTS(r.pickupTime)}
-                  </Typography>
-                  <Typography variant="body2">
-                    Duration: {minutesHHMM(r.rideDuration)}
-                  </Typography>
-                  <Typography variant="body2">Type: {r.rideType}</Typography>
-                  <Typography variant="body2">Vehicle: {r.vehicle}</Typography>
-                  {r.rideNotes && (
-                    <Typography variant="body2">Notes: {r.rideNotes}</Typography>
-                  )}
-                  <Typography variant="body2">
-                    Claimed By: {r.claimedBy || "Unknown"}
-                  </Typography>
-                </Box>
-                <IconButton
-                  color="error"
-                  size="small"
-                  onClick={() => {
-                    setSelectedRow(r);
-                    setConfirmOpen(true);
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Paper>
-          ))}
-        </Stack>
-      ) : (
-        <Box sx={{ width: '100%', overflowX: 'auto' }}>
-          <DataGridPro
-            rows={rows || []}
-            columns={columns}
-            autoHeight
-            checkboxSelection
-            disableRowSelectionOnClick
-            getRowClassName={(params = {}) => (params?.row?.fading ? 'fade-out' : '')}
-            onRowSelectionModelChange={(model) => {
-              setSelectedRows(model);
-            }}
-            loading={loading}
-            sx={{ bgcolor: 'background.paper' }}
-            columnVisibilityModel={
-              isSmall
-                ? {
-                    rideNotes: false,
-                    createdBy: false,
-                    lastModifiedBy: false,
-                  }
-                : undefined
-            }
-          />
-        </Box>
-      )}
+      <DataGridPro
+        rows={rows || []}
+        columns={columns}
+        checkboxSelection
+        getRowClassName={(params = {}) =>
+          params?.row?.fading ? "fade-out" : ""
+        }
+        onRowSelectionModelChange={(model) => {
+          setSelectedRows(model);
+        }}
+        loading={loading}
+        pinnedRows={{ bottom: [summaryRow] }}
+        {...gridProps}
+        initialState={initialState}
+        sx={{ ...gridProps.sx, bgcolor: "background.paper" }}
+      />
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Delete Ride?</DialogTitle>

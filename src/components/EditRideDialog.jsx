@@ -1,12 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField } from "@mui/material";
-import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
+import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import dayjs from "../utils/dates";           // your extended dayjs with tz
 import { isValidDayjs } from "../utils/dates";
 import { patchRide } from "../services/rides";
 import useAuth from "../hooks/useAuth";
+import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";
 
 export default function EditRideDialog({ open, onClose, collectionName, ride }) {
   const { user } = useAuth();
@@ -52,13 +53,14 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
         <DialogTitle>Edit Ride</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} mt={1}>
-            <DateTimePicker
+            <DateTimeFieldPro
               label="Pickup At"
-              ampm
-              minutesStep={5}
               value={pickupAt}
-              onChange={(v) => setPickupAt(isValidDayjs(v) ? v.second(0).millisecond(0) : null)}
-              slotProps={{ textField: { fullWidth: true, required: true } }}
+              onChange={(v) =>
+                setPickupAt(
+                  isValidDayjs(v) ? v.second(0).millisecond(0) : null,
+                )
+              }
             />
             <TextField
               label="Duration (minutes)"

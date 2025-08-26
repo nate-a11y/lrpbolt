@@ -17,7 +17,9 @@ import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import { LicenseInfo } from "@mui/x-license";
 
-LicenseInfo.setLicenseKey(import.meta.env.VITE_MUI_PRO_KEY);
+LicenseInfo.setLicenseKey(
+  import.meta.env.VITE_MUI_PRO_KEY || import.meta.env.MUI_X_LICENSE_KEY,
+);
 
 if (typeof window !== "undefined") {
   killRogueServiceWorkers();
