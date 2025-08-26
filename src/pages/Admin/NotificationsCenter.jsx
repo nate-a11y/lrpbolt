@@ -19,7 +19,9 @@ import SendIcon from "@mui/icons-material/Send";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+
 import { db } from "src/utils/firebaseInit";
+
 import { sendPortalNotification } from "../../utils/notify";
 import { enqueueSms } from "../../services/messaging";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -93,7 +95,7 @@ export default function NotificationsCenter() {
       const out = {};
       for (const [k, v] of Object.entries(obj)) out[k] = String(v);
       return out;
-    } catch (e) {
+    } catch {
       throw new Error("Data must be valid JSON (object).");
     }
   }

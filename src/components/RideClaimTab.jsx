@@ -29,26 +29,27 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Timestamp, orderBy } from "firebase/firestore";
 
-import RideGroup from "../RideGroup";
-import BlackoutOverlay from "./BlackoutOverlay";
+import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { durationMinutes, toDateAny } from "@/utils/datetime";
+
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import { withSafeColumns } from "../utils/gridFormatters";
-import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
-import { durationMinutes, toDateAny } from "@/utils/datetime";
+import RideGroup from "../RideGroup";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
 import { asArray } from "../utils/arrays.js";
+
+import BlackoutOverlay from "./BlackoutOverlay";
 
 function ProToolbar({ onBulkClaim, selectedCount }) {
   return (

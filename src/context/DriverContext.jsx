@@ -5,6 +5,7 @@ import {
   useCallback,
   useMemo,
 } from "react";
+
 import { logout as authLogout } from "../services/auth";
 
 const DriverContext = createContext(null);

@@ -1,8 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useRef, useState } from "react";
-
-import { useAuth } from "../context/AuthContext.jsx";
-
 import {
   Box, Card, CardContent, CardHeader, Typography, Stack, IconButton,
   Button, Divider, Snackbar, Alert, Chip, Paper, useMediaQuery,
@@ -15,12 +12,12 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import PeopleIcon from "@mui/icons-material/People";
 import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
-dayjs.extend(durationPlugin);
-
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
 import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
 import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
+
+import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { logError } from "../utils/logError";
@@ -35,6 +32,8 @@ import { enqueueSms, watchMessage } from "../services/messaging.js";
 import { resolveSmsTo } from "../services/smsRecipients.js";
 
 import useGridProDefaults from "./grid/useGridProDefaults.js";
+
+dayjs.extend(durationPlugin);
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
 
@@ -158,7 +157,7 @@ export default function ShootoutTab() {
 
   const elapsed = useMemo(() => {
     if (!startTime || !isRunning) return "00:00:00";
-    const diff = dayjs().diff(dayjs(startTime), "second");
+    const diff = dayjs().diff(dayjs(startTime), "second") + tick * 0;
     const d = dayjs.duration(diff, "seconds");
     return [d.hours(), d.minutes(), d.seconds()].map((n) => String(n).padStart(2, "0")).join(":");
   }, [startTime, isRunning, tick]);
@@ -208,7 +207,7 @@ export default function ShootoutTab() {
 
     try {
       await stopCurrentSessionSafely();
-    } catch (e) {
+    } catch {
       snackOpen("Failed to stop session.", "error");
       return;
     }

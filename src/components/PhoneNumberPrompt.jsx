@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { doc, setDoc } from "firebase/firestore";
+
 import { db } from "../utils/firebaseInit";
 
 export default function PhoneNumberPrompt({ open, email, onClose }) {

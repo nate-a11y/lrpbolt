@@ -1,19 +1,20 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useMemo, useEffect, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 
 import { getField, fmtMinutes, fmtDateTime, asText } from "@/utils/gridCells";
-import actionsCol from "./grid/actionsCol.jsx";
-import { useGridDoctor } from "../utils/useGridDoctor";
 import { dateCol, durationMinutes } from "@/utils/datetime";
+
+import { useGridDoctor } from "../utils/useGridDoctor";
+
+import actionsCol from "./grid/actionsCol.jsx";
 
 export default function EditableRideGrid({
   rows,
   onDelete,
   onEdit,
   loading = false,
-  refreshRides,
 }) {
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));

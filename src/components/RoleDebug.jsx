@@ -1,7 +1,9 @@
 import { Button, Chip, Divider, Stack, Typography } from "@mui/material";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+
 import { db } from "src/utils/firebaseInit";
 import { useRole } from "@/hooks";
+
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function RoleDebug() {

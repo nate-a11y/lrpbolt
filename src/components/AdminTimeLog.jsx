@@ -31,9 +31,10 @@ import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
 import { doc, deleteDoc } from "firebase/firestore";
 
+import { durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
+
 import { safeRow } from "../utils/gridUtils";
 import { fmtPlain, warnMissingFields, fmtDateTimeCell, dateSort } from "../utils/gridFormatters";
-import { durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
@@ -48,10 +49,6 @@ import useGridProDefaults from "./grid/useGridProDefaults.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-const TZ = "America/Chicago";
-
-
 /* ---------------- helpers ---------------- */
 const isEmail = (s) => typeof s === "string" && s.includes("@");
 

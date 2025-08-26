@@ -14,9 +14,10 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 
+import DRIVER_LIST from "../data/driverDirectory";
+
 import VehicleChip from "./VehicleChip";
 
-import DRIVER_LIST from "../data/driverDirectory";
 
 export default function DriverDirectory() {
   const [search, setSearch] = useState("");

@@ -3,9 +3,11 @@ import { useMemo, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
+
 import dayjs, { isValidDayjs } from "../utils/dates"; // your extended dayjs with tz
 import { patchRide } from "../services/rides";
 import useAuth from "../hooks/useAuth";
+
 import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";
 
 export default function EditRideDialog({ open, onClose, collectionName, ride }) {

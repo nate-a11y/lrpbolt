@@ -13,9 +13,10 @@ import {
   Chip,
   Button,
 } from "@mui/material";
+import { NavLink, useLocation } from "react-router-dom";
+
 import { NAV_ITEMS } from "../config/nav";
 import { DRAWER_WIDTH, APP_BAR_HEIGHT } from "../layout/constants";
-import { NavLink, useLocation } from "react-router-dom";
 import { iconMap } from "../utils/iconMap";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";

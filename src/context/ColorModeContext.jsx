@@ -8,6 +8,7 @@ import {
   useContext,
 } from "react";
 import { ThemeProvider, CssBaseline, useMediaQuery } from "@mui/material";
+
 import { buildTheme } from "../theme";
 
 export const ColorModeContext = createContext({ mode: "dark", toggle: () => {} });
@@ -39,7 +40,7 @@ export default function ColorModeProvider({ children }) {
     try {
       mql.addEventListener("change", onChange);
       return () => mql.removeEventListener("change", onChange);
-    } catch (_err) {
+    } catch {
       mql.addListener(onChange);
       return () => mql.removeListener(onChange);
     }

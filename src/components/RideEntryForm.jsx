@@ -38,26 +38,7 @@ import { DataGridPro } from "@mui/x-data-grid-pro";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
-import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
 import Papa from "papaparse";
-import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe"; // eslint-disable-line no-unused-vars
-
-import LiveRidesGrid from "./LiveRidesGrid";
-import RideQueueGrid from "./RideQueueGrid";
-import ClaimedRidesGrid from "./ClaimedRidesGrid";
-import DropDailyWidget from "./DropDailyWidget";
-
-import { fmtPlain } from "@/utils/gridFormatters";
-
-import { logError } from "../utils/logError";
-import useAuth from "../hooks/useAuth.js";
-import useRides from "../hooks/useRides";
-import { callDropDailyRidesNow } from "../utils/functions";
-import { useDriver } from "../context/DriverContext.jsx";
-
-import { db } from "src/utils/firebaseInit";
-import { TIMEZONE, COLLECTIONS } from "../constants";
-import { RIDE_TYPES, VEHICLES } from "../constants/rides";
 import {
   Timestamp,
   collection,
@@ -70,6 +51,25 @@ import {
   writeBatch,
   doc,
 } from "firebase/firestore";
+
+import { fmtPlain } from "@/utils/gridFormatters";
+import { db } from "src/utils/firebaseInit";
+
+import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
+import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe";  
+import { logError } from "../utils/logError";
+import useAuth from "../hooks/useAuth.js";
+import useRides from "../hooks/useRides";
+import { callDropDailyRidesNow } from "../utils/functions";
+import { useDriver } from "../context/DriverContext.jsx";
+import { TIMEZONE, COLLECTIONS } from "../constants";
+import { RIDE_TYPES, VEHICLES } from "../constants/rides";
+
+import DropDailyWidget from "./DropDailyWidget";
+import ClaimedRidesGrid from "./ClaimedRidesGrid";
+import RideQueueGrid from "./RideQueueGrid";
+import LiveRidesGrid from "./LiveRidesGrid";
+
 
 
 
@@ -199,7 +199,7 @@ function RideBuilderFields({
           slotProps={{
             textField: {
               ...FIELD_PROPS,
-              onBlur: (e) => {
+              onBlur: () => {
                 mark("pickupAt")();
                 if (value.pickupAt && !value.pickupAt.isValid()) onChange({ ...value, pickupAt: null });
               },
@@ -561,7 +561,7 @@ if (totalMinutes <= 0) {
           continue;
         }
         seen.add(d.tripId);
-        // eslint-disable-next-line no-await-in-loop
+         
         if (await tripExistsAnywhere(d.tripId)) {
           skipped++;
           continue;
@@ -577,7 +577,7 @@ if (totalMinutes <= 0) {
           const ref = doc(collection(db, COLLECTIONS.RIDE_QUEUE));
           batch.set(ref, d);
         });
-        // eslint-disable-next-line no-await-in-loop
+         
         await batch.commit();
       }
 
