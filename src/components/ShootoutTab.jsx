@@ -14,9 +14,9 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
-import { fmtPlain, warnMissingFields } from '@/utils/gridFormatters';
-import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from '@/utils/datetime';
-import { fmtMinutes } from '@/utils/grid/datetime';
+import { warnMissingFields } from '@/utils/gridFormatters';
+import { fmtDateTime, fmtMinutes } from '@/utils/datetime';
+import { textCol, dateTimeCol, durationCol, safeVG } from "@/utils/gridSafe";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -37,6 +37,35 @@ import useGridProDefaults from "./grid/useGridProDefaults.js";
 dayjs.extend(durationPlugin);
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
+
+export function buildShootoutGrid(rows = []) {
+  const columns = [
+    dateTimeCol("startTime", "Start", ({ row }) => row.startTime ?? row.start),
+    dateTimeCol("endTime", "End", ({ row }) => row.endTime ?? row.end),
+    durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
+    {
+      field: "trips",
+      headerName: "Trips",
+      type: "number",
+      width: 90,
+      valueGetter: safeVG(({ row }) => row.trips ?? 0),
+    },
+    {
+      field: "passengers",
+      headerName: "Passengers",
+      type: "number",
+      width: 120,
+      valueGetter: safeVG(({ row }) => row.passengers ?? row.pax ?? 0),
+    },
+    textCol("vehicle", "Vehicle", ({ row }) => row.vehicle ?? ""),
+  ];
+  const mapped = (rows || []).map((r) => ({
+    ...r,
+    duration:
+      r.duration ?? Math.round((r.durationMs || 0) / 60000),
+  }));
+  return { columns, rows: mapped };
+}
 
 
 export default function ShootoutTab() {
@@ -72,47 +101,11 @@ export default function ShootoutTab() {
         [grid.initialState, isSmall],
       );
 
-      const cols = useMemo(
-        () => [
-          dateCol("startTime", "Start", {
-            minWidth: 170,
-            flex: 1,
-            valueGetter: (p) => toDateAny(p.row?.start ?? p.row?.startTime),
-          }),
-          dateCol('endTime', 'End', {
-            minWidth: 170,
-            flex: 1,
-            valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
-          }),
-          {
-            field: "duration",
-            headerName: "Duration",
-            width: 150,
-            valueGetter: (p) =>
-              durationMinutes(
-                p?.row?.start ?? p?.row?.startTime,
-                p?.row?.end ?? p?.row?.endTime,
-              ),
-            valueFormatter: (p) => fmtMinutes(p.value),
-            sortable: true,
-          },
-          { field: "trips", headerName: "Trips", width: 90, type: "number" },
-          {
-            field: "passengers",
-            headerName: "Passengers",
-            width: 120,
-            type: "number",
-          },
-          {
-            field: "vehicle",
-            headerName: "Vehicle",
-            minWidth: 120,
-            flex: 1,
-            valueFormatter: fmtPlain("—"),
-          },
-        ],
-        [],
-      );
+      const { columns: cols, rows } = useMemo(() => buildShootoutGrid(history), [history]);
+
+    useEffect(() => {
+      warnMissingFields(cols, rows);
+    }, [cols, rows]);
 
     useEffect(() => {
       isMounted.current = true;
@@ -123,7 +116,6 @@ export default function ShootoutTab() {
       onData: (rows) => {
         if (!isMounted.current) return;
           setHistory(rows);
-          warnMissingFields(cols, rows);
         const open = rows.find(
           (r) => r.driverEmail?.toLowerCase() === driverEmail?.toLowerCase() && !r.endTime
         );
@@ -291,20 +283,6 @@ export default function ShootoutTab() {
     try { await updateShootoutSession(currentId, { [field]: next }); } catch (e) { logError("inc "+field, e); }
   }
 
-  // History grid
-  const rows = useMemo(
-    () =>
-      history.map((h) => ({
-        id: h.id,
-        startTime: h.startTime,
-        endTime: h.endTime,
-        trips: toNumber(h.trips, 0),
-        passengers: toNumber(h.passengers, 0),
-        vehicle: toString(h.vehicle, ""),
-      })),
-    [history],
-  );
-
     return (
       <Card sx={{ borderRadius: 3 }}>
       <CardHeader title="Shootout Tracker" />
@@ -421,18 +399,13 @@ export default function ShootoutTab() {
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Start: {friendlyDateTime(r.startTime)}
+                    Start: {fmtDateTime(r.startTime)}
                   </Typography>
                   <Typography variant="body2">
-                    End: {friendlyDateTime(r.endTime)}
+                    End: {fmtDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {
-                      (() => {
-                        const m = durationMinutes(r.startTime, r.endTime);
-                        return m == null ? "—" : `${m}m`;
-                      })()
-                    }
+                    Duration: {fmtMinutes(r.duration)}
                   </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">

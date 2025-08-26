@@ -34,10 +34,8 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Timestamp, orderBy } from "firebase/firestore";
 
-import { getField } from '@/utils/gridCells';
-import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
-import { asText } from '@/utils/grid/cell';
 import { durationMinutes, toDateAny } from "@/utils/datetime";
+import { textCol, dateTimeCol, durationCol } from "@/utils/gridSafe";
 
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
@@ -236,42 +234,11 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const rawColumns = useMemo(
     () => [
-      {
-        field: "pickupTime",
-        headerName: "Pickup",
-        minWidth: 170,
-        valueGetter: (p) => getField(p?.row ?? null, 'pickupTime'),
-        valueFormatter: (p) => fmtDateTime(p.value),
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'vehicle'),
-        renderCell: (p) => asText(p.value),
-      },
-      {
-        field: "rideType",
-        headerName: "Type",
-        minWidth: 140,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideType'),
-        renderCell: (p) => asText(p.value),
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        minWidth: 120,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideDuration'),
-        valueFormatter: (p) => fmtMinutes(p.value),
-        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
-      },
-      {
-        field: "rideNotes",
-        headerName: "Notes",
-        flex: 2,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideNotes'),
-        renderCell: (p) => asText(p.value),
-      },
+      dateTimeCol("pickupTime", "Pickup", ({ row }) => row.pickupTime),
+      textCol("vehicle", "Vehicle", ({ row }) => row.vehicle ?? ""),
+      textCol("rideType", "Type", ({ row }) => row.rideType ?? ""),
+      durationCol("rideDuration", "Duration", ({ row }) => row.rideDuration),
+      textCol("rideNotes", "Notes", ({ row }) => row.rideNotes ?? ""),
       {
         field: "actions",
         type: "actions",
