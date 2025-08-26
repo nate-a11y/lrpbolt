@@ -8,7 +8,7 @@ import {
 } from "@mui/x-data-grid-pro";
 import { Stack, Button } from "@mui/material";
 
-export default function ProToolbar({ onReset }) {
+export default function ProToolbar({ onReset, rightAction, rightActionLabel }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1 }}>
       <GridToolbarColumnsButton />
@@ -16,6 +16,12 @@ export default function ProToolbar({ onReset }) {
       <GridToolbarDensitySelector />
       <GridToolbarExport csvOptions={{ utf8WithBom: true }} />
       <GridToolbarQuickFilter debounceMs={400} />
+      <span style={{ flex: 1 }} />
+      {rightAction ? (
+        <Button size="small" variant="contained" onClick={rightAction}>
+          {rightActionLabel || "Action"}
+        </Button>
+      ) : null}
       {onReset ? (
         <Button size="small" onClick={onReset}>
           Reset view

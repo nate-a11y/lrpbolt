@@ -2,46 +2,56 @@
 import dayjsLib from "dayjs";
 import utc from "dayjs/plugin/utc";
 import tz from "dayjs/plugin/timezone";
-dayjsLib.extend(utc);
-dayjsLib.extend(tz);
+dayjsLib.extend(utc); dayjsLib.extend(tz);
 
 const TZ = "America/Chicago";
 
-// Normalize Firestore Timestamp | Date | {seconds,nanoseconds} | string to dayjs or null
-export function toDayjs(value, tzName = TZ) {
+// Accept: Firestore Timestamp | {seconds,nanoseconds} | Date | ISO | ms | seconds
+function coerceDate(value) {
   if (!value) return null;
-  let raw = value;
-  if (typeof value?.toDate === "function") {
-    raw = value.toDate();
-  } else if (
-    typeof value === "object" &&
-    typeof value.seconds === "number" &&
-    typeof value.nanoseconds === "number"
-  ) {
-    raw = new Date(value.seconds * 1000 + value.nanoseconds / 1e6);
+  if (typeof value.toDate === "function") {
+    try {
+      return value.toDate();
+    } catch (err) {
+      void err;
+      /* no-op for hot reload */
+    }
   }
-  const d = dayjsLib(raw);
-  if (!d.isValid()) return null;
-  return tzName ? d.tz(tzName) : d;
+  if (typeof value === "object") {
+    const s = value.seconds ?? value._seconds;
+    const ns = value.nanoseconds ?? value._nanoseconds ?? 0;
+    if (typeof s === "number") return new Date(s * 1000 + Math.floor(ns / 1e6));
+  }
+  if (typeof value === "number")
+    return value < 2e12 ? new Date(value * 1000) : new Date(value);
+  if (typeof value === "string") {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  return null;
 }
 
-// Truncate seconds/millis and FLOOR the diff (never round up)
+export function toDayjs(value, tzName = TZ) {
+  const d = coerceDate(value);
+  if (!d) return null;
+  const j = tzName ? dayjsLib(d).tz(tzName) : dayjsLib(d);
+  return j.isValid() ? j : null;
+}
+
 export function durationMinutesFloor(start, end, tzName = TZ) {
-  const s = toDayjs(start, tzName);
-  const e = toDayjs(end, tzName);
+  const s = toDayjs(start, tzName), e = toDayjs(end, tzName);
   if (!s || !e) return null;
-  const s0 = s.second(0).millisecond(0);
-  const e0 = e.second(0).millisecond(0);
+  const s0 = s.second(0).millisecond(0), e0 = e.second(0).millisecond(0);
   if (e0.isBefore(s0)) return null;
   return Math.floor(e0.diff(s0) / 60000);
 }
 
 export function durationHumanFloor(start, end, tzName = TZ) {
-  const mins = durationMinutesFloor(start, end, tzName);
-  if (mins == null) return "—";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${m}m`;
+  const m = durationMinutesFloor(start, end, tzName);
+  if (m == null) return "—";
+  const h = Math.floor(m / 60), r = m % 60;
+  return `${h}h ${r}m`;
 }
 
 export function formatLocalShort(value, tzName = TZ) {
