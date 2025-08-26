@@ -34,7 +34,13 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
 
 import { safeRow } from "../utils/gridUtils";
-import { fmtPlain, warnMissingFields, fmtDateTimeCell, dateSort } from "../utils/gridFormatters";
+import {
+  vfText,
+  vfDuration,
+  vfDateTime,
+  vfNumber,
+  safeVG,
+} from "../utils/gridFormatters";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
@@ -55,6 +61,12 @@ const isEmail = (s) => typeof s === "string" && s.includes("@");
 const fmtDuration = (start, end) => {
   const m = durationMinutes(start, end);
   return m == null ? '—' : `${m}m`;
+};
+
+const dateSort = (a, b) => {
+  const da = toDateAny(a);
+  const db = toDateAny(b);
+  return (da?.getTime() || 0) - (db?.getTime() || 0);
 };
 
 function toMs(input) {
@@ -418,7 +430,7 @@ export default function AdminTimeLog() {
 
   const shootSummaryColumns = useMemo(
     () => [
-      { field: "driver", headerName: "Driver", flex: 1, minWidth: 180, valueFormatter: fmtPlain("—") },
+      { field: "driver", headerName: "Driver", flex: 1, minWidth: 180, valueFormatter: vfText },
       { field: "sessions", headerName: "Sessions", width: 110, type: "number" },
       { field: "trips", headerName: "Trips", width: 110, type: "number" },
       {
@@ -435,7 +447,7 @@ export default function AdminTimeLog() {
           const r = safeRow(p)
           return Math.floor((r?.durationMs || 0) / 60000)
         },
-        valueFormatter: (p) => fmtMinutes(p?.value),
+        valueFormatter: vfDuration,
       },
       { field: "hours", headerName: "Hours", width: 110, type: "number" },
     ],
@@ -526,7 +538,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 140,
         editable: true,
-        valueFormatter: fmtPlain("—"),
+        valueFormatter: vfText,
       },
       {
         field: "startTime",
@@ -536,7 +548,7 @@ export default function AdminTimeLog() {
         flex: 1,
         editable: true,
         valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime) ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
+        renderCell: vfDateTime,
         sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
       },
@@ -548,7 +560,7 @@ export default function AdminTimeLog() {
         flex: 1,
         editable: true,
         valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime) ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
+        renderCell: vfDateTime,
         sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
       },
@@ -579,7 +591,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         editable: true,
         valueGetter: (p) => toDateAny(p?.row?.loggedAt) ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
+        renderCell: vfDateTime,
         sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
       },
@@ -625,7 +637,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueFormatter: fmtPlain("—"),
+        valueFormatter: vfText,
         renderCell: (p) => {
           const r = safeRow(p)
           const email = r?.driverEmail || "";
@@ -645,7 +657,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 140,
         editable: true,
-        valueFormatter: fmtPlain("—"),
+        valueFormatter: vfText,
       },
       {
         field: "startTime",
@@ -655,7 +667,7 @@ export default function AdminTimeLog() {
         minWidth: 180,
         editable: true,
         valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime) ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
+        renderCell: vfDateTime,
         sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
       },
@@ -667,7 +679,7 @@ export default function AdminTimeLog() {
         minWidth: 180,
         editable: true,
         valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime) ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
+        renderCell: vfDateTime,
         sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
       },
@@ -714,7 +726,7 @@ export default function AdminTimeLog() {
         minWidth: 180,
         editable: true,
         valueGetter: (p) => toDateAny(p?.row?.createdAt) ?? null,
-        renderCell: (p) => fmtDateTimeCell(p) || "",
+        renderCell: vfDateTime,
         sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
       },
@@ -753,9 +765,7 @@ export default function AdminTimeLog() {
     );
 
     useEffect(() => {
-      warnMissingFields(entryColumns, entryRows);
-      warnMissingFields(shootSummaryColumns, shootSummaryRows);
-      warnMissingFields(shootoutColumns, shootoutRows);
+      // warnMissingFields removed
     }, [entryRows, shootSummaryRows, shootoutRows, entryColumns, shootSummaryColumns, shootoutColumns]);
 
     /* -------- Weekly Summary (timeLogs only) -------- */

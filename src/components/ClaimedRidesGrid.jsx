@@ -12,14 +12,21 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-import { getField } from '@/utils/gridCells';
-import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
-import { asText } from '@/utils/grid/cell';
-import { dateCol, durationMinutes } from "@/utils/datetime";
+import { getField } from "@/utils/gridCells";
+import { asText } from "@/utils/grid/cell";
+import { durationMinutes } from "@/utils/datetime";
+import {
+  vfText,
+  vfDateTime,
+  vfDuration,
+  safeVG,
+  actionsCol,
+} from "@/utils/gridFormatters";
 
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
@@ -32,7 +39,6 @@ import { useGridDoctor } from "../utils/useGridDoctor";
 
 
 import EditRideDialog from "./EditRideDialog";
-import actionsCol from "./grid/actionsCol.jsx";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -54,52 +60,56 @@ const ClaimedRidesGrid = () => {
 
   const columns = useMemo(
     () => [
-      dateCol('pickupTime', 'Pickup', {
+      {
+        field: "pickupTime",
+        headerName: "Pickup",
         flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'pickupTime'),
-        valueFormatter: (p) => fmtDateTime(p.value),
-      }),
+        valueGetter: safeVG(({ row }) => getField(row, "pickupTime")),
+        valueFormatter: vfDateTime,
+      },
       {
         field: "vehicle",
         headerName: "Vehicle",
         flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'vehicle'),
-        renderCell: (p) => asText(p.value),
+        valueGetter: safeVG(({ row }) => getField(row, "vehicle")),
+        valueFormatter: vfText,
       },
       {
         field: "rideType",
         headerName: "Type",
         flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideType'),
-        renderCell: (p) => asText(p.value),
+        valueGetter: safeVG(({ row }) => getField(row, "rideType")),
+        valueFormatter: vfText,
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         width: 110,
-        valueGetter: (p) => {
-          const r = p?.row ?? null;
+        valueGetter: safeVG(({ row }) => {
+          const r = row;
           return (
-            getField(r, 'rideDuration') ??
+            getField(r, "rideDuration") ??
             durationMinutes(
-              getField(r, 'pickupTime'),
-              getField(r, 'endTime') ?? getField(r, 'dropoffTime'),
+              getField(r, "pickupTime"),
+              getField(r, "endTime") ?? getField(r, "dropoffTime"),
             )
           );
-        },
-        valueFormatter: (p) => fmtMinutes(p.value),
+        }),
+        valueFormatter: vfDuration,
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         flex: 1.5,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideNotes'),
-        renderCell: (p) => asText(p.value),
+        valueGetter: safeVG(({ row }) => getField(row, "rideNotes")),
+        valueFormatter: vfText,
       },
-      actionsCol({
-        onDelete: (row) => handleDelete(row),
-      }),
+      actionsCol(({ row }) => (
+        <IconButton size="small" onClick={() => handleDelete(row)}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      )),
     ],
     [handleDelete],
   );

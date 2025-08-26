@@ -35,14 +35,19 @@ import timezone from "dayjs/plugin/timezone";
 import { Timestamp, orderBy } from "firebase/firestore";
 
 import { durationMinutes, toDateAny } from "@/utils/datetime";
-import { textCol, dateTimeCol, durationCol } from "@/utils/gridSafe";
+import {
+  vfText,
+  vfDateTime,
+  vfDuration,
+  safeVG,
+  actionsCol,
+} from "@/utils/gridFormatters";
 
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
-import { withSafeColumns } from "../utils/gridFormatters";
 import RideGroup from "../RideGroup";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
@@ -232,33 +237,50 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [claimRide],
   );
 
-  const rawColumns = useMemo(
+  const columns = useMemo(
     () => [
-      dateTimeCol("pickupTime", "Pickup", ({ row }) => row.pickupTime),
-      textCol("vehicle", "Vehicle", ({ row }) => row.vehicle ?? ""),
-      textCol("rideType", "Type", ({ row }) => row.rideType ?? ""),
-      durationCol("rideDuration", "Duration", ({ row }) => row.rideDuration),
-      textCol("rideNotes", "Notes", ({ row }) => row.rideNotes ?? ""),
       {
-        field: "actions",
-        type: "actions",
-        headerName: "Actions",
-        minWidth: 120,
-        getActions: (params) => [
-          <GridActionsCellItem
-            key="claim"
-            icon={<CheckCircleIcon />}
-            label="Claim"
-            onClick={() => handleClaim(params.id)}
-            showInMenu={false}
-          />,
-        ],
+        field: "pickupTime",
+        headerName: "Pickup",
+        valueGetter: safeVG(({ row }) => row.pickupTime),
+        valueFormatter: vfDateTime,
       },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        valueGetter: safeVG(({ row }) => row.vehicle),
+        valueFormatter: vfText,
+      },
+      {
+        field: "rideType",
+        headerName: "Type",
+        valueGetter: safeVG(({ row }) => row.rideType),
+        valueFormatter: vfText,
+      },
+      {
+        field: "rideDuration",
+        headerName: "Duration",
+        valueGetter: safeVG(({ row }) => row.rideDuration),
+        valueFormatter: vfDuration,
+      },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        flex: 1,
+        valueGetter: safeVG(({ row }) => row.rideNotes),
+        valueFormatter: vfText,
+      },
+      actionsCol(({ id }) => (
+        <GridActionsCellItem
+          icon={<CheckCircleIcon />}
+          label="Claim"
+          onClick={() => handleClaim(id)}
+          showInMenu={false}
+        />
+      )),
     ],
     [handleClaim],
   );
-
-  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
 
   useGridDoctor({ name: "RideClaimTab", rows, columns });
 

@@ -1,16 +1,21 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useCallback } from "react";
 import { DataGridPro } from "@mui/x-data-grid-pro";
-import { Box, useMediaQuery, useTheme } from "@mui/material";
+import { Box, useMediaQuery, useTheme, IconButton } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
-import { getField } from '@/utils/gridCells';
-import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
-import { asText } from '@/utils/grid/cell';
-import { dateCol, durationMinutes } from "@/utils/datetime";
+import { getField } from "@/utils/gridCells";
+import { durationMinutes } from "@/utils/datetime";
+import {
+  vfText,
+  vfDateTime,
+  vfDuration,
+  safeVG,
+  actionsCol,
+} from "@/utils/gridFormatters";
 
 import { useGridDoctor } from "../utils/useGridDoctor";
-
-import actionsCol from "./grid/actionsCol.jsx";
 
 export default function EditableRideGrid({
   rows,
@@ -47,53 +52,71 @@ export default function EditableRideGrid({
 
   const columns = useMemo(
     () => [
-      dateCol('pickupTime', 'Pickup', {
-        flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'pickupTime'),
-        valueFormatter: (p) => fmtDateTime(p.value),
-      }),
       {
-        field: "vehicle",
-        headerName: "Vehicle",
-        flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'vehicle'),
-        renderCell: (p) => asText(p.value),
+        field: "tripId",
+        headerName: "Ride ID",
+        width: 110,
+        valueGetter: safeVG(({ row }) => getField(row, "tripId")),
+        valueFormatter: vfText,
+      },
+      {
+        field: "pickupTime",
+        headerName: "Start",
+        valueGetter: safeVG(({ row }) => getField(row, "pickupTime")),
+        valueFormatter: vfDateTime,
+      },
+      {
+        field: "endTime",
+        headerName: "End",
+        valueGetter: safeVG(({ row }) =>
+          getField(row, "endTime") ?? getField(row, "dropoffTime"),
+        ),
+        valueFormatter: vfDateTime,
+      },
+      {
+        field: "rideDuration",
+        headerName: "Duration",
+        valueGetter: safeVG(({ row }) =>
+          getField(row, "rideDuration") ??
+          durationMinutes(
+            getField(row, "pickupTime"),
+            getField(row, "endTime") ?? getField(row, "dropoffTime"),
+          ),
+        ),
+        valueFormatter: vfDuration,
+        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       {
         field: "rideType",
         headerName: "Type",
         flex: 1,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideType'),
-        renderCell: (p) => asText(p.value),
+        valueGetter: safeVG(({ row }) => getField(row, "rideType")),
+        valueFormatter: vfText,
       },
       {
-        field: "rideDuration",
-        headerName: "Duration",
-        width: 110,
-        valueGetter: (p) => {
-          const r = p?.row ?? null;
-          return (
-            getField(r, 'rideDuration') ??
-            durationMinutes(
-              getField(r, 'pickupTime'),
-              getField(r, 'endTime') ?? getField(r, 'dropoffTime'),
-            )
-          );
-        },
-        valueFormatter: (p) => fmtMinutes(p.value),
-        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        valueGetter: safeVG(({ row }) => getField(row, "vehicle")),
+        valueFormatter: vfText,
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         flex: 1.5,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideNotes'),
-        renderCell: (p) => asText(p.value),
+        valueGetter: safeVG(({ row }) => getField(row, "rideNotes")),
+        valueFormatter: vfText,
       },
-      actionsCol({
-        onEdit: (row) => handleEdit(row),
-        onDelete: (row) => handleDelete(row.id),
-      }),
+      actionsCol(({ row }) => (
+        <>
+          <IconButton size="small" onClick={() => handleEdit(row)}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={() => handleDelete(row.id)}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </>
+      )),
     ],
     [handleEdit, handleDelete],
   );

@@ -19,10 +19,15 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
-import { textCol, dateTimeCol, durationCol, safeVG } from "@/utils/gridSafe";
-
-import actionsCol from "../grid/actionsCol.jsx";
+import { fmtDateTime } from "@/utils/datetime";
+import {
+  vfText,
+  vfDateTime,
+  vfDuration,
+  vfNumber,
+  safeVG,
+  actionsCol,
+} from "@/utils/gridFormatters";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 
@@ -91,31 +96,61 @@ export default function ShootoutStatsTab() {
   const rows = useMemo(() => stats || [], [stats]);
 
   const columns = [
-    textCol(
-      "driver",
-      "Driver",
-      ({ row }) => row.driver ?? row.driverName ?? row.driverEmail?.split("@")[0] ?? "",
-    ),
-    textCol("vehicle", "Vehicle", ({ row }) => row.vehicle ?? ""),
-    dateTimeCol("startTime", "Start", ({ row }) => row.startTime),
-    dateTimeCol("endTime", "End", ({ row }) => row.endTime),
-    durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
+    {
+      field: "driver",
+      headerName: "Driver",
+      valueGetter: safeVG(({ row }) =>
+        row.driver ?? row.driverName ?? row.driverEmail?.split("@")[0] ?? "",
+      ),
+      valueFormatter: vfText,
+    },
+    {
+      field: "vehicle",
+      headerName: "Vehicle",
+      valueGetter: safeVG(({ row }) => row.vehicle ?? ""),
+      valueFormatter: vfText,
+    },
+    {
+      field: "startTime",
+      headerName: "Start",
+      valueGetter: safeVG(({ row }) => row.startTime),
+      valueFormatter: vfDateTime,
+    },
+    {
+      field: "endTime",
+      headerName: "End",
+      valueGetter: safeVG(({ row }) => row.endTime),
+      valueFormatter: vfDateTime,
+    },
+    {
+      field: "duration",
+      headerName: "Duration",
+      valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
+      valueFormatter: vfDuration,
+    },
     {
       field: "trips",
       headerName: "Trips",
-      type: "number",
       width: 90,
       valueGetter: safeVG(({ row }) => row.trips ?? row.tripCount ?? 0),
+      valueFormatter: vfNumber,
     },
     {
       field: "pax",
       headerName: "Pax",
-      type: "number",
       width: 90,
       valueGetter: safeVG(({ row }) => row.pax ?? row.passengers ?? 0),
+      valueFormatter: vfNumber,
     },
-    dateTimeCol("createdAt", "Created", ({ row }) => row.createdAt),
-    actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
+    {
+      field: "createdAt",
+      headerName: "Created",
+      valueGetter: safeVG(({ row }) => row.createdAt),
+      valueFormatter: vfDateTime,
+    },
+    actionsCol(({ row }) => (
+      <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
+    )),
   ];
 
 

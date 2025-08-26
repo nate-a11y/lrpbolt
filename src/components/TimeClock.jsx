@@ -30,9 +30,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
-import { warnMissingFields } from "@/utils/gridFormatters";
-import { fmtMinutes } from "@/utils/datetime";
-import { textCol, dateTimeCol, durationCol } from "@/utils/gridSafe";
+import { vfText, vfDateTime, vfDuration, safeVG } from "@/utils/gridFormatters";
 import { useRole } from "@/hooks";
 import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";
@@ -103,11 +101,37 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
     const columns = useMemo(
       () => [
-        textCol("rideId", "Ride ID", ({ row }) => row.rideId ?? ""),
-        dateTimeCol("startTime", "Start", ({ row }) => row.start ?? row.startTime),
-        dateTimeCol("endTime", "End", ({ row }) => row.end ?? row.endTime),
-        durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
-        textCol("note", "Note", ({ row }) => row.note ?? ""),
+        {
+          field: "rideId",
+          headerName: "Ride ID",
+          valueGetter: safeVG(({ row }) => row.rideId ?? ""),
+          valueFormatter: vfText,
+        },
+        {
+          field: "startTime",
+          headerName: "Start",
+          valueGetter: safeVG(({ row }) => row.start ?? row.startTime),
+          valueFormatter: vfDateTime,
+        },
+        {
+          field: "endTime",
+          headerName: "End",
+          valueGetter: safeVG(({ row }) => row.end ?? row.endTime),
+          valueFormatter: vfDateTime,
+        },
+        {
+          field: "duration",
+          headerName: "Duration",
+          valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
+          valueFormatter: vfDuration,
+        },
+        {
+          field: "note",
+          headerName: "Note",
+          flex: 1,
+          valueGetter: safeVG(({ row }) => row.note ?? ""),
+          valueFormatter: vfText,
+        },
       ],
       [],
     );
@@ -118,7 +142,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       const unsub = subscribeMyTimeLogs(
       (logs) => {
         setRows(logs);
-        warnMissingFields(columns, logs);
         setReady(true);
       },
       (err) => {

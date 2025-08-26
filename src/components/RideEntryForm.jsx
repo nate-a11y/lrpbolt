@@ -52,7 +52,7 @@ import {
   doc,
 } from "firebase/firestore";
 
-import { fmtPlain } from "@/utils/gridFormatters";
+import { vfText } from "@/utils/gridFormatters";
 import { db } from "src/utils/firebaseInit";
 
 import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
@@ -1106,7 +1106,7 @@ if (totalMinutes <= 0) {
                       field: col,
                       headerName: col.replace(/([A-Z])/g, " $1"),
                       flex: 1,
-                      valueFormatter: fmtPlain("—"),
+                      valueFormatter: vfText,
                     }))}
                     pageSizeOptions={[5]}
                     getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
