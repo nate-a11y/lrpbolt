@@ -3,8 +3,10 @@ import { precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies';
 
-self.skipWaiting();
-clientsClaim();
+if (process.env.NODE_ENV === 'production') {
+  self.skipWaiting();
+  clientsClaim();
+}
 
 // Injected at build: do not hardcode hashed asset names
 precacheAndRoute(self.__WB_MANIFEST || []);

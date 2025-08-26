@@ -22,6 +22,9 @@ LicenseInfo.setLicenseKey(
 );
 
 if (typeof window !== "undefined") {
+  if ("serviceWorker" in navigator && process.env.NODE_ENV !== "production") {
+    navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+  }
   killRogueServiceWorkers();
   if ("serviceWorker" in navigator) {
     registerFCM().then((res) => {

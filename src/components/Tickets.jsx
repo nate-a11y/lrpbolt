@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Email, Download, Search, Summary, Scanner Status
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom/client";
 import dayjs from "dayjs";
 import QRCode from "react-qr-code";
@@ -34,6 +34,7 @@ import {
   Stack,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -55,7 +56,15 @@ import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
+import {
+  fmtPlain,
+  fmtDateTimeCell,
+  dateSort,
+  toJSDate,
+  getNested,
+  warnMissingFields,
+} from "../utils/gridFormatters";
+import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -311,99 +320,96 @@ export default function Tickets() {
     setEmailAddress("");
   };
 
-  const columns = [
-    { field: "ticketId", headerName: "Ticket ID", minWidth: 120 },
-    {
-      field: "passenger",
-      headerName: "Passenger",
-      minWidth: 130,
-      flex: 1,
-      renderCell: (params = {}) => (
-        <Typography fontWeight="bold">{params?.value}</Typography>
-      ),
-    },
-    { field: "date", headerName: "Date", minWidth: 110, valueFormatter: fmtPlain("—") },
-    { field: "pickup", headerName: "Pickup", minWidth: 110, valueFormatter: fmtPlain("—") },
-    {
-      field: "link",
-      headerName: "Link",
-      minWidth: 100,
-      sortable: false,
-      renderCell: (p = {}) => {
-        const id = safeRow(p)?.ticketId;
-        return (
-          <a
-            href={`/ticket/${id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#0af" }}
-          >
-            View
-          </a>
-        );
+  const handleEdit = useCallback((row) => setSelectedTicket(row), []);
+  const handleDeleteClick = useCallback((row) => handleDelete(row.ticketId), [handleDelete]);
+  const handleDownload = useCallback((row) => setPreviewTicket(row), []);
+
+  const columns = useMemo(
+    () => [
+      { field: "ticketId", headerName: "Ticket ID", minWidth: 120 },
+      {
+        field: "passenger",
+        headerName: "Passenger",
+        minWidth: 130,
+        flex: 1,
+        renderCell: (params = {}) => (
+          <Typography fontWeight="bold">{params?.value}</Typography>
+        ),
       },
-    },
-    {
-      field: "scanStatus",
-      headerName: "Scan",
-      minWidth: 120,
-      renderCell: (p = {}) => {
-        const r = safeRow(p)
-        if (r?.scannedReturn) return "✅ Return"
-        if (r?.scannedOutbound) return "↗️ Outbound"
-        return "❌ Not Scanned"
+      { field: "date", headerName: "Date", minWidth: 110, valueFormatter: fmtPlain("—") },
+      { field: "pickup", headerName: "Pickup", minWidth: 110, valueFormatter: fmtPlain("—") },
+      {
+        field: "link",
+        headerName: "Link",
+        minWidth: 100,
+        sortable: false,
+        renderCell: (p = {}) => {
+          const id = safeRow(p)?.ticketId;
+          return (
+            <a
+              href={`/ticket/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#0af" }}
+            >
+              View
+            </a>
+          );
+        },
       },
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 160,
-      sortable: false,
-      renderCell: (p = {}) => {
-        const row = safeRow(p)
-        if (!row) return null
-        return (
-          <Box display="flex" alignItems="center" gap={1}>
-            <Tooltip title="Edit">
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={() => setSelectedTicket(row)}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <span>
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => handleDelete(row.ticketId)}
-                  disabled={deletingId === row.ticketId}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Download">
-              <IconButton
-                size="small"
-                color="success"
-                onClick={() => setPreviewTicket(row)}
-              >
-                <DownloadIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        )
+      {
+        field: "scanStatus",
+        headerName: "Scan",
+        minWidth: 120,
+        renderCell: (p = {}) => {
+          const r = safeRow(p);
+          if (r?.scannedReturn) return "✅ Return";
+          if (r?.scannedOutbound) return "↗️ Outbound";
+          return "❌ Not Scanned";
+        },
       },
-    },
-  ];
+      {
+        field: "actions",
+        type: "actions",
+        headerName: "Actions",
+        minWidth: 120,
+        getActions: (params) => [
+          <GridActionsCellItem
+            key="edit"
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => handleEdit(params.row)}
+            showInMenu={false}
+          />,
+          <GridActionsCellItem
+            key="delete"
+            icon={<DeleteIcon />}
+            label="Delete"
+            onClick={() => handleDeleteClick(params.row)}
+            showInMenu={false}
+          />,
+          <GridActionsCellItem
+            key="download"
+            icon={<DownloadIcon />}
+            label="Download"
+            onClick={() => handleDownload(params.row)}
+            showInMenu={false}
+          />,
+        ],
+      },
+    ],
+    [],
+  );
+
+  const rows = useMemo(
+    () => (filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t })),
+    [filteredTickets],
+  );
+  const { dedupeRows } = useGridDoctor({ name: "Tickets", rows, columns });
 
   useEffect(() => {
-    const rows = tickets.map((t) => ({ id: t.ticketId, ...t }));
-    warnMissingFields(columns, rows);
-  }, [tickets]);
+    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);
+  }, [rows, columns]);
   return (
     <PageContainer maxWidth={960}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
@@ -535,9 +541,9 @@ export default function Tickets() {
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
               <DataGridPro
                 {...grid}
-                rows={(filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t }))}
+                rows={rows}
                 columns={columns}
-                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+                getRowId={(r) => r.id ?? r.ticketId ?? r._id}
                 autoHeight
                 checkboxSelection
                 pageSizeOptions={[5, 10, 25, 100]}

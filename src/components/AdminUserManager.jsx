@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminUserManager.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Card,
   TextField,
@@ -14,6 +14,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import { ROLES, ROLE_LABELS } from "../constants/roles.js";
 import { db } from "../utils/firebaseInit";
 import { doc, setDoc } from "firebase/firestore";
@@ -22,7 +23,15 @@ import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
-import { warnMissingFields } from "@/utils/gridFormatters";
+import {
+  fmtPlain,
+  fmtDateTimeCell,
+  dateSort,
+  toJSDate,
+  getNested,
+  warnMissingFields,
+} from "../utils/gridFormatters";
+import { useGridDoctor } from "../utils/useGridDoctor";
 
 // --- helpers: robust parsing for lines and "email,role" ---
 function parseUserLines(input) {
@@ -71,7 +80,7 @@ export default function AdminUserManager() {
 
   // 🔄 Subscribe to Firestore
   useEffect(() => {
-    if (authLoading || !user?.email) return;
+    if (authLoading || !user?.email) return undefined;
 
     const unsubscribe = subscribeUserAccess(
       (list = []) => {
@@ -82,8 +91,8 @@ export default function AdminUserManager() {
           phone: r.phone || "",
           access: (r.access || "").toLowerCase(),
         }));
-        setRows(mapped);
-        warnMissingFields(columns, mapped);
+        if (process.env.NODE_ENV !== "production") warnMissingFields(columns, mapped);
+        setRows((prev) => dedupeRows(prev, mapped));
         setLoading(false);
       },
       { roles: ROLES },
@@ -94,13 +103,13 @@ export default function AdminUserManager() {
           severity: "error",
         });
         setLoading(false);
-      }
+      },
     );
 
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [authLoading, user?.email]);
+  }, [authLoading, user?.email, columns, dedupeRows]);
 
   // ➕ Add Users
   const handleAddUsers = async () => {
@@ -294,37 +303,42 @@ lines.forEach((line, idx) => {
     }
   };
 
-  const columns = [
-    {
-      field: "name",
-      headerName: "Name",
-      flex: 1,
-      minWidth: 150,
-      editable: isAdmin,
-    },
-    {
-      field: "email",
-      headerName: "Email",
-      flex: 1,
-      minWidth: 200,
-      editable: false,
-    },
-    {
-      field: "phone",
-      headerName: "Phone",
-      flex: 1,
-      minWidth: 150,
-      editable: isAdmin,
-    },
-    {
-      field: "access",
-      headerName: "Access",
-      width: 120,
-      editable: isAdmin,
-      type: "singleSelect",
-      valueOptions: ROLES,
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        field: "name",
+        headerName: "Name",
+        flex: 1,
+        minWidth: 150,
+        editable: isAdmin,
+      },
+      {
+        field: "email",
+        headerName: "Email",
+        flex: 1,
+        minWidth: 200,
+        editable: false,
+      },
+      {
+        field: "phone",
+        headerName: "Phone",
+        flex: 1,
+        minWidth: 150,
+        editable: isAdmin,
+      },
+      {
+        field: "access",
+        headerName: "Access",
+        width: 120,
+        editable: isAdmin,
+        type: "singleSelect",
+        valueOptions: ROLES,
+      },
+    ],
+    [],
+  );
+
+  const { dedupeRows } = useGridDoctor({ name: "AdminUserManager", rows, columns });
 
   return (
     <Card sx={{ p: 2, m: "auto", maxWidth: 900 }}>
@@ -436,7 +450,7 @@ lines.forEach((line, idx) => {
               processRowUpdate={handleProcessRowUpdate}
               isCellEditable={(params) => isAdmin && params.field !== 'email'}
               pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+              getRowId={(r) => r.id ?? r.ticketId ?? r._id}
               experimentalFeatures={{ newEditingApi: true }}
               columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
             />

@@ -38,7 +38,15 @@ import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+import {
+  fmtPlain,
+  fmtDateTimeCell,
+  dateSort,
+  toJSDate,
+  getNested,
+  warnMissingFields,
+} from "../utils/gridFormatters";
+import { useGridDoctor } from "../utils/useGridDoctor";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -136,10 +144,12 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       });
   }, [rides, dateRange]);
 
+  const { dedupeRows } = useGridDoctor({ name: "RideClaimTab", rows, columns });
+
   useEffect(() => {
-    warnMissingFields(columns, rows);
+    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);
     if (rows?.[0]) console.debug("claim rows sample", rows[0]);
-  }, [rows]);
+  }, [rows, columns]);
 
   const showToast = (message, severity = "success") =>
     setToast({ open: true, message, severity });
@@ -233,6 +243,13 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [rides, driver, driverProfile],
   );
 
+  const handleClaim = useCallback(
+    (id) => {
+      claimRide(id);
+    },
+    [claimRide],
+  );
+
   const columns = useMemo(
     () => [
       {
@@ -245,47 +262,65 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
         sortComparator: dateSort,
       },
-      { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1, valueFormatter: fmtPlain("—") },
-      { field: "rideType", headerName: "Type", minWidth: 120, valueFormatter: fmtPlain("—") },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        minWidth: 140,
+        flex: 1,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "rideType",
+        headerName: "Type",
+        minWidth: 120,
+        valueFormatter: fmtPlain("—"),
+      },
       {
         field: "rideDuration",
         headerName: "Duration",
         width: 120,
         valueGetter: (p) => {
-          const r = safeRow(p)
-          if (!r) return null
+          const r = safeRow(p);
+          if (!r) return null;
           return {
             s: r.pickupTime,
             e: r.pickupTime && r.rideDuration
               ? r.pickupTime + r.rideDuration * 60000
               : null,
-          }
+          };
         },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
+        valueFormatter: (params) =>
+          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
           return da - db;
         },
       },
-      { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2, valueFormatter: fmtPlain("—") },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        minWidth: 220,
+        flex: 2,
+        valueFormatter: fmtPlain("—"),
+      },
       {
         field: "actions",
         type: "actions",
-        headerName: "Claim",
-        width: 90,
+        headerName: "Actions",
+        minWidth: 120,
         getActions: (params) => [
           <GridActionsCellItem
             key="claim"
             icon={<CheckCircleIcon />}
             label="Claim"
-            onClick={() => claimRide(params.id)}
+            onClick={() => handleClaim(params.id)}
             showInMenu={false}
           />,
         ],
       },
     ],
-    [claimRide],
+    [],
   );
 
   const soonMins = 30;
@@ -525,7 +560,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             getRowClassName={getRowClassName}
             pinnedRows={{ bottom: pinnedRows }}
             sx={{ borderRadius: 2 }}
-            getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+            getRowId={(r) => r.id ?? r.ticketId ?? r._id}
           />
         </Box>
       )}

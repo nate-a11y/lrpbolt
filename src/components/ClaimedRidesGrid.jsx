@@ -15,7 +15,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
+import { DataGridPro } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
 import { COLLECTIONS } from "../constants";
@@ -27,7 +28,15 @@ import { shapeRideRow } from "../services/shapeRideRow";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
+import {
+  fmtPlain,
+  fmtDateTimeCell,
+  dateSort,
+  toJSDate,
+  getNested,
+  warnMissingFields,
+} from "../utils/gridFormatters";
+import { useGridDoctor } from "../utils/useGridDoctor";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -53,8 +62,115 @@ const ClaimedRidesGrid = () => {
     // Claimed rides subscribe to snapshot; no refresh needed
   }
 
+  const columns = useMemo(
+    () => [
+      { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
+      { field: "pickupDateStr", headerName: "Date", flex: 0.9, minWidth: 120 },
+      {
+        field: "pickupTimeStr",
+        headerName: "Pickup Time",
+        flex: 0.9,
+        minWidth: 130,
+      },
+      {
+        field: "rideDuration",
+        headerName: "Duration",
+        flex: 0.7,
+        minWidth: 110,
+        valueGetter: (p) => {
+          const r = safeRow(p);
+          if (!r) return null;
+          return {
+            s: r.pickupTime,
+            e:
+              r.pickupTime && r.rideDuration
+                ? r.pickupTime + r.rideDuration * 60000
+                : null,
+          };
+        },
+        valueFormatter: (params) =>
+          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
+        sortComparator: (a, b) => {
+          const da = (a?.e ?? 0) - (a?.s ?? 0);
+          const db = (b?.e ?? 0) - (b?.s ?? 0);
+          return da - db;
+        },
+      },
+      {
+        field: "rideType",
+        headerName: "Ride Type",
+        flex: 1,
+        minWidth: 140,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        flex: 1.2,
+        minWidth: 180,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "createdBy",
+        headerName: "Created By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "lastModifiedBy",
+        headerName: "Modified By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "claimedBy",
+        headerName: "Claimed By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "actions",
+        type: "actions",
+        headerName: "Actions",
+        minWidth: 120,
+        getActions: (params) => [
+          <GridActionsCellItem
+            key="edit"
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => openEdit(params.row)}
+            showInMenu={false}
+          />,
+          <GridActionsCellItem
+            key="delete"
+            icon={<DeleteIcon />}
+            label="Delete"
+            onClick={() => {
+              setSelectedRow(params.row);
+              setConfirmOpen(true);
+            }}
+            showInMenu={false}
+          />,
+        ],
+      },
+    ],
+    [],
+  );
+
+  const { dedupeRows } = useGridDoctor({ name: "ClaimedRidesGrid", rows, columns });
+
   useEffect(() => {
-    if (authLoading || !user?.email) return;
+    if (authLoading || !user?.email) return undefined;
     const unsub = subscribeRides(
       COLLECTIONS.CLAIMED_RIDES,
       (data) => {
@@ -62,13 +178,8 @@ const ClaimedRidesGrid = () => {
           ...shapeRideRow({ id: r.id, data: () => r }),
           fading: false,
         }));
-        warnMissingFields(columns, shaped);
-        setRows((prev) => {
-          const sameLength = prev.length === shaped.length;
-          const sameIds =
-            sameLength && prev.every((p, i) => p.id === shaped[i].id);
-          return sameIds ? prev : shaped;
-        });
+        if (process.env.NODE_ENV !== "production") warnMissingFields(columns, shaped);
+        setRows((prev) => dedupeRows(prev, shaped));
         setLoading(false);
       },
       () => {
@@ -77,7 +188,8 @@ const ClaimedRidesGrid = () => {
       },
     );
     return unsub;
-  }, [authLoading, user?.email, columns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDelete = async () => {
     if (!selectedRow?.id) return;
@@ -338,7 +450,7 @@ const ClaimedRidesGrid = () => {
         {...gridProps}
         initialState={initialState}
         sx={{ ...gridProps.sx, bgcolor: "background.paper" }}
-        getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+        getRowId={(r) => r.id ?? r.ticketId ?? r._id}
       />
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
