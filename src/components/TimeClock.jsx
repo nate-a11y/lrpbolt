@@ -31,7 +31,8 @@ import {
 
 import { db } from "src/utils/firebaseInit";
 import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
-import { dateCol, durationMinutes, toDateAny } from "@/utils/datetime";
+import { dateCol, durationMinutes, toDateAny } from '@/utils/datetime';
+import { fmtMinutes } from '@/utils/grid/datetime';
 import { useRole } from "@/hooks";
 import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";
@@ -107,17 +108,20 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           width: 160,
           valueGetter: (p) => toDateAny(p.row?.start ?? p.row?.startTime),
         }),
-        dateCol("endTime", "End", {
+        dateCol('endTime', 'End', {
           width: 160,
-          valueGetter: (p) => toDateAny(p.row?.end ?? p.row?.endTime),
+          valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
         }),
         {
           field: "duration",
           headerName: "Duration",
           width: 140,
-          valueGetter: ({ row }) =>
-            durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
-          valueFormatter: ({ value }) => (value == null ? "—" : `${value}m`),
+          valueGetter: (p) =>
+            durationMinutes(
+              p?.row?.start ?? p?.row?.startTime,
+              p?.row?.end ?? p?.row?.endTime,
+            ),
+          valueFormatter: (p) => fmtMinutes(p.value),
         },
         { field: "note", headerName: "Note", flex: 1, valueFormatter: fmtPlain("—") },
       ],

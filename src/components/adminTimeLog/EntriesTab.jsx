@@ -19,7 +19,9 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { getField } from '@/utils/gridCells';
+import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
+import { asText } from '@/utils/grid/cell';
 import { friendlyDateTime, durationMinutes } from "@/utils/datetime";
 
 import actionsCol from "../grid/actionsCol.jsx";
@@ -86,48 +88,48 @@ export default function EntriesTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 160,
-        valueGetter: ({ row }) => getField(row, "driver"),
+        valueGetter: (p) => getField(p?.row ?? null, 'driver'),
         renderCell: (p) => {
           const v = p.value;
-          if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
-          return asText(v) ?? "";
+          if (v && typeof v === 'string' && v.includes('@')) return v.split('@')[0];
+          return asText(v);
         },
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         minWidth: 110,
-        valueGetter: ({ row }) => getField(row, "rideId"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideId'),
+        renderCell: (p) => asText(p.value),
       },
       {
         field: "startTime",
         headerName: "Start",
         minWidth: 170,
-        valueGetter: ({ row }) => getField(row, "startTime"),
-        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'startTime'),
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       {
         field: "endTime",
         headerName: "End",
         minWidth: 170,
-        valueGetter: ({ row }) => getField(row, "endTime"),
-        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'endTime'),
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       {
         field: "duration",
         headerName: "Duration",
         minWidth: 120,
-        valueGetter: ({ row }) => getField(row, "rideDuration"),
-        valueFormatter: ({ value }) => fmtMinutes(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideDuration'),
+        valueFormatter: (p) => fmtMinutes(p.value),
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       {
         field: "loggedAt",
         headerName: "Logged At",
         minWidth: 170,
-        valueGetter: ({ row }) => getField(row, "createdAt"),
-        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'createdAt'),
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
     ];

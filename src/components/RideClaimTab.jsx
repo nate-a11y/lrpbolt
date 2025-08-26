@@ -34,7 +34,9 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Timestamp, orderBy } from "firebase/firestore";
 
-import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
+import { getField } from '@/utils/gridCells';
+import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
+import { asText } from '@/utils/grid/cell';
 import { durationMinutes, toDateAny } from "@/utils/datetime";
 
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
@@ -238,37 +240,37 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         field: "pickupTime",
         headerName: "Pickup",
         minWidth: 170,
-        valueGetter: ({ row }) => getField(row, "pickupTime"),
-        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'pickupTime'),
+        valueFormatter: (p) => fmtDateTime(p.value),
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         flex: 1,
-        valueGetter: ({ row }) => getField(row, "vehicle"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'vehicle'),
+        renderCell: (p) => asText(p.value),
       },
       {
         field: "rideType",
         headerName: "Type",
         minWidth: 140,
-        valueGetter: ({ row }) => getField(row, "rideType"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideType'),
+        renderCell: (p) => asText(p.value),
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         minWidth: 120,
-        valueGetter: ({ row }) => getField(row, "rideDuration"),
-        valueFormatter: ({ value }) => fmtMinutes(value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideDuration'),
+        valueFormatter: (p) => fmtMinutes(p.value),
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         flex: 2,
-        valueGetter: ({ row }) => getField(row, "rideNotes"),
-        renderCell: (p) => asText(p.value) ?? "",
+        valueGetter: (p) => getField(p?.row ?? null, 'rideNotes'),
+        renderCell: (p) => asText(p.value),
       },
       {
         field: "actions",

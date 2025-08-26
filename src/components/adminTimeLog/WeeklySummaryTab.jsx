@@ -18,7 +18,8 @@ import {
 } from "@mui/material";
 
 import { withSafeColumns } from "@/utils/gridFormatters";
-import { getField, asText } from "@/utils/gridCells";
+import { getField } from '@/utils/gridCells';
+import { asText } from '@/utils/grid/cell';
 
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 
@@ -100,11 +101,11 @@ export default function WeeklySummaryTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 200,
-        valueGetter: ({ row }) => getField(row, "driver"),
+        valueGetter: (p) => getField(p?.row ?? null, 'driver'),
         renderCell: (p) => {
           const v = p.value;
-          if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
-          return asText(v) ?? "";
+          if (v && typeof v === 'string' && v.includes('@')) return v.split('@')[0];
+          return asText(v);
         },
       },
       { field: "trips", headerName: "Trips", width: 90 },
