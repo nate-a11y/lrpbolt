@@ -19,10 +19,8 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { getField } from '@/utils/gridCells';
-import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
-import { asText } from '@/utils/grid/cell';
-import { friendlyDateTime, durationMinutes } from "@/utils/datetime";
+import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
+import { textCol, dateTimeCol, durationCol } from "@/utils/gridSafe";
 
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
@@ -83,54 +81,12 @@ export default function EntriesTab() {
     }, []);
 
     const columns = [
-      {
-        field: "driver",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => getField(p?.row ?? null, 'driver'),
-        renderCell: (p) => {
-          const v = p.value;
-          if (v && typeof v === 'string' && v.includes('@')) return v.split('@')[0];
-          return asText(v);
-        },
-      },
-      {
-        field: "rideId",
-        headerName: "Ride ID",
-        minWidth: 110,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideId'),
-        renderCell: (p) => asText(p.value),
-      },
-      {
-        field: "startTime",
-        headerName: "Start",
-        minWidth: 170,
-        valueGetter: (p) => getField(p?.row ?? null, 'startTime'),
-        valueFormatter: (p) => fmtDateTime(p.value),
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        minWidth: 170,
-        valueGetter: (p) => getField(p?.row ?? null, 'endTime'),
-        valueFormatter: (p) => fmtDateTime(p.value),
-      },
-      {
-        field: "duration",
-        headerName: "Duration",
-        minWidth: 120,
-        valueGetter: (p) => getField(p?.row ?? null, 'rideDuration'),
-        valueFormatter: (p) => fmtMinutes(p.value),
-        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
-      },
-      {
-        field: "loggedAt",
-        headerName: "Logged At",
-        minWidth: 170,
-        valueGetter: (p) => getField(p?.row ?? null, 'createdAt'),
-        valueFormatter: (p) => fmtDateTime(p.value),
-      },
+      textCol("driver", "Driver", ({ row }) => row.driver ?? row.driverId ?? ""),
+      textCol("rideId", "Ride ID", ({ row }) => row.rideId ?? ""),
+      dateTimeCol("startTime", "Start", ({ row }) => row.startTime),
+      dateTimeCol("endTime", "End", ({ row }) => row.endTime),
+      durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
+      dateTimeCol("loggedAt", "Logged At", ({ row }) => row.loggedAt),
       actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
     ];
 
@@ -150,38 +106,47 @@ export default function EntriesTab() {
 
     const filteredRows = useMemo(() => {
       return (rows || []).filter((r) => {
-      const driverMatch = driverFilter
-        ? (r.driverId ?? r.driverEmail)
-            ?.toLowerCase()
-            .includes(driverFilter.toLowerCase())
-        : true;
-      const startMatch = startFilter
-        ? r.startTime?.getTime() >= startFilter.toDate().getTime()
-        : true;
-      const endMatch = endFilter
-        ? (r.endTime ?? r.startTime)?.getTime() <=
-          endFilter.toDate().getTime()
-        : true;
-      const searchMatch = search
-        ? [
-            r.driverId ?? r.driverEmail,
-            r.rideId,
-            friendlyDateTime(r.startTime),
-            friendlyDateTime(r.endTime),
-            friendlyDateTime(r.loggedAt),
-            durationMinutes(r.startTime, r.endTime),
-          ]
-            .filter(Boolean)
-            .some((v) =>
-              String(v).toLowerCase().includes(search.toLowerCase()),
-            )
-        : true;
-      return driverMatch && startMatch && endMatch && searchMatch;
-    });
-  }, [rows, driverFilter, startFilter, endFilter, search]);
+        const driverMatch = driverFilter
+          ? (r.driverId ?? r.driverEmail)
+              ?.toLowerCase()
+              .includes(driverFilter.toLowerCase())
+          : true;
+        const startMatch = startFilter
+          ? r.startTime?.getTime() >= startFilter.toDate().getTime()
+          : true;
+        const endMatch = endFilter
+          ? (r.endTime ?? r.startTime)?.getTime() <=
+            endFilter.toDate().getTime()
+          : true;
+        const searchMatch = search
+          ? [
+              r.driverId ?? r.driverEmail,
+              r.rideId,
+              fmtDateTime(r.startTime),
+              fmtDateTime(r.endTime),
+              fmtDateTime(r.loggedAt),
+              r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
+            ]
+              .filter(Boolean)
+              .some((v) =>
+                String(v).toLowerCase().includes(search.toLowerCase()),
+              )
+          : true;
+        return driverMatch && startMatch && endMatch && searchMatch;
+      });
+    }, [rows, driverFilter, startFilter, endFilter, search]);
 
   const safeRows = useMemo(
-    () => (filteredRows || []).filter(Boolean),
+    () =>
+      (filteredRows || [])
+        .filter(Boolean)
+        .map((r) => ({
+          ...r,
+          duration:
+            r.duration ??
+            r.minutes ??
+            Math.round((r.durationMs || 0) / 60000),
+        })),
     [filteredRows],
   );
 
@@ -238,34 +203,24 @@ export default function EntriesTab() {
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
                     {(() => {
-                      const v = getField(r, "driver");
-                      if (v && typeof v === "string" && v.includes("@"))
-                        return v.split("@")[0];
-                      return asText(v) ?? "";
+                      const v = r.driver ?? r.driverEmail ?? "";
+                      return v.includes("@") ? v.split("@")[0] : v;
                     })()}
                   </Typography>
                   <Typography variant="body2">
-                    Ride ID: {asText(getField(r, "rideId")) ?? ""}
+                    Ride ID: {r.rideId ?? ""}
                   </Typography>
                   <Typography variant="body2">
-                    Start: {friendlyDateTime(getField(r, "startTime"))}
+                    Start: {fmtDateTime(r.startTime)}
                   </Typography>
                   <Typography variant="body2">
-                    End: {friendlyDateTime(getField(r, "endTime"))}
+                    End: {fmtDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {(() => {
-                      const m =
-                        getField(r, "rideDuration") ??
-                        durationMinutes(
-                          getField(r, "startTime"),
-                          getField(r, "endTime"),
-                        );
-                      return m == null ? "—" : fmtMinutes(m);
-                    })()}
+                    Duration: {fmtMinutes(r.duration)}
                   </Typography>
                   <Typography variant="body2">
-                    Logged: {friendlyDateTime(getField(r, "createdAt"))}
+                    Logged: {fmtDateTime(r.loggedAt)}
                   </Typography>
                 </Stack>
                 <ToolsCell

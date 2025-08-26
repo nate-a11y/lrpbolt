@@ -30,9 +30,9 @@ import {
 } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
-import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
-import { dateCol, durationMinutes, toDateAny } from '@/utils/datetime';
-import { fmtMinutes } from '@/utils/grid/datetime';
+import { warnMissingFields } from "@/utils/gridFormatters";
+import { fmtMinutes } from "@/utils/datetime";
+import { textCol, dateTimeCol, durationCol } from "@/utils/gridSafe";
 import { useRole } from "@/hooks";
 import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";
@@ -103,27 +103,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
     const columns = useMemo(
       () => [
-        { field: "rideId", headerName: "Ride ID", flex: 1, valueFormatter: fmtPlain("—") },
-        dateCol("startTime", "Start", {
-          width: 160,
-          valueGetter: (p) => toDateAny(p.row?.start ?? p.row?.startTime),
-        }),
-        dateCol('endTime', 'End', {
-          width: 160,
-          valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
-        }),
-        {
-          field: "duration",
-          headerName: "Duration",
-          width: 140,
-          valueGetter: (p) =>
-            durationMinutes(
-              p?.row?.start ?? p?.row?.startTime,
-              p?.row?.end ?? p?.row?.endTime,
-            ),
-          valueFormatter: (p) => fmtMinutes(p.value),
-        },
-        { field: "note", headerName: "Note", flex: 1, valueFormatter: fmtPlain("—") },
+        textCol("rideId", "Ride ID", ({ row }) => row.rideId ?? ""),
+        dateTimeCol("startTime", "Start", ({ row }) => row.start ?? row.startTime),
+        dateTimeCol("endTime", "End", ({ row }) => row.end ?? row.endTime),
+        durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
+        textCol("note", "Note", ({ row }) => row.note ?? ""),
       ],
       [],
     );
@@ -369,7 +353,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
                 <Typography variant="body2">Ride: {r.rideId || '—'}</Typography>
                 <Typography variant="body2">Start: {formatTS(r.startTime)}</Typography>
                 <Typography variant="body2">End: {formatTS(r.endTime)}</Typography>
-                <Typography variant="body2">Duration: {r.duration}</Typography>
+                <Typography variant="body2">Duration: {fmtMinutes(r.duration)}</Typography>
                 {r.note && <Typography variant="body2">Note: {r.note}</Typography>}
               </Paper>
             ))}

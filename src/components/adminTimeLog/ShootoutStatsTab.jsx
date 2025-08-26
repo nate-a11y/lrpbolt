@@ -19,10 +19,8 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { getField } from '@/utils/gridCells';
-import { fmtDateTime, fmtMinutes } from '@/utils/grid/datetime';
-import { asText } from '@/utils/grid/cell';
-import { durationMinutes, friendlyDateTime } from "@/utils/datetime";
+import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
+import { textCol, dateTimeCol, durationCol, safeVG } from "@/utils/gridSafe";
 
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
@@ -93,54 +91,30 @@ export default function ShootoutStatsTab() {
   const rows = useMemo(() => stats || [], [stats]);
 
   const columns = [
+    textCol(
+      "driver",
+      "Driver",
+      ({ row }) => row.driver ?? row.driverName ?? row.driverEmail?.split("@")[0] ?? "",
+    ),
+    textCol("vehicle", "Vehicle", ({ row }) => row.vehicle ?? ""),
+    dateTimeCol("startTime", "Start", ({ row }) => row.startTime),
+    dateTimeCol("endTime", "End", ({ row }) => row.endTime),
+    durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
     {
-      field: "driver",
-      headerName: "Driver",
-      flex: 1,
-      valueGetter: (p) => getField(p?.row ?? null, 'driver'),
-      renderCell: (p) => {
-        const v = p.value;
-        if (v && typeof v === 'string' && v.includes('@')) return v.split('@')[0];
-        return asText(v);
-      },
+      field: "trips",
+      headerName: "Trips",
+      type: "number",
+      width: 90,
+      valueGetter: safeVG(({ row }) => row.trips ?? row.tripCount ?? 0),
     },
     {
-      field: "vehicle",
-      headerName: "Vehicle",
-      flex: 1,
-      valueGetter: (p) => getField(p?.row ?? null, 'vehicle'),
-      renderCell: (p) => asText(p.value),
+      field: "pax",
+      headerName: "Pax",
+      type: "number",
+      width: 90,
+      valueGetter: safeVG(({ row }) => row.pax ?? row.passengers ?? 0),
     },
-    {
-      field: "startTime",
-      headerName: "Start",
-      minWidth: 170,
-      valueGetter: (p) => getField(p?.row ?? null, 'startTime'),
-      valueFormatter: (p) => fmtDateTime(p.value),
-    },
-    {
-      field: "endTime",
-      headerName: "End",
-      minWidth: 170,
-      valueGetter: (p) => getField(p?.row ?? null, 'endTime'),
-      valueFormatter: (p) => fmtDateTime(p.value),
-    },
-    {
-      field: "duration",
-      headerName: "Duration",
-      width: 110,
-      valueGetter: (p) => getField(p?.row ?? null, 'rideDuration'),
-      valueFormatter: (p) => fmtMinutes(p.value),
-    },
-    { field: "trips", headerName: "Trips", width: 90 },
-    { field: "passengers", headerName: "Pax", width: 90 },
-    {
-      field: "createdAt",
-      headerName: "Created",
-      minWidth: 170,
-      valueGetter: (p) => getField(p?.row ?? null, 'createdAt'),
-      valueFormatter: (p) => fmtDateTime(p.value),
-    },
+    dateTimeCol("createdAt", "Created", ({ row }) => row.createdAt),
     actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
   ];
 
@@ -161,10 +135,11 @@ export default function ShootoutStatsTab() {
             r.driverEmail,
             r.vehicle,
             r.trips,
-            r.passengers,
-            friendlyDateTime(r.startTime),
-            friendlyDateTime(r.endTime),
-            friendlyDateTime(r.createdAt),
+            r.pax ?? r.passengers,
+            fmtDateTime(r.startTime),
+            fmtDateTime(r.endTime),
+            fmtDateTime(r.createdAt),
+            r.duration,
           ]
             .filter(Boolean)
             .some((v) =>
@@ -176,7 +151,16 @@ export default function ShootoutStatsTab() {
   }, [rows, driverFilter, startFilter, endFilter, search]);
 
   const safeRows = useMemo(
-    () => (filteredRows || []).filter(Boolean),
+    () =>
+      (filteredRows || [])
+        .filter(Boolean)
+        .map((r) => ({
+          ...r,
+          duration:
+            r.duration ??
+            r.minutes ??
+            Math.round((r.durationMs || 0) / 60000),
+        })),
     [filteredRows],
   );
 
@@ -219,32 +203,20 @@ export default function ShootoutStatsTab() {
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
                     {(() => {
-                      const v = getField(r, "driver");
-                      if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
-                      return asText(v) ?? "";
+                      const v = r.driver ?? r.driverEmail ?? "";
+                      return v.includes("@") ? v.split("@")[0] : v;
                     })()}
                   </Typography>
-                  <Typography variant="body2">
-                    Vehicle: {asText(getField(r, "vehicle")) ?? ""}
-                  </Typography>
-                  <Typography variant="body2">
-                    Start: {friendlyDateTime(getField(r, "startTime"))}
-                  </Typography>
-                  <Typography variant="body2">
-                    End: {friendlyDateTime(getField(r, "endTime"))}
-                  </Typography>
+                  <Typography variant="body2">Vehicle: {r.vehicle ?? ""}</Typography>
+                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
-                  <Typography variant="body2">Pax: {r.passengers}</Typography>
+                  <Typography variant="body2">Pax: {r.pax ?? r.passengers}</Typography>
                   <Typography variant="body2">
-                    Duration: {(() => {
-                      const m =
-                        getField(r, "rideDuration") ??
-                        durationMinutes(getField(r, "startTime"), getField(r, "endTime"));
-                      return m == null ? "—" : fmtMinutes(m);
-                    })()}
+                    Duration: {fmtMinutes(r.duration)}
                   </Typography>
                   <Typography variant="body2">
-                    Created: {friendlyDateTime(getField(r, "createdAt"))}
+                    Created: {fmtDateTime(r.createdAt)}
                   </Typography>
                 </Stack>
                 <ToolsCell
