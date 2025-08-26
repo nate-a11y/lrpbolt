@@ -1,6 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import { useAuth } from "../context/AuthContext.jsx";
+
 import {
   Box, Card, CardContent, CardHeader, Typography, Stack, IconButton,
   Button, Divider, Snackbar, Alert, Chip, Paper, useMediaQuery,
@@ -16,22 +18,25 @@ import durationPlugin from "dayjs/plugin/duration";
 dayjs.extend(durationPlugin);
 
 import { DataGridPro } from "@mui/x-data-grid-pro";
-import useGridProDefaults from "./grid/useGridProDefaults.js";
+
+import { safeRow } from '@/utils/gridUtils';
+import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+
+import { fmtDuration } from "../utils/timeUtils";
+import { toNumber, toString, tsToDate } from "../utils/safe";
+import { currentUserEmailLower } from "../utils/userEmail";
+import { logError } from "../utils/logError";
 import {
   subscribeShootoutStats,
   createShootoutSession,
   updateShootoutSession,
 } from "../utils/firestoreService";
-import { logError } from "../utils/logError";
-import { currentUserEmailLower } from "../utils/userEmail";
-import { toNumber, toString, tsToDate } from "../utils/safe";
-import { fmtDuration } from "../utils/timeUtils";
-import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
 import DropoffDialog from "../components/DropoffDialog.jsx";
 import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
 import { resolveSmsTo } from "../services/smsRecipients.js";
+
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
 
@@ -54,41 +59,42 @@ export default function ShootoutTab() {
   const snackClose = () => setSnack((x) => ({ ...x, open: false }));
   const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
-  const grid = useGridProDefaults({ gridId: "shootoutHistory", pageSize: 5 });
+    const grid = useGridProDefaults({ gridId: "shootoutHistory", pageSize: 5 });
+    const fmt = fmtDateTimeCell("America/Chicago", "—");
     const initialState = useMemo(
-      () => ({
-        ...grid.initialState,
-        columns: {
-          ...grid.initialState.columns,
-          columnVisibilityModel: {
-            vehicle: !isSmall,
-            ...grid.initialState.columns.columnVisibilityModel,
+        () => ({
+          ...grid.initialState,
+          columns: {
+            ...grid.initialState.columns,
+            columnVisibilityModel: {
+              vehicle: !isSmall,
+              ...grid.initialState.columns.columnVisibilityModel,
+            },
           },
-        },
-      }),
-      [grid.initialState, isSmall],
-    );
+        }),
+        [grid.initialState, isSmall],
+      );
 
-    const cols = useMemo(
-      () => [
-        {
-          field: "startTime",
-          headerName: "Start",
-          minWidth: 170,
-          flex: 1,
-          valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-          sortComparator: dateSort,
-        },
-        {
-          field: "endTime",
-          headerName: "End",
-          minWidth: 170,
-          flex: 1,
-          valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-          sortComparator: dateSort,
-        },
+      const cols = useMemo(
+        () => [
+          {
+            field: "startTime",
+            headerName: "Start",
+            minWidth: 170,
+            flex: 1,
+            valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+            valueFormatter: fmt,
+            sortComparator: dateSort,
+          },
+          {
+            field: "endTime",
+            headerName: "End",
+            minWidth: 170,
+            flex: 1,
+            valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+            valueFormatter: fmt,
+            sortComparator: dateSort,
+          },
         {
           field: "duration",
           headerName: "Duration",
@@ -428,10 +434,10 @@ export default function ShootoutTab() {
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Start: {fmtDateTime(r.startTime, "MMM D, h:mm A")}
+                    Start: {fmt({ value: r.startTime })}
                   </Typography>
                   <Typography variant="body2">
-                    End: {fmtDateTime(r.endTime, "MMM D, h:mm A")}
+                    End: {fmt({ value: r.endTime })}
                   </Typography>
                   <Typography variant="body2">
                     Duration: {fmtDuration(r.startTime, r.endTime)}

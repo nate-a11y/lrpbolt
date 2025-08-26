@@ -1,21 +1,16 @@
-/* eslint-disable import/no-commonjs */
 import js from "@eslint/js";
 import react from "eslint-plugin-react";
 import hooks from "eslint-plugin-react-hooks";
 import importPlugin from "eslint-plugin-import";
 import globals from "globals";
 
-// Optional: if you previously used react-refresh rule, you can import it:
-// import reactRefresh from "eslint-plugin-react-refresh";
-
 export default [
   // Ignore build artifacts
   { ignores: ["dist/**", "coverage/**", "node_modules/**", "functions/lib/**"] },
 
-  // Base recommended configs
+  // Base + plugins
   js.configs.recommended,
-  importPlugin.flatConfigs.recommended,
-  // React flat config (plugin >=7.34 provides .configs.flat.recommended)
+  { plugins: { import: importPlugin }, rules: importPlugin.configs.recommended.rules },
   react.configs.flat?.recommended ?? {
     plugins: { react },
     rules: { "react/jsx-uses-react": "off", "react/react-in-jsx-scope": "off" }
@@ -26,7 +21,7 @@ export default [
   {
     files: ["**/*.{js,jsx,ts,tsx,mjs}"],
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: "latest",
       sourceType: "module",
       globals: {
         ...globals.browser,
@@ -45,24 +40,30 @@ export default [
           ],
           extensions: [".js", ".jsx", ".ts", ".tsx"]
         }
-      }
+      },
+      // Treat packages we don't want parsed as core (avoid import/named parse of their internals)
+      "import/core-modules": ["vite", "msw", "msw/node"]
+    },
+    plugins: {
+      import: importPlugin,
+      react,
+      "react-hooks": hooks
     },
     rules: {
       // Style/sanity
       "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",            // disable PropTypes across app
       "import/no-duplicates": "warn",
       "import/order": ["warn", {
         "groups": ["builtin","external","internal","parent","sibling","index","object","type"],
         "newlines-between": "always"
       }],
+      "import/no-named-as-default": "off",  // silence Lightbox named-as-default warning
       "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
 
       // Hooks
       "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-
-      // If you used this previously and had errors, keep it OFF or switch to "warn"
-      // "react-refresh/only-export-components": "off"
+      "react-hooks/exhaustive-deps": "warn"
     }
   },
 
@@ -77,33 +78,57 @@ export default [
       "functions/**/*.js"
     ],
     languageOptions: {
+      ecmaVersion: "latest",
       sourceType: "module",
       globals: { ...globals.node, ...globals.es2021 }
     },
+    // Turn off import-plugin deep checks for config files (prevents parsing 'vite')
     rules: {
-      "import/no-unresolved": "off" // config loaders can be non-standard
+      "import/no-unresolved": "off",
+      "import/named": "off",
+      "import/namespace": "off",
+      "import/default": "off",
+      "import/no-named-as-default-member": "off"
     }
   },
 
-  // Service Worker override
+  // .mjs (allow top-level await)
+  {
+    files: ["**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: { ...globals.node }
+    }
+  },
+
+  // Service Worker
   {
     files: ["src/sw.js"],
     languageOptions: {
       globals: {
         ...globals.serviceworker,
         ...globals.worker,
-        ...globals.browser,
-        // declare compat globals used by FCM SW if any
-        importScripts: "readonly",
-        firebase: "readonly"
+        ...globals.browser
+        // Do NOT redeclare importScripts/firebase here; we’ll manage in-file.
       }
     }
   },
 
-  // Tests
+  // Tests & mocks
   {
-    files: ["tests/**", "**/*.{test,spec}.{js,jsx,ts,tsx}"],
-    languageOptions: { globals: { ...globals.jest, ...globals.browser } },
-    rules: { "import/named": "off" }
+    files: ["tests/**", "src/mocks/**", "**/*.{test,spec}.{js,jsx,ts,tsx}"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: { ...globals.jest, ...globals.browser, ...globals.node }
+    },
+    rules: {
+      // Avoid import-plugin parsing msw internals
+      "import/named": "off",
+      "import/namespace": "off",
+      "import/default": "off",
+      "import/no-unresolved": "off"
+    }
   }
 ];

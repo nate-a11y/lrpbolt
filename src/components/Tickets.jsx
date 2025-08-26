@@ -13,7 +13,6 @@ import {
   Button,
   Modal,
   TextField,
-  IconButton,
   MenuItem,
   Select,
   InputLabel,
@@ -43,8 +42,8 @@ import EmailIcon from "@mui/icons-material/Email";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
-import PageContainer from "./PageContainer.jsx";
-import useGridProDefaults from "./grid/useGridProDefaults.js";
+import { safeRow } from "@/utils/gridUtils";
+
 import {
   subscribeTickets,
   deleteTicket as apiDeleteTicket,
@@ -53,9 +52,11 @@ import {
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
-import { safeRow } from "@/utils/gridUtils";
 import { fmtPlain, warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
+
+import useGridProDefaults from "./grid/useGridProDefaults.js";
+import PageContainer from "./PageContainer.jsx";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -69,6 +70,7 @@ export default function Tickets() {
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const selectedIds = rowSelectionModel;
+  const [_deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");

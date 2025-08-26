@@ -18,12 +18,14 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { fmtDuration } from "../../utils/timeUtils";
 
-import { db } from "../../utils/firebaseInit";
-import { subscribeTimeLogs } from "../../hooks/firestore";
 import { safeRow } from "@/utils/gridUtils";
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+
+import { fmtDuration } from "../../utils/timeUtils";
+import { db } from "../../utils/firebaseInit";
+import { subscribeTimeLogs } from "../../hooks/firestore";
+
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function EntriesTab() {
@@ -185,9 +187,9 @@ export default function EntriesTab() {
         ? [
             r.driverEmail,
             r.rideId,
-            fmtDateTime(r.startTime),
-            fmtDateTime(r.endTime),
-            fmtDateTime(r.loggedAt),
+            fmt({ value: r.startTime }),
+            fmt({ value: r.endTime }),
+            fmt({ value: r.loggedAt }),
             fmtDuration(r.startTime, r.endTime),
           ]
             .filter(Boolean)

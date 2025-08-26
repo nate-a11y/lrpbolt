@@ -18,12 +18,14 @@ import {
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { fmtDuration } from "../../utils/timeUtils";
 
-import { db } from "../../utils/firebaseInit";
-import { subscribeShootoutStats } from "../../hooks/firestore";
 import { safeRow } from "@/utils/gridUtils";
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+
+import { fmtDuration } from "../../utils/timeUtils";
+import { db } from "../../utils/firebaseInit";
+import { subscribeShootoutStats } from "../../hooks/firestore";
+
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 
@@ -199,9 +201,9 @@ export default function ShootoutStatsTab() {
             r.trips,
             r.pax,
             fmtDuration(r.startTime, r.endTime),
-            fmtDateTime(r.startTime, "MMM D, h:mm A"),
-            fmtDateTime(r.endTime, "MMM D, h:mm A"),
-            fmtDateTime(r.createdAt, "MMM D, h:mm A"),
+            fmt({ value: r.startTime }),
+            fmt({ value: r.endTime }),
+            fmt({ value: r.createdAt }),
           ]
             .filter(Boolean)
             .some((v) =>
