@@ -19,10 +19,14 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
-import { textCol, dateTimeCol, durationCol } from "@/utils/gridSafe";
-
-import actionsCol from "../grid/actionsCol.jsx";
+import { fmtDateTime } from "@/utils/datetime";
+import {
+  vfText,
+  vfDateTime,
+  vfDuration,
+  safeVG,
+  actionsCol,
+} from "@/utils/gridFormatters";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 
@@ -81,13 +85,47 @@ export default function EntriesTab() {
     }, []);
 
     const columns = [
-      textCol("driver", "Driver", ({ row }) => row.driver ?? row.driverId ?? ""),
-      textCol("rideId", "Ride ID", ({ row }) => row.rideId ?? ""),
-      dateTimeCol("startTime", "Start", ({ row }) => row.startTime),
-      dateTimeCol("endTime", "End", ({ row }) => row.endTime),
-      durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
-      dateTimeCol("loggedAt", "Logged At", ({ row }) => row.loggedAt),
-      actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
+      {
+        field: "driver",
+        headerName: "Driver",
+        flex: 1,
+        valueGetter: safeVG(({ row }) => row.driver ?? row.driverId ?? ""),
+        valueFormatter: vfText,
+      },
+      {
+        field: "rideId",
+        headerName: "Ride ID",
+        flex: 1,
+        valueGetter: safeVG(({ row }) => row.rideId ?? ""),
+        valueFormatter: vfText,
+      },
+      {
+        field: "startTime",
+        headerName: "Start",
+        valueGetter: safeVG(({ row }) => row.startTime),
+        valueFormatter: vfDateTime,
+      },
+      {
+        field: "endTime",
+        headerName: "End",
+        valueGetter: safeVG(({ row }) => row.endTime),
+        valueFormatter: vfDateTime,
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
+        valueFormatter: vfDuration,
+      },
+      {
+        field: "loggedAt",
+        headerName: "Logged At",
+        valueGetter: safeVG(({ row }) => row.loggedAt),
+        valueFormatter: vfDateTime,
+      },
+      actionsCol(({ row }) => (
+        <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
+      )),
     ];
 
     useEffect(() => {

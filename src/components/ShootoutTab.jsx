@@ -14,9 +14,13 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
-import { warnMissingFields } from '@/utils/gridFormatters';
-import { fmtDateTime, fmtMinutes } from '@/utils/datetime';
-import { textCol, dateTimeCol, durationCol, safeVG } from "@/utils/gridSafe";
+import {
+  vfText,
+  vfDateTime,
+  vfDuration,
+  vfNumber,
+  safeVG,
+} from "@/utils/gridFormatters";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -40,24 +44,44 @@ const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
 
 export function buildShootoutGrid(rows = []) {
   const columns = [
-    dateTimeCol("startTime", "Start", ({ row }) => row.startTime ?? row.start),
-    dateTimeCol("endTime", "End", ({ row }) => row.endTime ?? row.end),
-    durationCol("duration", "Duration", ({ row }) => row.duration ?? row.minutes),
+    {
+      field: "startTime",
+      headerName: "Start",
+      valueGetter: safeVG(({ row }) => row.startTime ?? row.start),
+      valueFormatter: vfDateTime,
+    },
+    {
+      field: "endTime",
+      headerName: "End",
+      valueGetter: safeVG(({ row }) => row.endTime ?? row.end),
+      valueFormatter: vfDateTime,
+    },
+    {
+      field: "duration",
+      headerName: "Duration",
+      valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
+      valueFormatter: vfDuration,
+    },
     {
       field: "trips",
       headerName: "Trips",
-      type: "number",
       width: 90,
       valueGetter: safeVG(({ row }) => row.trips ?? 0),
+      valueFormatter: vfNumber,
     },
     {
       field: "passengers",
       headerName: "Passengers",
-      type: "number",
       width: 120,
       valueGetter: safeVG(({ row }) => row.passengers ?? row.pax ?? 0),
+      valueFormatter: vfNumber,
     },
-    textCol("vehicle", "Vehicle", ({ row }) => row.vehicle ?? ""),
+    {
+      field: "vehicle",
+      headerName: "Vehicle",
+      valueGetter: safeVG(({ row }) => row.vehicle ?? ""),
+      valueFormatter: vfText,
+    },
   ];
   const mapped = (rows || []).map((r) => ({
     ...r,
@@ -104,7 +128,7 @@ export default function ShootoutTab() {
       const { columns: cols, rows } = useMemo(() => buildShootoutGrid(history), [history]);
 
     useEffect(() => {
-      warnMissingFields(cols, rows);
+      /* no-op */
     }, [cols, rows]);
 
     useEffect(() => {

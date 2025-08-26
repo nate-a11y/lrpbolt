@@ -1,137 +1,62 @@
-/* Grid-safe formatters and helpers */
+// src/utils/gridFormatters.js
+import dayjs from "dayjs";
 
-import { fmtDateTime, compareDateLike } from "@/utils/datetime";
+const fmt = (d) => dayjs(d).format("MM/DD/YYYY hh:mm A");
 
-export const EM_DASH = "—";
-
-const dateSort = compareDateLike;
-export { dateSort };
-
-/** Safely walk nested keys like "a.b.c" */
-export function getNested(obj, path) {
-  if (!obj || !path) return undefined;
-  return path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
-}
-
-/** Firestore Timestamp, ISO, millis → Date */
-export function toJSDate(v) {
-  if (!v) return undefined;
+// Accept Firestore Timestamp | Date | number(ms) | ISO string
+export function toDateOrNull(v) {
+  if (!v) return null;
   if (v instanceof Date) return v;
-  if (typeof v?.toDate === "function") return v.toDate();
-  const d = new Date(v);
-  return Number.isNaN(+d) ? undefined : d;
+  if (typeof v === "number") return new Date(v);
+  if (typeof v === "string") {
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? null : new Date(t);
+  }
+  if (typeof v === "object" && typeof v.toDate === "function") return v.toDate();
+  return null;
 }
 
-/** Text formatter with null/empty guarding */
-export const safeTextFormatter = (fallback = EM_DASH) => (params = {}) => {
-  const raw = params.value ?? getNested(params.row, params.field);
-  if (raw === null || raw === undefined) return fallback;
-  const s = typeof raw === "string" ? raw.trim() : raw;
-  return s === "" ? fallback : String(s);
-};
+// ---------- valueFormatters (null-safe) ----------
+export function vfText(params) {
+  const v = params?.value;
+  return v == null ? "" : String(v);
+}
 
-/** Date formatter that accepts a (Date) => string function */
-export const safeDateFormatter = (formatFn, fallback = EM_DASH) => (
-  params = {},
-) => {
-  const raw = params.value ?? getNested(params.row, params.field);
-  const d = toJSDate(raw);
-  if (!d) return fallback;
+export function vfNumber(params) {
+  const v = params?.value;
+  return v == null || Number.isNaN(v) ? "" : String(v);
+}
+
+export function vfDateTime(params) {
+  const d = toDateOrNull(params?.value);
+  return d ? fmt(d) : "";
+}
+
+export function vfDuration(params) {
+  const m = params?.value;
+  if (m == null || Number.isNaN(m)) return "";
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return h ? `${h}h ${mm}m` : `${mm}m`;
+}
+
+// Wrap a valueGetter to be resilient to null params
+export const safeVG = (getter) => (params) => {
   try {
-    return typeof formatFn === "function" ? formatFn(d) : d.toLocaleString();
+    if (!params) return undefined;
+    return getter(params);
   } catch {
-    return fallback;
+    return undefined;
   }
 };
 
-// For DataGrid valueFormatter/renderCell: always return a string
-export function fmtDateTimeCell(params) {
-  const value = params?.value ?? params?.row?.[params?.field];
-  return fmtDateTime(value);
-}
-
-/**
- * Wrap columns with safety:
- * - Never apply valueFormatter to actions/checkbox columns
- * - Guard any existing valueFormatter from null params
- * - If a data column lacks formatter/renderers, attach safeTextFormatter()
- */
-export function makeColumnsSafe(columns) {
-  return columns.map((col) => {
-    const c = { ...col };
-
-    // Skip non-data columns
-    if (c.type === "actions" || c.type === "checkboxSelection") {
-      // Ensure no inherited formatter accidentally leaks here
-      delete c.valueFormatter;
-      delete c.valueGetter;
-      return c;
-    }
-
-    // Guard existing valueFormatter
-    if (c.valueFormatter) {
-      const vf = c.valueFormatter;
-      c.valueFormatter = (params) => vf(params ?? {});
-      return c;
-    }
-
-    // Provide a safe text fallback if nothing else formats it
-    if (!c.renderCell && !c.renderEditCell) {
-      c.valueFormatter = safeTextFormatter();
-    }
-    return c;
-  });
-}
-
-/** Alias for ergonomics */
-export const withSafeColumns = makeColumnsSafe;
-
-/**
- * Build a correct actions column (no valueGetter/formatter)
- * Supply a getActions(params) => GridActionsCellItem[].
- */
-export function buildActionsCol(getActions, overrides = {}) {
-  return {
-    field: "actions",
-    type: "actions",
-    headerName: "",
-    width: 80,
-    getActions,
-    ...overrides,
-  };
-}
-
-// Backwards compatibility aliases
-export const fmtPlain = (fallback = EM_DASH) => safeTextFormatter(fallback);
-
-export function warnMissingFields(columns, rows, sample = 10) {
-  if (!Array.isArray(columns) || !Array.isArray(rows) || !rows.length) return;
-  const r = rows.slice(0, sample);
-  columns.forEach((c) => {
-    if (!c?.field || c?.type === "actions") return;
-    const anyHas = r.some((row) =>
-      Object.prototype.hasOwnProperty.call(row, c.field),
-    );
-    if (!anyHas && !c.valueGetter) {
-      console.warn(
-        `[DataGrid] Field "${c.field}" not found on rows and no valueGetter provided.`,
-      );
-    }
-  });
-}
-
-export default {
-  EM_DASH,
-  getNested,
-  toJSDate,
-  dateSort,
-  safeTextFormatter,
-  safeDateFormatter,
-  fmtDateTimeCell,
-  makeColumnsSafe,
-  withSafeColumns,
-  buildActionsCol,
-  fmtPlain,
-  warnMissingFields,
-};
+// Reusable actions column factory (avoids “__actions not found”)
+export const actionsCol = (render) => ({
+  field: "__actions",
+  headerName: "Actions",
+  sortable: false,
+  filterable: false,
+  width: 120,
+  renderCell: (p) => (render ? render(p) : null),
+});
 

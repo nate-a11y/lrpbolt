@@ -17,9 +17,9 @@ import {
   Button,
 } from "@mui/material";
 
-import { withSafeColumns } from "@/utils/gridFormatters";
-import { getField } from '@/utils/gridCells';
-import { asText } from '@/utils/grid/cell';
+import { vfText, vfNumber, safeVG, actionsCol } from "@/utils/gridFormatters";
+import { getField } from "@/utils/gridCells";
+import { asText } from "@/utils/grid/cell";
 
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 
@@ -94,45 +94,47 @@ export default function WeeklySummaryTab() {
     [filteredRows],
   );
 
-  const rawColumns = useMemo(
+  const columns = useMemo(
     () => [
       {
         field: "driver",
         headerName: "Driver",
         flex: 1,
         minWidth: 200,
-        valueGetter: (p) => getField(p?.row ?? null, 'driver'),
+        valueGetter: safeVG(({ row }) => getField(row, "driver")),
         renderCell: (p) => {
           const v = p.value;
-          if (v && typeof v === 'string' && v.includes('@')) return v.split('@')[0];
+          if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
           return asText(v);
         },
+        valueFormatter: vfText,
       },
-      { field: "trips", headerName: "Trips", width: 90 },
+      {
+        field: "trips",
+        headerName: "Trips",
+        width: 90,
+        valueGetter: safeVG(({ row }) => row.trips),
+        valueFormatter: vfNumber,
+      },
       {
         field: "hours",
         headerName: "Hours",
         width: 110,
+        valueGetter: safeVG(({ row }) => row.hours),
         valueFormatter: (p) =>
-          Number.isFinite(p?.value) ? p.value.toFixed(2) : "0.00",
+          Number.isFinite(p?.value) ? p.value.toFixed(2) : "",
       },
       {
-        field: "tools",
+        ...actionsCol(({ row }) => (
+          <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
+        )),
         headerName: "",
         width: 80,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
         align: "center",
-        renderCell: (params) => (
-          <ToolsCell row={params.row} onEdit={handleEdit} onDelete={handleDelete} />
-        ),
       },
     ],
     [handleEdit, handleDelete],
   );
-
-  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
 
 
   if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
