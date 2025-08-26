@@ -17,19 +17,10 @@ import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 dayjs.extend(durationPlugin);
 
-const fmtDuration = (start, end) => {
-  const s = toDayjs(start);
-  const e = toDayjs(end);
-  if (!s || !e) return EM_DASH;
-  return fmtMinutes(e.diff(s, 'minute'));
-};
-
 import { DataGridPro } from "@mui/x-data-grid-pro";
 
-import { safeRow } from '@/utils/gridUtils';
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
-
-import { fmtMinutes, toDayjs, EM_DASH } from "../utils/timeUtils";
+import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
+import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
 import { toNumber, toString, tsToDate } from "../utils/safe";
 import { currentUserEmailLower } from "../utils/userEmail";
 import { logError } from "../utils/logError";
@@ -67,7 +58,6 @@ export default function ShootoutTab() {
   const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
     const grid = useGridProDefaults({ gridId: "shootoutHistory", pageSize: 5 });
-    const fmt = fmtDateTimeCell("America/Chicago", "—");
     const initialState = useMemo(
         () => ({
           ...grid.initialState,
@@ -84,55 +74,42 @@ export default function ShootoutTab() {
 
       const cols = useMemo(
         () => [
-          {
-            field: "startTime",
-            headerName: "Start",
+          dateCol("startTime", "Start", {
             minWidth: 170,
             flex: 1,
-            valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-            valueFormatter: fmt,
-            sortComparator: dateSort,
-          },
-          {
-            field: "endTime",
-            headerName: "End",
+            valueGetter: (p) => toDateAny(p.row?.start ?? p.row?.startTime),
+          }),
+          dateCol("endTime", "End", {
             minWidth: 170,
             flex: 1,
-            valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-            valueFormatter: fmt,
-            sortComparator: dateSort,
+            valueGetter: (p) => toDateAny(p.row?.end ?? p.row?.endTime),
+          }),
+          {
+            field: "duration",
+            headerName: "Duration",
+            width: 150,
+            valueGetter: ({ row }) =>
+              durationMinutes(row?.start ?? row?.startTime, row?.end ?? row?.endTime),
+            valueFormatter: ({ value }) => (value == null ? "—" : `${value}m`),
+            sortable: true,
           },
-        {
-          field: "duration",
-          headerName: "Duration",
-          width: 150,
-          valueGetter: (p) => {
-            const r = safeRow(p);
-            return r
-              ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) }
-              : null;
+          { field: "trips", headerName: "Trips", width: 90, type: "number" },
+          {
+            field: "passengers",
+            headerName: "Passengers",
+            width: 120,
+            type: "number",
           },
-          valueFormatter: (params) =>
-            params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
-          sortable: true,
-        },
-        { field: "trips", headerName: "Trips", width: 90, type: "number" },
-        {
-          field: "passengers",
-          headerName: "Passengers",
-          width: 120,
-          type: "number",
-        },
-        {
-          field: "vehicle",
-          headerName: "Vehicle",
-          minWidth: 120,
-          flex: 1,
-          valueFormatter: fmtPlain("—"),
-        },
-      ],
-      [],
-    );
+          {
+            field: "vehicle",
+            headerName: "Vehicle",
+            minWidth: 120,
+            flex: 1,
+            valueFormatter: fmtPlain("—"),
+          },
+        ],
+        [],
+      );
 
     useEffect(() => {
       isMounted.current = true;
@@ -441,13 +418,18 @@ export default function ShootoutTab() {
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Start: {fmt({ value: r.startTime })}
+                    Start: {friendlyDateTime(r.startTime)}
                   </Typography>
                   <Typography variant="body2">
-                    End: {fmt({ value: r.endTime })}
+                    End: {friendlyDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {fmtDuration(r.startTime, r.endTime)}
+                    Duration: {
+                      (() => {
+                        const m = durationMinutes(r.startTime, r.endTime);
+                        return m == null ? "—" : `${m}m`;
+                      })()
+                    }
                   </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">
