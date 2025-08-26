@@ -55,30 +55,82 @@ export default function ShootoutTab() {
   const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
   const grid = useGridProDefaults({ gridId: "shootoutHistory", pageSize: 5 });
-  const initialState = React.useMemo(
-    () => ({
-      ...grid.initialState,
-      columns: {
-        ...grid.initialState.columns,
-        columnVisibilityModel: {
-          vehicle: !isSmall,
-          ...grid.initialState.columns.columnVisibilityModel,
+    const initialState = React.useMemo(
+      () => ({
+        ...grid.initialState,
+        columns: {
+          ...grid.initialState.columns,
+          columnVisibilityModel: {
+            vehicle: !isSmall,
+            ...grid.initialState.columns.columnVisibilityModel,
+          },
         },
-      },
-    }),
-    [grid.initialState, isSmall],
-  );
+      }),
+      [grid.initialState, isSmall],
+    );
 
-  useEffect(() => {
-    isMounted.current = true;
-    if (authLoading || !driverEmail) return;
+    const cols = useMemo(
+      () => [
+        {
+          field: "startTime",
+          headerName: "Start",
+          minWidth: 170,
+          flex: 1,
+          valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "endTime",
+          headerName: "End",
+          minWidth: 170,
+          flex: 1,
+          valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "duration",
+          headerName: "Duration",
+          width: 150,
+          valueGetter: (p) => {
+            const r = safeRow(p);
+            return r
+              ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) }
+              : null;
+          },
+          valueFormatter: (params) =>
+            params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
+          sortable: true,
+        },
+        { field: "trips", headerName: "Trips", width: 90, type: "number" },
+        {
+          field: "passengers",
+          headerName: "Passengers",
+          width: 120,
+          type: "number",
+        },
+        {
+          field: "vehicle",
+          headerName: "Vehicle",
+          minWidth: 120,
+          flex: 1,
+          valueFormatter: fmtPlain("—"),
+        },
+      ],
+      [],
+    );
+
+    useEffect(() => {
+      isMounted.current = true;
+      if (authLoading || !driverEmail) return;
 
     const unsub = subscribeShootoutStats({
       driverEmail,
       onData: (rows) => {
         if (!isMounted.current) return;
-        setHistory(rows);
-        warnMissingFields(cols, rows);
+          setHistory(rows);
+          warnMissingFields(cols, rows);
         const open = rows.find(
           (r) => r.driverEmail?.toLowerCase() === driverEmail?.toLowerCase() && !r.endTime
         );
@@ -106,7 +158,7 @@ export default function ShootoutTab() {
     });
 
     return () => { isMounted.current = false; unsub && unsub(); };
-  }, [authLoading, driverEmail]);
+    }, [authLoading, driverEmail, cols]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -260,48 +312,8 @@ export default function ShootoutTab() {
     [history],
   );
 
-  const cols = [
-    {
-      field: "startTime",
-      headerName: "Start",
-      minWidth: 170,
-      flex: 1,
-      valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-      sortComparator: dateSort,
-    },
-    {
-      field: "endTime",
-      headerName: "End",
-      minWidth: 170,
-      flex: 1,
-      valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-      sortComparator: dateSort,
-    },
-    {
-      field: "duration",
-      headerName: "Duration",
-      width: 150,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
-      },
-      valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
-      sortable: true,
-    },
-    { field: "trips", headerName: "Trips", width: 90, type: "number" },
-    {
-      field: "passengers",
-      headerName: "Passengers",
-      width: 120,
-      type: "number",
-    },
-    { field: "vehicle", headerName: "Vehicle", minWidth: 120, flex: 1, valueFormatter: fmtPlain("—") },
-  ];
-
-  return (
-    <Card sx={{ borderRadius: 3 }}>
+    return (
+      <Card sx={{ borderRadius: 3 }}>
       <CardHeader title="Shootout Tracker" />
       <CardContent>
         <Box sx={{ mb: 2 }}>

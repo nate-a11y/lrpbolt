@@ -66,20 +66,94 @@ export default function EntriesTab() {
     }
   }, [editRow]);
 
-  const handleDelete = useCallback(async (row) => {
-    if (!window.confirm("Delete this time log?")) return;
-    try {
-      await deleteDoc(doc(db, "timeLogs", row.id));
-    } catch (e) {
-      alert("Failed to delete time log");
-    }
-  }, []);
+    const handleDelete = useCallback(async (row) => {
+      if (!window.confirm("Delete this time log?")) return;
+      try {
+        await deleteDoc(doc(db, "timeLogs", row.id));
+      } catch (e) {
+        alert("Failed to delete time log");
+      }
+    }, []);
 
-  useEffect(() => {
-    const unsub = subscribeTimeLogs(
-      (logs) => {
-        setRows(logs || []);
-        warnMissingFields(columns, logs || []);
+    const columns = useMemo(
+      () => [
+        {
+          field: "driverEmail",
+          headerName: "Driver",
+          flex: 1,
+          minWidth: 180,
+          editable: true,
+          valueFormatter: fmtPlain("—"),
+        },
+        {
+          field: "rideId",
+          headerName: "Ride ID",
+          width: 120,
+          valueFormatter: fmtPlain("—"),
+        },
+        {
+          field: "startTime",
+          headerName: "Start",
+          flex: 1,
+          minWidth: 160,
+          valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "endTime",
+          headerName: "End",
+          flex: 1,
+          minWidth: 160,
+          valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "duration",
+          headerName: "Duration",
+          width: 120,
+          valueGetter: (p) => {
+            const r = safeRow(p);
+            return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) };
+          },
+          valueFormatter: (params) =>
+            params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
+        },
+        {
+          field: "loggedAt",
+          headerName: "Logged",
+          flex: 1,
+          minWidth: 160,
+          valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "tools",
+          headerName: "",
+          width: 80,
+          sortable: false,
+          filterable: false,
+          disableColumnMenu: true,
+          align: "center",
+          renderCell: (params) => (
+            <ToolsCell
+              row={params.row}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          ),
+        },
+      ],
+      [handleEdit, handleDelete],
+    );
+
+    useEffect(() => {
+      const unsub = subscribeTimeLogs(
+        (logs) => {
+          setRows(logs || []);
+          warnMissingFields(columns, logs || []);
         setLoading(false);
       },
       (err) => {
@@ -90,82 +164,9 @@ export default function EntriesTab() {
     return () => typeof unsub === "function" && unsub();
   }, []);
 
-  const columns = useMemo(
-    () => [
-      {
-        field: "driverEmail",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 180,
-        editable: true,
-        valueFormatter: fmtPlain("—"),
-      },
-      {
-        field: "rideId",
-        headerName: "Ride ID",
-        width: 120,
-        valueFormatter: fmtPlain("—"),
-      },
-      {
-        field: "startTime",
-        headerName: "Start",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-        sortComparator: dateSort,
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-        sortComparator: dateSort,
-      },
-      {
-        field: "duration",
-        headerName: "Duration",
-        width: 120,
-        valueGetter: (p) => {
-          const r = safeRow(p)
-          return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) }
-        },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
-      },
-      {
-        field: "loggedAt",
-        headerName: "Logged",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-        sortComparator: dateSort,
-      },
-      {
-        field: "tools",
-        headerName: "",
-        width: 80,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        align: "center",
-        renderCell: (params) => (
-          <ToolsCell
-            row={params.row}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        ),
-      },
-    ],
-    [handleEdit, handleDelete]
-  );
-
-  const filteredRows = useMemo(() => {
-    return (rows || []).filter((r) => {
-      const driverMatch = driverFilter
+    const filteredRows = useMemo(() => {
+      return (rows || []).filter((r) => {
+        const driverMatch = driverFilter
         ? r.driverEmail?.toLowerCase().includes(driverFilter.toLowerCase())
         : true;
       const startMatch = startFilter

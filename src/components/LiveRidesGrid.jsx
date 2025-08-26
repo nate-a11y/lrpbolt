@@ -64,13 +64,13 @@ const LiveRidesGrid = () => {
     return unsub;
   }, [authLoading, user?.email]);
 
-  const refreshRides = async () => {
-    setLoading(true);
-    const data = await getRides(COLLECTIONS.LIVE_RIDES);
-    const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
-    setRows(rows);
-    setLoading(false);
-  };
+    async function refreshRides() {
+      setLoading(true);
+      const data = await getRides(COLLECTIONS.LIVE_RIDES);
+      const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
+      setRows(rows);
+      setLoading(false);
+    }
 
   const handleDeleteConfirmed = async () => {
     setDeleting(true);

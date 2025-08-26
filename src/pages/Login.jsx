@@ -94,65 +94,65 @@ export default function Login() {
   const [regPassword2, setRegPassword2] = useState("");
   const [regShowPw, setRegShowPw] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
-  const [regError, setRegError] = useState("");
+    const [regError, setRegError] = useState("");
 
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const emailRef = useRef(null);
-  const cardRef = useRef(null);
+    const anyLoading = emailLoading || googlePopupLoading;
+    const [error, setError] = useState("");
+    const navigate = useNavigate();
+    const emailRef = useRef(null);
+    const cardRef = useRef(null);
 
-  // Restore last-used email
-  useEffect(() => {
-    const last = localStorage.getItem("lrp:lastEmail");
-    if (last) setEmail(last);
-  }, []);
+    const safeNavigateHome = useCallback(() => {
+      navigate("/", { replace: true });
+    }, [navigate]);
 
-  // Global shortcuts
-  useEffect(() => {
-    const onKey = (e) => {
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === "k") {
-        e.preventDefault(); toggle();
-      }
-      if (mod && e.key.toLowerCase() === "g") {
-        e.preventDefault(); handleGooglePopup();
-      }
-      if (mod && e.key === "/") {
-        e.preventDefault(); emailRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggle]); // handleGooglePopup is stable below via useCallback deps
-
-  const safeNavigateHome = useCallback(() => {
-    navigate("/", { replace: true });
-  }, [navigate]);
-
-  const anyLoading = emailLoading || googlePopupLoading;
-  const emailValid = isEmail(email);
-  const score = pwScore(password);
-
-  const handleGooglePopup = useCallback(async () => {
-    if (anyLoading) return;
-    setError("");
-    setGooglePopupLoading(true);
-    try {
-      await loginWithPopup();
-      safeNavigateHome();
-    } catch (e) {
-      setError(mapAuthError(e));
-    } finally {
-      setGooglePopupLoading(false);
-    }
-  }, [anyLoading, safeNavigateHome]);
-
-  const handleSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      const trimmed = email.trim();
-      if (!isEmail(trimmed) || !password) return;
+    const handleGooglePopup = useCallback(async () => {
       if (anyLoading) return;
+      setError("");
+      setGooglePopupLoading(true);
+      try {
+        await loginWithPopup();
+        safeNavigateHome();
+      } catch (e) {
+        setError(mapAuthError(e));
+      } finally {
+        setGooglePopupLoading(false);
+      }
+    }, [anyLoading, safeNavigateHome]);
+
+    // Restore last-used email
+    useEffect(() => {
+      const last = localStorage.getItem("lrp:lastEmail");
+      if (last) setEmail(last);
+    }, []);
+
+    // Global shortcuts
+    useEffect(() => {
+      const onKey = (e) => {
+        const mod = e.ctrlKey || e.metaKey;
+        if (mod && e.key.toLowerCase() === "k") {
+          e.preventDefault(); toggle();
+        }
+        if (mod && e.key.toLowerCase() === "g") {
+          e.preventDefault(); handleGooglePopup();
+        }
+        if (mod && e.key === "/") {
+          e.preventDefault(); emailRef.current?.focus();
+        }
+      };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }, [toggle, handleGooglePopup]);
+
+    const emailValid = isEmail(email);
+    const score = pwScore(password);
+
+    const handleSubmit = useCallback(
+      async (e) => {
+        e.preventDefault();
+        const trimmed = email.trim();
+        if (!isEmail(trimmed) || !password) return;
+        if (anyLoading) return;
 
       setError("");
       setEmailLoading(true);
