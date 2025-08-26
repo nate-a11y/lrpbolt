@@ -20,7 +20,7 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
 import { safeRow } from "@/utils/gridUtils";
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+import { withSafeColumns, fmtDateTimeCell, toJSDate, dateSort } from "@/utils/gridFormatters";
 
 import { fmtDuration } from "../../utils/timeUtils";
 import { db } from "../../utils/firebaseInit";
@@ -90,47 +90,38 @@ export default function ShootoutStatsTab() {
 
   const rows = useMemo(() => stats || [], [stats]);
 
-  const fmt = fmtDateTimeCell("America/Chicago", "—");
+  const fmt = fmtDateTimeCell({ timeZone: "America/Chicago" });
 
-  const columns = useMemo(
+  const rawColumns = useMemo(
     () => [
       {
         field: "driverEmail",
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        valueFormatter: fmtPlain("—"),
       },
-      {
-        field: "trips",
-        headerName: "Trips",
-        width: 90,
-      },
-      {
-        field: "pax",
-        headerName: "Pax",
-        width: 90,
-      },
+      { field: "trips", headerName: "Trips", width: 90 },
+      { field: "pax", headerName: "Pax", width: 90 },
       {
         field: "duration",
         headerName: "Duration",
         width: 120,
         valueGetter: (p) => {
-          const r = safeRow(p)
-          return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) }
+          const r = safeRow(p);
+          return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) };
         },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
+        valueFormatter: (params = {}) =>
+          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
       },
       {
         field: "status",
         headerName: "Status",
         width: 110,
         valueGetter: (p) => {
-          const r = safeRow(p)
-          return r?.status ?? (r?.endTime ? "Closed" : "Open")
+          const r = safeRow(p);
+          return r?.status ?? (r?.endTime ? "Closed" : "Open");
         },
         editable: true,
-        valueFormatter: fmtPlain("—"),
       },
       {
         field: "startTime",
@@ -168,20 +159,15 @@ export default function ShootoutStatsTab() {
         disableColumnMenu: true,
         align: "center",
         renderCell: (params) => (
-          <ToolsCell
-            row={params.row}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <ToolsCell row={params.row} onEdit={handleEdit} onDelete={handleDelete} />
         ),
       },
     ],
-    [handleEdit, handleDelete]
+    [handleEdit, handleDelete],
   );
 
-  useEffect(() => {
-    warnMissingFields(columns, rows);
-  }, [rows, columns]);
+  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {

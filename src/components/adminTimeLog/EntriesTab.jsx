@@ -20,7 +20,7 @@ import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
 import { safeRow } from "@/utils/gridUtils";
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+import { withSafeColumns, fmtDateTimeCell, toJSDate, dateSort } from "@/utils/gridFormatters";
 
 import { fmtDuration } from "../../utils/timeUtils";
 import { db } from "../../utils/firebaseInit";
@@ -80,9 +80,9 @@ export default function EntriesTab() {
       }
     }, []);
 
-    const fmt = fmtDateTimeCell("America/Chicago", "—");
+    const fmt = fmtDateTimeCell({ timeZone: "America/Chicago" });
 
-    const columns = useMemo(
+    const rawColumns = useMemo(
       () => [
         {
           field: "driverEmail",
@@ -90,14 +90,8 @@ export default function EntriesTab() {
           flex: 1,
           minWidth: 180,
           editable: true,
-          valueFormatter: fmtPlain("—"),
         },
-        {
-          field: "rideId",
-          headerName: "Ride ID",
-          width: 120,
-          valueFormatter: fmtPlain("—"),
-        },
+        { field: "rideId", headerName: "Ride ID", width: 120 },
         {
           field: "startTime",
           headerName: "Start",
@@ -124,7 +118,7 @@ export default function EntriesTab() {
             const r = safeRow(p);
             return { s: toJSDate(r?.start ?? r?.startTime), e: toJSDate(r?.end ?? r?.endTime) };
           },
-          valueFormatter: (params) =>
+          valueFormatter: (params = {}) =>
             params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
         },
         {
@@ -133,7 +127,7 @@ export default function EntriesTab() {
           flex: 1,
           minWidth: 160,
           valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
-          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          valueFormatter: fmt,
           sortComparator: dateSort,
         },
         {
@@ -156,20 +150,21 @@ export default function EntriesTab() {
       [handleEdit, handleDelete],
     );
 
+    const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+
     useEffect(() => {
       const unsub = subscribeTimeLogs(
         (logs) => {
           setRows(logs || []);
-          warnMissingFields(columns, logs || []);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err?.message || "Failed to load time logs.");
-        setLoading(false);
-      },
-    );
-    return () => typeof unsub === "function" && unsub();
-  }, [columns]);
+          setLoading(false);
+        },
+        (err) => {
+          setError(err?.message || "Failed to load time logs.");
+          setLoading(false);
+        },
+      );
+      return () => typeof unsub === "function" && unsub();
+    }, []);
 
     const filteredRows = useMemo(() => {
       return (rows || []).filter((r) => {

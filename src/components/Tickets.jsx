@@ -52,10 +52,8 @@ import {
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
-import { fmtPlain, warnMissingFields } from "../utils/gridFormatters";
+import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
-
-import useGridProDefaults from "./grid/useGridProDefaults.js";
 import PageContainer from "./PageContainer.jsx";
 
 export default function Tickets() {
@@ -78,21 +76,17 @@ export default function Tickets() {
   const { user, authLoading } = useAuth();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
-  const grid = useGridProDefaults({ gridId: "tickets" });
   const initialState = useMemo(
     () => ({
-      ...grid.initialState,
       columns: {
-        ...grid.initialState.columns,
         columnVisibilityModel: {
           link: !isSmall,
           scanStatus: !isSmall,
           pickup: !isSmall,
-          ...grid.initialState.columns.columnVisibilityModel,
         },
       },
     }),
-    [grid.initialState, isSmall],
+    [isSmall],
   );
 
   // ✅ Real-time ticket subscription with indexed search
@@ -313,7 +307,7 @@ export default function Tickets() {
   const handleDeleteClick = useCallback((row) => handleDelete(row.ticketId), [handleDelete]);
   const handleDownload = useCallback((row) => setPreviewTicket(row), []);
 
-  const columns = useMemo(
+  const rawColumns = useMemo(
     () => [
       { field: "ticketId", headerName: "Ticket ID", minWidth: 120 },
       {
@@ -325,8 +319,8 @@ export default function Tickets() {
           <Typography fontWeight="bold">{params?.value}</Typography>
         ),
       },
-      { field: "date", headerName: "Date", minWidth: 110, valueFormatter: fmtPlain("—") },
-      { field: "pickup", headerName: "Pickup", minWidth: 110, valueFormatter: fmtPlain("—") },
+      { field: "date", headerName: "Date", minWidth: 110 },
+      { field: "pickup", headerName: "Pickup", minWidth: 110 },
       {
         field: "link",
         headerName: "Link",
@@ -383,15 +377,14 @@ export default function Tickets() {
     [handleDeleteClick, handleDownload],
   );
 
+  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
+
   const rows = useMemo(
     () => (filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t })),
     [filteredTickets],
   );
   useGridDoctor({ name: "Tickets", rows, columns });
 
-  useEffect(() => {
-    if (import.meta.env.MODE !== "production") warnMissingFields(columns, rows);
-  }, [rows, columns]);
   return (
     <PageContainer maxWidth={960}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
@@ -522,10 +515,9 @@ export default function Tickets() {
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
               <DataGridPro
-                {...grid}
                 rows={rows}
                 columns={columns}
-                getRowId={(r) => r.id ?? r.ticketId ?? r._id}
+                getRowId={(r) => r.id ?? r._id}
                 autoHeight
                 checkboxSelection
                 pageSizeOptions={[5, 10, 25, 100]}
