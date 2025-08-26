@@ -1,6 +1,45 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const FRIENDLY_DT = "MM/DD/YYYY hh:mm A";
+
+// Accept Firestore Timestamp, Date, number(ms), ISO string
+export function toDayjs(input) {
+  if (!input) return null;
+
+  if (typeof input === "object") {
+    if (typeof input.toDate === "function") return dayjs(input.toDate());
+    if ("seconds" in input && typeof input.seconds === "number") {
+      return dayjs.unix(input.seconds).millisecond(
+        Math.floor((input.nanoseconds || 0) / 1e6),
+      );
+    }
+    if (input instanceof Date) return dayjs(input);
+  }
+
+  if (typeof input === "number") return dayjs(input);
+  if (typeof input === "string") return dayjs(input);
+  return null;
+}
+
+export function fmtDateTime(input, tz = dayjs.tz.guess()) {
+  const d = toDayjs(input);
+  if (!d || !d.isValid()) return "";
+  return d.tz(tz).format(FRIENDLY_DT);
+}
+
+export function compareDateLike(a, b) {
+  const da = toDayjs(a);
+  const db = toDayjs(b);
+  if (!da && !db) return 0;
+  if (!da) return -1;
+  if (!db) return 1;
+  return da.valueOf() - db.valueOf();
+}
 
 // Accept Firestore Timestamp, JS Date, epoch (ms|sec), ISO/string -> Date|null
 export function toDateAny(v) {

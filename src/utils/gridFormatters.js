@@ -1,6 +1,11 @@
 /* Grid-safe formatters and helpers */
 
+import { fmtDateTime, compareDateLike } from "@/utils/datetime";
+
 export const EM_DASH = "—";
+
+const dateSort = compareDateLike;
+export { dateSort };
 
 /** Safely walk nested keys like "a.b.c" */
 export function getNested(obj, path) {
@@ -15,13 +20,6 @@ export function toJSDate(v) {
   if (typeof v?.toDate === "function") return v.toDate();
   const d = new Date(v);
   return Number.isNaN(+d) ? undefined : d;
-}
-
-/** Ascending date comparator for DataGrid sortComparator */
-export function dateSort(a, b) {
-  const da = toJSDate(a);
-  const db = toJSDate(b);
-  return (+da || 0) - (+db || 0);
 }
 
 /** Text formatter with null/empty guarding */
@@ -46,18 +44,11 @@ export const safeDateFormatter = (formatFn, fallback = EM_DASH) => (
   }
 };
 
-/** Reasonable default date-time cell (Intl); no dayjs dependency */
-export const fmtDateTimeCell = (options = {}, fallback = EM_DASH) =>
-  safeDateFormatter((d) => {
-    const fmt = new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      ...options,
-    });
-    return fmt.format(d);
-  }, fallback);
+// For DataGrid valueFormatter/renderCell: always return a string
+export function fmtDateTimeCell(params) {
+  const value = params?.value ?? params?.row?.[params?.field];
+  return fmtDateTime(value);
+}
 
 /**
  * Wrap columns with safety:

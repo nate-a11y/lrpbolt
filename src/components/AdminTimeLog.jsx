@@ -32,8 +32,8 @@ import Papa from "papaparse";
 import { doc, deleteDoc } from "firebase/firestore";
 
 import { safeRow } from "../utils/gridUtils";
-import { fmtPlain, warnMissingFields } from "../utils/gridFormatters";
-import { dateCol, durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
+import { fmtPlain, warnMissingFields, fmtDateTimeCell, dateSort } from "../utils/gridFormatters";
+import { durationMinutes, toDateAny, friendlyDateTime } from "@/utils/datetime";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
@@ -531,20 +531,30 @@ export default function AdminTimeLog() {
         editable: true,
         valueFormatter: fmtPlain("—"),
       },
-      dateCol("startTime", "Start", {
+      {
+        field: "startTime",
+        headerName: "Start",
+        type: "dateTime",
         minWidth: 180,
         flex: 1,
         editable: true,
-        valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime),
+        valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime) ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-      }),
-      dateCol("endTime", "End", {
+      },
+      {
+        field: "endTime",
+        headerName: "End",
+        type: "dateTime",
         minWidth: 180,
         flex: 1,
         editable: true,
-        valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
+        valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime) ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-      }),
+      },
       {
         field: "duration",
         headerName: "Duration",
@@ -554,17 +564,28 @@ export default function AdminTimeLog() {
             p?.row?.start ?? p?.row?.startTime,
             p?.row?.end ?? p?.row?.endTime,
           ),
-        valueFormatter: (p) => (p?.value == null ? "—" : `${p.value}m`),
+        renderCell: (p) => {
+          const v = p?.value;
+          if (v == null) return "";
+          const mins = Number(v);
+          if (Number.isNaN(mins)) return "";
+          return `${mins}m`;
+        },
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
         sortable: true,
       },
-      dateCol("loggedAt", "Logged At", {
+      {
+        field: "loggedAt",
+        headerName: "Logged At",
+        type: "dateTime",
         minWidth: 180,
         flex: 0.9,
         editable: true,
-        valueGetter: (p) => toDateAny(p?.row?.loggedAt),
+        valueGetter: (p) => toDateAny(p?.row?.loggedAt) ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-      }),
+      },
       {
         field: "actions",
         type: "actions",
@@ -629,20 +650,30 @@ export default function AdminTimeLog() {
         editable: true,
         valueFormatter: fmtPlain("—"),
       },
-      dateCol("startTime", "Start", {
+      {
+        field: "startTime",
+        headerName: "Start",
+        type: "dateTime",
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime),
+        valueGetter: (p) => toDateAny(p?.row?.start ?? p?.row?.startTime) ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-      }),
-      dateCol("endTime", "End", {
+      },
+      {
+        field: "endTime",
+        headerName: "End",
+        type: "dateTime",
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime),
+        valueGetter: (p) => toDateAny(p?.row?.end ?? p?.row?.endTime) ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-      }),
+      },
       {
         field: "duration",
         headerName: "Duration",
@@ -652,7 +683,13 @@ export default function AdminTimeLog() {
             p?.row?.start ?? p?.row?.startTime,
             p?.row?.end ?? p?.row?.endTime,
           ),
-        valueFormatter: (p) => (p?.value == null ? "—" : `${p.value}m`),
+        renderCell: (p) => {
+          const v = p?.value;
+          if (v == null) return "";
+          const mins = Number(v);
+          if (Number.isNaN(mins)) return "";
+          return `${mins}m`;
+        },
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
         sortable: true,
       },
@@ -672,13 +709,18 @@ export default function AdminTimeLog() {
         editable: true,
         renderEditCell: (p) => <NumberEditCell {...p} />,
       },
-      dateCol("createdAt", "Created", {
+      {
+        field: "createdAt",
+        headerName: "Created",
+        type: "dateTime",
         flex: 0.9,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => toDateAny(p?.row?.createdAt),
+        valueGetter: (p) => toDateAny(p?.row?.createdAt) ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
-      }),
+      },
       {
         field: "actions",
         type: "actions",

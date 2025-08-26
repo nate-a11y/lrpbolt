@@ -42,8 +42,8 @@ import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
-import { withSafeColumns } from "../utils/gridFormatters";
-import { dateCol, durationMinutes, toDateAny } from "@/utils/datetime";
+import { withSafeColumns, fmtDateTimeCell, dateSort } from "../utils/gridFormatters";
+import { durationMinutes, toDateAny } from "@/utils/datetime";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
@@ -232,29 +232,41 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const rawColumns = useMemo(
     () => [
-      dateCol("pickupTime", "Pickup", { minWidth: 180, flex: 1 }),
+      {
+        field: "pickupTime",
+        headerName: "Pickup",
+        type: "dateTime",
+        minWidth: 180,
+        flex: 1,
+        valueGetter: (p) => p?.row?.pickupTime ?? null,
+        renderCell: (p) => fmtDateTimeCell(p) || "",
+        sortComparator: dateSort,
+      },
       { field: "vehicle", headerName: "Vehicle", minWidth: 140, flex: 1 },
       { field: "rideType", headerName: "Type", minWidth: 120 },
       {
         field: "rideDuration",
         headerName: "Duration",
         width: 110,
-        valueFormatter: (params) => {
-          // if backend already provides a number
-          if (Number.isFinite(params?.value)) return `${params.value}m`;
-
-          // Try to get the row from either wrapper-provided row or the API
-          const row =
-            params?.row ??
-            (params?.api && params?.id && typeof params.api.getRow === "function"
-              ? params.api.getRow(params.id)
-              : undefined);
-
-          const mins = durationMinutes(row?.pickupTime, row?.endTime ?? row?.dropoffTime);
-          return mins == null ? "—" : `${mins}m`;
+        valueGetter: (p) => p?.row?.rideDuration ?? null,
+        renderCell: (p) => {
+          const v = p?.value;
+          if (v == null) return "";
+          const mins = Number(v);
+          if (Number.isNaN(mins)) return "";
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return h ? `${h}h ${m}m` : `${m}m`;
         },
       },
-      { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 2 },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        minWidth: 220,
+        flex: 2,
+        valueGetter: (p) => p?.row?.rideNotes ?? "",
+        renderCell: (p) => p?.value || "",
+      },
       {
         field: "actions",
         type: "actions",
