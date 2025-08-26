@@ -7,14 +7,15 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging, isSupported as messagingSupported } from "firebase/messaging";
 
+// TODO: move to env at build-time; left hardcoded per request for now.
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FB_API_KEY,
-  authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FB_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FB_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FB_APP_ID,
-  measurementId: import.meta.env.VITE_FB_MEASUREMENT_ID,
+  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
+  authDomain: "lrp---claim-portal.firebaseapp.com",
+  projectId: "lrp---claim-portal",
+  storageBucket: "lrp---claim-portal.firebasestorage.app",
+  messagingSenderId: "799613895072",
+  appId: "1:799613895072:web:1b41c28c6819198ce824c5",
+  measurementId: "G-9NM69MZN6B",
 };
 
 export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
