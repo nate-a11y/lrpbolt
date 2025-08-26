@@ -7,5 +7,12 @@
       "src/*": ["src/*"]
     }
   },
-  "include": ["src", "tests", "vite.config.*", "vitest.config.*", "babel.config.*", "functions"]
+  "include": [
+    "src",
+    "functions",
+    "tests",
+    "vite.config.*",
+    "vitest.config.*",
+    "babel.config.*"
+  ]
 }
