@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
@@ -123,7 +124,7 @@ function normalizeTimeLog(r) {
   const durMin = Number.isFinite(d)
     ? d
     : Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
-    ? Math.round((endMs - startMs) / 60000)
+    ? Math.floor((endMs - startMs) / 60000)
     : null;
   const realId = r.id || r._id || r.docId || null;
   const driverVal = r.driver || r.driverEmail || r.userEmail || "";
@@ -425,14 +426,18 @@ export default function AdminTimeLog() {
         field: "durationMin",
         headerName: "Duration",
         width: 130,
-        valueGetter: (_, row) =>
-          Math.floor((row?.durationMs || 0) / 60000),
-        valueFormatter: (value) => fmtMinutes(value),
+        valueGetter: (p) => Math.floor((p?.row?.durationMs || 0) / 60000),
+        valueFormatter: (p) => fmtMinutes(p?.value),
       },
       { field: "hours", headerName: "Hours", width: 110, type: "number" },
     ],
     [],
   );
+
+  const entryGrid = useGridProDefaults({ gridId: "timeLogEntries", pageSize: 10 });
+  const shootSummaryGrid = useGridProDefaults({ gridId: "shootSummary", pageSize: 10 });
+  const weeklyGrid = useGridProDefaults({ gridId: "weeklySummary", pageSize: 10 });
+  const shootGrid = useGridProDefaults({ gridId: "shootoutStats", pageSize: 10 });
 
   /* -------- Modal (edit ALL fields for the selected row) -------- */
   const [tab, setTab] = useState(0);
@@ -495,7 +500,7 @@ export default function AdminTimeLog() {
         minWidth: 180,
         editable: true,
         renderCell: (p) => {
-          const d = p.row?.driver || "";
+          const d = p?.row?.driver || "";
           if (!isEmail(d)) return d || "";
           const name = nameMap[d.toLowerCase()];
           return name ? (
@@ -517,12 +522,10 @@ export default function AdminTimeLog() {
       {
         field: "startTime",
         headerName: "Start",
-        flex: 1,
         minWidth: 160,
+        flex: 1,
         editable: true,
-        valueGetter: (v) => v,
-        valueFormatter: (value) => fmtDateTimeMs(value),
-        renderCell: (params) => fmtDateTimeMs(params.row?.startTime),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -530,12 +533,10 @@ export default function AdminTimeLog() {
       {
         field: "endTime",
         headerName: "End",
-        flex: 1,
         minWidth: 160,
+        flex: 1,
         editable: true,
-        valueGetter: (v) => v,
-        valueFormatter: (value) => fmtDateTimeMs(value),
-        renderCell: (params) => fmtDateTimeMs(params.row?.endTime),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -545,28 +546,22 @@ export default function AdminTimeLog() {
         headerName: "Duration",
         width: 120,
         editable: true,
-        valueGetter: (value, row) => {
-          if (Number.isFinite(value)) return value;
-          const s = row?.startTime;
-          const e = row?.endTime;
-          return Number.isFinite(s) && Number.isFinite(e) && e >= s
-            ? Math.floor((e - s) / 60000)
-            : null;
-        },
-        valueFormatter: (value) => fmtMinutes(value),
+        valueGetter: (p) =>
+          durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
+        valueFormatter: (p) =>
+          p?.value == null
+            ? "—"
+            : `${Math.floor(p.value / 60)}h ${p.value % 60}m`,
         renderEditCell: (params) => <NumberEditCell {...params} />,
-        sortComparator: (a, b) =>
-          (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
+        sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       {
         field: "loggedAt",
         headerName: "Logged At",
-        flex: 0.9,
         minWidth: 160,
+        flex: 0.9,
         editable: true,
-        valueGetter: (v) => v,
-        valueFormatter: (value) => fmtDateTimeMs(value),
-        renderCell: (params) => fmtDateTimeMs(params.row?.loggedAt),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -637,9 +632,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (v) => v,
-        valueFormatter: (p) => formatLocalShort(p.value),
-        renderCell: (params) => formatLocalShort(params.row?.startTime),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -650,9 +643,7 @@ export default function AdminTimeLog() {
         flex: 1,
         minWidth: 160,
         editable: true,
-        valueGetter: (v) => v,
-        valueFormatter: (p) => formatLocalShort(p.value),
-        renderCell: (params) => formatLocalShort(params.row?.endTime),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -661,10 +652,10 @@ export default function AdminTimeLog() {
         field: "durationMin",
         headerName: "Duration",
         width: 130,
-        valueGetter: (params) =>
-          durationMinutesFloor(params.row.startTime, params.row.endTime),
-        valueFormatter: (params) =>
-          durationHumanFloor(params.row.startTime, params.row.endTime),
+        valueGetter: (p) =>
+          durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
+        valueFormatter: (p) =>
+          durationHumanFloor(p?.row?.startTime, p?.row?.endTime),
         sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
       },
       {
@@ -689,9 +680,7 @@ export default function AdminTimeLog() {
         flex: 0.9,
         minWidth: 170,
         editable: true,
-        valueGetter: (v) => v,
-        valueFormatter: (value) => fmtDateTimeMs(value),
-        renderCell: (params) => fmtDateTimeMs(params.row?.createdAt),
+        valueFormatter: (p) => formatLocalShort(p?.value),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: (a, b) =>
           (Number.isFinite(a) ? a : -1) - (Number.isFinite(b) ? b : -1),
@@ -845,13 +834,10 @@ export default function AdminTimeLog() {
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGridPro
-              autoHeight
-              density="compact"
+              {...entryGrid}
               rows={entryFiltered || []}
               columns={entryColumns}
-              getRowId={(r) => r._id || r.id}
               loading={!!loadingEntries}
-              disableRowSelectionOnClick
               editMode="row"
               processRowUpdate={processEntryUpdate}
               onProcessRowUpdateError={() =>
@@ -865,8 +851,8 @@ export default function AdminTimeLog() {
                 },
               }}
               initialState={{
+                ...entryGrid.initialState,
                 sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
-                pagination: { paginationModel: { pageSize: 10 } },
               }}
             />
           </Box>
@@ -905,17 +891,14 @@ export default function AdminTimeLog() {
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGridPro
-              autoHeight
-              density="compact"
+              {...shootSummaryGrid}
               rows={shootSummaryFiltered}
               columns={shootSummaryColumns}
-              getRowId={(r) => r.id}
-              disableRowSelectionOnClick
-              initialState={{
-                sorting: { sortModel: [{ field: "trips", sort: "desc" }] },
-                pagination: { paginationModel: { pageSize: 10 } },
-              }}
               slots={{ toolbar: GridToolbar }}
+              initialState={{
+                ...shootSummaryGrid.initialState,
+                sorting: { sortModel: [{ field: "trips", sort: "desc" }] },
+              }}
             />
           </Box>
         </Box>
@@ -955,8 +938,7 @@ export default function AdminTimeLog() {
           ) : (
             <Box sx={{ width: 1, overflowX: "auto" }}>
               <DataGridPro
-                autoHeight
-                density="compact"
+                {...weeklyGrid}
                 rows={weekly || []}
                 columns={[
                   { field: "driver", headerName: "Driver", flex: 1 },
@@ -975,8 +957,8 @@ export default function AdminTimeLog() {
                 ]}
                 hideFooterSelectedRowCount
                 initialState={{
+                  ...weeklyGrid.initialState,
                   sorting: { sortModel: [{ field: "hours", sort: "desc" }] },
-                  pagination: { paginationModel: { pageSize: 10 } },
                 }}
               />
             </Box>
@@ -1037,13 +1019,10 @@ export default function AdminTimeLog() {
           </Box>
           <Box sx={{ width: 1, overflowX: "auto" }}>
             <DataGridPro
-              autoHeight
-              density="compact"
+              {...shootGrid}
               rows={shootoutFiltered}
               columns={shootoutColumns}
-              getRowId={(r) => r._id || r.id}
               loading={!!loadingShootout}
-              disableRowSelectionOnClick
               editMode="row"
               processRowUpdate={processShootoutUpdate}
               onProcessRowUpdateError={() =>
@@ -1057,8 +1036,8 @@ export default function AdminTimeLog() {
                 },
               }}
               initialState={{
+                ...shootGrid.initialState,
                 sorting: { sortModel: [{ field: "startTime", sort: "desc" }] },
-                pagination: { paginationModel: { pageSize: 10 } },
               }}
             />
           </Box>

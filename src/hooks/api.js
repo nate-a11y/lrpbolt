@@ -919,7 +919,7 @@ export async function patchTimeLog(id, updates) {
   const s = data.startTime?.toMillis?.();
   const e = data.endTime?.toMillis?.();
   if (Number.isFinite(s) && Number.isFinite(e) && e >= s) {
-    data.duration = Math.round((e - s) / 60000);
+    data.duration = Math.floor((e - s) / 60000);
   }
 
   await updateDoc(ref, data);

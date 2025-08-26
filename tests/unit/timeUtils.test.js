@@ -1,28 +1,32 @@
 /* Proprietary and confidential. See LICENSE. */
-// tests/unit/timeUtils.test.js
 import { describe, expect, it } from "vitest";
 
-import { getSyncTime, normalizeTime, setSyncTime, toTimeString12Hr } from "../../src/utils/timeUtils.js";
+import {
+  toDayjs,
+  durationMinutesFloor,
+  durationHumanFloor,
+  formatLocalShort,
+} from "../../src/utils/timeUtils.js";
 
-describe("timeUtils.normalizeTime", () => {
-  it("normalizes lowercase am/pm to uppercase", () => {
-    expect(normalizeTime("1:05 pm")).toContain("PM");
+describe("timeUtils", () => {
+  it("toDayjs returns null for invalid", () => {
+    expect(toDayjs("bad")).toBeNull();
   });
 
-  it("handles already-correct casing", () => {
-    expect(normalizeTime("9:00 AM")).toBeTruthy();
+  it("durationMinutesFloor floors the diff", () => {
+    const start = new Date("2024-01-01T00:00:00Z");
+    const end = new Date("2024-01-01T00:59:59Z");
+    expect(durationMinutesFloor(start, end)).toBe(59);
   });
-});
 
-describe("timeUtils sync helpers", () => {
-  it("sets and retrieves sync time", () => {
-    setSyncTime("10:00");
-    expect(getSyncTime()).toBe("10:00");
+  it("durationHumanFloor formats", () => {
+    const start = new Date("2024-01-01T00:00:00Z");
+    const end = new Date("2024-01-01T02:15:00Z");
+    expect(durationHumanFloor(start, end)).toBe("2h 15m");
   });
-});
 
-describe("timeUtils.toTimeString12Hr", () => {
-  it("converts 24-hour time to 12-hour without timezone shift", () => {
-    expect(toTimeString12Hr("14:00")).toBe("2:00 PM");
+  it("formatLocalShort outputs string", () => {
+    const d = new Date("2024-01-01T12:00:00Z");
+    expect(formatLocalShort(d)).toContain("Jan");
   });
 });

@@ -11,10 +11,13 @@ import {
   Button,
   Tooltip,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 
 export default function EditableRideGrid({
   rows,
@@ -23,6 +26,24 @@ export default function EditableRideGrid({
   loading = false,
   refreshRides,
 }) {
+  const theme = useTheme();
+  const isXs = useMediaQuery(theme.breakpoints.down("sm"));
+  const grid = useGridProDefaults({ gridId: "rideQueue" });
+  const initialState = useMemo(
+    () => ({
+      ...grid.initialState,
+      columns: {
+        ...grid.initialState.columns,
+        columnVisibilityModel: {
+          rideNotes: !isXs,
+          createdBy: !isXs,
+          lastModifiedBy: !isXs,
+          ...grid.initialState.columns.columnVisibilityModel,
+        },
+      },
+    }),
+    [grid.initialState, isXs],
+  );
   const columns = useMemo(
     () => [
       { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
@@ -109,12 +130,13 @@ export default function EditableRideGrid({
   return (
     <Box sx={{ width: "100%", height: 600 }}>
       <DataGridPro
+        {...grid}
         rows={rows || []}
         columns={columns}
         loading={loading}
-        disableRowSelectionOnClick
         slots={{ toolbar: CustomToolbar }}
         getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
+        initialState={initialState}
       />
     </Box>
   );

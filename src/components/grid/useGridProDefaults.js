@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useMediaQuery, useTheme } from "@mui/material";
+
 import ProToolbar from "./ProToolbar.jsx";
 import { LoadingOverlay, NoRowsOverlay, NoResultsOverlay } from "./overlays.jsx";
 

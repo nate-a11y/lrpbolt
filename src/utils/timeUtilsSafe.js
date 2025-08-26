@@ -24,7 +24,7 @@ export const diffMinutes = (start, end) => {
   const e = tsToDate(end);
   if (!s || !e) return null;
   const ms = e - s;
-  return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 60000)) : null;
+  return Number.isFinite(ms) ? Math.max(0, Math.floor(ms / 60000)) : null;
 };
 
 // Utility: get first non-undefined among several keys from an object (supports raw + normalized)

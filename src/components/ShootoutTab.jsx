@@ -16,6 +16,7 @@ import durationPlugin from "dayjs/plugin/duration";
 dayjs.extend(durationPlugin);
 
 import { DataGridPro } from "@mui/x-data-grid-pro";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 import {
   subscribeShootoutStats,
   createShootoutSession,
@@ -54,6 +55,20 @@ export default function ShootoutTab() {
   const snackClose = () => setSnack((x) => ({ ...x, open: false }));
   const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
+  const grid = useGridProDefaults({ gridId: "shootoutHistory", pageSize: 5 });
+  const initialState = React.useMemo(
+    () => ({
+      ...grid.initialState,
+      columns: {
+        ...grid.initialState.columns,
+        columnVisibilityModel: {
+          vehicle: !isSmall,
+          ...grid.initialState.columns.columnVisibilityModel,
+        },
+      },
+    }),
+    [grid.initialState, isSmall],
+  );
 
   useEffect(() => {
     isMounted.current = true;
@@ -251,23 +266,23 @@ export default function ShootoutTab() {
       headerName: "Start",
       minWidth: 170,
       flex: 1,
-      valueFormatter: (p) => formatLocalShort(p.value),
+      valueFormatter: (p) => formatLocalShort(p?.value),
     },
     {
       field: "endTime",
       headerName: "End",
       minWidth: 170,
       flex: 1,
-      valueFormatter: (p) => formatLocalShort(p.value),
+      valueFormatter: (p) => formatLocalShort(p?.value),
     },
     {
       field: "durationMin",
       headerName: "Duration",
       width: 150,
       valueGetter: (p) =>
-        durationMinutesFloor(p.row.startTime, p.row.endTime),
+        durationMinutesFloor(p?.row?.startTime, p?.row?.endTime),
       valueFormatter: (p) =>
-        durationHumanFloor(p.row.startTime, p.row.endTime),
+        durationHumanFloor(p?.row?.startTime, p?.row?.endTime),
       sortComparator: (a, b) => (a ?? -1) - (b ?? -1),
     },
     { field: "trips", headerName: "Trips", width: 90, type: "number" },
@@ -420,13 +435,11 @@ export default function ShootoutTab() {
           ) : (
             <Box sx={{ width: "100%" }}>
               <DataGridPro
-                autoHeight
+                {...grid}
                 rows={rows || []}
                 columns={cols}
-                density="compact"
                 pageSizeOptions={[5, 10, 25]}
-                initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
-                disableRowSelectionOnClick
+                initialState={initialState}
               />
               {rows.length === 0 && (
                 <Typography textAlign="center" color="text.secondary" mt={2}>
