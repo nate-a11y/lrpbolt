@@ -23,18 +23,23 @@ import {
 } from "@mui/material";
 import { DatePicker, DateTimePicker } from "@mui/x-date-pickers-pro";
 import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
-import useGridProDefaults from "./grid/useGridProDefaults.js";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Papa from "papaparse";
-import { fmtDuration, toDayjs } from "../utils/timeUtils";
-import { safeRow } from '@/utils/gridUtils'
-import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
+import { doc, deleteDoc } from "firebase/firestore";
 
-import PageContainer from "./PageContainer.jsx";
+import { safeRow } from "../utils/gridUtils";
+import {
+  fmtDateTimeCell,
+  fmtPlain,
+  toJSDate,
+  dateSort,
+  warnMissingFields,
+} from "../utils/gridFormatters";
+import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import {
   subscribeTimeLogs,
   subscribeShootoutStats,
@@ -42,9 +47,10 @@ import {
   patchTimeLog,
   patchShootoutStat,
 } from "../hooks/api";
-
-import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "../utils/firebaseInit";
+
+import PageContainer from "./PageContainer.jsx";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -86,12 +92,13 @@ function toMs(input) {
       return Number.isFinite(t) ? t : null;
     }
   } catch (err) {
-    /* no-op for hot reload */
+    console.error(err);
   }
   return null;
 }
 function fmtDateTimeMs(ms) {
-  return fmtDateTime(ms, "MMM D, h:mm A");
+  const d = toJSDate(ms);
+  return d ? dayjs(d).tz(TZ).format("MMM D, h:mm A") : "";
 }
 function fmtMinutes(min) {
   if (!Number.isFinite(min) || min < 0) return "";
@@ -492,11 +499,11 @@ export default function AdminTimeLog() {
     setEditOpen(false);
   };
 
-  const handleDelete = async (row) => {
+  const handleDelete = useCallback(async (row) => {
     if (!(row?._id || row?.id)) return;
     if (!window.confirm("Delete this record?")) return;
     await deleteDoc(refFor(row));
-  };
+  }, []);
 
   /* -------- Columns (only the real fields per collection) -------- */
   const entryColumns = useMemo(
@@ -532,22 +539,24 @@ export default function AdminTimeLog() {
       {
         field: "startTime",
         headerName: "Start",
-        minWidth: 160,
+        type: "dateTime",
+        minWidth: 180,
         flex: 1,
         editable: true,
-        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueGetter: (p) => toJSDate(p?.row?.start ?? p?.row?.startTime),
+        valueFormatter: fmtDateTimeCell(TZ, "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: dateSort,
       },
       {
         field: "endTime",
         headerName: "End",
-        minWidth: 160,
+        type: "dateTime",
+        minWidth: 180,
         flex: 1,
         editable: true,
-        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueGetter: (p) => toJSDate(p?.row?.end ?? p?.row?.endTime),
+        valueFormatter: fmtDateTimeCell(TZ, "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: dateSort,
       },
@@ -565,11 +574,12 @@ export default function AdminTimeLog() {
       {
         field: "loggedAt",
         headerName: "Logged At",
-        minWidth: 160,
+        type: "dateTime",
+        minWidth: 180,
         flex: 0.9,
         editable: true,
-        valueGetter: (p) => toJSDate(safeRow(p)?.loggedAt),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueGetter: (p) => toJSDate(p?.row?.loggedAt),
+        valueFormatter: fmtDateTimeCell(TZ, "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: dateSort,
       },
@@ -603,7 +613,7 @@ export default function AdminTimeLog() {
         },
       },
     ],
-    [nameMap],
+    [nameMap, handleDelete],
   );
 
     const shootoutColumns = useMemo(
@@ -639,22 +649,24 @@ export default function AdminTimeLog() {
       {
         field: "startTime",
         headerName: "Start",
+        type: "dateTime",
         flex: 1,
-        minWidth: 160,
+        minWidth: 180,
         editable: true,
-        valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueGetter: (p) => toJSDate(p?.row?.start ?? p?.row?.startTime),
+        valueFormatter: fmtDateTimeCell(TZ, "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: dateSort,
       },
       {
         field: "endTime",
         headerName: "End",
+        type: "dateTime",
         flex: 1,
-        minWidth: 160,
+        minWidth: 180,
         editable: true,
-        valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueGetter: (p) => toJSDate(p?.row?.end ?? p?.row?.endTime),
+        valueFormatter: fmtDateTimeCell(TZ, "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: dateSort,
       },
@@ -688,11 +700,12 @@ export default function AdminTimeLog() {
       {
         field: "createdAt",
         headerName: "Created",
+        type: "dateTime",
         flex: 0.9,
-        minWidth: 170,
+        minWidth: 180,
         editable: true,
-        valueGetter: (p) => toJSDate(safeRow(p)?.createdAt),
-        valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+        valueGetter: (p) => toJSDate(p?.row?.createdAt),
+        valueFormatter: fmtDateTimeCell(TZ, "—"),
         renderEditCell: (params) => <DateTimeEditCell {...params} />,
         sortComparator: dateSort,
       },
@@ -725,8 +738,8 @@ export default function AdminTimeLog() {
           );
         },
       },
-    ],
-      [nameMap],
+      ],
+      [nameMap, handleDelete],
     );
 
     useEffect(() => {
@@ -812,12 +825,16 @@ export default function AdminTimeLog() {
               size="small"
               onClick={() =>
                 exportCsv(
-                  entryFiltered.map(({ _col, _id, ...rest }) => ({
-                    ...rest,
-                    startTime: fmtDateTimeMs(rest.startTime),
-                    endTime: fmtDateTimeMs(rest.endTime),
-                    loggedAt: fmtDateTimeMs(rest.loggedAt),
-                  })),
+                  entryFiltered.map(({ _col, _id, ...rest }) => {
+                    void _col;
+                    void _id;
+                    return {
+                      ...rest,
+                      startTime: fmtDateTimeMs(rest.startTime),
+                      endTime: fmtDateTimeMs(rest.endTime),
+                      loggedAt: fmtDateTimeMs(rest.loggedAt),
+                    };
+                  }),
                   "timeLogs.csv",
                 )
               }
@@ -887,7 +904,7 @@ export default function AdminTimeLog() {
               onClick={() =>
                 exportCsv(
                   shootSummaryFiltered.map(
-                    ({ durationMs, driverEmail, ...rest }) => ({
+                    ({ durationMs, ...rest }) => ({
                       ...rest,
                       duration: fmtMinutes(
                         Math.floor((durationMs || 0) / 60000),
@@ -996,16 +1013,20 @@ export default function AdminTimeLog() {
               size="small"
               onClick={() =>
                 exportCsv(
-                  shootoutFiltered.map(({ _col, _id, ...rest }) => ({
-                    ...rest,
-                    startTime: fmtDateTimeMs(rest.startTime),
-                    endTime: fmtDateTimeMs(rest.endTime),
-                    createdAt: fmtDateTimeMs(rest.createdAt),
-                    duration: fmtDuration(
-                      rest.startTime,
-                      rest.endTime,
-                    ),
-                  })),
+                  shootoutFiltered.map(({ _col, _id, ...rest }) => {
+                    void _col;
+                    void _id;
+                    return {
+                      ...rest,
+                      startTime: fmtDateTimeMs(rest.startTime),
+                      endTime: fmtDateTimeMs(rest.endTime),
+                      createdAt: fmtDateTimeMs(rest.createdAt),
+                      duration: fmtDuration(
+                        rest.startTime,
+                        rest.endTime,
+                      ),
+                    };
+                  }),
                   "shootoutStats.csv",
                 )
               }
