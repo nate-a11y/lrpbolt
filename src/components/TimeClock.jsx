@@ -1,5 +1,5 @@
 // src/components/TimeClockGodMode.jsx
-import React, { useState, useEffect, useRef } from "react";
+  import React, { useState, useEffect, useRef, useMemo } from "react";
   import {
     Box,
     Paper,
@@ -91,17 +91,64 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const driverRef = useRef(driver);
   const isRunningRef = useRef(isRunning);
 
-  const { role, authLoading: roleLoading } = useRole();
-  const { user } = useAuth();
-  const isAdmin = role === "admin";
-  const isDriver = role === "driver";
-  const [error, setError] = useState(null);
-  const [ready, setReady] = useState(false);
+    const { role, authLoading: roleLoading } = useRole();
+    const { user } = useAuth();
+    const isAdmin = role === "admin";
+    const isDriver = role === "driver";
+    const [error, setError] = useState(null);
+    const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    if (!user?.email) return;
-    setReady(false);
-    const unsub = subscribeMyTimeLogs(
+    const columns = useMemo(
+      () => [
+        {
+          field: "rideId",
+          headerName: "Ride ID",
+          flex: 1,
+          valueFormatter: fmtPlain("—"),
+        },
+        {
+          field: "startTime",
+          headerName: "Start",
+          width: 160,
+          valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "endTime",
+          headerName: "End",
+          width: 160,
+          valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
+          valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
+          sortComparator: dateSort,
+        },
+        {
+          field: "duration",
+          headerName: "Duration",
+          width: 140,
+          valueGetter: (p) => {
+            const r = safeRow(p);
+            return r
+              ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) }
+              : null;
+          },
+          valueFormatter: (params) =>
+            params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
+        },
+        {
+          field: "note",
+          headerName: "Note",
+          flex: 1,
+          valueFormatter: fmtPlain("—"),
+        },
+      ],
+      [],
+    );
+
+    useEffect(() => {
+      if (!user?.email) return;
+      setReady(false);
+      const unsub = subscribeMyTimeLogs(
       (logs) => {
         setRows(logs);
         warnMissingFields(columns, logs);
@@ -272,50 +319,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     setSubmitting(false);
   };
 
-  const columns = [
-    {
-      field: "rideId",
-      headerName: "Ride ID",
-      flex: 1,
-      valueFormatter: fmtPlain("—"),
-    },
-    {
-      field: "startTime",
-      headerName: "Start",
-      width: 160,
-      valueGetter: (p) => toJSDate(safeRow(p)?.start ?? safeRow(p)?.startTime),
-      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-      sortComparator: dateSort,
-    },
-    {
-      field: "endTime",
-      headerName: "End",
-      width: 160,
-      valueGetter: (p) => toJSDate(safeRow(p)?.end ?? safeRow(p)?.endTime),
-      valueFormatter: fmtDateTimeCell("America/Chicago", "—"),
-      sortComparator: dateSort,
-    },
-    {
-      field: "duration",
-      headerName: "Duration",
-      width: 140,
-      valueGetter: (p) => {
-        const r = safeRow(p)
-        return r ? { s: toJSDate(r.start ?? r.startTime), e: toJSDate(r.end ?? r.endTime) } : null
-      },
-      valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
-    },
-    {
-      field: "note",
-      headerName: "Note",
-      flex: 1,
-      valueFormatter: fmtPlain("—"),
-    },
-  ];
-  const formatTS = (ts) => {
-    const dt = tsToDate(ts);
-    return dt ? new Date(dt).toLocaleString() : '—';
-  };
+    const formatTS = (ts) => {
+      const dt = tsToDate(ts);
+      return dt ? new Date(dt).toLocaleString() : '—';
+    };
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
   if (!(isAdmin || isDriver)) return <Alert severity="error">You don’t have permission to view this.</Alert>;
   if (!ready) return <CircularProgress sx={{ mt: 2 }} />;

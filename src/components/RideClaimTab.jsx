@@ -144,12 +144,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       });
   }, [rides, dateRange]);
 
-  const { dedupeRows } = useGridDoctor({ name: "RideClaimTab", rows, columns });
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);
-    if (rows?.[0]) console.debug("claim rows sample", rows[0]);
-  }, [rows, columns]);
 
   const showToast = (message, severity = "success") =>
     setToast({ open: true, message, severity });
@@ -186,14 +180,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   // Requires Firestore index: Firestore Database > Indexes > liveRides.pickupTime ASC
   const rideQuery = useMemo(() => [orderBy("pickupTime", "asc")], []);
   const liveRides = useFirestoreListener(COLLECTIONS.LIVE_RIDES, rideQuery);
-
-  // ✅ Update rides from shared hook
-  useEffect(() => {
-    if (driver && !isLockedOut) {
-      setRides(liveRides);
-      setLoadingRides(false);
-    }
-  }, [driver, isLockedOut, liveRides]);
 
   const claimRide = useCallback(
     async (tripId) => {
@@ -322,6 +308,21 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     ],
     [],
   );
+
+  const { dedupeRows } = useGridDoctor({ name: "RideClaimTab", rows, columns });
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);
+    if (rows?.[0]) console.debug("claim rows sample", rows[0]);
+  }, [rows, columns]);
+
+  // ✅ Update rides from shared hook
+  useEffect(() => {
+    if (driver && !isLockedOut) {
+      setRides(liveRides);
+      setLoadingRides(false);
+    }
+  }, [driver, isLockedOut, liveRides]);
 
   const soonMins = 30;
   const getRowClassName = (params) => {

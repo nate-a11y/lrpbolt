@@ -68,13 +68,13 @@ const RideQueueGrid = () => {
     return unsub;
   }, [authLoading, user?.email]);
 
-  const refreshRides = async () => {
-    setLoading(true);
-    const data = await getRides(COLLECTIONS.RIDE_QUEUE);
-    const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
-    setRows(rows);
-    setLoading(false);
-  };
+    async function refreshRides() {
+      setLoading(true);
+      const data = await getRides(COLLECTIONS.RIDE_QUEUE);
+      const rows = data.map((r) => shapeRideRow({ id: r.id, data: () => r }));
+      setRows(rows);
+      setLoading(false);
+    }
 
   // ✅ Delete ride (Firestore)
   const confirmDeleteRide = async () => {

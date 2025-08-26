@@ -606,14 +606,8 @@ export default function AdminTimeLog() {
     [nameMap],
   );
 
-  useEffect(() => {
-    warnMissingFields(entryColumns, entryRows);
-    warnMissingFields(shootSummaryColumns, shootSummaryRows);
-    warnMissingFields(shootoutColumns, shootoutRows);
-  }, [entryRows, shootSummaryRows, shootoutRows]);
-
-  const shootoutColumns = useMemo(
-    () => [
+    const shootoutColumns = useMemo(
+      () => [
       {
         field: "driverEmail",
         headerName: "Driver",
@@ -732,10 +726,16 @@ export default function AdminTimeLog() {
         },
       },
     ],
-    [nameMap],
-  );
+      [nameMap],
+    );
 
-  /* -------- Weekly Summary (timeLogs only) -------- */
+    useEffect(() => {
+      warnMissingFields(entryColumns, entryRows);
+      warnMissingFields(shootSummaryColumns, shootSummaryRows);
+      warnMissingFields(shootoutColumns, shootoutRows);
+    }, [entryRows, shootSummaryRows, shootoutRows, entryColumns, shootSummaryColumns, shootoutColumns]);
+
+    /* -------- Weekly Summary (timeLogs only) -------- */
   const [weekStart, setWeekStart] = useState(dayjs().startOf("week"));
   const weekEnd = useMemo(() => weekStart.add(1, "week"), [weekStart]);
   const weekly = useMemo(() => {
