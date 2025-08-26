@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React from "react";
 import {
-  Box,
   Container,
   Typography,
   Accordion,

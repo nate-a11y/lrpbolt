@@ -14,12 +14,13 @@ import {
   MenuItem,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
-import { ROLES, ROLE_LABELS } from "../constants/roles";
-import { db } from "../utils/firebaseInit";
 import { doc, setDoc } from "firebase/firestore";
+
+import { ROLES, ROLE_LABELS } from "../constants/roles";
 import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { db } from "../utils/firebaseInit";
 import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
 import { warnMissingFields } from "../utils/gridFormatters";
@@ -52,8 +53,6 @@ export default function AdminUserManager() {
   const role = driver?.access || currentRole || "user";
   const isAdmin = role === "admin";
   const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
-  if (authLoading || roleLoading || currentRole === 'shootout') return null;
-
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -140,6 +139,8 @@ export default function AdminUserManager() {
     };
   }, [authLoading, user?.email, columns, dedupeRows]);
 
+  if (authLoading || roleLoading || currentRole === 'shootout') return null;
+
   // ➕ Add Users
   const handleAddUsers = async () => {
     if (!isAdmin) {
@@ -151,27 +152,27 @@ export default function AdminUserManager() {
       return;
     }
 
-  const lines = parseUserLines(input);
+    const lines = parseUserLines(input);
 
     const invalids = [];
     const validUsers = [];
 
-lines.forEach((line, idx) => {
-  const { name, email, phone, access } = parseCsvLine(line);
-  if (!name || !email || !email.includes("@")) {
-    invalids.push(`Line ${idx + 1}: Invalid name or email`);
-    return;
-  }
-  if (!phone) {
-    invalids.push(`Line ${idx + 1}: Missing phone`);
-    return;
-  }
-  if (!ROLES.includes(access)) {
-    invalids.push(`Line ${idx + 1}: Access must be one of ${ROLES.join(", ")}`);
-    return;
-  }
-  validUsers.push({ name: name.trim(), email, phone: phone.trim(), access });
-});
+    lines.forEach((line, idx) => {
+      const { name, email, phone, access } = parseCsvLine(line);
+      if (!name || !email || !email.includes("@")) {
+        invalids.push(`Line ${idx + 1}: Invalid name or email`);
+        return;
+      }
+      if (!phone) {
+        invalids.push(`Line ${idx + 1}: Missing phone`);
+        return;
+      }
+      if (!ROLES.includes(access)) {
+        invalids.push(`Line ${idx + 1}: Access must be one of ${ROLES.join(", ")}`);
+        return;
+      }
+      validUsers.push({ name: name.trim(), email, phone: phone.trim(), access });
+    });
 
     if (invalids.length) {
       setSnackbar({
@@ -187,7 +188,7 @@ lines.forEach((line, idx) => {
       try {
         await createUser(u);
         await setDoc(
-          doc(db, 'users', u.email),
+          doc(db, "users", u.email),
           { name: u.name, email: u.email, phone: u.phone, role: u.access },
           { merge: true }
         );

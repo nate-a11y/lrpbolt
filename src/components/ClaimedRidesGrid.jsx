@@ -17,26 +17,25 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
+
 import { subscribeRides, deleteRide } from "../services/firestoreService";
 import { patchRide } from "../services/rides";
 import { COLLECTIONS } from "../constants";
 import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
-import EditRideDialog from "./EditRideDialog";
 import { shapeRideRow } from "../services/shapeRideRow";
-import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
-import { safeRow } from '@/utils/gridUtils'
 import {
   fmtPlain,
-  fmtDateTimeCell,
-  dateSort,
-  toJSDate,
-  getNested,
   warnMissingFields,
 } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
+
+import EditRideDialog from "./EditRideDialog";
+import useGridProDefaults from "./grid/useGridProDefaults.js";
+
+import { safeRow } from "@/utils/gridUtils";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);
@@ -57,7 +56,7 @@ const ClaimedRidesGrid = () => {
     setEditing({ open: true, row });
   }, []);
 
-  function closeEdit(didSave) {
+  function closeEdit() {
     setEditing({ open: false, row: null });
     // Claimed rides subscribe to snapshot; no refresh needed
   }
@@ -164,7 +163,7 @@ const ClaimedRidesGrid = () => {
         ],
       },
     ],
-    [],
+    [openEdit],
   );
 
   const { dedupeRows } = useGridDoctor({ name: "ClaimedRidesGrid", rows, columns });

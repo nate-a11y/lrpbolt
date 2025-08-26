@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
+
 import BrandGradient from "./BrandGradient.jsx";
 export default function BrandHeader({ title, right, mb = 2 }) {
   return (
