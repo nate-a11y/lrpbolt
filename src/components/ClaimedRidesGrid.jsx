@@ -30,7 +30,7 @@ import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import EditRideDialog from "./EditRideDialog";
-import { actionsColFactory } from "./grid/actionsCol";
+import actionsColFactory from "./grid/actionsCol";
 
 const ClaimedRidesGrid = () => {
   const [rows, setRows] = useState([]);

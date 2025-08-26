@@ -6,7 +6,7 @@ import { Box, useMediaQuery, useTheme } from "@mui/material";
 import { safeRow } from "@/utils/gridUtils";
 import { fmtDuration } from "../utils/timeUtils";
 import { withSafeColumns } from "../utils/gridFormatters";
-import { actionsColFactory } from "./grid/actionsCol";
+import actionsColFactory from "./grid/actionsCol";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function EditableRideGrid({

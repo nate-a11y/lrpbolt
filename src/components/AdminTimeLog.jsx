@@ -584,7 +584,8 @@ export default function AdminTimeLog() {
         sortComparator: dateSort,
       },
       {
-        field: "__actions",
+        field: "actions",
+        type: "actions",
         headerName: "",
         width: 96,
         sortable: false,
@@ -710,7 +711,8 @@ export default function AdminTimeLog() {
         sortComparator: dateSort,
       },
       {
-        field: "__actions",
+        field: "actions",
+        type: "actions",
         headerName: "",
         width: 96,
         sortable: false,
