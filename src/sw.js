@@ -1,5 +1,4 @@
 /* eslint-env serviceworker */
-/* global importScripts, firebase */
 /* Proprietary and confidential. See LICENSE. */
 /**
  * Workbox injectManifest SW with safe defaults.
@@ -44,7 +43,7 @@ try {
     importScripts('https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js');
     importScripts('https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js');
 
-    firebase.initializeApp({
+    self.firebase.initializeApp({
       apiKey: import.meta.env.VITE_FB_API_KEY,
       authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
       projectId: import.meta.env.VITE_FB_PROJECT_ID,
@@ -54,7 +53,7 @@ try {
       measurementId: import.meta.env.VITE_FB_MEASUREMENT_ID
     });
 
-    const messaging = firebase.messaging();
+    const messaging = self.firebase.messaging();
 
     // Background message handler
     messaging.onBackgroundMessage((payload) => {

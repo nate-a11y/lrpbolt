@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState, memo } from "react";
-import { Box, Snackbar, Alert } from "@mui/material";
+import { Box, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from "@mui/material";
+
 import {
   subscribeRides,
   deleteRide,
@@ -11,16 +12,9 @@ import EditableRideGrid from "../components/EditableRideGrid";
 import { logError } from "../utils/logError";
 import { COLLECTIONS } from "../constants";
 import { shapeRideRow } from "../services/shapeRideRow";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-} from "@mui/material";
 import { safe } from "../utils/rideFormatters";
 import { useAuth } from "../context/AuthContext.jsx";
+
 import EditRideDialog from "./EditRideDialog";
 
 const RideQueueGrid = () => {
