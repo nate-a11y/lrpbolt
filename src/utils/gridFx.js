@@ -7,6 +7,11 @@ import dayjs from "./dates";
 export function tsToDate(v) {
   try {
     if (!v) return null;
+    if (typeof v === "number") {
+      const ms = v < 1e12 ? v * 1000 : v;
+      const d = new Date(ms);
+      return isNaN(d) ? null : d;
+    }
     if (v instanceof Date) return isNaN(v) ? null : v;
     if (typeof v.toDate === "function") return v.toDate();
     if (typeof v.seconds === "number" && typeof v.nanoseconds === "number") {

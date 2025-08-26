@@ -20,7 +20,8 @@ export const toDateAny = (v) => {
       return isNaN(d) ? null : d;
     }
     if (typeof v === "number") {
-      const d = new Date(v);
+      const ms = v < 1e12 ? v * 1000 : v;
+      const d = new Date(ms);
       return isNaN(d) ? null : d;
     }
     if (typeof v === "object") {
