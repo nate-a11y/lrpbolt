@@ -19,12 +19,11 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtText } from "@/utils/timeUtils";
+import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
 import actionsCol from "../grid/actionsCol.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { durationMinutes, friendlyDateTime } from "@/utils/datetime";
-import { fmtDateTimeCell, dateSort } from "@/utils/gridFormatters";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -92,60 +91,52 @@ export default function ShootoutStatsTab() {
 
   const columns = [
     {
-      field: 'driverEmail',
-      headerName: 'Driver',
+      field: "driver",
+      headerName: "Driver",
       flex: 1,
-      valueGetter: (p) => p?.row?.driverEmail ?? '',
-      renderCell: (p) => fmtText(p?.value?.split?.('@')?.[0] ?? p?.value),
-    },
-    {
-      field: 'vehicle',
-      headerName: 'Vehicle',
-      flex: 1,
-      valueGetter: (p) => p?.row?.vehicle ?? '',
-      renderCell: (p) => fmtText(p?.value),
-    },
-    {
-      field: 'startTime',
-      headerName: 'Start',
-      type: 'dateTime',
-      minWidth: 170,
-      valueGetter: (p) => p?.row?.startTime ?? null,
-      renderCell: (p) => fmtDateTimeCell(p) || '',
-      sortComparator: dateSort,
-    },
-    {
-      field: 'endTime',
-      headerName: 'End',
-      type: 'dateTime',
-      minWidth: 170,
-      valueGetter: (p) => p?.row?.endTime ?? null,
-      renderCell: (p) => fmtDateTimeCell(p) || '',
-      sortComparator: dateSort,
-    },
-    {
-      field: 'duration',
-      headerName: 'Duration',
-      width: 110,
-      valueGetter: (p) => durationMinutes(p?.row?.startTime, p?.row?.endTime),
+      valueGetter: ({ row }) => getField(row, "driver"),
       renderCell: (p) => {
-        const v = p?.value;
-        if (v == null) return '';
-        const mins = Number(v);
-        if (Number.isNaN(mins)) return '';
-        return `${mins}m`;
+        const v = p.value;
+        if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
+        return asText(v) ?? "";
       },
     },
-    { field: 'trips', headerName: 'Trips', width: 90 },
-    { field: 'passengers', headerName: 'Pax', width: 90 },
     {
-      field: 'createdAt',
-      headerName: 'Created',
-      type: 'dateTime',
+      field: "vehicle",
+      headerName: "Vehicle",
+      flex: 1,
+      valueGetter: ({ row }) => getField(row, "vehicle"),
+      renderCell: (p) => asText(p.value) ?? "",
+    },
+    {
+      field: "startTime",
+      headerName: "Start",
       minWidth: 170,
-      valueGetter: (p) => p?.row?.createdAt ?? null,
-      renderCell: (p) => fmtDateTimeCell(p) || '',
-      sortComparator: dateSort,
+      valueGetter: ({ row }) => getField(row, "startTime"),
+      valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+    },
+    {
+      field: "endTime",
+      headerName: "End",
+      minWidth: 170,
+      valueGetter: ({ row }) => getField(row, "endTime"),
+      valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+    },
+    {
+      field: "duration",
+      headerName: "Duration",
+      width: 110,
+      valueGetter: ({ row }) => getField(row, "rideDuration"),
+      valueFormatter: ({ value }) => fmtMinutes(value) ?? "",
+    },
+    { field: "trips", headerName: "Trips", width: 90 },
+    { field: "passengers", headerName: "Pax", width: 90 },
+    {
+      field: "createdAt",
+      headerName: "Created",
+      minWidth: 170,
+      valueGetter: ({ row }) => getField(row, "createdAt"),
+      valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
     },
     actionsCol({ onEdit: handleEdit, onDelete: handleDelete }),
   ];
@@ -224,15 +215,34 @@ export default function ShootoutStatsTab() {
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Stack spacing={0.5}>
                   <Typography variant="subtitle2">
-                    {fmtText(r.driverEmail?.split?.('@')?.[0] ?? r.driverEmail)}
+                    {(() => {
+                      const v = getField(r, "driver");
+                      if (v && typeof v === "string" && v.includes("@")) return v.split("@")[0];
+                      return asText(v) ?? "";
+                    })()}
                   </Typography>
-                  <Typography variant="body2">Vehicle: {fmtText(r.vehicle)}</Typography>
-                  <Typography variant="body2">Start: {friendlyDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {friendlyDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">
+                    Vehicle: {asText(getField(r, "vehicle")) ?? ""}
+                  </Typography>
+                  <Typography variant="body2">
+                    Start: {friendlyDateTime(getField(r, "startTime"))}
+                  </Typography>
+                  <Typography variant="body2">
+                    End: {friendlyDateTime(getField(r, "endTime"))}
+                  </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Pax: {r.passengers}</Typography>
-                  <Typography variant="body2">Duration: {(() => { const m = durationMinutes(r.startTime, r.endTime); return m == null ? '—' : `${m}m`; })()}</Typography>
-                  <Typography variant="body2">Created: {friendlyDateTime(r.createdAt)}</Typography>
+                  <Typography variant="body2">
+                    Duration: {(() => {
+                      const m =
+                        getField(r, "rideDuration") ??
+                        durationMinutes(getField(r, "startTime"), getField(r, "endTime"));
+                      return m == null ? "—" : fmtMinutes(m);
+                    })()}
+                  </Typography>
+                  <Typography variant="body2">
+                    Created: {friendlyDateTime(getField(r, "createdAt"))}
+                  </Typography>
                 </Stack>
                 <ToolsCell
                   row={r}

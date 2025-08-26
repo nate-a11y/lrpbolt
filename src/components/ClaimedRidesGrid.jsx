@@ -23,7 +23,7 @@ import useToast from "../hooks/useToast";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
 import { shapeRideRow } from "../services/shapeRideRow";
-import { fmtText } from "@/utils/timeUtils";
+import { getField, fmtDateTime, fmtMinutes, asText } from "@/utils/gridCells";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { dateCol, durationMinutes } from "@/utils/datetime";
 
@@ -53,21 +53,45 @@ const ClaimedRidesGrid = () => {
 
   const columns = useMemo(
     () => [
-      dateCol('pickupTime', 'Pickup', { flex: 1 }),
-      { field: 'vehicle', headerName: 'Vehicle', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
-      { field: 'rideType', headerName: 'Type', flex: 1, valueFormatter: ({ value }) => fmtText(value) },
+      dateCol("pickupTime", "Pickup", {
+        flex: 1,
+        valueGetter: ({ row }) => getField(row, "pickupTime"),
+        valueFormatter: ({ value }) => fmtDateTime(value) ?? "",
+      }),
       {
-        field: 'rideDuration',
-        headerName: 'Duration',
-        width: 110,
-        valueFormatter: ({ value, api, id }) => {
-          if (Number.isFinite(value)) return `${value}m`;
-          const row = api.getRow(id);
-          const mins = durationMinutes(row?.pickupTime, row?.endTime ?? row?.dropoffTime);
-          return mins == null ? '—' : `${mins}m`;
-        },
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        valueGetter: ({ row }) => getField(row, "vehicle"),
+        renderCell: (p) => asText(p.value) ?? "",
       },
-      { field: 'rideNotes', headerName: 'Notes', flex: 1.5, valueFormatter: ({ value }) => fmtText(value) },
+      {
+        field: "rideType",
+        headerName: "Type",
+        flex: 1,
+        valueGetter: ({ row }) => getField(row, "rideType"),
+        renderCell: (p) => asText(p.value) ?? "",
+      },
+      {
+        field: "rideDuration",
+        headerName: "Duration",
+        width: 110,
+        valueGetter: ({ row }) =>
+          getField(row, "rideDuration") ??
+          durationMinutes(
+            getField(row, "pickupTime"),
+            getField(row, "endTime") ?? getField(row, "dropoffTime"),
+          ),
+        valueFormatter: ({ value }) => fmtMinutes(value) ?? "",
+        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
+      },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        flex: 1.5,
+        valueGetter: ({ row }) => getField(row, "rideNotes"),
+        renderCell: (p) => asText(p.value) ?? "",
+      },
       actionsCol({
         onDelete: (row) => handleDelete(row),
       }),
