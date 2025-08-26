@@ -15,21 +15,34 @@ import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import { LicenseInfo } from "@mui/x-license";
-import { registerSW } from 'virtual:pwa-register'
 
 LicenseInfo.setLicenseKey(
   import.meta.env.VITE_MUI_PRO_KEY || import.meta.env.MUI_X_LICENSE_KEY,
 );
 
 if (typeof window !== "undefined") {
-  if ("serviceWorker" in navigator && process.env.NODE_ENV !== "production") {
-    navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
-  }
   killRogueServiceWorkers();
+
   if ("serviceWorker" in navigator) {
-    registerFCM().then((res) => {
-      if (!res?.ok) console.info("[FCM]", res?.reason || "noop");
-    });
+    if (import.meta.env.PROD) {
+      navigator.serviceWorker.register("/sw.js").then((reg) => {
+        reg.addEventListener("updatefound", () => {
+          const newSW = reg.installing;
+          newSW?.addEventListener("statechange", () => {
+            if (newSW.state === "installed" && navigator.serviceWorker.controller) {
+              console.log("New version available; reload to update.");
+            }
+          });
+        });
+      });
+      registerFCM().then((res) => {
+        if (!res?.ok) console.info("[FCM]", res?.reason || "noop");
+      });
+    } else {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => regs.forEach((r) => r.unregister()));
+    }
   }
 }
 
@@ -56,13 +69,3 @@ const Root = () => {
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
-
-registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    /* optional UI hook */
-  },
-  onOfflineReady() {
-    /* optional UI hook */
-  },
-})

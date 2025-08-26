@@ -45,7 +45,9 @@ export default [
       // LRP portal prefs:
       "no-empty": ["error", { "allowEmptyCatch": false }],
       "import/order": ["warn", { "newlines-between": "always" }],
-      "react/prop-types": "off" // if you're on JS without PropTypes
+      "react/prop-types": "off", // if you're on JS without PropTypes
+      "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
+      "import/no-cycle": "warn"
     }
   }
 ];

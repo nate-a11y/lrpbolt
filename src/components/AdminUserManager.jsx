@@ -14,8 +14,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { DataGridPro } from "@mui/x-data-grid-pro";
-import { GridActionsCellItem } from "@mui/x-data-grid-pro";
-import { ROLES, ROLE_LABELS } from "../constants/roles.js";
+import { ROLES, ROLE_LABELS } from "../constants/roles";
 import { db } from "../utils/firebaseInit";
 import { doc, setDoc } from "firebase/firestore";
 import { subscribeUserAccess } from "../hooks/api";
@@ -23,14 +22,7 @@ import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
-import {
-  fmtPlain,
-  fmtDateTimeCell,
-  dateSort,
-  toJSDate,
-  getNested,
-  warnMissingFields,
-} from "../utils/gridFormatters";
+import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 // --- helpers: robust parsing for lines and "email,role" ---
@@ -77,6 +69,43 @@ export default function AdminUserManager() {
     message: "",
     severity: "success",
   });
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "name",
+        headerName: "Name",
+        flex: 1,
+        minWidth: 150,
+        editable: isAdmin,
+      },
+      {
+        field: "email",
+        headerName: "Email",
+        flex: 1,
+        minWidth: 200,
+        editable: false,
+      },
+      {
+        field: "phone",
+        headerName: "Phone",
+        flex: 1,
+        minWidth: 150,
+        editable: isAdmin,
+      },
+      {
+        field: "access",
+        headerName: "Access",
+        width: 120,
+        editable: isAdmin,
+        type: "singleSelect",
+        valueOptions: ROLES,
+      },
+    ],
+    [isAdmin],
+  );
+
+  const { dedupeRows } = useGridDoctor({ name: "AdminUserManager", rows, columns });
 
   // 🔄 Subscribe to Firestore
   useEffect(() => {
@@ -265,11 +294,11 @@ lines.forEach((line, idx) => {
     }
   };
 
-  const handleMobileFieldChange = (id, field, value) => {
-  setRows((prev) =>
-    prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-  );
-};
+    const handleMobileFieldChange = (id, field, value) => {
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+      );
+    };
 
   const handleMobileUpdate = async (id) => {
     if (!isAdmin) {
@@ -302,43 +331,6 @@ lines.forEach((line, idx) => {
       });
     }
   };
-
-  const columns = useMemo(
-    () => [
-      {
-        field: "name",
-        headerName: "Name",
-        flex: 1,
-        minWidth: 150,
-        editable: isAdmin,
-      },
-      {
-        field: "email",
-        headerName: "Email",
-        flex: 1,
-        minWidth: 200,
-        editable: false,
-      },
-      {
-        field: "phone",
-        headerName: "Phone",
-        flex: 1,
-        minWidth: 150,
-        editable: isAdmin,
-      },
-      {
-        field: "access",
-        headerName: "Access",
-        width: 120,
-        editable: isAdmin,
-        type: "singleSelect",
-        valueOptions: ROLES,
-      },
-    ],
-    [],
-  );
-
-  const { dedupeRows } = useGridDoctor({ name: "AdminUserManager", rows, columns });
 
   return (
     <Card sx={{ p: 2, m: "auto", maxWidth: 900 }}>
