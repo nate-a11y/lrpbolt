@@ -12,6 +12,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
+import { safeRow } from '@/utils/gridUtils'
 
 export default function EditableRideGrid({
   rows,
@@ -58,11 +59,11 @@ export default function EditableRideGrid({
         headerName: "Duration",
         flex: 0.7,
         minWidth: 110,
-        valueGetter: ({ row }) => ({
-          s: 0,
-          e: row.rideDuration ? row.rideDuration * 60000 : 0,
-        }),
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? { s: 0, e: r.rideDuration ? r.rideDuration * 60000 : 0 } : null
+        },
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
@@ -130,6 +131,7 @@ export default function EditableRideGrid({
         }}
         getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
         initialState={initialState}
+        getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
       />
     </Box>
   );

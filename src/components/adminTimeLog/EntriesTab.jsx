@@ -21,7 +21,7 @@ import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit"; // adjust if needed
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { fmtDateTime, fmtDuration } from "../../utils/timeUtils";
-import { getRow } from "../../utils/gridFormatters";
+import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function EntriesTab() {
@@ -96,13 +96,13 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 180,
         editable: true,
-        valueGetter: (p) => getRow(p)?.driverEmail ?? "—",
+        valueGetter: (p) => safeRow(p)?.driverEmail ?? "—",
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         width: 120,
-        valueGetter: (p) => getRow(p)?.rideId ?? "—",
+        valueGetter: (p) => safeRow(p)?.rideId ?? "—",
       },
       {
         field: "startTime",
@@ -110,8 +110,8 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => {
-          const r = getRow(p);
-          return r?.start ?? r?.startTime ?? null;
+          const r = safeRow(p)
+          return r?.start ?? r?.startTime ?? null
         },
         valueFormatter: ({ value }) => fmtDateTime(value),
       },
@@ -121,8 +121,8 @@ export default function EntriesTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => {
-          const r = getRow(p);
-          return r?.end ?? r?.endTime ?? null;
+          const r = safeRow(p)
+          return r?.end ?? r?.endTime ?? null
         },
         valueFormatter: ({ value }) => fmtDateTime(value),
       },
@@ -131,17 +131,17 @@ export default function EntriesTab() {
         headerName: "Duration",
         width: 120,
         valueGetter: (p) => {
-          const r = getRow(p);
-          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime };
+          const r = safeRow(p)
+          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime }
         },
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
       },
       {
         field: "loggedAt",
         headerName: "Logged",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => getRow(p)?.loggedAt ?? null,
+        valueGetter: (p) => safeRow(p)?.loggedAt ?? null,
         valueFormatter: (p) => fmtDateTime(p?.value),
       },
       {
@@ -277,12 +277,8 @@ export default function EntriesTab() {
             onProcessRowUpdateError={() =>
               alert("Failed to update time log")
             }
-            rows={safeRows}
-            getRowId={(r) =>
-            r.id ||
-            r.docId ||
-            `${r.driverEmail || "unk"}-${r.loggedAt?.valueOf?.() || Math.random()}`
-            }
+            rows={safeRows ?? []}
+            getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
             columns={columns}
             disableRowSelectionOnClick
             initialState={{

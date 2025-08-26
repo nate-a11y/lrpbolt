@@ -37,6 +37,7 @@ import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatter
 import { fmtDateTime, fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
+import { safeRow } from '@/utils/gridUtils'
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -238,7 +239,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         type: "dateTime",
         minWidth: 180,
         flex: 1,
-        valueGetter: ({ row }) => row.pickupTime,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r ? r.pickupTime : null
+        },
         valueFormatter: ({ value }) => fmtDateTime(value, "MMM D, h:mm A"),
         sortComparator: (a, b) => {
           const da = toDayjs(a)?.valueOf();
@@ -252,14 +256,17 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         field: "rideDuration",
         headerName: "Duration",
         width: 120,
-        valueGetter: ({ row }) => ({
-          s: row.pickupTime,
-          e:
-            row.pickupTime && row.rideDuration
-              ? row.pickupTime + row.rideDuration * 60000
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          if (!r) return null
+          return {
+            s: r.pickupTime,
+            e: r.pickupTime && r.rideDuration
+              ? r.pickupTime + r.rideDuration * 60000
               : null,
-        }),
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+          }
+        },
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
@@ -523,6 +530,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             getRowClassName={getRowClassName}
             pinnedRows={{ bottom: pinnedRows }}
             sx={{ borderRadius: 2 }}
+            getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
           />
         </Box>
       )}

@@ -53,8 +53,8 @@ import {
 } from "../hooks/api";
 import { logError } from "../utils/logError";
 import { useAuth } from "../context/AuthContext.jsx";
-import { safeGetter } from "../utils/datagridSafe";
 import { asArray } from "../utils/arrays.js";
+import { safeRow } from '@/utils/gridUtils'
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -328,7 +328,10 @@ export default function Tickets() {
       headerName: "Link",
       minWidth: 100,
       sortable: false,
-      valueGetter: safeGetter((p) => p?.row?.ticketId),
+      valueGetter: (p) => {
+        const r = safeRow(p)
+        return r ? r.ticketId ?? null : null
+      },
       renderCell: (params = {}) => (
         <a
           href={`/ticket/${params?.value}`}
@@ -344,11 +347,11 @@ export default function Tickets() {
       field: "scanStatus",
       headerName: "Scan",
       minWidth: 120,
-      renderCell: (params = {}) => {
-        const row = params?.row;
-        if (row?.scannedReturn) return "✅ Return";
-        if (row?.scannedOutbound) return "↗️ Outbound";
-        return "❌ Not Scanned";
+      renderCell: (p = {}) => {
+        const r = safeRow(p)
+        if (r?.scannedReturn) return "✅ Return"
+        if (r?.scannedOutbound) return "↗️ Outbound"
+        return "❌ Not Scanned"
       },
     },
     {
@@ -356,9 +359,9 @@ export default function Tickets() {
       headerName: "Actions",
       width: 160,
       sortable: false,
-      renderCell: (params = {}) => {
-        const row = params?.row;
-        if (!row) return null;
+      renderCell: (p = {}) => {
+        const row = safeRow(p)
+        if (!row) return null
         return (
           <Box display="flex" alignItems="center" gap={1}>
             <Tooltip title="Edit">
@@ -392,7 +395,7 @@ export default function Tickets() {
               </IconButton>
             </Tooltip>
           </Box>
-        );
+        )
       },
     },
   ];
@@ -527,9 +530,9 @@ export default function Tickets() {
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
               <DataGridPro
                 {...grid}
-                rows={filteredTickets.map((t) => ({ id: t.ticketId, ...t }))}
+                rows={(filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t }))}
                 columns={columns}
-                getRowId={(r) => r?.id ?? `${r?.ticketId}-${r?.date ?? Math.random()}`}
+                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
                 autoHeight
                 checkboxSelection
                 pageSizeOptions={[5, 10, 25, 100]}

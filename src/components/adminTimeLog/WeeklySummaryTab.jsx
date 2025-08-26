@@ -18,7 +18,7 @@ import {
   Button,
 } from "@mui/material";
 import useWeeklySummary from "../../hooks/useWeeklySummary";
-import { getRow } from "../../utils/gridFormatters";
+import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 export default function WeeklySummaryTab() {
@@ -95,15 +95,19 @@ export default function WeeklySummaryTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 200,
-        valueGetter: (p) => getRow(p)?.driver ?? getRow(p)?.driverEmail ?? "—",
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r?.driver ?? r?.driverEmail ?? "—"
+        },
       },
       {
         field: "trips",
         headerName: "Trips",
         width: 90,
         valueGetter: (p) => {
-          const v = getRow(p)?.trips;
-          return Number.isFinite(v) ? v : 0;
+          const r = safeRow(p)
+          const v = r?.trips
+          return Number.isFinite(v) ? v : 0
         },
       },
       {
@@ -111,8 +115,9 @@ export default function WeeklySummaryTab() {
         headerName: "Hours",
         width: 110,
         valueGetter: (p) => {
-          const v = getRow(p)?.hours;
-          return Number.isFinite(v) ? v : 0;
+          const r = safeRow(p)
+          const v = r?.hours
+          return Number.isFinite(v) ? v : 0
         },
         valueFormatter: (p) =>
           Number.isFinite(p?.value) ? p.value.toFixed(2) : "0.00",
@@ -193,7 +198,7 @@ export default function WeeklySummaryTab() {
           editMode="row"
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update summary")}
-          rows={safeRows}
+          rows={safeRows ?? []}
           columns={columns}
           slots={{ toolbar: GridToolbar }}
           slotProps={{
@@ -204,6 +209,7 @@ export default function WeeklySummaryTab() {
           }}
           initialState={grid.initialState}
           pageSizeOptions={[5, 10, 25]}
+          getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
         />
       )}
       <Dialog open={!!editRow} onClose={() => setEditRow(null)}>

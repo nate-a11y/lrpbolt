@@ -3,7 +3,6 @@ import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "./utils/firebaseInit.js"; // keep first
 import { killRogueServiceWorkers } from "./utils/killRogueSW";
-import "./pwa";
 import { registerFCM } from "./utils/registerFCM";
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
@@ -16,6 +15,7 @@ import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import { LicenseInfo } from "@mui/x-license";
+import { registerSW } from 'virtual:pwa-register'
 
 LicenseInfo.setLicenseKey(
   import.meta.env.VITE_MUI_PRO_KEY || import.meta.env.MUI_X_LICENSE_KEY,
@@ -53,3 +53,13 @@ const Root = () => {
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
+
+registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    /* optional UI hook */
+  },
+  onOfflineReady() {
+    /* optional UI hook */
+  },
+})

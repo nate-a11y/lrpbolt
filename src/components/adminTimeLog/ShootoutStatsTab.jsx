@@ -21,7 +21,7 @@ import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { fmtDateTime, fmtDuration } from "../../utils/timeUtils";
-import { getRow } from "../../utils/gridFormatters";
+import { safeRow } from '@/utils/gridUtils'
 import ToolsCell from "./cells/ToolsCell.jsx";
 
 
@@ -91,38 +91,44 @@ export default function ShootoutStatsTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 180,
-        valueGetter: (p) => getRow(p)?.driverEmail ?? "—",
+        valueGetter: (p) => safeRow(p)?.driverEmail ?? "—",
       },
       {
         field: "trips",
         headerName: "Trips",
         width: 90,
-        valueGetter: (p) =>
-          Number.isFinite(getRow(p)?.trips) ? getRow(p).trips : 0,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return Number.isFinite(r?.trips) ? r.trips : 0
+        },
       },
       {
         field: "pax",
         headerName: "Pax",
         width: 90,
-        valueGetter: (p) =>
-          Number.isFinite(getRow(p)?.pax) ? getRow(p).pax : 0,
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return Number.isFinite(r?.pax) ? r.pax : 0
+        },
       },
       {
         field: "duration",
         headerName: "Duration",
         width: 120,
         valueGetter: (p) => {
-          const r = getRow(p);
-          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime };
+          const r = safeRow(p)
+          return { s: r?.start ?? r?.startTime, e: r?.end ?? r?.endTime }
         },
-        valueFormatter: ({ value }) => fmtDuration(value?.s, value?.e),
+        valueFormatter: ({ value }) => (value ? fmtDuration(value.s, value.e) : '—'),
       },
       {
         field: "status",
         headerName: "Status",
         width: 110,
-        valueGetter: (p) =>
-          getRow(p)?.status ?? (getRow(p)?.endTime ? "Closed" : "Open"),
+        valueGetter: (p) => {
+          const r = safeRow(p)
+          return r?.status ?? (r?.endTime ? "Closed" : "Open")
+        },
         editable: true,
       },
       {
@@ -131,8 +137,8 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => {
-          const r = getRow(p);
-          return r?.start ?? r?.startTime ?? null;
+          const r = safeRow(p)
+          return r?.start ?? r?.startTime ?? null
         },
         valueFormatter: ({ value }) => fmtDateTime(value),
       },
@@ -142,8 +148,8 @@ export default function ShootoutStatsTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (p) => {
-          const r = getRow(p);
-          return r?.end ?? r?.endTime ?? null;
+          const r = safeRow(p)
+          return r?.end ?? r?.endTime ?? null
         },
         valueFormatter: ({ value }) => fmtDateTime(value),
       },
@@ -152,7 +158,7 @@ export default function ShootoutStatsTab() {
         headerName: "Created",
         flex: 1,
         minWidth: 160,
-        valueGetter: (p) => getRow(p)?.createdAt ?? null,
+        valueGetter: (p) => safeRow(p)?.createdAt ?? null,
         valueFormatter: ({ value }) => fmtDateTime(value),
       },
       {
@@ -281,11 +287,7 @@ export default function ShootoutStatsTab() {
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update stat")}
           rows={safeRows ?? []}
-          getRowId={(r) =>
-            r.id ||
-            r.docId ||
-            `${r.driverEmail || "unk"}-${r.createdAt?.valueOf?.() || Math.random()}`
-          }
+          getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
           columns={columns}
           density="compact"
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
