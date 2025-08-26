@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Container,
   Card,
@@ -168,7 +168,7 @@ export default function Login() {
             [{ transform: "translateX(0)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(0)" }],
             { duration: 300, easing: "ease-in-out" }
           );
-        } catch (_) {}
+        } catch (_) { /* no-op */ }
       } finally {
         setEmailLoading(false);
       }

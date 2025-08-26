@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+
 import { db } from "src/utils/firebaseInit";
 
 import { COLLECTIONS } from "../constants";

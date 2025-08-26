@@ -1,4 +1,3 @@
-import React from "react";
 import { Box } from "@mui/material";
 export default function BrandGradient({ position = "top", height = 6, rounded = true, glow = false, animated = true }) {
   return (

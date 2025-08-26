@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback, memo } from "react";
 import {
   Box,
   Button,
@@ -156,4 +156,4 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
   );
 };
 
-export default React.memo(DriverSelector);
+export default memo(DriverSelector);

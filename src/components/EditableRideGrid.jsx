@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useEffect, useCallback } from "react";
-import { DataGridPro } from "@mui/x-data-grid-pro";
-import { GridActionsCellItem } from "@mui/x-data-grid-pro";
+import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
 import {
   Box,
   CircularProgress,
@@ -154,7 +153,7 @@ export default function EditableRideGrid({
   useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, stableRows);
+    if (import.meta.env.MODE !== "production") warnMissingFields(columns, stableRows);
   }, [stableRows, columns]);
 
   return (

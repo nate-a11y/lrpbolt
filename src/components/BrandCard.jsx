@@ -1,4 +1,3 @@
-import React from "react";
 import { Card, CardContent } from "@mui/material";
 
 import BrandGradient from "./BrandGradient.jsx";

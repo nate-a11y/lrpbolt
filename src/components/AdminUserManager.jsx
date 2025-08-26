@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminUserManager.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Card,
   TextField,
@@ -119,7 +119,7 @@ export default function AdminUserManager() {
           phone: r.phone || "",
           access: (r.access || "").toLowerCase(),
         }));
-        if (process.env.NODE_ENV !== "production") warnMissingFields(columns, mapped);
+        if (import.meta.env.MODE !== "production") warnMissingFields(columns, mapped);
         setRows((prev) => dedupeRows(prev, mapped));
         setLoading(false);
       },

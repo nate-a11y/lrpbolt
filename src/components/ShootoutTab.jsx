@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
   Box, Card, CardContent, CardHeader, Typography, Stack, IconButton,
@@ -55,7 +55,7 @@ export default function ShootoutTab() {
   const [tick, setTick] = useState(0);
   const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
   const grid = useGridProDefaults({ gridId: "shootoutHistory", pageSize: 5 });
-    const initialState = React.useMemo(
+    const initialState = useMemo(
       () => ({
         ...grid.initialState,
         columns: {

@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from "react";
 import { Box, Typography, Paper, Link } from "@mui/material";
 
 export default function DriverContactCard({

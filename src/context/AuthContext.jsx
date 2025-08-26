@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, getAuth } from "firebase/auth";
 import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { app, db } from "../utils/firebaseInit";

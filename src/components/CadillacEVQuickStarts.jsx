@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import {
   Accordion,
   AccordionSummary,

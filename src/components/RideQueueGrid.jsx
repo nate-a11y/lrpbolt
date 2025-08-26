@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { Box, Snackbar, Alert } from "@mui/material";
 import {
   subscribeRides,
@@ -207,4 +207,4 @@ const RideQueueGrid = () => {
   );
 };
 
-export default React.memo(RideQueueGrid);
+export default memo(RideQueueGrid);

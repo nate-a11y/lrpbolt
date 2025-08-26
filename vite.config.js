@@ -1,4 +1,4 @@
-import path from "path";
+import { fileURLToPath, URL } from "node:url";
 
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -38,9 +38,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
-      src: path.resolve(__dirname, "src"),
-      timeUtils: path.resolve(__dirname, "src/utils/timeUtils.js"),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      src: fileURLToPath(new URL("./src", import.meta.url)),
     },
     dedupe: ["react", "react-dom"],
     extensions: [".js", ".jsx", ".ts", ".tsx"],
@@ -52,7 +51,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, "index.html"),
+        main: fileURLToPath(new URL("index.html", import.meta.url)),
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",
@@ -77,9 +76,6 @@ export default defineConfig({
       "firebase/firestore",
       "firebase/functions",
     ],
-  },
-  define: {
-    'process.env.NODE_ENV': JSON.stringify('production'),
   },
   server: {
     open: true,

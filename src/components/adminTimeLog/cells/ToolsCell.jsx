@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from "react";
 import { Stack, IconButton, Tooltip, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";

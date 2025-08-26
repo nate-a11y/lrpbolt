@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo, memo } from "react";
 import {
   Drawer,
   List,
@@ -124,4 +124,4 @@ function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }
   );
 }
 
-export default React.memo(MainNav);
+export default memo(MainNav);

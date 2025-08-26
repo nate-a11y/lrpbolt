@@ -307,7 +307,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   useGridDoctor({ name: "RideClaimTab", rows, columns });
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);
+    if (import.meta.env.MODE !== "production") warnMissingFields(columns, rows);
     if (rows?.[0]) console.debug("claim rows sample", rows[0]);
   }, [rows, columns]);
 

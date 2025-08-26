@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useCallback } from "react";
 import { useTheme, useMediaQuery } from "@mui/material";
 
 import ProToolbar from "./ProToolbar.jsx";
@@ -6,7 +6,7 @@ const LS = "lrp_grid_";
 
 const isEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function usePersist(key, initial) {
-  const [v, setV] = React.useState(() => {
+  const [v, setV] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(LS + key)) ?? initial;
     } catch (err) {
@@ -15,7 +15,7 @@ function usePersist(key, initial) {
       return initial;
     }
   });
-  const set = React.useCallback(
+  const set = useCallback(
     (n) => {
       setV(n);
       try {

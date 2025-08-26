@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideGroup.jsx
-import React, { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, memo } from "react";
 import {
   Box,
   Typography,
@@ -352,4 +352,4 @@ function RideGroup({
   );
 }
 
-export default React.memo(RideGroup);
+export default memo(RideGroup);
