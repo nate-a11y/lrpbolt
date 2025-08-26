@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useEffect } from "react";
-import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
+import React, { useMemo, useEffect, useCallback } from "react";
+import { DataGridPro } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import {
   Box,
   CircularProgress,
@@ -13,7 +14,15 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
-import { fmtPlain, warnMissingFields } from "@/utils/gridFormatters";
+import {
+  fmtPlain,
+  fmtDateTimeCell,
+  dateSort,
+  toJSDate,
+  getNested,
+  warnMissingFields,
+} from "../utils/gridFormatters";
+import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function EditableRideGrid({
   rows,
@@ -40,6 +49,19 @@ export default function EditableRideGrid({
     }),
     [grid.initialState, isXs],
   );
+  const handleEdit = useCallback(
+    (row) => {
+      if (onEdit) onEdit(row);
+    },
+    [onEdit],
+  );
+  const handleDelete = useCallback(
+    (id) => {
+      if (onDelete) onDelete(id);
+    },
+    [onDelete],
+  );
+
   const columns = useMemo(
     () => [
       { field: "tripId", headerName: "Trip ID", flex: 1.1, minWidth: 140 },
@@ -61,18 +83,31 @@ export default function EditableRideGrid({
         flex: 0.7,
         minWidth: 110,
         valueGetter: (p) => {
-          const r = safeRow(p)
-          return r ? { s: 0, e: r.rideDuration ? r.rideDuration * 60000 : 0 } : null
+          const r = safeRow(p);
+          return r ? { s: 0, e: r.rideDuration ? r.rideDuration * 60000 : 0 } : null;
         },
-        valueFormatter: (params) => (params?.value ? fmtDuration(params.value.s, params.value.e) : '—'),
+        valueFormatter: (params) =>
+          params?.value ? fmtDuration(params.value.s, params.value.e) : "—",
         sortComparator: (a, b) => {
           const da = (a?.e ?? 0) - (a?.s ?? 0);
           const db = (b?.e ?? 0) - (b?.s ?? 0);
           return da - db;
         },
       },
-      { field: "rideType", headerName: "Ride Type", flex: 1, minWidth: 140, valueFormatter: fmtPlain("—") },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
+      {
+        field: "rideType",
+        headerName: "Ride Type",
+        flex: 1,
+        minWidth: 140,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
       {
         field: "rideNotes",
         headerName: "Notes",
@@ -80,35 +115,52 @@ export default function EditableRideGrid({
         minWidth: 180,
         valueFormatter: fmtPlain("—"),
       },
-      { field: "createdBy", headerName: "Created By", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
-      { field: "lastModifiedBy", headerName: "Modified By", flex: 1, minWidth: 160, valueFormatter: fmtPlain("—") },
+      {
+        field: "createdBy",
+        headerName: "Created By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
+      {
+        field: "lastModifiedBy",
+        headerName: "Modified By",
+        flex: 1,
+        minWidth: 160,
+        valueFormatter: fmtPlain("—"),
+      },
       {
         field: "actions",
         type: "actions",
-        width: 80,
+        headerName: "Actions",
+        minWidth: 120,
         getActions: (params) => [
           <GridActionsCellItem
             key="edit"
             icon={<EditIcon />}
             label="Edit"
-            onClick={() => onEdit && onEdit(params.row)}
+            onClick={() => handleEdit(params.row)}
+            showInMenu={false}
           />,
           <GridActionsCellItem
             key="delete"
             icon={<DeleteIcon />}
             label="Delete"
-            onClick={() => onDelete && onDelete(params.row.id)}
+            onClick={() => handleDelete(params.row.id)}
+            showInMenu={false}
           />,
         ],
       },
     ],
-    [onDelete, onEdit]
+    [],
   );
 
   const stableRows = useMemo(() => rows ?? [], [rows]);
 
+  const { dedupeRows } = useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
+
   useEffect(() => {
-    warnMissingFields(columns, stableRows);
+    if (process.env.NODE_ENV !== "production") warnMissingFields(columns, stableRows);
   }, [stableRows, columns]);
 
   return (
@@ -138,7 +190,7 @@ export default function EditableRideGrid({
         }}
         getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
         initialState={initialState}
-        getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+        getRowId={(r) => r.id ?? r.ticketId ?? r._id}
       />
     </Box>
   );
