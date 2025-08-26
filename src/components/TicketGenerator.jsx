@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/TicketGenerator.jsx
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
   Box,
   Button,
@@ -13,23 +13,19 @@ import {
   Alert,
   Stack,
   Autocomplete,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   useTheme,
 } from "@mui/material";
-import PageContainer from "./PageContainer.jsx";
-import EmailIcon from "@mui/icons-material/Email";
 import QRCode from "react-qr-code";
 import dayjs from "dayjs";
 import { toPng } from "html-to-image";
 import { v4 as uuidv4 } from "uuid";
+import { Timestamp } from "firebase/firestore";
+
+import PageContainer from "./PageContainer.jsx";
 import {
   addTicket as apiAddTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
-import { Timestamp } from "firebase/firestore";
 import { logError } from "../utils/logError";
 
 const getStoredLocations = (key) =>

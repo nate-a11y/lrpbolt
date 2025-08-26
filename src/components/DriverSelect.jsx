@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
-import { Autocomplete, TextField, CircularProgress, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import { Autocomplete, TextField, CircularProgress } from "@mui/material";
+
 import { subscribeUserAccess } from "../hooks/api";
 import { useAuth } from "../context/AuthContext.jsx";
 

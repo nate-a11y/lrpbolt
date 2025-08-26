@@ -1,6 +1,6 @@
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
+
 import PhoneNumberPrompt from "../../src/components/PhoneNumberPrompt.jsx";
 
 vi.mock("firebase/firestore", () => ({

@@ -37,15 +37,11 @@ registerRoute(
 try {
   // Only load if config is provided at build time
   // (Define these in vite config: VITE_FB_API_KEY, etc.)
-  // eslint-disable-next-line no-undef
   const FB_API_KEY = import.meta.env.VITE_FB_API_KEY;
   if (FB_API_KEY) {
-    // eslint-disable-next-line no-undef
     importScripts('https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js');
-    // eslint-disable-next-line no-undef
     importScripts('https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js');
 
-    // eslint-disable-next-line no-undef
     firebase.initializeApp({
       apiKey: import.meta.env.VITE_FB_API_KEY,
       authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
@@ -56,11 +52,9 @@ try {
       measurementId: import.meta.env.VITE_FB_MEASUREMENT_ID
     });
 
-    // eslint-disable-next-line no-undef
     const messaging = firebase.messaging();
 
     // Background message handler
-    // eslint-disable-next-line no-undef
     messaging.onBackgroundMessage((payload) => {
       const title = payload?.notification?.title || 'Notification';
       const body = payload?.notification?.body || '';
@@ -70,6 +64,5 @@ try {
   }
 } catch (e) {
   // Do not crash SW if FCM not configured
-  // eslint-disable-next-line no-console
   console.warn('[SW] FCM init skipped or failed:', e);
 }

@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from "react";
 import {
   Accordion,
   AccordionSummary,
@@ -10,7 +9,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 
-export default function DropoffLocation({ name, notes, mapUrl, onSelect }) {
+export default function DropoffLocation({ name, notes, onSelect }) {
   return (
     <Accordion>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>

@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideClaimTab.jsx
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box,
   Button,
@@ -29,6 +29,12 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { Timestamp, orderBy } from "firebase/firestore";
+
 import RideGroup from "../RideGroup";
 import BlackoutOverlay from "./BlackoutOverlay";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
@@ -37,21 +43,10 @@ import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatter
 import { fmtDuration, toDayjs } from "../utils/timeUtils";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
-import { safeRow } from '@/utils/gridUtils'
-import {
-  fmtPlain,
-  fmtDateTimeCell,
-  dateSort,
-  toJSDate,
-  getNested,
-  warnMissingFields,
-} from "../utils/gridFormatters";
+import { safeRow } from "@/utils/gridUtils";
+import { fmtPlain, fmtDateTimeCell, dateSort, toJSDate, warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import { COLLECTIONS } from "../constants";
-import { Timestamp, orderBy } from "firebase/firestore";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
 import { asArray } from "../utils/arrays.js";
 
@@ -306,10 +301,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         ],
       },
     ],
-    [],
+    [handleClaim],
   );
 
-  const { dedupeRows } = useGridDoctor({ name: "RideClaimTab", rows, columns });
+  useGridDoctor({ name: "RideClaimTab", rows, columns });
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") warnMissingFields(columns, rows);

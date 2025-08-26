@@ -1,5 +1,5 @@
 // src/components/TimeClockGodMode.jsx
-  import React, { useState, useEffect, useRef, useMemo } from "react";
+  import { useState, useEffect, useRef, useMemo } from "react";
   import {
     Box,
     Paper,
@@ -33,7 +33,7 @@ import {
 import { db } from "src/utils/firebaseInit";
 import { waitForAuth } from "../utils/waitForAuth";
 import { logError } from "../utils/logError";
-import { toString, tsToDate } from "../utils/safe";
+import { tsToDate } from "../utils/safe";
 import { fmtDuration } from "../utils/timeUtils";
 import { safeRow } from '@/utils/gridUtils'
 import { fmtDateTimeCell, fmtPlain, toJSDate, dateSort, warnMissingFields } from "@/utils/gridFormatters";
@@ -163,7 +163,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [user?.email]);
+  }, [user?.email, columns]);
 
   // logs are populated via subscribeMyTimeLogs
 

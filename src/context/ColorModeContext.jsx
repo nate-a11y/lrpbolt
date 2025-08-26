@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, {
+import {
   createContext,
   useCallback,
   useEffect,
@@ -14,10 +14,7 @@ export const ColorModeContext = createContext({ mode: "dark", toggle: () => {} }
 export const useColorMode = () => useContext(ColorModeContext);
 
 export default function ColorModeProvider({ children }) {
-  // SSR-safe media query: only runs in browser
-  const prefersDark = typeof window !== "undefined"
-    ? useMediaQuery("(prefers-color-scheme: dark)")
-    : true;
+  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)", { defaultMatches: true });
 
   const [mode, setMode] = useState(() => {
     if (typeof window === "undefined") return "dark";

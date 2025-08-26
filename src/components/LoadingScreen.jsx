@@ -1,21 +1,14 @@
 // src/components/LoadingScreen.jsx
 /* Proprietary and confidential. See LICENSE. */
-import React from "react";
 import { Box, Typography, LinearProgress, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
  * Props:
- * - title?: string
- * - subtitle?: string
  * - progress?: number | null   // 0..100 (if provided shows determinate bar), else indeterminate
  */
-export default function LoadingScreen({
-  title = "LRP Driver Portal",
-  subtitle = "Authenticating and preparing your dashboard…",
-  progress = null,
-}) {
+export default function LoadingScreen({ progress = null }) {
   const theme = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const upMd = useMediaQuery(theme.breakpoints.up("md"));

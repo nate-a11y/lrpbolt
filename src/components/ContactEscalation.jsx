@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-import React from "react";
 import {
   Box,
   Typography,
@@ -9,7 +8,6 @@ import {
   Link,
   Divider,
   IconButton,
-  useTheme,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EmailIcon from "@mui/icons-material/Email";
@@ -61,9 +59,6 @@ const contacts = [
 ];
 
 export default function ContactEscalation() {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-
   return (
     <Box sx={{ pl: { xs: 1, sm: 0 }, pr: { xs: 1, sm: 2 }, pb: 4 }}>
       <Typography variant="h5" gutterBottom fontWeight="bold">
