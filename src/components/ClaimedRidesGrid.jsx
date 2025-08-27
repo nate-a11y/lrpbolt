@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 
 import { subscribeClaimedRides } from "../hooks/api";
-
-import { rideColumns } from "../columns/rideColumns.js";
+import { rideColumns } from "../columns/rideColumns.jsx";
 
 import LRPDataGrid from "./LRPDataGrid.jsx";
 
