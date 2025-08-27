@@ -24,7 +24,7 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import PeopleIcon from "@mui/icons-material/People";
 import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
-import { formatDateTime, fmtMinutesHuman } from "../utils/timeUtils.js";
+import { formatDateTime, safeNumber } from "../utils/formatters.js";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -402,7 +402,7 @@ export default function ShootoutTab() {
                     End: {formatDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {fmtMinutesHuman(r.duration)}
+                    Duration: {safeNumber(r.duration)} min
                   </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">

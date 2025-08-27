@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { describe, expect, it } from "vitest";
 
-import { formatDateTime, minutesBetween, fmtMinutesHuman } from "../../src/utils/timeUtils.js";
+import { formatDateTime, durationMinutes, safeNumber } from "../../src/utils/timeUtils.js";
 
 describe("timeUtils", () => {
   it("formatDateTime outputs formatted string", () => {
@@ -10,17 +10,18 @@ describe("timeUtils", () => {
   });
 
   it("formatDateTime handles Firestore timestamp", () => {
-    const ts = { seconds: 1700000000, nanoseconds: 0 };
+    const ts = { toDate: () => new Date("2023-01-01T00:00:00Z") };
     expect(formatDateTime(ts)).not.toBe("N/A");
   });
 
-  it("minutesBetween calculates minutes", () => {
+  it("durationMinutes calculates minutes", () => {
     const s = new Date("2024-01-01T00:00:00Z");
     const e = new Date("2024-01-01T01:30:00Z");
-    expect(minutesBetween(s, e)).toBe(90);
+    expect(durationMinutes(s, e)).toBe(90);
   });
 
-  it("fmtMinutesHuman formats duration", () => {
-    expect(fmtMinutesHuman(125)).toBe("2.08 h");
+  it("safeNumber returns fallback for invalid", () => {
+    expect(safeNumber("foo", "N/A")).toBe("N/A");
+    expect(safeNumber(5)).toBe(5);
   });
 });

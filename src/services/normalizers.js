@@ -1,15 +1,17 @@
 // /src/services/normalizers.js
 // Convert Firestore docs into a single, consistent shape the grids expect.
 
-import { minutesBetween, safeString, safeNumber } from "../utils/timeUtils.js";
+import { durationMinutes, safeNumber } from "../utils/timeUtils.js";
 import { toDayjs } from "../utils/datetime.js";
+
+const safeString = (v) => (v == null ? null : String(v));
 
 export function normalizeTimeLog(id, d) {
   const start = toDayjs(d.startTime)?.toDate();
   const end = toDayjs(d.endTime)?.toDate();
   return {
     id,
-    driver: safeString(d.driverId || d.driver || d.driverName || d.driverEmail || "Unknown"),
+    driver: safeString(d.driverId || d.driver || d.driverName || d.driverEmail),
     driverEmail: safeString(d.driverEmail),
     rideId: safeString(d.rideId || d.tripId || d.tripID || id),
     start,
@@ -21,7 +23,7 @@ export function normalizeTimeLog(id, d) {
         ? d.durationMins
         : typeof d.rideDuration === "number"
         ? Math.max(0, Math.round(d.rideDuration))
-        : minutesBetween(start, end),
+        : durationMinutes(start, end),
     vehicle: safeString(d.vehicle),
     mode: safeString(d.mode),
     trips: d.trips != null ? safeNumber(d.trips) : null,
@@ -34,7 +36,7 @@ export function normalizeShootout(id, d) {
   const end = toDayjs(d.endTime)?.toDate();
   return {
     id,
-    driver: safeString(d.driver || d.driverId || d.driverName || d.driverEmail || "Unknown"),
+    driver: safeString(d.driver || d.driverId || d.driverName || d.driverEmail),
     driverEmail: safeString(d.driverEmail),
     start,
     end,
@@ -42,7 +44,7 @@ export function normalizeShootout(id, d) {
     vehicle: safeString(d.vehicle),
     trips: d.trips != null ? safeNumber(d.trips) : null,
     passengers: d.passengers != null ? safeNumber(d.passengers) : null,
-    durationMins: minutesBetween(start, end),
+    durationMins: durationMinutes(start, end),
   };
 }
 

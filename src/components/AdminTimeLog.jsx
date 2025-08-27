@@ -7,7 +7,9 @@ import { timeLogColumns } from "../columns/timeLogColumns.js";
 import { shootoutColumns } from "../columns/shootoutColumns.js";
 import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/api";
 import { deleteTimeLog } from "../services/timeLogs";
-import { minutesBetween, safeNumber, safeString } from "../utils/timeUtils";
+import { durationMinutes, safeNumber } from "../utils/formatters.js";
+
+const safeString = (v) => (v == null ? null : String(v));
 import { vfTime, vfNumber } from "../utils/vf";
 import { base as rowBase, getField } from "../utils/rowAccess";
 import { logError as maybeLogError } from "../utils/logError";
@@ -128,7 +130,7 @@ export default function AdminTimeLog() {
       const start = getField(r, "startTime");
       const end = getField(r, "endTime");
       const explicit = getField(r, "duration");
-      const dur = Number.isFinite(explicit) ? explicit : minutesBetween(start, end) ?? 0;
+      const dur = Number.isFinite(explicit) ? explicit : durationMinutes(start, end) ?? 0;
 
       const firstInSec = start?.seconds ?? Infinity;
       const lastOutSec = end?.seconds ?? -Infinity;
@@ -217,7 +219,7 @@ export default function AdminTimeLog() {
       const end = getField(r, "endTime");
       const trips = safeNumber(getField(r, "trips"), 0);
       const pax = safeNumber(getField(r, "passengers"), 0);
-      const mins = minutesBetween(start, end) ?? 0;
+      const mins = durationMinutes(start, end) ?? 0;
 
       if (!map.has(key)) {
         map.set(key, {

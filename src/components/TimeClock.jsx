@@ -38,7 +38,7 @@ import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { useAuth } from "../context/AuthContext.jsx";
-import { formatDateTime, fmtMinutesHuman } from "../utils/timeUtils.js";
+import { formatDateTime, safeNumber } from "../utils/formatters.js";
 import { timeLogColumns } from "../columns/timeLogColumns.js";
 
 import ErrorBanner from "./ErrorBanner";
@@ -341,7 +341,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
                 <Typography variant="body2">Ride: {r.rideId || '—'}</Typography>
                 <Typography variant="body2">Start: {formatTS(r.startTime)}</Typography>
                 <Typography variant="body2">End: {formatTS(r.endTime)}</Typography>
-                <Typography variant="body2">Duration: {fmtMinutesHuman(r.duration)}</Typography>
+                <Typography variant="body2">Duration: {safeNumber(r.duration)} min</Typography>
                 {r.note && <Typography variant="body2">Note: {r.note}</Typography>}
               </Paper>
             ))}

@@ -19,7 +19,7 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { formatDateTime, fmtMinutesHuman } from "../../utils/timeUtils";
+import { formatDateTime, safeNumber } from "../../utils/formatters.js";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import LRPDataGrid from "../LRPDataGrid.jsx";
@@ -194,7 +194,7 @@ export default function ShootoutStatsTab() {
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Pax: {r.pax ?? r.passengers}</Typography>
                   <Typography variant="body2">
-                    Duration: {fmtMinutesHuman(r.duration)}
+                    Duration: {safeNumber(r.duration)} min
                   </Typography>
                   <Typography variant="body2">
                     Created: {formatDateTime(r.createdAt)}

@@ -24,13 +24,12 @@ import { COLLECTIONS } from "../constants";
 import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
 import { logError } from "../utils/logError";
-import { minutesBetween } from "../utils/dates";
-import { normalizeTimeLog, normalizeShootout, normalizeRide } from "../services/normalizers";
+import { durationMinutes } from "../utils/timeUtils";
+import { normalizeTimeLog } from "../utils/normalizeTimeLog.js";
+import { nullifyMissing } from "../utils/formatters.js";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
-const tsToDate = (ts) =>
-  ts && typeof ts.toDate === "function" ? ts.toDate() : null;
 
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
@@ -79,7 +78,10 @@ export async function getUserAccess(email) {
 
 export async function fetchUserAccess(activeOnly = false) {
   const snapshot = await getDocs(collection(db, COLLECTIONS.USER_ACCESS));
-  let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  let data = snapshot.docs.map((doc) => {
+    const d = doc.data() || {};
+    return { id: doc.id, ...nullifyMissing(d) };
+  });
   if (activeOnly) {
     data = data.filter(
       (d) => d.access?.toLowerCase() !== "user" && d.active !== false,
@@ -219,7 +221,10 @@ export function subscribeRideQueue(callback, fromTime, onError) {
     (snapshot) => {
       callback(
         snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .map((doc) => {
+            const d = doc.data() || {};
+            return { id: doc.id, ...nullifyMissing(d) };
+          })
           .filter(Boolean),
       );
     },
@@ -319,7 +324,12 @@ export function subscribeClaimLog(callback, max = 100, onError) {
     `claimLog:${max}`,
     q,
     (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      callback(
+        snapshot.docs.map((doc) => {
+          const d = doc.data() || {};
+          return { id: doc.id, ...nullifyMissing(d) };
+        }),
+      );
     },
     onError,
   );
@@ -355,7 +365,12 @@ export function subscribeTickets(
     keyParts.join(":"),
     q,
     (snapshot) => {
-      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      callback(
+        snapshot.docs.map((doc) => {
+          const d = doc.data() || {};
+          return { id: doc.id, ...nullifyMissing(d) };
+        }),
+      );
     },
     onError,
   );
@@ -378,14 +393,17 @@ export async function fetchTickets(filters = {}) {
   constraints.push(orderBy("pickupTime", "asc"));
   const q = query(collection(db, COLLECTIONS.TICKETS), ...constraints);
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => {
+    const d = doc.data() || {};
+    return { id: doc.id, ...nullifyMissing(d) };
+  });
 }
 
 export async function fetchTicket(ticketId) {
   const ref = doc(db, COLLECTIONS.TICKETS, ticketId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error(`Ticket ${ticketId} not found`);
-  return { id: snap.id, ...snap.data() };
+  return { id: snap.id, ...nullifyMissing(snap.data() || {}) };
 }
 
 export async function addTicket(ticketData) {
@@ -509,7 +527,13 @@ export function subscribeShootoutStats(onNext, onError) {
   const q = query(collection(db, "shootoutStats"));
   return onSnapshot(
     q,
-    (snap) => onNext(snap.docs.map((d) => normalizeShootout(d.id, d.data()))),
+    (snap) =>
+      onNext(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return { id: d.id, ...nullifyMissing(data) };
+        }),
+      ),
     (err) => onError?.(err),
   );
 }
@@ -525,11 +549,9 @@ export async function fetchWeeklySummary({ startTs, endTs }) {
   const byDriver = new Map();
   snap.forEach((doc) => {
     const d = doc.data() || {};
-    const driver = d.driver || d.driverEmail || "Unknown";
+    const driver = d.driver || d.driverEmail || null;
     const mins =
-      typeof d.duration === "number"
-        ? d.duration
-        : minutesBetween(d.startTime, d.endTime);
+      typeof d.duration === "number" ? d.duration : durationMinutes(d.startTime, d.endTime);
     const prev = byDriver.get(driver) || {
       driver,
       sessions: 0,
@@ -604,27 +626,48 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
     orderBy("pickupTime", "asc"),
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => {
+    const d = doc.data() || {};
+    return { id: doc.id, ...nullifyMissing(d) };
+  });
 }
 
 export const subscribeLiveRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "liveRides"),
-    (snap) => onNext(snap.docs.map((d) => normalizeRide(d.id, d.data()))),
+    (snap) =>
+      onNext(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return { id: d.id, ...nullifyMissing(data) };
+        }),
+      ),
     (err) => onError?.(err),
   );
 
 export const subscribeQueueRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "queueRides"),
-    (snap) => onNext(snap.docs.map((d) => normalizeRide(d.id, d.data()))),
+    (snap) =>
+      onNext(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return { id: d.id, ...nullifyMissing(data) };
+        }),
+      ),
     (err) => onError?.(err),
   );
 
 export const subscribeClaimedRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "claimedRides"),
-    (snap) => onNext(snap.docs.map((d) => normalizeRide(d.id, d.data()))),
+    (snap) =>
+      onNext(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return { id: d.id, ...nullifyMissing(data) };
+        }),
+      ),
     (err) => onError?.(err),
   );
 
@@ -785,12 +828,7 @@ export function subscribeShootoutHistory(callback, status, max = 100) {
   const unsub = subscribeFirestore(key, q, (snapshot) => {
     const rows = snapshot.docs.map((d) => {
       const data = d.data() || {};
-      return {
-        id: d.id,
-        ...data,
-        startTime: tsToDate(data.startTime),
-        endTime: tsToDate(data.endTime),
-      };
+      return { id: d.id, ...nullifyMissing(data) };
     });
     callback(rows);
   });
@@ -808,12 +846,7 @@ export async function fetchShootoutHistory(status, max = 100) {
   return snap.docs
     .map((d) => {
       const data = d.data() || {};
-      return {
-        id: d.id,
-        ...data,
-        startTime: tsToDate(data.startTime),
-        endTime: tsToDate(data.endTime),
-      };
+      return { id: d.id, ...nullifyMissing(data) };
     })
     .filter(Boolean);
 }
@@ -834,12 +867,7 @@ export function subscribeShootoutHistoryAll(
       const rows = snap.docs
         .map((d) => {
           const data = d.data() || {};
-          return {
-            id: d.id,
-            ...data,
-            startTime: tsToDate(data.startTime),
-            endTime: tsToDate(data.endTime),
-          };
+          return { id: d.id, ...nullifyMissing(data) };
         })
         .filter(Boolean);
       callback(rows);

@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 import { subscribeQueueRides } from "../hooks/api";
-import { rideColumns } from "../columns/rideColumns.jsx";
 import { deleteRide } from "../services/firestoreService";
+import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 import EditRideDialog from "./EditRideDialog.jsx";
-import LRPDataGrid from "./LRPDataGrid.jsx";
 
 export default function RideQueueGrid() {
   const [rows, setRows] = useState([]);
@@ -26,30 +26,33 @@ export default function RideQueueGrid() {
     setEditRow(null);
   }, []);
 
-  const handleDeleteRide = useCallback(async (row) => {
-    if (!row?.id) return;
-    if (!window.confirm("Delete this ride?")) return;
-    try {
-      await deleteRide("rideQueue", row.id);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete ride");
-    }
-  }, []);
-
-  const columns = useMemo(
-    () => rideColumns({ withActions: true, onEdit: handleEditRide, onDelete: handleDeleteRide }),
-    [handleEditRide, handleDeleteRide]
-  );
-
   return (
     <>
-      <LRPDataGrid
+      <SmartAutoGrid
         rows={Array.isArray(rows) ? rows : []}
-        columns={columns}
-        autoHeight
-        loading={false}
-        checkboxSelection={false}
+        headerMap={{
+          tripId: "Trip ID",
+          pickupTime: "Pickup",
+          rideDuration: "Dur (min)",
+          rideType: "Type",
+          claimedBy: "Claimed By",
+          claimedAt: "Claimed At",
+        }}
+        order={[
+          "tripId",
+          "pickupTime",
+          "rideDuration",
+          "rideType",
+          "vehicle",
+          "claimedBy",
+          "claimedAt",
+          "status",
+        ]}
+        actionsColumn={buildNativeActionsColumn({
+          onEdit: (id, row) => handleEditRide(row),
+          onDelete: async (id) => await deleteRide("rideQueue", id),
+          showInMenu: true,
+        })}
       />
       {editOpen && (
         <EditRideDialog

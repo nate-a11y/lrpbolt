@@ -5,6 +5,7 @@ import { db } from "../utils/firebaseInit";
 import { COLLECTIONS } from "../constants";
 import { useAuth } from "../context/AuthContext.jsx";
 import { subscribeFirestore } from "../utils/listenerRegistry";
+import { nullifyMissing } from "../utils/formatters.js";
 
 function getKey({ activeOnly, roles, max }) {
   return JSON.stringify({ activeOnly, roles, max });
@@ -30,7 +31,10 @@ export default function useUserAccessListener(
     const q = query(collection(db, COLLECTIONS.USER_ACCESS), ...constraints);
 
     return subscribeFirestore(key, q, (snapshot) => {
-      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const list = snapshot.docs.map((doc) => {
+        const data = doc.data() || {};
+        return { id: doc.id, ...nullifyMissing(data) };
+      });
       setData(list);
     });
   }, [authLoading, user, activeOnly, roles, max]);

@@ -20,7 +20,7 @@ import { GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
 import { actionsCol } from "@/utils/gridFormatters";
-import { formatDateTime, fmtMinutesHuman } from "../../utils/timeUtils.js";
+import { formatDateTime, safeNumber } from "../../utils/formatters.js";
 import LRPDataGrid from "../LRPDataGrid.jsx";
 import { timeLogColumns } from "../../columns/timeLogColumns.js";
 import { db } from "../../utils/firebaseInit";
@@ -218,7 +218,7 @@ export default function EntriesTab() {
                     End: {formatDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {fmtMinutesHuman(r.duration)}
+                    Duration: {safeNumber(r.duration)} min
                   </Typography>
                   <Typography variant="body2">
                     Logged: {formatDateTime(r.loggedAt)}
