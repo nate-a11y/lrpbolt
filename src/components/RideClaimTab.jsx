@@ -320,9 +320,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [selectedCount, selectedMinutes],
   );
 
-  // Group rides by date first, then vehicle for a tree view
+  // Group rides by date then vehicle; ensure each path is unique
   const getTreeDataPath = useCallback(
-    (row) => [fmtDate(row.pickupTime), safe(row.vehicle)],
+    (row) => [fmtDate(row.pickupTime), safe(row.vehicle), row.id],
     [],
   );
 
@@ -504,7 +504,14 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             autoHeight={false}
             treeData
             getTreeDataPath={getTreeDataPath}
-            groupingColDef={{ headerName: "Date / Vehicle", minWidth: 220 }}
+            groupingColDef={{
+              headerName: "Date / Vehicle",
+              minWidth: 220,
+              valueGetter: (params) => {
+                if (!params?.row) return "N/A";
+                return params.rowNode?.isLeaf ? "" : params.value;
+              },
+            }}
             initialState={{
               sorting: { sortModel: [{ field: "pickupTime", sort: "asc" }] },
               columns: {
