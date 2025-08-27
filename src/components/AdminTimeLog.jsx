@@ -1,11 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminTimeLog.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Box, Tabs, Tab, Stack, Typography, Divider } from "@mui/material";
-import LRPDataGrid from "./LRPDataGrid.jsx";
+
 import { timeLogColumns } from "../columns/timeLogColumns.js";
 import { shootoutColumns } from "../columns/shootoutColumns.js";
 import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/api";
+import { deleteTimeLog } from "../services/timeLogs";
 import {
   formatDateTime,
   minutesBetween,
@@ -15,11 +16,13 @@ import {
 import { base as rowBase, getField } from "../utils/rowAccess";
 import { logError as maybeLogError } from "../utils/logError";
 
+import LRPDataGrid from "./LRPDataGrid.jsx";
+import EditTimeLogDialog from "./EditTimeLogDialog.jsx";
+
 function logError(err, ctx) {
   if (typeof maybeLogError === "function") {
     maybeLogError(err, ctx);
   } else {
-    // eslint-disable-next-line no-console
     console.error(ctx?.where || "AdminTimeLog", err);
   }
 }
@@ -43,6 +46,8 @@ export default function AdminTimeLog() {
   const [logRows, setLogRows] = useState([]);
   const [logLoading, setLogLoading] = useState(true);
   const [logErr, setLogErr] = useState(null);
+  const [editLog, setEditLog] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   // ---- Shootout sessions (raw) ----
   const [shootRows, setShootRows] = useState([]);
@@ -286,6 +291,27 @@ export default function AdminTimeLog() {
     []
   );
 
+  const handleEditLog = useCallback((row) => {
+    setEditLog(row);
+    setEditOpen(true);
+  }, []);
+
+  const handleEditClose = useCallback(() => {
+    setEditOpen(false);
+    setEditLog(null);
+  }, []);
+
+  const handleDeleteLog = useCallback(async (row) => {
+    if (!row?.id) return;
+    if (!window.confirm("Delete this time log?")) return;
+    try {
+      await deleteTimeLog(row.id);
+    } catch (e) {
+      logError(e, { where: "AdminTimeLog:delete timeLog" });
+      alert("Failed to delete time log");
+    }
+  }, []);
+
   return (
     <Box sx={{ p: 2 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
@@ -309,7 +335,16 @@ export default function AdminTimeLog() {
 
       {/* Logs */}
       <TabPanel value={tab} index={0}>
-        <LRPDataGrid rows={logRows} columns={timeLogColumns()} loading={logLoading} error={logErr} autoHeight />
+        <LRPDataGrid
+          rows={logRows}
+          columns={timeLogColumns({ withActions: true, onEdit: handleEditLog, onDelete: handleDeleteLog })}
+          loading={logLoading}
+          error={logErr}
+          autoHeight
+        />
+        {editOpen && (
+          <EditTimeLogDialog open={editOpen} log={editLog} onClose={handleEditClose} />
+        )}
       </TabPanel>
 
       {/* Weekly Summary */}
