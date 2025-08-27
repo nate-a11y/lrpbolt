@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
+import { enrichDriverNames } from "../services/normalizers";
+
 import { subscribeTimeLogs } from "./firestore";
 
 const inWeek = (d, startOfWeek) => {
@@ -17,7 +19,7 @@ export default function useWeeklySummary({
 } = {}) {
     const [rows, setRows] = useState([]);
     useEffect(() => {
-      const unsub = subscribeTimeLogs((logs) => {
+      const unsub = subscribeTimeLogs(async (logs) => {
         const byDriver = new Map();
         logs.forEach((r) => {
           if (!inWeek(r.startTime || r.loggedAt, weekStart)) return;
@@ -49,18 +51,18 @@ export default function useWeeklySummary({
             lastEnd,
           });
         });
-        setRows(
-          Array.from(byDriver.values()).map((x) => ({
-            id: x.driver,
-            driver: x.driver,
-            driverEmail: x.driverEmail,
-            sessions: x.sessions,
-            totalMinutes: x.totalMinutes,
-            hours: x.totalMinutes / 60,
-            firstStart: x.firstStart,
-            lastEnd: x.lastEnd,
-          })),
-        );
+        let arr = Array.from(byDriver.values()).map((x) => ({
+          id: x.driver,
+          driver: x.driver,
+          driverEmail: x.driverEmail,
+          sessions: x.sessions,
+          totalMinutes: x.totalMinutes,
+          hours: x.totalMinutes / 60,
+          firstStart: x.firstStart,
+          lastEnd: x.lastEnd,
+        }));
+        arr = await enrichDriverNames(arr);
+        setRows(arr);
       });
       return () => unsub && unsub();
     }, [weekStart, driverFilter]);

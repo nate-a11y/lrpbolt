@@ -36,7 +36,7 @@ import { Timestamp, orderBy } from "firebase/firestore";
 import { durationMinutes, toDateAny } from "@/utils/datetime";
 import { actionsCol } from "@/utils/gridFormatters";
 
-import { vfTime, vfNumber } from "../utils/vf";
+import { vfTime, vfDurationHM } from "../utils/vf";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
@@ -243,9 +243,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       },
       {
         field: "rideDuration",
-        headerName: "Dur (min)",
+        headerName: "Duration",
         width: 120,
-        valueFormatter: vfNumber,
+        valueFormatter: vfDurationHM,
       },
       { field: "rideType", headerName: "Type", width: 140 },
       { field: "vehicle", headerName: "Vehicle", width: 160 },
@@ -499,7 +499,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             checkboxSelection
             disableRowSelectionOnClick
             autoHeight={false}
-            density="compact"
             rowGroupingModel={rowGroupingModel}
             groupingColDef={{
               headerName: "Date / Vehicle",

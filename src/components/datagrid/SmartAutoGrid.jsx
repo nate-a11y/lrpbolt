@@ -22,34 +22,32 @@ const widthFor = (field, sample) => {
   return 180;
 };
 
+function formatAny(field, v) {
+  if (v === null || v === undefined) return "N/A";
+  if (isFSTimestamp(v)) return formatDateTime(v);
+  if (isFSTimestampLike(v)) {
+    const ms = v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6);
+    return formatDateTime(new Date(ms));
+  }
+  if (looksLikeDurationField(field)) {
+    if (isNum(v)) return formatHMFromMinutes(v);
+    if (v && typeof v === "object" && isNum(v.minutes)) return formatHMFromMinutes(v.minutes);
+    return "N/A";
+  }
+  if (isNum(v)) return String(v);
+  if (isBool(v)) return v ? "Yes" : "No";
+  if (typeof v === "string") return v.trim() === "" ? "N/A" : v;
+  return ""; // never [object Object]
+}
+
 /** Universal, object-safe rendering — never “[object Object]”. */
 function makeRenderCell(field) {
-  return (params) => {
-    const v = params?.row?.[field];
+  return (params) => formatAny(field, params?.row?.[field]);
+}
 
-    if (v === null || v === undefined) return "N/A";
-
-    // Firestore timestamps
-    if (isFSTimestamp(v)) return formatDateTime(v);
-    if (isFSTimestampLike(v)) {
-      const ms = v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6);
-      return formatDateTime(new Date(ms));
-    }
-
-    // Durations in minutes
-    if (looksLikeDurationField(field)) {
-      if (isNum(v)) return formatHMFromMinutes(v);
-      if (v && typeof v === "object" && isNum(v.minutes)) return formatHMFromMinutes(v.minutes);
-      return "N/A";
-    }
-
-    if (isNum(v)) return String(v);
-    if (isBool(v)) return v ? "Yes" : "No";
-    if (typeof v === "string") return v.trim() === "" ? "N/A" : v;
-
-    // Any other object/array -> blank
-    return "";
-  };
+/** Provide clean values for CSV/Excel export */
+function makeExportValue(field) {
+  return (params) => formatAny(field, params?.row?.[field]);
 }
 
 function buildAutoCol(field, headerName, sampleValue) {
@@ -59,11 +57,12 @@ function buildAutoCol(field, headerName, sampleValue) {
     width: widthFor(field, sampleValue),
     sortable: true,
     renderCell: makeRenderCell(field),
+    getExportValue: makeExportValue(field),
   };
 }
 
 /** Build inferred columns from the first row */
-function useAutoColumns(rows, { headerMap = {}, order = [], hide = [], overrides = {} } = {}) {
+function useAutoColumns(rows, { headerMap = {}, order = [], hide = [], overrides = {}, forceHide = [] } = {}) {
   return useMemo(() => {
     const first = rows?.find(Boolean) || {};
     const fields = Object.keys(first);
@@ -73,47 +72,49 @@ function useAutoColumns(rows, { headerMap = {}, order = [], hide = [], overrides
       ...fields.filter((f) => !seen.has(f)),
     ];
 
-    return ordered.map((field) => {
-      const sample = first[field];
-      const col = buildAutoCol(field, headerMap[field], sample);
-      if (hide.includes(field)) col.hide = true;
-      if (overrides[field]) Object.assign(col, overrides[field]);
-      return col;
-    });
-  }, [rows, headerMap, order, hide, overrides]);
+    return ordered
+      .filter((f) => !forceHide.includes(f)) // hard remove
+      .map((field) => {
+        const sample = first[field];
+        const col = buildAutoCol(field, headerMap[field], sample);
+        if (hide.includes(field)) col.hide = true; // soft hide (toggle-able)
+        if (overrides[field]) Object.assign(col, overrides[field]);
+        return col;
+      });
+  }, [rows, headerMap, order, hide, overrides, forceHide]);
 }
 
-/** Sanitize an existing columns array (compat mode) */
-function sanitizeCompatColumns(columns = []) {
-  return (columns || []).map((c, idx) => {
-    const field = c.field ?? `col_${idx}`;
-    const headerName = c.headerName || field;
-    const out = { ...c, field, headerName };
-
-    // Default width and safe render
-    if (!out.width) out.width = 180;
-    const alreadyRenders =
-      typeof out.renderCell === "function" || out.type === "actions" || out.renderHeader;
-    if (!alreadyRenders) out.renderCell = makeRenderCell(field);
-
-    // Guard valueGetter: if it returns an object, we render blank via renderCell anyway
-    if (typeof out.valueGetter !== "function") {
-      out.valueGetter = (p) => p?.row?.[field];
-    }
-
-    return out;
-  });
+/** Sanitize a legacy columns array (compat mode) */
+function sanitizeCompatColumns(columns = [], forceHide = []) {
+  return (columns || [])
+    .filter((c) => !forceHide.includes(c?.field))
+    .map((c, idx) => {
+      const field = c?.field ?? `col_${idx}`;
+      const headerName = c?.headerName || field;
+      const out = { ...c, field, headerName };
+      if (!out.width) out.width = 180;
+      if (typeof out.renderCell !== "function" && out.type !== "actions") {
+        out.renderCell = makeRenderCell(field);
+      }
+      if (typeof out.getExportValue !== "function") {
+        out.getExportValue = makeExportValue(field);
+      }
+      if (typeof out.valueGetter !== "function") {
+        out.valueGetter = (p) => p?.row?.[field];
+      }
+      return out;
+    });
 }
 
 /**
  * SmartAutoGrid
- * Props:
- *  - rows: array
- *  - headerMap/order/hide/overrides: for auto columns
- *  - actionsColumn?: GridColDef (appended if provided)
- *  - columnsCompat?: GridColDef[]  // <— pass your old columns here; we sanitize them
- *  - showToolbar?: boolean (default true)
- *  - getRowId?: function
+ *  - rows
+ *  - headerMap/order/hide/overrides
+ *  - actionsColumn
+ *  - columnsCompat? (legacy columns array)
+ *  - forceHide?: string[]  // hard-remove columns no matter what
+ *  - showToolbar? = true
+ *  - getRowId?
  */
 export default function SmartAutoGrid({
   rows = [],
@@ -121,14 +122,15 @@ export default function SmartAutoGrid({
   order,
   hide = [],
   overrides,
+  forceHide = [],
   actionsColumn,
   columnsCompat,
   showToolbar = true,
   getRowId,
   ...rest
 }) {
-  const autoCols = useAutoColumns(rows, { headerMap, order, hide, overrides });
-  const compatCols = useMemo(() => sanitizeCompatColumns(columnsCompat), [columnsCompat]);
+  const autoCols = useAutoColumns(rows, { headerMap, order, hide, overrides, forceHide });
+  const compatCols = useMemo(() => sanitizeCompatColumns(columnsCompat, forceHide), [columnsCompat, forceHide]);
 
   let columns = columnsCompat ? compatCols : autoCols;
   if (actionsColumn && !columns.find((c) => c.field === actionsColumn.field)) {
@@ -144,6 +146,7 @@ export default function SmartAutoGrid({
       rows={rows}
       columns={columns}
       getRowId={stableGetRowId}
+      // Density is configurable by the toolbar; this is just the initial value.
       density="compact"
       disableRowSelectionOnClick
       checkboxSelection={false}

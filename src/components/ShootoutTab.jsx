@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
-import { mapSnapshotToRows } from "../services/normalizers";
+import { mapSnapshotToRows, enrichDriverNames } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -33,8 +33,10 @@ export default function ShootoutTab() {
       where("driverEmail", "==", user.email.toLowerCase()),
       orderBy("startTime", "desc"),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setSessionRows(mapSnapshotToRows("shootoutStats", snap));
+    const unsub = onSnapshot(q, async (snap) => {
+      const base = mapSnapshotToRows("shootoutStats", snap);
+      const withNames = await enrichDriverNames(base);
+      setSessionRows(withNames);
     });
     return () => unsub();
   }, [user?.email]);
@@ -84,23 +86,30 @@ export default function ShootoutTab() {
         rows={sessionRows}
         headerMap={{
           driverEmail: "Driver Email",
+          driver: "Driver",
           vehicle: "Vehicle",
           startTime: "Start",
           endTime: "End",
+          duration: "Duration",
           trips: "Trips",
           passengers: "PAX",
           createdAt: "Created",
+          id: "id",
         }}
         order={[
+          "driver",
           "driverEmail",
           "vehicle",
           "startTime",
           "endTime",
+          "duration",
           "trips",
           "passengers",
           "createdAt",
+          "id",
         ]}
         hide={["driverEmail", "createdAt"]}
+        forceHide={["id"]}
         actionsColumn={buildNativeActionsColumn({
           onEdit: (_id, _row) => null,
           onDelete: async (id) => await deleteShootoutStatById(id),

@@ -6,13 +6,17 @@ import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildNativeActionsColumn } from "../../columns/nativeActions.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { db } from "../../utils/firebaseInit";
+import { enrichDriverNames } from "../../services/normalizers";
 
 export default function ShootoutStatsTab() {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
-      (stats) => setRows(stats || []),
+      async (stats) => {
+        const withNames = await enrichDriverNames(stats || []);
+        setRows(withNames);
+      },
       (e) => console.error(e),
     );
     return () => typeof unsub === "function" && unsub();
@@ -29,22 +33,29 @@ export default function ShootoutStatsTab() {
       rows={rows}
       headerMap={{
         driverEmail: "Driver Email",
+        driver: "Driver",
         vehicle: "Vehicle",
         startTime: "Start",
         endTime: "End",
+        duration: "Duration",
         trips: "Trips",
         passengers: "PAX",
         createdAt: "Created",
+        id: "id",
       }}
       order={[
+        "driver",
         "driverEmail",
         "vehicle",
         "startTime",
         "endTime",
+        "duration",
         "trips",
         "passengers",
         "createdAt",
+        "id",
       ]}
+      forceHide={["id"]}
       actionsColumn={buildNativeActionsColumn({
         onEdit: (id, row) => openSessionEdit?.(row),
         onDelete: async (id) => await deleteShootoutStatById(id),

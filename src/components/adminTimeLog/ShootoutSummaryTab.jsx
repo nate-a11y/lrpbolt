@@ -3,13 +3,14 @@ import React, { useEffect, useState } from "react";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
+import { enrichDriverNames } from "../../services/normalizers";
 
 export default function ShootoutSummaryTab() {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
-      (stats) => {
+      async (stats) => {
         const map = new Map();
         (stats || []).forEach((s) => {
           const key = `${s.driverEmail || ""}|${s.vehicle || ""}`;
@@ -19,6 +20,7 @@ export default function ShootoutSummaryTab() {
           const prev = map.get(key) || {
             id: key,
             driverEmail: s.driverEmail || "",
+            driver: s.driverEmail || "",
             vehicle: s.vehicle || "",
             sessions: 0,
             trips: 0,
@@ -37,6 +39,7 @@ export default function ShootoutSummaryTab() {
           map.set(key, {
             id: key,
             driverEmail: s.driverEmail || "",
+            driver: s.driverEmail || "",
             vehicle: s.vehicle || "",
             sessions: prev.sessions + 1,
             trips: prev.trips + (s.trips || 0),
@@ -47,7 +50,9 @@ export default function ShootoutSummaryTab() {
             lastEnd,
           });
         });
-        setRows(Array.from(map.values()));
+        const arr = Array.from(map.values());
+        const withNames = await enrichDriverNames(arr);
+        setRows(withNames);
       },
       (e) => console.error(e),
     );
@@ -58,6 +63,7 @@ export default function ShootoutSummaryTab() {
     <SmartAutoGrid
       rows={rows}
       headerMap={{
+        driver: "Driver",
         driverEmail: "Driver Email",
         vehicle: "Vehicle",
         sessions: "Sessions",
@@ -67,8 +73,10 @@ export default function ShootoutSummaryTab() {
         hours: "Hours",
         firstStart: "First Start",
         lastEnd: "Last End",
+        id: "id",
       }}
       order={[
+        "driver",
         "driverEmail",
         "vehicle",
         "sessions",
@@ -78,7 +86,9 @@ export default function ShootoutSummaryTab() {
         "hours",
         "firstStart",
         "lastEnd",
+        "id",
       ]}
+      forceHide={["id"]}
     />
   );
 }

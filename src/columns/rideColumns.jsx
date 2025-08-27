@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/rideColumns.jsx
-import { vfTime, vfNumber } from "../utils/vf";
+import { vfTime, vfDurationHM } from "../utils/vf";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
@@ -27,11 +27,11 @@ export function rideColumns(opts = {}) {
     },
     {
       field: "rideDuration",
-      headerName: "Dur (min)",
+      headerName: "Duration",
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueFormatter: vfNumber,
+      valueFormatter: vfDurationHM,
     },
     { field: "rideType", headerName: "Type", minWidth: 120, flex: 0.6 },
     { field: "vehicle", headerName: "Vehicle", minWidth: 160, flex: 0.8 },

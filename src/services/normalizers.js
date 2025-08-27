@@ -1,8 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, doc, getDoc } from "firebase/firestore";
 
 import { nullifyMissing } from "../utils/formatters";
 
+// ---------- Helpers ----------
 function coerceTimestamp(v) {
   if (!v) return null;
   if (v instanceof Timestamp) return v;
@@ -15,6 +16,10 @@ function coerceTimestamp(v) {
     const d = new Date(v);
     return isNaN(d.getTime()) ? null : Timestamp.fromDate(d);
   }
+  // tolerate export shapes {seconds,nanoseconds}
+  if (typeof v === "object" && Number.isFinite(v.seconds)) {
+    return Timestamp.fromMillis(v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6));
+  }
   return null;
 }
 function coerceNumber(v) {
@@ -23,39 +28,39 @@ function coerceNumber(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
-  if (v && typeof v === "object" && typeof v.minutes === "number") return v.minutes; // tolerate {minutes}
+  if (v && typeof v === "object" && typeof v.minutes === "number") return v.minutes;
   return null;
 }
 function coerceBool(v) {
   if (v === true || v === false) return v;
   if (typeof v === "string") {
     const s = v.trim().toLowerCase();
-    if (["true", "yes", "y", "1"].includes(s)) return true;
-    if (["false", "no", "n", "0"].includes(s)) return false;
+    if (["true","yes","y","1"].includes(s)) return true;
+    if (["false","no","n","0"].includes(s)) return false;
   }
   if (typeof v === "number") return v !== 0;
   return null;
 }
 const id = (v) => (v === undefined ? null : v);
 
-// Pull a nice string from claimedBy (string | {name,email} | null)
-function coerceClaimedBy(v) {
-  if (!v) return null;
-  if (typeof v === "string") return v;
-  if (typeof v === "object") return v.name || v.email || null;
-  return null;
+function minutesBetween(tsStart, tsEnd) {
+  const s = coerceTimestamp(tsStart);
+  const e = coerceTimestamp(tsEnd);
+  if (!s || !e) return null;
+  const mins = Math.round((e.toDate().getTime() - s.toDate().getTime()) / (60 * 1000));
+  return Number.isFinite(mins) && mins >= 0 ? mins : null;
 }
 
-// ---- Collection configs from your rules ----
-const RIDE_ALIASES = { ClaimedBy: "claimedBy", ClaimedAt: "claimedAt" };
+// ---------- Rides ----------
+const RIDE_ALIASES = { ClaimedBy: "claimedBy", ClaimedAt: "claimedAt", pickup: "pickupTime" };
 const RIDE_COERCE = {
   tripId: id,
-  pickupTime: coerceTimestamp,
+  pickupTime: coerceTimestamp, // <- /rides "Pickup" will render from this
   rideDuration: coerceNumber,
   rideType: id,
   vehicle: id,
   rideNotes: id,
-  claimedBy: coerceClaimedBy,
+  claimedBy: id,
   claimedAt: coerceTimestamp,
   status: id,
   importedFromQueueAt: coerceTimestamp,
@@ -65,19 +70,20 @@ const RIDE_COERCE = {
   lastModifiedBy: id,
 };
 
-const TIMELOG_ALIASES = { driverName: "driver" }; // tolerate old key
+// ---------- Time Logs ----------
+const TIMELOG_ALIASES = { driverName: "driver" };
 const TIMELOG_COERCE = {
   driverEmail: id,
   driver: id,
   rideId: id,
   startTime: coerceTimestamp,
   endTime: coerceTimestamp,
-  duration: coerceNumber, // minutes
+  duration: coerceNumber,          // minutes (may be null; we compute below)
   loggedAt: coerceTimestamp,
   note: id,
 };
 
-const SHOOTOUT_ALIASES = {};
+// ---------- Shootout ----------
 const SHOOTOUT_COERCE = {
   driverEmail: id,
   vehicle: id,
@@ -88,6 +94,7 @@ const SHOOTOUT_COERCE = {
   createdAt: coerceTimestamp,
 };
 
+// ---------- Tickets ----------
 const TICKET_ALIASES = { passengercount: "passengers" };
 const TICKET_COERCE = {
   pickupTime: coerceTimestamp,
@@ -121,27 +128,69 @@ function applyCoercion(data, rules) {
   return out;
 }
 
+/** Core normalize */
 export function normalizeRowFor(collectionKey, raw = {}) {
   const data = nullifyMissing(raw);
+  let row;
   switch (collectionKey) {
     case "liveRides":
     case "rideQueue":
     case "claimedRides":
-      return applyCoercion(applyAliases(data, RIDE_ALIASES), RIDE_COERCE);
+      row = applyCoercion(applyAliases(data, RIDE_ALIASES), RIDE_COERCE);
+      break;
     case "timeLogs":
-      return applyCoercion(applyAliases(data, TIMELOG_ALIASES), TIMELOG_COERCE);
+      row = applyCoercion(applyAliases(data, TIMELOG_ALIASES), TIMELOG_COERCE);
+      // dynamic duration fallback
+      if (row.duration == null) row.duration = minutesBetween(row.startTime, row.endTime);
+      break;
     case "shootoutStats":
-      return applyCoercion(applyAliases(data, SHOOTOUT_ALIASES), SHOOTOUT_COERCE);
+      row = applyCoercion(data, SHOOTOUT_COERCE);
+      // add computed duration minutes for the grid/export
+      row.duration = minutesBetween(row.startTime, row.endTime);
+      break;
     case "tickets":
-      return applyCoercion(applyAliases(data, TICKET_ALIASES), TICKET_COERCE);
+      row = applyCoercion(applyAliases(data, TICKET_ALIASES), TICKET_COERCE);
+      break;
     default:
-      return data;
+      row = data;
   }
+  return row;
 }
 
 export function mapSnapshotToRows(collectionKey, snapshot) {
   return snapshot.docs.map((d) => {
     const data = d.data() || {};
     return { id: d.id, ...normalizeRowFor(collectionKey, data) };
+  });
+}
+
+/** --- User name enrichment (driverEmail -> driver via userAccess) --- */
+let _nameCache = new Map();
+let _dbRef = null;
+export function bindFirestore(db) { _dbRef = db; }
+
+/** Given rows that contain driverEmail, ensure row.driver is populated from userAccess */
+export async function enrichDriverNames(rows) {
+  if (!_dbRef || !rows?.length) return rows;
+  const needs = rows
+    .map((r) => (r?.driverEmail || "").toLowerCase())
+    .filter((e) => e && !_nameCache.has(e));
+  const unique = Array.from(new Set(needs));
+  await Promise.all(
+    unique.map(async (email) => {
+      try {
+        const ref = doc(_dbRef, "userAccess", email);
+        const snap = await getDoc(ref);
+        const name = snap.exists() ? (snap.data()?.name || snap.data()?.displayName || "") : "";
+        _nameCache.set(email, name);
+      } catch {
+        _nameCache.set(email, "");
+      }
+    })
+  );
+  return rows.map((r) => {
+    const email = (r?.driverEmail || "").toLowerCase();
+    const driver = r?.driver || _nameCache.get(email) || "";
+    return { ...r, driver };
   });
 }

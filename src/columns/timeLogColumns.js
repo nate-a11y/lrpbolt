@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/timeLogColumns.js
-import { vfTime, vfNumber } from "../utils/vf";
+import { vfTime, vfDurationHM } from "../utils/vf";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
@@ -38,7 +38,7 @@ export function timeLogColumns(opts = {}) {
       headerName: "Duration",
       minWidth: 130,
       flex: 0.6,
-      valueFormatter: vfNumber,
+      valueFormatter: vfDurationHM,
     },
     {
       field: "loggedAt",
