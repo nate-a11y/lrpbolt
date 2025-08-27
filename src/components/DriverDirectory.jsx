@@ -11,18 +11,32 @@ import {
   Avatar,
   ButtonGroup,
   Button,
+  Divider,
+  useTheme,
 } from "@mui/material";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import SmsIcon from "@mui/icons-material/Sms";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SearchIcon from "@mui/icons-material/Search";
-import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
 
 import DRIVER_LIST from "../data/driverDirectory";
-import VehicleChip from "./VehicleChip";
+import VehicleChip from "./VehicleChip"; // still works; we add LRP sx below
 
-// ---- helpers -------------------------------------------------
+// --- LRP brand tokens
+const LRP = {
+  green: "#4cbb17",
+  black: "#060606",
+  card: "#0b0b0b",
+  chipBg: "#1a1a1a",
+  chipBorder: "rgba(255,255,255,0.12)",
+  textDim: "rgba(255,255,255,0.72)",
+};
+
+// --- helpers
 function getInitials(name = "") {
   const parts = String(name).trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts.at(-1)?.[0] ?? "")).toUpperCase();
@@ -33,13 +47,17 @@ function normalizePhone(phone = "") {
   const digits = trimmed.replace(/[^\d]/g, "");
   return keepPlus ? `+${digits}` : digits;
 }
-function smsHref(phone = "") {
-  const p = normalizePhone(phone);
-  return `sms:${p}`;
+function telHref(p = "") {
+  return `tel:${normalizePhone(p)}`;
 }
-function telHref(phone = "") {
-  return `tel:${normalizePhone(phone)}`;
+function isMobileUA() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
+function smsHrefOrNull(p = "") {
+  return isMobileUA() ? `sms:${normalizePhone(p)}` : null;
+}
+
 const Highlight = React.memo(function Highlight({ text, keyword }) {
   if (!keyword) return <>{text}</>;
   const parts = String(text).split(new RegExp(`(${keyword})`, "gi"));
@@ -49,8 +67,8 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
         key={i}
         component="span"
         sx={{
-          bgcolor: "warning.light",
-          color: "black",
+          bgcolor: "rgba(76,187,23,0.28)",
+          color: "#fff",
           px: 0.5,
           borderRadius: 0.5,
           fontWeight: 700,
@@ -64,21 +82,18 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
   );
 });
 
-// ---- component -----------------------------------------------
 export default function DriverDirectoryProListView() {
+  const theme = useTheme();
   const [search, setSearch] = React.useState("");
-
-  // Map your DRIVER_LIST to grid rows
   const rows = React.useMemo(
     () =>
       DRIVER_LIST.map((d) => ({
-        id: d.lrp || d.email, // stable id
+        id: d.lrp || d.email,
         ...d,
       })),
     [],
   );
 
-  // One “list view” column renders the whole card-like row
   const columns = React.useMemo(
     () => [
       {
@@ -92,94 +107,200 @@ export default function DriverDirectoryProListView() {
           const d = params.row;
           const initials = getInitials(d.name);
           const tel = telHref(d.phone);
-          const sms = smsHref(d.phone);
-          const mailto = `mailto:${d.email}`;
+          const sms = smsHrefOrNull(d.phone);
+          const email = `mailto:${d.email}`;
+
+          const onCopy = async () => {
+            try {
+              await navigator.clipboard.writeText(d.phone);
+            } catch {}
+          };
 
           return (
             <Stack
               direction="row"
               spacing={2}
-              sx={{ py: 1.25, alignItems: "center", width: "100%" }}
+              sx={{
+                alignItems: "center",
+                width: "100%",
+                py: 1.25,
+              }}
             >
-              <Avatar sx={{ width: 40, height: 40, fontWeight: 700 }}>
-                {initials}
-              </Avatar>
+              <Box
+                sx={{
+                  position: "relative",
+                  borderRadius: "50%",
+                  p: 0.5,
+                  background: `radial-gradient(120% 120% at 50% 60%, rgba(76,187,23,0.25) 0%, rgba(76,187,23,0) 70%)`,
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    bgcolor: LRP.black,
+                    border: `2px solid ${LRP.green}`,
+                    fontWeight: 800,
+                    color: "#fff",
+                  }}
+                >
+                  {initials}
+                </Avatar>
+              </Box>
 
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={{ xs: 1, md: 0.5 }}
+                  alignItems={{ xs: "flex-start", md: "center" }}
                   justifyContent="space-between"
-                  spacing={0.5}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography fontWeight={700} noWrap>
+                    <Typography
+                      fontWeight={800}
+                      sx={{
+                        color: "#fff",
+                        textShadow: `0 0 6px rgba(76,187,23,0.45)`,
+                      }}
+                      noWrap
+                    >
                       <Highlight text={`${d.name} (${d.lrp})`} keyword={search} />
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      noWrap
-                      sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={0.75}
+                      sx={{ color: LRP.textDim, mt: 0.25, flexWrap: "wrap" }}
                     >
                       <LocalShippingIcon fontSize="inherit" />
-                      {Array.isArray(d.vehicles) && d.vehicles.length > 0 ? (
-                        <Box sx={{ display: "inline-flex", gap: 0.5, flexWrap: "wrap" }}>
-                          {d.vehicles.slice(0, 3).map((v, i) => (
-                            <VehicleChip key={i} vehicle={v} />
-                          ))}
-                          {d.vehicles.length > 3 && (
-                            <Chip
-                              size="small"
-                              label={`+${d.vehicles.length - 3}`}
-                              variant="outlined"
+                      <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap" }}>
+                        {Array.isArray(d.vehicles) &&
+                          d.vehicles.slice(0, 4).map((v, i) => (
+                            <VehicleChip
+                              key={i}
+                              vehicle={v}
+                              sx={{
+                                "& .MuiChip-root, &": {
+                                  bgcolor: LRP.chipBg,
+                                  color: "#fff",
+                                  border: `1px solid ${LRP.chipBorder}`,
+                                  borderRadius: "999px",
+                                  fontWeight: 700,
+                                  px: 0.75,
+                                  height: 24,
+                                },
+                              }}
                             />
-                          )}
-                        </Box>
-                      ) : (
-                        <span>—</span>
-                      )}
-                    </Typography>
+                          ))}
+                        {Array.isArray(d.vehicles) && d.vehicles.length > 4 && (
+                          <Chip
+                            size="small"
+                            label={`+${d.vehicles.length - 4}`}
+                            sx={{
+                              bgcolor: LRP.chipBg,
+                              color: "#fff",
+                              border: `1px solid ${LRP.chipBorder}`,
+                              borderRadius: "999px",
+                              fontWeight: 700,
+                              height: 24,
+                            }}
+                          />
+                        )}
+                      </Stack>
+                    </Stack>
 
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: LRP.textDim, display: "block", mt: 0.25 }}
+                    >
                       <Highlight text={d.phone} keyword={search} /> ·{" "}
                       <Highlight text={d.email} keyword={search} />
                     </Typography>
                   </Box>
 
-                  {/* Actions: compact on mobile, labeled on md+ */}
-                  <Box sx={{ flexShrink: 0 }}>
-                    <Box sx={{ display: { xs: "none", md: "block" } }}>
-                      <ButtonGroup size="small" variant="outlined">
-                        <Button component="a" href={tel} startIcon={<PhoneIcon />} aria-label={`Call ${d.name}`}>
-                          Call
-                        </Button>
-                        <Button component="a" href={sms} startIcon={<SmsIcon />} aria-label={`Text ${d.name}`}>
+                  {/* Actions */}
+                  <Stack
+                    direction="row"
+                    spacing={0.75}
+                    sx={{ flexShrink: 0, alignItems: "center" }}
+                  >
+                    <ButtonGroup
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        display: { xs: "none", md: "inline-flex" },
+                        "& .MuiButton-root": {
+                          borderColor: "rgba(76,187,23,0.45)",
+                          color: "#fff",
+                          textTransform: "none",
+                          "&:hover": {
+                            borderColor: LRP.green,
+                            boxShadow: `0 0 12px rgba(76,187,23,0.45) inset`,
+                          },
+                        },
+                      }}
+                    >
+                      <Button component="a" href={tel} startIcon={<PhoneIcon />}>
+                        Call
+                      </Button>
+                      {sms ? (
+                        <Button component="a" href={sms} startIcon={<SmsIcon />}>
                           SMS
                         </Button>
-                        <Button component="a" href={mailto} startIcon={<EmailIcon />} aria-label={`Email ${d.name}`}>
-                          Email
+                      ) : (
+                        <Button startIcon={<SmsIcon />} onClick={onCopy}>
+                          SMS
                         </Button>
-                      </ButtonGroup>
-                    </Box>
-                    <Stack direction="row" spacing={0.5} sx={{ display: { xs: "flex", md: "none" } }}>
+                      )}
+                      <Button component="a" href={email} startIcon={<EmailIcon />}>
+                        Email
+                      </Button>
+                    </ButtonGroup>
+
+                    {/* Compact icons on mobile */}
+                    <Stack direction="row" spacing={0.25} sx={{ display: { xs: "flex", md: "none" } }}>
                       <Tooltip title="Call">
-                        <IconButton component="a" href={tel} size="small" aria-label={`Call ${d.name}`}>
+                        <IconButton component="a" href={tel} size="small" sx={iconBtnSx()}>
                           <PhoneIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="SMS">
-                        <IconButton component="a" href={sms} size="small" aria-label={`Text ${d.name}`}>
+                        <IconButton
+                          component={sms ? "a" : "button"}
+                          href={sms || undefined}
+                          onClick={!sms ? onCopy : undefined}
+                          size="small"
+                          sx={iconBtnSx()}
+                        >
                           <SmsIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Email">
-                        <IconButton component="a" href={mailto} size="small" aria-label={`Email ${d.name}`}>
+                        <IconButton component="a" href={email} size="small" sx={iconBtnSx()}>
                           <EmailIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+                      {/* quick copy on mobile */}
+                      <Tooltip title="Copy #">
+                        <IconButton onClick={onCopy} size="small" sx={iconBtnSx()}>
+                          <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Messages Web">
+                        <IconButton
+                          component="a"
+                          href="https://messages.google.com/web"
+                          target="_blank"
+                          rel="noopener"
+                          size="small"
+                          sx={iconBtnSx()}
+                        >
+                          <OpenInNewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
-                  </Box>
+                  </Stack>
                 </Stack>
               </Box>
             </Stack>
@@ -191,44 +312,134 @@ export default function DriverDirectoryProListView() {
   );
 
   return (
-    <Box sx={{ height: 600, width: "100%" }}>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
+    <Box
+      sx={{
+        width: "100%",
+        "& *": { fontFamily: theme.typography.fontFamily },
+      }}
+    >
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{
+          fontWeight: 900,
+          color: "#fff",
+          textShadow: `0 0 12px rgba(76,187,23,0.6)`,
+        }}
+      >
         📇 Driver Directory
       </Typography>
 
-      <DataGridPro
-        rows={rows}
-        columns={columns}
-        // “List view” essentials
-        getRowHeight={() => "auto"} // allow multi-line / chips to expand the row
-        disableColumnMenu
-        disableColumnSelector
-        density="comfortable"
-        hideFooterSelectedRowCount
-        // Quick filter in toolbar (wired to our search state for highlight)
-        slots={{ toolbar: GridToolbar }}
-        slotProps={{
-          toolbar: {
-            showQuickFilter: true,
-            quickFilterProps: {
-              debounceMs: 150,
-              placeholder: "Search name, LRP #, email, vehicle…",
-              InputProps: { startAdornment: <SearchIcon fontSize="small" />, size: "small" },
-              onChange: (e) => setSearch(e.target.value),
-              value: search,
-            },
-          },
-        }}
-        initialState={{
-          pagination: { paginationModel: { pageSize: 25, page: 0 } },
-        }}
-        pageSizeOptions={[10, 25, 50, 100]}
-        // Accessibility / focus polish
+      {/* Quick filter bar */}
+      <Box
         sx={{
-          "& .MuiDataGrid-row": { alignItems: "stretch" },
-          "& .MuiDataGrid-cell": { py: 0, borderBottomStyle: "dashed" },
+          mb: 1,
+          borderRadius: 2,
+          p: 1,
+          background:
+            "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
+          border: `1px solid rgba(76,187,23,0.35)`,
         }}
-      />
+      >
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <SearchIcon sx={{ color: LRP.green }} />
+          <GridToolbarQuickFilter
+            quickFilterParser={(val) => val.split(/\s+/)}
+            onChange={(e) => setSearch(e.target.value)}
+            value={search}
+            placeholder="Search name, LRP #, email, vehicle…"
+            debounceMs={120}
+          />
+        </Stack>
+      </Box>
+
+      <Box
+        sx={{
+          height: 640,
+          width: "100%",
+          "& .MuiDataGrid-root": { border: "none" },
+        }}
+      >
+        <DataGridPro
+          rows={rows}
+          columns={columns}
+          getRowHeight={() => "auto"}
+          disableColumnMenu
+          disableColumnSelector
+          density="comfortable"
+          hideFooterSelectedRowCount
+          initialState={{
+            pagination: { paginationModel: { pageSize: 25, page: 0 } },
+          }}
+          pageSizeOptions={[10, 25, 50, 100]}
+          sx={{
+            bgcolor: LRP.black,
+            color: "#fff",
+            borderRadius: 2,
+            border: `1px solid rgba(255,255,255,0.06)`,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+            "--DataGrid-containerBackground": LRP.card,
+            "& .MuiDataGrid-columnHeaders": {
+              bgcolor: "transparent",
+              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+              "& .MuiDataGrid-columnHeaderTitle": {
+                fontWeight: 800,
+                letterSpacing: 0.4,
+              },
+            },
+            "& .MuiDataGrid-row": {
+              position: "relative",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                background: "transparent",
+              },
+              "&:hover": {
+                background:
+                  "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
+                boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
+                "&::before": { background: LRP.green },
+              },
+            },
+            "& .MuiDataGrid-cell": {
+              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+              py: 0,
+            },
+            "& .MuiCheckbox-root.Mui-checked": {
+              color: LRP.green,
+            },
+            "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
+            "& .MuiButtonBase-root.MuiIconButton-root": {
+              color: "#fff",
+            },
+          }}
+        />
+      </Box>
+
+      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
+      <Typography variant="caption" sx={{ color: LRP.textDim }}>
+        Lake Ride Pros • Real Rides. Real Pros.
+      </Typography>
     </Box>
   );
+}
+
+// shared icon button style
+function iconBtnSx() {
+  return {
+    color: "#fff",
+    border: `1px solid rgba(76,187,23,0.35)`,
+    borderRadius: 2,
+    "&:hover": {
+      borderColor: "#4cbb17",
+      boxShadow: `0 0 10px rgba(76,187,23,0.45) inset`,
+      backgroundColor: "rgba(76,187,23,0.06)",
+    },
+  };
 }
