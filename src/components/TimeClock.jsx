@@ -39,11 +39,11 @@ import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { useAuth } from "../context/AuthContext.jsx";
+import { fmtDateTime, minutesToHMM } from "../utils/timeUtils";
 
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
-import { fmtDateTime, minutesToHMM } from "../utils/timeUtils";
 
 const bcName = "lrp-timeclock";
 

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
+
 import { subscribeClaimedRides } from "../hooks/api";
+
+import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
 import { rideColumns } from "./rides/rideColumns.js";
 
 export default function ClaimedRidesGrid() {

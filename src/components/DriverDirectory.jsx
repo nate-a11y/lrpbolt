@@ -24,8 +24,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
-// Local
 import DRIVER_LIST from "../data/driverDirectory";
+
 import VehicleChip from "./VehicleChip";
 
 // LRP brand tokens
