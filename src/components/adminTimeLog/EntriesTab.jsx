@@ -1,24 +1,15 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  Box,
-  Paper,
-  CircularProgress,
-  Alert,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-} from "@mui/material";
+import { Box, Paper, CircularProgress, Alert, TextField } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { doc, deleteDoc } from "firebase/firestore";
+import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
-import { buildNativeActionsColumn } from "../../columns/nativeActions.jsx";
+import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
+import { patchTimeLog } from "../../hooks/api";
 import { enrichDriverNames } from "../../services/normalizers";
 import { formatDateTime } from "../../utils/formatters.js";
 
@@ -30,42 +21,80 @@ export default function EntriesTab() {
   const [startFilter, setStartFilter] = useState(null);
   const [endFilter, setEndFilter] = useState(null);
   const [search, setSearch] = useState("");
-  const [editRow, setEditRow] = useState(null);
+  const apiRef = useGridApiRef();
+  const [rowModesModel, setRowModesModel] = useState({});
 
-  const handleEdit = useCallback((row) => {
-    setEditRow(row);
-  }, []);
-
-  const handleEditSave = useCallback(async () => {
+  const handleDelete = useCallback(async (row) => {
+    if (!window.confirm("Delete this time log?")) return;
     try {
-      await updateDoc(doc(db, "timeLogs", editRow.id), {
-        driver: editRow.driverEmail,
-      });
-      setEditRow(null);
+      await deleteDoc(doc(db, "timeLogs", row.id));
     } catch (e) {
       console.error(e);
-      alert("Failed to update time log");
+      alert("Failed to delete time log");
     }
-  }, [editRow]);
+  }, []);
 
-    const handleDelete = useCallback(async (row) => {
-      if (!window.confirm("Delete this time log?")) return;
-      try {
-        await deleteDoc(doc(db, "timeLogs", row.id));
-      } catch (e) {
-        console.error(e);
-        alert("Failed to delete time log");
-      }
-    }, []);
+  const handleProcessRowUpdate = useCallback(async (newRow, oldRow) => {
+    try {
+      await patchTimeLog(newRow.id, {
+        driver: newRow.driver,
+        rideId: newRow.rideId,
+        startTime: newRow.startTime,
+        endTime: newRow.endTime,
+        loggedAt: newRow.loggedAt,
+        durationMin: newRow.duration,
+        note: newRow.note,
+      });
+      return newRow;
+    } catch (e) {
+      console.error(e);
+      alert("Update failed");
+      return oldRow;
+    }
+  }, []);
+
+  const overrides = useMemo(
+    () => ({
+      driver: { editable: true },
+      rideId: { editable: true },
+      startTime: {
+        editable: true,
+        type: "dateTime",
+        valueGetter: (p) => p?.row?.startTime?.toDate?.() || null,
+      },
+      endTime: {
+        editable: true,
+        type: "dateTime",
+        valueGetter: (p) => p?.row?.endTime?.toDate?.() || null,
+      },
+      duration: { editable: true, type: "number" },
+      loggedAt: {
+        editable: true,
+        type: "dateTime",
+        valueGetter: (p) => p?.row?.loggedAt?.toDate?.() || null,
+      },
+      note: { editable: true },
+    }),
+    [],
+  );
 
   const actionsColumn = useMemo(
     () =>
-      buildNativeActionsColumn({
-        onEdit: (id, row) => handleEdit(row),
+      buildRowEditActionsColumn({
+        apiRef,
+        rowModesModel,
+        setRowModesModel,
         onDelete: async (id, row) => await handleDelete(row),
       }),
-    [handleEdit, handleDelete],
+    [apiRef, rowModesModel, handleDelete],
   );
+
+  const handleRowEditStart = (params, event) => {
+    event.defaultMuiPrevented = true;
+  };
+  const handleRowEditStop = (params, event) => {
+    event.defaultMuiPrevented = true;
+  };
 
     useEffect(() => {
       const unsub = subscribeTimeLogs(
@@ -191,30 +220,18 @@ export default function EntriesTab() {
           }}
           order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note","id","userEmail","driverId","mode"]}
           forceHide={["note","id","userEmail","driverId","mode","driver","driverEmail"]}
+          overrides={overrides}
           actionsColumn={actionsColumn}
           loading={loading}
+          editMode="row"
+          rowModesModel={rowModesModel}
+          onRowModesModelChange={(m) => setRowModesModel(m)}
+          processRowUpdate={handleProcessRowUpdate}
+          onRowEditStart={handleRowEditStart}
+          onRowEditStop={handleRowEditStop}
+          apiRef={apiRef}
+          experimentalFeatures={{ newEditingApi: true }}
         />
-      <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
-        <DialogTitle>Edit Driver</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Driver"
-            value={editRow?.driverEmail || ""}
-            onChange={(e) =>
-              setEditRow((r) => ({ ...r, driverEmail: e.target.value }))
-            }
-            fullWidth
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditRow(null)}>Cancel</Button>
-          <Button onClick={handleEditSave} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Paper>
   );
 }
