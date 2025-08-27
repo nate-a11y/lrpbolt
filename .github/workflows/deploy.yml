@@ -119,6 +119,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify WebP assets
+        run: npm run images:verify
+
       - name: Lint
         run: |
           if npm ls eslint --depth=0 >/dev/null 2>&1; then npm run lint --if-present; else echo "Skipping lint"; fi
@@ -130,6 +133,7 @@ jobs:
       - name: Build (Vite)
         env:
           MUI_X_LICENSE_KEY: ${{ secrets.YOUR_MUI_PRO_KEY }}
+          DISABLE_IMG_OPT: '1'
         run: npm run build
 
       - name: Verify SW files exist

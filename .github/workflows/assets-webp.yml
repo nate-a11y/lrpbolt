@@ -1,0 +1,33 @@
+name: Build WebP Assets
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'public/DropOffPics/**/*.{png,jpg,jpeg}'
+      - 'src/assets/**/*.{png,jpg,jpeg}'
+  workflow_dispatch:
+
+jobs:
+  webp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run images:build
+
+      - name: Commit WebP outputs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(images): update generated .webp assets'
+          file_pattern: 'public/webp/**'
