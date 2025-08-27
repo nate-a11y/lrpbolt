@@ -3,6 +3,15 @@ name: Build & Deploy LRP (beast mode)
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.*'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'functions/**'   # still trigger workflow if functions changed; job-level filter will split
+      - '.github/workflows/**'
   workflow_dispatch:
 
 concurrency:
@@ -21,7 +30,6 @@ jobs:
           node-version: 20
           cache: npm
 
-      # Ensure lockfile so npm ci is deterministic
       - name: Ensure package-lock.json
         run: |
           if [ ! -f package-lock.json ]; then
@@ -29,11 +37,9 @@ jobs:
             npm install --package-lock-only --no-audit --no-fund
           fi
 
-  # ---- Required secret gate ----
       - name: Validate required secrets
         shell: bash
         env:
-          # Vite client env
           VITE_CALENDAR_API_KEY:             ${{ secrets.VITE_CALENDAR_API_KEY }}
           VITE_CALENDAR_ID:                  ${{ secrets.VITE_CALENDAR_ID }}
           VITE_FIREBASE_API_KEY:             ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -50,10 +56,7 @@ jobs:
           VITE_TIME_LOG_CSV:                 ${{ secrets.VITE_TIME_LOG_CSV }}
           VITE_DROP_DAILY_URL:               ${{ secrets.VITE_DROP_DAILY_URL }}
           VITE_SMS_TEST_TO:                  ${{ secrets.VITE_SMS_TEST_TO }}
-          VITE_FCM_VAPID_KEY_ALT:            ${{ secrets.VITE_FCM_VAPID_KEY }}
           VITE_MUI_PRO_KEY:                  ${{ secrets.YOUR_MUI_PRO_KEY }}
-
-          # FTP deploy
           HOSTINGER_FTP_HOST:                ${{ secrets.HOSTINGER_FTP_HOST }}
           HOSTINGER_FTP_USERNAME:            ${{ secrets.HOSTINGER_FTP_USERNAME }}
           HOSTINGER_FTP_PASSWORD:            ${{ secrets.HOSTINGER_FTP_PASSWORD }}
@@ -77,10 +80,8 @@ jobs:
           if [ "$missing" -ne 0 ]; then exit 1; fi
           echo "✅ All required secrets present"
 
-      # ---- Write Vite envs ----
       - name: Create .env and .env.production
         run: |
-          # Base .env for dev/build
           cat > .env << 'EOF'
           VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}
           VITE_CALENDAR_ID=${{ secrets.VITE_CALENDAR_ID }}
@@ -91,29 +92,6 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}
-          # If you also store FCM under a different name, expose both:
-          VITE_FCM_VAPID_KEY=${{ secrets.VITE_FCM_VAPID_KEY }}
-          VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
-          VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}
-          VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}
-          VITE_DROP_DAILY_URL=${{ secrets.VITE_DROP_DAILY_URL }}
-          VITE_SMS_TEST_TO=${{ secrets.VITE_SMS_TEST_TO }}
-          # MUI Pro license (client-side)
-          VITE_MUI_PRO_KEY=${{ secrets.YOUR_MUI_PRO_KEY }}
-          EOF
-
-          # Production overrides/additions
-          cat > .env.production << 'EOF'
-          VITE_CALENDAR_API_KEY=${{ secrets.VITE_CALENDAR_API_KEY }}
-          VITE_CALENDAR_ID=${{ secrets.VITE_CALENDAR_ID }}
-          VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_FCM_VAPID_KEY=${{ secrets.VITE_FCM_VAPID_KEY }}
           VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
@@ -124,89 +102,44 @@ jobs:
           VITE_MUI_PRO_KEY=${{ secrets.YOUR_MUI_PRO_KEY }}
           EOF
 
-      - name: Create .env.production
-        run: |
-          echo "VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}" >> .env.production
-
-      - name: Write client env for Vite
-        run: |
-          echo "VITE_SMS_TEST_TO=${{ secrets.VITE_SMS_TEST_TO }}" >> .env.production
-
+          cp .env .env.production
 
       - name: Set build version
         run: |
-          # Install jq if not already available
           if ! command -v jq &> /dev/null; then
-          sudo apt-get update && sudo apt-get install -y jq
+            sudo apt-get update && sudo apt-get install -y jq
           fi
-
-          # Read base version from package.json (fallback to 0.0.0)
           BASE_VERSION=$(jq -r '.version // "0.0.0"' package.json)
-
-          # Get today's date
-          DATE=$(date +"%Y-%m-%d")
           DATE_TAG=$(date +"%Y%m%d")
-
-          # Use GitHub Actions run number as build count
           COUNT=${GITHUB_RUN_NUMBER}
-
-          # Compose final version
           FINAL_VERSION="${BASE_VERSION}-${DATE_TAG}.${COUNT}"
-
-          # Replace existing VITE_APP_VERSION entry in .env (avoid duplicates)
-          sed -i '/^VITE_APP_VERSION=/d' .env 2>/dev/null || true
-          echo "VITE_APP_VERSION=$FINAL_VERSION" >> .env
-
-          # Pretty print for Actions log
-          echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📦 LRP Driver Portal v$BASE_VERSION"
-          echo "   🗓  Build Date: $DATE"
-          echo "   🔢 Build Number: #$COUNT"
-          echo "   🏷  Full Version: $FINAL_VERSION"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-
-          # Set as GitHub Actions output
-          echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+          sed -i '/^VITE_APP_VERSION=/d' .env .env.production 2>/dev/null || true
+          echo "VITE_APP_VERSION=$FINAL_VERSION" | tee -a .env .env.production
 
       - name: Install dependencies
         run: npm ci
 
-      # Quality gates — keep them beast mode
       - name: Lint
         run: |
-          if [ -f package.json ] && npm ls eslint --depth=0 >/dev/null 2>&1; then
-          npm run lint --if-present
-          else
-          echo "⚠️ Skipping lint — eslint not installed"
-          fi
+          if npm ls eslint --depth=0 >/dev/null 2>&1; then npm run lint --if-present; else echo "Skipping lint"; fi
 
       - name: Test
         run: |
-          if npm ls vitest --depth=0 >/dev/null 2>&1; then
-          npm test
-          else
-          echo "⚠️ Skipping tests — vitest not installed"
-          fi
+          if npm ls vitest --depth=0 >/dev/null 2>&1; then npm test; else echo "Skipping tests"; fi
 
       - name: Build (Vite)
         env:
-          # also inject MUI key explicitly to Vite process
           MUI_X_LICENSE_KEY: ${{ secrets.YOUR_MUI_PRO_KEY }}
         run: npm run build
 
-      # Make sure the SW actually exists in the build
       - name: Verify SW files exist
         run: |
           test -f dist/firebase-messaging-sw.js || { echo "::error::dist/firebase-messaging-sw.js missing"; exit 1; }
           test -f dist/manifest.webmanifest || true
 
-      # Write Hostinger .htaccess so SW/manifest bypass SPA rewrite
       - name: Write Hostinger .htaccess
         run: |
           cat > dist/.htaccess <<'HTACCESS'
-          # ---------- MIME hints ----------
           AddType application/javascript .js .mjs
           AddType application/json .json .webmanifest
           AddType text/css .css
@@ -214,41 +147,28 @@ jobs:
           AddType image/x-icon .ico
           AddType image/svg+xml .svg
           AddType image/webp .webp
-
-          # ---------- React SPA + PWA routing ----------
           RewriteEngine On
           RewriteBase /
-
-          # 1) Serve existing files/directories as-is
           RewriteCond %{REQUEST_FILENAME} -f [OR]
           RewriteCond %{REQUEST_FILENAME} -d
           RewriteRule ^ - [L]
-
-          # 2) Exempt PWA critical files from SPA fallback
           RewriteRule ^(firebase-messaging-sw\.js|sw\.js|service-worker\.js|manifest\.webmanifest|robots\.txt|sitemap\.xml)$ - [L]
           RewriteRule ^icons/ - [L]
           RewriteRule ^assets/ - [L]
-
-          # 3) Everything else -> index.html
           RewriteRule . /index.html [L]
           HTACCESS
 
-
       - name: Verify build output
         run: |
-          if [ ! -d "dist/assets" ]; then
-            echo "❌ dist/assets missing"; exit 1; fi
-          if ! ls dist/assets/main-*.js 1> /dev/null 2>&1; then
-            echo "❌ main-*.js not found"; exit 1; fi
+          [ -d "dist/assets" ] || { echo "❌ dist/assets missing"; exit 1; }
+          ls dist/assets/main-*.js >/dev/null 2>&1 || { echo "❌ main-*.js not found"; exit 1; }
           echo "✅ Build artifacts verified"
 
       - name: Validate precache/service worker
         run: |
-          SW="dist/sw.js"
-          if [ ! -f "$SW" ]; then echo "❌ sw.js missing"; exit 1; fi
+          [ -f dist/sw.js ] || { echo "❌ sw.js missing"; exit 1; }
           echo "✅ Service worker present"
 
-      # Deploy static site to Hostinger
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -264,82 +184,92 @@ jobs:
             **/.github*
             **/node_modules/*
             **/src/*
-            
+
   functions:
     runs-on: ubuntu-latest
     needs: build
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            functions/package-lock.json
 
-      - name: Validate required secrets
-        shell: bash
+      # ---- Skip functions job entirely if nothing changed under functions/ ----
+      - name: Determine diff base
+        id: base
         run: |
-          set -euo pipefail
-          missing=0
-          if [ -z "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ]; then
-            echo "::error::Missing GOOGLE_APPLICATION_CREDENTIALS_JSON"
-            missing=1
+          if git ls-remote --exit-code origin main >/dev/null 2>&1; then
+            echo "base_ref=$(git merge-base HEAD origin/main)" >> "$GITHUB_OUTPUT"
+          else
+            echo "base_ref=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
           fi
-          if [ -z "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
-            echo "::error::Missing FIREBASE_PROJECT_ID"
-            missing=1
+
+      - name: Detect functions changes
+        id: diff
+        run: |
+          BASE="${{ steps.base.outputs.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- functions/ | tr -d '\r')
+          if [ -n "$CHANGED" ]; then
+            echo "changed=true"  >> "$GITHUB_OUTPUT"
+            printf '%s\n' "$CHANGED"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No function changes."
           fi
-          if [ -z "${{ secrets.MANUAL_DROP_TOKEN }}" ]; then
-            echo "::warning::MANUAL_DROP_TOKEN not set (only needed if your functions expect it)"
-          fi
-          if [ "$missing" -ne 0 ]; then
-            exit 1
-          fi
+
+      - name: Stop if no changes
+        if: steps.diff.outputs.changed != 'true'
+        run: echo "✅ No changes in functions/ — skipping Functions deploy."
 
       - name: Write service account key
+        if: steps.diff.outputs.changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.gcloud"
-          # Write JSON exactly as-is (no interpolation)
           cat > "$HOME/.gcloud/key.json" <<'JSON'
           ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
           JSON
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/.gcloud/key.json" >> "$GITHUB_ENV"
+          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> "$GITHUB_ENV"
 
-      - name: Export MANUAL_DROP_TOKEN (optional)
-        shell: bash
-        run: |
-          if [ -n "${{ secrets.MANUAL_DROP_TOKEN }}" ]; then
-            echo "MANUAL_DROP_TOKEN=${{ secrets.MANUAL_DROP_TOKEN }}" >> "$GITHUB_ENV"
-            echo "Set MANUAL_DROP_TOKEN in env."
-          else
-            echo "MANUAL_DROP_TOKEN not set; continuing."
-          fi
       - name: Install Firebase CLI
+        if: steps.diff.outputs.changed == 'true'
         run: npm i -g firebase-tools@14
 
       - name: Install Functions deps
+        if: steps.diff.outputs.changed == 'true'
         working-directory: functions
         run: npm ci
 
-      - name: Set Twilio secrets in Firebase
+      - name: Set Twilio secrets in Firebase (idempotent)
+        if: steps.diff.outputs.changed == 'true'
         env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN:  ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_FROM:        ${{ secrets.TWILIO_FROM }}
         run: |
-          firebase functions:secrets:set TWILIO_ACCOUNT_SID <<< "$TWILIO_ACCOUNT_SID"
-          firebase functions:secrets:set TWILIO_AUTH_TOKEN  <<< "$TWILIO_AUTH_TOKEN"
-          firebase functions:secrets:set TWILIO_FROM        <<< "$TWILIO_FROM"
+          firebase functions:secrets:set TWILIO_ACCOUNT_SID --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_ACCOUNT_SID"
+          firebase functions:secrets:set TWILIO_AUTH_TOKEN  --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_AUTH_TOKEN"
+          firebase functions:secrets:set TWILIO_FROM        --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_FROM"
 
       - name: Deploy Firestore Rules
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
 
-      - name: Deploy Functions
-        run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
+      - name: Deploy Functions (changed functions only)
+        if: steps.diff.outputs.changed == 'true'
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
