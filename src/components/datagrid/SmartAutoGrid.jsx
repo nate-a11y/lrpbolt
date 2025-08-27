@@ -129,6 +129,7 @@ export default function SmartAutoGrid({
   columnsCompat,
   showToolbar = true,
   getRowId,
+  initialState: initialStateProp,
   ...rest
 }) {
   const autoCols = useAutoColumns(rows, { headerMap, order, hide, overrides, forceHide });
@@ -143,18 +144,22 @@ export default function SmartAutoGrid({
     getRowId ||
     ((row) => row?.id ?? row?.uid ?? row?._id ?? String(row?.docId ?? row?.key ?? ""));
 
+  const mergedInitialState = useMemo(
+    () => ({ density: "compact", ...initialStateProp }),
+    [initialStateProp],
+  );
+
   return (
     <DataGridPro
       rows={rows}
       columns={columns}
       getRowId={stableGetRowId}
-      // Density is configurable by the toolbar; this is just the initial value.
-      density="compact"
       disableRowSelectionOnClick
       checkboxSelection={false}
       autoHeight
       pagination
       pageSizeOptions={[25, 50, 100]}
+      initialState={mergedInitialState}
       slots={showToolbar ? { toolbar: GridToolbar } : undefined}
       slotProps={
         showToolbar
