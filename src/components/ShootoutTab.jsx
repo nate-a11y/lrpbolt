@@ -1,8 +1,20 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Box, Card, CardContent, CardHeader, Typography, Stack, IconButton,
-  Button, Divider, Snackbar, Alert, Chip, Paper, useMediaQuery,
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  Typography,
+  Stack,
+  IconButton,
+  Button,
+  Divider,
+  Snackbar,
+  Alert,
+  Chip,
+  Paper,
+  useMediaQuery,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
@@ -13,8 +25,8 @@ import PeopleIcon from "@mui/icons-material/People";
 import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import { DataGridPro } from "@mui/x-data-grid-pro";
+
 import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
-import { shootoutDetailColumns, shootoutSummaryColumns } from "./adminLogs/columns.js";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -30,6 +42,7 @@ import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
 import { resolveSmsTo } from "../services/smsRecipients.js";
 
+import { shootoutDetailColumns, shootoutSummaryColumns } from "./adminLogs/columns.js";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
 
 dayjs.extend(durationPlugin);
