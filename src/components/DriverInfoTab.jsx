@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -8,14 +8,12 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  TextField,
-  InputAdornment,
   Alert,
   Stack,
   Link as MUILink,
 } from "@mui/material";
+import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import SearchIcon from "@mui/icons-material/Search";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -56,16 +54,50 @@ const GATE_CODES = [
   { name: "Sac Road", codes: ["#6423"] },
 ];
 
+function NoRowsOverlay() {
+  return (
+    <Typography sx={{ p: 2, textAlign: "center" }} color="text.secondary">
+      No gate codes available.
+    </Typography>
+  );
+}
+
+function NoResultsOverlay() {
+  return (
+    <Typography sx={{ p: 2, textAlign: "center" }} color="text.secondary">
+      No matching locations found.
+    </Typography>
+  );
+}
+
 export default function DriverInfoTab() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredCodes = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return GATE_CODES;
-    return GATE_CODES.filter(({ name }) => name.toLowerCase().includes(q));
-  }, [searchTerm]);
+  const rows = useMemo(() => GATE_CODES, []);
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "name",
+        headerName: "Location",
+        flex: 1,
+        minWidth: 150,
+        valueGetter: (params) => params?.row?.name ?? "N/A",
+      },
+      {
+        field: "codes",
+        headerName: "Gate Codes",
+        flex: 1,
+        minWidth: 150,
+        valueGetter: (params) =>
+          Array.isArray(params?.row?.codes) ? params.row.codes.join(", ") : "N/A",
+      },
+    ],
+    []
+  );
+
+  const getRowId = useCallback((row) => row?.name ?? "", []);
 
   const slides = useMemo(
     () => (selectedImage ? [{ src: selectedImage.mapUrl || "" }] : []),
@@ -240,36 +272,27 @@ export default function DriverInfoTab() {
           <Typography fontWeight="bold">🔐 Gate Codes & Access Notes</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <TextField
-            fullWidth
-            placeholder="Search by location..."
-            aria-label="Search locations"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            size="small"
-            sx={{ mb: 2 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
+          <DataGridPro
+            autoHeight
+            rows={rows}
+            columns={columns}
+            getRowId={getRowId}
+            disableRowSelectionOnClick
+            slots={{
+              toolbar: GridToolbar,
+              noRowsOverlay: NoRowsOverlay,
+              noResultsOverlay: NoResultsOverlay,
+            }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: {
+                  debounceMs: 300,
+                  placeholder: "Search by location...",
+                },
+              },
             }}
           />
-
-          {filteredCodes.length > 0 ? (
-            <Box component="ul" sx={{ listStyleType: "disc", pl: 3, lineHeight: 1.7, m: 0 }}>
-              {filteredCodes.map((entry) => (
-                <li key={entry.name}>
-                  <strong>{entry.name}:</strong> {entry.codes.join(", ")}
-                </li>
-              ))}
-            </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              No matching locations found.
-            </Typography>
-          )}
         </AccordionDetails>
       </Accordion>
 
