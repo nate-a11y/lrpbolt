@@ -35,19 +35,14 @@ export default function LiveRidesGrid() {
           pickupTime: "Pickup",
           rideDuration: "Dur (min)",
           rideType: "Type",
+          vehicle: "Vehicle",
+          rideNotes: "Notes",
           claimedBy: "Claimed By",
           claimedAt: "Claimed At",
+          status: "Status",
+          createdAt: "Created",
         }}
-        order={[
-          "tripId",
-          "pickupTime",
-          "rideDuration",
-          "rideType",
-          "vehicle",
-          "claimedBy",
-          "claimedAt",
-          "status",
-        ]}
+        order={["tripId","pickupTime","rideDuration","rideType","vehicle","claimedBy","claimedAt","status"]}
         actionsColumn={buildNativeActionsColumn({
           onEdit: (id, row) => handleEditRide(row),
           onDelete: async (id) => await deleteRide("liveRides", id),
