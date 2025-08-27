@@ -508,8 +508,8 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
               headerName: "Date / Vehicle",
               minWidth: 220,
               valueGetter: (params) => {
-                if (!params?.row) return "N/A";
-                return params.rowNode?.isLeaf ? "" : params.value;
+                if (!params?.rowNode) return "N/A";
+                return params.rowNode.isLeaf ? "" : params.value ?? "N/A";
               },
             }}
             initialState={{
