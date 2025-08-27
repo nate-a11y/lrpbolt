@@ -32,7 +32,7 @@ import {
   useMediaQuery,
   Stack,
 } from "@mui/material";
-import { DataGridPro, GridActionsCellItem } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -56,6 +56,7 @@ import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import PageContainer from "./PageContainer.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -515,9 +516,9 @@ export default function Tickets() {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-              <DataGridPro
+              <SmartAutoGrid
                 rows={rows}
-                columns={columns}
+                columnsCompat={columns}
                 getRowId={(r) => r.id}
                 autoHeight
                 checkboxSelection
@@ -553,6 +554,7 @@ export default function Tickets() {
                 pagination: { labelRowsPerPage: "Rows" },
               }}
               columnVisibilityModel={isSmall ? { link: false, scanStatus: false, pickup: false } : undefined}
+              showToolbar
             />
           </Box>
         )

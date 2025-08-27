@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+
 import { globby } from 'globby';
 import sharp from 'sharp';
+
 import { OUT_ROOT, outPathFor } from './shared-image-paths.mjs';
 
 const SRC_DIRS = ['public/DropOffPics', 'public/images', 'src/assets']; // adjust as needed

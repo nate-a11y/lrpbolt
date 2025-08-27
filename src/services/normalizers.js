@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { Timestamp } from "firebase/firestore";
+
 import { nullifyMissing } from "../utils/formatters";
 
 function coerceTimestamp(v) {

@@ -68,7 +68,7 @@ import DropDailyWidget from "./DropDailyWidget";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import LiveRidesGrid from "./LiveRidesGrid";
-import LRPDataGrid from "./LRPDataGrid.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 
 
@@ -1098,11 +1098,11 @@ if (totalMinutes <= 0) {
                   </Box>
                 )}
                 <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
-                  <LRPDataGrid
+                  <SmartAutoGrid
                     autoHeight
                     density="compact"
                     rows={Array.isArray(uploadedRows) ? uploadedRows.map((r, i) => ({ id: i, ...(r || {}) })) : []}
-                    columns={expectedCsvCols.map((col) => ({
+                    columnsCompat={expectedCsvCols.map((col) => ({
                       field: col,
                       headerName: col.replace(/([A-Z])/g, " $1"),
                       flex: 1,
@@ -1112,6 +1112,7 @@ if (totalMinutes <= 0) {
                     disableRowSelectionOnClick
                     loading={false}
                     checkboxSelection={false}
+                    showToolbar
                   />
                 </Box>
                 <Button

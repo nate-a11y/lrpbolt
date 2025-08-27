@@ -1,11 +1,8 @@
 /* SafeDataGrid: drop-in bulletproof wrapper for MUI DataGrid */
 import React from "react";
-import {
-  DataGridPro as DataGrid,
-  GridOverlay,
-  type GridColDef,
-} from "@mui/x-data-grid-pro";
+import { GridOverlay, type GridColDef } from "@mui/x-data-grid-pro";
 import { Box, Typography, Stack } from "@mui/material";
+import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 
 function NoRows() {
   return (
@@ -28,7 +25,7 @@ function sanitizeColumns(cols: any[]): GridColDef[] {
     .map((c) => ({ headerName: c.headerName ?? String(c.field), sortable: true, flex: 0, minWidth: 80, ...c }));
 }
 
-type Props = React.ComponentProps<typeof DataGrid>;
+type Props = React.ComponentProps<typeof SmartAutoGrid>;
 export default function SafeDataGrid(props: Props) {
   const rows = Array.isArray(props.rows) ? props.rows : [];
   const columns = sanitizeColumns((props as any).columns || []);
@@ -36,12 +33,13 @@ export default function SafeDataGrid(props: Props) {
 
   return (
     <Box sx={{ width: "100%", height: props.autoHeight ? "auto" : (props as any).height || 560 }}>
-      <DataGrid
+      <SmartAutoGrid
         rows={rows}
-        columns={columns}
+        columnsCompat={columns}
         getRowId={getRowId}
         disableRowSelectionOnClick
         slots={{ noRowsOverlay: NoRows }}
+        showToolbar
         {...props}
       />
     </Box>

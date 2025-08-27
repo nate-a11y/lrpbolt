@@ -13,7 +13,6 @@ import {
   useMediaQuery,
   MenuItem,
 } from "@mui/material";
-import { DataGridPro } from "@mui/x-data-grid-pro";
 import { doc, setDoc } from "firebase/firestore";
 
 import { ROLES, ROLE_LABELS } from "../constants/roles";
@@ -25,6 +24,8 @@ import { createUser, updateUser } from "../utils/firestoreService.js";
 import { logError } from "../utils/logError";
 import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
+
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 // --- helpers: robust parsing for lines and "email,role" ---
 function parseUserLines(input) {
@@ -434,9 +435,9 @@ export default function AdminUserManager() {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <DataGridPro
+            <SmartAutoGrid
               rows={rows || []}
-              columns={columns}
+              columnsCompat={columns}
               autoHeight
               loading={loading}
               disableRowSelectionOnClick
@@ -446,6 +447,7 @@ export default function AdminUserManager() {
               getRowId={(r) => r.id}
               experimentalFeatures={{ newEditingApi: true }}
               columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
+              showToolbar
             />
           </Box>
         )}
