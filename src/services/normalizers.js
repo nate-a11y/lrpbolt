@@ -10,7 +10,7 @@ export function normalizeTimeLog(id, d) {
     id,
     driver: safeStr(d.driverId || d.driver || d.driverName || d.driverEmail || "Unknown"),
     driverEmail: safeStr(d.driverEmail),
-    rideId: safeStr(d.rideId || d.tripId || d.ride || d.id || d.tripID),
+    rideId: safeStr(d.rideId || d.tripId || d.tripID || id),
     start,
     end,
     created: toDate(d.loggedAt || d.createdAt),

@@ -19,7 +19,7 @@ export default [
 
   // App defaults (browser ESM)
   {
-    files: ["**/*.{js,jsx,ts,tsx,mjs}"],
+    files: ["**/*.{js,jsx,mjs}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
@@ -32,13 +32,13 @@ export default [
     settings: {
       react: { version: "detect" },
       "import/resolver": {
-        node: { extensions: [".js", ".jsx", ".ts", ".tsx", ".mjs"] },
+        node: { extensions: [".js", ".jsx", ".mjs"] },
         alias: {
           map: [
             ["@", "./src"],
             ["src", "./src"]
           ],
-          extensions: [".js", ".jsx", ".ts", ".tsx"]
+          extensions: [".js", ".jsx"]
         }
       },
       // Treat packages we don't want parsed as core (avoid import/named parse of their internals)
@@ -88,7 +88,7 @@ export default [
       "import/named": "off",
       "import/namespace": "off",
       "import/default": "off",
-      "import/no-named-as-default-member": "off"
+      "import/no-named-as-default-member": "off",
     }
   },
 
@@ -117,7 +117,7 @@ export default [
 
   // Tests & mocks
   {
-    files: ["tests/**", "src/mocks/**", "**/*.{test,spec}.{js,jsx,ts,tsx}"],
+    files: ["tests/**", "src/mocks/**", "**/*.{test,spec}.{js,jsx}"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

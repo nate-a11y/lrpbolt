@@ -465,10 +465,7 @@ export function subscribeTimeLogs(onNext, onError) {
   const q = query(collection(db, "timeLogs"));
   return onSnapshot(
     q,
-    (snap) => {
-      const rows = snap.docs.map((d) => normalizeTimeLog(d.id, d.data()));
-      onNext(rows);
-    },
+    (snap) => onNext(snap.docs.map((d) => normalizeTimeLog(d.id, d.data()))),
     (err) => onError?.(err),
   );
 }
@@ -512,10 +509,7 @@ export function subscribeShootoutStats(onNext, onError) {
   const q = query(collection(db, "shootoutStats"));
   return onSnapshot(
     q,
-    (snap) => {
-      const rows = snap.docs.map((d) => normalizeShootout(d.id, d.data()));
-      onNext(rows);
-    },
+    (snap) => onNext(snap.docs.map((d) => normalizeShootout(d.id, d.data()))),
     (err) => onError?.(err),
   );
 }
@@ -613,29 +607,26 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-export function subscribeLiveRides(onNext, onError) {
-  return onSnapshot(
+export const subscribeLiveRides = (onNext, onError) =>
+  onSnapshot(
     collection(db, "liveRides"),
     (snap) => onNext(snap.docs.map((d) => normalizeRide(d.id, d.data()))),
     (err) => onError?.(err),
   );
-}
 
-export function subscribeQueueRides(onNext, onError) {
-  return onSnapshot(
+export const subscribeQueueRides = (onNext, onError) =>
+  onSnapshot(
     collection(db, "queueRides"),
     (snap) => onNext(snap.docs.map((d) => normalizeRide(d.id, d.data()))),
     (err) => onError?.(err),
   );
-}
 
-export function subscribeClaimedRides(onNext, onError) {
-  return onSnapshot(
+export const subscribeClaimedRides = (onNext, onError) =>
+  onSnapshot(
     collection(db, "claimedRides"),
     (snap) => onNext(snap.docs.map((d) => normalizeRide(d.id, d.data()))),
     (err) => onError?.(err),
   );
-}
 
 export async function addLiveRide(rideData) {
   const data = cleanData({

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid-pro";
-import { rideColumns } from "./rides/LiveQueueClaimedColumns";
+import { rideColumns } from "./rides/rideColumns";
 import { subscribeClaimedRides } from "../hooks/api";
 
 export default function ClaimedRidesGrid() {
