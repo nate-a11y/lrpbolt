@@ -24,7 +24,12 @@ function ErrorOverlay({ message }) {
 // Best-effort stable id resolver
 function defaultGetRowId(row) {
   if (!row || typeof row !== "object") return undefined;
-  return row.id || row.docId || row._id;
+  return (
+    row?.id ??
+    row?.uid ??
+    row?._id ??
+    String(row?.docId ?? row?.key ?? "")
+  );
 }
 
 const defaultValueFormatter = (params) => {

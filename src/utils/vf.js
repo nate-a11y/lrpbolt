@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { formatDateTime, safeNumber } from "./timeUtils";
 
+/** Support both DataGrid params and raw values. */
 export function extractVal(paramsOrValue) {
   if (paramsOrValue && typeof paramsOrValue === "object" && "value" in paramsOrValue) {
     return paramsOrValue.value;
@@ -27,7 +28,8 @@ export function vfBool(paramsOrValue, fallback = "N/A") {
   return fallback;
 }
 
-export function vfTime(paramsOrValue, fmt = "MMM D, YYYY h:mm A") {
+/** One-arg to avoid bad fmt injection. */
+export function vfTime(paramsOrValue) {
   const v = extractVal(paramsOrValue);
-  return formatDateTime(v, fmt);
+  return formatDateTime(v);
 }

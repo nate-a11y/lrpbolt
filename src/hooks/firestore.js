@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "src/utils/firebaseInit";
 
 import { logError } from "../utils/logError";
-import { nullifyMissing } from "../utils/formatters.js";
+import { mapSnapshotToRows } from "../services/normalizers";
 
 // Realtime listener for timeLogs collection
 export function subscribeTimeLogs(onData, onError) {
@@ -12,13 +12,7 @@ export function subscribeTimeLogs(onData, onError) {
     const q = query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
     return onSnapshot(
       q,
-      (snap) =>
-        onData(
-          snap.docs.map((d) => {
-            const data = d.data() || {};
-            return { id: d.id, ...nullifyMissing(data) };
-          }),
-        ),
+      (snap) => onData(mapSnapshotToRows("timeLogs", snap)),
       (e) => {
         logError(e, { area: "FirestoreSubscribe", comp: "subscribeTimeLogs" });
         onError?.(e);
@@ -37,13 +31,7 @@ export function subscribeShootoutStats(onData, onError) {
     const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
     return onSnapshot(
       q,
-      (snap) =>
-        onData(
-          snap.docs.map((d) => {
-            const data = d.data() || {};
-            return { id: d.id, ...nullifyMissing(data) };
-          }),
-        ),
+      (snap) => onData(mapSnapshotToRows("shootoutStats", snap)),
       (e) => {
         logError(e, { area: "FirestoreSubscribe", comp: "subscribeShootoutStats" });
         onError?.(e);

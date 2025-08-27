@@ -8,6 +8,7 @@ dayjs.extend(timezone);
 
 const DEFAULT_TZ = dayjs.tz.guess();
 
+/** Coerce many inputs to dayjs in tz, or null. */
 export function toDayjs(input, tz = DEFAULT_TZ) {
   if (!input) return null;
   if (typeof input?.toDate === "function") {
@@ -23,9 +24,16 @@ export function toDayjs(input, tz = DEFAULT_TZ) {
   return dj.isValid() ? dj.tz(tz) : null;
 }
 
+/** Safe formatter. */
 export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A", tz = DEFAULT_TZ) {
   const dj = toDayjs(input, tz);
-  return dj ? dj.format(fmt) : "N/A";
+  if (!dj) return "N/A";
+  const fmtSafe = typeof fmt === "string" ? fmt : "MMM D, YYYY h:mm A";
+  try {
+    return dj.format(fmtSafe);
+  } catch {
+    try { return dj.toISOString(); } catch { return "N/A"; }
+  }
 }
 
 export function timestampSortComparator(a, b) {

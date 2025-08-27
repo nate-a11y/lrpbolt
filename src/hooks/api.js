@@ -27,6 +27,7 @@ import { logError } from "../utils/logError";
 import { durationMinutes } from "../utils/timeUtils";
 import { normalizeTimeLog } from "../utils/normalizeTimeLog.js";
 import { nullifyMissing } from "../utils/formatters.js";
+import { mapSnapshotToRows } from "../services/normalizers";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
@@ -365,12 +366,7 @@ export function subscribeTickets(
     keyParts.join(":"),
     q,
     (snapshot) => {
-      callback(
-        snapshot.docs.map((doc) => {
-          const d = doc.data() || {};
-          return { id: doc.id, ...nullifyMissing(d) };
-        }),
-      );
+      callback(mapSnapshotToRows("tickets", snapshot));
     },
     onError,
   );
@@ -393,10 +389,7 @@ export async function fetchTickets(filters = {}) {
   constraints.push(orderBy("pickupTime", "asc"));
   const q = query(collection(db, COLLECTIONS.TICKETS), ...constraints);
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => {
-    const d = doc.data() || {};
-    return { id: doc.id, ...nullifyMissing(d) };
-  });
+  return mapSnapshotToRows("tickets", snapshot);
 }
 
 export async function fetchTicket(ticketId) {
@@ -635,39 +628,21 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
 export const subscribeLiveRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "liveRides"),
-    (snap) =>
-      onNext(
-        snap.docs.map((d) => {
-          const data = d.data() || {};
-          return { id: d.id, ...nullifyMissing(data) };
-        }),
-      ),
+    (snap) => onNext(mapSnapshotToRows("liveRides", snap)),
     (err) => onError?.(err),
   );
 
 export const subscribeQueueRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "queueRides"),
-    (snap) =>
-      onNext(
-        snap.docs.map((d) => {
-          const data = d.data() || {};
-          return { id: d.id, ...nullifyMissing(data) };
-        }),
-      ),
+    (snap) => onNext(mapSnapshotToRows("rideQueue", snap)),
     (err) => onError?.(err),
   );
 
 export const subscribeClaimedRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "claimedRides"),
-    (snap) =>
-      onNext(
-        snap.docs.map((d) => {
-          const data = d.data() || {};
-          return { id: d.id, ...nullifyMissing(data) };
-        }),
-      ),
+    (snap) => onNext(mapSnapshotToRows("claimedRides", snap)),
     (err) => onError?.(err),
   );
 
@@ -843,12 +818,7 @@ export async function fetchShootoutHistory(status, max = 100) {
   constraints.push(orderBy("startTime", "desc"), limit(max));
   const q = query(collection(db, "shootoutStats"), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => {
-      const data = d.data() || {};
-      return { id: d.id, ...nullifyMissing(data) };
-    })
-    .filter(Boolean);
+  return mapSnapshotToRows("shootoutStats", snap).filter(Boolean);
 }
 
 export function subscribeShootoutHistoryAll(
@@ -864,12 +834,7 @@ export function subscribeShootoutHistoryAll(
   const unsub = onSnapshot(
     q,
     (snap) => {
-      const rows = snap.docs
-        .map((d) => {
-          const data = d.data() || {};
-          return { id: d.id, ...nullifyMissing(data) };
-        })
-        .filter(Boolean);
+      const rows = mapSnapshotToRows("shootoutStats", snap).filter(Boolean);
       callback(rows);
     },
     (e) => {
