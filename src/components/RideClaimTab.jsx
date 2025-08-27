@@ -321,7 +321,10 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   );
 
   // Group rides by date first, then vehicle for a tree view
-  const rowGroupingModel = useMemo(() => ["timeBucket", "vehicle"], []);
+  const getTreeDataPath = useCallback(
+    (row) => [fmtDate(row.pickupTime), safe(row.vehicle)],
+    [],
+  );
 
   const onBulkClaim = useCallback(async () => {
     for (const id of selectionModel) {
@@ -499,18 +502,19 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             checkboxSelection
             disableRowSelectionOnClick
             autoHeight={false}
-            rowGroupingModel={rowGroupingModel}
-            groupingColDef={{
-              headerName: "Date / Vehicle",
-              minWidth: 220,
-              valueFormatter: (params) =>
-                params?.rowNode?.groupingField === "timeBucket"
-                  ? fmtDate(params?.value)
-                  : params?.value ?? "—",
-            }}
+            treeData
+            getTreeDataPath={getTreeDataPath}
+            groupingColDef={{ headerName: "Date / Vehicle", minWidth: 220 }}
             initialState={{
               sorting: { sortModel: [{ field: "pickupTime", sort: "asc" }] },
-              columns: { columnVisibilityModel: { rideNotes: !isMobile } },
+              columns: {
+                columnVisibilityModel: {
+                  rideNotes: !isMobile,
+                  claimedBy: false,
+                  claimedAt: false,
+                  status: false,
+                },
+              },
             }}
             onRowSelectionModelChange={(m) => setSelectionModel(asArray(m))}
             rowSelectionModel={selectionModel ?? []}
