@@ -1,6 +1,10 @@
 /* SafeDataGrid: drop-in bulletproof wrapper for MUI DataGrid */
 import React from "react";
-import { DataGrid, GridOverlay, GridColDef } from "@mui/x-data-grid";
+import {
+  DataGridPro as DataGrid,
+  GridOverlay,
+  type GridColDef,
+} from "@mui/x-data-grid-pro";
 import { Box, Typography, Stack } from "@mui/material";
 
 function NoRows() {
