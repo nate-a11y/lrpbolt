@@ -518,7 +518,7 @@ export default function Tickets() {
               <DataGridPro
                 rows={rows}
                 columns={columns}
-                getRowId={(r) => r.id ?? r._id}
+                getRowId={(r) => r.id}
                 autoHeight
                 checkboxSelection
                 pageSizeOptions={[5, 10, 25, 100]}

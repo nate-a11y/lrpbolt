@@ -271,7 +271,7 @@ export default function ShootoutStatsTab() {
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update stat")}
           rows={safeRows ?? []}
-          getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+          getRowId={(r) => r.id}
           columns={columns}
           density="compact"
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}

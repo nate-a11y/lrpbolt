@@ -135,7 +135,7 @@ export default function EditableRideGrid({
         disableRowSelectionOnClick
         getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
         initialState={initialState}
-        getRowId={(r) => r.id ?? r._id}
+        getRowId={(r) => r.id}
       />
     </Box>
   );

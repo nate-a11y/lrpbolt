@@ -533,7 +533,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             getRowClassName={getRowClassName}
             pinnedRows={{ bottom: pinnedRows }}
             sx={{ borderRadius: 2 }}
-            getRowId={(r) => r.id ?? r.ticketId ?? r._id}
+            getRowId={(r) => r.id}
           />
         </Box>
       )}

@@ -13,15 +13,8 @@ import PeopleIcon from "@mui/icons-material/People";
 import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import { DataGridPro } from "@mui/x-data-grid-pro";
-
-  import {
-    vfText,
-    vfDateTime,
-    vfDuration,
-    vfNumber,
-    safeVG,
-  } from "@/utils/gridFormatters";
-  import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
+import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
+import { shootoutDetailColumns, shootoutSummaryColumns } from "./adminLogs/columns.js";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -42,56 +35,6 @@ import useGridProDefaults from "./grid/useGridProDefaults.js";
 dayjs.extend(durationPlugin);
 
 const VEHICLES = ["LYRIQ", "Escalade IQ", "OPTIQ", "CELESTIQ"];
-
-export function buildShootoutGrid(rows = []) {
-  const columns = [
-    {
-      field: "startTime",
-      headerName: "Start",
-      valueGetter: safeVG(({ row }) => row.startTime ?? row.start),
-      valueFormatter: vfDateTime,
-    },
-    {
-      field: "endTime",
-      headerName: "End",
-      valueGetter: safeVG(({ row }) => row.endTime ?? row.end),
-      valueFormatter: vfDateTime,
-    },
-    {
-      field: "duration",
-      headerName: "Duration",
-      valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
-      valueFormatter: vfDuration,
-    },
-    {
-      field: "trips",
-      headerName: "Trips",
-      width: 90,
-      valueGetter: safeVG(({ row }) => row.trips ?? 0),
-      valueFormatter: vfNumber,
-    },
-    {
-      field: "passengers",
-      headerName: "Passengers",
-      width: 120,
-      valueGetter: safeVG(({ row }) => row.passengers ?? row.pax ?? 0),
-      valueFormatter: vfNumber,
-    },
-    {
-      field: "vehicle",
-      headerName: "Vehicle",
-      valueGetter: safeVG(({ row }) => row.vehicle ?? ""),
-      valueFormatter: vfText,
-    },
-  ];
-  const mapped = (rows || []).map((r) => ({
-    ...r,
-    duration:
-      r.duration ?? Math.round((r.durationMs || 0) / 60000),
-  }));
-  return { columns, rows: mapped };
-}
-
 
 export default function ShootoutTab() {
   const { user, authLoading } = useAuth();
@@ -126,7 +69,25 @@ export default function ShootoutTab() {
         [grid.initialState, isSmall],
       );
 
-      const { columns: cols, rows } = useMemo(() => buildShootoutGrid(history), [history]);
+      const summary = false;
+      const rows = useMemo(
+        () =>
+          (history || []).map((r) => ({
+            ...r,
+            driver: r.driver ?? r.driverEmail ?? "",
+            start: r.startTime ?? r.start ?? null,
+            end: r.endTime ?? r.end ?? null,
+            durationMins:
+              r.durationMins ??
+              r.duration ??
+              (r.startTime && r.endTime
+                ? Math.round((tsToDate(r.endTime) - tsToDate(r.startTime)) / 60000)
+                : null),
+            created: r.createdAt ?? r.created ?? null,
+          })),
+        [history],
+      );
+      const cols = summary ? shootoutSummaryColumns : shootoutDetailColumns;
 
     useEffect(() => {
       /* no-op */
@@ -453,7 +414,9 @@ export default function ShootoutTab() {
                 columns={cols}
                 pageSizeOptions={[5, 10, 25]}
                 initialState={initialState}
-                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+                getRowId={(r) => r.id}
+                autoHeight
+                disableRowSelectionOnClick
               />
               {rows.length === 0 && (
                 <Typography textAlign="center" color="text.secondary" mt={2}>

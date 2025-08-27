@@ -49,10 +49,33 @@ const bcName = "lrp-timeclock";
 
 const columnsSessions = [
   { field: "rideId", headerName: "Ride ID", minWidth: 120, flex: 0.8, valueGetter: (p) => p.row?.rideId || p.row?.tripId || "" },
-  { field: "start", headerName: "Start", minWidth: 180, flex: 1, valueFormatter: (p) => fmtDateTime(p.value) },
-  { field: "end", headerName: "End", minWidth: 180, flex: 1, valueFormatter: (p) => fmtDateTime(p.value) },
-  { field: "durationMins", headerName: "Duration", minWidth: 110, valueFormatter: (p) => minutesToHMM(p.value) },
-  { field: "note", headerName: "Note", minWidth: 140, flex: 1, valueGetter: (p) => p.row?.note || p.row?.notes || "" },
+  {
+    field: "start",
+    headerName: "Start",
+    minWidth: 180,
+    flex: 1,
+    valueFormatter: (p) => (p?.value ? fmtDateTime(p.value) : ""),
+  },
+  {
+    field: "end",
+    headerName: "End",
+    minWidth: 180,
+    flex: 1,
+    valueFormatter: (p) => (p?.value ? fmtDateTime(p.value) : ""),
+  },
+  {
+    field: "durationMins",
+    headerName: "Duration",
+    minWidth: 110,
+    valueFormatter: (p) => (p?.value != null ? minutesToHMM(p.value) : ""),
+  },
+  {
+    field: "note",
+    headerName: "Note",
+    minWidth: 140,
+    flex: 1,
+    valueGetter: (p) => p.row?.note || p.row?.notes || "",
+  },
 ];
 
 
@@ -365,7 +388,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
               <SafeDataGrid
                 rows={rows}
                 columns={columnsSessions}
-                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? "row"}-${r.vehicle ?? ""}`}
+                getRowId={(r) => r.id}
                 columnVisibilityModel={isSmall ? { rideId: false, note: false } : undefined}
                 density="compact"
                 autoHeight

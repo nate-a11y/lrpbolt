@@ -1109,7 +1109,8 @@ if (totalMinutes <= 0) {
                       valueFormatter: vfText,
                     }))}
                     pageSizeOptions={[5]}
-                    getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+                    getRowId={(r) => r.id}
+                    disableRowSelectionOnClick
                   />
                 </Box>
                 <Button
