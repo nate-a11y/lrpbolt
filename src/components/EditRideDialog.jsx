@@ -20,7 +20,7 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
     const obj = {};
     RIDE_FIELDS.forEach((f) => {
       const v = ride?.[f];
-      if (typeof v === "object" && typeof v.toDate === "function") {
+      if (v && typeof v.toDate === "function") {
         obj[f] = dayjs(v.toDate());
       } else {
         obj[f] = v ?? "";

@@ -339,34 +339,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           <SmartAutoGrid
             rows={rows}
             headerMap={{
-              driver: "Driver",
-              driverEmail: "Driver Email",
-              rideId: "Ride ID",
+              rideId: "Trip ID",
               startTime: "Clock In",
               endTime: "Clock Out",
               duration: "Duration", // auto "Hh Mm"
-              loggedAt: "Logged At",
-              note: "Note",
-              id: "id",
-              userEmail: "User Email",
-              driverId: "Driver Id",
-              mode: "Mode",
             }}
-            order={[
-              "driver",
-              "driverEmail",
-              "rideId",
-              "startTime",
-              "endTime",
-              "duration",
-              "loggedAt",
-              "note",
-              "id",
-              "userEmail",
-              "driverId",
-              "mode",
-            ]}
+            order={["rideId", "startTime", "endTime", "duration"]}
             hide={[
+              "loggedAt",
               "note",
               "id",
               "userEmail",
