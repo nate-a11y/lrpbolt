@@ -211,7 +211,7 @@ export default function WeeklySummaryTab() {
             },
           }}
           pageSizeOptions={[5, 10, 25]}
-          getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+          getRowId={(r) => r.id}
         />
       )}
       <Dialog open={!!editRow} onClose={() => setEditRow(null)}>

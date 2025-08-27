@@ -281,7 +281,7 @@ export default function EntriesTab() {
               alert("Failed to update time log")
             }
             rows={safeRows ?? []}
-            getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
+            getRowId={(r) => r.id}
             columns={columns}
             disableRowSelectionOnClick
             initialState={{

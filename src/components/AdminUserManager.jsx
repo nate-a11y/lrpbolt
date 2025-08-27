@@ -443,7 +443,7 @@ export default function AdminUserManager() {
               processRowUpdate={handleProcessRowUpdate}
               isCellEditable={(params) => isAdmin && params.field !== 'email'}
               pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) => r.id ?? r.ticketId ?? r._id}
+              getRowId={(r) => r.id}
               experimentalFeatures={{ newEditingApi: true }}
               columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
             />
