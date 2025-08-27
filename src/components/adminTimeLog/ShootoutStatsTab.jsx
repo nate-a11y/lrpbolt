@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
+import { GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import {
   Box,
   CircularProgress,
@@ -19,18 +19,12 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
-import {
-  vfText,
-  vfDateTime,
-  vfDuration,
-  vfNumber,
-  safeVG,
-  actionsCol,
-} from "@/utils/gridFormatters";
-
+import { actionsCol } from "@/utils/gridFormatters";
+import { formatDateTime, fmtMinutesHuman } from "../../utils/timeUtils.js";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
+import LRPDataGrid from "../LRPDataGrid.jsx";
+import { shootoutColumns } from "../../columns/shootoutColumns.js";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -96,63 +90,16 @@ export default function ShootoutStatsTab() {
 
   const rows = useMemo(() => stats || [], [stats]);
 
-  const columns = [
-    {
-      field: "driver",
-      headerName: "Driver",
-      valueGetter: safeVG(({ row }) =>
-        row.driver ?? row.driverName ?? row.driverEmail?.split("@")[0] ?? "",
-      ),
-      valueFormatter: vfText,
-    },
-    {
-      field: "vehicle",
-      headerName: "Vehicle",
-      valueGetter: safeVG(({ row }) => row.vehicle ?? ""),
-      valueFormatter: vfText,
-    },
-    {
-      field: "startTime",
-      headerName: "Start",
-      valueGetter: safeVG(({ row }) => row.startTime),
-      valueFormatter: vfDateTime,
-    },
-    {
-      field: "endTime",
-      headerName: "End",
-      valueGetter: safeVG(({ row }) => row.endTime),
-      valueFormatter: vfDateTime,
-    },
-    {
-      field: "duration",
-      headerName: "Duration",
-      valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
-      valueFormatter: vfDuration,
-    },
-    {
-      field: "trips",
-      headerName: "Trips",
-      width: 90,
-      valueGetter: safeVG(({ row }) => row.trips ?? row.tripCount ?? 0),
-      valueFormatter: vfNumber,
-    },
-    {
-      field: "pax",
-      headerName: "Pax",
-      width: 90,
-      valueGetter: safeVG(({ row }) => row.pax ?? row.passengers ?? 0),
-      valueFormatter: vfNumber,
-    },
-    {
-      field: "createdAt",
-      headerName: "Created",
-      valueGetter: safeVG(({ row }) => row.createdAt),
-      valueFormatter: vfDateTime,
-    },
-    actionsCol(({ row }) => (
-      <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
-    )),
-  ];
+  const columns = useMemo(
+    () =>
+      [
+        ...shootoutColumns(),
+        actionsCol(({ row }) => (
+          <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
+        )),
+      ],
+    [handleEdit, handleDelete],
+  );
 
 
   const filteredRows = useMemo(() => {
@@ -172,9 +119,9 @@ export default function ShootoutStatsTab() {
             r.vehicle,
             r.trips,
             r.pax ?? r.passengers,
-            fmtDateTime(r.startTime),
-            fmtDateTime(r.endTime),
-            fmtDateTime(r.createdAt),
+            formatDateTime(r.startTime),
+            formatDateTime(r.endTime),
+            formatDateTime(r.createdAt),
             r.duration,
           ]
             .filter(Boolean)
@@ -244,15 +191,15 @@ export default function ShootoutStatsTab() {
                     })()}
                   </Typography>
                   <Typography variant="body2">Vehicle: {r.vehicle ?? ""}</Typography>
-                  <Typography variant="body2">Start: {fmtDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {fmtDateTime(r.endTime)}</Typography>
+                  <Typography variant="body2">Start: {formatDateTime(r.startTime)}</Typography>
+                  <Typography variant="body2">End: {formatDateTime(r.endTime)}</Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">Pax: {r.pax ?? r.passengers}</Typography>
                   <Typography variant="body2">
-                    Duration: {fmtMinutes(r.duration)}
+                    Duration: {fmtMinutesHuman(r.duration)}
                   </Typography>
                   <Typography variant="body2">
-                    Created: {fmtDateTime(r.createdAt)}
+                    Created: {formatDateTime(r.createdAt)}
                   </Typography>
                 </Stack>
                 <ToolsCell
@@ -265,13 +212,12 @@ export default function ShootoutStatsTab() {
           ))}
         </Stack>
       ) : (
-        <DataGridPro
+        <LRPDataGrid
           apiRef={apiRef}
           editMode="row"
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update stat")}
-          rows={safeRows ?? []}
-          getRowId={(r) => r.id}
+          rows={Array.isArray(safeRows) ? safeRows : []}
           columns={columns}
           density="compact"
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
@@ -285,6 +231,8 @@ export default function ShootoutStatsTab() {
               quickFilterProps: { debounceMs: 300, placeholder: "Search" },
             },
           }}
+          loading={false}
+          checkboxSelection={false}
         />
       )}
       <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
