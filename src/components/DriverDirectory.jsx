@@ -126,8 +126,15 @@ export default function DriverDirectory() {
         headerName: "Driver",
         flex: 1,
         sortable: false,
-        filterable: false,
         disableColumnMenu: true,
+        // Enable quick filter by providing searchable text
+        valueGetter: (params) => {
+          const row = params?.row;
+          if (!row) return "N/A";
+          const vehicles = Array.isArray(row.vehicles) ? row.vehicles.join(" ") : "";
+          const parts = [row.name, row.lrp, row.email, row.phone, vehicles].filter(Boolean);
+          return parts.length ? parts.join(" ") : "N/A";
+        },
         renderCell: (params) => {
           const d = params.row;
           const initials = getInitials(d.name);
@@ -359,6 +366,7 @@ export default function DriverDirectory() {
           apiRef={apiRef}
           rows={rows}
           columns={columns}
+          getRowId={(row) => row.id}
           getRowHeight={() => "auto"}
           disableColumnMenu
           disableColumnSelector
