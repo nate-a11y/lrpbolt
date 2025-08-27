@@ -42,7 +42,7 @@ export default defineConfig({
       src: fileURLToPath(new URL("./src", import.meta.url)),
     },
     dedupe: ["react", "react-dom"],
-    extensions: [".js", ".jsx", ".ts", ".tsx"],
+    extensions: [".js", ".jsx"],
   },
   build: {
     outDir: "dist",
