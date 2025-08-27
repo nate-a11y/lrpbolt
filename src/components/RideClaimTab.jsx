@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box,
   Button,
-  Stack,
   Typography,
   MenuItem,
   Snackbar,
@@ -15,63 +14,27 @@ import {
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import {
-  GridActionsCellItem,
-  GridToolbarColumnsButton,
-  GridToolbarFilterButton,
-  GridToolbarDensitySelector,
-  GridToolbarExport,
-  GridToolbarQuickFilter,
-} from "@mui/x-data-grid-pro";
 import { DateRangePicker } from "@mui/x-date-pickers-pro";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { Timestamp, orderBy } from "firebase/firestore";
 
 import { durationMinutes, toDateAny } from "@/utils/datetime";
-import { actionsCol } from "@/utils/gridFormatters";
 
-import { vfTime, vfDurationHM } from "../utils/vf";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import RideGroup from "../RideGroup";
-import { useGridDoctor } from "../utils/useGridDoctor";
 import { COLLECTIONS } from "../constants";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
-import { asArray } from "../utils/arrays.js";
 
 import BlackoutOverlay from "./BlackoutOverlay";
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-
-function ProToolbar({ onBulkClaim, selectedCount }) {
-  return (
-    <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1 }}>
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarDensitySelector />
-      <GridToolbarExport csvOptions={{ utf8WithBom: true }} />
-      <GridToolbarQuickFilter debounceMs={400} />
-      <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
-        <Button
-          size="small"
-          variant="contained"
-          disabled={!selectedCount}
-          onClick={onBulkClaim}
-        >
-          Claim Selected ({selectedCount || 0})
-        </Button>
-      </Stack>
-    </Stack>
-  );
-}
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -92,11 +55,23 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const [selectedRides, setSelectedRides] = useState(new Set());
   const { driver: driverProfile } = useDriver();
   const [dateRange, setDateRange] = useState([null, null]); // [start, end]
-  const [selectionModel, setSelectionModel] = useState([]);
+
+  const filteredRides = useMemo(() => {
+    return rides.filter((r) => {
+      const [start, end] = dateRange;
+      if (!start && !end) return true;
+      const dt = toDateAny(r.pickupTime ?? r.PickupTime);
+      if (!dt) return false;
+      const ms = dt.getTime();
+      const okStart = start ? ms >= new Date(start).getTime() : true;
+      const okEnd = end ? ms <= new Date(end).getTime() : true;
+      return okStart && okEnd;
+    });
+  }, [rides, dateRange]);
 
   const groupedRides = useMemo(() => {
     const grouped = {};
-    for (const r of rides) {
+    for (const r of filteredRides) {
       const key = `${safe(r.vehicle)}___${fmtDow(r.pickupTime)}___${groupKey(
         r.pickupTime,
       )}`;
@@ -104,41 +79,12 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
       grouped[key].push(r);
     }
     return grouped;
-  }, [rides]);
+  }, [filteredRides]);
 
   const uniqueVehicles = useMemo(
-    () => Array.from(new Set(rides.map((r) => r.vehicle))),
-    [rides],
+    () => Array.from(new Set(filteredRides.map((r) => r.vehicle))),
+    [filteredRides],
   );
-
-  const rows = useMemo(() => {
-    return rides
-      .map((r) => {
-        const id = r.id || r.tripId;
-        const dt = toDateAny(r.pickupTime ?? r.PickupTime);
-        if (!dt) return null;
-        return {
-          id,
-          tripId: r.tripId,
-          vehicle: safe(r.vehicle),
-          pickupTime: dt,
-          weekday: fmtDow(dt),
-          timeBucket: groupKey(dt),
-          rideType: safe(r.rideType),
-          rideNotes: safe(r.rideNotes, "none"),
-          rideDuration: Number(r.rideDuration ?? r.RideDuration ?? 0),
-        };
-      })
-      .filter(Boolean)
-      .filter((row) => {
-        const [start, end] = dateRange;
-        if (!start && !end) return true;
-        const ms = row.pickupTime.getTime();
-        const okStart = start ? ms >= new Date(start).getTime() : true;
-        const okEnd = end ? ms <= new Date(end).getTime() : true;
-        return okStart && okEnd;
-      });
-  }, [rides, dateRange]);
 
 
   const showToast = (message, severity = "success") =>
@@ -225,56 +171,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     [rides, driver, driverProfile],
   );
 
-  const handleClaim = useCallback(
-    (id) => {
-      claimRide(id);
-    },
-    [claimRide],
-  );
-
-  const columns = useMemo(
-    () => [
-      { field: "tripId", headerName: "Trip ID", width: 120 },
-      {
-        field: "pickupTime",
-        headerName: "Pickup",
-        width: 200,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        width: 120,
-        valueFormatter: vfDurationHM,
-      },
-      { field: "rideType", headerName: "Type", width: 140 },
-      { field: "vehicle", headerName: "Vehicle", width: 160 },
-      { field: "claimedBy", headerName: "Claimed By", width: 160 },
-      {
-        field: "claimedAt",
-        headerName: "Claimed At",
-        width: 200,
-        valueFormatter: vfTime,
-      },
-      { field: "status", headerName: "Status", width: 140 },
-      actionsCol(({ id }) => (
-        <GridActionsCellItem
-          icon={<CheckCircleIcon />}
-          label="Claim"
-          onClick={() => handleClaim(id)}
-          showInMenu={false}
-        />
-      )),
-    ],
-    [handleClaim],
-  );
-
-  useGridDoctor({ name: "RideClaimTab", rows, columns });
-
-  useEffect(() => {
-    if (rows?.[0]) console.debug("claim rows sample", rows[0]);
-  }, [rows, columns]);
-
   // ✅ Update rides from shared hook
   useEffect(() => {
     if (driver && !isLockedOut) {
@@ -283,60 +179,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     }
   }, [driver, isLockedOut, liveRides]);
 
-  const soonMins = 30;
-  const getRowClassName = (params) => {
-    const minutesUntil = Math.floor(
-      (new Date(params.row.pickupTime) - Date.now()) / 60000,
-    );
-    return minutesUntil >= 0 && minutesUntil <= soonMins
-      ? "lrp-row-soon"
-      : "";
-  };
-
-  const selectedSet = useMemo(
-    () => new Set(selectionModel ?? []),
-    [selectionModel],
-  );
-  const selectedCount = selectedSet.size;
-  const selectedMinutes = useMemo(
-    () =>
-      rows.reduce(
-        (sum, r) => sum + (selectedSet.has(r.id) ? r.rideDuration || 0 : 0),
-        0,
-      ),
-    [rows, selectedSet],
-  );
-  const pinnedRows = useMemo(
-    () => [
-      {
-        id: "__summary__",
-        vehicle: "Selected",
-        rideType: "",
-        rideNotes: `${selectedCount} ride(s) selected`,
-        rideDuration: selectedMinutes,
-        pickupTime: null,
-      },
-    ],
-    [selectedCount, selectedMinutes],
-  );
-
-  // Group rides by date then vehicle; ensure each path is unique
-  const getTreeDataPath = useCallback(
-    (row) => [fmtDate(row.pickupTime), safe(row.vehicle), row.id],
-    [],
-  );
-
-  const onBulkClaim = useCallback(async () => {
-    for (const id of selectionModel) {
-      try {
-        await claimRide(id);
-      } catch (e) {
-        console.error("Bulk claim failed", e);
-      }
-    }
-    setSelectionModel([]);
-    showToast("✅ Claimed selected rides", "success");
-  }, [selectionModel, claimRide]);
+  // No desktop grid; mobile-style grouping for all viewports
 
   return (
     <Box position="relative">
@@ -427,113 +270,54 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         </Button>
       </Box>
 
-      {isMobile ? (
-        loadingRides ? (
-          <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            minHeight={200}
-          >
-            <Typography variant="body1" color="text.secondary" mr={2}>
-              Loading rides...
-            </Typography>
-            <CircularProgress size={28} />
-          </Box>
-        ) : (
-          <>
-            {Object.entries(groupedRides).map(([gKey, rides]) => {
-              const [vehicle, day] = gKey.split("___");
-              if (
-                (vehicleFilter && vehicle !== vehicleFilter) ||
-                (dayFilter && day !== dayFilter)
-              )
-                return null;
-
-              return (
-                <RideGroup
-                  key={gKey}
-                  groupKey={gKey}
-                  rides={rides}
-                  onClaim={claimRide}
-                  showToast={showToast}
-                  selectedRides={selectedRides}
-                  onToggleSelect={toggleRideSelection}
-                  onGroupToggle={toggleGroupSelection}
-                  onClearSelected={clearSelections}
-                />
-              );
-            })}
-
-            {Object.keys(groupedRides).length === 0 && (
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                textAlign="center"
-                mt={5}
-              >
-                🚫 No unclaimed rides available right now.
-              </Typography>
-            )}
-          </>
-        )
-      ) : (
+      {loadingRides ? (
         <Box
-          sx={{
-            height: 600,
-            width: "100%",
-            "& .lrp-row-soon": (theme) => ({
-              background:
-                theme.palette.mode === "dark"
-                  ? "rgba(76,187,23,0.08)"
-                  : "rgba(76,187,23,0.12)",
-            }),
-            "& .MuiDataGrid-cell": {
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            },
-          }}
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight={200}
         >
-          <SmartAutoGrid
-            rows={rows ?? []}
-            columnsCompat={columns}
-            loading={loadingRides}
-            checkboxSelection
-            disableRowSelectionOnClick
-            autoHeight={false}
-            treeData
-            getTreeDataPath={getTreeDataPath}
-            groupingColDef={{
-              headerName: "Date / Vehicle",
-              minWidth: 220,
-              valueGetter: (params) => {
-                if (!params?.rowNode) return "N/A";
-                return params.rowNode.isLeaf ? "" : params.value ?? "N/A";
-              },
-            }}
-            initialState={{
-              sorting: { sortModel: [{ field: "pickupTime", sort: "asc" }] },
-              columns: {
-                columnVisibilityModel: {
-                  rideNotes: !isMobile,
-                  claimedBy: false,
-                  claimedAt: false,
-                  status: false,
-                },
-              },
-            }}
-            onRowSelectionModelChange={(m) => setSelectionModel(asArray(m))}
-            rowSelectionModel={selectionModel ?? []}
-            slots={{ toolbar: ProToolbar }}
-            slotProps={{ toolbar: { onBulkClaim, selectedCount } }}
-            getRowClassName={getRowClassName}
-            pinnedRows={{ bottom: pinnedRows }}
-            sx={{ borderRadius: 2 }}
-            getRowId={(r) => r.id}
-            showToolbar
-          />
+          <Typography variant="body1" color="text.secondary" mr={2}>
+            Loading rides...
+          </Typography>
+          <CircularProgress size={28} />
         </Box>
+      ) : (
+        <>
+          {Object.entries(groupedRides).map(([gKey, rides]) => {
+            const [vehicle, day] = gKey.split("___");
+            if (
+              (vehicleFilter && vehicle !== vehicleFilter) ||
+              (dayFilter && day !== dayFilter)
+            )
+              return null;
+
+            return (
+              <RideGroup
+                key={gKey}
+                groupKey={gKey}
+                rides={rides}
+                onClaim={claimRide}
+                showToast={showToast}
+                selectedRides={selectedRides}
+                onToggleSelect={toggleRideSelection}
+                onGroupToggle={toggleGroupSelection}
+                onClearSelected={clearSelections}
+              />
+            );
+          })}
+
+          {Object.keys(groupedRides).length === 0 && (
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              textAlign="center"
+              mt={5}
+            >
+              🚫 No unclaimed rides available right now.
+            </Typography>
+          )}
+        </>
       )}
 
       <Snackbar
