@@ -1,28 +1,21 @@
-import { globby } from 'globby';
 import fs from 'fs';
-import path from 'path';
+import { globby } from 'globby';
+import { outPathFor } from './shared-image-paths.mjs';
 
-const SRC_DIRS = ['public/DropOffPics'];
-const OUT_ROOT = 'public/webp';
-const missing = [];
+const SRC_DIRS = ['public/DropOffPics', 'public/images', 'src/assets'];
 
-function outPathFor(src) {
-  const rel = path.relative(process.cwd(), path.resolve(src));
-  const withoutPublic = rel.replace(/^public[\\/]/, '');
-  return path.join(OUT_ROOT, withoutPublic.replace(/\.(png|jpe?g)$/i, '.webp'));
-}
-
-const patterns = SRC_DIRS.map((d) => `${d}/**/*.{png,jpg,jpeg}`);
+const patterns = SRC_DIRS.flatMap(d => [`${d}/**/*.{png,jpg,jpeg}`]);
 const files = await globby(patterns, { caseSensitiveMatch: false });
 
-for (const f of files) {
-  const out = outPathFor(f);
-  if (!fs.existsSync(out)) missing.push(`${f} -> ${out}`);
+const missing = [];
+for (const src of files) {
+  const out = outPathFor(src);
+  if (!fs.existsSync(out)) missing.push(`${src} -> ${out}`);
 }
 
 if (missing.length) {
   console.error('❌ Missing WebP for:');
-  for (const m of missing) console.error('  ', m);
+  missing.forEach(m => console.error('  ' + m));
   process.exit(1);
 } else {
   console.log('✅ All WebP assets present');
