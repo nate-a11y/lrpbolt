@@ -1,57 +1,51 @@
 /* Proprietary and confidential. See LICENSE. */
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc.js";
-import timezone from "dayjs/plugin/timezone.js";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-function toDayjsLoose(v) {
-  if (!v) return null;
-  // Firestore Timestamp-like
-  if (typeof v === "object" && typeof v.seconds === "number") {
-    try { return dayjs.unix(v.seconds); } catch { return null; }
+const DEFAULT_TZ = dayjs.tz.guess();
+
+export function toDayjs(input, tz = DEFAULT_TZ) {
+  if (!input) return null;
+  if (typeof input?.toDate === "function") {
+    const d = input.toDate();
+    const dj = dayjs(d);
+    return dj.isValid() ? dj.tz(tz) : null;
   }
-  // JS Date
-  if (v instanceof Date) return dayjs(v);
-  // numbers: ms or s
-  if (typeof v === "number") {
-    // assume ms if looks like ms
-    return v > 1e12 ? dayjs(v) : dayjs.unix(v);
+  if (input instanceof Date) {
+    const dj = dayjs(input);
+    return dj.isValid() ? dj.tz(tz) : null;
   }
-  // ISO/string
-  if (typeof v === "string") {
-    const d = dayjs(v);
-    return d.isValid() ? d : null;
-  }
-  return null;
+  const dj = dayjs(input);
+  return dj.isValid() ? dj.tz(tz) : null;
 }
 
-export function formatDateTime(v, fmt = "MMM D, YYYY h:mm A") {
-  const d = toDayjsLoose(v);
-  return d && d.isValid() ? d.tz(dayjs.tz.guess()).format(fmt) : "N/A";
+export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A", tz = DEFAULT_TZ) {
+  const dj = toDayjs(input, tz);
+  return dj ? dj.format(fmt) : "N/A";
 }
 
-export function minutesBetween(start, end) {
-  const s = toDayjsLoose(start);
-  const e = toDayjsLoose(end);
-  if (!s || !e || !s.isValid() || !e.isValid()) return 0;
-  const diff = e.diff(s, "minute");
-  return Number.isFinite(diff) && diff >= 0 ? diff : 0;
+export function timestampSortComparator(a, b) {
+  const da = toDayjs(a);
+  const db = toDayjs(b);
+  if (!da && !db) return 0;
+  if (!da) return -1;
+  if (!db) return 1;
+  const diff = da.valueOf() - db.valueOf();
+  return diff < 0 ? -1 : diff > 0 ? 1 : 0;
 }
 
-export function safeString(v, def = "N/A") {
-  if (v === null || v === undefined) return def;
-  const s = String(v).trim();
-  return s ? s : def;
+export function durationMinutes(start, end) {
+  const s = toDayjs(start);
+  const e = toDayjs(end);
+  if (!s || !e) return null;
+  const mins = e.diff(s, "minute");
+  return Number.isFinite(mins) && mins >= 0 ? mins : null;
 }
 
-export function safeNumber(v, def = 0) {
-  return Number.isFinite(v) ? v : def;
-}
-
-export function fmtMinutesHuman(v) {
-  const m = safeNumber(v, 0);
-  if (m < 60) return `${m} min`;
-  const h = (m / 60).toFixed(2);
-  return `${h} h`;
+export function safeNumber(n, fallback = "N/A") {
+  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
 }

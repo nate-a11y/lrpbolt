@@ -6,6 +6,7 @@ import { db } from "src/utils/firebaseInit";
 import { COLLECTIONS } from "../constants";
 import { useAuth } from "../context/AuthContext.jsx";
 import { logError } from "../utils/logError";
+import { nullifyMissing } from "../utils/formatters.js";
 
 export default function useDrivers() {
   const [drivers, setDrivers] = useState([]);
@@ -20,7 +21,10 @@ export default function useDrivers() {
         orderBy("name"),
       );
       const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const list = snapshot.docs.map((doc) => {
+        const data = doc.data() || {};
+        return { id: doc.id, ...nullifyMissing(data) };
+      });
       setDrivers(list);
     } catch (err) {
       logError(err, "useDrivers");
