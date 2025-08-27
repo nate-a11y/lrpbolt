@@ -1,6 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
-// src/components/DriverDirectoryProListView.jsx
+
+// React & vendor
 import * as React from "react";
+
+// MUI
 import {
   Box,
   Stack,
@@ -14,6 +17,9 @@ import {
   Divider,
   useTheme,
 } from "@mui/material";
+import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
+
+// Icons
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import SmsIcon from "@mui/icons-material/Sms";
@@ -21,12 +27,12 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SearchIcon from "@mui/icons-material/Search";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
 
+// Local
 import DRIVER_LIST from "../data/driverDirectory";
-import VehicleChip from "./VehicleChip"; // still works; we add LRP sx below
+import VehicleChip from "./VehicleChip";
 
-// --- LRP brand tokens
+// --- LRP brand tokens --------------------------------------------------------
 const LRP = {
   green: "#4cbb17",
   black: "#060606",
@@ -36,24 +42,28 @@ const LRP = {
   textDim: "rgba(255,255,255,0.72)",
 };
 
-// --- helpers
+// --- helpers -----------------------------------------------------------------
 function getInitials(name = "") {
   const parts = String(name).trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts.at(-1)?.[0] ?? "")).toUpperCase();
 }
+
 function normalizePhone(phone = "") {
   const trimmed = String(phone).trim();
   const keepPlus = trimmed.startsWith("+");
   const digits = trimmed.replace(/[^\d]/g, "");
   return keepPlus ? `+${digits}` : digits;
 }
+
 function telHref(p = "") {
   return `tel:${normalizePhone(p)}`;
 }
+
 function isMobileUA() {
   if (typeof navigator === "undefined") return false;
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
+
 function smsHrefOrNull(p = "") {
   return isMobileUA() ? `sms:${normalizePhone(p)}` : null;
 }
@@ -82,9 +92,25 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
   );
 });
 
-export default function DriverDirectoryProListView() {
+// shared icon button style (outside component to avoid re-creation)
+function iconBtnSx() {
+  return {
+    color: "#fff",
+    border: `1px solid rgba(76,187,23,0.35)`,
+    borderRadius: 2,
+    "&:hover": {
+      borderColor: LRP.green,
+      boxShadow: `0 0 10px rgba(76,187,23,0.45) inset`,
+      backgroundColor: "rgba(76,187,23,0.06)",
+    },
+  };
+}
+
+// --- Component ---------------------------------------------------------------
+export default function DriverDirectory() {
   const theme = useTheme();
   const [search, setSearch] = React.useState("");
+
   const rows = React.useMemo(
     () =>
       DRIVER_LIST.map((d) => ({
@@ -113,7 +139,13 @@ export default function DriverDirectoryProListView() {
           const onCopy = async () => {
             try {
               await navigator.clipboard.writeText(d.phone);
-            } catch {}
+            } catch (err) {
+              // keep prod quiet but satisfy no-empty / useful in dev
+              if (process.env.NODE_ENV === "development") {
+                // eslint-disable-next-line no-console
+                console.warn("Clipboard copy failed:", err);
+              }
+            }
           };
 
           return (
@@ -259,12 +291,17 @@ export default function DriverDirectoryProListView() {
                     </ButtonGroup>
 
                     {/* Compact icons on mobile */}
-                    <Stack direction="row" spacing={0.25} sx={{ display: { xs: "flex", md: "none" } }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.25}
+                      sx={{ display: { xs: "flex", md: "none" } }}
+                    >
                       <Tooltip title="Call">
                         <IconButton component="a" href={tel} size="small" sx={iconBtnSx()}>
                           <PhoneIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="SMS">
                         <IconButton
                           component={sms ? "a" : "button"}
@@ -276,17 +313,19 @@ export default function DriverDirectoryProListView() {
                           <SmsIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="Email">
                         <IconButton component="a" href={email} size="small" sx={iconBtnSx()}>
                           <EmailIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      {/* quick copy on mobile */}
+
                       <Tooltip title="Copy #">
                         <IconButton onClick={onCopy} size="small" sx={iconBtnSx()}>
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
                       <Tooltip title="Messages Web">
                         <IconButton
                           component="a"
@@ -428,18 +467,4 @@ export default function DriverDirectoryProListView() {
       </Typography>
     </Box>
   );
-}
-
-// shared icon button style
-function iconBtnSx() {
-  return {
-    color: "#fff",
-    border: `1px solid rgba(76,187,23,0.35)`,
-    borderRadius: 2,
-    "&:hover": {
-      borderColor: "#4cbb17",
-      boxShadow: `0 0 10px rgba(76,187,23,0.45) inset`,
-      backgroundColor: "rgba(76,187,23,0.06)",
-    },
-  };
 }
