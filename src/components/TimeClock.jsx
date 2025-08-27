@@ -1,20 +1,19 @@
 // src/components/TimeClockGodMode.jsx
-  import { useState, useEffect, useRef, useMemo } from "react";
-  import {
-    Box,
-    Paper,
-    TextField,
-    Button,
-    Typography,
-    Checkbox,
-    FormControlLabel,
-    Snackbar,
-    Alert,
-    Stack,
-    CircularProgress,
-    useMediaQuery,
-  } from "@mui/material";
-import { DataGridPro } from "@mui/x-data-grid-pro";
+import { useState, useEffect, useRef } from "react";
+import {
+  Box,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+  Snackbar,
+  Alert,
+  Stack,
+  CircularProgress,
+  useMediaQuery,
+} from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
   Stop as StopIcon,
@@ -30,8 +29,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
-  import { vfText, vfDateTime, vfDuration, safeVG } from "@/utils/gridFormatters";
-  import { fmtMinutes } from "@/utils/datetime";
+import { fmtMinutes } from "@/utils/datetime";
 import { useRole } from "@/hooks";
 import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";
@@ -43,9 +41,20 @@ import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { useAuth } from "../context/AuthContext.jsx";
 
 import ErrorBanner from "./ErrorBanner";
-  import PageContainer from "./PageContainer.jsx";
+import PageContainer from "./PageContainer.jsx";
+import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
+import { fmtDateTime, minutesToHMM } from "../utils/timeUtils";
 
 const bcName = "lrp-timeclock";
+
+const columnsSessions = [
+  { field: "rideId", headerName: "Ride ID", minWidth: 120, flex: 0.8, valueGetter: (p) => p.row?.rideId || p.row?.tripId || "" },
+  { field: "start", headerName: "Start", minWidth: 180, flex: 1, valueFormatter: (p) => fmtDateTime(p.value) },
+  { field: "end", headerName: "End", minWidth: 180, flex: 1, valueFormatter: (p) => fmtDateTime(p.value) },
+  { field: "durationMins", headerName: "Duration", minWidth: 110, valueFormatter: (p) => minutesToHMM(p.value) },
+  { field: "note", headerName: "Note", minWidth: 140, flex: 1, valueGetter: (p) => p.row?.note || p.row?.notes || "" },
+];
+
 
 async function logTimeCreate(payload) {
   const user = await waitForAuth(true);
@@ -100,42 +109,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const [error, setError] = useState(null);
     const [ready, setReady] = useState(false);
 
-    const columns = useMemo(
-      () => [
-        {
-          field: "rideId",
-          headerName: "Ride ID",
-          valueGetter: safeVG(({ row }) => row.rideId ?? ""),
-          valueFormatter: vfText,
-        },
-        {
-          field: "startTime",
-          headerName: "Start",
-          valueGetter: safeVG(({ row }) => row.start ?? row.startTime),
-          valueFormatter: vfDateTime,
-        },
-        {
-          field: "endTime",
-          headerName: "End",
-          valueGetter: safeVG(({ row }) => row.end ?? row.endTime),
-          valueFormatter: vfDateTime,
-        },
-        {
-          field: "duration",
-          headerName: "Duration",
-          valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
-          valueFormatter: vfDuration,
-        },
-        {
-          field: "note",
-          headerName: "Note",
-          flex: 1,
-          valueGetter: safeVG(({ row }) => row.note ?? ""),
-          valueFormatter: vfText,
-        },
-      ],
-      [],
-    );
 
     useEffect(() => {
       if (!user?.email) return;
@@ -154,7 +127,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [user?.email, columns]);
+  }, [user?.email]);
 
   // logs are populated via subscribeMyTimeLogs
 
@@ -389,17 +362,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <DataGridPro
-              autoHeight
-              rows={rows ?? []}
-              columns={columns}
-              getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? 'row'}-${r.vehicle ?? ''}`}
-              pageSizeOptions={[5]}
-              initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
-              disableRowSelectionOnClick
-              density="compact"
-              columnVisibilityModel={isSmall ? { rideId: false, note: false } : undefined}
-            />
+              <SafeDataGrid
+                rows={rows}
+                columns={columnsSessions}
+                getRowId={(r) => r.id ?? r.rideId ?? r._id ?? `${r.pickupTime ?? r.start ?? "row"}-${r.vehicle ?? ""}`}
+                columnVisibilityModel={isSmall ? { rideId: false, note: false } : undefined}
+                density="compact"
+                autoHeight
+              />
             {rows.length === 0 && (
               <Typography textAlign="center" color="text.secondary" mt={2}>
                 No time logs found.
