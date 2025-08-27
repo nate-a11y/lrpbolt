@@ -36,14 +36,14 @@ import { db } from "src/utils/firebaseInit";
 import { useRole } from "@/hooks";
 import RoleDebug from "@/components/RoleDebug";
 
-import { waitForAuth } from "../utils/waitForAuth";
-import { logError } from "../utils/logError";
-import { tsToDate } from "../utils/safe";
-import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { useAuth } from "../context/AuthContext.jsx";
 import { mapSnapshotToRows } from "../services/normalizers";
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import { getChannel, safePost, closeChannel } from "../utils/broadcast";
+import { logError } from "../utils/logError";
+import { tsToDate } from "../utils/safe";
+import { waitForAuth } from "../utils/waitForAuth";
 
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 
@@ -336,20 +336,46 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="subtitle1">Previous Sessions</Typography>
         </Box>
-        <SmartAutoGrid
-          rows={rows}
-          headerMap={{
-            driver: "Driver",
-            driverEmail: "Driver Email",
-            rideId: "Ride ID",
-            startTime: "Clock In",
-            endTime: "Clock Out",
-            duration: "Duration",
-            loggedAt: "Logged At",
-            note: "Note",
-          }}
-          order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note"]}
-        />
+          <SmartAutoGrid
+            rows={rows}
+            headerMap={{
+              driver: "Driver",
+              driverEmail: "Driver Email",
+              rideId: "Ride ID",
+              startTime: "Clock In",
+              endTime: "Clock Out",
+              duration: "Duration", // auto "Hh Mm"
+              loggedAt: "Logged At",
+              note: "Note",
+              id: "id",
+              userEmail: "User Email",
+              driverId: "Driver Id",
+              mode: "Mode",
+            }}
+            order={[
+              "driver",
+              "driverEmail",
+              "rideId",
+              "startTime",
+              "endTime",
+              "duration",
+              "loggedAt",
+              "note",
+              "id",
+              "userEmail",
+              "driverId",
+              "mode",
+            ]}
+            hide={[
+              "note",
+              "id",
+              "userEmail",
+              "driverId",
+              "mode",
+              "driver",
+              "driverEmail",
+            ]}
+          />
         {rows.length === 0 && (
           <Typography textAlign="center" color="text.secondary" mt={2}>
             No time logs found.

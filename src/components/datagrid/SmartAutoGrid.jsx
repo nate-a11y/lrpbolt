@@ -1,14 +1,17 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo } from "react";
 import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
+
 import { vfText, vfTime, vfNumber, vfBool, vfDurationHM } from "../../utils/vf";
 import { timestampSortComparator } from "../../utils/timeUtils";
 
 const isFsTimestamp = (v) => !!v && typeof v?.toDate === "function";
 const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 const isBool = (v) => typeof v === "boolean";
-const looksLikeDurationField = (field) =>
-  ["duration", "durationMins", "rideDuration", "totalMinutes"].includes(field);
+const isPlainObject = (v) => v && typeof v === "object" && !isFsTimestamp(v) && !Array.isArray(v);
+
+const looksLikeDurationField = (field = "") =>
+  ["duration", "durationmins", "rideduration", "totalminutes"].includes(field.toLowerCase());
 
 const widthFor = (field, sample) => {
   if (isFsTimestamp(sample)) return 200;
@@ -19,8 +22,20 @@ const widthFor = (field, sample) => {
   return 180;
 };
 
+// valueGetter that neutralizes objects -> null (prevents [object Object])
+const safeGetter = (field) => (params) => {
+  const v = params?.row?.[field];
+  if (isPlainObject(v)) return null;
+  return v;
+};
+
 function buildCol(field, headerName, sampleValue) {
-  const base = { field, headerName: headerName || field, width: widthFor(field, sampleValue) };
+  const base = {
+    field,
+    headerName: headerName || field,
+    width: widthFor(field, sampleValue),
+    valueGetter: safeGetter(field), // <- guard
+  };
 
   if (looksLikeDurationField(field)) return { ...base, valueFormatter: vfDurationHM };
   if (isFsTimestamp(sampleValue)) return { ...base, valueFormatter: vfTime, sortComparator: timestampSortComparator };
@@ -35,11 +50,13 @@ function useAutoColumns(rows, opts = {}) {
   return useMemo(() => {
     const first = rows?.find(Boolean) || {};
     const fields = Object.keys(first);
+
     const seen = new Set();
     const ordered = [
       ...order.filter((f) => fields.includes(f)).map((f) => (seen.add(f), f)),
       ...fields.filter((f) => !seen.has(f)),
     ];
+
     return ordered.map((field) => {
       const sample = first[field];
       const col = buildCol(field, headerMap[field], sample);
@@ -50,11 +67,18 @@ function useAutoColumns(rows, opts = {}) {
   }, [rows, headerMap, order, hide, overrides]);
 }
 
+/**
+ * SmartAutoGrid
+ *  - rows: array of normalized rows ({id,...})
+ *  - headerMap/order/hide/overrides
+ *  - actionsColumn?: GridColDef appended if provided
+ *  - showToolbar?: true by default
+ */
 export default function SmartAutoGrid({
   rows = [],
   headerMap,
   order,
-  hide,
+  hide = [],
   overrides,
   getRowId,
   actionsColumn,
@@ -86,9 +110,11 @@ export default function SmartAutoGrid({
       pagination
       pageSizeOptions={[25, 50, 100]}
       slots={showToolbar ? { toolbar: GridToolbar } : undefined}
-      slotProps={showToolbar ? {
-        toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
-      } : undefined}
+      slotProps={
+        showToolbar
+          ? { toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }
+          : undefined
+      }
       {...rest}
     />
   );
