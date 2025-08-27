@@ -13,8 +13,9 @@ import {
   Button,
   Divider,
   useTheme,
+  TextField,
 } from "@mui/material";
-import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
+import { DataGridPro, useGridApiRef } from "@mui/x-data-grid-pro";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import SmsIcon from "@mui/icons-material/Sms";
@@ -99,7 +100,15 @@ function iconBtnSx() {
 
 export default function DriverDirectory() {
   const theme = useTheme();
+  const apiRef = useGridApiRef();
   const [search, setSearch] = React.useState("");
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearch(value);
+    const terms = value.split(/\s+/).filter(Boolean);
+    apiRef.current.setQuickFilterValues(terms);
+  };
 
   const rows = React.useMemo(
     () =>
@@ -332,18 +341,22 @@ export default function DriverDirectory() {
       >
         <Stack direction="row" alignItems="center" spacing={1}>
           <SearchIcon sx={{ color: LRP.green }} />
-          <GridToolbarQuickFilter
-            quickFilterParser={(val) => val.split(/\s+/)}
-            onChange={(e) => setSearch(e.target.value)}
+          <TextField
+            variant="standard"
             value={search}
+            onChange={handleSearchChange}
             placeholder="Search name, LRP #, email, vehicle…"
-            debounceMs={120}
+            InputProps={{
+              disableUnderline: true,
+              sx: { color: "#fff" },
+            }}
           />
         </Stack>
       </Box>
 
       <Box sx={{ height: 640, width: "100%", "& .MuiDataGrid-root": { border: "none" } }}>
         <DataGridPro
+          apiRef={apiRef}
           rows={rows}
           columns={columns}
           getRowHeight={() => "auto"}
