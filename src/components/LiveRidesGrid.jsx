@@ -40,7 +40,7 @@ export default function LiveRidesGrid() {
           headerMap={{
             tripId: "Trip ID",
             pickupTime: "Pickup",
-            rideDuration: "Dur",
+            rideDuration: "Duration",
             rideType: "Type",
             vehicle: "Vehicle",
             rideNotes: "Notes",
@@ -62,6 +62,7 @@ export default function LiveRidesGrid() {
             "status",
           ]}
           hide={["claimedBy", "claimedAt", "status"]}
+          forceHide={[]}
           actionsColumn={buildNativeActionsColumn({
             onEdit: (id, row) => handleEditRide(row),
             onDelete: async (id) => await deleteRide("liveRides", id),

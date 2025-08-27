@@ -523,7 +523,6 @@ export default function Tickets() {
                 autoHeight
                 checkboxSelection
                 pageSizeOptions={[5, 10, 25, 100]}
-                density="compact"
                 disableRowSelectionOnClick
                 onRowSelectionModelChange={(model) =>
                   setRowSelectionModel(asArray(model))

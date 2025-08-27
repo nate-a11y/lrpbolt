@@ -37,7 +37,7 @@ import { useRole } from "@/hooks";
 import RoleDebug from "@/components/RoleDebug";
 
 import { useAuth } from "../context/AuthContext.jsx";
-import { mapSnapshotToRows } from "../services/normalizers";
+import { mapSnapshotToRows, enrichDriverNames } from "../services/normalizers";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
@@ -113,8 +113,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       );
       const unsub = onSnapshot(
         q,
-        (snap) => {
-          setRows(mapSnapshotToRows("timeLogs", snap));
+        async (snap) => {
+          const base = mapSnapshotToRows("timeLogs", snap);
+          const withNames = await enrichDriverNames(base);
+          setRows(withNames);
           setReady(true);
         },
         (err) => {
@@ -343,18 +345,17 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
               startTime: "Clock In",
               endTime: "Clock Out",
               duration: "Duration", // auto "Hh Mm"
+              loggedAt: "Logged At",
+              note: "Note",
+              id: "id",
+              userEmail: "userEmail",
+              driverId: "driverId",
+              mode: "mode",
+              driver: "Driver",
+              driverEmail: "Driver Email",
             }}
-            order={["rideId", "startTime", "endTime", "duration"]}
-            hide={[
-              "loggedAt",
-              "note",
-              "id",
-              "userEmail",
-              "driverId",
-              "mode",
-              "driver",
-              "driverEmail",
-            ]}
+            order={["rideId", "startTime", "endTime", "duration", "loggedAt", "note", "id", "userEmail", "driverId", "mode", "driver", "driverEmail"]}
+            forceHide={["loggedAt", "note", "id", "userEmail", "driverId", "mode", "driver", "driverEmail"]}
           />
         {rows.length === 0 && (
           <Typography textAlign="center" color="text.secondary" mt={2}>

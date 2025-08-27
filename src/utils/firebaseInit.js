@@ -7,6 +7,8 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging, isSupported as messagingSupported } from "firebase/messaging";
 
+import { bindFirestore } from "../services/normalizers";
+
 // TODO: move to env at build-time; left hardcoded per request for now.
 const firebaseConfig = {
   apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
@@ -21,6 +23,7 @@ const firebaseConfig = {
 export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+bindFirestore(db);
 export const storage = getStorage(app);
 
 export async function getMessagingIfSupported() {

@@ -19,6 +19,7 @@ import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildNativeActionsColumn } from "../../columns/nativeActions.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
+import { enrichDriverNames } from "../../services/normalizers";
 import { formatDateTime } from "../../utils/formatters.js";
 
 export default function EntriesTab() {
@@ -68,8 +69,9 @@ export default function EntriesTab() {
 
     useEffect(() => {
       const unsub = subscribeTimeLogs(
-        (logs) => {
-          setRows(logs || []);
+        async (logs) => {
+          const withNames = await enrichDriverNames(logs || []);
+          setRows(withNames);
           setLoading(false);
         },
         (err) => {
@@ -182,8 +184,13 @@ export default function EntriesTab() {
             duration: "Duration",
             loggedAt: "Logged At",
             note: "Note",
+            id: "id",
+            userEmail: "userEmail",
+            driverId: "driverId",
+            mode: "mode",
           }}
-          order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note"]}
+          order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note","id","userEmail","driverId","mode"]}
+          forceHide={["note","id","userEmail","driverId","mode","driver","driverEmail"]}
           actionsColumn={actionsColumn}
           loading={loading}
         />

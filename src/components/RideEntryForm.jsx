@@ -1100,7 +1100,6 @@ if (totalMinutes <= 0) {
                 <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
                   <SmartAutoGrid
                     autoHeight
-                    density="compact"
                     rows={Array.isArray(uploadedRows) ? uploadedRows.map((r, i) => ({ id: i, ...(r || {}) })) : []}
                     columnsCompat={expectedCsvCols.map((col) => ({
                       field: col,

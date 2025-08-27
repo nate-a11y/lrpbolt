@@ -371,7 +371,6 @@ export default function DriverDirectory() {
           getRowHeight={() => "auto"}
           disableColumnMenu
           disableColumnSelector
-          density="comfortable"
           hideFooterSelectedRowCount
           initialState={{ pagination: { paginationModel: { pageSize: 25, page: 0 } } }}
           pageSizeOptions={[10, 25, 50, 100]}
