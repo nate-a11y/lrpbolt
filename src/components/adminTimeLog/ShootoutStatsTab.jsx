@@ -19,7 +19,13 @@ export default function ShootoutStatsTab() {
     const unsub = subscribeShootoutStats(
       async (stats) => {
         const withNames = await enrichDriverNames(stats || []);
-        setRows(withNames);
+        const withDates = withNames.map((r) => ({
+          ...r,
+          startTime: r?.startTime?.toDate?.() || null,
+          endTime: r?.endTime?.toDate?.() || null,
+          createdAt: r?.createdAt?.toDate?.() || null,
+        }));
+        setRows(withDates);
       },
       (e) => console.error(e),
     );
@@ -56,19 +62,16 @@ export default function ShootoutStatsTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => p?.row?.startTime?.toDate?.() || null,
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => p?.row?.endTime?.toDate?.() || null,
       },
       trips: { editable: true, type: "number" },
       passengers: { editable: true, type: "number" },
       createdAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => p?.row?.createdAt?.toDate?.() || null,
       },
     }),
     [],
