@@ -19,16 +19,14 @@ import {
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { actionsCol } from "@/utils/gridFormatters";
-import { formatDateTime, fmtMinutesHuman } from "../../utils/timeUtils.js";
+import { formatDateTime, fmtMinutesHuman } from "../../utils/timeUtils";
 import { db } from "../../utils/firebaseInit";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import LRPDataGrid from "../LRPDataGrid.jsx";
 import { shootoutColumns } from "../../columns/shootoutColumns.js";
+import { buildNativeActionsColumn } from "../../columns/nativeActions.jsx";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
-
-
 export default function ShootoutStatsTab() {
   const [stats, setStats] = useState(null);
   const [err, setErr] = useState(null);
@@ -91,13 +89,13 @@ export default function ShootoutStatsTab() {
   const rows = useMemo(() => stats || [], [stats]);
 
   const columns = useMemo(
-    () =>
-      [
-        ...shootoutColumns(),
-        actionsCol(({ row }) => (
-          <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
-        )),
-      ],
+    () => [
+      ...shootoutColumns(),
+      buildNativeActionsColumn({
+        onEdit: (id, row) => handleEdit(row),
+        onDelete: async (id, row) => await handleDelete(row),
+      }),
+    ],
     [handleEdit, handleDelete],
   );
 

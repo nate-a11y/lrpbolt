@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/rideColumns.jsx
-import { formatDateTime, safeNumber, safeString } from "../utils/timeUtils";
-import { getField, getTsSec, getClaimedBy, getClaimedAt } from "../utils/rowAccess";
+import { formatDateTime } from "../utils/timeUtils";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
@@ -14,22 +13,17 @@ import { buildNativeActionsColumn } from "./nativeActions.jsx";
 export function rideColumns(opts = {}) {
   const { withActions = false, onEdit, onDelete } = opts;
 
-  const cols = [
-    {
-      field: "tripId",
-      headerName: "Trip ID",
-      minWidth: 120,
-      flex: 0.6,
-      valueGetter: (p) => safeString(getField(p?.row, "tripId")),
-    },
+  const columns = [
+    { field: "tripId", headerName: "Trip ID", minWidth: 120, flex: 0.6 },
     {
       field: "pickupTime",
       headerName: "Pickup",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "pickupTime")),
+      valueFormatter: (p) => formatDateTime(p.value),
       sortComparator: (v1, v2, p1, p2) =>
-        getTsSec(getField(p1?.row, "pickupTime")) - getTsSec(getField(p2?.row, "pickupTime")),
+        (p1?.row?.pickupTime?.seconds ?? -1) -
+        (p2?.row?.pickupTime?.seconds ?? -1),
     },
     {
       field: "rideDuration",
@@ -37,69 +31,42 @@ export function rideColumns(opts = {}) {
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueGetter: (p) => safeNumber(getField(p?.row, "rideDuration"), 0),
+      valueFormatter: (p) =>
+        typeof p.value === "number" ? p.value : "N/A",
     },
-    {
-      field: "rideType",
-      headerName: "Type",
-      minWidth: 120,
-      flex: 0.6,
-      valueGetter: (p) => safeString(getField(p?.row, "rideType")),
-    },
-    {
-      field: "vehicle",
-      headerName: "Vehicle",
-      minWidth: 160,
-      flex: 0.8,
-      valueGetter: (p) => safeString(getField(p?.row, "vehicle")),
-    },
-    {
-      field: "claimedBy",
-      headerName: "Claimed By",
-      minWidth: 160,
-      flex: 0.7,
-      valueGetter: (p) => safeString(getClaimedBy(p?.row)),
-    },
+    { field: "rideType", headerName: "Type", minWidth: 120, flex: 0.6 },
+    { field: "vehicle", headerName: "Vehicle", minWidth: 160, flex: 0.8 },
+    { field: "claimedBy", headerName: "Claimed By", minWidth: 160, flex: 0.7 },
     {
       field: "claimedAt",
       headerName: "Claimed At",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (p) => formatDateTime(getClaimedAt(p?.row)),
+      valueFormatter: (p) => formatDateTime(p.value),
       sortComparator: (v1, v2, p1, p2) =>
-        getTsSec(getClaimedAt(p1?.row)) - getTsSec(getClaimedAt(p2?.row)),
+        (p1?.row?.claimedAt?.seconds ?? -1) -
+        (p2?.row?.claimedAt?.seconds ?? -1),
     },
-    {
-      field: "status",
-      headerName: "Status",
-      minWidth: 120,
-      flex: 0.6,
-      valueGetter: (p) => safeString(getField(p?.row, "status")),
-    },
-    {
-      field: "rideNotes",
-      headerName: "Notes",
-      minWidth: 220,
-      flex: 1.2,
-      valueGetter: (p) => safeString(getField(p?.row, "rideNotes"), ""),
-    },
+    { field: "status", headerName: "Status", minWidth: 120, flex: 0.6 },
+    { field: "rideNotes", headerName: "Notes", minWidth: 220, flex: 1.2 },
     {
       field: "createdAt",
       headerName: "Created",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "createdAt")),
+      valueFormatter: (p) => formatDateTime(p.value),
     },
     {
       field: "updatedAt",
       headerName: "Updated",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "updatedAt")),
+      valueFormatter: (p) => formatDateTime(p.value),
     },
   ];
 
-  if (withActions) cols.push(buildNativeActionsColumn({ onEdit, onDelete }));
+  if (withActions)
+    columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
-  return cols;
+  return columns;
 }

@@ -1,90 +1,49 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/shootoutColumns.js
-import { formatDateTime, safeNumber, safeString, minutesBetween, fmtMinutesHuman } from "../utils/timeUtils";
-import { getField, getTsSec } from "../utils/rowAccess";
+import { formatDateTime } from "../utils/timeUtils";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
 /**
  * shootoutStats doc shape:
- * driverEmail, vehicle, startTime, endTime?, trips, passengers, createdAt
+ * driverEmail, vehicle, startTime, endTime, trips, passengers, createdAt
  */
 export function shootoutColumns(opts = {}) {
   const { withActions = false, onEdit, onDelete } = opts;
-  const cols = [
-    {
-      field: "driverEmail",
-      headerName: "Driver Email",
-      minWidth: 220,
-      flex: 1,
-      valueGetter: (p) => safeString(getField(p?.row, "driverEmail")),
-    },
-    {
-      field: "vehicle",
-      headerName: "Vehicle",
-      minWidth: 160,
-      flex: 0.8,
-      valueGetter: (p) => safeString(getField(p?.row, "vehicle")),
-    },
+  const columns = [
+    { field: "driverEmail", headerName: "Driver Email", minWidth: 220, flex: 1 },
+    { field: "vehicle", headerName: "Vehicle", minWidth: 160, flex: 0.8 },
     {
       field: "startTime",
       headerName: "Start",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "startTime")),
+      valueFormatter: (p) => formatDateTime(p.value),
       sortComparator: (v1, v2, p1, p2) =>
-        getTsSec(getField(p1?.row, "startTime")) - getTsSec(getField(p2?.row, "startTime")),
+        (p1?.row?.startTime?.seconds ?? -1) - (p2?.row?.startTime?.seconds ?? -1),
     },
     {
       field: "endTime",
       headerName: "End",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "endTime")),
+      valueFormatter: (p) => formatDateTime(p.value),
       sortComparator: (v1, v2, p1, p2) =>
-        getTsSec(getField(p1?.row, "endTime")) - getTsSec(getField(p2?.row, "endTime")),
+        (p1?.row?.endTime?.seconds ?? -1) - (p2?.row?.endTime?.seconds ?? -1),
     },
-    {
-      field: "sessionLength",
-      headerName: "Session",
-      minWidth: 120,
-      flex: 0.6,
-      valueGetter: (p) =>
-        fmtMinutesHuman(
-          minutesBetween(getField(p?.row, "startTime"), getField(p?.row, "endTime"))
-        ),
-      sortComparator: (v1, v2, p1, p2) => {
-        const a = minutesBetween(getField(p1?.row, "startTime"), getField(p1?.row, "endTime")) ?? -1;
-        const b = minutesBetween(getField(p2?.row, "startTime"), getField(p2?.row, "endTime")) ?? -1;
-        return a - b;
-      },
-    },
-    {
-      field: "trips",
-      headerName: "Trips",
-      minWidth: 110,
-      flex: 0.5,
-      type: "number",
-      valueGetter: (p) => safeNumber(getField(p?.row, "trips"), 0),
-    },
-    {
-      field: "passengers",
-      headerName: "PAX",
-      minWidth: 110,
-      flex: 0.5,
-      type: "number",
-      valueGetter: (p) => safeNumber(getField(p?.row, "passengers"), 0),
-    },
+    { field: "trips", headerName: "Trips", minWidth: 110, flex: 0.5, type: "number" },
+    { field: "passengers", headerName: "PAX", minWidth: 110, flex: 0.5, type: "number" },
     {
       field: "createdAt",
       headerName: "Created",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "createdAt")),
+      valueFormatter: (p) => formatDateTime(p.value),
     },
   ];
 
-  if (withActions) cols.push(buildNativeActionsColumn({ onEdit, onDelete }));
+  if (withActions)
+    columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
-  return cols;
+  return columns;
 }
