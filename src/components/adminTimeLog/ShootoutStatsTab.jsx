@@ -1,259 +1,54 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
-import {
-  Box,
-  CircularProgress,
-  Alert,
-  Stack,
-  Paper,
-  Typography,
-  useMediaQuery,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-} from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers-pro";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import { doc, deleteDoc } from "firebase/firestore";
 
-import { formatDateTime, safeNumber } from "../../utils/formatters.js";
-import { db } from "../../utils/firebaseInit";
-import { subscribeShootoutStats } from "../../hooks/firestore";
-import LRPDataGrid from "../LRPDataGrid.jsx";
-import { shootoutColumns } from "../../columns/shootoutColumns.js";
+import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildNativeActionsColumn } from "../../columns/nativeActions.jsx";
+import { subscribeShootoutStats } from "../../hooks/firestore";
+import { db } from "../../utils/firebaseInit";
 
-import ToolsCell from "./cells/ToolsCell.jsx";
 export default function ShootoutStatsTab() {
-  const [stats, setStats] = useState(null);
-  const [err, setErr] = useState(null);
-  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
-  const apiRef = useGridApiRef();
-  const [driverFilter, setDriverFilter] = useState("");
-  const [startFilter, setStartFilter] = useState(null);
-  const [endFilter, setEndFilter] = useState(null);
-  const [search, setSearch] = useState("");
-  const [editRow, setEditRow] = useState(null);
-
-  const handleEdit = useCallback(
-    (row) => {
-      if (isSmall) {
-        setEditRow(row);
-      } else {
-        apiRef.current.startRowEditMode({ id: row.id });
-      }
-    },
-    [isSmall, apiRef],
-  );
-
-  const processRowUpdate = useCallback(async (newRow) => {
-    await updateDoc(doc(db, "shootoutStats", newRow.id), {
-      status: newRow.status,
-    });
-    return newRow;
-  }, []);
-
-  const handleEditSave = useCallback(async () => {
-    try {
-      await updateDoc(doc(db, "shootoutStats", editRow.id), {
-        status: editRow.status,
-      });
-      setEditRow(null);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to update stat");
-    }
-  }, [editRow]);
-
-  const handleDelete = useCallback(async (row) => {
-    if (!window.confirm("Delete this stat?")) return;
-    try {
-      await deleteDoc(doc(db, "shootoutStats", row.id));
-    } catch (e) {
-      console.error(e);
-      alert("Failed to delete stat");
-    }
-  }, []);
+  const [rows, setRows] = useState([]);
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
-      (rows) => setStats(rows || []),
-      (e) => setErr(e?.message || "Failed to load"),
+      (stats) => setRows(stats || []),
+      (e) => console.error(e),
     );
     return () => typeof unsub === "function" && unsub();
   }, []);
 
-  const rows = useMemo(() => stats || [], [stats]);
+  const openSessionEdit = null;
 
-  const columns = useMemo(
-    () => [
-      ...shootoutColumns(),
-      buildNativeActionsColumn({
-        onEdit: (id, row) => handleEdit(row),
-        onDelete: async (id, row) => await handleDelete(row),
-      }),
-    ],
-    [handleEdit, handleDelete],
-  );
-
-
-  const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      const driverMatch = driverFilter
-        ? r.driverEmail?.toLowerCase().includes(driverFilter.toLowerCase())
-        : true;
-      const startMatch = startFilter
-        ? r.startTime?.getTime() >= startFilter.toDate().getTime()
-        : true;
-      const endMatch = endFilter
-        ? r.endTime?.getTime() <= endFilter.toDate().getTime()
-        : true;
-      const searchMatch = search
-        ? [
-            r.driverEmail,
-            r.vehicle,
-            r.trips,
-            r.pax ?? r.passengers,
-            formatDateTime(r.startTime),
-            formatDateTime(r.endTime),
-            formatDateTime(r.createdAt),
-            r.duration,
-          ]
-            .filter(Boolean)
-            .some((v) =>
-              String(v).toLowerCase().includes(search.toLowerCase()),
-            )
-        : true;
-      return driverMatch && startMatch && endMatch && searchMatch;
-    });
-  }, [rows, driverFilter, startFilter, endFilter, search]);
-
-  const safeRows = useMemo(
-    () =>
-      (filteredRows || [])
-        .filter(Boolean)
-        .map((r) => ({
-          ...r,
-          duration:
-            r.duration ??
-            r.minutes ??
-            Math.round((r.durationMs || 0) / 60000),
-        })),
-    [filteredRows],
-  );
-
-  if (err) return <Alert severity="error" sx={{ m: 2 }}>{err}</Alert>;
-  if (!stats) return <CircularProgress sx={{ m: 2 }} />;
+  const deleteShootoutStatById = async (id) => {
+    await deleteDoc(doc(db, "shootoutStats", id));
+  };
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
-        <TextField
-          label="Search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          size="small"
-        />
-        <TextField
-          label="Driver"
-          value={driverFilter}
-          onChange={(e) => setDriverFilter(e.target.value)}
-          size="small"
-        />
-        <DatePicker
-          label="Start after"
-          value={startFilter}
-          onChange={(v) => setStartFilter(v)}
-          slotProps={{ textField: { size: "small" } }}
-        />
-        <DatePicker
-          label="End before"
-          value={endFilter}
-          onChange={(v) => setEndFilter(v)}
-          slotProps={{ textField: { size: "small" } }}
-        />
-      </Box>
-      {isSmall ? (
-        <Stack spacing={2}>
-          {safeRows.map((r) => (
-            <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">
-                    {(() => {
-                      const v = r.driver ?? r.driverEmail ?? "";
-                      return v.includes("@") ? v.split("@")[0] : v;
-                    })()}
-                  </Typography>
-                  <Typography variant="body2">Vehicle: {r.vehicle ?? ""}</Typography>
-                  <Typography variant="body2">Start: {formatDateTime(r.startTime)}</Typography>
-                  <Typography variant="body2">End: {formatDateTime(r.endTime)}</Typography>
-                  <Typography variant="body2">Trips: {r.trips}</Typography>
-                  <Typography variant="body2">Pax: {r.pax ?? r.passengers}</Typography>
-                  <Typography variant="body2">
-                    Duration: {safeNumber(r.duration)} min
-                  </Typography>
-                  <Typography variant="body2">
-                    Created: {formatDateTime(r.createdAt)}
-                  </Typography>
-                </Stack>
-                <ToolsCell
-                  row={r}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              </Box>
-            </Paper>
-          ))}
-        </Stack>
-      ) : (
-        <LRPDataGrid
-          apiRef={apiRef}
-          editMode="row"
-          processRowUpdate={processRowUpdate}
-          onProcessRowUpdateError={() => alert("Failed to update stat")}
-          rows={Array.isArray(safeRows) ? safeRows : []}
-          columns={columns}
-          density="compact"
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          pageSizeOptions={[5, 10, 25]}
-          disableRowSelectionOnClick
-          autoHeight
-          slots={{ toolbar: GridToolbar }}
-          slotProps={{
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 300, placeholder: "Search" },
-            },
-          }}
-          loading={false}
-          checkboxSelection={false}
-        />
-      )}
-      <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
-        <DialogTitle>Edit Status</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Status"
-            value={editRow?.status || ""}
-            onChange={(e) =>
-              setEditRow((r) => ({ ...r, status: e.target.value }))
-            }
-            fullWidth
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditRow(null)}>Cancel</Button>
-          <Button onClick={handleEditSave} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    <SmartAutoGrid
+      rows={rows}
+      headerMap={{
+        driverEmail: "Driver Email",
+        vehicle: "Vehicle",
+        startTime: "Start",
+        endTime: "End",
+        trips: "Trips",
+        passengers: "PAX",
+        createdAt: "Created",
+      }}
+      order={[
+        "driverEmail",
+        "vehicle",
+        "startTime",
+        "endTime",
+        "trips",
+        "passengers",
+        "createdAt",
+      ]}
+      actionsColumn={buildNativeActionsColumn({
+        onEdit: (id, row) => openSessionEdit?.(row),
+        onDelete: async (id) => await deleteShootoutStatById(id),
+      })}
+    />
   );
 }

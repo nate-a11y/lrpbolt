@@ -171,21 +171,22 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-      <SmartAutoGrid
-        rows={safeRows}
-        headerMap={{
-          driver: "Driver",
-          driverEmail: "Driver Email",
-          rideId: "Ride ID",
-          startTime: "Start",
-          endTime: "End",
-          duration: "Duration",
-          loggedAt: "Logged",
-        }}
-        order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt"]}
-        actionsColumn={actionsColumn}
-        loading={loading}
-      />
+        <SmartAutoGrid
+          rows={safeRows}
+          headerMap={{
+            driver: "Driver",
+            driverEmail: "Driver Email",
+            rideId: "Ride ID",
+            startTime: "Clock In",
+            endTime: "Clock Out",
+            duration: "Duration",
+            loggedAt: "Logged At",
+            note: "Note",
+          }}
+          order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note"]}
+          actionsColumn={actionsColumn}
+          loading={loading}
+        />
       <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
         <DialogTitle>Edit Driver</DialogTitle>
         <DialogContent>
