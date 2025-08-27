@@ -17,7 +17,8 @@ import {
   Button,
 } from "@mui/material";
 
-import { vfText, vfNumber, safeVG, actionsCol } from "@/utils/gridFormatters";
+import { vfText, vfNumber } from "@/utils/vf";
+import { safeVG, actionsCol } from "@/utils/gridFormatters";
 import { getField } from "@/utils/gridCells";
 import { asText } from "@/utils/grid/cell";
 

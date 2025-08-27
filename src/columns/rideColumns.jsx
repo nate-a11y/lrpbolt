@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/rideColumns.jsx
-import { formatDateTime } from "../utils/timeUtils";
+import { vfTime, vfNumber } from "../utils/vf";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
@@ -20,7 +20,7 @@ export function rideColumns(opts = {}) {
       headerName: "Pickup",
       minWidth: 170,
       flex: 0.9,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.pickupTime?.seconds ?? -1) -
         (p2?.row?.pickupTime?.seconds ?? -1),
@@ -31,8 +31,7 @@ export function rideColumns(opts = {}) {
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueFormatter: (p) =>
-        typeof p.value === "number" ? p.value : "N/A",
+      valueFormatter: vfNumber,
     },
     { field: "rideType", headerName: "Type", minWidth: 120, flex: 0.6 },
     { field: "vehicle", headerName: "Vehicle", minWidth: 160, flex: 0.8 },
@@ -42,7 +41,7 @@ export function rideColumns(opts = {}) {
       headerName: "Claimed At",
       minWidth: 170,
       flex: 0.9,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.claimedAt?.seconds ?? -1) -
         (p2?.row?.claimedAt?.seconds ?? -1),
@@ -54,14 +53,14 @@ export function rideColumns(opts = {}) {
       headerName: "Created",
       minWidth: 170,
       flex: 0.9,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
     },
     {
       field: "updatedAt",
       headerName: "Updated",
       minWidth: 170,
       flex: 0.9,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
     },
   ];
 

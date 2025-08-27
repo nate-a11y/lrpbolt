@@ -8,8 +8,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { getField } from "@/utils/gridCells";
 import { durationMinutes } from "@/utils/datetime";
 import { actionsCol } from "@/utils/gridFormatters";
+import { vfTime, vfNumber } from "@/utils/vf";
 
-import { formatDateTime } from "../utils/timeUtils";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 export default function EditableRideGrid({
@@ -51,14 +51,14 @@ export default function EditableRideGrid({
       {
         field: "pickupTime",
         headerName: "Start",
-        valueFormatter: (p) => formatDateTime(p.value),
+        valueFormatter: vfTime,
       },
       {
         field: "endTime",
         headerName: "End",
         valueGetter: (p) =>
           p?.row?.endTime ?? p?.row?.dropoffTime ?? null,
-        valueFormatter: (p) => formatDateTime(p.value),
+        valueFormatter: vfTime,
       },
       {
         field: "rideDuration",
@@ -69,8 +69,7 @@ export default function EditableRideGrid({
             getField(p?.row, "pickupTime"),
             p?.row?.endTime ?? getField(p?.row, "dropoffTime"),
           ),
-        valueFormatter: (p) =>
-          typeof p.value === "number" ? p.value : "N/A",
+        valueFormatter: vfNumber,
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
       { field: "rideType", headerName: "Type", flex: 1 },

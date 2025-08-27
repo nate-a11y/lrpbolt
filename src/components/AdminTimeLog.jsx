@@ -7,12 +7,8 @@ import { timeLogColumns } from "../columns/timeLogColumns.js";
 import { shootoutColumns } from "../columns/shootoutColumns.js";
 import { subscribeTimeLogs, subscribeShootoutStats } from "../hooks/api";
 import { deleteTimeLog } from "../services/timeLogs";
-import {
-  formatDateTime,
-  minutesBetween,
-  safeNumber,
-  safeString,
-} from "../utils/timeUtils";
+import { minutesBetween, safeNumber, safeString } from "../utils/timeUtils";
+import { vfTime, vfNumber } from "../utils/vf";
 import { base as rowBase, getField } from "../utils/rowAccess";
 import { logError as maybeLogError } from "../utils/logError";
 
@@ -172,14 +168,19 @@ export default function AdminTimeLog() {
         headerName: "Total Hours",
         minWidth: 130,
         flex: 0.6,
-        valueGetter: (p) => (safeNumber(p?.row?.minutes, 0) / 60).toFixed(2),
+        valueGetter: (p) => safeNumber(p?.row?.minutes, 0) / 60,
+        valueFormatter: (p) => {
+          const n = vfNumber(p, null);
+          return n == null ? "N/A" : n.toFixed(2);
+        },
       },
       {
         field: "firstIn",
         headerName: "First In",
         minWidth: 170,
         flex: 0.8,
-        valueGetter: (p) => formatDateTime(p?.row?.firstIn),
+        valueGetter: (p) => p?.row?.firstIn ?? null,
+        valueFormatter: vfTime,
         sortComparator: (v1, v2, p1, p2) => {
           const a = p1?.row?.firstIn?.seconds ?? -1;
           const b = p2?.row?.firstIn?.seconds ?? -1;
@@ -191,7 +192,8 @@ export default function AdminTimeLog() {
         headerName: "Last Out",
         minWidth: 170,
         flex: 0.8,
-        valueGetter: (p) => formatDateTime(p?.row?.lastOut),
+        valueGetter: (p) => p?.row?.lastOut ?? null,
+        valueFormatter: vfTime,
         sortComparator: (v1, v2, p1, p2) => {
           const a = p1?.row?.lastOut?.seconds ?? -1;
           const b = p2?.row?.lastOut?.seconds ?? -1;
@@ -261,14 +263,19 @@ export default function AdminTimeLog() {
         headerName: "Hours",
         minWidth: 120,
         flex: 0.5,
-        valueGetter: (p) => (safeNumber(p?.row?.minutes, 0) / 60).toFixed(2),
+        valueGetter: (p) => safeNumber(p?.row?.minutes, 0) / 60,
+        valueFormatter: (p) => {
+          const n = vfNumber(p, null);
+          return n == null ? "N/A" : n.toFixed(2);
+        },
       },
       {
         field: "firstStart",
         headerName: "First Start",
         minWidth: 170,
         flex: 0.8,
-        valueGetter: (p) => formatDateTime(p?.row?.firstStart),
+        valueGetter: (p) => p?.row?.firstStart ?? null,
+        valueFormatter: vfTime,
         sortComparator: (v1, v2, p1, p2) => {
           const a = p1?.row?.firstStart?.seconds ?? -1;
           const b = p2?.row?.firstStart?.seconds ?? -1;
@@ -280,7 +287,8 @@ export default function AdminTimeLog() {
         headerName: "Last End",
         minWidth: 170,
         flex: 0.8,
-        valueGetter: (p) => formatDateTime(p?.row?.lastEnd),
+        valueGetter: (p) => p?.row?.lastEnd ?? null,
+        valueFormatter: vfTime,
         sortComparator: (v1, v2, p1, p2) => {
           const a = p1?.row?.lastEnd?.seconds ?? -1;
           const b = p2?.row?.lastEnd?.seconds ?? -1;
