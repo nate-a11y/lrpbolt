@@ -870,6 +870,7 @@ export async function patchTimeLog(id, updates) {
       updates.endTime !== undefined ? coerceTs(updates.endTime) : undefined,
     loggedAt:
       updates.loggedAt !== undefined ? coerceTs(updates.loggedAt) : undefined,
+    note: updates.note,
     // stored as minutes in Firestore
     duration:
       updates.durationMin !== undefined
