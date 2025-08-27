@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-// src/columns/rideColumns.js
+// src/columns/rideColumns.jsx
 import React from "react";
 import { Stack, Tooltip, IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
