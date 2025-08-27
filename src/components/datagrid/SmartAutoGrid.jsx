@@ -7,6 +7,7 @@ import { formatDateTime, formatHMFromMinutes } from "../../utils/timeUtils";
 const isFSTimestamp = (v) => !!v && typeof v?.toDate === "function";
 const isFSTimestampLike = (v) =>
   v && typeof v === "object" && Number.isFinite(v.seconds) && Number.isFinite(v.nanoseconds);
+const isDate = (v) => v instanceof Date;
 const isBool = (v) => v === true || v === false;
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
@@ -29,6 +30,7 @@ function formatAny(field, v) {
     const ms = v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6);
     return formatDateTime(new Date(ms));
   }
+  if (isDate(v)) return formatDateTime(v);
   if (looksLikeDurationField(field)) {
     if (isNum(v)) return formatHMFromMinutes(v);
     if (v && typeof v === "object" && isNum(v.minutes)) return formatHMFromMinutes(v.minutes);
