@@ -24,9 +24,7 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import PeopleIcon from "@mui/icons-material/People";
 import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
-import { DataGridPro } from "@mui/x-data-grid-pro";
-
-import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
+import { formatDateTime, fmtMinutesHuman } from "../utils/timeUtils.js";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { toNumber, toString, tsToDate } from "../utils/safe";
@@ -42,8 +40,9 @@ import CadillacEVQuickStarts from "../components/CadillacEVQuickStarts.jsx";
 import { enqueueSms, watchMessage } from "../services/messaging.js";
 import { resolveSmsTo } from "../services/smsRecipients.js";
 
-import { shootoutDetailColumns, shootoutSummaryColumns } from "./adminLogs/columns.js";
+import { shootoutColumns } from "../columns/shootoutColumns.js";
 import useGridProDefaults from "./grid/useGridProDefaults.js";
+import LRPDataGrid from "./LRPDataGrid.jsx";
 
 dayjs.extend(durationPlugin);
 
@@ -82,7 +81,6 @@ export default function ShootoutTab() {
         [grid.initialState, isSmall],
       );
 
-      const summary = false;
       const rows = useMemo(
         () =>
           (history || []).map((r) => ({
@@ -100,11 +98,11 @@ export default function ShootoutTab() {
           })),
         [history],
       );
-      const cols = summary ? shootoutSummaryColumns : shootoutDetailColumns;
+      const columns = useMemo(() => shootoutColumns(), []);
 
     useEffect(() => {
       /* no-op */
-    }, [cols, rows]);
+    }, [columns, rows]);
 
     useEffect(() => {
       isMounted.current = true;
@@ -142,7 +140,7 @@ export default function ShootoutTab() {
     });
 
     return () => { isMounted.current = false; unsub && unsub(); };
-    }, [authLoading, driverEmail, cols]);
+    }, [authLoading, driverEmail, columns]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -398,13 +396,13 @@ export default function ShootoutTab() {
               {rows.map((r) => (
                 <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
                   <Typography variant="body2">
-                    Start: {fmtDateTime(r.startTime)}
+                    Start: {formatDateTime(r.startTime)}
                   </Typography>
                   <Typography variant="body2">
-                    End: {fmtDateTime(r.endTime)}
+                    End: {formatDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {fmtMinutes(r.duration)}
+                    Duration: {fmtMinutesHuman(r.duration)}
                   </Typography>
                   <Typography variant="body2">Trips: {r.trips}</Typography>
                   <Typography variant="body2">
@@ -421,15 +419,16 @@ export default function ShootoutTab() {
             </Stack>
           ) : (
             <Box sx={{ width: "100%" }}>
-              <DataGridPro
+              <LRPDataGrid
                 {...grid}
-                rows={rows ?? []}
-                columns={cols}
+                rows={Array.isArray(rows) ? rows : []}
+                columns={columns}
                 pageSizeOptions={[5, 10, 25]}
                 initialState={initialState}
-                getRowId={(r) => r.id}
                 autoHeight
                 disableRowSelectionOnClick
+                loading={grid.loading}
+                checkboxSelection={grid.checkboxSelection ?? false}
               />
               {rows.length === 0 && (
                 <Typography textAlign="center" color="text.secondary" mt={2}>

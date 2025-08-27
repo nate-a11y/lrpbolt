@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
+import { GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import {
   Box,
   CircularProgress,
@@ -22,6 +22,7 @@ import { getField } from "@/utils/gridCells";
 import { asText } from "@/utils/grid/cell";
 
 import useWeeklySummary from "../../hooks/useWeeklySummary";
+import LRPDataGrid from "../LRPDataGrid.jsx";
 
 import ToolsCell from "./cells/ToolsCell.jsx";
 
@@ -196,12 +197,12 @@ export default function WeeklySummaryTab() {
           ))}
         </Stack>
       ) : (
-        <DataGridPro
+        <LRPDataGrid
           apiRef={apiRef}
           editMode="row"
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={() => alert("Failed to update summary")}
-          rows={safeRows ?? []}
+          rows={Array.isArray(safeRows) ? safeRows : []}
           columns={columns}
           slots={{ toolbar: GridToolbar }}
           slotProps={{
@@ -211,7 +212,9 @@ export default function WeeklySummaryTab() {
             },
           }}
           pageSizeOptions={[5, 10, 25]}
-          getRowId={(r) => r.id}
+          autoHeight
+          loading={false}
+          checkboxSelection={false}
         />
       )}
       <Dialog open={!!editRow} onClose={() => setEditRow(null)}>

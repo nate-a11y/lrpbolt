@@ -29,7 +29,6 @@ import {
 } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
-import { fmtMinutes } from "@/utils/datetime";
 import { useRole } from "@/hooks";
 import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";
@@ -39,44 +38,16 @@ import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { useAuth } from "../context/AuthContext.jsx";
-import { fmtDateTime, minutesToHMM } from "../utils/timeUtils";
+import { formatDateTime, fmtMinutesHuman } from "../utils/timeUtils.js";
+import { timeLogColumns } from "../columns/timeLogColumns.js";
 
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
-import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
+import LRPDataGrid from "./LRPDataGrid.jsx";
 
 const bcName = "lrp-timeclock";
 
-const columnsSessions = [
-  { field: "rideId", headerName: "Ride ID", minWidth: 120, flex: 0.8, valueGetter: (p) => p.row?.rideId || p.row?.tripId || "" },
-  {
-    field: "start",
-    headerName: "Start",
-    minWidth: 180,
-    flex: 1,
-    valueFormatter: (p) => (p?.value ? fmtDateTime(p.value) : ""),
-  },
-  {
-    field: "end",
-    headerName: "End",
-    minWidth: 180,
-    flex: 1,
-    valueFormatter: (p) => (p?.value ? fmtDateTime(p.value) : ""),
-  },
-  {
-    field: "durationMins",
-    headerName: "Duration",
-    minWidth: 110,
-    valueFormatter: (p) => (p?.value != null ? minutesToHMM(p.value) : ""),
-  },
-  {
-    field: "note",
-    headerName: "Note",
-    minWidth: 140,
-    flex: 1,
-    valueGetter: (p) => p.row?.note || p.row?.notes || "",
-  },
-];
+const columns = timeLogColumns();
 
 
 async function logTimeCreate(payload) {
@@ -306,10 +277,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     setSubmitting(false);
   };
 
-    const formatTS = (ts) => {
-      const dt = tsToDate(ts);
-      return dt ? new Date(dt).toLocaleString() : '—';
-    };
+    const formatTS = (ts) => formatDateTime(ts);
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
   if (!(isAdmin || isDriver)) return <Alert severity="error">You don’t have permission to view this.</Alert>;
   if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
@@ -373,7 +341,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
                 <Typography variant="body2">Ride: {r.rideId || '—'}</Typography>
                 <Typography variant="body2">Start: {formatTS(r.startTime)}</Typography>
                 <Typography variant="body2">End: {formatTS(r.endTime)}</Typography>
-                <Typography variant="body2">Duration: {fmtMinutes(r.duration)}</Typography>
+                <Typography variant="body2">Duration: {fmtMinutesHuman(r.duration)}</Typography>
                 {r.note && <Typography variant="body2">Note: {r.note}</Typography>}
               </Paper>
             ))}
@@ -385,13 +353,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           </Stack>
         ) : (
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
-              <SafeDataGrid
-                rows={rows}
-                columns={columnsSessions}
-                getRowId={(r) => r.id}
+              <LRPDataGrid
+                rows={Array.isArray(rows) ? rows : []}
+                columns={columns}
                 columnVisibilityModel={isSmall ? { rideId: false, note: false } : undefined}
                 density="compact"
                 autoHeight
+                loading={false}
+                checkboxSelection={false}
               />
             {rows.length === 0 && (
               <Typography textAlign="center" color="text.secondary" mt={2}>

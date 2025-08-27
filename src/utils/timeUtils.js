@@ -35,6 +35,7 @@ export function toDayjs(input) {
     }
     return null;
   } catch (err) {
+    console.error(err);
     return null;
   }
 }

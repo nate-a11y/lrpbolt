@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/timeLogColumns.js
-import { formatDateTime, minutesBetween, safeNumber, safeString, fmtMinutesHuman } from "../utils/timeUtils";
+import { formatDateTime, minutesBetween, safeString, fmtMinutesHuman } from "../utils/timeUtils.js";
 
 /**
  * timeLogs doc shape (from rules + screenshots):

@@ -34,7 +34,6 @@ import AddIcon from "@mui/icons-material/Add";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { DataGridPro } from "@mui/x-data-grid-pro";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
@@ -69,6 +68,7 @@ import DropDailyWidget from "./DropDailyWidget";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import LiveRidesGrid from "./LiveRidesGrid";
+import LRPDataGrid from "./LRPDataGrid.jsx";
 
 
 
@@ -1098,7 +1098,7 @@ if (totalMinutes <= 0) {
                   </Box>
                 )}
                 <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
-                  <DataGridPro
+                  <LRPDataGrid
                     autoHeight
                     density="compact"
                     rows={Array.isArray(uploadedRows) ? uploadedRows.map((r, i) => ({ id: i, ...(r || {}) })) : []}
@@ -1109,8 +1109,9 @@ if (totalMinutes <= 0) {
                       valueFormatter: vfText,
                     }))}
                     pageSizeOptions={[5]}
-                    getRowId={(r) => r.id}
                     disableRowSelectionOnClick
+                    loading={false}
+                    checkboxSelection={false}
                   />
                 </Box>
                 <Button

@@ -1,67 +1,72 @@
 // /src/services/normalizers.js
 // Convert Firestore docs into a single, consistent shape the grids expect.
 
-import { minutesBetween, toDate, safeStr, safeNum } from "../utils/timeUtils";
+import {
+  minutesBetween,
+  toDayjs,
+  safeString,
+  safeNumber,
+} from "../utils/timeUtils.js";
 
 export function normalizeTimeLog(id, d) {
-  const start = toDate(d.startTime);
-  const end = toDate(d.endTime);
+  const start = toDayjs(d.startTime)?.toDate();
+  const end = toDayjs(d.endTime)?.toDate();
   return {
     id,
-    driver: safeStr(d.driverId || d.driver || d.driverName || d.driverEmail || "Unknown"),
-    driverEmail: safeStr(d.driverEmail),
-    rideId: safeStr(d.rideId || d.tripId || d.tripID || id),
+    driver: safeString(d.driverId || d.driver || d.driverName || d.driverEmail || "Unknown"),
+    driverEmail: safeString(d.driverEmail),
+    rideId: safeString(d.rideId || d.tripId || d.tripID || id),
     start,
     end,
-    created: toDate(d.loggedAt || d.createdAt),
-    updated: toDate(d.updatedAt),
+    created: toDayjs(d.loggedAt || d.createdAt)?.toDate(),
+    updated: toDayjs(d.updatedAt)?.toDate(),
     durationMins:
       typeof d.durationMins === "number"
         ? d.durationMins
         : typeof d.rideDuration === "number"
         ? Math.max(0, Math.round(d.rideDuration))
         : minutesBetween(start, end),
-    vehicle: safeStr(d.vehicle),
-    mode: safeStr(d.mode),
-    trips: d.trips != null ? safeNum(d.trips) : null,
-    passengers: d.passengers != null ? safeNum(d.passengers) : null,
+    vehicle: safeString(d.vehicle),
+    mode: safeString(d.mode),
+    trips: d.trips != null ? safeNumber(d.trips) : null,
+    passengers: d.passengers != null ? safeNumber(d.passengers) : null,
   };
 }
 
 export function normalizeShootout(id, d) {
-  const start = toDate(d.startTime);
-  const end = toDate(d.endTime);
+  const start = toDayjs(d.startTime)?.toDate();
+  const end = toDayjs(d.endTime)?.toDate();
   return {
     id,
-    driver: safeStr(d.driver || d.driverId || d.driverName || d.driverEmail || "Unknown"),
-    driverEmail: safeStr(d.driverEmail),
+    driver: safeString(d.driver || d.driverId || d.driverName || d.driverEmail || "Unknown"),
+    driverEmail: safeString(d.driverEmail),
     start,
     end,
-    created: toDate(d.createdAt),
-    vehicle: safeStr(d.vehicle),
-    trips: d.trips != null ? safeNum(d.trips) : null,
-    passengers: d.passengers != null ? safeNum(d.passengers) : null,
+    created: toDayjs(d.createdAt)?.toDate(),
+    vehicle: safeString(d.vehicle),
+    trips: d.trips != null ? safeNumber(d.trips) : null,
+    passengers: d.passengers != null ? safeNumber(d.passengers) : null,
     durationMins: minutesBetween(start, end),
   };
 }
 
 export function normalizeRide(id, d) {
-  const rideId = safeStr(d.rideId || d.tripId || id);
-  const pickup = toDate(d.pickupTime);
+  const rideId = safeString(d.rideId || d.tripId || id);
+  const pickup = toDayjs(d.pickupTime)?.toDate();
   const minutes = typeof d.rideDuration === "number" ? Math.max(0, Math.round(d.rideDuration)) : null;
   return {
     id: rideId || id,
     rideId,
-    status: safeStr(d.status),
+    status: safeString(d.status),
     pickupTime: pickup,
     durationMins: minutes,
-    vehicle: safeStr(d.vehicle),
-    rideType: safeStr(d.rideType),
-    notes: safeStr(d.rideNotes),
+    vehicle: safeString(d.vehicle),
+    rideType: safeString(d.rideType),
+    notes: safeString(d.rideNotes),
     claimedBy: d.claimedBy ?? null,
-    claimedAt: toDate(d.claimedAt),
-    createdAt: toDate(d.createdAt),
-    updatedAt: toDate(d.updatedAt),
+    claimedAt: toDayjs(d.claimedAt)?.toDate(),
+    createdAt: toDayjs(d.createdAt)?.toDate(),
+    updatedAt: toDayjs(d.updatedAt)?.toDate(),
   };
 }
 

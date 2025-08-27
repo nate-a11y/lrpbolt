@@ -16,18 +16,13 @@ import {
   Button,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
-import { DataGridPro, GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
+import { GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { fmtDateTime, fmtMinutes } from "@/utils/datetime";
-import {
-  vfText,
-  vfDateTime,
-  vfDuration,
-  safeVG,
-  actionsCol,
-} from "@/utils/gridFormatters";
-
+import { actionsCol } from "@/utils/gridFormatters";
+import { formatDateTime, fmtMinutesHuman } from "../../utils/timeUtils.js";
+import LRPDataGrid from "../LRPDataGrid.jsx";
+import { timeLogColumns } from "../../columns/timeLogColumns.js";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 
@@ -85,49 +80,16 @@ export default function EntriesTab() {
       }
     }, []);
 
-    const columns = [
-      {
-        field: "driver",
-        headerName: "Driver",
-        flex: 1,
-        valueGetter: safeVG(({ row }) => row.driver ?? row.driverId ?? ""),
-        valueFormatter: vfText,
-      },
-      {
-        field: "rideId",
-        headerName: "Ride ID",
-        flex: 1,
-        valueGetter: safeVG(({ row }) => row.rideId ?? ""),
-        valueFormatter: vfText,
-      },
-      {
-        field: "startTime",
-        headerName: "Start",
-        valueGetter: safeVG(({ row }) => row.startTime),
-        valueFormatter: vfDateTime,
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        valueGetter: safeVG(({ row }) => row.endTime),
-        valueFormatter: vfDateTime,
-      },
-      {
-        field: "duration",
-        headerName: "Duration",
-        valueGetter: safeVG(({ row }) => row.duration ?? row.minutes),
-        valueFormatter: vfDuration,
-      },
-      {
-        field: "loggedAt",
-        headerName: "Logged At",
-        valueGetter: safeVG(({ row }) => row.loggedAt),
-        valueFormatter: vfDateTime,
-      },
-      actionsCol(({ row }) => (
-        <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
-      )),
-    ];
+    const columns = useMemo(
+      () =>
+        [
+          ...timeLogColumns(),
+          actionsCol(({ row }) => (
+            <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
+          )),
+        ],
+      [handleEdit, handleDelete],
+    );
 
     useEffect(() => {
       const unsub = subscribeTimeLogs(
@@ -161,9 +123,9 @@ export default function EntriesTab() {
           ? [
               r.driverId ?? r.driverEmail,
               r.rideId,
-              fmtDateTime(r.startTime),
-              fmtDateTime(r.endTime),
-              fmtDateTime(r.loggedAt),
+              formatDateTime(r.startTime),
+              formatDateTime(r.endTime),
+              formatDateTime(r.loggedAt),
               r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
             ]
               .filter(Boolean)
@@ -250,16 +212,16 @@ export default function EntriesTab() {
                     Ride ID: {r.rideId ?? ""}
                   </Typography>
                   <Typography variant="body2">
-                    Start: {fmtDateTime(r.startTime)}
+                    Start: {formatDateTime(r.startTime)}
                   </Typography>
                   <Typography variant="body2">
-                    End: {fmtDateTime(r.endTime)}
+                    End: {formatDateTime(r.endTime)}
                   </Typography>
                   <Typography variant="body2">
-                    Duration: {fmtMinutes(r.duration)}
+                    Duration: {fmtMinutesHuman(r.duration)}
                   </Typography>
                   <Typography variant="body2">
-                    Logged: {fmtDateTime(r.loggedAt)}
+                    Logged: {formatDateTime(r.loggedAt)}
                   </Typography>
                 </Stack>
                 <ToolsCell
@@ -273,15 +235,14 @@ export default function EntriesTab() {
         </Stack>
       ) : (
         <div style={{ height: 640, width: "100%" }}>
-          <DataGridPro
+          <LRPDataGrid
             apiRef={apiRef}
             editMode="row"
             processRowUpdate={processRowUpdate}
             onProcessRowUpdateError={() =>
               alert("Failed to update time log")
             }
-            rows={safeRows ?? []}
-            getRowId={(r) => r.id}
+            rows={Array.isArray(safeRows) ? safeRows : []}
             columns={columns}
             disableRowSelectionOnClick
             initialState={{
@@ -295,6 +256,9 @@ export default function EntriesTab() {
                 quickFilterProps: { debounceMs: 300, placeholder: "Search" },
               },
             }}
+            autoHeight
+            loading={loading}
+            checkboxSelection={false}
           />
         </div>
       )}

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 
 import { subscribeLiveRides } from "../hooks/api";
 
-import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
-import { rideColumns } from "./rides/rideColumns.js";
+import { rideColumns } from "../columns/rideColumns.js";
+
+import LRPDataGrid from "./LRPDataGrid.jsx";
 
 export default function LiveRidesGrid() {
   const [rows, setRows] = useState([]);
@@ -12,12 +13,15 @@ export default function LiveRidesGrid() {
     return subscribeLiveRides(setRows, console.error);
   }, []);
 
+  const columns = useMemo(() => rideColumns(), []);
+
   return (
-    <SafeDataGrid
-      rows={rows}
-      columns={rideColumns}
-      getRowId={(r) => r.id}
+    <LRPDataGrid
+      rows={Array.isArray(rows) ? rows : []}
+      columns={columns}
       autoHeight
+      loading={false}
+      checkboxSelection={false}
     />
   );
 }

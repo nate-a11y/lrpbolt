@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 
 import { subscribeTimeLogs } from "../hooks/api";
 
+import { timeLogColumns } from "../columns/timeLogColumns.js";
+
 import PageContainer from "./PageContainer.jsx";
-import SafeDataGrid from "./_shared/SafeDataGrid.tsx";
-import { timeLogColumns } from "./adminLogs/columns.js";
+import LRPDataGrid from "./LRPDataGrid.jsx";
 
 export default function AdminTimeLog() {
   const [rows, setRows] = useState([]);
@@ -13,13 +14,16 @@ export default function AdminTimeLog() {
     return subscribeTimeLogs(setRows, console.error);
   }, []);
 
+  const columns = useMemo(() => timeLogColumns(), []);
+
   return (
     <PageContainer title="Admin Logs">
-      <SafeDataGrid
-        rows={rows}
-        columns={timeLogColumns}
-        getRowId={(r) => r.id}
+      <LRPDataGrid
+        rows={Array.isArray(rows) ? rows : []}
+        columns={columns}
         autoHeight
+        loading={false}
+        checkboxSelection={false}
       />
     </PageContainer>
   );
