@@ -2,11 +2,10 @@
 import { Timestamp } from "firebase/firestore";
 import { nullifyMissing } from "../utils/formatters";
 
-// ------------ helpers ------------
 function coerceTimestamp(v) {
   if (!v) return null;
   if (v instanceof Timestamp) return v;
-  if (typeof v?.toDate === "function") return v; // Firestore Timestamp-like
+  if (typeof v?.toDate === "function") return v;
   if (v instanceof Date) return Timestamp.fromDate(v);
   if (typeof v === "number") return Timestamp.fromMillis(v);
   if (typeof v === "string") {
@@ -23,6 +22,7 @@ function coerceNumber(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
+  if (v && typeof v === "object" && typeof v.minutes === "number") return v.minutes; // tolerate {minutes}
   return null;
 }
 function coerceBool(v) {
@@ -37,14 +37,16 @@ function coerceBool(v) {
 }
 const id = (v) => (v === undefined ? null : v);
 
-// ------------ collection configs from rules ------------
+// Pull a nice string from claimedBy (string | {name,email} | null)
+function coerceClaimedBy(v) {
+  if (!v) return null;
+  if (typeof v === "string") return v;
+  if (typeof v === "object") return v.name || v.email || null;
+  return null;
+}
 
-// Rides (liveRides, rideQueue, claimedRides)
-const RIDE_ALIASES = {
-  // tolerate legacy casing
-  ClaimedBy: "claimedBy",
-  ClaimedAt: "claimedAt",
-};
+// ---- Collection configs from your rules ----
+const RIDE_ALIASES = { ClaimedBy: "claimedBy", ClaimedAt: "claimedAt" };
 const RIDE_COERCE = {
   tripId: id,
   pickupTime: coerceTimestamp,
@@ -52,7 +54,7 @@ const RIDE_COERCE = {
   rideType: id,
   vehicle: id,
   rideNotes: id,
-  claimedBy: id,
+  claimedBy: coerceClaimedBy,
   claimedAt: coerceTimestamp,
   status: id,
   importedFromQueueAt: coerceTimestamp,
@@ -62,20 +64,18 @@ const RIDE_COERCE = {
   lastModifiedBy: id,
 };
 
-// timeLogs
-const TIMELOG_ALIASES = {};
+const TIMELOG_ALIASES = { driverName: "driver" }; // tolerate old key
 const TIMELOG_COERCE = {
   driverEmail: id,
   driver: id,
   rideId: id,
   startTime: coerceTimestamp,
   endTime: coerceTimestamp,
-  duration: coerceNumber,
+  duration: coerceNumber, // minutes
   loggedAt: coerceTimestamp,
   note: id,
 };
 
-// shootoutStats
 const SHOOTOUT_ALIASES = {};
 const SHOOTOUT_COERCE = {
   driverEmail: id,
@@ -87,10 +87,7 @@ const SHOOTOUT_COERCE = {
   createdAt: coerceTimestamp,
 };
 
-// tickets (alias passengercount -> passengers for UI consistency)
-const TICKET_ALIASES = {
-  passengercount: "passengers",
-};
+const TICKET_ALIASES = { passengercount: "passengers" };
 const TICKET_COERCE = {
   pickupTime: coerceTimestamp,
   passengers: coerceNumber,
@@ -108,62 +105,39 @@ const TICKET_COERCE = {
   scannedReturnBy: id,
 };
 
-// ------------ core normalize ------------
 function applyAliases(data, aliasMap) {
   const out = {};
   for (const k of Object.keys(data)) {
-    const v = data[k];
     const target = aliasMap[k] || k;
-    // keep both if aliasing to a new key and original target already exists? prefer canonical
-    if (out[target] === undefined) out[target] = v;
+    if (out[target] === undefined) out[target] = data[k];
   }
   return out;
 }
 function applyCoercion(data, rules) {
   const out = { ...data };
-  Object.keys(rules).forEach((field) => {
-    out[field] = rules[field](out[field]);
-  });
-  // standardize undefined -> null on known fields
-  Object.keys(rules).forEach((field) => {
-    if (out[field] === undefined) out[field] = null;
-  });
+  Object.keys(rules).forEach((field) => { out[field] = rules[field](out[field]); });
+  Object.keys(rules).forEach((field) => { if (out[field] === undefined) out[field] = null; });
   return out;
 }
 
-/**
- * Normalize one Firestore doc for the given collection key.
- * Supported keys: "liveRides" | "rideQueue" | "claimedRides" | "timeLogs" | "shootoutStats" | "tickets"
- */
 export function normalizeRowFor(collectionKey, raw = {}) {
   const data = nullifyMissing(raw);
-
   switch (collectionKey) {
     case "liveRides":
     case "rideQueue":
-    case "claimedRides": {
-      const withAliases = applyAliases(data, RIDE_ALIASES);
-      return applyCoercion(withAliases, RIDE_COERCE);
-    }
-    case "timeLogs": {
-      const withAliases = applyAliases(data, TIMELOG_ALIASES);
-      return applyCoercion(withAliases, TIMELOG_COERCE);
-    }
-    case "shootoutStats": {
-      const withAliases = applyAliases(data, SHOOTOUT_ALIASES);
-      return applyCoercion(withAliases, SHOOTOUT_COERCE);
-    }
-    case "tickets": {
-      const withAliases = applyAliases(data, TICKET_ALIASES);
-      return applyCoercion(withAliases, TICKET_COERCE);
-    }
+    case "claimedRides":
+      return applyCoercion(applyAliases(data, RIDE_ALIASES), RIDE_COERCE);
+    case "timeLogs":
+      return applyCoercion(applyAliases(data, TIMELOG_ALIASES), TIMELOG_COERCE);
+    case "shootoutStats":
+      return applyCoercion(applyAliases(data, SHOOTOUT_ALIASES), SHOOTOUT_COERCE);
+    case "tickets":
+      return applyCoercion(applyAliases(data, TICKET_ALIASES), TICKET_COERCE);
     default:
-      // Unknown: just nullifyMissing
       return data;
   }
 }
 
-/** Map snapshot -> normalized rows for a known collection key. */
 export function mapSnapshotToRows(collectionKey, snapshot) {
   return snapshot.docs.map((d) => {
     const data = d.data() || {};

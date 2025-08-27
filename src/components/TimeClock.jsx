@@ -12,7 +12,6 @@ import {
   Alert,
   Stack,
   CircularProgress,
-  useMediaQuery,
 } from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
@@ -26,11 +25,15 @@ import {
   serverTimestamp,
   Timestamp,
   doc,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
 } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
 import { useRole } from "@/hooks";
-import { subscribeMyTimeLogs } from "@/hooks/api";
 import RoleDebug from "@/components/RoleDebug";
 
 import { waitForAuth } from "../utils/waitForAuth";
@@ -38,17 +41,13 @@ import { logError } from "../utils/logError";
 import { tsToDate } from "../utils/safe";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import { useAuth } from "../context/AuthContext.jsx";
-import { formatDateTime, safeNumber } from "../utils/formatters.js";
-import { timeLogColumns } from "../columns/timeLogColumns.js";
+import { mapSnapshotToRows } from "../services/normalizers";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
-import LRPDataGrid from "./LRPDataGrid.jsx";
 
 const bcName = "lrp-timeclock";
-
-const columns = timeLogColumns();
-
 
 async function logTimeCreate(payload) {
   const user = await waitForAuth(true);
@@ -92,7 +91,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
-  const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
   const driverRef = useRef(driver);
   const isRunningRef = useRef(isRunning);
 
@@ -107,23 +105,28 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     useEffect(() => {
       if (!user?.email) return;
       setReady(false);
-      const unsub = subscribeMyTimeLogs(
-      (logs) => {
-        setRows(logs);
-        setReady(true);
-      },
-      (err) => {
-        logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
-        setError(err);
-        setReady(true);
-      },
-    );
-    return () => {
-      if (typeof unsub === "function") unsub();
-    };
-  }, [user?.email]);
+      const q = query(
+        collection(db, "timeLogs"),
+        where("userEmail", "==", user.email.toLowerCase()),
+        orderBy("startTime", "desc"),
+        limit(200),
+      );
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          setRows(mapSnapshotToRows("timeLogs", snap));
+          setReady(true);
+        },
+        (err) => {
+          logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
+          setError(err);
+          setReady(true);
+        },
+      );
+      return () => unsub();
+    }, [user?.email]);
 
-  // logs are populated via subscribeMyTimeLogs
+  // logs are populated via Firestore subscription
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
@@ -277,7 +280,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     setSubmitting(false);
   };
 
-    const formatTS = (ts) => formatDateTime(ts);
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
   if (!(isAdmin || isDriver)) return <Alert severity="error">You don’t have permission to view this.</Alert>;
   if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
@@ -334,40 +336,24 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="subtitle1">Previous Sessions</Typography>
         </Box>
-        {isSmall ? (
-          <Stack spacing={1}>
-            {rows.map((r) => (
-              <Paper key={r.id} variant="outlined" sx={{ p: 1 }}>
-                <Typography variant="body2">Ride: {r.rideId || '—'}</Typography>
-                <Typography variant="body2">Start: {formatTS(r.startTime)}</Typography>
-                <Typography variant="body2">End: {formatTS(r.endTime)}</Typography>
-                <Typography variant="body2">Duration: {safeNumber(r.duration)} min</Typography>
-                {r.note && <Typography variant="body2">Note: {r.note}</Typography>}
-              </Paper>
-            ))}
-            {rows.length === 0 && (
-              <Typography textAlign="center" color="text.secondary" mt={2}>
-                No time logs found.
-              </Typography>
-            )}
-          </Stack>
-        ) : (
-          <Box sx={{ width: '100%', overflowX: 'auto' }}>
-              <LRPDataGrid
-                rows={Array.isArray(rows) ? rows : []}
-                columns={columns}
-                columnVisibilityModel={isSmall ? { rideId: false, note: false } : undefined}
-                density="compact"
-                autoHeight
-                loading={false}
-                checkboxSelection={false}
-              />
-            {rows.length === 0 && (
-              <Typography textAlign="center" color="text.secondary" mt={2}>
-                No time logs found.
-              </Typography>
-            )}
-          </Box>
+        <SmartAutoGrid
+          rows={rows}
+          headerMap={{
+            driver: "Driver",
+            driverEmail: "Driver Email",
+            rideId: "Ride ID",
+            startTime: "Clock In",
+            endTime: "Clock Out",
+            duration: "Duration",
+            loggedAt: "Logged At",
+            note: "Note",
+          }}
+          order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note"]}
+        />
+        {rows.length === 0 && (
+          <Typography textAlign="center" color="text.secondary" mt={2}>
+            No time logs found.
+          </Typography>
         )}
       </Paper>
 

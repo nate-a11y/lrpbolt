@@ -1,6 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
-export { formatDateTime, timestampSortComparator, durationMinutes, safeNumber } from "./timeUtils";
-export { vfText, vfNumber, vfBool, vfTime } from "./vf";
+export {
+  formatDateTime,
+  timestampSortComparator,
+  durationMinutes,
+  safeNumber,
+  formatHMFromMinutes,
+} from "./timeUtils";
+export { vfText, vfNumber, vfBool, vfTime, vfDurationHM } from "./vf";
 
 /** Replace undefined with null; never inject "N/A". */
 export function nullifyMissing(obj = {}) {

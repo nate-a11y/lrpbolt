@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
-
-import { subscribeQueueRides } from "../hooks/api";
+import { collection, onSnapshot } from "firebase/firestore";
 import { deleteRide } from "../services/firestoreService";
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import { mapSnapshotToRows } from "../services/normalizers";
+import { db } from "../utils/firebaseInit";
 
 import EditRideDialog from "./EditRideDialog.jsx";
 
@@ -13,7 +14,12 @@ export default function RideQueueGrid() {
   const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
-    return subscribeQueueRides(setRows, console.error);
+    const unsub = onSnapshot(
+      collection(db, "queueRides"),
+      (snap) => setRows(mapSnapshotToRows("rideQueue", snap)),
+      console.error,
+    );
+    return () => unsub();
   }, []);
 
   const handleEditRide = useCallback((row) => {
@@ -29,20 +35,18 @@ export default function RideQueueGrid() {
   return (
     <>
       <SmartAutoGrid
-        rows={Array.isArray(rows) ? rows : []}
+        rows={rows}
         headerMap={{
           tripId: "Trip ID",
           pickupTime: "Pickup",
-          rideDuration: "Dur (min)",
+          rideDuration: "Dur",
           rideType: "Type",
           vehicle: "Vehicle",
           rideNotes: "Notes",
-          claimedBy: "Claimed By",
-          claimedAt: "Claimed At",
-          status: "Status",
           createdAt: "Created",
         }}
-        order={["tripId","pickupTime","rideDuration","rideType","vehicle","claimedBy","claimedAt","status"]}
+        order={["tripId","pickupTime","rideDuration","rideType","vehicle","rideNotes","createdAt"]}
+        hide={["claimedBy","claimedAt","status"]}
         actionsColumn={buildNativeActionsColumn({
           onEdit: (id, row) => handleEditRide(row),
           onDelete: async (id) => await deleteRide("rideQueue", id),
