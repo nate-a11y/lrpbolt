@@ -8,7 +8,6 @@ dayjs.extend(timezone);
 
 const DEFAULT_TZ = dayjs.tz.guess();
 
-/** Coerce many inputs to dayjs in tz, or null. */
 export function toDayjs(input, tz = DEFAULT_TZ) {
   if (!input) return null;
   if (typeof input?.toDate === "function") {
@@ -24,7 +23,6 @@ export function toDayjs(input, tz = DEFAULT_TZ) {
   return dj.isValid() ? dj.tz(tz) : null;
 }
 
-/** Safe formatter. */
 export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A", tz = DEFAULT_TZ) {
   const dj = toDayjs(input, tz);
   if (!dj) return "N/A";
@@ -52,6 +50,15 @@ export function durationMinutes(start, end) {
   if (!s || !e) return null;
   const mins = e.diff(s, "minute");
   return Number.isFinite(mins) && mins >= 0 ? mins : null;
+}
+
+export function formatHMFromMinutes(mins) {
+  if (typeof mins !== "number" || !Number.isFinite(mins)) return "N/A";
+  const h = Math.floor(mins / 60);
+  const m = Math.max(0, Math.round(mins - h * 60));
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
 }
 
 export function safeNumber(n, fallback = "N/A") {

@@ -5,9 +5,6 @@ import {
   Paper,
   CircularProgress,
   Alert,
-  Stack,
-  Typography,
-  useMediaQuery,
   TextField,
   Dialog,
   DialogTitle,
@@ -16,46 +13,26 @@ import {
   Button,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
-import { GridToolbar, useGridApiRef } from "@mui/x-data-grid-pro";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-import { actionsCol } from "@/utils/gridFormatters";
-import { formatDateTime, safeNumber } from "../../utils/formatters.js";
-import LRPDataGrid from "../LRPDataGrid.jsx";
-import { timeLogColumns } from "../../columns/timeLogColumns.js";
+import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
+import { buildNativeActionsColumn } from "../../columns/nativeActions.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
-
-import ToolsCell from "./cells/ToolsCell.jsx";
+import { formatDateTime } from "../../utils/formatters.js";
 
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
-  const apiRef = useGridApiRef();
   const [driverFilter, setDriverFilter] = useState("");
   const [startFilter, setStartFilter] = useState(null);
   const [endFilter, setEndFilter] = useState(null);
   const [search, setSearch] = useState("");
   const [editRow, setEditRow] = useState(null);
 
-  const handleEdit = useCallback(
-    (row) => {
-      if (isSmall) {
-        setEditRow(row);
-      } else {
-        apiRef.current.startRowEditMode({ id: row.id });
-      }
-    },
-    [isSmall, apiRef],
-  );
-
-  const processRowUpdate = useCallback(async (newRow) => {
-    await updateDoc(doc(db, "timeLogs", newRow.id), {
-      driver: newRow.driverEmail,
-    });
-    return newRow;
+  const handleEdit = useCallback((row) => {
+    setEditRow(row);
   }, []);
 
   const handleEditSave = useCallback(async () => {
@@ -80,16 +57,14 @@ export default function EntriesTab() {
       }
     }, []);
 
-    const columns = useMemo(
-      () =>
-        [
-          ...timeLogColumns(),
-          actionsCol(({ row }) => (
-            <ToolsCell row={row} onEdit={handleEdit} onDelete={handleDelete} />
-          )),
-        ],
-      [handleEdit, handleDelete],
-    );
+  const actionsColumn = useMemo(
+    () =>
+      buildNativeActionsColumn({
+        onEdit: (id, row) => handleEdit(row),
+        onDelete: async (id, row) => await handleDelete(row),
+      }),
+    [handleEdit, handleDelete],
+  );
 
     useEffect(() => {
       const unsub = subscribeTimeLogs(
@@ -196,72 +171,21 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-      {isSmall ? (
-        <Stack spacing={2}>
-          {safeRows.map((r) => (
-            <Paper key={r.id} variant="outlined" sx={{ p: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                <Stack spacing={0.5}>
-                  <Typography variant="subtitle2">
-                    {(() => {
-                      const v = r.driver ?? r.driverEmail ?? "";
-                      return v.includes("@") ? v.split("@")[0] : v;
-                    })()}
-                  </Typography>
-                  <Typography variant="body2">
-                    Ride ID: {r.rideId ?? ""}
-                  </Typography>
-                  <Typography variant="body2">
-                    Start: {formatDateTime(r.startTime)}
-                  </Typography>
-                  <Typography variant="body2">
-                    End: {formatDateTime(r.endTime)}
-                  </Typography>
-                  <Typography variant="body2">
-                    Duration: {safeNumber(r.duration)} min
-                  </Typography>
-                  <Typography variant="body2">
-                    Logged: {formatDateTime(r.loggedAt)}
-                  </Typography>
-                </Stack>
-                <ToolsCell
-                  row={r}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              </Box>
-            </Paper>
-          ))}
-        </Stack>
-      ) : (
-        <div style={{ height: 640, width: "100%" }}>
-          <LRPDataGrid
-            apiRef={apiRef}
-            editMode="row"
-            processRowUpdate={processRowUpdate}
-            onProcessRowUpdateError={() =>
-              alert("Failed to update time log")
-            }
-            rows={Array.isArray(safeRows) ? safeRows : []}
-            columns={columns}
-            disableRowSelectionOnClick
-            initialState={{
-              sorting: { sortModel: [{ field: "loggedAt", sort: "desc" }] },
-              columns: { columnVisibilityModel: { loggedAt: false } },
-            }}
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 300, placeholder: "Search" },
-              },
-            }}
-            autoHeight
-            loading={loading}
-            checkboxSelection={false}
-          />
-        </div>
-      )}
+      <SmartAutoGrid
+        rows={safeRows}
+        headerMap={{
+          driver: "Driver",
+          driverEmail: "Driver Email",
+          rideId: "Ride ID",
+          startTime: "Start",
+          endTime: "End",
+          duration: "Duration",
+          loggedAt: "Logged",
+        }}
+        order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt"]}
+        actionsColumn={actionsColumn}
+        loading={loading}
+      />
       <Dialog open={!!editRow} onClose={() => setEditRow(null)}>
         <DialogTitle>Edit Driver</DialogTitle>
         <DialogContent>
