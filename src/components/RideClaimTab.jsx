@@ -16,7 +16,6 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import {
-  DataGridPro,
   GridActionsCellItem,
   GridToolbarColumnsButton,
   GridToolbarFilterButton,
@@ -50,6 +49,7 @@ import { formatClaimSms } from "../utils/formatClaimSms.js";
 import { asArray } from "../utils/arrays.js";
 
 import BlackoutOverlay from "./BlackoutOverlay";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 function ProToolbar({ onBulkClaim, selectedCount }) {
   return (
@@ -492,9 +492,9 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             },
           }}
         >
-          <DataGridPro
+          <SmartAutoGrid
             rows={rows ?? []}
-            columns={columns}
+            columnsCompat={columns}
             loading={loadingRides}
             checkboxSelection
             disableRowSelectionOnClick
@@ -521,6 +521,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
             pinnedRows={{ bottom: pinnedRows }}
             sx={{ borderRadius: 2 }}
             getRowId={(r) => r.id}
+            showToolbar
           />
         </Box>
       )}

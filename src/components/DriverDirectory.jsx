@@ -15,7 +15,7 @@ import {
   useTheme,
   TextField,
 } from "@mui/material";
-import { DataGridPro, useGridApiRef } from "@mui/x-data-grid-pro";
+import { useGridApiRef } from "@mui/x-data-grid-pro";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import SmsIcon from "@mui/icons-material/Sms";
@@ -26,6 +26,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 import DRIVER_LIST from "../data/driverDirectory";
 
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import VehicleChip from "./VehicleChip";
 
 // LRP brand tokens
@@ -362,10 +363,10 @@ export default function DriverDirectory() {
       </Box>
 
       <Box sx={{ height: 640, width: "100%", "& .MuiDataGrid-root": { border: "none" } }}>
-        <DataGridPro
+        <SmartAutoGrid
           apiRef={apiRef}
           rows={rows}
-          columns={columns}
+          columnsCompat={columns}
           getRowId={(row) => row.id}
           getRowHeight={() => "auto"}
           disableColumnMenu
@@ -412,6 +413,7 @@ export default function DriverDirectory() {
             "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
             "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
           }}
+          showToolbar
         />
       </Box>
 

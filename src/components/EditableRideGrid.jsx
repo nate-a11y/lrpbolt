@@ -1,6 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useCallback } from "react";
-import { DataGridPro } from "@mui/x-data-grid-pro";
 import { Box, useMediaQuery, useTheme, IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -11,6 +10,8 @@ import { actionsCol } from "@/utils/gridFormatters";
 import { vfTime, vfNumber } from "@/utils/vf";
 
 import { useGridDoctor } from "../utils/useGridDoctor";
+
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 export default function EditableRideGrid({
   rows,
@@ -95,15 +96,16 @@ export default function EditableRideGrid({
 
   return (
     <Box sx={{ width: "100%", height: 600 }}>
-      <DataGridPro
+      <SmartAutoGrid
         rows={stableRows}
-        columns={columns}
+        columnsCompat={columns}
         loading={loading}
         checkboxSelection
         disableRowSelectionOnClick
         getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
         initialState={initialState}
         getRowId={(r) => r.id}
+        showToolbar
       />
     </Box>
   );

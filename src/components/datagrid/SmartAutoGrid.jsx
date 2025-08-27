@@ -2,55 +2,71 @@
 import React, { useMemo } from "react";
 import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
 
-import { vfText, vfTime, vfNumber, vfBool, vfDurationHM } from "../../utils/vf";
-import { timestampSortComparator } from "../../utils/timeUtils";
+import { formatDateTime, formatHMFromMinutes } from "../../utils/timeUtils";
 
-const isFsTimestamp = (v) => !!v && typeof v?.toDate === "function";
-const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
-const isBool = (v) => typeof v === "boolean";
-const isPlainObject = (v) => v && typeof v === "object" && !isFsTimestamp(v) && !Array.isArray(v);
+const isFSTimestamp = (v) => !!v && typeof v?.toDate === "function";
+const isFSTimestampLike = (v) =>
+  v && typeof v === "object" && Number.isFinite(v.seconds) && Number.isFinite(v.nanoseconds);
+const isBool = (v) => v === true || v === false;
+const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
 const looksLikeDurationField = (field = "") =>
   ["duration", "durationmins", "rideduration", "totalminutes"].includes(field.toLowerCase());
 
 const widthFor = (field, sample) => {
-  if (isFsTimestamp(sample)) return 200;
+  if (isFSTimestamp(sample) || isFSTimestampLike(sample)) return 200;
   if (looksLikeDurationField(field)) return 120;
-  if (isNumber(sample)) return 120;
+  if (isNum(sample)) return 120;
   if (isBool(sample)) return 110;
   if ((field || "").toLowerCase().includes("id")) return 140;
   return 180;
 };
 
-// valueGetter that neutralizes objects -> null (prevents [object Object])
-const safeGetter = (field) => (params) => {
-  const v = params?.row?.[field];
-  if (isPlainObject(v)) return null;
-  return v;
-};
+/** Universal, object-safe rendering — never “[object Object]”. */
+function makeRenderCell(field) {
+  return (params) => {
+    const v = params?.row?.[field];
 
-function buildCol(field, headerName, sampleValue) {
-  const base = {
+    if (v === null || v === undefined) return "N/A";
+
+    // Firestore timestamps
+    if (isFSTimestamp(v)) return formatDateTime(v);
+    if (isFSTimestampLike(v)) {
+      const ms = v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6);
+      return formatDateTime(new Date(ms));
+    }
+
+    // Durations in minutes
+    if (looksLikeDurationField(field)) {
+      if (isNum(v)) return formatHMFromMinutes(v);
+      if (v && typeof v === "object" && isNum(v.minutes)) return formatHMFromMinutes(v.minutes);
+      return "N/A";
+    }
+
+    if (isNum(v)) return String(v);
+    if (isBool(v)) return v ? "Yes" : "No";
+    if (typeof v === "string") return v.trim() === "" ? "N/A" : v;
+
+    // Any other object/array -> blank
+    return "";
+  };
+}
+
+function buildAutoCol(field, headerName, sampleValue) {
+  return {
     field,
     headerName: headerName || field,
     width: widthFor(field, sampleValue),
-    valueGetter: safeGetter(field), // <- guard
+    sortable: true,
+    renderCell: makeRenderCell(field),
   };
-
-  if (looksLikeDurationField(field)) return { ...base, valueFormatter: vfDurationHM };
-  if (isFsTimestamp(sampleValue)) return { ...base, valueFormatter: vfTime, sortComparator: timestampSortComparator };
-  if (isNumber(sampleValue))     return { ...base, valueFormatter: vfNumber };
-  if (isBool(sampleValue))       return { ...base, valueFormatter: vfBool };
-  return { ...base, valueFormatter: vfText };
 }
 
-function useAutoColumns(rows, opts = {}) {
-  const { headerMap = {}, order = [], hide = [], overrides = {} } = opts;
-
+/** Build inferred columns from the first row */
+function useAutoColumns(rows, { headerMap = {}, order = [], hide = [], overrides = {} } = {}) {
   return useMemo(() => {
     const first = rows?.find(Boolean) || {};
     const fields = Object.keys(first);
-
     const seen = new Set();
     const ordered = [
       ...order.filter((f) => fields.includes(f)).map((f) => (seen.add(f), f)),
@@ -59,7 +75,7 @@ function useAutoColumns(rows, opts = {}) {
 
     return ordered.map((field) => {
       const sample = first[field];
-      const col = buildCol(field, headerMap[field], sample);
+      const col = buildAutoCol(field, headerMap[field], sample);
       if (hide.includes(field)) col.hide = true;
       if (overrides[field]) Object.assign(col, overrides[field]);
       return col;
@@ -67,12 +83,37 @@ function useAutoColumns(rows, opts = {}) {
   }, [rows, headerMap, order, hide, overrides]);
 }
 
+/** Sanitize an existing columns array (compat mode) */
+function sanitizeCompatColumns(columns = []) {
+  return (columns || []).map((c, idx) => {
+    const field = c.field ?? `col_${idx}`;
+    const headerName = c.headerName || field;
+    const out = { ...c, field, headerName };
+
+    // Default width and safe render
+    if (!out.width) out.width = 180;
+    const alreadyRenders =
+      typeof out.renderCell === "function" || out.type === "actions" || out.renderHeader;
+    if (!alreadyRenders) out.renderCell = makeRenderCell(field);
+
+    // Guard valueGetter: if it returns an object, we render blank via renderCell anyway
+    if (typeof out.valueGetter !== "function") {
+      out.valueGetter = (p) => p?.row?.[field];
+    }
+
+    return out;
+  });
+}
+
 /**
  * SmartAutoGrid
- *  - rows: array of normalized rows ({id,...})
- *  - headerMap/order/hide/overrides
- *  - actionsColumn?: GridColDef appended if provided
- *  - showToolbar?: true by default
+ * Props:
+ *  - rows: array
+ *  - headerMap/order/hide/overrides: for auto columns
+ *  - actionsColumn?: GridColDef (appended if provided)
+ *  - columnsCompat?: GridColDef[]  // <— pass your old columns here; we sanitize them
+ *  - showToolbar?: boolean (default true)
+ *  - getRowId?: function
  */
 export default function SmartAutoGrid({
   rows = [],
@@ -80,19 +121,19 @@ export default function SmartAutoGrid({
   order,
   hide = [],
   overrides,
-  getRowId,
   actionsColumn,
+  columnsCompat,
   showToolbar = true,
+  getRowId,
   ...rest
 }) {
-  const columns = useAutoColumns(rows, { headerMap, order, hide, overrides });
+  const autoCols = useAutoColumns(rows, { headerMap, order, hide, overrides });
+  const compatCols = useMemo(() => sanitizeCompatColumns(columnsCompat), [columnsCompat]);
 
-  const finalCols = React.useMemo(() => {
-    if (actionsColumn && !columns.find((c) => c.field === actionsColumn.field)) {
-      return [...columns, actionsColumn];
-    }
-    return columns;
-  }, [columns, actionsColumn]);
+  let columns = columnsCompat ? compatCols : autoCols;
+  if (actionsColumn && !columns.find((c) => c.field === actionsColumn.field)) {
+    columns = [...columns, actionsColumn];
+  }
 
   const stableGetRowId =
     getRowId ||
@@ -101,7 +142,7 @@ export default function SmartAutoGrid({
   return (
     <DataGridPro
       rows={rows}
-      columns={finalCols}
+      columns={columns}
       getRowId={stableGetRowId}
       density="compact"
       disableRowSelectionOnClick

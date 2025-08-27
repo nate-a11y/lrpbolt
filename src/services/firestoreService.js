@@ -14,6 +14,7 @@ import {
 
 import { db } from "../utils/firebaseInit";
 import { logError } from "../utils/logError";
+
 import { mapSnapshotToRows } from "./normalizers";
 
 export async function getRides(collectionName) {
