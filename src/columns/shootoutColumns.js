@@ -3,12 +3,15 @@
 import { formatDateTime, safeNumber, safeString, minutesBetween, fmtMinutesHuman } from "../utils/timeUtils";
 import { getField, getTsSec } from "../utils/rowAccess";
 
+import { nativeActionsColumn } from "./nativeActions";
+
 /**
  * shootoutStats doc shape:
  * driverEmail, vehicle, startTime, endTime?, trips, passengers, createdAt
  */
-export function shootoutColumns() {
-  return [
+export function shootoutColumns(opts = {}) {
+  const { withActions = false, onEdit, onDelete } = opts;
+  const cols = [
     {
       field: "driverEmail",
       headerName: "Driver Email",
@@ -80,4 +83,8 @@ export function shootoutColumns() {
       valueGetter: (p) => formatDateTime(getField(p?.row, "createdAt")),
     },
   ];
+
+  if (withActions) cols.push(nativeActionsColumn({ onEdit, onDelete }));
+
+  return cols;
 }

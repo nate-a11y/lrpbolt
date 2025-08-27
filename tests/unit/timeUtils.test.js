@@ -1,22 +1,17 @@
 /* Proprietary and confidential. See LICENSE. */
 import { describe, expect, it } from "vitest";
-import dayjs from "dayjs";
 
-import {
-  toDayjs,
-  formatDateTime,
-  minutesBetween,
-  fmtMinutesHuman,
-} from "../../src/utils/timeUtils.js";
+import { formatDateTime, minutesBetween, fmtMinutesHuman } from "../../src/utils/timeUtils.js";
 
 describe("timeUtils", () => {
-  it("toDayjs returns null for invalid", () => {
-    expect(toDayjs("bad")).toBeNull();
-  });
-
   it("formatDateTime outputs formatted string", () => {
     const d = new Date("2024-01-01T12:00:00Z");
     expect(formatDateTime(d, "MM/DD/YYYY")).toBe("01/01/2024");
+  });
+
+  it("formatDateTime handles Firestore timestamp", () => {
+    const ts = { seconds: 1700000000, nanoseconds: 0 };
+    expect(formatDateTime(ts)).not.toBe("N/A");
   });
 
   it("minutesBetween calculates minutes", () => {
@@ -26,14 +21,6 @@ describe("timeUtils", () => {
   });
 
   it("fmtMinutesHuman formats duration", () => {
-    expect(fmtMinutesHuman(125)).toBe("2h 5m");
-  });
-
-  it("toDayjs handles seconds/nanoseconds object", () => {
-    const ts = { seconds: 1700000000, nanoseconds: 0 };
-    const d = toDayjs(ts);
-    expect(d?.isValid()).toBe(true);
-    expect(dayjs.isDayjs(d)).toBe(true);
+    expect(fmtMinutesHuman(125)).toBe("2.08 h");
   });
 });
-

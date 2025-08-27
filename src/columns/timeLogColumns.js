@@ -1,12 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/timeLogColumns.js
-import React from "react";
-import { Stack, Tooltip, IconButton } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-
 import { formatDateTime, minutesBetween, safeString, fmtMinutesHuman } from "../utils/timeUtils";
 import { getField, getTsSec } from "../utils/rowAccess";
+
+import { nativeActionsColumn } from "./nativeActions";
 
 /**
  * timeLogs doc shape:
@@ -92,54 +89,7 @@ export function timeLogColumns(opts = {}) {
     },
   ];
 
-  if (withActions) {
-    cols.push({
-      field: "__actions",
-      headerName: "Actions",
-      sortable: false,
-      filterable: false,
-      disableColumnMenu: true,
-      align: "center",
-      headerAlign: "center",
-      minWidth: 120,
-      flex: 0.5,
-      renderCell: (p) =>
-        React.createElement(
-          Stack,
-          { direction: "row", spacing: 0.5 },
-          typeof onEdit === "function"
-            ? React.createElement(
-                Tooltip,
-                { title: "Edit" },
-                React.createElement(
-                  IconButton,
-                  {
-                    size: "small",
-                    onClick: () => onEdit(p.row),
-                    "aria-label": "Edit time log",
-                  },
-                  React.createElement(EditIcon, { fontSize: "inherit" })
-                )
-              )
-            : null,
-          typeof onDelete === "function"
-            ? React.createElement(
-                Tooltip,
-                { title: "Delete" },
-                React.createElement(
-                  IconButton,
-                  {
-                    size: "small",
-                    onClick: () => onDelete(p.row),
-                    "aria-label": "Delete time log",
-                  },
-                  React.createElement(DeleteIcon, { fontSize: "inherit" })
-                )
-              )
-            : null
-        ),
-    });
-  }
+  if (withActions) cols.push(nativeActionsColumn({ onEdit, onDelete }));
 
   return cols;
 }
