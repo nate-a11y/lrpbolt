@@ -57,14 +57,11 @@ export function buildNativeActionsColumn(opts = {}) {
             icon={<DeleteIcon fontSize="small" />}
             label="Delete"
             onClick={async () => {
-              // Basic confirm; replace with your Snackbar/Undo flow if desired.
               const ok = window.confirm("Delete this record?");
               if (!ok) return;
               try {
                 await onDelete(id, row);
               } catch (err) {
-                // Standardized logging hook if you have one:
-                // logError(err, { where: "nativeActions.delete", id });
                 console.error("Delete failed in nativeActions:", err);
                 alert("Delete failed. Check console for details.");
               }

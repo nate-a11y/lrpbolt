@@ -3,7 +3,7 @@
 import { formatDateTime, minutesBetween, safeString, fmtMinutesHuman } from "../utils/timeUtils";
 import { getField, getTsSec } from "../utils/rowAccess";
 
-import { nativeActionsColumn } from "./nativeActions";
+import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
 /**
  * timeLogs doc shape:
@@ -89,7 +89,7 @@ export function timeLogColumns(opts = {}) {
     },
   ];
 
-  if (withActions) cols.push(nativeActionsColumn({ onEdit, onDelete }));
+  if (withActions) cols.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
   return cols;
 }

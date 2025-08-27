@@ -3,7 +3,7 @@
 import { formatDateTime, safeNumber, safeString, minutesBetween, fmtMinutesHuman } from "../utils/timeUtils";
 import { getField, getTsSec } from "../utils/rowAccess";
 
-import { nativeActionsColumn } from "./nativeActions";
+import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
 /**
  * shootoutStats doc shape:
@@ -84,7 +84,7 @@ export function shootoutColumns(opts = {}) {
     },
   ];
 
-  if (withActions) cols.push(nativeActionsColumn({ onEdit, onDelete }));
+  if (withActions) cols.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
   return cols;
 }
