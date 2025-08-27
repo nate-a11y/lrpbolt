@@ -1,59 +1,79 @@
-// /src/utils/timeUtils.js
-// Bulletproof Firestore Timestamp + date helpers (no runtime throws)
-
+/* Proprietary and confidential. See LICENSE. */
+// src/utils/timeUtils.js
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export const isFsTimestamp = (v) =>
-  !!v && (typeof v.toDate === "function" || (typeof v.seconds === "number" && typeof v.nanoseconds === "number"));
+const DEFAULT_TZ = typeof window !== "undefined" ? dayjs.tz.guess() : "UTC";
+const DEFAULT_FMT = "MMM D, YYYY h:mm A";
 
-export function toDate(v) {
+/** Firestore Timestamp shape guard */
+export function isFsTimestamp(v) {
+  return !!v && typeof v === "object" && typeof v.seconds === "number" && typeof v.nanoseconds === "number";
+}
+
+/** Convert Firestore Timestamp | Date | string | number to dayjs or null */
+export function toDayjs(input) {
+  if (!input) return null;
   try {
-    if (!v) return null;
-    if (isFsTimestamp(v)) return typeof v.toDate === "function" ? v.toDate() : new Date(v.seconds * 1000);
-    if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-    if (typeof v === "string" || typeof v === "number") {
-      const d = new Date(v);
-      return isNaN(d.getTime()) ? null : d;
+    if (isFsTimestamp(input)) {
+      // Firestore TS -> milliseconds
+      const ms = input.seconds * 1000 + Math.floor(input.nanoseconds / 1e6);
+      const d = dayjs(ms);
+      return d.isValid() ? d.tz(DEFAULT_TZ) : null;
     }
-    if (v && typeof v.isValid === "function" && v.isValid()) return v.toDate();
+    if (input instanceof Date) {
+      const d = dayjs(input);
+      return d.isValid() ? d.tz(DEFAULT_TZ) : null;
+    }
+    if (typeof input === "number" || typeof input === "string") {
+      const d = dayjs(input);
+      return d.isValid() ? d.tz(DEFAULT_TZ) : null;
+    }
     return null;
-  } catch {
+  } catch (err) {
     return null;
   }
 }
 
-export function fmtDateTime(v, tz, fmt = "MMM D, YYYY h:mm A") {
-  const d = toDate(v);
-  if (!d) return "";
-  return tz ? dayjs(d).tz(tz).format(fmt) : dayjs(d).format(fmt);
+/** Format TS to string or "N/A" */
+export function formatDateTime(input, fmt = DEFAULT_FMT) {
+  const d = toDayjs(input);
+  return d ? d.format(fmt) : "N/A";
 }
 
-export function minutesBetween(start, end) {
-  const s = toDate(start);
-  const e = toDate(end);
-  if (!s) return null;
-  const stop = e ?? new Date();
-  const mins = Math.max(0, Math.round((stop.getTime() - s.getTime()) / 60000));
-  return isFinite(mins) ? mins : null;
+/** Safe number formatting with optional fallback */
+export function safeNumber(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
 }
 
-export function minutesToHMM(mins) {
-  if (mins == null || !isFinite(mins)) return "";
+/** Safe string with fallback */
+export function safeString(v, fallback = "N/A") {
+  if (v === null || v === undefined) return fallback;
+  const s = String(v).trim();
+  return s.length ? s : fallback;
+}
+
+/** Duration (minutes) from start/end Timestamps; never negative */
+export function minutesBetween(startTs, endTs) {
+  const start = toDayjs(startTs);
+  const end = toDayjs(endTs);
+  if (!start || !end) return null;
+  const diff = end.diff(start, "minute");
+  return diff >= 0 ? diff : null;
+}
+
+/** Human friendly minutes -> "3h 12m" */
+export function fmtMinutesHuman(total) {
+  if (total === null || total === undefined) return "N/A";
+  const mins = Math.max(0, Math.floor(total));
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return `${h}h ${m}m`;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
 }
-
-export function minutesToHoursDecimal(mins, digits = 2) {
-  if (mins == null || !isFinite(mins)) return "";
-  return (mins / 60).toFixed(digits);
-}
-
-// Safe access helpers
-export const safeStr = (v) => (v == null ? "" : String(v));
-export const safeNum = (v, def = 0) => (typeof v === "number" && isFinite(v) ? v : def);
-
