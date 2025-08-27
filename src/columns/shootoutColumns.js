@@ -1,18 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/shootoutColumns.js
 import { formatDateTime, safeNumber, safeString, minutesBetween, fmtMinutesHuman } from "../utils/timeUtils";
+import { getField, getTsSec } from "../utils/rowAccess";
 
 /**
  * shootoutStats doc shape:
- * driverEmail (string)
- * vehicle (string)
- * startTime (timestamp)
- * endTime (timestamp|null)
- * trips (number)
- * passengers (number)
- * createdAt (timestamp)
+ * driverEmail, vehicle, startTime, endTime?, trips, passengers, createdAt
  */
-
 export function shootoutColumns() {
   return [
     {
@@ -20,48 +14,45 @@ export function shootoutColumns() {
       headerName: "Driver Email",
       minWidth: 220,
       flex: 1,
-      valueGetter: (p) => safeString(p?.row?.driverEmail),
+      valueGetter: (p) => safeString(getField(p?.row, "driverEmail")),
     },
     {
       field: "vehicle",
       headerName: "Vehicle",
       minWidth: 160,
       flex: 0.8,
-      valueGetter: (p) => safeString(p?.row?.vehicle),
+      valueGetter: (p) => safeString(getField(p?.row, "vehicle")),
     },
     {
       field: "startTime",
       headerName: "Start",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(p?.row?.startTime),
-      sortComparator: (v1, v2, p1, p2) => {
-        const a = p1?.row?.startTime?.seconds ?? 0;
-        const b = p2?.row?.startTime?.seconds ?? 0;
-        return a - b;
-      },
+      valueGetter: (p) => formatDateTime(getField(p?.row, "startTime")),
+      sortComparator: (v1, v2, p1, p2) =>
+        getTsSec(getField(p1?.row, "startTime")) - getTsSec(getField(p2?.row, "startTime")),
     },
     {
       field: "endTime",
       headerName: "End",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(p?.row?.endTime),
-      sortComparator: (v1, v2, p1, p2) => {
-        const a = p1?.row?.endTime?.seconds ?? -1;
-        const b = p2?.row?.endTime?.seconds ?? -1;
-        return a - b;
-      },
+      valueGetter: (p) => formatDateTime(getField(p?.row, "endTime")),
+      sortComparator: (v1, v2, p1, p2) =>
+        getTsSec(getField(p1?.row, "endTime")) - getTsSec(getField(p2?.row, "endTime")),
     },
     {
       field: "sessionLength",
       headerName: "Session",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: (p) => fmtMinutesHuman(minutesBetween(p?.row?.startTime, p?.row?.endTime)),
+      valueGetter: (p) =>
+        fmtMinutesHuman(
+          minutesBetween(getField(p?.row, "startTime"), getField(p?.row, "endTime"))
+        ),
       sortComparator: (v1, v2, p1, p2) => {
-        const a = minutesBetween(p1?.row?.startTime, p1?.row?.endTime) ?? -1;
-        const b = minutesBetween(p2?.row?.startTime, p2?.row?.endTime) ?? -1;
+        const a = minutesBetween(getField(p1?.row, "startTime"), getField(p1?.row, "endTime")) ?? -1;
+        const b = minutesBetween(getField(p2?.row, "startTime"), getField(p2?.row, "endTime")) ?? -1;
         return a - b;
       },
     },
@@ -71,7 +62,7 @@ export function shootoutColumns() {
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueGetter: (p) => safeNumber(p?.row?.trips, 0),
+      valueGetter: (p) => safeNumber(getField(p?.row, "trips"), 0),
     },
     {
       field: "passengers",
@@ -79,14 +70,14 @@ export function shootoutColumns() {
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueGetter: (p) => safeNumber(p?.row?.passengers, 0),
+      valueGetter: (p) => safeNumber(getField(p?.row, "passengers"), 0),
     },
     {
       field: "createdAt",
       headerName: "Created",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(p?.row?.createdAt),
+      valueGetter: (p) => formatDateTime(getField(p?.row, "createdAt")),
     },
   ];
 }
