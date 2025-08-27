@@ -130,10 +130,10 @@ export default function DriverDirectory() {
         // Enable quick filter by providing searchable text
         valueGetter: (params) => {
           const row = params?.row;
-          if (!row) return "N/A";
+          if (!row) return null;
           const vehicles = Array.isArray(row.vehicles) ? row.vehicles.join(" ") : "";
           const parts = [row.name, row.lrp, row.email, row.phone, vehicles].filter(Boolean);
-          return parts.length ? parts.join(" ") : "N/A";
+          return parts.length ? parts.join(" ") : null;
         },
         renderCell: (params) => {
           const d = params.row;

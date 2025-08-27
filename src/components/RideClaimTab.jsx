@@ -35,14 +35,9 @@ import timezone from "dayjs/plugin/timezone";
 import { Timestamp, orderBy } from "firebase/firestore";
 
 import { durationMinutes, toDateAny } from "@/utils/datetime";
-import {
-  vfText,
-  vfDateTime,
-  vfDuration,
-  safeVG,
-  actionsCol,
-} from "@/utils/gridFormatters";
+import { actionsCol } from "@/utils/gridFormatters";
 
+import { formatDateTime } from "../utils/timeUtils";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
@@ -239,37 +234,30 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
 
   const columns = useMemo(
     () => [
+      { field: "tripId", headerName: "Trip ID", width: 120 },
       {
         field: "pickupTime",
         headerName: "Pickup",
-        valueGetter: safeVG(({ row }) => row.pickupTime),
-        valueFormatter: vfDateTime,
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        valueGetter: safeVG(({ row }) => row.vehicle),
-        valueFormatter: vfText,
-      },
-      {
-        field: "rideType",
-        headerName: "Type",
-        valueGetter: safeVG(({ row }) => row.rideType),
-        valueFormatter: vfText,
+        width: 200,
+        valueFormatter: (p) => formatDateTime(p.value),
       },
       {
         field: "rideDuration",
-        headerName: "Duration",
-        valueGetter: safeVG(({ row }) => row.rideDuration),
-        valueFormatter: vfDuration,
+        headerName: "Dur (min)",
+        width: 120,
+        valueFormatter: (p) =>
+          typeof p.value === "number" ? p.value : "N/A",
       },
+      { field: "rideType", headerName: "Type", width: 140 },
+      { field: "vehicle", headerName: "Vehicle", width: 160 },
+      { field: "claimedBy", headerName: "Claimed By", width: 160 },
       {
-        field: "rideNotes",
-        headerName: "Notes",
-        flex: 1,
-        valueGetter: safeVG(({ row }) => row.rideNotes),
-        valueFormatter: vfText,
+        field: "claimedAt",
+        headerName: "Claimed At",
+        width: 200,
+        valueFormatter: (p) => formatDateTime(p.value),
       },
+      { field: "status", headerName: "Status", width: 140 },
       actionsCol(({ id }) => (
         <GridActionsCellItem
           icon={<CheckCircleIcon />}

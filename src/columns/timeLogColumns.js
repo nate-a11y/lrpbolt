@@ -1,95 +1,58 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/timeLogColumns.js
-import { formatDateTime, minutesBetween, safeString, fmtMinutesHuman } from "../utils/timeUtils";
-import { getField, getTsSec } from "../utils/rowAccess";
+import { formatDateTime } from "../utils/timeUtils";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
 /**
  * timeLogs doc shape:
- * driverEmail, driver, rideId, startTime, endTime?, duration?, loggedAt, note?
+ * driverName, driverEmail, rideId, clockIn, clockOut, durationMins, loggedAt, note?
  */
 export function timeLogColumns(opts = {}) {
   const { withActions = false, onEdit, onDelete } = opts;
 
-  const cols = [
+  const columns = [
+    { field: "driverName", headerName: "Driver", minWidth: 160, flex: 0.8 },
+    { field: "driverEmail", headerName: "Driver Email", minWidth: 220, flex: 1 },
+    { field: "rideId", headerName: "Ride ID", minWidth: 120, flex: 0.5 },
     {
-      field: "driver",
-      headerName: "Driver",
-      minWidth: 160,
-      flex: 0.8,
-      valueGetter: (p) => safeString(getField(p?.row, "driver") ?? getField(p?.row, "driverName")),
-    },
-    {
-      field: "driverEmail",
-      headerName: "Driver Email",
-      minWidth: 220,
-      flex: 1,
-      valueGetter: (p) => safeString(getField(p?.row, "driverEmail")),
-    },
-    {
-      field: "rideId",
-      headerName: "Ride ID",
-      minWidth: 120,
-      flex: 0.5,
-      valueGetter: (p) => safeString(getField(p?.row, "rideId")),
-    },
-    {
-      field: "startTime",
+      field: "clockIn",
       headerName: "Clock In",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "startTime")),
+      valueFormatter: (p) => formatDateTime(p.value),
       sortComparator: (v1, v2, p1, p2) =>
-        getTsSec(getField(p1?.row, "startTime")) - getTsSec(getField(p2?.row, "startTime")),
+        (p1?.row?.clockIn?.seconds ?? -1) - (p2?.row?.clockIn?.seconds ?? -1),
     },
     {
-      field: "endTime",
+      field: "clockOut",
       headerName: "Clock Out",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "endTime")),
+      valueFormatter: (p) => formatDateTime(p.value),
       sortComparator: (v1, v2, p1, p2) =>
-        getTsSec(getField(p1?.row, "endTime")) - getTsSec(getField(p2?.row, "endTime")),
+        (p1?.row?.clockOut?.seconds ?? -1) - (p2?.row?.clockOut?.seconds ?? -1),
     },
     {
-      field: "duration",
+      field: "durationMins",
       headerName: "Duration",
       minWidth: 130,
       flex: 0.6,
-      valueGetter: (p) => {
-        const explicit = getField(p?.row, "duration");
-        if (Number.isFinite(explicit)) return fmtMinutesHuman(explicit);
-        const computed = minutesBetween(getField(p?.row, "startTime"), getField(p?.row, "endTime"));
-        return fmtMinutesHuman(computed);
-      },
-      sortComparator: (v1, v2, p1, p2) => {
-        const a = Number.isFinite(getField(p1?.row, "duration"))
-          ? getField(p1?.row, "duration")
-          : minutesBetween(getField(p1?.row, "startTime"), getField(p1?.row, "endTime")) ?? -1;
-        const b = Number.isFinite(getField(p2?.row, "duration"))
-          ? getField(p2?.row, "duration")
-          : minutesBetween(getField(p2?.row, "startTime"), getField(p2?.row, "endTime")) ?? -1;
-        return a - b;
-      },
+      valueFormatter: (p) =>
+        typeof p.value === "number" ? p.value : "N/A",
     },
     {
       field: "loggedAt",
       headerName: "Logged At",
       minWidth: 170,
       flex: 0.8,
-      valueGetter: (p) => formatDateTime(getField(p?.row, "loggedAt")),
+      valueFormatter: (p) => formatDateTime(p.value),
     },
-    {
-      field: "note",
-      headerName: "Note",
-      minWidth: 240,
-      flex: 1.2,
-      valueGetter: (p) => safeString(getField(p?.row, "note"), ""),
-    },
+    { field: "note", headerName: "Note", minWidth: 240, flex: 1.2 },
   ];
 
-  if (withActions) cols.push(buildNativeActionsColumn({ onEdit, onDelete }));
+  if (withActions)
+    columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
-  return cols;
+  return columns;
 }
