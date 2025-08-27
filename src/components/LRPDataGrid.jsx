@@ -4,15 +4,6 @@ import React, { useMemo } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
 
-/**
- * Unified LRP DataGrid wrapper
- * - Stable getRowId
- * - Compact density + quick filter (debounced)
- * - Consistent overlays (empty/error)
- * - Mobile/desktop consistent rendering
- * - Works with MUI X Pro license via Vite env
- */
-
 function EmptyOverlay() {
   return (
     <Stack height="100%" alignItems="center" justifyContent="center" sx={{ color: "#9aa0a6" }}>
@@ -30,21 +21,17 @@ function ErrorOverlay({ message }) {
   );
 }
 
-/** Best-effort stable id resolver */
+// Best-effort stable id resolver
 function defaultGetRowId(row) {
   if (!row || typeof row !== "object") return undefined;
-  return (
-    row.id ||
-    row.rideId ||
-    row.tripId ||
-    row.ticketId ||
-    row.uid ||
-    row.docId ||
-    row._id ||
-    // fallback hash
-    `${row.driverEmail || ""}:${row.startTime?.seconds || ""}:${row.endTime?.seconds || ""}`
-  );
+  return row.id || row.docId || row._id;
 }
+
+const defaultValueFormatter = (params) => {
+  const v = params?.value;
+  if (v === 0 || v === false) return v;
+  return v === undefined || v === null || v === "" ? "N/A" : v;
+};
 
 export default function LRPDataGrid(props) {
   const {
@@ -62,6 +49,17 @@ export default function LRPDataGrid(props) {
   } = props;
 
   const resolvedGetRowId = getRowId || defaultGetRowId;
+
+  const processedColumns = useMemo(
+    () =>
+      Array.isArray(columns)
+        ? columns.map((c) => ({
+            ...c,
+            valueFormatter: c.valueFormatter || defaultValueFormatter,
+          }))
+        : [],
+    [columns]
+  );
 
   const initialState = useMemo(
     () => ({
@@ -103,7 +101,7 @@ export default function LRPDataGrid(props) {
         disableRowSelectionOnClick
         autoHeight={autoHeight}
         rows={Array.isArray(rows) ? rows : []}
-        columns={Array.isArray(columns) ? columns : []}
+        columns={processedColumns}
         getRowId={resolvedGetRowId}
         checkboxSelection={checkboxSelection}
         loading={loading}

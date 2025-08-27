@@ -1,12 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/rideColumns.jsx
-import React from "react";
-import { Stack, Tooltip, IconButton } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-
 import { formatDateTime, safeNumber, safeString } from "../utils/timeUtils";
 import { getField, getTsSec, getClaimedBy, getClaimedAt } from "../utils/rowAccess";
+
+import { nativeActionsColumn } from "./nativeActions";
 
 /**
  * Options:
@@ -102,37 +99,7 @@ export function rideColumns(opts = {}) {
     },
   ];
 
-  if (withActions) {
-    cols.push({
-      field: "__actions",
-      headerName: "Actions",
-      sortable: false,
-      filterable: false,
-      disableColumnMenu: true,
-      align: "center",
-      headerAlign: "center",
-      minWidth: 120,
-      flex: 0.5,
-      renderCell: (p) => (
-        <Stack direction="row" spacing={0.5}>
-          {typeof onEdit === "function" && (
-            <Tooltip title="Edit">
-              <IconButton size="small" onClick={() => onEdit(p.row)} aria-label="Edit ride">
-                <EditIcon fontSize="inherit" />
-              </IconButton>
-            </Tooltip>
-          )}
-          {typeof onDelete === "function" && (
-            <Tooltip title="Delete">
-              <IconButton size="small" onClick={() => onDelete(p.row)} aria-label="Delete ride">
-                <DeleteIcon fontSize="inherit" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Stack>
-      ),
-    });
-  }
+  if (withActions) cols.push(nativeActionsColumn({ onEdit, onDelete }));
 
   return cols;
 }

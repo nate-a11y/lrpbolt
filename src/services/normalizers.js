@@ -1,12 +1,8 @@
 // /src/services/normalizers.js
 // Convert Firestore docs into a single, consistent shape the grids expect.
 
-import {
-  minutesBetween,
-  toDayjs,
-  safeString,
-  safeNumber,
-} from "../utils/timeUtils.js";
+import { minutesBetween, safeString, safeNumber } from "../utils/timeUtils.js";
+import { toDayjs } from "../utils/datetime.js";
 
 export function normalizeTimeLog(id, d) {
   const start = toDayjs(d.startTime)?.toDate();
@@ -69,4 +65,3 @@ export function normalizeRide(id, d) {
     updatedAt: toDayjs(d.updatedAt)?.toDate(),
   };
 }
-
