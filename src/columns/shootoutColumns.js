@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/shootoutColumns.js
-import { formatDateTime } from "../utils/timeUtils";
+import { vfTime } from "../utils/vf";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
@@ -18,7 +18,7 @@ export function shootoutColumns(opts = {}) {
       headerName: "Start",
       minWidth: 170,
       flex: 0.8,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.startTime?.seconds ?? -1) - (p2?.row?.startTime?.seconds ?? -1),
     },
@@ -27,7 +27,7 @@ export function shootoutColumns(opts = {}) {
       headerName: "End",
       minWidth: 170,
       flex: 0.8,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.endTime?.seconds ?? -1) - (p2?.row?.endTime?.seconds ?? -1),
     },
@@ -38,7 +38,7 @@ export function shootoutColumns(opts = {}) {
       headerName: "Created",
       minWidth: 170,
       flex: 0.8,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
     },
   ];
 

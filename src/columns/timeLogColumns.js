@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/columns/timeLogColumns.js
-import { formatDateTime } from "../utils/timeUtils";
+import { vfTime, vfNumber } from "../utils/vf";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
@@ -20,7 +20,7 @@ export function timeLogColumns(opts = {}) {
       headerName: "Clock In",
       minWidth: 170,
       flex: 0.8,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.clockIn?.seconds ?? -1) - (p2?.row?.clockIn?.seconds ?? -1),
     },
@@ -29,7 +29,7 @@ export function timeLogColumns(opts = {}) {
       headerName: "Clock Out",
       minWidth: 170,
       flex: 0.8,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.clockOut?.seconds ?? -1) - (p2?.row?.clockOut?.seconds ?? -1),
     },
@@ -38,15 +38,14 @@ export function timeLogColumns(opts = {}) {
       headerName: "Duration",
       minWidth: 130,
       flex: 0.6,
-      valueFormatter: (p) =>
-        typeof p.value === "number" ? p.value : "N/A",
+      valueFormatter: vfNumber,
     },
     {
       field: "loggedAt",
       headerName: "Logged At",
       minWidth: 170,
       flex: 0.8,
-      valueFormatter: (p) => formatDateTime(p.value),
+      valueFormatter: vfTime,
     },
     { field: "note", headerName: "Note", minWidth: 240, flex: 1.2 },
   ];

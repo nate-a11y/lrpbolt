@@ -51,7 +51,7 @@ import {
   doc,
 } from "firebase/firestore";
 
-import { vfText } from "@/utils/gridFormatters";
+import { vfText } from "@/utils/vf";
 import { db } from "src/utils/firebaseInit";
 
 import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs

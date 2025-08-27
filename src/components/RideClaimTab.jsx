@@ -37,7 +37,7 @@ import { Timestamp, orderBy } from "firebase/firestore";
 import { durationMinutes, toDateAny } from "@/utils/datetime";
 import { actionsCol } from "@/utils/gridFormatters";
 
-import { formatDateTime } from "../utils/timeUtils";
+import { vfTime, vfNumber } from "../utils/vf";
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
 import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
@@ -239,14 +239,13 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         field: "pickupTime",
         headerName: "Pickup",
         width: 200,
-        valueFormatter: (p) => formatDateTime(p.value),
+        valueFormatter: vfTime,
       },
       {
         field: "rideDuration",
         headerName: "Dur (min)",
         width: 120,
-        valueFormatter: (p) =>
-          typeof p.value === "number" ? p.value : "N/A",
+        valueFormatter: vfNumber,
       },
       { field: "rideType", headerName: "Type", width: 140 },
       { field: "vehicle", headerName: "Vehicle", width: 160 },
@@ -255,7 +254,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
         field: "claimedAt",
         headerName: "Claimed At",
         width: 200,
-        valueFormatter: (p) => formatDateTime(p.value),
+        valueFormatter: vfTime,
       },
       { field: "status", headerName: "Status", width: 140 },
       actionsCol(({ id }) => (
