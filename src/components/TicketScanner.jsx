@@ -36,14 +36,14 @@ import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
 
 import { sanitize } from "../utils/sanitize";
-import { fmtDateTime } from "../utils/timeUtils";
+import { formatDateTime } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";
 import { logError } from "../utils/logError";
 
-const formatDate = (v) => fmtDateTime(v, undefined, "MMM D, YYYY") || "—";
+const formatDate = (v) => formatDateTime(v, "MMM D, YYYY") || "—";
 
-const formatTime = (v) => fmtDateTime(v, undefined, "h:mm A") || "—";
+const formatTime = (v) => formatDateTime(v, "h:mm A") || "—";
 
 export default function TicketScanner() {
   const [ticket, setTicket] = useState(null);
