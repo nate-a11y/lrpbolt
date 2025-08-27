@@ -3,7 +3,7 @@
 import { formatDateTime, safeNumber, safeString } from "../utils/timeUtils";
 import { getField, getTsSec, getClaimedBy, getClaimedAt } from "../utils/rowAccess";
 
-import { nativeActionsColumn } from "./nativeActions";
+import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
 /**
  * Options:
@@ -99,7 +99,7 @@ export function rideColumns(opts = {}) {
     },
   ];
 
-  if (withActions) cols.push(nativeActionsColumn({ onEdit, onDelete }));
+  if (withActions) cols.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
   return cols;
 }
