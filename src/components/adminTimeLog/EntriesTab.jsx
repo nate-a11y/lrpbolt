@@ -2,15 +2,16 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Box, Paper, CircularProgress, Alert, TextField } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
-import { db } from "@/utils/firebaseInit";
-import { tsToDate, dateToTs } from "@/utils/fsTime";
+import { tsToDate } from "@/utils/fsTime";
 import { formatDateTime } from "@/utils/time";
+import { minutesBetween } from "@/utils/dates.js";
+import logError from "@/utils/logError.js";
 
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
+import { patchTimeLog, deleteTimeLog } from "../../services/timeLogs";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
@@ -29,40 +30,38 @@ export default function EntriesTab() {
 
   const handleDelete = useCallback(async (row) => {
     if (!window.confirm("Delete this time log?")) return;
+    const id = row?.id || row?.docId || row?._id;
+    if (!id) return;
     try {
-      await deleteDoc(doc(db, "timeLogs", row.id));
+      await deleteTimeLog(id);
     } catch (e) {
-      console.error(e);
+      logError(e, `EntriesTab.delete:${id}`);
       alert("Failed to delete time log");
     }
   }, []);
 
   const handleProcessRowUpdate = useCallback(async (newRow, oldRow) => {
-    const next = { ...newRow };
+    const id = newRow.id || newRow.docId || newRow._id;
+    if (!id) return oldRow;
+    const updates = {
+      driver: newRow.driver,
+      rideId: newRow.rideId,
+      note: newRow.note,
+    };
+    if (newRow.startTime instanceof Date) updates.startTime = newRow.startTime;
+    if (newRow.endTime instanceof Date) updates.endTime = newRow.endTime;
+    if (newRow.loggedAt instanceof Date) updates.loggedAt = newRow.loggedAt;
+    if (typeof newRow.duration === "number") updates.duration = newRow.duration;
+
     try {
-      if (next.startTime instanceof Date)
-        next.startTime = dateToTs(next.startTime);
-      if (next.endTime instanceof Date)
-        next.endTime = dateToTs(next.endTime);
-      if (next.loggedAt instanceof Date)
-        next.loggedAt = dateToTs(next.loggedAt);
-      const id = newRow.id || newRow.docId || newRow._id;
-      if (!id) throw new Error("Missing row id");
-      await updateDoc(doc(db, "timeLogs", id), next);
-      return {
-        ...newRow,
-        startTime: next.startTime?.toDate
-          ? next.startTime.toDate()
-          : newRow.startTime,
-        endTime: next.endTime?.toDate
-          ? next.endTime.toDate()
-          : newRow.endTime,
-        loggedAt: next.loggedAt?.toDate
-          ? next.loggedAt.toDate()
-          : newRow.loggedAt,
-      };
+      await patchTimeLog(id, updates);
+      let duration = newRow.duration;
+      if (newRow.startTime && newRow.endTime) {
+        duration = minutesBetween(newRow.startTime, newRow.endTime);
+      }
+      return { ...newRow, duration };
     } catch (e) {
-      console.error(e);
+      logError(e, `EntriesTab.processRowUpdate:${id}`);
       return oldRow;
     }
   }, []);
@@ -74,14 +73,20 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.startTime),
+        valueGetter: (p) => {
+          const d = tsToDate(p?.row?.startTime);
+          return d ?? "N/A";
+        },
         valueFormatter: (p) => formatDateTime(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.endTime),
+        valueGetter: (p) => {
+          const d = tsToDate(p?.row?.endTime);
+          return d ?? "N/A";
+        },
         valueFormatter: (p) => formatDateTime(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
@@ -89,7 +94,10 @@ export default function EntriesTab() {
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.loggedAt),
+        valueGetter: (p) => {
+          const d = tsToDate(p?.row?.loggedAt);
+          return d ?? "N/A";
+        },
         valueFormatter: (p) => formatDateTime(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
