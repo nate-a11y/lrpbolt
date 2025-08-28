@@ -72,7 +72,7 @@ function buildAutoCol(field, headerName, sampleValue) {
     sortable: true,
     renderCell: makeRenderCell(field),
     getExportValue: makeExportValue(field),
-    valueGetter: (p) => p?.row?.[field] ?? 'N/A',
+    valueGetter: (p) => p?.row?.[field] ?? "N/A",
   };
 }
 
@@ -131,7 +131,7 @@ function sanitizeCompatColumns(columns = [], forceHide = []) {
         out.getExportValue = makeExportValue(field);
       }
       if (typeof out.valueGetter !== "function") {
-        out.valueGetter = (p) => p?.row?.[field] ?? 'N/A';
+        out.valueGetter = (p) => p?.row?.[field] ?? "N/A";
       }
       return out;
     });

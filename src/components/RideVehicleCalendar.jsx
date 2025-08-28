@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // RideVehicleCalendar.jsx — Fully updated with vehicle chips, dynamic coloring, compact mode, summary, and improved light mode readability
 import { useEffect, useState, useMemo, memo } from "react";
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import {
   Box,
   Typography,
@@ -20,6 +19,8 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+
+import { dayjs, toDayjs } from "@/utils/time";
 
 import { TIMEZONE } from "../constants";
 import { fetchWithRetry } from "../utils/network";

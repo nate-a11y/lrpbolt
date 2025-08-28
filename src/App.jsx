@@ -10,7 +10,6 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import {
   Box,
   Button,
@@ -20,6 +19,8 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+
+import { dayjs } from "@/utils/time";
 
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";

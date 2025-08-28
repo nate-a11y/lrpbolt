@@ -23,7 +23,8 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import NotesIcon from "@mui/icons-material/Notes";
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
+
+import { dayjs } from "@/utils/time";
 
 import logError from "./utils/logError.js";
 import { fmtTime, fmtDurationHM, safe } from "./utils/rideFormatters";

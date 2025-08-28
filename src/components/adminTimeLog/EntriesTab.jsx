@@ -11,7 +11,6 @@ import { formatDateTime } from "@/utils/time";
 
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
-
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
@@ -42,8 +41,7 @@ export default function EntriesTab() {
     try {
       if (next.startTime instanceof Date)
         next.startTime = dateToTs(next.startTime);
-      if (next.endTime instanceof Date)
-        next.endTime = dateToTs(next.endTime);
+      if (next.endTime instanceof Date) next.endTime = dateToTs(next.endTime);
       if (next.loggedAt instanceof Date)
         next.loggedAt = dateToTs(next.loggedAt);
       const id = newRow.id || newRow.docId || newRow._id;
@@ -54,9 +52,7 @@ export default function EntriesTab() {
         startTime: next.startTime?.toDate
           ? next.startTime.toDate()
           : newRow.startTime,
-        endTime: next.endTime?.toDate
-          ? next.endTime.toDate()
-          : newRow.endTime,
+        endTime: next.endTime?.toDate ? next.endTime.toDate() : newRow.endTime,
         loggedAt: next.loggedAt?.toDate
           ? next.loggedAt.toDate()
           : newRow.loggedAt,
