@@ -1,6 +1,11 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
 import { Box } from "@mui/material";
+import {
+  DataGridPro,
+  gridClasses,
+  GridToolbar,
+  GridToolbarExport as _GridToolbarExport,
+} from "@mui/x-data-grid-pro";
 
 import useIsMobile from "../../hooks/useIsMobile";
 
@@ -21,23 +26,26 @@ export default function ResponsiveDataGridPro(props) {
     hideFooterSelectedRowCount = true,
     rowBuffer = 3,
     getRowId,
+    rows: rowsProp,
+    columns: columnsProp,
     rowSelectionModel: rowSelectionModelProp,
     onRowSelectionModelChange: onRowSelectionModelChangeProp,
     paginationModel: paginationModelProp,
     onPaginationModelChange: onPaginationModelChangeProp,
     slots: slotsProp,
+    slotProps: slotPropsProp,
     ...rest
   } = props;
 
+  const safeRows = Array.isArray(rowsProp) ? rowsProp : [];
+  const safeColumns = Array.isArray(columnsProp) ? columnsProp : [];
+
   const [rowSelectionModel, setRowSelectionModel] = useState(
-    rowSelectionModelProp instanceof Set
-      ? rowSelectionModelProp
-      : new Set(rowSelectionModelProp || []),
+    Array.isArray(rowSelectionModelProp) ? rowSelectionModelProp : [],
   );
   const handleRowSelectionModelChange = useCallback(
     (m) => {
-      const next =
-        m instanceof Set ? new Set(m) : new Set(Array.isArray(m) ? m : []);
+      const next = Array.isArray(m) ? m : [];
       setRowSelectionModel(next);
       if (onRowSelectionModelChangeProp) onRowSelectionModelChangeProp(next);
     },
@@ -61,10 +69,26 @@ export default function ResponsiveDataGridPro(props) {
     [isMdDown, density],
   );
 
+  const mergedSlotProps = useMemo(
+    () => ({
+      ...slotPropsProp,
+      toolbar: {
+        showQuickFilter: true,
+        quickFilterProps: { debounceMs: 300 },
+        ...(slotPropsProp?.toolbar || {}),
+      },
+    }),
+    [slotPropsProp],
+  );
+
+  void _GridToolbarExport;
+
   return (
     <Box sx={{ width: "100%", overflowX: "auto" }}>
       <DataGridPro
         {...rest}
+        rows={safeRows}
+        columns={safeColumns}
         getRowId={
           getRowId || ((row) => row.id || row.docId || row.ticketId || row._id)
         }
@@ -74,6 +98,7 @@ export default function ResponsiveDataGridPro(props) {
         onPaginationModelChange={handlePaginationModelChange}
         pageSizeOptions={[10, 25, 50, 100]}
         slots={{
+          toolbar: GridToolbar,
           noRowsOverlay: () => <div style={{ padding: 16 }}>No data</div>,
           errorOverlay: () => (
             <div style={{ padding: 16 }}>Error loading data</div>
@@ -103,6 +128,8 @@ export default function ResponsiveDataGridPro(props) {
         pagination={pagination}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         rowBuffer={rowBuffer}
+        checkboxSelection={rest.checkboxSelection ?? false}
+        slotProps={mergedSlotProps}
       />
     </Box>
   );

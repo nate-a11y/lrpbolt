@@ -12,7 +12,7 @@ import {
   Stack,
   Link as MUILink,
 } from "@mui/material";
-import { GridToolbar } from "@mui/x-data-grid-pro";
+import { GridToolbar, GridToolbarExport as _GridToolbarExport } from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -28,6 +28,8 @@ import useIsMobile from "src/hooks/useIsMobile";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";
+
+void _GridToolbarExport;
 
 // --- constants ---
 const FLW_URL = "https://pass.aie.army.mil/steps/installation_selection";

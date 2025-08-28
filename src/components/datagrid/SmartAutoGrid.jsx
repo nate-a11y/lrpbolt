@@ -1,12 +1,26 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo } from "react";
-import { GridToolbar } from "@mui/x-data-grid-pro";
+import React, { useMemo, useState, useCallback } from "react";
+import { Box } from "@mui/material";
+import {
+  DataGridPro,
+  GridToolbar,
+  GridToolbarExport as _GridToolbarExport,
+  GridFooterContainer,
+  GridPagination,
+  useGridApiContext,
+  useGridSelector,
+  gridRowSelectionSelector,
+} from "@mui/x-data-grid-pro";
 
 import useIsMobile from "src/hooks/useIsMobile";
 
-import { formatDateTime, formatHMFromMinutes } from "../../utils/timeUtils";
+import {
+  formatDateTime,
+  formatHMFromMinutes,
+  toDayjs,
+} from "../../utils/timeUtils";
 
-import ResponsiveDataGridPro from "./ResponsiveDataGridPro.jsx";
+void _GridToolbarExport;
 
 const isFSTimestamp = (v) => !!v && typeof v?.toDate === "function";
 const isFSTimestampLike = (v) =>
@@ -57,9 +71,25 @@ function makeRenderCell(field) {
   return (params) => formatAny(field, params?.row?.[field]);
 }
 
+function formatForExport(field, v) {
+  if (v === null || v === undefined) return "";
+  if (isFSTimestamp(v) || isFSTimestampLike(v) || isDate(v)) {
+    const d = toDayjs(v);
+    return d ? d.toISOString() : "";
+  }
+  if (looksLikeDurationField(field)) {
+    if (isNum(v)) return String(v);
+    if (v && typeof v === "object" && isNum(v.minutes)) return String(v.minutes);
+    return "";
+  }
+  if (isNum(v) || isBool(v)) return String(v);
+  if (typeof v === "string") return v;
+  return "";
+}
+
 /** Provide clean values for CSV/Excel export */
 function makeExportValue(field) {
-  return (params) => formatAny(field, params?.row?.[field]);
+  return (params) => formatForExport(field, params?.row?.[field]);
 }
 
 function buildAutoCol(field, headerName, sampleValue) {
@@ -147,22 +177,26 @@ function sanitizeCompatColumns(columns = [], forceHide = []) {
  *  - showToolbar? = true
  *  - getRowId?
  */
-export default function SmartAutoGrid({
-  rows = [],
-  headerMap,
-  order,
-  hide = [],
-  overrides,
-  forceHide = [],
-  actionsColumn,
-  columnsCompat,
-  showToolbar = true,
-  getRowId,
-  initialState: initialStateProp,
-  columnVisibilityModel: columnVisibilityModelProp,
-  ...rest
-}) {
-  const autoCols = useAutoColumns(rows, {
+export default function SmartAutoGrid(props) {
+  const {
+    rows: rowsProp = [],
+    headerMap,
+    order,
+    hide = [],
+    overrides,
+    forceHide = [],
+    actionsColumn,
+    columnsCompat,
+    showToolbar = true,
+    getRowId,
+    initialState: initialStateProp,
+    columnVisibilityModel: columnVisibilityModelProp,
+    ...rest
+  } = props;
+
+  const safeRows = Array.isArray(rowsProp) ? rowsProp : [];
+
+  const autoCols = useAutoColumns(safeRows, {
     headerMap,
     order,
     hide,
@@ -178,6 +212,24 @@ export default function SmartAutoGrid({
   if (actionsColumn && !columns.find((c) => c.field === actionsColumn.field)) {
     columns = [...columns, actionsColumn];
   }
+
+  const safeColumns = Array.isArray(columns) ? columns : [];
+
+  const [internalRowSelectionModel, setInternalRowSelectionModel] =
+    useState([]);
+  const controlledRsm = Array.isArray(props?.rowSelectionModel)
+    ? props.rowSelectionModel
+    : internalRowSelectionModel;
+  const handleRowSelectionModelChange = useCallback(
+    (model) => {
+      const next = Array.isArray(model) ? model : [];
+      if (typeof props?.onRowSelectionModelChange === "function") {
+        props.onRowSelectionModelChange(next);
+      }
+      setInternalRowSelectionModel(next);
+    },
+    [props],
+  );
 
   const stableGetRowId =
     getRowId ||
@@ -200,20 +252,39 @@ export default function SmartAutoGrid({
     [columnVisibilityModelProp, isMdDown],
   );
 
+  function SmartGridFooter() {
+    const apiRef = useGridApiContext();
+    const selection =
+      useGridSelector(apiRef, gridRowSelectionSelector) || new Set();
+    const selectedCount = selection.size;
+    return (
+      <GridFooterContainer>
+        <Box sx={{ pl: 2 }}>{selectedCount} selected</Box>
+        <GridPagination />
+      </GridFooterContainer>
+    );
+  }
+
   return (
-    <ResponsiveDataGridPro
-      rows={rows}
-      columns={columns}
+    <DataGridPro
+      {...rest}
+      rows={safeRows}
+      columns={safeColumns}
       getRowId={stableGetRowId}
+      rowSelectionModel={controlledRsm}
+      onRowSelectionModelChange={handleRowSelectionModelChange}
       columnVisibilityModel={columnVisibilityModel}
-      disableRowSelectionOnClick
-      checkboxSelection={false}
+      checkboxSelection={rest.checkboxSelection ?? true}
+      disableRowSelectionOnClick={rest.disableRowSelectionOnClick ?? false}
       autoHeight
       pagination
       hideFooterSelectedRowCount
       pageSizeOptions={[25, 50, 100]}
       initialState={mergedInitialState}
-      slots={showToolbar ? { toolbar: GridToolbar } : undefined}
+      slots={{
+        footer: SmartGridFooter,
+        ...(showToolbar ? { toolbar: GridToolbar } : {}),
+      }}
       slotProps={
         showToolbar
           ? {
@@ -224,7 +295,6 @@ export default function SmartAutoGrid({
             }
           : undefined
       }
-      {...rest}
     />
   );
 }
