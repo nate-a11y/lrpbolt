@@ -1,302 +1,123 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import { Box } from "@mui/material";
-import {
-  DataGridPro,
-  GridToolbar,
-  GridToolbarExport as _GridToolbarExport,
-  GridFooterContainer,
-  GridPagination,
-} from "@mui/x-data-grid-pro";
+import { DataGridPro, useGridApiRef } from "@mui/x-data-grid-pro";
 
-import { toIdArray } from "@/utils/gridUtils";
-import useIsMobile from "src/hooks/useIsMobile";
-
-import {
-  formatDateTime,
-  formatHMFromMinutes,
-  toDayjs,
-} from "../../utils/timeUtils";
-
-void _GridToolbarExport;
-
-const isFSTimestamp = (v) => !!v && typeof v?.toDate === "function";
-const isFSTimestampLike = (v) =>
-  v &&
-  typeof v === "object" &&
-  Number.isFinite(v.seconds) &&
-  Number.isFinite(v.nanoseconds);
-const isDate = (v) => v instanceof Date;
-const isBool = (v) => v === true || v === false;
-const isNum = (v) => typeof v === "number" && Number.isFinite(v);
-
-const looksLikeDurationField = (field = "") =>
-  ["duration", "durationmins", "rideduration", "totalminutes"].includes(
-    field.toLowerCase(),
-  );
-
-const widthFor = (field, sample) => {
-  if (isFSTimestamp(sample) || isFSTimestampLike(sample)) return 200;
-  if (looksLikeDurationField(field)) return 120;
-  if (isNum(sample)) return 120;
-  if (isBool(sample)) return 110;
-  if ((field || "").toLowerCase().includes("id")) return 140;
-  return 180;
-};
-
-function formatAny(field, v) {
-  if (v === null || v === undefined) return "N/A";
-  if (isFSTimestamp(v)) return formatDateTime(v);
-  if (isFSTimestampLike(v)) {
-    const ms = v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6);
-    return formatDateTime(new Date(ms));
-  }
-  if (isDate(v)) return formatDateTime(v);
-  if (looksLikeDurationField(field)) {
-    if (isNum(v)) return formatHMFromMinutes(v);
-    if (v && typeof v === "object" && isNum(v.minutes))
-      return formatHMFromMinutes(v.minutes);
-    return "N/A";
-  }
-  if (isNum(v)) return String(v);
-  if (isBool(v)) return v ? "Yes" : "No";
-  if (typeof v === "string") return v.trim() === "" ? "N/A" : v;
-  return ""; // never [object Object]
-}
-
-/** Universal, object-safe rendering — never “[object Object]”. */
-function makeRenderCell(field) {
-  return (params) => formatAny(field, params?.row?.[field]);
-}
-
-function formatForExport(field, v) {
-  if (v === null || v === undefined) return "";
-  if (isFSTimestamp(v) || isFSTimestampLike(v) || isDate(v)) {
-    const d = toDayjs(v);
-    return d ? d.toISOString() : "";
-  }
-  if (looksLikeDurationField(field)) {
-    if (isNum(v)) return String(v);
-    if (v && typeof v === "object" && isNum(v.minutes))
-      return String(v.minutes);
-    return "";
-  }
-  if (isNum(v) || isBool(v)) return String(v);
-  if (typeof v === "string") return v;
-  return "";
-}
-
-/** Provide clean values for CSV/Excel export */
-function makeExportValue(field) {
-  return (params) => formatForExport(field, params?.row?.[field]);
-}
-
-function buildAutoCol(field, headerName, sampleValue) {
-  const width = widthFor(field, sampleValue);
-  return {
-    field,
-    headerName: headerName || field,
-    width,
-    minWidth: Math.min(width, 220),
-    sortable: true,
-    renderCell: makeRenderCell(field),
-    getExportValue: makeExportValue(field),
-    valueGetter: (p) => p?.row?.[field] ?? "N/A",
-  };
-}
-
-/** Build inferred columns from the first row */
-function useAutoColumns(
-  rows,
-  {
-    headerMap = {},
-    order = [],
-    hide = [],
-    overrides = {},
-    forceHide = [],
-  } = {},
-) {
-  return useMemo(() => {
-    const first = rows?.find(Boolean) || {};
-    const fields = Object.keys(first);
-    const seen = new Set();
-    const ordered = [
-      ...order.filter((f) => fields.includes(f)).map((f) => (seen.add(f), f)),
-      ...fields.filter((f) => !seen.has(f)),
-    ];
-
-    return ordered
-      .filter((f) => !forceHide.includes(f)) // hard remove
-      .map((field) => {
-        const sample = first[field];
-        const col = buildAutoCol(field, headerMap[field], sample);
-        if (hide.includes(field)) col.hide = true; // soft hide (toggle-able)
-        if (overrides[field]) Object.assign(col, overrides[field]);
-        return col;
-      });
-  }, [rows, headerMap, order, hide, overrides, forceHide]);
-}
-
-/** Sanitize a legacy columns array (compat mode) */
-function sanitizeCompatColumns(columns = [], forceHide = []) {
-  return (columns || [])
-    .filter((c) => !forceHide.includes(c?.field))
-    .map((c, idx) => {
-      const field = c?.field ?? `col_${idx}`;
-      const headerName = c?.headerName || field;
-      const out = { ...c, field, headerName };
-      if (!out.width) out.width = 180;
-      if (!out.minWidth) {
-        if (out.flex) {
-          out.minWidth = 140;
-        } else {
-          out.minWidth = Math.min(out.width, 220);
-        }
-      }
-      if (typeof out.renderCell !== "function" && out.type !== "actions") {
-        out.renderCell = makeRenderCell(field);
-      }
-      if (typeof out.getExportValue !== "function") {
-        out.getExportValue = makeExportValue(field);
-      }
-      if (typeof out.valueGetter !== "function") {
-        out.valueGetter = (p) => p?.row?.[field] ?? "N/A";
-      }
-      return out;
-    });
-}
+import { toV8Model } from "./selectionV8";
 
 /**
- * SmartAutoGrid
- *  - rows
- *  - headerMap/order/hide/overrides
- *  - actionsColumn
- *  - columnsCompat? (legacy columns array)
- *  - forceHide?: string[]  // hard-remove columns no matter what
- *  - showToolbar? = true
- *  - getRowId?
+ * SmartAutoGrid – shared wrapper with safe defaults for MUI X Pro v8.
+ * - Always provides a controlled v8 rowSelectionModel: { ids: Set, type: 'include' | 'exclude' }.
+ * - Guards rows/columns arrays and getRowId stability.
  */
 export default function SmartAutoGrid(props) {
   const {
-    rows: rowsProp = [],
-    headerMap,
-    order,
-    hide = [],
-    overrides,
-    forceHide = [],
-    actionsColumn,
-    columnsCompat,
-    showToolbar = true,
+    rows,
+    columns,
     getRowId,
-    initialState: initialStateProp,
-    columnVisibilityModel: columnVisibilityModelProp,
+    checkboxSelection = true,
+    disableRowSelectionOnClick = false,
+    rowSelectionModel, // may be array/Set/object; we normalize
+    onRowSelectionModelChange, // must emit v8 object
+    initialState,
+    columnVisibilityModel,
     ...rest
   } = props;
 
-  const safeRows = Array.isArray(rowsProp) ? rowsProp : [];
+  const apiRef = useGridApiRef();
 
-  const autoCols = useAutoColumns(safeRows, {
-    headerMap,
-    order,
-    hide,
-    overrides,
-    forceHide,
-  });
-  const compatCols = useMemo(
-    () => sanitizeCompatColumns(columnsCompat, forceHide),
-    [columnsCompat, forceHide],
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeCols = useMemo(
+    () => (Array.isArray(columns) ? columns : []),
+    [columns],
   );
 
-  let columns = columnsCompat ? compatCols : autoCols;
-  if (actionsColumn && !columns.find((c) => c.field === actionsColumn.field)) {
-    columns = [...columns, actionsColumn];
-  }
-
-  const safeColumns = Array.isArray(columns) ? columns : [];
-
-  const [internalRowSelectionModel, setInternalRowSelectionModel] = useState(
-    [],
-  );
-  const controlledRsm = toIdArray(
-    props?.rowSelectionModel ?? internalRowSelectionModel,
-  );
-  const handleRowSelectionModelChange = useCallback(
-    (model) => {
-      const next = toIdArray(model);
-      if (typeof props?.onRowSelectionModelChange === "function") {
-        props.onRowSelectionModelChange(next);
+  const safeGetRowId = useCallback(
+    (row) => {
+      try {
+        if (typeof getRowId === "function") return getRowId(row);
+        if (row && (row.id || row.uid || row._id))
+          return row.id ?? row.uid ?? row._id;
+      } catch (err) {
+        console.warn("getRowId error; falling back to JSON key", err);
       }
-      setInternalRowSelectionModel(next);
+      return JSON.stringify(row);
     },
-    [props],
+    [getRowId],
   );
 
-  const stableGetRowId =
-    getRowId ||
-    ((row) =>
-      row?.id ??
-      row?.uid ??
-      row?._id ??
-      row?.docId ??
-      row?.key ??
-      JSON.stringify(row));
+  // Internal v8 selection model
+  const [internalRsm, setInternalRsm] = useState({
+    ids: new Set(),
+    type: "include",
+  });
 
-  const mergedInitialState = useMemo(
-    () => ({ density: "compact", ...initialStateProp }),
-    [initialStateProp],
+  // If parent passes something, normalize it; else use internal
+  const externalNormalized = useMemo(
+    () => toV8Model(rowSelectionModel),
+    [rowSelectionModel],
+  );
+  const controlledRsm =
+    rowSelectionModel !== undefined ? externalNormalized : internalRsm;
+
+  const handleRsmChange = useCallback(
+    (next, details) => {
+      const clean = toV8Model(next);
+      setInternalRsm(clean);
+      if (typeof onRowSelectionModelChange === "function") {
+        onRowSelectionModelChange(clean, details);
+      }
+    },
+    [onRowSelectionModelChange],
   );
 
-  const { isMdDown } = useIsMobile();
-  const columnVisibilityModel = useMemo(
-    () =>
-      columnVisibilityModelProp !== undefined
-        ? columnVisibilityModelProp
-        : isMdDown
-          ? { id: false, internalOnly: false }
-          : undefined,
-    [columnVisibilityModelProp, isMdDown],
+  const safeInitialState = useMemo(
+    () => ({
+      density: "compact",
+      ...initialState,
+      filter: {
+        ...initialState?.filter,
+        filterModel: {
+          quickFilterValues:
+            initialState?.filter?.filterModel?.quickFilterValues ?? [],
+          items: initialState?.filter?.filterModel?.items ?? [],
+        },
+      },
+    }),
+    [initialState],
   );
-
-  function SmartGridFooter() {
-    const selectedCount = controlledRsm.length;
-    return (
-      <GridFooterContainer>
-        <Box sx={{ pl: 2 }}>{selectedCount} selected</Box>
-        <GridPagination />
-      </GridFooterContainer>
-    );
-  }
 
   return (
-    <DataGridPro
-      {...rest}
-      rows={safeRows}
-      columns={safeColumns}
-      getRowId={stableGetRowId}
-      rowSelectionModel={toIdArray(controlledRsm)}
-      onRowSelectionModelChange={handleRowSelectionModelChange}
-      columnVisibilityModel={columnVisibilityModel}
-      checkboxSelection={rest.checkboxSelection ?? true}
-      disableRowSelectionOnClick={rest.disableRowSelectionOnClick ?? false}
-      autoHeight
-      pagination
-      hideFooterSelectedRowCount
-      pageSizeOptions={[25, 50, 100]}
-      initialState={mergedInitialState}
-      slots={{
-        footer: SmartGridFooter,
-        ...(showToolbar ? { toolbar: GridToolbar } : {}),
-      }}
-      slotProps={
-        showToolbar
-          ? {
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 300 },
-              },
-            }
-          : undefined
-      }
-    />
+    <Box sx={{ height: "100%", width: "100%" }}>
+      <DataGridPro
+        apiRef={apiRef}
+        rows={safeRows}
+        columns={safeCols}
+        getRowId={safeGetRowId}
+        checkboxSelection={checkboxSelection}
+        disableRowSelectionOnClick={disableRowSelectionOnClick}
+        rowSelectionModel={controlledRsm}
+        onRowSelectionModelChange={handleRsmChange}
+        initialState={safeInitialState}
+        columnVisibilityModel={columnVisibilityModel}
+        pagination
+        autoHeight={rest.autoHeight ?? false}
+        density={rest.density ?? "compact"}
+        {...rest}
+      />
+    </Box>
   );
 }
+
+SmartAutoGrid.propTypes = {
+  rows: PropTypes.array,
+  columns: PropTypes.array,
+  getRowId: PropTypes.func,
+  checkboxSelection: PropTypes.bool,
+  disableRowSelectionOnClick: PropTypes.bool,
+  rowSelectionModel: PropTypes.any,
+  onRowSelectionModelChange: PropTypes.func,
+  initialState: PropTypes.object,
+  columnVisibilityModel: PropTypes.object,
+};

@@ -42,7 +42,7 @@ import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
 import { dayjs } from "@/utils/time";
-import { safeRow, toIdArray } from "@/utils/gridUtils";
+import { safeRow } from "@/utils/gridUtils";
 import { assertGridScrollable } from "@/utils/devGridCheck";
 
 import {
@@ -56,8 +56,9 @@ import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import PageContainer from "./PageContainer.jsx";
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import { toV8Model, idsArray } from "./datagrid/selectionV8";
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -69,8 +70,11 @@ function Tickets() {
   });
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
-  const [rowSelectionModel, setRowSelectionModel] = useState([]);
-  const selectedIds = toIdArray(rowSelectionModel);
+  const [rowSelectionModel, setRowSelectionModel] = useState({
+    ids: new Set(),
+    type: "include",
+  });
+  const selectedIds = idsArray(rowSelectionModel);
   const [_deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -546,9 +550,9 @@ function Tickets() {
                 pageSizeOptions={[5, 10, 25, 100]}
                 disableRowSelectionOnClick
                 onRowSelectionModelChange={(model) =>
-                  setRowSelectionModel(toIdArray(model))
+                  setRowSelectionModel(toV8Model(model))
                 }
-                rowSelectionModel={toIdArray(rowSelectionModel)}
+                rowSelectionModel={toV8Model(rowSelectionModel)}
                 initialState={initialState}
                 sx={{
                   "& .MuiDataGrid-row:nth-of-type(odd)": {
