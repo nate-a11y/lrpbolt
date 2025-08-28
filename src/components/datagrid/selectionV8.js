@@ -5,7 +5,10 @@ import timezone from "dayjs/plugin/timezone";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// -------- v8 selection helpers ----------
+// Export the default portal timezone (Central); fall back to guess if needed.
+export const DEFAULT_TZ = "America/Chicago";
+
+// Existing exports (keep them if already present)
 export function toV8Model(input) {
   if (!input) return { ids: new Set(), type: "include" };
   if (Array.isArray(input)) return { ids: new Set(input), type: "include" };
@@ -15,7 +18,8 @@ export function toV8Model(input) {
     let ids;
     if (rawIds instanceof Set) ids = rawIds;
     else if (Array.isArray(rawIds)) ids = new Set(rawIds);
-    else if (rawIds && Array.isArray(rawIds.current)) ids = new Set(rawIds.current);
+    else if (rawIds && Array.isArray(rawIds.current))
+      ids = new Set(rawIds.current);
     else if (input.id != null) ids = new Set([input.id]);
     else ids = new Set();
     const type = input.type === "exclude" ? "exclude" : "include";
@@ -28,29 +32,76 @@ export function selectedCount(model) {
   return model && model.ids instanceof Set ? model.ids.size : 0;
 }
 
-// -------- formatting helpers (null-safe, Firestore Timestamp aware) ----------
+// --- Firestore Timestamp detection ---
 export function isFsTimestamp(v) {
-  // Firestore Timestamp has toDate(); also support {seconds,nanoseconds}
   return !!(
     v &&
-    (typeof v.toDate === "function" ||
-      (typeof v.seconds === "number" && typeof v.nanoseconds === "number"))
+    (typeof v?.toDate === "function" ||
+      (typeof v?.seconds === "number" && typeof v?.nanoseconds === "number"))
   );
 }
 
-export function formatMaybeTs(v, tz = dayjs.tz.guess()) {
+// --- Robust parser: FS Timestamp, ISO string, millis, seconds ---
+export function toDayjs(value, tz = DEFAULT_TZ) {
   try {
-    if (!v) return "N/A";
-    if (typeof v.toDate === "function")
-      return dayjs(v.toDate()).tz(tz).format("YYYY-MM-DD HH:mm");
-    if (typeof v.seconds === "number")
-      return dayjs(new Date(v.seconds * 1000)).tz(tz).format("YYYY-MM-DD HH:mm");
-    return String(v);
+    if (!value) return null;
+    // Trim accidental surrounding quotes: "2025-08-24T00:00:00Z"
+    if (typeof value === "string") {
+      const s = value.replace(/^"+|"+$/g, "");
+      const d = dayjs(s);
+      return d.isValid() ? d.tz(tz) : null;
+    }
+    if (isFsTimestamp(value)) {
+      const d =
+        typeof value.toDate === "function"
+          ? dayjs(value.toDate())
+          : dayjs(new Date(value.seconds * 1000));
+      return d.isValid() ? d.tz(tz) : null;
+    }
+    if (typeof value === "number") {
+      // Treat as millis if big, seconds if small
+      const ms = value > 10_000_000_000 ? value : value * 1000;
+      const d = dayjs(ms);
+      return d.isValid() ? d.tz(tz) : null;
+    }
+    const d = dayjs(value);
+    return d.isValid() ? d.tz(tz) : null;
   } catch {
-    return String(v ?? "N/A");
+    return null;
   }
 }
 
+// Friendly time formatter in Central
+export function formatTs(value, fmt = "MMM D, h:mm a", tz = DEFAULT_TZ) {
+  const d = toDayjs(value, tz);
+  return d ? d.format(fmt) : "N/A";
+}
+
+// Keep old name for any existing callers
+export function formatMaybeTs(v, tz = DEFAULT_TZ) {
+  return formatTs(v, "YYYY-MM-DD HH:mm", tz);
+}
+
+// --- Duration helpers ---
+export function minutesToHuman(mins) {
+  const n = Number(mins);
+  if (!Number.isFinite(n) || n < 0) return "N/A";
+  const h = Math.floor(n / 60);
+  const m = Math.round(n % 60);
+  if (h && m) return `${h}h ${m}min`;
+  if (h && !m) return `${h}h 0min`;
+  return `${m}min`;
+}
+
+export function diffMinutes(start, end, tz = DEFAULT_TZ) {
+  const s = toDayjs(start, tz);
+  const e = toDayjs(end, tz);
+  if (!s || !e) return null;
+  const diff = e.diff(s, "minute");
+  return Number.isFinite(diff) && diff >= 0 ? diff : null;
+}
+
+// Safe stringify for objects in cells
 export function stringifyCell(value) {
   if (value == null) return "";
   if (
@@ -59,7 +110,7 @@ export function stringifyCell(value) {
     typeof value === "boolean"
   )
     return String(value);
-  if (isFsTimestamp(value)) return formatMaybeTs(value);
+  if (isFsTimestamp(value)) return formatTs(value);
   try {
     return JSON.stringify(value);
   } catch {

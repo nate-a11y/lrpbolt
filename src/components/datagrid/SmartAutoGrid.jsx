@@ -8,10 +8,12 @@ import {
   toV8Model,
   stringifyCell,
   isFsTimestamp,
-  formatMaybeTs,
+  formatTs,
+  minutesToHuman,
+  diffMinutes,
+  DEFAULT_TZ,
 } from "./selectionV8";
 
-// Build a readable header from object key: "startTime" -> "Start Time"
 function headerFromKey(k) {
   if (!k) return "";
   return String(k)
@@ -22,30 +24,73 @@ function headerFromKey(k) {
     .replace(/^./, (s) => s.toUpperCase());
 }
 
-// Heuristic auto-column factory.
-// - Skips obvious internal keys if requested
-// - Null-safe valueGetter signature for v7/v8: (value, row)
+// Heuristic predicates
+const TIME_KEY_RE =
+  /(start.?time|end.?time|created.?at|updated.?at|timestamp|time)$/i;
+const DURATION_KEY_RE = /(duration|mins?|minutes)$/i;
+
+// Auto-column builder with Central time + human duration
 function buildAutoColumns(sampleRow, opts = {}) {
   const { hideKeys = [], preferredOrder = [] } = opts;
-  const keys = Object.keys(sampleRow || {}).filter((k) => !hideKeys.includes(k));
+  const keys = Object.keys(sampleRow || {}).filter(
+    (k) => !hideKeys.includes(k),
+  );
 
-  // Put preferred keys first if present
   const ordered = [
     ...preferredOrder.filter((k) => keys.includes(k)),
     ...keys.filter((k) => !preferredOrder.includes(k)),
   ];
 
   return ordered.map((field) => {
+    // Timestamp-like
+    if (TIME_KEY_RE.test(field)) {
+      return {
+        field,
+        headerName: headerFromKey(field),
+        minWidth: 170,
+        flex: 1,
+        valueGetter: (value, row) => {
+          const raw = value ?? row?.[field];
+          if (!raw) return "";
+          // Handle FS Timestamp or ISOish strings
+          return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ); // e.g., Aug 24, 12:30 pm
+        },
+      };
+    }
+
+    // Duration-like (assume minutes; compute from start/end if missing)
+    if (DURATION_KEY_RE.test(field)) {
+      return {
+        field,
+        headerName: headerFromKey(field),
+        minWidth: 130,
+        flex: 0.7,
+        valueGetter: (value, row) => {
+          const raw = value ?? row?.[field];
+          const asNum = Number(raw);
+          if (Number.isFinite(asNum) && asNum >= 0)
+            return minutesToHuman(asNum);
+          const dm = diffMinutes(
+            row?.startTime ?? row?.start_time,
+            row?.endTime ?? row?.end_time,
+            DEFAULT_TZ,
+          );
+          return dm == null ? "" : minutesToHuman(dm);
+        },
+      };
+    }
+
+    // Generic column
     return {
       field,
       headerName: headerFromKey(field),
       minWidth: 140,
       flex: 1,
-      // valueGetter signature in v7+/v8 is (value, row)
       valueGetter: (value, row) => {
         const raw = value ?? row?.[field];
-        if (isFsTimestamp(raw)) return formatMaybeTs(raw);
         if (raw == null) return "";
+        if (isFsTimestamp(raw))
+          return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ);
         if (typeof raw === "object") return stringifyCell(raw);
         return raw;
       },
@@ -53,12 +98,6 @@ function buildAutoColumns(sampleRow, opts = {}) {
   });
 }
 
-/**
- * SmartAutoGrid – shared wrapper with:
- *  - v8-safe row selection model (object with Set)
- *  - Auto-generated columns when none are provided
- *  - Defensive null guards for rows/columns/getRowId
- */
 export default function SmartAutoGrid(props) {
   const {
     rows,
@@ -70,9 +109,9 @@ export default function SmartAutoGrid(props) {
     onRowSelectionModelChange,
     initialState,
     columnVisibilityModel,
-    autoColumns = true,                // NEW: enable auto columns by default
-    autoHideKeys = [],                 // e.g., ["id", "userEmail", "driverId"]
-    autoPreferredOrder = [],           // e.g., ["startTime", "endTime", "duration"]
+    autoColumns = true,
+    autoHideKeys = [],
+    autoPreferredOrder = [],
     ...rest
   } = props;
 
@@ -81,7 +120,10 @@ export default function SmartAutoGrid(props) {
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const dataHasRows = safeRows.length > 0;
 
-  const explicitCols = useMemo(() => (Array.isArray(columns) ? columns : []), [columns]);
+  const explicitCols = useMemo(
+    () => (Array.isArray(columns) ? columns : []),
+    [columns],
+  );
   const autoCols = useMemo(() => {
     if (!autoColumns || explicitCols.length > 0 || !dataHasRows) return [];
     return buildAutoColumns(safeRows[0], {
@@ -97,16 +139,17 @@ export default function SmartAutoGrid(props) {
     autoPreferredOrder,
   ]);
 
-  const safeCols = useMemo(() => {
-    return explicitCols.length > 0 ? explicitCols : autoCols;
-  }, [explicitCols, autoCols]);
+  const safeCols = useMemo(
+    () => (explicitCols.length > 0 ? explicitCols : autoCols),
+    [explicitCols, autoCols],
+  );
 
-  // Stable getRowId
   const safeGetRowId = useCallback(
     (row) => {
       try {
         if (typeof getRowId === "function") return getRowId(row);
-        if (row && (row.id || row.uid || row._id)) return row.id ?? row.uid ?? row._id;
+        if (row && (row.id || row.uid || row._id))
+          return row.id ?? row.uid ?? row._id;
       } catch (err) {
         console.warn("getRowId error; falling back to JSON key", err);
       }
@@ -115,8 +158,11 @@ export default function SmartAutoGrid(props) {
     [getRowId],
   );
 
-  // v8 selection model control
-  const [internalRsm, setInternalRsm] = useState({ ids: new Set(), type: "include" });
+  // v8 selection control
+  const [internalRsm, setInternalRsm] = useState({
+    ids: new Set(),
+    type: "include",
+  });
   const externalNormalized = useMemo(
     () => toV8Model(rowSelectionModel),
     [rowSelectionModel],
@@ -128,9 +174,8 @@ export default function SmartAutoGrid(props) {
     (next, details) => {
       const clean = toV8Model(next);
       setInternalRsm(clean);
-      if (typeof onRowSelectionModelChange === "function") {
+      if (typeof onRowSelectionModelChange === "function")
         onRowSelectionModelChange(clean, details);
-      }
     },
     [onRowSelectionModelChange],
   );
