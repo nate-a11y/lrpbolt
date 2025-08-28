@@ -11,7 +11,8 @@ import {
   Alert,
   Snackbar,
 } from "@mui/material";
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
+
+import { dayjs } from "@/utils/time";
 
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";

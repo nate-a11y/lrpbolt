@@ -2,7 +2,6 @@
 // Tickets.jsx — Email, Download, Search, Summary, Scanner Status
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import ReactDOM from "react-dom/client";
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import QRCode from "react-qr-code";
 import { toPng } from "html-to-image";
 import {
@@ -42,6 +41,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
+import { dayjs } from "@/utils/time";
 import { safeRow } from "@/utils/gridUtils";
 import { assertGridScrollable } from "@/utils/devGridCheck";
 

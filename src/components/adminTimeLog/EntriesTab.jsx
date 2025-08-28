@@ -12,7 +12,6 @@ import logError from "@/utils/logError.js";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
 import { patchTimeLog, deleteTimeLog } from "../../services/timeLogs";
-
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
@@ -22,8 +21,8 @@ export default function EntriesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [driverFilter, setDriverFilter] = useState("");
-  const [startFilter, setStartFilter] = useState(null);
-  const [endFilter, setEndFilter] = useState(null);
+  const [startFilter, setStartFilter] = useState(null); // dayjs | null
+  const [endFilter, setEndFilter] = useState(null);     // dayjs | null
   const [search, setSearch] = useState("");
   const apiRef = useGridApiRef();
   const [rowModesModel, setRowModesModel] = useState({});
@@ -41,24 +40,30 @@ export default function EntriesTab() {
   }, []);
 
   const handleProcessRowUpdate = useCallback(async (newRow, oldRow) => {
-    const id = newRow.id || newRow.docId || newRow._id;
+    const id = newRow?.id || newRow?.docId || newRow?._id;
     if (!id) return oldRow;
+
+    // Build update payload (let the service convert Dates->Timestamp)
     const updates = {
-      driver: newRow.driver,
-      rideId: newRow.rideId,
-      note: newRow.note,
+      driver: newRow.driver ?? null,
+      rideId: newRow.rideId ?? null,
+      note: newRow.note ?? null,
     };
     if (newRow.startTime instanceof Date) updates.startTime = newRow.startTime;
     if (newRow.endTime instanceof Date) updates.endTime = newRow.endTime;
     if (newRow.loggedAt instanceof Date) updates.loggedAt = newRow.loggedAt;
-    if (typeof newRow.duration === "number") updates.duration = newRow.duration;
 
     try {
       await patchTimeLog(id, updates);
-      let duration = newRow.duration;
-      if (newRow.startTime && newRow.endTime) {
-        duration = minutesBetween(newRow.startTime, newRow.endTime);
+
+      // Recompute duration on the client for immediate UX
+      const start = newRow.startTime instanceof Date ? newRow.startTime : tsToDate(newRow.startTime);
+      const end = newRow.endTime instanceof Date ? newRow.endTime : tsToDate(newRow.endTime);
+      let duration = 0;
+      if (start && end) {
+        duration = Math.max(0, minutesBetween(start, end) || 0);
       }
+
       return { ...newRow, duration };
     } catch (e) {
       logError(e, `EntriesTab.processRowUpdate:${id}`);
@@ -73,31 +78,22 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => {
-          const d = tsToDate(p?.row?.startTime);
-          return d ?? "N/A";
-        },
+        valueGetter: (p) => tsToDate(p?.row?.startTime) ?? null,
         valueFormatter: (p) => formatDateTime(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => {
-          const d = tsToDate(p?.row?.endTime);
-          return d ?? "N/A";
-        },
+        valueGetter: (p) => tsToDate(p?.row?.endTime) ?? null,
         valueFormatter: (p) => formatDateTime(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
-      duration: { editable: true, type: "number" },
+      duration: { editable: false, type: "number" }, // derived
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => {
-          const d = tsToDate(p?.row?.loggedAt);
-          return d ?? "N/A";
-        },
+        valueGetter: (p) => tsToDate(p?.row?.loggedAt) ?? null,
         valueFormatter: (p) => formatDateTime(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
@@ -112,69 +108,86 @@ export default function EntriesTab() {
         apiRef,
         rowModesModel,
         setRowModesModel,
-        onDelete: async (id, row) => await handleDelete(row),
+        onDelete: async (_id, row) => handleDelete(row),
       }),
     [apiRef, rowModesModel, handleDelete],
   );
 
-  const handleRowEditStart = (params, event) => {
+  const handleRowEditStart = useCallback((params, event) => {
     event.defaultMuiPrevented = true;
-  };
-  const handleRowEditStop = (params, event) => {
+  }, []);
+  const handleRowEditStop = useCallback((params, event) => {
     event.defaultMuiPrevented = true;
-  };
+  }, []);
 
   useEffect(() => {
     const unsub = subscribeTimeLogs(
       async (logs) => {
-        const withNames = await enrichDriverNames(logs || []);
-        setRows(withNames);
-        setLoading(false);
+        try {
+          const withNames = await enrichDriverNames(logs || []);
+          setRows(withNames);
+        } catch (e) {
+          logError(e, "EntriesTab.subscribeTimeLogs.enrich");
+          setError("Failed to enrich driver names.");
+        } finally {
+          setLoading(false);
+        }
       },
       (err) => {
         setError(err?.message || "Failed to load time logs.");
         setLoading(false);
       },
     );
-    return () => typeof unsub === "function" && unsub();
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
   }, []);
 
   const filteredRows = useMemo(() => {
+    const startBound = startFilter?.toDate?.() ?? null;
+    const endBound = endFilter?.toDate?.() ?? null;
+
     return (rows || []).filter((r) => {
+      const driverField = (r.driver ?? r.driverId ?? r.driverEmail ?? "").toString().toLowerCase();
       const driverMatch = driverFilter
-        ? (r.driverId ?? r.driverEmail)
-            ?.toLowerCase()
-            .includes(driverFilter.toLowerCase())
+        ? driverField.includes(driverFilter.toLowerCase())
         : true;
-      const startMatch = startFilter
-        ? r.startTime?.getTime() >= startFilter.toDate().getTime()
-        : true;
-      const endMatch = endFilter
-        ? (r.endTime ?? r.startTime)?.getTime() <= endFilter.toDate().getTime()
-        : true;
-      const searchMatch = search
-        ? [
-            r.driverId ?? r.driverEmail,
-            r.rideId,
-            formatDateTime(r.startTime),
-            formatDateTime(r.endTime),
-            formatDateTime(r.loggedAt),
-            r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
-          ]
-            .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(search.toLowerCase()))
-        : true;
+
+      const s = tsToDate(r.startTime);
+      const e = tsToDate(r.endTime) ?? s;
+
+      const startMatch = startBound ? (s && s.getTime() >= startBound.getTime()) : true;
+      const endMatch = endBound ? (e && e.getTime() <= endBound.getTime()) : true;
+
+      const tokens = [
+        r.driver ?? r.driverId ?? r.driverEmail,
+        r.rideId,
+        formatDateTime(s),
+        formatDateTime(e),
+        formatDateTime(tsToDate(r.loggedAt)),
+        r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
+        r.note,
+      ]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+
+      const searchMatch = search ? tokens.some((t) => t.includes(search.toLowerCase())) : true;
+
       return driverMatch && startMatch && endMatch && searchMatch;
     });
   }, [rows, driverFilter, startFilter, endFilter, search]);
 
   const safeRows = useMemo(
     () =>
-      (filteredRows || []).filter(Boolean).map((r) => ({
-        ...r,
-        duration:
-          r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
-      })),
+      (filteredRows || []).filter(Boolean).map((r) => {
+        const s = tsToDate(r.startTime);
+        const e = tsToDate(r.endTime);
+        let duration = r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000);
+        if ((duration == null || Number.isNaN(duration)) && s && e) {
+          duration = Math.max(0, minutesBetween(s, e) || 0);
+        }
+        return { ...r, duration };
+      }),
     [filteredRows],
   );
 
@@ -230,7 +243,7 @@ export default function EntriesTab() {
             rideId: "Ride ID",
             startTime: "Clock In",
             endTime: "Clock Out",
-            duration: "Duration",
+            duration: "Duration (min)",
             loggedAt: "Logged At",
             note: "Note",
             id: "id",
@@ -252,15 +265,8 @@ export default function EntriesTab() {
             "driverId",
             "mode",
           ]}
-          forceHide={[
-            "note",
-            "id",
-            "userEmail",
-            "driverId",
-            "mode",
-            "driver",
-            "driverEmail",
-          ]}
+          // Hide only the truly internal fields
+          forceHide={["id", "userEmail", "driverId", "mode"]}
           overrides={overrides}
           actionsColumn={actionsColumn}
           loading={loading}

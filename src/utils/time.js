@@ -1,15 +1,15 @@
 // Proprietary and confidential.
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-let defaultTz = 'UTC';
+let defaultTz = "UTC";
 try {
-  if (typeof window !== 'undefined' && dayjs.tz)
-    defaultTz = dayjs.tz.guess() || 'UTC';
+  if (typeof window !== "undefined" && dayjs.tz)
+    defaultTz = dayjs.tz.guess() || "UTC";
 } catch {
   /* keep UTC */
 }
@@ -17,10 +17,14 @@ try {
 export function toDayjs(input) {
   try {
     if (!input) return null;
-    if (typeof input?.toDate === 'function') return dayjs(input.toDate()); // Firestore Timestamp
-    if (typeof input?.seconds === 'number')
+    if (typeof input?.toDate === "function") return dayjs(input.toDate()); // Firestore Timestamp
+    if (typeof input?.seconds === "number")
       return dayjs(new Date(input.seconds * 1000)); // raw TS object
-    if (input instanceof Date || typeof input === 'number' || typeof input === 'string') {
+    if (
+      input instanceof Date ||
+      typeof input === "number" ||
+      typeof input === "string"
+    ) {
       const d = dayjs(input);
       return d.isValid() ? d : null;
     }
@@ -30,9 +34,9 @@ export function toDayjs(input) {
   }
 }
 
-export function formatDateTime(input, fmt = 'MMM D, YYYY h:mm A') {
+export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A") {
   const d = toDayjs(input);
-  if (!d) return 'N/A';
+  if (!d) return "N/A";
   try {
     return dayjs.tz ? d.tz(defaultTz).format(fmt) : d.format(fmt);
   } catch {
@@ -41,4 +45,3 @@ export function formatDateTime(input, fmt = 'MMM D, YYYY h:mm A') {
 }
 
 export { dayjs };
-

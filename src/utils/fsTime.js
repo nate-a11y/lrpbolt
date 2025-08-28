@@ -1,12 +1,13 @@
 // Proprietary and confidential.
-import { Timestamp } from 'firebase/firestore';
-import { toDayjs } from '@/utils/time';
+import { Timestamp } from "firebase/firestore";
+
+import { toDayjs } from "@/utils/time";
 
 export const tsToDate = (ts) => {
   try {
     if (!ts) return null;
-    if (typeof ts?.toDate === 'function') return ts.toDate();
-    if (typeof ts?.seconds === 'number') return new Date(ts.seconds * 1000);
+    if (typeof ts?.toDate === "function") return ts.toDate();
+    if (typeof ts?.seconds === "number") return new Date(ts.seconds * 1000);
     const d = toDayjs(ts);
     return d ? d.toDate() : null;
   } catch {
@@ -25,4 +26,3 @@ export const dateToTs = (d) => {
     return null;
   }
 };
-

@@ -30,14 +30,16 @@ export default function ResponsiveDataGridPro(props) {
   } = props;
 
   const [rowSelectionModel, setRowSelectionModel] = useState(
-    rowSelectionModelProp || [],
+    rowSelectionModelProp instanceof Set
+      ? rowSelectionModelProp
+      : new Set(rowSelectionModelProp || []),
   );
   const handleRowSelectionModelChange = useCallback(
     (m) => {
-      const next = Array.isArray(m) ? m : [];
+      const next =
+        m instanceof Set ? new Set(m) : new Set(Array.isArray(m) ? m : []);
       setRowSelectionModel(next);
-      if (onRowSelectionModelChangeProp)
-        onRowSelectionModelChangeProp(next);
+      if (onRowSelectionModelChangeProp) onRowSelectionModelChangeProp(next);
     },
     [onRowSelectionModelChangeProp],
   );
@@ -49,8 +51,7 @@ export default function ResponsiveDataGridPro(props) {
     (m) => {
       const next = m || { page: 0, pageSize: 25 };
       setPaginationModel(next);
-      if (onPaginationModelChangeProp)
-        onPaginationModelChangeProp(next);
+      if (onPaginationModelChangeProp) onPaginationModelChangeProp(next);
     },
     [onPaginationModelChangeProp],
   );
@@ -65,8 +66,7 @@ export default function ResponsiveDataGridPro(props) {
       <DataGridPro
         {...rest}
         getRowId={
-          getRowId ||
-          ((row) => row.id || row.docId || row.ticketId || row._id)
+          getRowId || ((row) => row.id || row.docId || row.ticketId || row._id)
         }
         rowSelectionModel={rowSelectionModel}
         onRowSelectionModelChange={handleRowSelectionModelChange}
@@ -75,7 +75,9 @@ export default function ResponsiveDataGridPro(props) {
         pageSizeOptions={[10, 25, 50, 100]}
         slots={{
           noRowsOverlay: () => <div style={{ padding: 16 }}>No data</div>,
-          errorOverlay: () => <div style={{ padding: 16 }}>Error loading data</div>,
+          errorOverlay: () => (
+            <div style={{ padding: 16 }}>Error loading data</div>
+          ),
           ...(slotsProp || {}),
         }}
         sx={{

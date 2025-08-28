@@ -16,10 +16,11 @@ import {
   useTheme,
 } from "@mui/material";
 import QRCode from "react-qr-code";
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import { toPng } from "html-to-image";
 import { v4 as uuidv4 } from "uuid";
 import { Timestamp } from "firebase/firestore";
+
+import { dayjs } from "@/utils/time";
 
 import {
   addTicket as apiAddTicket,
