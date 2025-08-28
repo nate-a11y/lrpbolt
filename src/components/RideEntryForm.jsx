@@ -69,6 +69,7 @@ import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import LiveRidesGrid from "./LiveRidesGrid";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 // --- Shared field props ---
 const FIELD_PROPS = {
@@ -1094,6 +1095,7 @@ if (totalMinutes <= 0) {
                     👉 Swipe horizontally to view more columns
                   </Box>
                 )}
+                <ResponsiveScrollBox>
                 <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
                   <SmartAutoGrid
                     autoHeight
@@ -1102,6 +1104,7 @@ if (totalMinutes <= 0) {
                       field: col,
                       headerName: col.replace(/([A-Z])/g, " $1"),
                       flex: 1,
+                      minWidth: 140,
                       valueFormatter: vfText,
                     }))}
                     pageSizeOptions={[5]}
@@ -1111,6 +1114,7 @@ if (totalMinutes <= 0) {
                     showToolbar
                   />
                 </Box>
+                </ResponsiveScrollBox>
                 <Button
                   variant="outlined"
                   color="success"

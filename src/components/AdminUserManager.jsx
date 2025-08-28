@@ -26,6 +26,7 @@ import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 // --- helpers: robust parsing for lines and "email,role" ---
 function parseUserLines(input) {
@@ -434,10 +435,11 @@ export default function AdminUserManager() {
             ))}
           </Stack>
         ) : (
-          <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            <SmartAutoGrid
-              rows={rows || []}
-              columnsCompat={columns}
+          <ResponsiveScrollBox>
+            <Box sx={{ width: '100%', overflowX: 'auto' }}>
+              <SmartAutoGrid
+                rows={rows || []}
+                columnsCompat={columns}
               autoHeight
               loading={loading}
               disableRowSelectionOnClick
@@ -449,7 +451,8 @@ export default function AdminUserManager() {
               columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
               showToolbar
             />
-          </Box>
+            </Box>
+          </ResponsiveScrollBox>
         )}
       </Stack>
 

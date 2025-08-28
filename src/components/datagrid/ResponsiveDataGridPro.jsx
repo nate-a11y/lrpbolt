@@ -37,7 +37,8 @@ export default function ResponsiveDataGridPro(props) {
             py: { xs: 0.5, md: 1 },
           },
           "& .MuiDataGrid-virtualScroller": {
-            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehaviorX: "contain",
           },
           "& .MuiDataGrid-footerContainer": {
             px: { xs: 1, md: 2 },

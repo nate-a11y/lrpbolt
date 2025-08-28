@@ -23,6 +23,7 @@ import "yet-another-react-lightbox/styles.css";
 import QRCode from "react-qr-code";
 
 import ResponsiveDataGridPro from "src/components/datagrid/ResponsiveDataGridPro";
+import ResponsiveScrollBox from "src/components/datagrid/ResponsiveScrollBox";
 import useIsMobile from "src/hooks/useIsMobile";
 
 import DropoffAccordion from "./DropoffAccordion";
@@ -281,29 +282,31 @@ export default function DriverInfoTab() {
           <Typography fontWeight="bold">🔐 Gate Codes & Access Notes</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <ResponsiveDataGridPro
-            autoHeight
-            rows={rows}
-            columns={columns}
-            getRowId={getRowId}
-            columnVisibilityModel={columnVisibilityModel}
-            slots={{
-              toolbar: GridToolbar,
-              noRowsOverlay: NoRowsOverlay,
-              noResultsOverlay: NoResultsOverlay,
-            }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: {
-                  debounceMs: 300,
-                  placeholder: "Search by location...",
+          <ResponsiveScrollBox>
+            <ResponsiveDataGridPro
+              autoHeight
+              rows={rows}
+              columns={columns}
+              getRowId={getRowId}
+              columnVisibilityModel={columnVisibilityModel}
+              slots={{
+                toolbar: GridToolbar,
+                noRowsOverlay: NoRowsOverlay,
+                noResultsOverlay: NoResultsOverlay,
+              }}
+              slotProps={{
+                toolbar: {
+                  showQuickFilter: true,
+                  quickFilterProps: {
+                    debounceMs: 300,
+                    placeholder: "Search by location...",
+                  },
                 },
-              },
-            }}
-            pagination
-            hideFooterSelectedRowCount
-          />
+              }}
+              pagination
+              hideFooterSelectedRowCount
+            />
+          </ResponsiveScrollBox>
         </AccordionDetails>
       </Accordion>
 

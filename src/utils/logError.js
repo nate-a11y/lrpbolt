@@ -1,5 +1,7 @@
-export function logError(err, ctx = '') {
+function logError(err, context = {}) {
   // Never throw here; always console.error with context
-  const payload = err && err.message ? err.message : String(err);
-  console.error(`[LRP] ${ctx}`, payload, err);
+  console.error("[LRP]", context, err);
 }
+
+export default logError;
+export { logError };

@@ -9,15 +9,15 @@ import { getMessaging, isSupported as messagingSupported } from "firebase/messag
 
 import { bindFirestore } from "../services/normalizers";
 
-// TODO: move to env at build-time; left hardcoded per request for now.
-const firebaseConfig = {
-  apiKey: "AIzaSyDziITaFCf1_8tb2iSExBC7FDGDOmWaGns",
-  authDomain: "lrp---claim-portal.firebaseapp.com",
-  projectId: "lrp---claim-portal",
-  storageBucket: "lrp---claim-portal.firebasestorage.app",
-  messagingSenderId: "799613895072",
-  appId: "1:799613895072:web:1b41c28c6819198ce824c5",
-  measurementId: "G-9NM69MZN6B",
+import logError from "./logError";
+
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
@@ -26,11 +26,16 @@ export const db = getFirestore(app);
 bindFirestore(db);
 export const storage = getStorage(app);
 
-export async function getMessagingIfSupported() {
+let messagingInstance;
+export async function getMessagingOrNull() {
   try {
-    if (await messagingSupported()) return getMessaging(app);
-  } catch {
-    /* no-op */
+    if (messagingInstance) return messagingInstance;
+    if (await messagingSupported()) {
+      messagingInstance = getMessaging(app);
+      return messagingInstance;
+    }
+  } catch (err) {
+    logError(err, { where: "firebaseInit", action: "getMessagingOrNull" });
   }
   return null;
 }

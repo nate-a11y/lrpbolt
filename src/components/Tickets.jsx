@@ -43,6 +43,7 @@ import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
 import { safeRow } from "@/utils/gridUtils";
+import { assertGridScrollable } from "@/utils/devGridCheck";
 
 import {
   subscribeTickets,
@@ -57,6 +58,7 @@ import { useGridDoctor } from "../utils/useGridDoctor";
 
 import PageContainer from "./PageContainer.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -75,6 +77,7 @@ export default function Tickets() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const previewRef = useRef(null);
+  const scrollRef = useRef(null);
   const { user, authLoading } = useAuth();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
@@ -90,6 +93,12 @@ export default function Tickets() {
     }),
     [isSmall],
   );
+
+  useEffect(() => {
+    if (import.meta.env.MODE !== "production") {
+      assertGridScrollable(scrollRef.current);
+    }
+  }, []);
 
   // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
@@ -515,7 +524,8 @@ export default function Tickets() {
             ))}
           </Stack>
         ) : (
-          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+          <ResponsiveScrollBox ref={scrollRef}>
+            <Box sx={{ width: '100%', overflowX: 'auto' }}>
               <SmartAutoGrid
                 rows={rows}
                 columnsCompat={columns}
@@ -555,7 +565,8 @@ export default function Tickets() {
               columnVisibilityModel={isSmall ? { link: false, scanStatus: false, pickup: false } : undefined}
               showToolbar
             />
-          </Box>
+            </Box>
+          </ResponsiveScrollBox>
         )
       )}
 

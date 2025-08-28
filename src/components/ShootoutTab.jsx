@@ -20,6 +20,7 @@ import { db } from "../utils/firebaseInit";
 import { useAuth } from "../context/AuthContext.jsx";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 export default function ShootoutTab() {
   const { user } = useAuth();
@@ -82,6 +83,7 @@ export default function ShootoutTab() {
           </Button>
         )}
       </Box>
+      <ResponsiveScrollBox>
       <SmartAutoGrid
         rows={sessionRows}
         headerMap={{
@@ -115,6 +117,7 @@ export default function ShootoutTab() {
           onDelete: async (id) => await deleteShootoutStatById(id),
         })}
       />
+      </ResponsiveScrollBox>
     </>
   );
 }

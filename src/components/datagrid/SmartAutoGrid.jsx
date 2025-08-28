@@ -57,10 +57,12 @@ function makeExportValue(field) {
 }
 
 function buildAutoCol(field, headerName, sampleValue) {
+  const width = widthFor(field, sampleValue);
   return {
     field,
     headerName: headerName || field,
-    width: widthFor(field, sampleValue),
+    width,
+    minWidth: Math.min(width, 220),
     sortable: true,
     renderCell: makeRenderCell(field),
     getExportValue: makeExportValue(field),
@@ -99,6 +101,13 @@ function sanitizeCompatColumns(columns = [], forceHide = []) {
       const headerName = c?.headerName || field;
       const out = { ...c, field, headerName };
       if (!out.width) out.width = 180;
+      if (!out.minWidth) {
+        if (out.flex) {
+          out.minWidth = 140;
+        } else {
+          out.minWidth = Math.min(out.width, 220);
+        }
+      }
       if (typeof out.renderCell !== "function" && out.type !== "actions") {
         out.renderCell = makeRenderCell(field);
       }

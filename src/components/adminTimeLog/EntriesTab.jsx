@@ -6,6 +6,7 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -202,6 +203,7 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
+        <ResponsiveScrollBox>
         <SmartAutoGrid
           rows={safeRows}
           headerMap={{
@@ -232,6 +234,7 @@ export default function EntriesTab() {
           apiRef={apiRef}
           experimentalFeatures={{ newEditingApi: true }}
         />
+        </ResponsiveScrollBox>
     </Paper>
   );
 }

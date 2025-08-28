@@ -12,6 +12,7 @@ import { vfTime, vfDurationHM } from "@/utils/vf";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 export default function EditableRideGrid({
   rows,
@@ -48,7 +49,7 @@ export default function EditableRideGrid({
 
   const columns = useMemo(
     () => [
-      { field: "tripId", headerName: "Ride ID", width: 110 },
+      { field: "tripId", headerName: "Ride ID", width: 110, minWidth: 120 },
       {
         field: "pickupTime",
         headerName: "Start",
@@ -73,9 +74,9 @@ export default function EditableRideGrid({
         valueFormatter: vfDurationHM,
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
-      { field: "rideType", headerName: "Type", flex: 1 },
-      { field: "vehicle", headerName: "Vehicle", flex: 1 },
-      { field: "rideNotes", headerName: "Notes", flex: 1.5 },
+      { field: "rideType", headerName: "Type", flex: 1, minWidth: 140 },
+      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 140 },
+      { field: "rideNotes", headerName: "Notes", flex: 1.5, minWidth: 160 },
       actionsCol(({ row }) => (
         <>
           <IconButton size="small" onClick={() => handleEdit(row)}>
@@ -95,10 +96,11 @@ export default function EditableRideGrid({
   useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
 
   return (
-    <Box sx={{ width: "100%", height: 600 }}>
-      <SmartAutoGrid
-        rows={stableRows}
-        columnsCompat={columns}
+    <ResponsiveScrollBox>
+      <Box sx={{ width: "100%", height: 600 }}>
+        <SmartAutoGrid
+          rows={stableRows}
+          columnsCompat={columns}
         loading={loading}
         checkboxSelection
         disableRowSelectionOnClick
@@ -107,6 +109,7 @@ export default function EditableRideGrid({
         getRowId={(r) => r.id}
         showToolbar
       />
-    </Box>
+      </Box>
+    </ResponsiveScrollBox>
   );
 }
