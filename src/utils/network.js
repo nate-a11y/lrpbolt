@@ -1,5 +1,5 @@
 import { logRequest } from "./apiMonitor";
-import { logError } from "./logError";
+import logError from "./logError.js";
 
 export async function fetchWithRetry(
   url,

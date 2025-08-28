@@ -1,360 +1,310 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState } from "react";
+import React from "react";
+import Grid2 from "@mui/material/Grid";
 import {
-  Alert,
-  Autocomplete,
   Box,
-  Button,
-  Chip,
-  Divider,
-  Grid,
-  IconButton,
-  Paper,
-  Stack,
-  TextField,
-  Tooltip,
+  Card,
+  CardContent,
   Typography,
+  Stack,
+  Button,
+  ToggleButton,
+  ToggleButtonGroup,
+  TextField,
+  Chip,
+  IconButton,
+  Tooltip,
+  Autocomplete,
+  Divider,
+  Alert,
 } from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 
-import { db } from "src/utils/firebaseInit";
-
-import { sendPortalNotification } from "../../utils/notify";
-import { enqueueSms } from "../../services/messaging";
-import { useAuth } from "../../context/AuthContext.jsx";
+import {
+  fetchAllUsersAccess,
+  filterAdmins,
+  filterDriversCore,
+  filterShootout,
+  filterDriversCombined,
+} from "src/services/users";
+import { sendPortalNotification } from "src/utils/notify";
+import { enqueueSms } from "src/services/messaging";
+import logError from "src/utils/logError";
+import { useToast } from "src/context/ToastProvider.jsx";
 
 const SEGMENTS = [
-  { id: "drivers", label: "All Drivers", where: ["driver"] },
-  { id: "admins", label: "All Admins", where: ["admin"] },
+  { id: "admins", label: "All Admins", filter: filterAdmins },
+  { id: "drivers_core", label: "All Drivers", filter: filterDriversCore },
+  { id: "shootout", label: "All Shootout (Tracker Only)", filter: filterShootout },
+  { id: "drivers_combined", label: "Drivers + Shootout", filter: filterDriversCombined },
+  { id: "custom", label: "Custom Topic", filter: null },
 ];
 
-export default function NotificationsCenter() {
-  const { user } = useAuth();
+export default function Notifications() {
+  const { enqueue } = useToast();
+  const [mode, setMode] = React.useState("push");
+  const [allUsers, setAllUsers] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [segment, setSegment] = React.useState("drivers_core");
+  const [customTopic, setCustomTopic] = React.useState("");
+  const [pickedUsers, setPickedUsers] = React.useState([]);
+  const [title, setTitle] = React.useState("");
+  const [body, setBody] = React.useState("");
+  const [iconUrl, setIconUrl] = React.useState("");
+  const [dataJson, setDataJson] = React.useState("");
+  const [dataError, setDataError] = React.useState("");
 
-  const [allUsers, setAllUsers] = useState([]); // {id,email,name,access,phone}
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const segmentCounts = React.useMemo(() => {
+    const map = { admins: 0, drivers_core: 0, shootout: 0, drivers_combined: 0 };
+    map.admins = filterAdmins(allUsers).length;
+    map.drivers_core = filterDriversCore(allUsers).length;
+    map.shootout = filterShootout(allUsers).length;
+    map.drivers_combined = filterDriversCombined(allUsers).length;
+    return map;
+  }, [allUsers]);
 
-  const [segment, setSegment] = useState(""); // "", "drivers", "admins", or "topic"
-  const [topic, setTopic] = useState("");     // custom topic name
-  const [emails, setEmails] = useState([]);   // [{email,name}] for direct send
-
-  const [channel, setChannel] = useState("push"); // "push" | "sms"
-
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [icon, setIcon] = useState("");
-  const [dataText, setDataText] = useState(""); // JSON string
-  const [sending, setSending] = useState(false);
-  const [toast, setToast] = useState(null);
-
-  // Load recipients from userAccess
-  async function fetchUsers() {
-    setLoadingUsers(true);
-    try {
-      const qs = await getDocs(collection(db, "userAccess"));
-      const rows = qs.docs.map((d) => {
-        const x = d.data() ?? {};
-        const email = (x.email || d.id || "").trim();
-        const name = (x.name || (email.split("@")[0] || "Unknown")).trim();
-        const access = (x.access || "").toLowerCase();
-        const phone = (x.phone || "").trim();
-        return { id: email, email, name, access, phone };
-      });
-      // sort by name
-      rows.sort((a, b) => a.name.localeCompare(b.name));
-      setAllUsers(rows);
-    } catch (e) {
-      setToast({ kind: "error", msg: `Load users failed: ${e.message}` });
-    } finally {
-      setLoadingUsers(false);
-    }
-  }
-  useEffect(() => { fetchUsers(); }, []);
-
-  useEffect(() => {
-    if (channel === "sms" && segment === "topic") setSegment("");
-  }, [channel, segment]);
-
-  const segmentCount = useMemo(() => {
-    if (segment === "drivers") return allUsers.filter((u) => u.access === "driver").length;
-    if (segment === "admins") return allUsers.filter((u) => u.access === "admin").length;
-    return 0;
+  const segmentUsers = React.useMemo(() => {
+    const def = SEGMENTS.find((s) => s.id === segment);
+    if (!def || !def.filter) return [];
+    return def.filter(allUsers);
   }, [segment, allUsers]);
 
-  const directCount = emails.length;
-  const totalCount = segment ? segmentCount : directCount;
-
-  function parseData() {
-    if (!dataText.trim()) return undefined;
-    try {
-      const obj = JSON.parse(dataText);
-      // Only string key/values are allowed by WebPush data
-      const out = {};
-      for (const [k, v] of Object.entries(obj)) out[k] = String(v);
-      return out;
-    } catch {
-      throw new Error("Data must be valid JSON (object).");
-    }
-  }
-
-  const canSend =
-    channel === "push" ?
-      !!title.trim() &&
-      !sending &&
-      ( (segment && (segment === "drivers" || segment === "admins" || (segment === "topic" && topic.trim()))) ||
-        (!segment && emails.length > 0) )
-    :
-      !!body.trim() &&
-      !sending &&
-      ( (segment && (segment === "drivers" || segment === "admins")) ||
-        (!segment && emails.length > 0) );
-
-  async function logOutbox({ scope, recipients, result }) {
-    try {
-      await addDoc(collection(db, "notificationsOutbox"), {
-        createdAt: serverTimestamp(),
-        createdBy: user?.email || "unknown",
-        scope,                 // e.g., {type:"segment", value:"drivers"} or {type:"emails", count:n}
-        channel,
-        title,
-        body,
-        icon: icon || null,
-        data: dataText || null,
-        recipients,
-        result,
-      });
-    } catch (e) {
-      // non-fatal
-      console.warn("Failed to log notificationsOutbox:", e);
-    }
-  }
-
-  async function handleSend() {
-    if (!canSend) return;
-    setSending(true);
-    try {
-      if (channel === "push") {
-        const data = parseData();
-
-        // SEGMENT: drivers/admins
-        if (segment === "drivers" || segment === "admins") {
-          const label = segment === "drivers" ? "driver" : "admin";
-          // We’ll send by email batches using the callable (server finds tokens by email)
-          const targets = allUsers.filter((u) => u.access === label).map((u) => u.email);
-          let sent = 0;
-          for (const email of targets) {
-            const res = await sendPortalNotification({ email, title, body, icon, data });
-            sent += (res?.count || 0);
-          }
-          await logOutbox({ scope: { type: "segment", value: segment }, recipients: targets, result: { sent } });
-          setToast({ kind: "success", msg: `Sent to ${sent} device(s) across ${targets.length} user(s).` });
-        }
-        // SEGMENT: custom topic
-        else if (segment === "topic") {
-          const t = topic.trim();
-          const res = await sendPortalNotification({ topic: t, title, body, icon, data });
-          await logOutbox({ scope: { type: "topic", value: t }, recipients: [t], result: res });
-          setToast({ kind: "success", msg: `Topic "${t}" send ok.` });
-        }
-        // DIRECT: explicit emails
-        else {
-          let sent = 0;
-          for (const e of emails) {
-            const res = await sendPortalNotification({ email: e.email, title, body, icon, data });
-            sent += (res?.count || 0);
-          }
-          await logOutbox({ scope: { type: "emails", count: emails.length }, recipients: emails.map((x) => x.email), result: { sent } });
-          setToast({ kind: "success", msg: `Sent to ${sent} device(s) across ${emails.length} user(s).` });
-        }
-      } else {
-        // SMS
-        const text = body.trim() || title.trim();
-
-        if (segment === "drivers" || segment === "admins") {
-          const label = segment === "drivers" ? "driver" : "admin";
-          const targets = allUsers.filter((u) => u.access === label && u.phone).map((u) => ({ phone: u.phone, email: u.email }));
-          for (const t of targets) {
-            await enqueueSms({ to: t.phone, body: text, context: { email: t.email } });
-          }
-          await logOutbox({ scope: { type: "segment", value: segment }, recipients: targets.map((t) => t.phone), result: { queued: targets.length } });
-          setToast({ kind: "success", msg: `Queued SMS for ${targets.length} user(s).` });
-        } else {
-          const targets = emails.map((e) => {
-            const u = allUsers.find((x) => x.email === e.email);
-            return u && u.phone ? { phone: u.phone, email: u.email } : null;
-          }).filter(Boolean);
-          for (const t of targets) {
-            await enqueueSms({ to: t.phone, body: text, context: { email: t.email } });
-          }
-          await logOutbox({ scope: { type: "emails", count: targets.length }, recipients: targets.map((t) => t.phone), result: { queued: targets.length } });
-          setToast({ kind: "success", msg: `Queued SMS for ${targets.length} user(s).` });
-        }
+  const directRecipients = React.useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    [...segmentUsers, ...pickedUsers].forEach((u) => {
+      const id = u?.id || u?.email;
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        out.push(u);
       }
+    });
+    return out;
+  }, [segmentUsers, pickedUsers]);
 
-      // reset only non-structural fields
-      if (channel === "push") {
-        setTitle("");
-        setBody("");
-        setIcon("");
-        setDataText("");
-      } else {
-        setBody("");
+  const selectedCount = directRecipients.length;
+
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const list = await fetchAllUsersAccess();
+        if (isMounted) setAllUsers(list);
+      } catch (err) {
+        logError(err, { where: "Notifications", action: "loadUsers" });
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (e) {
-      setToast({ kind: "error", msg: e.message || "Send failed" });
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const onRefresh = async () => {
+    setLoading(true);
+    try {
+      const list = await fetchAllUsersAccess();
+      setAllUsers(list);
+    } catch (err) {
+      logError(err, { where: "Notifications", action: "refreshUsers" });
+      enqueue("Failed to refresh users", { severity: "error" });
     } finally {
-      setSending(false);
+      setLoading(false);
     }
-  }
+  };
 
-  const userOptions = allUsers.map((u) => ({ label: `${u.name} (${u.email})`, email: u.email, name: u.name, phone: u.phone }));
+  const onChangeDataJson = (val) => {
+    setDataJson(val);
+    if (!val) {
+      setDataError("");
+      return;
+    }
+    try {
+      JSON.parse(val);
+      setDataError("");
+    } catch {
+      setDataError("Invalid JSON");
+    }
+  };
+
+  const canSend = React.useMemo(() => {
+    if (mode === "push") return !!title && selectedCount > 0 && !dataError;
+    if (mode === "sms") return !!body && selectedCount > 0;
+    return false;
+  }, [mode, title, body, selectedCount, dataError]);
+
+  const handleSend = async () => {
+    try {
+      const payloadData = dataJson && !dataError ? JSON.parse(dataJson) : undefined;
+      const recipients = directRecipients;
+      if (!recipients.length) return;
+
+      if (mode === "push") {
+        await sendPortalNotification({
+          segment,
+          customTopic: segment === "custom" ? customTopic || "" : "",
+          title,
+          body,
+          iconUrl: iconUrl || undefined,
+          data: payloadData,
+          recipients,
+        });
+      } else {
+        await enqueueSms({
+          body,
+          recipients,
+        });
+      }
+      enqueue("Notification sent", { severity: "success" });
+    } catch (err) {
+      enqueue("Send failed", { severity: "error" });
+      logError(err, { where: "Notifications", action: "handleSend", mode });
+    }
+  };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 960, mx: "auto" }}>
-      <Paper
-        elevation={3}
-        sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: 3,
-          bgcolor: (t) => (t.palette.mode === "dark" ? "background.paper" : "background.default"),
-        }}
-      >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
-          <Typography variant="h5" fontWeight={800}>Notifications</Typography>
-          <Tooltip title="Reload recipients">
-            <span>
-              <IconButton onClick={fetchUsers} disabled={loadingUsers}>
+    <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 1.5, sm: 2, md: 3 } }}>
+      <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
+        <Grid2 xs={12}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Notifications</Typography>
+            <Tooltip title="Refresh">
+              <IconButton aria-label="Refresh users" onClick={onRefresh} disabled={loading}>
                 <RefreshIcon />
               </IconButton>
-            </span>
-          </Tooltip>
-        </Stack>
+            </Tooltip>
+          </Stack>
+        </Grid2>
 
-        <Alert severity="info" icon={<InfoOutlinedIcon /> } sx={{ mb: 2 }}>
-          Choose a segment or pick specific recipients. For push notifications a title is required; for SMS a body is required. Data must be JSON (key/value).
-        </Alert>
+        <Grid2 xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Stack spacing={1.5}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <InfoOutlinedIcon fontSize="small" />
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Choose a segment or pick specific recipients. Push requires a title; SMS requires a body. Data must be JSON (key/value).
+                  </Typography>
+                </Stack>
 
-        <Grid container spacing={2}>
-          {/* Targeting */}
-          <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Recipients</Typography>
+                <Typography variant="subtitle2">Recipients</Typography>
+                <Stack direction="row" flexWrap="wrap" spacing={1}>
+                  {SEGMENTS.map((s) => (
+                    <ToggleButton
+                      key={s.id}
+                      value={s.id}
+                      selected={segment === s.id}
+                      onChange={() => setSegment(s.id)}
+                      size="small"
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        "&.Mui-selected": { bgcolor: "primary.main", color: "#000" },
+                      }}
+                    >
+                      {s.label}
+                      {typeof segmentCounts[s.id] === "number" ? ` (${segmentCounts[s.id]})` : ""}
+                    </ToggleButton>
+                  ))}
+                </Stack>
 
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mb: 1 }}>
-                {SEGMENTS.map((s) => (
-                  <Chip
-                    key={s.id}
-                    clickable
-                    color={segment === s.id ? "primary" : "default"}
-                    label={`${s.label}${segment === s.id ? ` • ${segmentCount}` : ""}`}
-                    onClick={() => { setSegment(s.id); setTopic(""); }}
-                  />
-                ))}
-                {channel === "push" && (
-                  <Chip
-                    clickable
-                    color={segment === "topic" ? "primary" : "default"}
-                    label={segment === "topic" && topic ? `Topic: ${topic}` : "Custom Topic"}
-                    onClick={() => setSegment("topic")}
+                {segment === "custom" && (
+                  <TextField
+                    label="Custom Topic"
+                    value={customTopic}
+                    onChange={(e) => setCustomTopic(e.target.value)}
+                    fullWidth
+                    placeholder="/topics/lrp-shootout"
                   />
                 )}
-                <Chip
-                  clickable
-                  color={!segment ? "primary" : "default"}
-                  label="Pick Users"
-                  onClick={() => setSegment("")}
-                />
-              </Stack>
 
-              {segment === "topic" && (
-                <TextField
-                  fullWidth
-                  label="Topic name"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  sx={{ mt: 1 }}
-                />
-              )}
-
-              {!segment && (
                 <Autocomplete
                   multiple
+                  options={allUsers}
+                  value={pickedUsers}
                   disableCloseOnSelect
-                  options={userOptions}
-                  loading={loadingUsers}
-                  value={emails}
-                  onChange={(_, val) => setEmails(val)}
-                  renderInput={(params) => <TextField {...params} label="Select users by name/email" placeholder="Start typing…" />}
-                  sx={{ mt: 1 }}
+                  onChange={(_, val) => setPickedUsers(val)}
+                  getOptionLabel={(o) => o?.name || o?.email || ""}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        key={option.id}
+                        label={option.name || option.email}
+                      />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Pick users by name/email" placeholder="Type to search..." />
+                  )}
                 />
-              )}
 
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Selected: <b>{totalCount}</b> {segment ? "users (via segment)" : "user(s)"}
-              </Typography>
-            </Paper>
-          </Grid>
-
-          {/* Message */}
-          <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Message</Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mb: 1 }}>
-                <Chip clickable color={channel === "push" ? "primary" : "default"} label="Push" onClick={() => setChannel("push")} />
-                <Chip clickable color={channel === "sms" ? "primary" : "default"} label="SMS" onClick={() => setChannel("sms")} />
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  Selected: {selectedCount} user{selectedCount === 1 ? "" : "s"}
+                </Typography>
               </Stack>
-              {channel === "push" && (
-                <Stack spacing={1.5}>
-                  <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                  <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} />
-                  <TextField label="Icon URL (optional)" value={icon} onChange={(e) => setIcon(e.target.value)} />
-                  <TextField
-                    label='Data (JSON, e.g. {"tripId":"123"})'
-                    value={dataText}
-                    onChange={(e) => setDataText(e.target.value)}
-                    multiline
-                    minRows={2}
-                  />
-                </Stack>
-              )}
-              {channel === "sms" && (
-                <Stack spacing={1.5}>
-                  <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} required />
-                </Stack>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
+            </CardContent>
+          </Card>
+        </Grid2>
 
-        <Stack direction="row" spacing={2} sx={{ mt: 3 }} alignItems="center">
-          <Button
-            variant="contained"
-            startIcon={<SendIcon />}
-            onClick={handleSend}
-            disabled={!canSend}
-          >
-            {sending ? "Sending…" : "Send"}
-          </Button>
-          <Typography variant="body2" sx={{ opacity: 0.7 }}>
-            {segment ? `Segment: ${segment}${segment === "topic" && topic ? `/${topic}` : ""}` : `${emails.length} direct recipient(s)`}
-          </Typography>
-        </Stack>
+        <Grid2 xs={12} md={8}>
+          <Card>
+            <CardContent>
+              <Stack spacing={1.5}>
+                <ToggleButtonGroup exclusive value={mode} onChange={(_, v) => v && setMode(v)} size="small">
+                  <ToggleButton value="push">Push</ToggleButton>
+                  <ToggleButton value="sms">SMS</ToggleButton>
+                </ToggleButtonGroup>
 
-        {toast && (
-          <Box sx={{ mt: 2 }}>
-            <Alert
-              severity={toast.kind === "error" ? "error" : "success"}
-              onClose={() => setToast(null)}
-            >
-              {toast.msg}
-            </Alert>
-          </Box>
-        )}
-      </Paper>
+                {mode === "push" ? (
+                  <Stack spacing={1.5}>
+                    <TextField label="Title *" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
+                    <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} fullWidth multiline minRows={2} />
+                    <TextField label="Icon URL (optional)" value={iconUrl} onChange={(e) => setIconUrl(e.target.value)} fullWidth />
+                    <TextField
+                      label='Data (JSON, e.g. {"tripId":"123"})'
+                      value={dataJson}
+                      onChange={(e) => onChangeDataJson(e.target.value)}
+                      error={!!dataError}
+                      helperText={dataError || "Optional key/value payload"}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                    />
+                  </Stack>
+                ) : (
+                  <Stack spacing={1.5}>
+                    <TextField label="Body *" value={body} onChange={(e) => setBody(e.target.value)} fullWidth multiline minRows={3} />
+                    {body && body.length > 160 && (
+                      <Alert severity="info">SMS body exceeds 160 characters (will be split).</Alert>
+                    )}
+                  </Stack>
+                )}
+
+                <Divider />
+
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 1, sm: 1.5 }} alignItems={{ xs: "stretch", sm: "center" }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    disabled={!canSend || loading}
+                    onClick={handleSend}
+                    sx={{ width: { xs: "100%", sm: "auto" } }}
+                  >
+                    Send
+                  </Button>
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                    {selectedCount} direct recipient{selectedCount === 1 ? "" : "s"}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid2>
+      </Grid2>
     </Box>
   );
 }

@@ -25,7 +25,7 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import NotesIcon from "@mui/icons-material/Notes";
 import dayjs from "dayjs";
 
-import { logError } from "./utils/logError";
+import logError from "./utils/logError.js";
 import {
   fmtTime,
   fmtDurationHM,

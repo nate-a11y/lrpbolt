@@ -1,6 +1,6 @@
 import { Component } from 'react';
 
-import { logError } from '../utils/logError';
+import logError from '../utils/logError.js';
 
 export default class ErrorBoundary extends Component {
   constructor(props) {

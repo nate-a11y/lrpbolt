@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 export default defineConfig({
   plugins: [
@@ -34,6 +35,31 @@ export default defineConfig({
         ],
       },
       devOptions: { enabled: false }, // NEVER run SW in dev
+    }),
+    sentryVitePlugin({
+      // Sentry picks these up from env at build time; do NOT hardcode secrets.
+      // Requires: SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+
+      // Upload all sourcemaps from dist
+      include: "./dist",
+      urlPrefix: "~/",
+
+      // Release name derived from CI SHA or timestamp as fallback
+      release: {
+        name:
+          (process.env.GITHUB_SHA && process.env.GITHUB_SHA.slice(0, 7)) ||
+          (process.env.VERCEL_GIT_COMMIT_SHA && process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)) ||
+          (process.env.COMMIT_SHA && process.env.COMMIT_SHA.slice(0, 7)) ||
+          `manual-${new Date().toISOString()}`,
+      },
+
+      // Clean uploaded artifacts from the local dist after upload? Keep false.
+      cleanArtifacts: false,
+
+      // Silence if envs missing (local dev)
+      disable: !process.env.SENTRY_AUTH_TOKEN || !process.env.SENTRY_ORG || !process.env.SENTRY_PROJECT,
     }),
   ],
   resolve: {

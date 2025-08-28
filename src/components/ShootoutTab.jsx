@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import { Box, Button } from "@mui/material";
 import {
   addDoc,
@@ -22,7 +22,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
-export default function ShootoutTab() {
+function ShootoutTab() {
   const { user } = useAuth();
   const [sessionRows, setSessionRows] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -121,3 +121,5 @@ export default function ShootoutTab() {
     </>
   );
 }
+
+export default memo(ShootoutTab);

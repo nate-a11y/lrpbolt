@@ -5,7 +5,7 @@ import { httpsCallable } from "firebase/functions";
 
 import { logRequest } from "../utils/apiMonitor";
 import { functions } from "../utils/functions";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 /**
  * Fetch wrapper with timeout and optional retries.

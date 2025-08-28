@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { Box, Tabs, Tab } from "@mui/material";
 
 import EntriesTab from "./adminTimeLog/EntriesTab.jsx";
@@ -7,7 +7,7 @@ import WeeklySummaryTab from "./adminTimeLog/WeeklySummaryTab.jsx";
 import ShootoutStatsTab from "./adminTimeLog/ShootoutStatsTab.jsx";
 import ShootoutSummaryTab from "./adminTimeLog/ShootoutSummaryTab.jsx";
 
-export default function AdminTimeLog() {
+function AdminTimeLog() {
   const [tab, setTab] = useState(0);
 
   return (
@@ -32,3 +32,5 @@ export default function AdminTimeLog() {
     </Box>
   );
 }
+
+export default memo(AdminTimeLog);

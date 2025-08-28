@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "./firebaseInit";
-import { logError } from "./logError";
+import logError from "./logError.js";
 
 /**
  * Normalize a shootoutStats document snapshot.

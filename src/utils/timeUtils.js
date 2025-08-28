@@ -3,6 +3,8 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
+import { toIso } from "./time.js";
+
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -30,7 +32,7 @@ export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A", tz = DEFAULT_T
   try {
     return dj.format(fmtSafe);
   } catch {
-    try { return dj.toISOString(); } catch { return "N/A"; }
+    return toIso(dj) || "N/A";
   }
 }
 

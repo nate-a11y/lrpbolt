@@ -6,7 +6,7 @@ import {
   requestFcmPermission,
   getFcmTokenSafe,
 } from "../services/fcm";
-import logError from "../utils/logError";
+import logError from "../utils/logError.js";
 
 const FCM_ENABLED = import.meta.env.VITE_ENABLE_FCM === "true";
 

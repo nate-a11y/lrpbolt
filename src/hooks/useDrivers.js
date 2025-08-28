@@ -5,7 +5,7 @@ import { db } from "src/utils/firebaseInit";
 
 import { COLLECTIONS } from "../constants";
 import { useAuth } from "../context/AuthContext.jsx";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import { nullifyMissing } from "../utils/formatters.js";
 
 export default function useDrivers() {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Stack } from "@mui/material";
 
 import { loginWithPopup, loginWithRedirect } from "../services/auth";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 export default function LoginPopup() {
   const [loading, setLoading] = useState(false);

@@ -7,7 +7,7 @@ import {
   revokeFcmToken,
 } from "../services/fcm";
 
-import logError from "./logError";
+import logError from "./logError.js";
 
 export async function notificationsSupported() {
   return isSupportedBrowser();

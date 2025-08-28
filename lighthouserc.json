@@ -1,0 +1,6 @@
+{
+  "ci": {
+    "collect": { "startServerCommand": "vite preview --strictPort --port 4173", "url": ["http://localhost:4173/"] },
+    "assert": { "preset": "lighthouse:recommended" }
+  }
+}

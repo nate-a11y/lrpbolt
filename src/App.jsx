@@ -15,19 +15,19 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import {
   Box,
-  Typography,
   Button,
-  Snackbar,
-  Alert,
   CircularProgress,
+  LinearProgress,
+  Typography,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
+// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
-import useToast from "./hooks/useToast";
+import { useToast } from "./context/ToastProvider.jsx";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
@@ -106,7 +106,7 @@ function App() {
       console.warn("[LRP] ensureFcmToken:", e?.message || e)
     );
   }, [user]);
-  const { toast, showToast, closeToast } = useToast("success");
+  const { enqueue } = useToast();
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
@@ -120,11 +120,11 @@ function App() {
   const role = driver?.access || "";
   const isAdmin = role === "admin";
 
-  const { 
+  const {
     showOffline,
     retry: retryConnection,
     dismiss: dismissOffline,
-  } = useNetworkStatus(() => showToast("✅ Reconnected", "success"));
+  } = useNetworkStatus(() => enqueue("✅ Reconnected", { severity: "success" }));
 
   const openChangeDriver = useCallback(() => setChangeDriverOpen(true), []);
   const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
@@ -172,7 +172,7 @@ function App() {
             setPhonePromptOpen(true);
           }
         } else {
-          showToast("Access denied", "error");
+          enqueue("Access denied", { severity: "error" });
           await logout();
           setDriver(null);
         }
@@ -181,11 +181,38 @@ function App() {
     } else {
       setDriver(null);
       if (hadUserRef.current) {
-        showToast("Session expired. Please log in again.", "error");
+        enqueue("Session expired. Please log in again.", { severity: "error" });
       }
       setIsAppReady(true);
     }
-  }, [user, fetchDrivers, setDriver, showToast]);
+  }, [user, fetchDrivers, setDriver, enqueue]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const reg = e.detail?.registration;
+      enqueue("New version available — Reload", {
+        severity: "info",
+        action: (
+          <Button
+            color="inherit"
+            size="small"
+              onClick={() => {
+                try {
+                  reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
+                } catch (e) {
+                  void e; // ignore
+                }
+                window.location.reload();
+              }}
+            >
+            Reload
+          </Button>
+        ),
+      });
+    };
+    window.addEventListener("SW_UPDATED", handler);
+    return () => window.removeEventListener("SW_UPDATED", handler);
+  }, [enqueue]);
 
   useEffect(() => {
     const interval = setInterval(
@@ -225,7 +252,7 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <InstallBanner />
         <AppShell onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
-          <Suspense fallback={<CircularProgress />}> 
+          <Suspense fallback={<LinearProgress aria-label="Loading" />}>
             <Routes>
                   <Route path="/" element={<Navigate to="/rides" replace />} />
                   <Route
@@ -310,20 +337,6 @@ function App() {
                 onClose={closeChangeDriver}
               />
             )}
-
-            <Snackbar
-              open={toast.open}
-              autoHideDuration={3000}
-              onClose={closeToast}
-            >
-              <Alert
-                severity={toast.severity}
-                variant="filled"
-                onClose={closeToast}
-              >
-                {toast.message}
-              </Alert>
-            </Snackbar>
 
             <OfflineNotice
               open={showOffline}

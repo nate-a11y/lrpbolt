@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Email, Download, Search, Summary, Scanner Status
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import ReactDOM from "react-dom/client";
 import dayjs from "dayjs";
 import QRCode from "react-qr-code";
@@ -50,7 +50,7 @@ import {
   deleteTicket as apiDeleteTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { asArray } from "../utils/arrays.js";
 import { withSafeColumns } from "../utils/gridFormatters";
@@ -60,7 +60,7 @@ import PageContainer from "./PageContainer.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
-export default function Tickets() {
+function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [filteredDate, setFilteredDate] = useState("All Dates");
   const [snackbar, setSnackbar] = useState({
@@ -752,3 +752,5 @@ export default function Tickets() {
     </PageContainer>
   );
 }
+
+export default memo(Tickets);

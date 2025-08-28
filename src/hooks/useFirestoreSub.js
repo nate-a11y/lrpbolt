@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
 
 import { useAuth } from "../context/AuthContext.jsx";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 export function useFirestoreSub(makeQuery, deps) {
   const [error, setError] = useState(null);

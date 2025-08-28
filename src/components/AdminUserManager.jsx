@@ -21,7 +21,7 @@ import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { db } from "../utils/firebaseInit";
 import { createUser, updateUser } from "../utils/firestoreService.js";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 

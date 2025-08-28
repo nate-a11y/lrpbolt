@@ -56,7 +56,9 @@ jobs:
           VITE_TIME_LOG_CSV:                 ${{ secrets.VITE_TIME_LOG_CSV }}
           VITE_DROP_DAILY_URL:               ${{ secrets.VITE_DROP_DAILY_URL }}
           VITE_SMS_TEST_TO:                  ${{ secrets.VITE_SMS_TEST_TO }}
-          VITE_MUI_PRO_KEY:                  ${{ secrets.YOUR_MUI_PRO_KEY }}
+          VITE_ENABLE_FCM:                   ${{ secrets.VITE_ENABLE_FCM }}
+          VITE_SHOW_DEBUG_PANELS:            ${{ secrets.VITE_SHOW_DEBUG_PANELS }}
+          VITE_MUIX_LICENSE_KEY:             ${{ secrets.YOUR_MUI_PRO_KEY }}
           HOSTINGER_FTP_HOST:                ${{ secrets.HOSTINGER_FTP_HOST }}
           HOSTINGER_FTP_USERNAME:            ${{ secrets.HOSTINGER_FTP_USERNAME }}
           HOSTINGER_FTP_PASSWORD:            ${{ secrets.HOSTINGER_FTP_PASSWORD }}
@@ -71,7 +73,7 @@ jobs:
             VITE_TIME_LOG_CSV VITE_DROP_DAILY_URL
             VITE_GOOGLE_CLIENT_ID
             HOSTINGER_FTP_HOST HOSTINGER_FTP_USERNAME HOSTINGER_FTP_PASSWORD HOSTINGER_REMOTE_PATH
-            VITE_MUI_PRO_KEY
+            VITE_MUIX_LICENSE_KEY
           )
           missing=0
           for k in "${required[@]}"; do
@@ -99,7 +101,9 @@ jobs:
           VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}
           VITE_DROP_DAILY_URL=${{ secrets.VITE_DROP_DAILY_URL }}
           VITE_SMS_TEST_TO=${{ secrets.VITE_SMS_TEST_TO }}
-          VITE_MUI_PRO_KEY=${{ secrets.YOUR_MUI_PRO_KEY }}
+          VITE_ENABLE_FCM=${{ secrets.VITE_ENABLE_FCM }}
+          VITE_SHOW_DEBUG_PANELS=${{ secrets.VITE_SHOW_DEBUG_PANELS }}
+          VITE_MUIX_LICENSE_KEY=${{ secrets.YOUR_MUI_PRO_KEY }}
           EOF
 
           cp .env .env.production
@@ -132,9 +136,11 @@ jobs:
 
       - name: Build (Vite)
         env:
-          MUI_X_LICENSE_KEY: ${{ secrets.YOUR_MUI_PRO_KEY }}
           DISABLE_IMG_OPT: '1'
-        run: npm run build
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: npm run build:prod
 
       - name: Verify SW files exist
         run: |
