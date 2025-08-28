@@ -1,9 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // RideVehicleCalendar.jsx — Fully updated with vehicle chips, dynamic coloring, compact mode, summary, and improved light mode readability
 import { useEffect, useState, useMemo, memo } from "react";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import {
   Box,
   Typography,
@@ -23,19 +21,20 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 
-import { toIso } from "../utils/time.js";
 import { TIMEZONE } from "../constants";
 import { fetchWithRetry } from "../utils/network";
 import logError from "../utils/logError.js";
 
 import PageContainer from "./PageContainer.jsx";
 
+const toIso = (v) => {
+  const d = toDayjs(v);
+  return d ? d.toISOString() : null;
+};
+
 const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 function RideVehicleCalendar() {
   const [date, setDate] = useState(dayjs().tz(CST));

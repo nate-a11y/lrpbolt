@@ -18,9 +18,7 @@ import { DateRangePicker } from "@mui/x-date-pickers-pro";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import { Timestamp, orderBy } from "firebase/firestore";
 
 import { durationMinutes, toDateAny } from "@/utils/datetime";
@@ -42,8 +40,6 @@ import { formatClaimSms } from "../utils/formatClaimSms.js";
 
 import BlackoutOverlay from "./BlackoutOverlay";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const theme = useTheme();

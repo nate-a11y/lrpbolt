@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 
 export const isNil = (v) => v === null || v === undefined;
 
@@ -24,10 +24,7 @@ export const tsToDate = (v) => {
   }
 };
 
-export const fmtDateTime = (v) => {
-  const d = tsToDate(v);
-  return d ? dayjs(d).format("MMM D, YYYY h:mm a") : "—";
-};
+export const fmtDateTime = (v) => formatDateTime(tsToDate(v));
 
 export const diffMinutes = (start, end) => {
   const s = tsToDate(start);

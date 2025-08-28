@@ -2,17 +2,19 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Box, Paper, CircularProgress, Alert, TextField } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
+
+import { db } from "@/utils/firebaseInit";
+import { tsToDate, dateToTs } from "@/utils/fsTime";
+import { formatDateTime } from "@/utils/time";
+
+import { subscribeTimeLogs } from "../../hooks/firestore";
+import { enrichDriverNames } from "../../services/normalizers";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
-import { db } from "../../utils/firebaseInit";
-import { subscribeTimeLogs } from "../../hooks/firestore";
-import { patchTimeLog } from "../../hooks/api";
-import { enrichDriverNames } from "../../services/normalizers";
-import { formatDateTime } from "../../utils/formatters.js";
 
 export default function EntriesTab() {
   const [rows, setRows] = useState([]);
@@ -36,20 +38,31 @@ export default function EntriesTab() {
   }, []);
 
   const handleProcessRowUpdate = useCallback(async (newRow, oldRow) => {
+    const next = { ...newRow };
     try {
-      await patchTimeLog(newRow.id, {
-        driver: newRow.driver,
-        rideId: newRow.rideId,
-        startTime: newRow.startTime,
-        endTime: newRow.endTime,
-        loggedAt: newRow.loggedAt,
-        durationMin: newRow.duration,
-        note: newRow.note,
-      });
-      return newRow;
+      if (next.startTime instanceof Date)
+        next.startTime = dateToTs(next.startTime);
+      if (next.endTime instanceof Date)
+        next.endTime = dateToTs(next.endTime);
+      if (next.loggedAt instanceof Date)
+        next.loggedAt = dateToTs(next.loggedAt);
+      const id = newRow.id || newRow.docId || newRow._id;
+      if (!id) throw new Error("Missing row id");
+      await updateDoc(doc(db, "timeLogs", id), next);
+      return {
+        ...newRow,
+        startTime: next.startTime?.toDate
+          ? next.startTime.toDate()
+          : newRow.startTime,
+        endTime: next.endTime?.toDate
+          ? next.endTime.toDate()
+          : newRow.endTime,
+        loggedAt: next.loggedAt?.toDate
+          ? next.loggedAt.toDate()
+          : newRow.loggedAt,
+      };
     } catch (e) {
       console.error(e);
-      alert("Update failed");
       return oldRow;
     }
   }, []);
@@ -61,18 +74,24 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => p?.row?.startTime?.toDate?.() || null,
+        valueGetter: (p) => tsToDate(p?.row?.startTime),
+        valueFormatter: (p) => formatDateTime(p?.value),
+        valueParser: (v) => (v ? new Date(v) : null),
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => p?.row?.endTime?.toDate?.() || null,
+        valueGetter: (p) => tsToDate(p?.row?.endTime),
+        valueFormatter: (p) => formatDateTime(p?.value),
+        valueParser: (v) => (v ? new Date(v) : null),
       },
       duration: { editable: true, type: "number" },
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => p?.row?.loggedAt?.toDate?.() || null,
+        valueGetter: (p) => tsToDate(p?.row?.loggedAt),
+        valueFormatter: (p) => formatDateTime(p?.value),
+        valueParser: (v) => (v ? new Date(v) : null),
       },
       note: { editable: true },
     }),
@@ -241,10 +260,12 @@ export default function EntriesTab() {
           rowModesModel={rowModesModel}
           onRowModesModelChange={(m) => setRowModesModel(m)}
           processRowUpdate={handleProcessRowUpdate}
+          onProcessRowUpdateError={(e) => console.error(e)}
           onRowEditStart={handleRowEditStart}
           onRowEditStop={handleRowEditStop}
           apiRef={apiRef}
           experimentalFeatures={{ newEditingApi: true }}
+          getRowId={(r) => r.id || r.docId || r._id}
         />
       </ResponsiveScrollBox>
     </Paper>

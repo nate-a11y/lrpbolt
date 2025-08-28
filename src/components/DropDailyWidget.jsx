@@ -24,7 +24,7 @@ import ScienceIcon from "@mui/icons-material/Science";
 import EventIcon from "@mui/icons-material/Event";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { doc, onSnapshot } from "firebase/firestore";
-import dayjs from "dayjs";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 import { db } from "src/utils/firebaseInit";

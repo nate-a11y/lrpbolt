@@ -37,7 +37,7 @@ import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
 
 import { sanitize } from "../utils/sanitize";
-import { formatDateTime } from "../utils/timeUtils";
+import { formatDateTime } from "@/utils/time";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";
 import logError from "../utils/logError.js";

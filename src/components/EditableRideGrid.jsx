@@ -58,18 +58,21 @@ export default function EditableRideGrid({
       {
         field: "endTime",
         headerName: "End",
-        valueGetter: (p) => p?.row?.endTime ?? p?.row?.dropoffTime ?? null,
+        valueGetter: (p) => p?.row?.endTime ?? p?.row?.dropoffTime ?? 'N/A',
         valueFormatter: vfTime,
       },
       {
         field: "rideDuration",
         headerName: "Duration",
-        valueGetter: (p) =>
-          p?.row?.rideDuration ??
-          durationMinutes(
-            getField(p?.row, "pickupTime"),
-            p?.row?.endTime ?? getField(p?.row, "dropoffTime"),
-          ),
+        valueGetter: (p) => {
+          const val =
+            p?.row?.rideDuration ??
+            durationMinutes(
+              getField(p?.row, "pickupTime"),
+              p?.row?.endTime ?? getField(p?.row, "dropoffTime"),
+            );
+          return val ?? 'N/A';
+        },
         valueFormatter: vfDurationHM,
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },

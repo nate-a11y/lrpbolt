@@ -1,11 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 // Accept Firestore Timestamp, JS Date, ISO/string, number → Dayjs or null
 export function tsToDayjs(ts) {

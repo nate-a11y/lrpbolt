@@ -10,9 +10,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 import {
   Box,
   Button,
@@ -20,7 +18,7 @@ import {
   LinearProgress,
   Typography,
 } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers-pro";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import "./index.css";
@@ -52,8 +50,6 @@ import {
   BLACKOUT_END_HOUR,
 } from "./components/BlackoutOverlay.jsx";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
 const CST = TIMEZONE;
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
