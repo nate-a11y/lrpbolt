@@ -57,7 +57,7 @@ function RideGroup({
   rides,
   onClaim,
   showToast,
-  selectedRides,
+  selectedRides = [],
   onToggleSelect,
   onGroupToggle,
   onClearSelected,
@@ -74,7 +74,10 @@ function RideGroup({
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimingIds, setClaimingIds] = useState([]);
   const selectedInGroup = useMemo(
-    () => rides.filter((r) => selectedRides.has(r.tripId)).map((r) => r.tripId),
+    () =>
+      rides
+        .filter((r) => selectedRides.includes(r.tripId))
+        .map((r) => r.tripId),
     [rides, selectedRides],
   );
   const dayOfWeek = useMemo(() => dayjs(date).format("dddd"), [date]);

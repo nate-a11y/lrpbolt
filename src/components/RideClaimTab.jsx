@@ -52,7 +52,7 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     message: "",
     severity: "success",
   });
-  const [selectedRides, setSelectedRides] = useState(new Set());
+  const [selectedRides, setSelectedRides] = useState([]);
   const { driver: driverProfile } = useDriver();
   const [dateRange, setDateRange] = useState([null, null]); // [start, end]
 
@@ -90,32 +90,27 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     setToast({ open: true, message, severity });
 
   const toggleRideSelection = useCallback((id) => {
-    setSelectedRides((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelectedRides((prev) =>
+      prev.includes(id) ? prev.filter((rid) => rid !== id) : [...prev, id],
+    );
   }, []);
 
   const toggleGroupSelection = useCallback((ids) => {
     setSelectedRides((prev) => {
-      const next = new Set(prev);
-      const allSelected = ids.every((id) => next.has(id));
+      const allSelected = ids.every((id) => prev.includes(id));
+      if (allSelected) {
+        return prev.filter((id) => !ids.includes(id));
+      }
+      const next = [...prev];
       ids.forEach((id) => {
-        if (allSelected) next.delete(id);
-        else next.add(id);
+        if (!next.includes(id)) next.push(id);
       });
       return next;
     });
   }, []);
 
   const clearSelections = useCallback((ids) => {
-    setSelectedRides((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.delete(id));
-      return next;
-    });
+    setSelectedRides((prev) => prev.filter((id) => !ids.includes(id)));
   }, []);
 
   // Requires Firestore index: Firestore Database > Indexes > liveRides.pickupTime ASC

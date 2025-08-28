@@ -22,7 +22,7 @@ export default function EntriesTab() {
   const [error, setError] = useState(null);
   const [driverFilter, setDriverFilter] = useState("");
   const [startFilter, setStartFilter] = useState(null); // dayjs | null
-  const [endFilter, setEndFilter] = useState(null);     // dayjs | null
+  const [endFilter, setEndFilter] = useState(null); // dayjs | null
   const [search, setSearch] = useState("");
   const apiRef = useGridApiRef();
   const [rowModesModel, setRowModesModel] = useState({});
@@ -57,8 +57,14 @@ export default function EntriesTab() {
       await patchTimeLog(id, updates);
 
       // Recompute duration on the client for immediate UX
-      const start = newRow.startTime instanceof Date ? newRow.startTime : tsToDate(newRow.startTime);
-      const end = newRow.endTime instanceof Date ? newRow.endTime : tsToDate(newRow.endTime);
+      const start =
+        newRow.startTime instanceof Date
+          ? newRow.startTime
+          : tsToDate(newRow.startTime);
+      const end =
+        newRow.endTime instanceof Date
+          ? newRow.endTime
+          : tsToDate(newRow.endTime);
       let duration = 0;
       if (start && end) {
         duration = Math.max(0, minutesBetween(start, end) || 0);
@@ -148,7 +154,9 @@ export default function EntriesTab() {
     const endBound = endFilter?.toDate?.() ?? null;
 
     return (rows || []).filter((r) => {
-      const driverField = (r.driver ?? r.driverId ?? r.driverEmail ?? "").toString().toLowerCase();
+      const driverField = (r.driver ?? r.driverId ?? r.driverEmail ?? "")
+        .toString()
+        .toLowerCase();
       const driverMatch = driverFilter
         ? driverField.includes(driverFilter.toLowerCase())
         : true;
@@ -156,8 +164,10 @@ export default function EntriesTab() {
       const s = tsToDate(r.startTime);
       const e = tsToDate(r.endTime) ?? s;
 
-      const startMatch = startBound ? (s && s.getTime() >= startBound.getTime()) : true;
-      const endMatch = endBound ? (e && e.getTime() <= endBound.getTime()) : true;
+      const startMatch = startBound
+        ? s && s.getTime() >= startBound.getTime()
+        : true;
+      const endMatch = endBound ? e && e.getTime() <= endBound.getTime() : true;
 
       const tokens = [
         r.driver ?? r.driverId ?? r.driverEmail,
@@ -171,7 +181,9 @@ export default function EntriesTab() {
         .filter(Boolean)
         .map((v) => String(v).toLowerCase());
 
-      const searchMatch = search ? tokens.some((t) => t.includes(search.toLowerCase())) : true;
+      const searchMatch = search
+        ? tokens.some((t) => t.includes(search.toLowerCase()))
+        : true;
 
       return driverMatch && startMatch && endMatch && searchMatch;
     });
@@ -182,7 +194,8 @@ export default function EntriesTab() {
       (filteredRows || []).filter(Boolean).map((r) => {
         const s = tsToDate(r.startTime);
         const e = tsToDate(r.endTime);
-        let duration = r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000);
+        let duration =
+          r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000);
         if ((duration == null || Number.isNaN(duration)) && s && e) {
           duration = Math.max(0, minutesBetween(s, e) || 0);
         }
@@ -279,7 +292,9 @@ export default function EntriesTab() {
           onRowEditStop={handleRowEditStop}
           apiRef={apiRef}
           experimentalFeatures={{ newEditingApi: true }}
-          getRowId={(r) => r.id || r.docId || r._id}
+          getRowId={(r) =>
+            r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
+          }
         />
       </ResponsiveScrollBox>
     </Paper>

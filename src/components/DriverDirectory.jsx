@@ -442,7 +442,13 @@ export default function DriverDirectory() {
             apiRef={apiRef}
             rows={rows}
             columnsCompat={columns}
-            getRowId={(row) => row.id}
+            getRowId={(row) =>
+              row?.id ??
+              row?.uid ??
+              row?._id ??
+              row?.docId ??
+              JSON.stringify(row)
+            }
             getRowHeight={() => "auto"}
             disableColumnMenu
             disableColumnSelector
