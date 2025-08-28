@@ -4,14 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Typography, Button, Fade, CircularProgress } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 import HourglassBottomIcon from "@mui/icons-material/HourglassBottom";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 
 import { TIMEZONE } from "../constants";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 const CST = TIMEZONE; // e.g., "America/Chicago"
 export const BLACKOUT_START_HOUR = 19; // 7 PM

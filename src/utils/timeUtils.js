@@ -1,44 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 
-import { toIso } from "./time.js";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const DEFAULT_TZ = dayjs.tz.guess();
-
-export function toDayjs(input, tz = DEFAULT_TZ) {
-  if (!input) return null;
-  if (typeof input?.toDate === "function") {
-    const d = input.toDate();
-    const dj = dayjs(d);
-    return dj.isValid() ? dj.tz(tz) : null;
-  }
-  if (input instanceof Date) {
-    const dj = dayjs(input);
-    return dj.isValid() ? dj.tz(tz) : null;
-  }
-  const dj = dayjs(input);
-  return dj.isValid() ? dj.tz(tz) : null;
-}
-
-export function formatDateTime(
-  input,
-  fmt = "MMM D, YYYY h:mm A",
-  tz = DEFAULT_TZ,
-) {
-  const dj = toDayjs(input, tz);
-  if (!dj) return "N/A";
-  const fmtSafe = typeof fmt === "string" ? fmt : "MMM D, YYYY h:mm A";
-  try {
-    return dj.format(fmtSafe);
-  } catch {
-    return toIso(dj) || "N/A";
-  }
-}
+export { dayjs, toDayjs, formatDateTime };
 
 export function timestampSortComparator(a, b) {
   const da = toDayjs(a);

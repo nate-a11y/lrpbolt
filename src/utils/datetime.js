@@ -1,9 +1,4 @@
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
 
 const toDate = (v) => {
   if (!v) return null;
@@ -42,7 +37,7 @@ export { toDate };
 
 export const FRIENDLY_DT = "MM/DD/YYYY hh:mm A";
 
-export function toDayjs(input) {
+export function toDayjsLegacy(input) {
   if (!input) return null;
   if (typeof input === "object") {
     if (typeof input.toDate === "function") return dayjs(input.toDate());
@@ -59,8 +54,8 @@ export function toDayjs(input) {
 }
 
 export function compareDateLike(a, b) {
-  const da = toDayjs(a);
-  const db = toDayjs(b);
+  const da = toDayjsLegacy(a);
+  const db = toDayjsLegacy(b);
   if (!da && !db) return 0;
   if (!da) return -1;
   if (!db) return 1;

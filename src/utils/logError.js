@@ -8,6 +8,7 @@ function loadSentry() {
     import.meta.env.PROD &&
     import.meta.env.VITE_SENTRY_DSN
   ) {
+    // eslint-disable-next-line import/no-unresolved
     sentryPromise = import("@sentry/browser")
       .then((mod) => {
         mod.init({ dsn: import.meta.env.VITE_SENTRY_DSN });
