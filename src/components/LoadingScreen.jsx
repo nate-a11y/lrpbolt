@@ -18,8 +18,14 @@ export default function LoadingScreen({ progress = null }) {
     primary: theme.palette.mode === "dark" ? "#60A5FA" : "#2563EB", // LRP blue
     accent: theme.palette.mode === "dark" ? "#34D399" : "#059669", // emerald
     bg0: theme.palette.mode === "dark" ? "#0B0F19" : "#F6F8FC",
-    bg1: theme.palette.mode === "dark" ? "rgba(96,165,250,.12)" : "rgba(37,99,235,.10)",
-    bg2: theme.palette.mode === "dark" ? "rgba(52,211,153,.10)" : "rgba(5,150,105,.10)",
+    bg1:
+      theme.palette.mode === "dark"
+        ? "rgba(96,165,250,.12)"
+        : "rgba(37,99,235,.10)",
+    bg2:
+      theme.palette.mode === "dark"
+        ? "rgba(52,211,153,.10)"
+        : "rgba(5,150,105,.10)",
   };
 
   const gradient =
@@ -68,7 +74,11 @@ export default function LoadingScreen({ progress = null }) {
             : {
                 y: [0, -8, 0],
                 rotate: [0, 2, 0],
-                transition: { duration: 6, repeat: Infinity, ease: "easeInOut" },
+                transition: {
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                },
               }
         }
       />
@@ -124,16 +134,15 @@ export default function LoadingScreen({ progress = null }) {
           </Typography>
         </Box>
 
-        <Typography
-          variant="body2"
-          sx={{ opacity: 0.8, mb: 2, mt: 0.5 }}
-        >
+        <Typography variant="body2" sx={{ opacity: 0.8, mb: 2, mt: 0.5 }}>
           Buckle up — activating your driver dashboard.
         </Typography>
 
         {/* Progress */}
         <LinearProgress
-          variant={typeof progress === "number" ? "determinate" : "indeterminate"}
+          variant={
+            typeof progress === "number" ? "determinate" : "indeterminate"
+          }
           value={typeof progress === "number" ? progress : undefined}
           sx={{
             height: 8,
@@ -141,7 +150,9 @@ export default function LoadingScreen({ progress = null }) {
             "& .MuiLinearProgress-bar": { borderRadius: 999 },
             "&.MuiLinearProgress-colorPrimary": {
               backgroundColor:
-                theme.palette.mode === "dark" ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.06)",
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,.08)"
+                  : "rgba(0,0,0,.06)",
             },
           }}
         />
@@ -151,11 +162,7 @@ export default function LoadingScreen({ progress = null }) {
           aria-live="polite"
           sx={{ mt: 1.5, minHeight: 24, color: theme.palette.text.secondary }}
           key="tip-rotator"
-          animate={
-            prefersReducedMotion
-              ? {}
-              : { opacity: [0.4, 1, 0.4] }
-          }
+          animate={prefersReducedMotion ? {} : { opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 2.2, repeat: Infinity }}
         >
           <Typography variant="caption">

@@ -84,39 +84,39 @@ function ShootoutTab() {
         )}
       </Box>
       <ResponsiveScrollBox>
-      <SmartAutoGrid
-        rows={sessionRows}
-        headerMap={{
-          driverEmail: "Driver Email",
-          driver: "Driver",
-          vehicle: "Vehicle",
-          startTime: "Start",
-          endTime: "End",
-          duration: "Duration",
-          trips: "Trips",
-          passengers: "PAX",
-          createdAt: "Created",
-          id: "id",
-        }}
-        order={[
-          "driver",
-          "driverEmail",
-          "vehicle",
-          "startTime",
-          "endTime",
-          "duration",
-          "trips",
-          "passengers",
-          "createdAt",
-          "id",
-        ]}
-        hide={["driverEmail", "createdAt"]}
-        forceHide={["id"]}
-        actionsColumn={buildNativeActionsColumn({
-          onEdit: (_id, _row) => null,
-          onDelete: async (id) => await deleteShootoutStatById(id),
-        })}
-      />
+        <SmartAutoGrid
+          rows={sessionRows}
+          headerMap={{
+            driverEmail: "Driver Email",
+            driver: "Driver",
+            vehicle: "Vehicle",
+            startTime: "Start",
+            endTime: "End",
+            duration: "Duration",
+            trips: "Trips",
+            passengers: "PAX",
+            createdAt: "Created",
+            id: "id",
+          }}
+          order={[
+            "driver",
+            "driverEmail",
+            "vehicle",
+            "startTime",
+            "endTime",
+            "duration",
+            "trips",
+            "passengers",
+            "createdAt",
+            "id",
+          ]}
+          hide={["driverEmail", "createdAt"]}
+          forceHide={["id"]}
+          actionsColumn={buildNativeActionsColumn({
+            onEdit: (_id, _row) => null,
+            onDelete: async (id) => await deleteShootoutStatById(id),
+          })}
+        />
       </ResponsiveScrollBox>
     </>
   );

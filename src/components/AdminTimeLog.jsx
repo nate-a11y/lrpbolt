@@ -18,7 +18,10 @@ function AdminTimeLog() {
         textColor="inherit"
         indicatorColor="primary"
         aria-label="Admin Time Log Tabs"
-        sx={{ "& .MuiTab-root": { textTransform: "none", minHeight: 40 }, mb: 1 }}
+        sx={{
+          "& .MuiTab-root": { textTransform: "none", minHeight: 40 },
+          mb: 1,
+        }}
       >
         <Tab label="Logs" />
         <Tab label="Weekly Summary" />

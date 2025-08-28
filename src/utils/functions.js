@@ -9,7 +9,8 @@ export function getLRPFunctions() {
   if (_functions) return _functions;
   // Ensure the Firebase app is already initialized in your bootstrap code.
   const app = getApps().length ? getApp() : null;
-  if (!app) throw new Error("Firebase app not initialized before getLRPFunctions()");
+  if (!app)
+    throw new Error("Firebase app not initialized before getLRPFunctions()");
   _functions = getFunctions(app, "us-central1");
   return _functions;
 }

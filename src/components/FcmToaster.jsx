@@ -23,8 +23,14 @@ export default function FcmToaster() {
       onClose={() => setToast(null)}
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
     >
-      <Alert onClose={() => setToast(null)} severity="info" variant="filled" sx={{ width: "100%" }}>
-        <strong>{toast?.title}</strong>{toast?.body ? ` — ${toast.body}` : ""}
+      <Alert
+        onClose={() => setToast(null)}
+        severity="info"
+        variant="filled"
+        sx={{ width: "100%" }}
+      >
+        <strong>{toast?.title}</strong>
+        {toast?.body ? ` — ${toast.body}` : ""}
       </Alert>
     </Snackbar>
   );

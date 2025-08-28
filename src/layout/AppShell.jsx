@@ -16,18 +16,38 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: (t) => t.palette.background.default }}>
-      <Header onRefresh={onRefresh} leftSlot={!mdUp ? (<IconButton edge="start" onClick={toggleMobile} sx={{ mr: 1 }}><MenuIcon/></IconButton>) : null} />
-      <MainNav variant={mdUp ? "permanent" : "temporary"} open={!mdUp ? mobileOpen : true} onClose={closeMobile} onChangeDriver={onChangeDriver} />
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        bgcolor: (t) => t.palette.background.default,
+      }}
+    >
+      <Header
+        onRefresh={onRefresh}
+        leftSlot={
+          !mdUp ? (
+            <IconButton edge="start" onClick={toggleMobile} sx={{ mr: 1 }}>
+              <MenuIcon />
+            </IconButton>
+          ) : null
+        }
+      />
+      <MainNav
+        variant={mdUp ? "permanent" : "temporary"}
+        open={!mdUp ? mobileOpen : true}
+        onClose={closeMobile}
+        onChangeDriver={onChangeDriver}
+      />
       <Box
         component="main"
         sx={{
           flex: 1,
-          pt: `calc(${APP_BAR_HEIGHT}px + 6px)`,        // nothing hides under blur
-          ml: { xs: 0, md: `var(--rail-width)` },   // space for rail when permanent
-          pr: { xs: 0, md: 2 },                     // horizontal padding when rail visible
-          pl: { xs: 0, md: 2 },                     // horizontal padding when rail visible
-          pb: 3,                                     // keep bottom padding
+          pt: `calc(${APP_BAR_HEIGHT}px + 6px)`, // nothing hides under blur
+          ml: { xs: 0, md: `var(--rail-width)` }, // space for rail when permanent
+          pr: { xs: 0, md: 2 }, // horizontal padding when rail visible
+          pl: { xs: 0, md: 2 }, // horizontal padding when rail visible
+          pb: 3, // keep bottom padding
           backgroundColor: (t) => t.palette.background.default,
           borderLeft: (t) => `1px solid ${t.palette.divider}`, // single hairline (drawer has none)
         }}

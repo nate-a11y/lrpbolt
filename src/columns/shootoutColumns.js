@@ -11,7 +11,12 @@ import { buildNativeActionsColumn } from "./nativeActions.jsx";
 export function shootoutColumns(opts = {}) {
   const { withActions = false, onEdit, onDelete } = opts;
   const columns = [
-    { field: "driverEmail", headerName: "Driver Email", minWidth: 220, flex: 1 },
+    {
+      field: "driverEmail",
+      headerName: "Driver Email",
+      minWidth: 220,
+      flex: 1,
+    },
     { field: "vehicle", headerName: "Vehicle", minWidth: 160, flex: 0.8 },
     {
       field: "startTime",
@@ -20,7 +25,8 @@ export function shootoutColumns(opts = {}) {
       flex: 0.8,
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        (p1?.row?.startTime?.seconds ?? -1) - (p2?.row?.startTime?.seconds ?? -1),
+        (p1?.row?.startTime?.seconds ?? -1) -
+        (p2?.row?.startTime?.seconds ?? -1),
     },
     {
       field: "endTime",
@@ -31,8 +37,20 @@ export function shootoutColumns(opts = {}) {
       sortComparator: (v1, v2, p1, p2) =>
         (p1?.row?.endTime?.seconds ?? -1) - (p2?.row?.endTime?.seconds ?? -1),
     },
-    { field: "trips", headerName: "Trips", minWidth: 110, flex: 0.5, type: "number" },
-    { field: "passengers", headerName: "PAX", minWidth: 110, flex: 0.5, type: "number" },
+    {
+      field: "trips",
+      headerName: "Trips",
+      minWidth: 110,
+      flex: 0.5,
+      type: "number",
+    },
+    {
+      field: "passengers",
+      headerName: "PAX",
+      minWidth: 110,
+      flex: 0.5,
+      type: "number",
+    },
     {
       field: "createdAt",
       headerName: "Created",
@@ -42,8 +60,7 @@ export function shootoutColumns(opts = {}) {
     },
   ];
 
-  if (withActions)
-    columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
+  if (withActions) columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
   return columns;
 }

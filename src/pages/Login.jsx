@@ -40,7 +40,8 @@ import {
 import { useColorMode } from "../context/ColorModeContext.jsx";
 
 /** utils **/
-const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+const isEmail = (v) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
 const pwScore = (pw = "") => {
   let s = 0;
   if (pw.length >= 6) s++;
@@ -55,7 +56,8 @@ function mapAuthError(err) {
   const msg = String(err?.message || "").toLowerCase();
   if (msg.includes("popup-closed")) return "Sign‑in window was closed.";
   if (msg.includes("network")) return "Network error. Check your connection.";
-  if (msg.includes("too-many-requests")) return "Too many attempts. Please wait a moment.";
+  if (msg.includes("too-many-requests"))
+    return "Too many attempts. Please wait a moment.";
   if (msg.includes("wrong-password") || msg.includes("invalid-credential"))
     return "Incorrect email or password.";
   if (msg.includes("user-not-found")) return "No account found for that email.";
@@ -95,65 +97,68 @@ export default function Login() {
   const [regPassword2, setRegPassword2] = useState("");
   const [regShowPw, setRegShowPw] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
-    const [regError, setRegError] = useState("");
+  const [regError, setRegError] = useState("");
 
-    const anyLoading = emailLoading || googlePopupLoading;
-    const [error, setError] = useState("");
-    const navigate = useNavigate();
-    const emailRef = useRef(null);
-    const cardRef = useRef(null);
+  const anyLoading = emailLoading || googlePopupLoading;
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const emailRef = useRef(null);
+  const cardRef = useRef(null);
 
-    const safeNavigateHome = useCallback(() => {
-      navigate("/", { replace: true });
-    }, [navigate]);
+  const safeNavigateHome = useCallback(() => {
+    navigate("/", { replace: true });
+  }, [navigate]);
 
-    const handleGooglePopup = useCallback(async () => {
-      if (anyLoading) return;
-      setError("");
-      setGooglePopupLoading(true);
-      try {
-        await loginWithPopup();
-        safeNavigateHome();
-      } catch (e) {
-        setError(mapAuthError(e));
-      } finally {
-        setGooglePopupLoading(false);
-      }
-    }, [anyLoading, safeNavigateHome]);
+  const handleGooglePopup = useCallback(async () => {
+    if (anyLoading) return;
+    setError("");
+    setGooglePopupLoading(true);
+    try {
+      await loginWithPopup();
+      safeNavigateHome();
+    } catch (e) {
+      setError(mapAuthError(e));
+    } finally {
+      setGooglePopupLoading(false);
+    }
+  }, [anyLoading, safeNavigateHome]);
 
-    // Restore last-used email
-    useEffect(() => {
-      const last = localStorage.getItem("lrp:lastEmail");
-      if (last) setEmail(last);
-    }, []);
+  // Restore last-used email
+  useEffect(() => {
+    const last = localStorage.getItem("lrp:lastEmail");
+    if (last) setEmail(last);
+  }, []);
 
-    // Global shortcuts
-    useEffect(() => {
-      const onKey = (e) => {
-        const mod = e.ctrlKey || e.metaKey;
-        if (mod && e.key.toLowerCase() === "k") {
-          e.preventDefault(); toggle();
-        }
-        if (mod && e.key.toLowerCase() === "g") {
-          e.preventDefault(); handleGooglePopup();
-        }
-        if (mod && e.key === "/") {
-          e.preventDefault(); emailRef.current?.focus();
-        }
-      };
-      window.addEventListener("keydown", onKey);
-      return () => window.removeEventListener("keydown", onKey);
-    }, [toggle, handleGooglePopup]);
-
-    const emailValid = isEmail(email);
-    const score = pwScore(password);
-
-    const handleSubmit = useCallback(
-      async (e) => {
+  // Global shortcuts
+  useEffect(() => {
+    const onKey = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        const trimmed = email.trim();
-        if (!isEmail(trimmed) || !password) return;
-        if (anyLoading) return;
+        toggle();
+      }
+      if (mod && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        handleGooglePopup();
+      }
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        emailRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggle, handleGooglePopup]);
+
+  const emailValid = isEmail(email);
+  const score = pwScore(password);
+
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const trimmed = email.trim();
+      if (!isEmail(trimmed) || !password) return;
+      if (anyLoading) return;
 
       setError("");
       setEmailLoading(true);
@@ -166,22 +171,32 @@ export default function Login() {
         // subtle shake on error
         try {
           cardRef.current?.animate(
-            [{ transform: "translateX(0)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(0)" }],
-            { duration: 300, easing: "ease-in-out" }
+            [
+              { transform: "translateX(0)" },
+              { transform: "translateX(-6px)" },
+              { transform: "translateX(6px)" },
+              { transform: "translateX(0)" },
+            ],
+            { duration: 300, easing: "ease-in-out" },
           );
-        } catch { /* no-op */ }
+        } catch {
+          /* no-op */
+        }
       } finally {
         setEmailLoading(false);
       }
     },
-    [email, password, anyLoading, safeNavigateHome]
+    [email, password, anyLoading, safeNavigateHome],
   );
 
   // CapsLock detect
-  const onPwKeyDown = useCallback((e) => {
-    setCaps(e.getModifierState && e.getModifierState("CapsLock"));
-    if (e.key === "Enter") handleSubmit(e);
-  }, [handleSubmit]);
+  const onPwKeyDown = useCallback(
+    (e) => {
+      setCaps(e.getModifierState && e.getModifierState("CapsLock"));
+      if (e.key === "Enter") handleSubmit(e);
+    },
+    [handleSubmit],
+  );
 
   // Forgot Password
   const openReset = useCallback(() => {
@@ -200,7 +215,9 @@ export default function Login() {
     setResetLoading(true);
     try {
       await sendPasswordReset(target);
-      setResetMsg("If an account exists for that email, a reset link has been sent.");
+      setResetMsg(
+        "If an account exists for that email, a reset link has been sent.",
+      );
     } catch (e) {
       setResetMsg(mapAuthError(e));
     } finally {
@@ -227,7 +244,8 @@ export default function Login() {
     setRegError("");
     if (!name) return setRegError("Please enter your name.");
     if (!isEmail(em)) return setRegError("Enter a valid email address.");
-    if (pw.length < 6) return setRegError("Password must be at least 6 characters.");
+    if (pw.length < 6)
+      return setRegError("Password must be at least 6 characters.");
     if (pw !== pw2) return setRegError("Passwords do not match.");
     if (regLoading || anyLoading) return;
 
@@ -242,16 +260,27 @@ export default function Login() {
     } finally {
       setRegLoading(false);
     }
-  }, [regName, regEmail, regPassword, regPassword2, regLoading, anyLoading, safeNavigateHome]);
+  }, [
+    regName,
+    regEmail,
+    regPassword,
+    regPassword2,
+    regLoading,
+    anyLoading,
+    safeNavigateHome,
+  ]);
 
-  const handleKeyReg = useCallback((e) => {
-    if (e.key === "Enter") handleRegister();
-  }, [handleRegister]);
+  const handleKeyReg = useCallback(
+    (e) => {
+      if (e.key === "Enter") handleRegister();
+    },
+    [handleRegister],
+  );
 
-    return (
-      <>
-        {/* Animated BG */}
-        <Box
+  return (
+    <>
+      {/* Animated BG */}
+      <Box
         sx={{
           position: "fixed",
           inset: 0,
@@ -272,9 +301,9 @@ export default function Login() {
             style={{ width: "100%", height: "100%" }}
           />
         )}
-        </Box>
+      </Box>
 
-        <Container
+      <Container
         maxWidth="sm"
         sx={{
           position: "relative",
@@ -309,7 +338,11 @@ export default function Login() {
               <IconButton
                 onClick={toggle}
                 size="large"
-                aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={
+                  mode === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
               >
                 {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
@@ -374,11 +407,15 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={anyLoading}
                   error={!!email && !emailValid}
-                  helperText={!!email && !emailValid ? "Enter a valid email" : " "}
+                  helperText={
+                    !!email && !emailValid ? "Enter a valid email" : " "
+                  }
                   autoComplete="email"
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start"><MailIcon /></InputAdornment>
+                      <InputAdornment position="start">
+                        <MailIcon />
+                      </InputAdornment>
                     ),
                   }}
                   sx={{ mb: 2 }}
@@ -394,12 +431,12 @@ export default function Login() {
                   onKeyDown={onPwKeyDown}
                   disabled={anyLoading}
                   autoComplete="current-password"
-                  helperText={
-                    caps ? "Caps Lock is ON" : (password ? " " : " ")
-                  }
+                  helperText={caps ? "Caps Lock is ON" : password ? " " : " "}
                   InputProps={{
                     startAdornment: (
-                      <InputAdornment position="start"><KeyIcon /></InputAdornment>
+                      <InputAdornment position="start">
+                        <KeyIcon />
+                      </InputAdornment>
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
@@ -407,7 +444,9 @@ export default function Login() {
                           onClick={() => setShowPw((s) => !s)}
                           edge="end"
                           size="large"
-                          aria-label={showPw ? "Hide password" : "Show password"}
+                          aria-label={
+                            showPw ? "Hide password" : "Show password"
+                          }
                         >
                           {showPw ? <VisibilityOff /> : <Visibility />}
                         </IconButton>
@@ -428,15 +467,34 @@ export default function Login() {
                     }}
                   />
                   <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                    Strength: {["Very weak","Weak","Okay","Good","Strong","Elite"][score]}
+                    Strength:{" "}
+                    {
+                      ["Very weak", "Weak", "Okay", "Good", "Strong", "Elite"][
+                        score
+                      ]
+                    }
                   </Typography>
                 </Box>
 
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Button variant="text" size="small" onClick={openReset} disabled={anyLoading}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  sx={{ mb: 2 }}
+                >
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={openReset}
+                    disabled={anyLoading}
+                  >
                     Forgot password?
                   </Button>
-                  <Button variant="text" size="small" onClick={openRegister} disabled={anyLoading}>
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={openRegister}
+                    disabled={anyLoading}
+                  >
                     Create account
                   </Button>
                 </Stack>
@@ -448,12 +506,25 @@ export default function Login() {
                   disabled={anyLoading || !emailValid || password.length === 0}
                   sx={{ py: 1.5, fontWeight: 700 }}
                 >
-                  {emailLoading ? <CircularProgress size={22} color="inherit" /> : "Sign in"}
+                  {emailLoading ? (
+                    <CircularProgress size={22} color="inherit" />
+                  ) : (
+                    "Sign in"
+                  )}
                 </Button>
 
                 {/* helper shortcuts */}
-                <Typography variant="caption" sx={{ display: "block", mt: 2, opacity: 0.6, textAlign: "center" }}>
-                  Shortcuts: <b>Enter</b> Sign in • <b>Ctrl/Cmd+G</b> Google • <b>Ctrl/Cmd+K</b> Toggle theme
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    mt: 2,
+                    opacity: 0.6,
+                    textAlign: "center",
+                  }}
+                >
+                  Shortcuts: <b>Enter</b> Sign in • <b>Ctrl/Cmd+G</b> Google •{" "}
+                  <b>Ctrl/Cmd+K</b> Toggle theme
                 </Typography>
               </Box>
             </CardContent>
@@ -462,7 +533,12 @@ export default function Login() {
       </Container>
 
       {/* Forgot Password Dialog */}
-      <Dialog open={resetOpen} onClose={() => !resetLoading && setResetOpen(false)} fullWidth maxWidth="xs">
+      <Dialog
+        open={resetOpen}
+        onClose={() => !resetLoading && setResetOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>Reset password</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" sx={{ mb: 2 }}>
@@ -477,21 +553,32 @@ export default function Login() {
             onKeyDown={(e) => e.key === "Enter" && handleSendReset()}
             disabled={resetLoading}
             error={!!resetEmail && !isEmail(resetEmail)}
-            helperText={!!resetEmail && !isEmail(resetEmail) ? "Enter a valid email" : " "}
+            helperText={
+              !!resetEmail && !isEmail(resetEmail) ? "Enter a valid email" : " "
+            }
             InputProps={{
               startAdornment: (
-                <InputAdornment position="start"><MailIcon /></InputAdornment>
+                <InputAdornment position="start">
+                  <MailIcon />
+                </InputAdornment>
               ),
             }}
           />
           {resetMsg && (
-            <Alert sx={{ mt: 1 }} severity={resetMsg.startsWith("If an account") ? "success" : "error"}>
+            <Alert
+              sx={{ mt: 1 }}
+              severity={
+                resetMsg.startsWith("If an account") ? "success" : "error"
+              }
+            >
               {resetMsg}
             </Alert>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setResetOpen(false)} disabled={resetLoading}>Close</Button>
+          <Button onClick={() => setResetOpen(false)} disabled={resetLoading}>
+            Close
+          </Button>
           <Button
             onClick={handleSendReset}
             variant="contained"
@@ -504,10 +591,19 @@ export default function Login() {
       </Dialog>
 
       {/* Register Dialog */}
-      <Dialog open={regOpen} onClose={() => !regLoading && setRegOpen(false)} fullWidth maxWidth="xs">
+      <Dialog
+        open={regOpen}
+        onClose={() => !regLoading && setRegOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>Create account</DialogTitle>
         <DialogContent dividers>
-          {regError && <Alert severity="error" sx={{ mb: 2 }}>{regError}</Alert>}
+          {regError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {regError}
+            </Alert>
+          )}
           <Stack spacing={2}>
             <TextField
               label="Full name"
@@ -525,10 +621,14 @@ export default function Login() {
               onChange={(e) => setRegEmail(e.target.value)}
               disabled={regLoading}
               error={!!regEmail && !isEmail(regEmail)}
-              helperText={!!regEmail && !isEmail(regEmail) ? "Enter a valid email" : " "}
+              helperText={
+                !!regEmail && !isEmail(regEmail) ? "Enter a valid email" : " "
+              }
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start"><MailIcon /></InputAdornment>
+                  <InputAdornment position="start">
+                    <MailIcon />
+                  </InputAdornment>
                 ),
               }}
             />
@@ -543,7 +643,9 @@ export default function Login() {
               helperText="Use at least 6 characters."
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start"><KeyIcon /></InputAdornment>
+                  <InputAdornment position="start">
+                    <KeyIcon />
+                  </InputAdornment>
                 ),
                 endAdornment: (
                   <InputAdornment position="end">
@@ -577,7 +679,9 @@ export default function Login() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRegOpen(false)} disabled={regLoading}>Cancel</Button>
+          <Button onClick={() => setRegOpen(false)} disabled={regLoading}>
+            Cancel
+          </Button>
           <Button
             onClick={handleRegister}
             variant="contained"
@@ -593,7 +697,7 @@ export default function Login() {
             {regLoading ? "Creating…" : "Create account"}
           </Button>
         </DialogActions>
-        </Dialog>
-      </>
-    );
+      </Dialog>
+    </>
+  );
 }

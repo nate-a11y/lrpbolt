@@ -5,7 +5,10 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getMessaging, isSupported as messagingSupported } from "firebase/messaging";
+import {
+  getMessaging,
+  isSupported as messagingSupported,
+} from "firebase/messaging";
 
 import { bindFirestore } from "../services/normalizers";
 
@@ -23,7 +26,9 @@ export const firebaseConfig = {
   appId: env.VITE_FIREBASE_APP_ID,
 };
 
-export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+export const app = getApps().length
+  ? getApps()[0]
+  : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 bindFirestore(db);

@@ -36,12 +36,18 @@ const GATE_CODES = [
   { name: "Camden", codes: ["1793#", "1313"] },
   { name: "Cypress", codes: ["7469"] },
   { name: "Shooters 21", codes: ["4040"] },
-  { name: "Tan-Tar-A", codes: ["4365", "1610", "5746", "1713", "4271", "0509"] },
+  {
+    name: "Tan-Tar-A",
+    codes: ["4365", "1610", "5746", "1713", "4271", "0509"],
+  },
   { name: "Ledges (Back Gate)", codes: ["2014"] },
   { name: "Ty’s Cove", codes: ["5540", "2349"] },
   { name: "Lighthouse Point", codes: ["#7373"] },
   { name: "Southwood Shores", codes: ["60200", "42888", "48675"] },
-  { name: "Palisades", codes: ["#4667", "6186", "#5572", "6649", "8708", "2205"] },
+  {
+    name: "Palisades",
+    codes: ["#4667", "6186", "#5572", "6649", "8708", "2205"],
+  },
   { name: "The Cove (off Bluff Dr)", codes: ["#1172"] },
   { name: "Cobblestone (off Nichols)", codes: ["1776"] },
   { name: "Cape Royal", codes: ["#1114", "#1099"] },
@@ -95,7 +101,9 @@ export default function DriverInfoTab() {
         flex: 1,
         minWidth: 150,
         valueGetter: (params) =>
-          Array.isArray(params?.row?.codes) ? params.row.codes.join(", ") : "N/A",
+          Array.isArray(params?.row?.codes)
+            ? params.row.codes.join(", ")
+            : "N/A",
         renderCell: (p) => (
           <Box
             sx={{
@@ -110,14 +118,14 @@ export default function DriverInfoTab() {
         ),
       },
     ],
-    []
+    [],
   );
 
   const getRowId = useCallback((row) => row?.name ?? "", []);
 
   const slides = useMemo(
     () => (selectedImage ? [{ src: selectedImage.mapUrl || "" }] : []),
-    [selectedImage]
+    [selectedImage],
   );
 
   const { isMdDown } = useIsMobile();
@@ -160,7 +168,8 @@ export default function DriverInfoTab() {
       a.download = "FLW_PreReg_QR.png";
       a.click();
     };
-    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+    img.src =
+      "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
   };
 
   return (
@@ -170,7 +179,8 @@ export default function DriverInfoTab() {
       </Typography>
 
       <Typography variant="body1" sx={{ mb: 3 }}>
-        These tips are here to help you stay compliant and deliver a seamless VIP experience.
+        These tips are here to help you stay compliant and deliver a seamless
+        VIP experience.
       </Typography>
 
       <Divider sx={{ mb: 3 }} />
@@ -179,33 +189,68 @@ export default function DriverInfoTab() {
       <Accordion defaultExpanded sx={{ mt: 1 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography fontWeight="bold">
-            ✈️ Airport Pickup: Waynesville–St. Robert (Fort Leonard Wood) — Pre-register 24+ hours prior
+            ✈️ Airport Pickup: Waynesville–St. Robert (Fort Leonard Wood) —
+            Pre-register 24+ hours prior
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Passengers should complete pre-registration at least <strong>24 hours before pickup</strong>. If
-            under 24 hours, they must complete it on site at the security checkpoint.
+            Passengers should complete pre-registration at least{" "}
+            <strong>24 hours before pickup</strong>. If under 24 hours, they
+            must complete it on site at the security checkpoint.
           </Alert>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems="flex-start">
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={3}
+            alignItems="flex-start"
+          >
             {/* QR + actions */}
-            <Box ref={qrRef} sx={{ p: 2, border: "1px dashed", borderColor: "divider", borderRadius: 2 }}>
+            <Box
+              ref={qrRef}
+              sx={{
+                p: 2,
+                border: "1px dashed",
+                borderColor: "divider",
+                borderRadius: 2,
+              }}
+            >
               <QRCode value={FLW_URL} size={196} />
               <Stack direction="row" spacing={1} sx={{ mt: 1 }} useFlexGap>
-                <Button size="small" variant="outlined" startIcon={<OpenInNewIcon />} href={FLW_URL} target="_blank" rel="noopener noreferrer">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<OpenInNewIcon />}
+                  href={FLW_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Open Portal
                 </Button>
-                <Button size="small" variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCopyLink}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={handleCopyLink}
+                >
                   Copy Link
                 </Button>
-                <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadQR}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadQR}
+                >
                   Download QR
                 </Button>
               </Stack>
               <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
                 Portal:{" "}
-                <MUILink href={FLW_URL} target="_blank" rel="noopener noreferrer">
+                <MUILink
+                  href={FLW_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   pass.aie.army.mil/steps/installation_selection
                 </MUILink>
               </Typography>
@@ -217,47 +262,62 @@ export default function DriverInfoTab() {
                 Step-by-step (Pre-Registration)
               </Typography>
               <Box component="ol" sx={{ pl: 3, lineHeight: 1.7, m: 0 }}>
-                <li>Scan the QR code above (or open the portal link) and follow the prompts.</li>
                 <li>
-                  If shown, choose <strong>Army</strong> &rarr; <strong>Fort Leonard Wood</strong>.
+                  Scan the QR code above (or open the portal link) and follow
+                  the prompts.
                 </li>
                 <li>
-                  Complete the security check (<em>I’m not a robot</em>) and accept terms if prompted.
+                  If shown, choose <strong>Army</strong> &rarr;{" "}
+                  <strong>Fort Leonard Wood</strong>.
+                </li>
+                <li>
+                  Complete the security check (<em>I’m not a robot</em>) and
+                  accept terms if prompted.
                 </li>
                 <li>
                   Select <strong>Visitor Pass</strong> (not Special Event Pass).
                 </li>
                 <li>
-                  Enter Driver’s License #, select issuing state, and expiration date (mm/dd/yyyy).
+                  Enter Driver’s License #, select issuing state, and expiration
+                  date (mm/dd/yyyy).
                 </li>
                 <li>
                   Choose your <strong>Reason for Visit</strong>:
                   <Box component="ul" sx={{ pl: 3, mt: 0.5, mb: 0 }}>
                     <li>
-                      <strong>Visit service member</strong> — validated by guard at the Visitor Center.
+                      <strong>Visit service member</strong> — validated by guard
+                      at the Visitor Center.
                     </li>
                     <li>
-                      <strong>Airport</strong> — have your flight itinerary to show the guard.
+                      <strong>Airport</strong> — have your flight itinerary to
+                      show the guard.
                     </li>
                     <li>
                       <strong>Hotel stay</strong> — bring proof of reservation.
                     </li>
                     <li>
-                      <strong>Museum</strong> — hours: Mon–Fri 8am–4pm; Sat 9am–3pm; Sun closed.
+                      <strong>Museum</strong> — hours: Mon–Fri 8am–4pm; Sat
+                      9am–3pm; Sun closed.
                     </li>
                   </Box>
                 </li>
                 <li>
-                  Enter personal info: <strong>DOB, Name, Address, SSN, Mobile Phone</strong> (must accept SMS).
+                  Enter personal info:{" "}
+                  <strong>DOB, Name, Address, SSN, Mobile Phone</strong> (must
+                  accept SMS).
                 </li>
                 <li>
-                  Review and click <strong>Register</strong> to submit for NCIC background screening.
+                  Review and click <strong>Register</strong> to submit for NCIC
+                  background screening.
                 </li>
                 <li>
-                  You’ll see status as <em>pending review</em>. Allow up to <strong>24 hours</strong>. Updates arrive via SMS.
+                  You’ll see status as <em>pending review</em>. Allow up to{" "}
+                  <strong>24 hours</strong>. Updates arrive via SMS.
                 </li>
                 <li>
-                  When approved, proceed to the <strong>Visitor Center</strong> at the main gate with your approval text and proof for your selected reason.
+                  When approved, proceed to the <strong>Visitor Center</strong>{" "}
+                  at the main gate with your approval text and proof for your
+                  selected reason.
                 </li>
               </Box>
 
@@ -266,13 +326,16 @@ export default function DriverInfoTab() {
               </Typography>
               <Box component="ul" sx={{ pl: 3, m: 0, lineHeight: 1.7 }}>
                 <li>
-                  <strong>REAL ID or Passport</strong> (REAL ID will be scanned at checkpoint).
+                  <strong>REAL ID or Passport</strong> (REAL ID will be scanned
+                  at checkpoint).
                 </li>
                 <li>
                   <strong>Current vehicle registration</strong> paperwork.
                 </li>
                 <li>
-                  <strong>Current vehicle insurance</strong> paperwork. <em>Digital copies are not accepted</em>; bring printed/paper copies.
+                  <strong>Current vehicle insurance</strong> paperwork.{" "}
+                  <em>Digital copies are not accepted</em>; bring printed/paper
+                  copies.
                 </li>
               </Box>
             </Box>
@@ -291,7 +354,9 @@ export default function DriverInfoTab() {
       {/* Gate Codes Accordion with Search */}
       <Accordion sx={{ mt: 4 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight="bold">🔐 Gate Codes & Access Notes</Typography>
+          <Typography fontWeight="bold">
+            🔐 Gate Codes & Access Notes
+          </Typography>
         </AccordionSummary>
         <AccordionDetails>
           <ResponsiveScrollBox>

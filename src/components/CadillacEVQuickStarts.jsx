@@ -23,8 +23,14 @@ export default function CadillacEVQuickStarts() {
           ["Startup", "Brake + Start button; right-side electronic shifter."],
           ["Size & Weight", "Very heavy SUV – allow longer braking distances."],
           ["Turning", "4-Wheel Steer gives surprisingly tight U-turns."],
-          ["Ride Feel", "Air Ride/Mag Ride – let it settle before sharp moves."],
-          ["Passenger Tips", "Flat floor, wide doors; step-in height auto-lowers."],
+          [
+            "Ride Feel",
+            "Air Ride/Mag Ride – let it settle before sharp moves.",
+          ],
+          [
+            "Passenger Tips",
+            "Flat floor, wide doors; step-in height auto-lowers.",
+          ],
         ],
       },
       {
@@ -34,7 +40,10 @@ export default function CadillacEVQuickStarts() {
           ["Acceleration", "Instant – feather throttle for smoothness."],
           ["Regen", "One-Pedal can feel grabby – toggle off if unfamiliar."],
           ["Visibility", "Rear window small – use mirrors + cameras."],
-          ["Passenger Tips", "Tall riders: watch sloping roofline entering rear."],
+          [
+            "Passenger Tips",
+            "Tall riders: watch sloping roofline entering rear.",
+          ],
         ],
       },
       {
@@ -76,14 +85,17 @@ export default function CadillacEVQuickStarts() {
         name: "Universal Pro Tips",
         rows: [
           ["Smoothness", "Roll on throttle gently – instant torque otherwise."],
-          ["Braking", "Regen feels different – warn riders if using One-Pedal."],
+          [
+            "Braking",
+            "Regen feels different – warn riders if using One-Pedal.",
+          ],
           ["Silence", "Tell passengers before moving – they may not notice."],
           ["Climate", "Pre-set A/C/heat before loading for comfort."],
           ["Stops", "EVs creep less – apply light throttle to re-merge."],
         ],
       },
     ],
-    []
+    [],
   );
 
   return (
@@ -99,7 +111,9 @@ export default function CadillacEVQuickStarts() {
                 <TableBody>
                   {guide.rows.map(([label, desc], i) => (
                     <TableRow key={i} sx={{ verticalAlign: "top" }}>
-                      <TableCell sx={{ fontWeight: 500, width: "35%" }}>{label}</TableCell>
+                      <TableCell sx={{ fontWeight: 500, width: "35%" }}>
+                        {label}
+                      </TableCell>
                       <TableCell>{desc}</TableCell>
                     </TableRow>
                   ))}
@@ -113,4 +127,3 @@ export default function CadillacEVQuickStarts() {
     </Box>
   );
 }
-

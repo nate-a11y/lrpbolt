@@ -20,8 +20,17 @@ const base = {
 
 const buildPalette = (mode) => {
   const common = {
-    primary: { main: brand.green500, dark: brand.green700, light: brand.green400, contrastText: brand.black },
-    success: { main: brand.green500, dark: brand.green700, light: brand.green400 },
+    primary: {
+      main: brand.green500,
+      dark: brand.green700,
+      light: brand.green400,
+      contrastText: brand.black,
+    },
+    success: {
+      main: brand.green500,
+      dark: brand.green700,
+      light: brand.green400,
+    },
     warning: { main: "#f9a825" },
     error: { main: "#ef5350" },
     info: { main: "#64b5f6" },
@@ -31,7 +40,11 @@ const buildPalette = (mode) => {
     return {
       mode,
       ...common,
-      text: { primary: "#e8eaed", secondary: "#b0b7c3", disabled: alpha("#e8eaed", 0.38) },
+      text: {
+        primary: "#e8eaed",
+        secondary: "#b0b7c3",
+        disabled: alpha("#e8eaed", 0.38),
+      },
       background: { default: "#060606", paper: "#0b0b0b" },
       divider: alpha("#ffffff", 0.12),
     };
@@ -91,18 +104,29 @@ export const getDesignTokens = (mode) => ({
         containedPrimary: ({ theme }) => ({
           backgroundColor: theme.palette.primary.main,
           "&:hover": { backgroundColor: theme.palette.primary.dark },
-          "&:active": { boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.25)}` },
-          "&:focus-visible": { boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.35)}` },
+          "&:active": {
+            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.25)}`,
+          },
+          "&:focus-visible": {
+            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.35)}`,
+          },
         }),
         outlinedPrimary: ({ theme }) => ({
           borderColor: alpha(theme.palette.primary.main, 0.6),
-          "&:hover": { borderColor: theme.palette.primary.main, background: alpha(theme.palette.primary.main, 0.08) },
+          "&:hover": {
+            borderColor: theme.palette.primary.main,
+            background: alpha(theme.palette.primary.main, 0.08),
+          },
         }),
       },
     },
     MuiTabs: {
       styleOverrides: {
-        indicator: ({ theme }) => ({ backgroundColor: theme.palette.primary.main, height: 3, borderRadius: 3 }),
+        indicator: ({ theme }) => ({
+          backgroundColor: theme.palette.primary.main,
+          height: 3,
+          borderRadius: 3,
+        }),
       },
     },
     MuiChip: {
@@ -115,7 +139,10 @@ export const getDesignTokens = (mode) => ({
     },
     MuiTooltip: {
       styleOverrides: {
-        tooltip: { backgroundColor: "#1a1d20", border: `1px solid ${alpha("#e8eaed", 0.12)}` },
+        tooltip: {
+          backgroundColor: "#1a1d20",
+          border: `1px solid ${alpha("#e8eaed", 0.12)}`,
+        },
       },
     },
     MuiOutlinedInput: {
@@ -163,5 +190,5 @@ export const getDesignTokens = (mode) => ({
   },
 });
 
-export const buildTheme = (mode) => responsiveFontSizes(createTheme(getDesignTokens(mode)));
-
+export const buildTheme = (mode) =>
+  responsiveFontSizes(createTheme(getDesignTokens(mode)));

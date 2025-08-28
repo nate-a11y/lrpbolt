@@ -59,8 +59,7 @@ function NotificationsProvider({ children }) {
   useEffect(() => {
     if (import.meta.env.VITE_ENABLE_FCM !== "true") return undefined;
     return onForegroundMessageSafe((payload) => {
-      const title =
-        payload.notification?.title || "Notification";
+      const title = payload.notification?.title || "Notification";
       const body =
         payload.notification?.body ||
         payload.data?.message ||
@@ -80,8 +79,14 @@ function NotificationsProvider({ children }) {
         onClose={handleClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert onClose={handleClose} severity="info" variant="filled" sx={{ width: "100%" }}>
-          <strong>{current?.title}</strong>{current?.body ? ` — ${current.body}` : ""}
+        <Alert
+          onClose={handleClose}
+          severity="info"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          <strong>{current?.title}</strong>
+          {current?.body ? ` — ${current.body}` : ""}
         </Alert>
       </Snackbar>
     </NotificationsContext.Provider>

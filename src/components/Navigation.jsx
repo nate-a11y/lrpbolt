@@ -60,7 +60,9 @@ const makeActiveExpandedSX = (theme) => {
   return {
     borderLeft: `4px solid ${c}`,
     bgcolor:
-      theme.palette.mode === "dark" ? "rgba(76,187,23,0.18)" : "rgba(76,187,23,0.12)",
+      theme.palette.mode === "dark"
+        ? "rgba(76,187,23,0.18)"
+        : "rgba(76,187,23,0.12)",
     "& .MuiListItemIcon-root": { color: c },
     fontWeight: 700,
   };
@@ -78,7 +80,9 @@ const makeActiveCollapsedSX = (theme) => {
       inset: 6,
       borderRadius: 12,
       backgroundColor:
-        theme.palette.mode === "dark" ? "rgba(76,187,23,0.18)" : "rgba(76,187,23,0.12)",
+        theme.palette.mode === "dark"
+          ? "rgba(76,187,23,0.18)"
+          : "rgba(76,187,23,0.12)",
       zIndex: -1,
     },
   };
@@ -87,21 +91,49 @@ const makeActiveCollapsedSX = (theme) => {
 const ALL_NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
   { label: "Time Clock", icon: <AccessTimeIcon />, path: "/clock" },
-  { label: "Shootout Ride & Time Tracker", icon: <AirportShuttleIcon />, path: "/shootout" },
+  {
+    label: "Shootout Ride & Time Tracker",
+    icon: <AirportShuttleIcon />,
+    path: "/shootout",
+  },
   { label: "Drop-Off Info", icon: <InfoIcon />, path: "/info" },
   { label: "Vehicle Tips", icon: <DirectionsCarIcon />, path: "/drop-guides" },
   { label: "Driver Directory", icon: <PeopleIcon />, path: "/directory" },
   { label: "Calendar / Moovs", icon: <CalendarMonthIcon />, path: "/calendar" },
   { label: "Escalation Guide", icon: <WarningIcon />, path: "/escalation" },
-  { label: "Ride & Vehicle Calendar", icon: <EventAvailableIcon />, path: "/vehicle-calendar" },
+  {
+    label: "Ride & Vehicle Calendar",
+    icon: <EventAvailableIcon />,
+    path: "/vehicle-calendar",
+  },
   { label: "Ticket Scanner", icon: <CropFreeIcon />, path: "/scan" },
   { label: "Tickets", icon: <ConfirmationNumberIcon />, path: "/tickets" },
 
   // Admin-only
-  { label: "Admin Logs", icon: <AdminPanelSettingsIcon />, path: "/admin-time-log", admin: true },
-  { label: "User Manager", icon: <ManageAccountsIcon />, path: "/admin-user-manager", admin: true },
-  { label: "Add Ride", icon: <AddCircleOutlineIcon />, path: "/ride-entry", admin: true },
-  { label: "Generate Ticket", icon: <AppShortcutIcon />, path: "/generate-ticket", admin: true },
+  {
+    label: "Admin Logs",
+    icon: <AdminPanelSettingsIcon />,
+    path: "/admin-time-log",
+    admin: true,
+  },
+  {
+    label: "User Manager",
+    icon: <ManageAccountsIcon />,
+    path: "/admin-user-manager",
+    admin: true,
+  },
+  {
+    label: "Add Ride",
+    icon: <AddCircleOutlineIcon />,
+    path: "/ride-entry",
+    admin: true,
+  },
+  {
+    label: "Generate Ticket",
+    icon: <AppShortcutIcon />,
+    path: "/generate-ticket",
+    admin: true,
+  },
 ];
 
 export default function Navigation({ onChangeDriver, onSignOut }) {
@@ -110,7 +142,11 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   const isAdmin = role === "admin";
   const selectedDriver = driver?.name || "";
   const { mode, toggle } = useColorMode();
-  const { enableFcm, supported: fcmSupported, token: fcmToken } = useFcmEnable();
+  const {
+    enableFcm,
+    supported: fcmSupported,
+    token: fcmToken,
+  } = useFcmEnable();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -148,7 +184,11 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   useEffect(() => {
     if (isMobile) return;
     const onKey = (e) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
       if (e.key === "[") setCollapsed(true);
       if (e.key === "]") setCollapsed(false);
     };
@@ -156,7 +196,10 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isMobile]);
 
-  const items = useMemo(() => ALL_NAV_ITEMS.filter((it) => !it.admin || isAdmin), [isAdmin]);
+  const items = useMemo(
+    () => ALL_NAV_ITEMS.filter((it) => !it.admin || isAdmin),
+    [isAdmin],
+  );
 
   // Determine label of currently active route
   const activeLabel = useMemo(
@@ -165,15 +208,22 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   );
 
   const activeSXExpanded = useMemo(() => makeActiveExpandedSX(theme), [theme]);
-  const activeSXCollapsed = useMemo(() => makeActiveCollapsedSX(theme), [theme]);
+  const activeSXCollapsed = useMemo(
+    () => makeActiveCollapsedSX(theme),
+    [theme],
+  );
 
   const isActivePath = useCallback(
     (to) => location.pathname === to || location.pathname.startsWith(`${to}/`),
-    [location.pathname]
+    [location.pathname],
   );
 
   // Drawer width depends on mode
-  const effectiveDrawerWidth = isMobile ? 0 : (collapsed ? MINI_WIDTH : DRAWER_WIDTH);
+  const effectiveDrawerWidth = isMobile
+    ? 0
+    : collapsed
+      ? MINI_WIDTH
+      : DRAWER_WIDTH;
 
   const DrawerHeader = (
     <Box
@@ -242,7 +292,8 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
         if (isMobile) setMobileOpen(false);
       }}
       onKeyDown={(e) => {
-        if (isMobile && (e.key === "Escape" || e.key === "Enter")) setMobileOpen(false);
+        if (isMobile && (e.key === "Escape" || e.key === "Enter"))
+          setMobileOpen(false);
       }}
     >
       {DrawerHeader}
@@ -263,7 +314,11 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                 px: collapsed ? 1 : 2,
                 justifyContent: collapsed ? "center" : "flex-start",
                 transition: prefersNoMotion ? "none" : "padding 200ms ease",
-                ...(active ? (collapsed ? activeSXCollapsed : activeSXExpanded) : null),
+                ...(active
+                  ? collapsed
+                    ? activeSXCollapsed
+                    : activeSXExpanded
+                  : null),
               }}
             >
               <ListItemIcon
@@ -335,7 +390,10 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                 }
               />
             ) : (
-              <Tooltip title={`Driver: ${selectedDriver || "—"}`} placement="right">
+              <Tooltip
+                title={`Driver: ${selectedDriver || "—"}`}
+                placement="right"
+              >
                 <Avatar
                   sx={{
                     width: 28,
@@ -448,15 +506,30 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
           ml: { sm: `${effectiveDrawerWidth}px` },
           borderBottom: (t) => `1px solid ${t.palette.divider}`,
           bgcolor: (t) =>
-            t.palette.mode === "dark" ? t.palette.background.default : t.palette.background.paper,
-          transition: prefersNoMotion ? "none" : "margin-left 200ms ease, width 200ms ease",
+            t.palette.mode === "dark"
+              ? t.palette.background.default
+              : t.palette.background.paper,
+          transition: prefersNoMotion
+            ? "none"
+            : "margin-left 200ms ease, width 200ms ease",
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between", gap: 2 }}>
-          <Box display="flex" alignItems="center" gap={1.5} minWidth={0} flexGrow={1}>
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={1.5}
+            minWidth={0}
+            flexGrow={1}
+          >
             {isMobile ? (
               <Tooltip title="Menu">
-                <IconButton edge="start" onClick={openMobile} size="large" aria-label="Open menu">
+                <IconButton
+                  edge="start"
+                  onClick={openMobile}
+                  size="large"
+                  aria-label="Open menu"
+                >
                   <MenuIcon />
                 </IconButton>
               </Tooltip>
@@ -466,7 +539,9 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                   edge="start"
                   onClick={() => setCollapsed((v) => !v)}
                   size="large"
-                  aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+                  aria-label={
+                    collapsed ? "Expand navigation" : "Collapse navigation"
+                  }
                 >
                   {collapsed ? <MenuOpenIcon /> : <MenuIcon />}
                 </IconButton>
@@ -490,7 +565,9 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
               noWrap
               sx={{ lineHeight: 1.1 }}
             >
-              {isMobile ? activeLabel || "LRP Driver Portal" : "Lake Ride Pros: Driver Portal"}
+              {isMobile
+                ? activeLabel || "LRP Driver Portal"
+                : "Lake Ride Pros: Driver Portal"}
             </Typography>
           </Box>
 
@@ -509,7 +586,12 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                   </Box>
                 </Tooltip>
 
-                <Typography variant="body2" noWrap maxWidth={240} title={selectedDriver || "—"}>
+                <Typography
+                  variant="body2"
+                  noWrap
+                  maxWidth={240}
+                  title={selectedDriver || "—"}
+                >
                   <strong>Driver:</strong> {selectedDriver || "—"}
                 </Typography>
 
@@ -540,7 +622,11 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
               </Tooltip>
             )}
 
-            <IconButton id="user-menu-btn" onClick={userMenu.handleOpen} size="small">
+            <IconButton
+              id="user-menu-btn"
+              onClick={userMenu.handleOpen}
+              size="small"
+            >
               <PersonIcon />
             </IconButton>
             <Menu

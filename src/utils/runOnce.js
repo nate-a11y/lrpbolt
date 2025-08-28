@@ -6,4 +6,3 @@ export function runOnce(key, fn) {
   RUN_MAP.add(key);
   fn();
 }
-

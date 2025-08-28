@@ -21,7 +21,6 @@ import {
   Typography,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
-// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import "./index.css";
@@ -67,7 +66,9 @@ const TimeClock = lazy(() => import("./components/TimeClock"));
 const AdminTimeLog = lazy(() => import("./components/AdminTimeLog"));
 const AdminUserManager = lazy(() => import("./components/AdminUserManager"));
 const RideEntryForm = lazy(() => import("./components/RideEntryForm"));
-const NotificationsCenter = lazy(() => import("./pages/Admin/NotificationsCenter.jsx"));
+const NotificationsCenter = lazy(
+  () => import("./pages/Admin/NotificationsCenter.jsx"),
+);
 const ProfilePage = lazy(() => import("./pages/Profile/Settings.jsx"));
 const RideVehicleCalendar = lazy(
   () => import("./components/RideVehicleCalendar"),
@@ -103,7 +104,7 @@ function App() {
   useEffect(() => {
     if (!user) return;
     ensureFcmToken(user).catch((e) =>
-      console.warn("[LRP] ensureFcmToken:", e?.message || e)
+      console.warn("[LRP] ensureFcmToken:", e?.message || e),
     );
   }, [user]);
   const { enqueue } = useToast();
@@ -124,7 +125,9 @@ function App() {
     showOffline,
     retry: retryConnection,
     dismiss: dismissOffline,
-  } = useNetworkStatus(() => enqueue("✅ Reconnected", { severity: "success" }));
+  } = useNetworkStatus(() =>
+    enqueue("✅ Reconnected", { severity: "success" }),
+  );
 
   const openChangeDriver = useCallback(() => setChangeDriverOpen(true), []);
   const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
@@ -196,15 +199,15 @@ function App() {
           <Button
             color="inherit"
             size="small"
-              onClick={() => {
-                try {
-                  reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
-                } catch (e) {
-                  void e; // ignore
-                }
-                window.location.reload();
-              }}
-            >
+            onClick={() => {
+              try {
+                reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
+              } catch (e) {
+                void e; // ignore
+              }
+              window.location.reload();
+            }}
+          >
             Reload
           </Button>
         ),
@@ -248,170 +251,161 @@ function App() {
     );
   }
 
-    return (
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <InstallBanner />
-        <AppShell onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
-          <Suspense fallback={<LinearProgress aria-label="Loading" />}>
-            <Routes>
-                  <Route path="/" element={<Navigate to="/rides" replace />} />
-                  <Route
-                    path="/rides"
-                    element={
-                      <RideClaimTab
-                        driver={selectedDriver}
-                        isAdmin={isAdmin}
-                        isLockedOut={!isAdmin && isLockedOut}
-                      />
-                    }
-                  />
-                  <Route path="/__/auth/iframe" element={<div />} />
-                  <Route
-                    path="/clock"
-                    element={
-                      <TimeClock driver={selectedDriver} setIsTracking={noop} />
-                    }
-                  />
-                  <Route path="/shootout" element={<ShootoutTab />} />
-                  <Route path="/scan" element={<TicketScanner />} />
-                  <Route path="/info" element={<DriverInfoTab />} />
-                  <Route path="/drop-guides" element={<VehicleDropGuides />} />
-                  <Route path="/directory" element={<DriverDirectory />} />
-                  <Route path="/calendar" element={<CalendarUpdateTab />} />
-                  <Route path="/escalation" element={<ContactEscalation />} />
-                  <Route
-                    path="/vehicle-calendar"
-                    element={<RideVehicleCalendar />}
-                  />
-                  <Route path="/settings" element={<ProfilePage />} />
-                  <Route
-                    path="/admin-time-log"
-                    element={
-                      isAdmin ? (
-                        <AdminTimeLog driver={selectedDriver} />
-                      ) : (
-                        <Navigate to="/" />
-                      )
-                    }
-                  />
-                  <Route
-                    path="/admin-user-manager"
-                    element={
-                      isAdmin ? <AdminUserManager /> : <Navigate to="/" />
-                    }
-                  />
-                  <Route
-                    path="/admin/notifications"
-                    element={
-                      isAdmin ? <NotificationsCenter /> : <Navigate to="/" />
-                    }
-                  />
-                  <Route
-                    path="/ride-entry"
-                    element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
-                  />
-                  <Route path="/tickets" element={<Tickets />} />
-                  <Route
-                    path="/generate-ticket"
-                    element={
-                      isAdmin ? <TicketGenerator /> : <Navigate to="/" />
-                    }
-                  />
-                  <Route path="/ticket/:ticketId" element={<TicketViewer />} />
-                  <Route
-                    path="*"
-                    element={
-                      <Typography
-                        sx={{ mt: 6, textAlign: "center", color: "error.main" }}
-                      >
-                        🚧 404 — Page Not Found
-                      </Typography>
-                    }
-                  />
-                </Routes>
-            </Suspense>
-
-            {isAdmin && (
-              <ChangeDriverModal
-                open={changeDriverOpen}
-                onClose={closeChangeDriver}
-              />
-            )}
-
-            <OfflineNotice
-              open={showOffline}
-              onRetry={retryConnection}
-              onClose={dismissOffline}
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <InstallBanner />
+      <AppShell onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
+        <Suspense fallback={<LinearProgress aria-label="Loading" />}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/rides" replace />} />
+            <Route
+              path="/rides"
+              element={
+                <RideClaimTab
+                  driver={selectedDriver}
+                  isAdmin={isAdmin}
+                  isLockedOut={!isAdmin && isLockedOut}
+                />
+              }
             />
-            <PhoneNumberPrompt
-              open={phonePromptOpen}
-              email={user.email}
-              onClose={() => setPhonePromptOpen(false)}
+            <Route path="/__/auth/iframe" element={<div />} />
+            <Route
+              path="/clock"
+              element={
+                <TimeClock driver={selectedDriver} setIsTracking={noop} />
+              }
             />
-            <NotificationsOptInDialog user={user} />
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
-            >
-              <Box
-                sx={{
-                  mt: 6,
-                  py: 3,
-                  px: 3,
-                  borderTop: "2px dashed",
-                  borderColor: "primary.main",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 2,
-                  fontSize: "0.9rem",
-                  color: "text.secondary",
-                  backgroundColor: (theme) =>
-                    theme.palette.mode === "dark" ? "#111" : "#f4fff4",
-                  textAlign: "center",
-                }}
-              >
+            <Route path="/shootout" element={<ShootoutTab />} />
+            <Route path="/scan" element={<TicketScanner />} />
+            <Route path="/info" element={<DriverInfoTab />} />
+            <Route path="/drop-guides" element={<VehicleDropGuides />} />
+            <Route path="/directory" element={<DriverDirectory />} />
+            <Route path="/calendar" element={<CalendarUpdateTab />} />
+            <Route path="/escalation" element={<ContactEscalation />} />
+            <Route path="/vehicle-calendar" element={<RideVehicleCalendar />} />
+            <Route path="/settings" element={<ProfilePage />} />
+            <Route
+              path="/admin-time-log"
+              element={
+                isAdmin ? (
+                  <AdminTimeLog driver={selectedDriver} />
+                ) : (
+                  <Navigate to="/" />
+                )
+              }
+            />
+            <Route
+              path="/admin-user-manager"
+              element={isAdmin ? <AdminUserManager /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/admin/notifications"
+              element={isAdmin ? <NotificationsCenter /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/ride-entry"
+              element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
+            />
+            <Route path="/tickets" element={<Tickets />} />
+            <Route
+              path="/generate-ticket"
+              element={isAdmin ? <TicketGenerator /> : <Navigate to="/" />}
+            />
+            <Route path="/ticket/:ticketId" element={<TicketViewer />} />
+            <Route
+              path="*"
+              element={
                 <Typography
-                  variant="caption"
-                  sx={{
-                    color: "success.main",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
+                  sx={{ mt: 6, textAlign: "center", color: "error.main" }}
                 >
-                  🚀 Version:{" "}
-                  <span style={{ fontFamily: "monospace" }}>
-                    v{APP_VERSION || "dev"}
-                  </span>{" "}
-                  • Lake Ride Pros © {new Date().getFullYear()}
+                  🚧 404 — Page Not Found
                 </Typography>
+              }
+            />
+          </Routes>
+        </Suspense>
 
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  sx={{
-                    fontWeight: "bold",
-                    borderWidth: 2,
-                    "&:hover": {
-                      backgroundColor: "error.main",
-                      color: "common.white",
-                    },
-                  }}
-                  onClick={handleClearCache}
-                >
-                  🧹 CLEAR CACHE & RELOAD
-                </Button>
-              </Box>
-            </motion.div>
-          </AppShell>
-        </LocalizationProvider>
-    );
+        {isAdmin && (
+          <ChangeDriverModal
+            open={changeDriverOpen}
+            onClose={closeChangeDriver}
+          />
+        )}
+
+        <OfflineNotice
+          open={showOffline}
+          onRetry={retryConnection}
+          onClose={dismissOffline}
+        />
+        <PhoneNumberPrompt
+          open={phonePromptOpen}
+          email={user.email}
+          onClose={() => setPhonePromptOpen(false)}
+        />
+        <NotificationsOptInDialog user={user} />
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+        >
+          <Box
+            sx={{
+              mt: 6,
+              py: 3,
+              px: 3,
+              borderTop: "2px dashed",
+              borderColor: "primary.main",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 2,
+              fontSize: "0.9rem",
+              color: "text.secondary",
+              backgroundColor: (theme) =>
+                theme.palette.mode === "dark" ? "#111" : "#f4fff4",
+              textAlign: "center",
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                color: "success.main",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              🚀 Version:{" "}
+              <span style={{ fontFamily: "monospace" }}>
+                v{APP_VERSION || "dev"}
+              </span>{" "}
+              • Lake Ride Pros © {new Date().getFullYear()}
+            </Typography>
+
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              sx={{
+                fontWeight: "bold",
+                borderWidth: 2,
+                "&:hover": {
+                  backgroundColor: "error.main",
+                  color: "common.white",
+                },
+              }}
+              onClick={handleClearCache}
+            >
+              🧹 CLEAR CACHE & RELOAD
+            </Button>
+          </Box>
+        </motion.div>
+      </AppShell>
+    </LocalizationProvider>
+  );
 }
 
 export default App;

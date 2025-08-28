@@ -23,7 +23,12 @@ import { useDriver } from "../context/DriverContext.jsx";
 import { useColorMode } from "../context/ColorModeContext.jsx";
 import { canSeeNav } from "../utils/roleGuards";
 
-function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }) {
+function MainNav({
+  variant = "permanent",
+  open = true,
+  onClose,
+  onChangeDriver,
+}) {
   const { user, role } = useAuth();
   const { driverName, logout: signOut } = useDriver?.() || {};
   const { mode, toggle } = useColorMode();
@@ -49,7 +54,8 @@ function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }
     },
   };
 
-  const DrawerProps = variant === "temporary" ? { ModalProps: { keepMounted: true } } : {};
+  const DrawerProps =
+    variant === "temporary" ? { ModalProps: { keepMounted: true } } : {};
 
   const handleItemClick = () => {
     if (variant === "temporary" && onClose) onClose();
@@ -70,7 +76,11 @@ function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }
               to={to}
               onClick={handleItemClick}
               selected={selected}
-              sx={{ "&.active, &.Mui-selected": { bgcolor: (t) => t.palette.action.selected } }}
+              sx={{
+                "&.active, &.Mui-selected": {
+                  bgcolor: (t) => t.palette.action.selected,
+                },
+              }}
               end
             >
               <ListItemIcon>
@@ -91,7 +101,10 @@ function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
               Driver:
             </Typography>
-            <Chip size="small" label={driverName || user?.displayName || "Unknown"} />
+            <Chip
+              size="small"
+              label={driverName || user?.displayName || "Unknown"}
+            />
             {role === "admin" && (
               <Chip size="small" color="success" label="Admin" />
             )}
@@ -119,7 +132,13 @@ function MainNav({ variant = "permanent", open = true, onClose, onChangeDriver }
   );
 
   return (
-    <Drawer variant={variant} open={open} onClose={onClose} sx={drawerSx} {...DrawerProps}>
+    <Drawer
+      variant={variant}
+      open={open}
+      onClose={onClose}
+      sx={drawerSx}
+      {...DrawerProps}
+    >
       {drawerContent}
     </Drawer>
   );

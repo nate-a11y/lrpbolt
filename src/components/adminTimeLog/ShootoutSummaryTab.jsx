@@ -17,7 +17,10 @@ export default function ShootoutSummaryTab() {
           const key = `${s.driverEmail || ""}|${s.vehicle || ""}`;
           const start = s.startTime;
           const end = s.endTime;
-          const mins = start && end ? Math.round((end.toDate() - start.toDate()) / 60000) : 0;
+          const mins =
+            start && end
+              ? Math.round((end.toDate() - start.toDate()) / 60000)
+              : 0;
           const prev = map.get(key) || {
             id: key,
             driverEmail: s.driverEmail || "",
@@ -31,11 +34,14 @@ export default function ShootoutSummaryTab() {
             lastEnd: null,
           };
           const firstStart =
-            !prev.firstStart || (start && start.seconds < prev.firstStart.seconds)
+            !prev.firstStart ||
+            (start && start.seconds < prev.firstStart.seconds)
               ? start
               : prev.firstStart;
           const lastEnd =
-            !prev.lastEnd || (end && end.seconds > prev.lastEnd.seconds) ? end : prev.lastEnd;
+            !prev.lastEnd || (end && end.seconds > prev.lastEnd.seconds)
+              ? end
+              : prev.lastEnd;
           const totalMinutes = prev.totalMinutes + mins;
           map.set(key, {
             id: key,
@@ -62,36 +68,36 @@ export default function ShootoutSummaryTab() {
 
   return (
     <ResponsiveScrollBox>
-    <SmartAutoGrid
-      rows={rows}
-      headerMap={{
-        driver: "Driver",
-        driverEmail: "Driver Email",
-        vehicle: "Vehicle",
-        sessions: "Sessions",
-        trips: "Trips",
-        passengers: "PAX",
-        totalMinutes: "Minutes",
-        hours: "Hours",
-        firstStart: "First Start",
-        lastEnd: "Last End",
-        id: "id",
-      }}
-      order={[
-        "driver",
-        "driverEmail",
-        "vehicle",
-        "sessions",
-        "trips",
-        "passengers",
-        "totalMinutes",
-        "hours",
-        "firstStart",
-        "lastEnd",
-        "id",
-      ]}
-      forceHide={["id"]}
-    />
+      <SmartAutoGrid
+        rows={rows}
+        headerMap={{
+          driver: "Driver",
+          driverEmail: "Driver Email",
+          vehicle: "Vehicle",
+          sessions: "Sessions",
+          trips: "Trips",
+          passengers: "PAX",
+          totalMinutes: "Minutes",
+          hours: "Hours",
+          firstStart: "First Start",
+          lastEnd: "Last End",
+          id: "id",
+        }}
+        order={[
+          "driver",
+          "driverEmail",
+          "vehicle",
+          "sessions",
+          "trips",
+          "passengers",
+          "totalMinutes",
+          "hours",
+          "firstStart",
+          "lastEnd",
+          "id",
+        ]}
+        forceHide={["id"]}
+      />
     </ResponsiveScrollBox>
   );
 }

@@ -30,7 +30,7 @@ export default function DriverSelect({
       (err) => {
         console.error("[DriverSelect] Error in subscription:", err);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -45,9 +45,7 @@ export default function DriverSelect({
       isOptionEqualToValue={(opt, val) => opt?.id === val?.id}
       loading={loading}
       disabled={disabled}
-      noOptionsText={
-        loading ? "Loading drivers..." : "No drivers found"
-      }
+      noOptionsText={loading ? "Loading drivers..." : "No drivers found"}
       renderOption={(props, option) => (
         <li {...props}>
           {option.name} ({option.email})

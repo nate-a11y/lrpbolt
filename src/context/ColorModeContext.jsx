@@ -11,11 +11,16 @@ import { ThemeProvider, CssBaseline, useMediaQuery } from "@mui/material";
 
 import { buildTheme } from "../theme";
 
-export const ColorModeContext = createContext({ mode: "dark", toggle: () => {} });
+export const ColorModeContext = createContext({
+  mode: "dark",
+  toggle: () => {},
+});
 export const useColorMode = () => useContext(ColorModeContext);
 
 export default function ColorModeProvider({ children }) {
-  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)", { defaultMatches: true });
+  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)", {
+    defaultMatches: true,
+  });
 
   const [mode, setMode] = useState(() => {
     if (typeof window === "undefined") return "dark";

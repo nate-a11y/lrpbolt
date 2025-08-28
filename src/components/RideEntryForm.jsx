@@ -35,7 +35,6 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
-// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
@@ -56,7 +55,7 @@ import { vfText } from "@/utils/vf";
 import { db } from "src/utils/firebaseInit";
 
 import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
-import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe";  
+import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe";
 import logError from "../utils/logError.js";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
@@ -91,8 +90,6 @@ const defaultValues = {
   RideNotes: "",
 };
 
-
-
 const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/;
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const expectedCsvCols = [
@@ -107,16 +104,40 @@ const expectedCsvCols = [
 ];
 
 /* ------------------ Reusable builder (chips) ------------------ */
-function ChipSelect({ label, options, value, onChange, disabled, required=false, error=false }) {
-  const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+function ChipSelect({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  required = false,
+  error = false,
+}) {
+  const normalized = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
   const showError = required && error && !value;
 
   return (
     <Box>
-      <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", mb: 0.5, display: "block" }}>
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          textTransform: "uppercase",
+          mb: 0.5,
+          display: "block",
+        }}
+      >
         {label}
       </Typography>
-      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        flexWrap="wrap"
+        alignItems="center"
+      >
         {normalized.map((opt) => {
           const selected = value === opt.value;
           return (
@@ -124,7 +145,7 @@ function ChipSelect({ label, options, value, onChange, disabled, required=false,
               key={opt.value}
               label={opt.label}
               clickable
-              color={selected ? "primary" : (showError ? "error" : "default")}
+              color={selected ? "primary" : showError ? "error" : "default"}
               variant={selected ? "filled" : "outlined"}
               onClick={() => !disabled && onChange(opt.value)}
               disabled={disabled}
@@ -133,7 +154,11 @@ function ChipSelect({ label, options, value, onChange, disabled, required=false,
           );
         })}
       </Stack>
-      {showError && <FormHelperText error sx={{ mt: 0.5 }}>Required</FormHelperText>}
+      {showError && (
+        <FormHelperText error sx={{ mt: 0.5 }}>
+          Required
+        </FormHelperText>
+      )}
     </Box>
   );
 }
@@ -149,7 +174,8 @@ function RideBuilderFields({
   const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
-  const tripIdError = !!value.tripId && !/^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(value.tripId);
+  const tripIdError =
+    !!value.tripId && !/^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(value.tripId);
 
   // coerce numbers but allow "" for controlled inputs
   const hours = value.hours === "" ? "" : Number(value.hours);
@@ -171,12 +197,15 @@ function RideBuilderFields({
           label="Trip ID"
           value={value.tripId || ""}
           onBlur={mark("tripId")}
-          onChange={(e) => onChange({ ...value, tripId: e.target.value.toUpperCase() })}
+          onChange={(e) =>
+            onChange({ ...value, tripId: e.target.value.toUpperCase() })
+          }
           placeholder="e.g., 6K5G-RS"
           disabled={disableTripId}
           error={touched.tripId && (!!tripIdError || !value.tripId)}
           helperText={
-            touched.tripId && (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
+            touched.tripId &&
+            (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
           }
         />
       </Grid2>
@@ -200,10 +229,12 @@ function RideBuilderFields({
               ...FIELD_PROPS,
               onBlur: () => {
                 mark("pickupAt")();
-                if (value.pickupAt && !value.pickupAt.isValid()) onChange({ ...value, pickupAt: null });
+                if (value.pickupAt && !value.pickupAt.isValid())
+                  onChange({ ...value, pickupAt: null });
               },
               error: touched.pickupAt && !value.pickupAt,
-              helperText: touched.pickupAt && !value.pickupAt ? "Required" : " ",
+              helperText:
+                touched.pickupAt && !value.pickupAt ? "Required" : " ",
               placeholder: "MM/DD/YYYY hh:mm A",
             },
           }}
@@ -217,7 +248,10 @@ function RideBuilderFields({
           value={hours}
           onBlur={mark("hours")}
           onChange={(e) => {
-            const v = e.target.value === "" ? "" : Math.min(24, Math.max(0, Number(e.target.value)));
+            const v =
+              e.target.value === ""
+                ? ""
+                : Math.min(24, Math.max(0, Number(e.target.value)));
             onChange({ ...value, hours: v });
           }}
           helperText={touched.hours && (hours === "" ? "Required" : " ")}
@@ -232,11 +266,16 @@ function RideBuilderFields({
           value={minutes}
           onBlur={mark("minutes")}
           onChange={(e) => {
-            const v = e.target.value === "" ? "" : Math.min(59, Math.max(0, Number(e.target.value)));
+            const v =
+              e.target.value === ""
+                ? ""
+                : Math.min(59, Math.max(0, Number(e.target.value)));
             onChange({ ...value, minutes: v });
           }}
           helperText={touched.minutes && (minutes === "" ? "Required" : " ")}
-          error={touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)}
+          error={
+            touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)
+          }
         />
       </Grid2>
 
@@ -296,13 +335,13 @@ export default function RideEntryForm() {
     }
   });
   const [pickupAt, setPickupAt] = useState(() =>
-    formData.PickupAt ? dayjs(formData.PickupAt) : null
+    formData.PickupAt ? dayjs(formData.PickupAt) : null,
   );
   const [durationHours, setDurationHours] = useState(
-    formData.DurationHours === "" ? 0 : Number(formData.DurationHours)
+    formData.DurationHours === "" ? 0 : Number(formData.DurationHours),
   );
   const [durationMinutes, setDurationMinutes] = useState(
-    formData.DurationMinutes === "" ? 0 : Number(formData.DurationMinutes)
+    formData.DurationMinutes === "" ? 0 : Number(formData.DurationMinutes),
   );
   const [saving, setSaving] = useState(false);
 
@@ -317,16 +356,24 @@ export default function RideEntryForm() {
   const [fileError, setFileError] = useState("");
 
   // UI state
-  const [formToast, setFormToast] = useState({ open: false, message: "", severity: "success" });
-  const [rideTab, setRideTab] = useState(() => Number(localStorage.getItem("rideTab") || 0));
-  const [dataTab, setDataTab] = useState(() => Number(localStorage.getItem("dataTab") || 0));
+  const [formToast, setFormToast] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [rideTab, setRideTab] = useState(() =>
+    Number(localStorage.getItem("rideTab") || 0),
+  );
+  const [dataTab, setDataTab] = useState(() =>
+    Number(localStorage.getItem("dataTab") || 0),
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [dropOpen, setDropOpen] = useState(
-    () => localStorage.getItem("dropDailyOpen") === "true"
-    );
-  
+    () => localStorage.getItem("dropDailyOpen") === "true",
+  );
+
   const isMobile = useMediaQuery("(max-width:600px)");
   const { user, authLoading } = useAuth();
   const currentUser = user?.email || "Unknown";
@@ -336,12 +383,20 @@ export default function RideEntryForm() {
 
   // Admin-only daily drop callable
   const [dropping, setDropping] = useState(false);
-  const [toast, setToast] = useState({ open: false, msg: "", severity: "success" });
+  const [toast, setToast] = useState({
+    open: false,
+    msg: "",
+    severity: "success",
+  });
   const { driver } = useDriver();
   const isAdmin = (driver?.access || "").toLowerCase() === "admin";
 
   if (import.meta.env.DEV) {
-    pickupAt && console.debug("[RideEntryForm] pickup", pickupAt.format("YYYY-MM-DD HH:mm"));
+    pickupAt &&
+      console.debug(
+        "[RideEntryForm] pickup",
+        pickupAt.format("YYYY-MM-DD HH:mm"),
+      );
   }
 
   // Dropzone
@@ -363,7 +418,7 @@ export default function RideEntryForm() {
             skipEmptyLines: true,
             complete: (results) => {
               const missing = expectedCsvCols.filter(
-                (c) => !results.meta.fields?.includes(c)
+                (c) => !results.meta.fields?.includes(c),
               );
               if (missing.length) {
                 setFormToast({
@@ -380,7 +435,7 @@ export default function RideEntryForm() {
         };
         reader.readAsText(file);
       },
-      [setFormToast]
+      [setFormToast],
     ),
   });
 
@@ -415,18 +470,18 @@ export default function RideEntryForm() {
       errors.PickupTime = true;
     }
 
-// Duration — must be >=0 and total > 0
-const hours = isNaN(+data.DurationHours) ? 0 : +data.DurationHours;
-const minutes = isNaN(+data.DurationMinutes) ? 0 : +data.DurationMinutes;
+    // Duration — must be >=0 and total > 0
+    const hours = isNaN(+data.DurationHours) ? 0 : +data.DurationHours;
+    const minutes = isNaN(+data.DurationMinutes) ? 0 : +data.DurationMinutes;
 
-if (hours < 0) errors.DurationHours = true;
-if (minutes < 0 || minutes >= 60) errors.DurationMinutes = true;
+    if (hours < 0) errors.DurationHours = true;
+    if (minutes < 0 || minutes >= 60) errors.DurationMinutes = true;
 
-const totalMinutes = hours * 60 + minutes;
-if (totalMinutes <= 0) {
-  errors.DurationHours = true;
-  errors.DurationMinutes = true;
-}
+    const totalMinutes = hours * 60 + minutes;
+    if (totalMinutes <= 0) {
+      errors.DurationHours = true;
+      errors.DurationMinutes = true;
+    }
 
     if (setErrors) setErrors(errors);
     else if (!skipRef) errorFields.current = errors;
@@ -481,11 +536,9 @@ if (totalMinutes <= 0) {
         Number(clean.DurationMinutes || 0);
 
       const pickupTimestamp = Timestamp.fromDate(
-        dayjs.tz(
-          `${clean.Date} ${clean.PickupTime}`,
-          "YYYY-MM-DD HH:mm",
-          TIMEZONE
-        ).toDate()
+        dayjs
+          .tz(`${clean.Date} ${clean.PickupTime}`, "YYYY-MM-DD HH:mm", TIMEZONE)
+          .toDate(),
       );
 
       return {
@@ -503,31 +556,37 @@ if (totalMinutes <= 0) {
         updatedAt: serverTimestamp(),
       };
     },
-    [validateFields, currentUser]
+    [validateFields, currentUser],
   );
 
   // --- Duplicate guards: reject if tripId exists in Queue or Live ---
-  const tripExistsInQueue = useCallback(async (tripId) => {
-    if (authLoading || !user) return false;
-    const qy = query(
-      collection(db, COLLECTIONS.RIDE_QUEUE),
-      where("tripId", "==", tripId),
-      limit(1)
-    );
-    const snap = await getDocs(qy);
-    return !snap.empty;
-  }, [authLoading, user]);
+  const tripExistsInQueue = useCallback(
+    async (tripId) => {
+      if (authLoading || !user) return false;
+      const qy = query(
+        collection(db, COLLECTIONS.RIDE_QUEUE),
+        where("tripId", "==", tripId),
+        limit(1),
+      );
+      const snap = await getDocs(qy);
+      return !snap.empty;
+    },
+    [authLoading, user],
+  );
 
-  const tripExistsInLive = useCallback(async (tripId) => {
-    if (authLoading || !user) return false;
-    const qy = query(
-      collection(db, COLLECTIONS.LIVE_RIDES),
-      where("tripId", "==", tripId),
-      limit(1)
-    );
-    const snap = await getDocs(qy);
-    return !snap.empty;
-  }, [authLoading, user]);
+  const tripExistsInLive = useCallback(
+    async (tripId) => {
+      if (authLoading || !user) return false;
+      const qy = query(
+        collection(db, COLLECTIONS.LIVE_RIDES),
+        where("tripId", "==", tripId),
+        limit(1),
+      );
+      const snap = await getDocs(qy);
+      return !snap.empty;
+    },
+    [authLoading, user],
+  );
 
   const tripExistsAnywhere = useCallback(
     async (tripId) => {
@@ -537,7 +596,7 @@ if (totalMinutes <= 0) {
       ]);
       return inQueue || inLive;
     },
-    [tripExistsInQueue, tripExistsInLive]
+    [tripExistsInQueue, tripExistsInLive],
   );
 
   const processRideRows = useCallback(
@@ -560,7 +619,7 @@ if (totalMinutes <= 0) {
           continue;
         }
         seen.add(d.tripId);
-         
+
         if (await tripExistsAnywhere(d.tripId)) {
           skipped++;
           continue;
@@ -576,13 +635,13 @@ if (totalMinutes <= 0) {
           const ref = doc(collection(db, COLLECTIONS.RIDE_QUEUE));
           batch.set(ref, d);
         });
-         
+
         await batch.commit();
       }
 
       return { added: filtered.length, skipped };
     },
-    [toRideDoc, tripExistsAnywhere]
+    [toRideDoc, tripExistsAnywhere],
   );
 
   const onDropNow = async () => {
@@ -598,90 +657,112 @@ if (totalMinutes <= 0) {
       });
     } catch (e) {
       console.error(e);
-      setToast({ open: true, severity: "error", msg: "Drop failed. See logs." });
+      setToast({
+        open: true,
+        severity: "error",
+        msg: "Drop failed. See logs.",
+      });
     } finally {
       setDropping(false);
     }
   };
 
-  const handleSubmit = useCallback(async (e) => {
-    e?.preventDefault?.();
+  const handleSubmit = useCallback(
+    async (e) => {
+      e?.preventDefault?.();
 
-    if (!isValidDayjs(pickupAt)) {
-      setFormToast({
-        open: true,
-        message: "⚠️ Please correct required fields",
-        severity: "error",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const minutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
-
-      // (A) Store ISO strings:
-      // const payload = {
-      //   tripId: formData.TripID,
-      //   pickupAtISO: toISOorNull(pickupAt),
-      //   durationMinutes: minutes,
-      //   rideType: formData.RideType,
-      //   vehicle: formData.Vehicle,
-      //   rideNotes: formData.RideNotes || null,
-      //   claimedBy: null,
-      //   claimedAt: null,
-      //   createdBy: currentUser,
-      //   lastModifiedBy: currentUser,
-      //   createdAt: serverTimestamp(),
-      //   updatedAt: serverTimestamp(),
-      // };
-
-      // (B) Or store Firestore Timestamp directly:
-      const payload = {
-        tripId: formData.TripID,
-        pickupTime: toTimestampOrNull(pickupAt),
-        rideDuration: minutes,
-        rideType: formData.RideType,
-        vehicle: formData.Vehicle,
-        rideNotes: formData.RideNotes || null,
-        claimedBy: null,
-        claimedAt: null,
-        createdBy: currentUser,
-        lastModifiedBy: currentUser,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      if (await tripExistsAnywhere(payload.tripId)) {
-        throw new Error(`TripID ${payload.tripId} already exists (Queue/Live).`);
+      if (!isValidDayjs(pickupAt)) {
+        setFormToast({
+          open: true,
+          message: "⚠️ Please correct required fields",
+          severity: "error",
+        });
+        return;
       }
-      await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), payload);
-      setFormToast({
-        open: true,
-        message: `✅ Ride ${formData.TripID} submitted successfully`,
-        severity: "success",
-      });
-      setFormData(defaultValues);
-      setPickupAt(null);
-      setDurationHours(0);
-      setDurationMinutes(0);
-      setConfirmOpen(false);
-      await fetchRides();
-    } catch (err) {
-      logError(err, "RideEntryForm:submit");
-      setFormToast({
-        open: true,
-        message: `❌ ${err?.message || JSON.stringify(err)}`,
-        severity: "error",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }, [pickupAt, durationHours, durationMinutes, formData, currentUser, tripExistsAnywhere, fetchRides]);
+
+      setSaving(true);
+      try {
+        const minutes =
+          (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
+
+        // (A) Store ISO strings:
+        // const payload = {
+        //   tripId: formData.TripID,
+        //   pickupAtISO: toISOorNull(pickupAt),
+        //   durationMinutes: minutes,
+        //   rideType: formData.RideType,
+        //   vehicle: formData.Vehicle,
+        //   rideNotes: formData.RideNotes || null,
+        //   claimedBy: null,
+        //   claimedAt: null,
+        //   createdBy: currentUser,
+        //   lastModifiedBy: currentUser,
+        //   createdAt: serverTimestamp(),
+        //   updatedAt: serverTimestamp(),
+        // };
+
+        // (B) Or store Firestore Timestamp directly:
+        const payload = {
+          tripId: formData.TripID,
+          pickupTime: toTimestampOrNull(pickupAt),
+          rideDuration: minutes,
+          rideType: formData.RideType,
+          vehicle: formData.Vehicle,
+          rideNotes: formData.RideNotes || null,
+          claimedBy: null,
+          claimedAt: null,
+          createdBy: currentUser,
+          lastModifiedBy: currentUser,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        if (await tripExistsAnywhere(payload.tripId)) {
+          throw new Error(
+            `TripID ${payload.tripId} already exists (Queue/Live).`,
+          );
+        }
+        await addDoc(collection(db, COLLECTIONS.RIDE_QUEUE), payload);
+        setFormToast({
+          open: true,
+          message: `✅ Ride ${formData.TripID} submitted successfully`,
+          severity: "success",
+        });
+        setFormData(defaultValues);
+        setPickupAt(null);
+        setDurationHours(0);
+        setDurationMinutes(0);
+        setConfirmOpen(false);
+        await fetchRides();
+      } catch (err) {
+        logError(err, "RideEntryForm:submit");
+        setFormToast({
+          open: true,
+          message: `❌ ${err?.message || JSON.stringify(err)}`,
+          severity: "error",
+        });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      pickupAt,
+      durationHours,
+      durationMinutes,
+      formData,
+      currentUser,
+      tripExistsAnywhere,
+      fetchRides,
+    ],
+  );
 
   const handleImportConfirm = useCallback(async () => {
     if (!uploadedRows.length) {
-      setFormToast({ open: true, message: "⚠️ No rows to import", severity: "warning" });
+      setFormToast({
+        open: true,
+        message: "⚠️ No rows to import",
+        severity: "warning",
+      });
       return;
     }
     setSubmitting(true);
@@ -746,13 +827,22 @@ if (totalMinutes <= 0) {
 
   const handleMultiSubmit = useCallback(async () => {
     if (!uploadedRows.length && !csvText.trim()) {
-      setFormToast({ open: true, message: "⚠️ No rides to submit", severity: "warning" });
+      setFormToast({
+        open: true,
+        message: "⚠️ No rides to submit",
+        severity: "warning",
+      });
       return;
     }
     const ridesToSubmit = [...uploadedRows];
     if (csvText.trim()) {
-      const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
-      const missing = expectedCsvCols.filter((c) => !parsed.meta.fields?.includes(c));
+      const parsed = Papa.parse(csvText.trim(), {
+        header: true,
+        skipEmptyLines: true,
+      });
+      const missing = expectedCsvCols.filter(
+        (c) => !parsed.meta.fields?.includes(c),
+      );
       if (missing.length) {
         setFormToast({
           open: true,
@@ -764,7 +854,11 @@ if (totalMinutes <= 0) {
       }
     }
     if (!ridesToSubmit.length) {
-      setFormToast({ open: true, message: "⚠️ No valid rides found", severity: "warning" });
+      setFormToast({
+        open: true,
+        message: "⚠️ No valid rides found",
+        severity: "warning",
+      });
       return;
     }
     setSubmitting(true);
@@ -792,11 +886,11 @@ if (totalMinutes <= 0) {
 
   const rideTypeOptions = useMemo(
     () => RIDE_TYPES.map((t) => ({ value: t, label: t })),
-    []
+    [],
   );
   const vehicleOptions = useMemo(
     () => VEHICLES.map((v) => ({ value: v, label: v })),
-    []
+    [],
   );
 
   const singleRide = useMemo(
@@ -809,12 +903,13 @@ if (totalMinutes <= 0) {
       vehicle: formData.Vehicle,
       notes: formData.RideNotes,
     }),
-    [formData, pickupAt, durationHours, durationMinutes]
+    [formData, pickupAt, durationHours, durationMinutes],
   );
 
   const endAt = useMemo(() => {
     if (!isValidDayjs(pickupAt)) return null;
-    const minutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
+    const minutes =
+      (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
     return pickupAt.add(minutes, "minute");
   }, [pickupAt, durationHours, durationMinutes]);
 
@@ -862,14 +957,17 @@ if (totalMinutes <= 0) {
         csvBuilder.Date && csvBuilder.PickupTime
           ? dayjs(`${csvBuilder.Date} ${csvBuilder.PickupTime}`)
           : null,
-      hours: csvBuilder.DurationHours === "" ? "" : Number(csvBuilder.DurationHours),
+      hours:
+        csvBuilder.DurationHours === "" ? "" : Number(csvBuilder.DurationHours),
       minutes:
-        csvBuilder.DurationMinutes === "" ? "" : Number(csvBuilder.DurationMinutes),
+        csvBuilder.DurationMinutes === ""
+          ? ""
+          : Number(csvBuilder.DurationMinutes),
       rideType: csvBuilder.RideType,
       vehicle: csvBuilder.Vehicle,
       notes: csvBuilder.RideNotes,
     }),
-    [csvBuilder]
+    [csvBuilder],
   );
 
   const setBuilder = (val) =>
@@ -894,7 +992,11 @@ if (totalMinutes <= 0) {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }} sx={{ mb: isMobile ? 2 : 3 }}>
+    <Grid2
+      container
+      spacing={{ xs: 1.5, sm: 2, md: 3 }}
+      sx={{ mb: isMobile ? 2 : 3 }}
+    >
       <Grid2 xs={12} md={4}>
         <Button
           variant="outlined"
@@ -941,7 +1043,9 @@ if (totalMinutes <= 0) {
             p: isMobile ? 2 : 3,
             mb: isMobile ? 3 : 4,
             bgcolor: (t) =>
-              t.palette.mode === "dark" ? "background.paper" : "background.default",
+              t.palette.mode === "dark"
+                ? "background.paper"
+                : "background.default",
             borderRadius: 3,
           }}
         >
@@ -968,7 +1072,10 @@ if (totalMinutes <= 0) {
 
         {/* SINGLE RIDE TAB */}
         {rideTab === 0 && (
-          <Paper elevation={3} sx={{ p: isMobile ? 2 : 3, borderRadius: 3, mb: isMobile ? 2 : 3 }}>
+          <Paper
+            elevation={3}
+            sx={{ p: isMobile ? 2 : 3, borderRadius: 3, mb: isMobile ? 2 : 3 }}
+          >
             <Typography variant="h6" fontWeight={700} gutterBottom>
               SINGLE RIDE
             </Typography>
@@ -1013,7 +1120,14 @@ if (totalMinutes <= 0) {
         {/* MULTI RIDE UPLOAD TAB */}
         {rideTab === 1 && (
           <>
-            <Paper elevation={3} sx={{ p: isMobile ? 2 : 3, borderRadius: 3, mb: isMobile ? 2 : 3 }}>
+            <Paper
+              elevation={3}
+              sx={{
+                p: isMobile ? 2 : 3,
+                borderRadius: 3,
+                mb: isMobile ? 2 : 3,
+              }}
+            >
               <Typography variant="h6" fontWeight={700} gutterBottom>
                 MULTI RIDE UPLOAD
               </Typography>
@@ -1029,7 +1143,10 @@ if (totalMinutes <= 0) {
                 onChange={(e) => setCsvText(e.target.value)}
                 sx={{
                   mb: 3,
-                  "& textarea": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" },
+                  "& textarea": {
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, Menlo, monospace",
+                  },
                 }}
                 helperText="Tip: paste multiple lines; we’ll validate before submit."
               />
@@ -1064,7 +1181,9 @@ if (totalMinutes <= 0) {
                 >
                   Add to List
                 </Button>
-                <Box sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }} />
+                <Box
+                  sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }}
+                />
                 <Button
                   variant="contained"
                   color="success"
@@ -1097,24 +1216,31 @@ if (totalMinutes <= 0) {
                   </Box>
                 )}
                 <ResponsiveScrollBox>
-                <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
-                  <SmartAutoGrid
-                    autoHeight
-                    rows={Array.isArray(uploadedRows) ? uploadedRows.map((r, i) => ({ id: i, ...(r || {}) })) : []}
-                    columnsCompat={expectedCsvCols.map((col) => ({
-                      field: col,
-                      headerName: col.replace(/([A-Z])/g, " $1"),
-                      flex: 1,
-                      minWidth: 140,
-                      valueFormatter: vfText,
-                    }))}
-                    pageSizeOptions={[5]}
-                    disableRowSelectionOnClick
-                    loading={false}
-                    checkboxSelection={false}
-                    showToolbar
-                  />
-                </Box>
+                  <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
+                    <SmartAutoGrid
+                      autoHeight
+                      rows={
+                        Array.isArray(uploadedRows)
+                          ? uploadedRows.map((r, i) => ({
+                              id: i,
+                              ...(r || {}),
+                            }))
+                          : []
+                      }
+                      columnsCompat={expectedCsvCols.map((col) => ({
+                        field: col,
+                        headerName: col.replace(/([A-Z])/g, " $1"),
+                        flex: 1,
+                        minWidth: 140,
+                        valueFormatter: vfText,
+                      }))}
+                      pageSizeOptions={[5]}
+                      disableRowSelectionOnClick
+                      loading={false}
+                      checkboxSelection={false}
+                      showToolbar
+                    />
+                  </Box>
                 </ResponsiveScrollBox>
                 <Button
                   variant="outlined"
@@ -1162,25 +1288,34 @@ if (totalMinutes <= 0) {
               </Tooltip>
             )}
             <Box sx={{ flex: 1, minWidth: 320, mt: isMobile ? 2 : 0 }}>
-<Accordion
-  expanded={dropOpen}
-  onChange={(_, exp) => {
-    setDropOpen(exp);
-    localStorage.setItem("dropDailyOpen", String(exp));
-  }}
-  sx={{ bgcolor: "background.paper", borderRadius: 2, "&:before": { display: "none" } }}
->
-  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-    <Stack direction="row" spacing={1} alignItems="center">
-      <Typography variant="subtitle1" fontWeight={700}>Daily Drop Status</Typography>
-      <Chip size="small" label={dropOpen ? "Collapse" : "Expand"} variant="outlined" />
-    </Stack>
-  </AccordionSummary>
-  <AccordionDetails>
-    <DropDailyWidget />
-  </AccordionDetails>
-</Accordion>
-
+              <Accordion
+                expanded={dropOpen}
+                onChange={(_, exp) => {
+                  setDropOpen(exp);
+                  localStorage.setItem("dropDailyOpen", String(exp));
+                }}
+                sx={{
+                  bgcolor: "background.paper",
+                  borderRadius: 2,
+                  "&:before": { display: "none" },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Daily Drop Status
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={dropOpen ? "Collapse" : "Expand"}
+                      variant="outlined"
+                    />
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <DropDailyWidget />
+                </AccordionDetails>
+              </Accordion>
             </Box>
           </Stack>
         </Box>
@@ -1194,12 +1329,18 @@ if (totalMinutes <= 0) {
             variant="scrollable"
             scrollButtons="auto"
             allowScrollButtonsMobile
-            sx={{ flexGrow: 1, "& .MuiTab-root": { minWidth: { xs: "auto", sm: 120 } } }}
+            sx={{
+              flexGrow: 1,
+              "& .MuiTab-root": { minWidth: { xs: "auto", sm: 120 } },
+            }}
           >
             <Tab
               label={
                 <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography fontWeight={600} color={dataTab === 0 ? "success.main" : "inherit"}>
+                  <Typography
+                    fontWeight={600}
+                    color={dataTab === 0 ? "success.main" : "inherit"}
+                  >
                     LIVE
                   </Typography>
                   <Badge
@@ -1218,7 +1359,10 @@ if (totalMinutes <= 0) {
             <Tab
               label={
                 <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography fontWeight={600} color={dataTab === 1 ? "success.main" : "inherit"}>
+                  <Typography
+                    fontWeight={600}
+                    color={dataTab === 1 ? "success.main" : "inherit"}
+                  >
                     QUEUE
                   </Typography>
                   <Badge
@@ -1237,7 +1381,10 @@ if (totalMinutes <= 0) {
             <Tab
               label={
                 <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography fontWeight={600} color={dataTab === 2 ? "success.main" : "inherit"}>
+                  <Typography
+                    fontWeight={600}
+                    color={dataTab === 2 ? "success.main" : "inherit"}
+                  >
                     CLAIMED
                   </Typography>
                   <Badge
@@ -1281,11 +1428,19 @@ if (totalMinutes <= 0) {
         </Box>
 
         {/* Confirm Dialog */}
-        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle>Confirm Ride</DialogTitle>
           <DialogContent dividers>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>Pickup Time:</strong> {isValidDayjs(pickupAt) ? pickupAt.format("MM/DD/YYYY h:mm A") : "—"}
+              <strong>Pickup Time:</strong>{" "}
+              {isValidDayjs(pickupAt)
+                ? pickupAt.format("MM/DD/YYYY h:mm A")
+                : "—"}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
               <strong>Duration Hours:</strong> {Number(durationHours) || 0}
@@ -1306,7 +1461,8 @@ if (totalMinutes <= 0) {
               <strong>Ride Notes:</strong> {formData.RideNotes || ""}
             </Typography>
             <Typography sx={{ mb: 0.5 }}>
-              <strong>End Time:</strong> {endAt?.format?.("MM/DD/YYYY h:mm A") ?? "—"}
+              <strong>End Time:</strong>{" "}
+              {endAt?.format?.("MM/DD/YYYY h:mm A") ?? "—"}
             </Typography>
             <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
               <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
@@ -1315,7 +1471,11 @@ if (totalMinutes <= 0) {
                 color="success"
                 onClick={handleSubmit}
                 disabled={saving || !isValidDayjs(pickupAt)}
-                startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined}
+                startIcon={
+                  saving ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : undefined
+                }
               >
                 {saving ? "Saving…" : "Confirm & Submit"}
               </Button>

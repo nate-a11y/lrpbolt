@@ -1,15 +1,25 @@
 import { Box } from "@mui/material";
-export default function BrandGradient({ position = "top", height = 6, rounded = true, glow = false, animated = true }) {
+export default function BrandGradient({
+  position = "top",
+  height = 6,
+  rounded = true,
+  glow = false,
+  animated = true,
+}) {
   return (
     <Box
       aria-hidden
       sx={(t) => ({
         width: "100%",
         height,
-        borderTopLeftRadius: position === "top" && rounded ? t.shape.borderRadius : 0,
-        borderTopRightRadius: position === "top" && rounded ? t.shape.borderRadius : 0,
-        borderBottomLeftRadius: position === "bottom" && rounded ? t.shape.borderRadius : 0,
-        borderBottomRightRadius: position === "bottom" && rounded ? t.shape.borderRadius : 0,
+        borderTopLeftRadius:
+          position === "top" && rounded ? t.shape.borderRadius : 0,
+        borderTopRightRadius:
+          position === "top" && rounded ? t.shape.borderRadius : 0,
+        borderBottomLeftRadius:
+          position === "bottom" && rounded ? t.shape.borderRadius : 0,
+        borderBottomRightRadius:
+          position === "bottom" && rounded ? t.shape.borderRadius : 0,
         background: `linear-gradient(90deg, ${t.palette.brand.green700} 0%, ${t.palette.brand.green500} 40%, ${t.palette.brand.green400} 100%)`,
         filter: glow ? "drop-shadow(0 8px 18px rgba(76,187,23,0.35))" : "none",
         ...(animated && {

@@ -544,7 +544,9 @@ export async function fetchWeeklySummary({ startTs, endTs }) {
     const d = doc.data() || {};
     const driver = d.driver || d.driverEmail || null;
     const mins =
-      typeof d.duration === "number" ? d.duration : durationMinutes(d.startTime, d.endTime);
+      typeof d.duration === "number"
+        ? d.duration
+        : durationMinutes(d.startTime, d.endTime);
     const prev = byDriver.get(driver) || {
       driver,
       sessions: 0,
@@ -859,7 +861,11 @@ export async function patchTimeLog(id, updates) {
   if (!id) throw new Error("patchTimeLog: missing id");
   const ref = doc(db, "timeLogs", id);
   const coerceTs = (v) =>
-    v == null ? null : v instanceof Timestamp ? v : Timestamp.fromMillis(Number(v));
+    v == null
+      ? null
+      : v instanceof Timestamp
+        ? v
+        : Timestamp.fromMillis(Number(v));
 
   const data = cleanData({
     driver: updates.driver,
@@ -895,7 +901,11 @@ export async function patchShootoutStat(id, updates) {
   if (!id) throw new Error("patchShootoutStat: missing id");
   const ref = doc(db, "shootoutStats", id);
   const coerceTs = (v) =>
-    v == null ? null : v instanceof Timestamp ? v : Timestamp.fromMillis(Number(v));
+    v == null
+      ? null
+      : v instanceof Timestamp
+        ? v
+        : Timestamp.fromMillis(Number(v));
   const asInt = (v, d = 0) => {
     const n = Number(v);
     return Number.isFinite(n) ? Math.round(n) : d;
@@ -906,7 +916,9 @@ export async function patchShootoutStat(id, updates) {
     vehicle: updates.vehicle,
     trips: updates.trips !== undefined ? asInt(updates.trips, 0) : undefined,
     passengers:
-      updates.passengers !== undefined ? asInt(updates.passengers, 0) : undefined,
+      updates.passengers !== undefined
+        ? asInt(updates.passengers, 0)
+        : undefined,
     startTime:
       updates.startTime !== undefined ? coerceTs(updates.startTime) : undefined,
     endTime:

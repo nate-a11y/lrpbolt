@@ -47,9 +47,9 @@ export function toDayjs(input) {
   if (typeof input === "object") {
     if (typeof input.toDate === "function") return dayjs(input.toDate());
     if ("seconds" in input && typeof input.seconds === "number") {
-      return dayjs.unix(input.seconds).millisecond(
-        Math.floor((input.nanoseconds || 0) / 1e6),
-      );
+      return dayjs
+        .unix(input.seconds)
+        .millisecond(Math.floor((input.nanoseconds || 0) / 1e6));
     }
     if (input instanceof Date) return dayjs(input);
   }

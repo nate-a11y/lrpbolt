@@ -1,5 +1,10 @@
 /* Proprietary and confidential. See LICENSE. */
-import { getAnalytics, isSupported, logEvent, setAnalyticsCollectionEnabled } from "firebase/analytics";
+import {
+  getAnalytics,
+  isSupported,
+  logEvent,
+  setAnalyticsCollectionEnabled,
+} from "firebase/analytics";
 
 import { app } from "./firebaseInit";
 

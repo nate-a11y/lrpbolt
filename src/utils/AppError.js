@@ -6,4 +6,3 @@ export default class AppError extends Error {
     this.context = context;
   }
 }
-

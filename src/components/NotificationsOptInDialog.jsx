@@ -1,8 +1,14 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useEffect, useState } from "react";
 import {
-  Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  Stack, Typography, Alert
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  Typography,
+  Alert,
 } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 
@@ -57,14 +63,21 @@ export default function NotificationsOptInDialog({ user }) {
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography>Get heads‑up alerts for assigned rides, queue updates, and schedule changes.</Typography>
+          <Typography>
+            Get heads‑up alerts for assigned rides, queue updates, and schedule
+            changes.
+          </Typography>
           {permission === "default" && (
-            <Alert severity="info">You’ll see a browser prompt after you click Enable.</Alert>
+            <Alert severity="info">
+              You’ll see a browser prompt after you click Enable.
+            </Alert>
           )}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleNotNow} disabled={loading}>Not now</Button>
+        <Button onClick={handleNotNow} disabled={loading}>
+          Not now
+        </Button>
         <Button onClick={handleEnable} variant="contained" disabled={loading}>
           {loading ? "Enabling…" : "Enable"}
         </Button>

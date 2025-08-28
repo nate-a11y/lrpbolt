@@ -1,7 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/hooks/useUserAccessDrivers.js
 import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, where, limit } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  limit,
+} from "firebase/firestore";
 
 import { db } from "../utils/firebaseInit";
 
@@ -21,7 +27,7 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
     const q = query(
       collection(db, "userAccess"),
       where("access", "in", roles),
-      limit(1000)
+      limit(1000),
     );
 
     const unsub = onSnapshot(
@@ -50,7 +56,7 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
         console.error("[useUserAccessDrivers] onSnapshot error:", err);
         setError(err);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsub();
@@ -60,7 +66,9 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
   const drivers = useMemo(() => {
     const map = new Map();
     for (const r of rows) if (r.id) map.set(r.id, r);
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }, [rows]);
 
   return { drivers, loading, error };

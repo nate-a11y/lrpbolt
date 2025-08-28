@@ -80,7 +80,7 @@ function Tickets() {
   const scrollRef = useRef(null);
   const { user, authLoading } = useAuth();
   const theme = useTheme();
-  const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+  const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
   const initialState = useMemo(
     () => ({
       columns: {
@@ -315,7 +315,10 @@ function Tickets() {
     setEmailAddress("");
   };
 
-  const handleDeleteClick = useCallback((row) => handleDelete(row.ticketId), [handleDelete]);
+  const handleDeleteClick = useCallback(
+    (row) => handleDelete(row.ticketId),
+    [handleDelete],
+  );
   const handleDownload = useCallback((row) => setPreviewTicket(row), []);
 
   const rawColumns = useMemo(
@@ -461,20 +464,20 @@ function Tickets() {
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
 
-          <Button
-            onClick={() =>
-              setSnackbar({
-                open: true,
-                message: "🔥 Real-time updates active",
-                severity: "info",
-              })
-            }
-            variant="outlined"
-            color="primary"
-            startIcon={<RefreshIcon />}
-          >
-            Refresh
-          </Button>
+        <Button
+          onClick={() =>
+            setSnackbar({
+              open: true,
+              message: "🔥 Real-time updates active",
+              severity: "info",
+            })
+          }
+          variant="outlined"
+          color="primary"
+          startIcon={<RefreshIcon />}
+        >
+          Refresh
+        </Button>
         <Tooltip
           title={
             selectedIds.length
@@ -511,13 +514,15 @@ function Tickets() {
         <Tab label="Passenger Summary" />
       </Tabs>
 
-      {tab === 0 && (
-        isSmall ? (
+      {tab === 0 &&
+        (isSmall ? (
           <Stack spacing={2} sx={{ mb: 2 }}>
             {filteredTickets.map((t) => (
               <Paper key={t.ticketId} variant="outlined" sx={{ p: 2 }}>
                 <Typography variant="subtitle2">{t.ticketId}</Typography>
-                <Typography variant="body2">Passenger: {t.passenger}</Typography>
+                <Typography variant="body2">
+                  Passenger: {t.passenger}
+                </Typography>
                 <Typography variant="body2">Date: {t.date}</Typography>
                 <Typography variant="body2">Pickup: {t.pickup}</Typography>
               </Paper>
@@ -525,7 +530,7 @@ function Tickets() {
           </Stack>
         ) : (
           <ResponsiveScrollBox ref={scrollRef}>
-            <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <Box sx={{ width: "100%", overflowX: "auto" }}>
               <SmartAutoGrid
                 rows={rows}
                 columnsCompat={columns}
@@ -540,35 +545,39 @@ function Tickets() {
                 rowSelectionModel={rowSelectionModel ?? []}
                 initialState={initialState}
                 sx={{
-                "& .MuiDataGrid-row:nth-of-type(odd)": {
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  backgroundColor: "rgba(76,187,23,0.1)",
-                },
-                "& .MuiDataGrid-row.Mui-selected": {
-                  backgroundColor: "rgba(76,187,23,0.2)",
-                },
-                "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-                  outline: "none",
-                },
-                "& .MuiDataGrid-footerContainer": {
-                  flexWrap: { xs: "wrap", sm: "nowrap" },
-                },
-                "& .MuiTablePagination-toolbar": {
-                  flexWrap: { xs: "wrap", sm: "nowrap" },
-                },
-              }}
-              slotProps={{
-                pagination: { labelRowsPerPage: "Rows" },
-              }}
-              columnVisibilityModel={isSmall ? { link: false, scanStatus: false, pickup: false } : undefined}
-              showToolbar
-            />
+                  "& .MuiDataGrid-row:nth-of-type(odd)": {
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                  },
+                  "& .MuiDataGrid-row:hover": {
+                    backgroundColor: "rgba(76,187,23,0.1)",
+                  },
+                  "& .MuiDataGrid-row.Mui-selected": {
+                    backgroundColor: "rgba(76,187,23,0.2)",
+                  },
+                  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus":
+                    {
+                      outline: "none",
+                    },
+                  "& .MuiDataGrid-footerContainer": {
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
+                  },
+                  "& .MuiTablePagination-toolbar": {
+                    flexWrap: { xs: "wrap", sm: "nowrap" },
+                  },
+                }}
+                slotProps={{
+                  pagination: { labelRowsPerPage: "Rows" },
+                }}
+                columnVisibilityModel={
+                  isSmall
+                    ? { link: false, scanStatus: false, pickup: false }
+                    : undefined
+                }
+                showToolbar
+              />
             </Box>
           </ResponsiveScrollBox>
-        )
-      )}
+        ))}
 
       {tab === 1 && (
         <Paper sx={{ p: 3 }} elevation={4}>

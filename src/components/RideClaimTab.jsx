@@ -27,7 +27,13 @@ import { durationMinutes, toDateAny } from "@/utils/datetime";
 
 import { claimRideAtomic, getUserAccess } from "../hooks/api";
 import useFirestoreListener from "../hooks/useFirestoreListener";
-import { fmtDow, fmtTime, fmtDate, safe, groupKey } from "../utils/rideFormatters";
+import {
+  fmtDow,
+  fmtTime,
+  fmtDate,
+  safe,
+  groupKey,
+} from "../utils/rideFormatters";
 import { enqueueSms } from "../services/messaging";
 import { useDriver } from "../context/DriverContext.jsx";
 import RideGroup from "../RideGroup";
@@ -85,7 +91,6 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
     () => Array.from(new Set(filteredRides.map((r) => r.vehicle))),
     [filteredRides],
   );
-
 
   const showToast = (message, severity = "success") =>
     setToast({ open: true, message, severity });
@@ -147,7 +152,11 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
           const phone = record?.phone;
           if (phone) {
             const body = formatClaimSms(ride, pickupTime);
-            await enqueueSms({ to: phone, body, context: { tripId: ride.tripId } });
+            await enqueueSms({
+              to: phone,
+              body,
+              context: { tripId: ride.tripId },
+            });
           }
         }
       } catch (err) {
@@ -337,25 +346,26 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
               <Typography>Trip ID: {entry.tripId}</Typography>
               <Typography>Vehicle: {safe(entry.vehicle)}</Typography>
               <Typography>
-                Date/Time: {fmtDate(entry.pickupTime)} {fmtTime(entry.pickupTime)}
+                Date/Time: {fmtDate(entry.pickupTime)}{" "}
+                {fmtTime(entry.pickupTime)}
               </Typography>
               <Typography>
-                Duration: {
-                  (() => {
-                    const m = durationMinutes(
-                      entry.pickupTime,
-                      entry.pickupTime + entry.rideDuration * 60000,
-                    );
-                    return m == null ? "—" : `${m}m`;
-                  })()
-                }
+                Duration:{" "}
+                {(() => {
+                  const m = durationMinutes(
+                    entry.pickupTime,
+                    entry.pickupTime + entry.rideDuration * 60000,
+                  );
+                  return m == null ? "—" : `${m}m`;
+                })()}
               </Typography>
               <Typography>Trip Type: {safe(entry.rideType)}</Typography>
               <Typography>
                 Trip Notes: {safe(entry.rideNotes, "none")}
               </Typography>
               <Typography mt={2}>
-                Claimed At: {fmtDate(entry.claimedAt)} {fmtTime(entry.claimedAt)}
+                Claimed At: {fmtDate(entry.claimedAt)}{" "}
+                {fmtTime(entry.claimedAt)}
               </Typography>
             </Box>
           ))}

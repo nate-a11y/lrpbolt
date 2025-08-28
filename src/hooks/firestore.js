@@ -28,12 +28,18 @@ export function subscribeTimeLogs(onData, onError) {
 // Realtime listener for shootoutStats collection
 export function subscribeShootoutStats(onData, onError) {
   try {
-    const q = query(collection(db, "shootoutStats"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(db, "shootoutStats"),
+      orderBy("createdAt", "desc"),
+    );
     return onSnapshot(
       q,
       (snap) => onData(mapSnapshotToRows("shootoutStats", snap)),
       (e) => {
-        logError(e, { area: "FirestoreSubscribe", comp: "subscribeShootoutStats" });
+        logError(e, {
+          area: "FirestoreSubscribe",
+          comp: "subscribeShootoutStats",
+        });
         onError?.(e);
       },
     );
@@ -43,4 +49,3 @@ export function subscribeShootoutStats(onData, onError) {
     return () => {};
   }
 }
-

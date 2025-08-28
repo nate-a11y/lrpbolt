@@ -25,7 +25,11 @@ export function toDayjs(input, tz = DEFAULT_TZ) {
   return dj.isValid() ? dj.tz(tz) : null;
 }
 
-export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A", tz = DEFAULT_TZ) {
+export function formatDateTime(
+  input,
+  fmt = "MMM D, YYYY h:mm A",
+  tz = DEFAULT_TZ,
+) {
   const dj = toDayjs(input, tz);
   if (!dj) return "N/A";
   const fmtSafe = typeof fmt === "string" ? fmt : "MMM D, YYYY h:mm A";

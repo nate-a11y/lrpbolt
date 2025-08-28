@@ -13,7 +13,11 @@ export async function patchTimeLog(id, updates = {}) {
   if (!id) return;
   const ref = doc(db, "timeLogs", id);
   const coerceTs = (v) =>
-    v == null ? null : v instanceof Timestamp ? v : Timestamp.fromMillis(Number(v));
+    v == null
+      ? null
+      : v instanceof Timestamp
+        ? v
+        : Timestamp.fromMillis(Number(v));
 
   const data = {};
   if ("driver" in updates) data.driver = updates.driver;

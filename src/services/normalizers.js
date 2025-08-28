@@ -18,7 +18,9 @@ function coerceTimestamp(v) {
   }
   // tolerate export shapes {seconds,nanoseconds}
   if (typeof v === "object" && Number.isFinite(v.seconds)) {
-    return Timestamp.fromMillis(v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6));
+    return Timestamp.fromMillis(
+      v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6),
+    );
   }
   return null;
 }
@@ -28,15 +30,16 @@ function coerceNumber(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
-  if (v && typeof v === "object" && typeof v.minutes === "number") return v.minutes;
+  if (v && typeof v === "object" && typeof v.minutes === "number")
+    return v.minutes;
   return null;
 }
 function coerceBool(v) {
   if (v === true || v === false) return v;
   if (typeof v === "string") {
     const s = v.trim().toLowerCase();
-    if (["true","yes","y","1"].includes(s)) return true;
-    if (["false","no","n","0"].includes(s)) return false;
+    if (["true", "yes", "y", "1"].includes(s)) return true;
+    if (["false", "no", "n", "0"].includes(s)) return false;
   }
   if (typeof v === "number") return v !== 0;
   return null;
@@ -47,12 +50,18 @@ function minutesBetween(tsStart, tsEnd) {
   const s = coerceTimestamp(tsStart);
   const e = coerceTimestamp(tsEnd);
   if (!s || !e) return null;
-  const mins = Math.round((e.toDate().getTime() - s.toDate().getTime()) / (60 * 1000));
+  const mins = Math.round(
+    (e.toDate().getTime() - s.toDate().getTime()) / (60 * 1000),
+  );
   return Number.isFinite(mins) && mins >= 0 ? mins : null;
 }
 
 // ---------- Rides ----------
-const RIDE_ALIASES = { ClaimedBy: "claimedBy", ClaimedAt: "claimedAt", pickup: "pickupTime" };
+const RIDE_ALIASES = {
+  ClaimedBy: "claimedBy",
+  ClaimedAt: "claimedAt",
+  pickup: "pickupTime",
+};
 const RIDE_COERCE = {
   tripId: id,
   pickupTime: coerceTimestamp, // <- /rides "Pickup" will render from this
@@ -78,7 +87,7 @@ const TIMELOG_COERCE = {
   rideId: id,
   startTime: coerceTimestamp,
   endTime: coerceTimestamp,
-  duration: coerceNumber,          // minutes (may be null; we compute below)
+  duration: coerceNumber, // minutes (may be null; we compute below)
   loggedAt: coerceTimestamp,
   note: id,
 };
@@ -123,8 +132,12 @@ function applyAliases(data, aliasMap) {
 }
 function applyCoercion(data, rules) {
   const out = { ...data };
-  Object.keys(rules).forEach((field) => { out[field] = rules[field](out[field]); });
-  Object.keys(rules).forEach((field) => { if (out[field] === undefined) out[field] = null; });
+  Object.keys(rules).forEach((field) => {
+    out[field] = rules[field](out[field]);
+  });
+  Object.keys(rules).forEach((field) => {
+    if (out[field] === undefined) out[field] = null;
+  });
   return out;
 }
 
@@ -141,7 +154,8 @@ export function normalizeRowFor(collectionKey, raw = {}) {
     case "timeLogs":
       row = applyCoercion(applyAliases(data, TIMELOG_ALIASES), TIMELOG_COERCE);
       // dynamic duration fallback
-      if (row.duration == null) row.duration = minutesBetween(row.startTime, row.endTime);
+      if (row.duration == null)
+        row.duration = minutesBetween(row.startTime, row.endTime);
       break;
     case "shootoutStats":
       row = applyCoercion(data, SHOOTOUT_COERCE);
@@ -167,7 +181,9 @@ export function mapSnapshotToRows(collectionKey, snapshot) {
 /** --- User name enrichment (driverEmail -> driver via userAccess) --- */
 let _nameCache = new Map();
 let _dbRef = null;
-export function bindFirestore(db) { _dbRef = db; }
+export function bindFirestore(db) {
+  _dbRef = db;
+}
 
 /** Given rows that contain driverEmail, ensure row.driver is populated from userAccess */
 export async function enrichDriverNames(rows) {
@@ -181,12 +197,14 @@ export async function enrichDriverNames(rows) {
       try {
         const ref = doc(_dbRef, "userAccess", email);
         const snap = await getDoc(ref);
-        const name = snap.exists() ? (snap.data()?.name || snap.data()?.displayName || "") : "";
+        const name = snap.exists()
+          ? snap.data()?.name || snap.data()?.displayName || ""
+          : "";
         _nameCache.set(email, name);
       } catch {
         _nameCache.set(email, "");
       }
-    })
+    }),
   );
   return rows.map((r) => {
     const email = (r?.driverEmail || "").toLowerCase();

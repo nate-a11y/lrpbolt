@@ -4,7 +4,8 @@ export const mapTimeLog = (doc) => {
   const d = doc.data() || {};
   const start = d.startTime ?? d.start ?? null;
   const end = d.endTime ?? d.end ?? null;
-  const logged = d.loggedAt ?? d.createdAt ?? d.created ?? doc.createTime ?? null;
+  const logged =
+    d.loggedAt ?? d.createdAt ?? d.created ?? doc.createTime ?? null;
 
   const startDate = toDateSafe(start);
   const endDate = toDateSafe(end);

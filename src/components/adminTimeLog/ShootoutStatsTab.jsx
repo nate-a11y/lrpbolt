@@ -98,44 +98,44 @@ export default function ShootoutStatsTab() {
 
   return (
     <ResponsiveScrollBox>
-    <SmartAutoGrid
-      rows={rows}
-      headerMap={{
-        driverEmail: "Driver Email",
-        driver: "Driver",
-        vehicle: "Vehicle",
-        startTime: "Start",
-        endTime: "End",
-        duration: "Duration",
-        trips: "Trips",
-        passengers: "PAX",
-        createdAt: "Created",
-        id: "id",
-      }}
-      order={[
-        "driver",
-        "driverEmail",
-        "vehicle",
-        "startTime",
-        "endTime",
-        "duration",
-        "trips",
-        "passengers",
-        "createdAt",
-        "id",
-      ]}
-      forceHide={["id"]}
-      overrides={overrides}
-      actionsColumn={actionsColumn}
-      editMode="row"
-      rowModesModel={rowModesModel}
-      onRowModesModelChange={(m) => setRowModesModel(m)}
-      processRowUpdate={handleProcessRowUpdate}
-      onRowEditStart={handleRowEditStart}
-      onRowEditStop={handleRowEditStop}
-      apiRef={apiRef}
-      experimentalFeatures={{ newEditingApi: true }}
-    />
+      <SmartAutoGrid
+        rows={rows}
+        headerMap={{
+          driverEmail: "Driver Email",
+          driver: "Driver",
+          vehicle: "Vehicle",
+          startTime: "Start",
+          endTime: "End",
+          duration: "Duration",
+          trips: "Trips",
+          passengers: "PAX",
+          createdAt: "Created",
+          id: "id",
+        }}
+        order={[
+          "driver",
+          "driverEmail",
+          "vehicle",
+          "startTime",
+          "endTime",
+          "duration",
+          "trips",
+          "passengers",
+          "createdAt",
+          "id",
+        ]}
+        forceHide={["id"]}
+        overrides={overrides}
+        actionsColumn={actionsColumn}
+        editMode="row"
+        rowModesModel={rowModesModel}
+        onRowModesModelChange={(m) => setRowModesModel(m)}
+        processRowUpdate={handleProcessRowUpdate}
+        onRowEditStart={handleRowEditStart}
+        onRowEditStop={handleRowEditStop}
+        apiRef={apiRef}
+        experimentalFeatures={{ newEditingApi: true }}
+      />
     </ResponsiveScrollBox>
   );
 }

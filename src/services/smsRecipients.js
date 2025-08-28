@@ -22,7 +22,7 @@ export async function getSmsConfig() {
 
 export async function resolveSmsTo({ vehicleNumber }) {
   const cfg = await getSmsConfig();
-  const mode = cfg.mode || (import.meta.env.VITE_SMS_MODE || "test");
+  const mode = cfg.mode || import.meta.env.VITE_SMS_MODE || "test";
   if (mode === "test") {
     return import.meta.env.VITE_SMS_TEST_TO || cfg.testTo; // prefer build var, else Firestore
   }
@@ -32,4 +32,3 @@ export async function resolveSmsTo({ vehicleNumber }) {
   }
   return import.meta.env.VITE_SMS_DEFAULT_TO || cfg.defaultTo || "+14173809953"; // final fallback
 }
-

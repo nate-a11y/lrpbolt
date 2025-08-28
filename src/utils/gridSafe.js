@@ -51,4 +51,4 @@ export const durationCol = (field, headerName, getter) => ({
 
 // Legacy helpers
 export const val = (p) => p ?? {};
-export const row = (p) => (p && p.row) ? p.row : undefined;
+export const row = (p) => (p && p.row ? p.row : undefined);

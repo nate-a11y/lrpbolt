@@ -2,7 +2,11 @@
 import { formatDateTime, safeNumber, formatHMFromMinutes } from "./timeUtils";
 
 export function extractVal(paramsOrValue) {
-  if (paramsOrValue && typeof paramsOrValue === "object" && "value" in paramsOrValue) {
+  if (
+    paramsOrValue &&
+    typeof paramsOrValue === "object" &&
+    "value" in paramsOrValue
+  ) {
     return paramsOrValue.value;
   }
   return paramsOrValue;

@@ -23,7 +23,10 @@ export default function ResponsiveDataGridPro(props) {
     ...rest
   } = props;
 
-  const resolvedDensity = useMemo(() => (isMdDown ? "compact" : (density || "standard")), [isMdDown, density]);
+  const resolvedDensity = useMemo(
+    () => (isMdDown ? "compact" : density || "standard"),
+    [isMdDown, density],
+  );
 
   return (
     <Box sx={{ width: "100%", overflowX: "auto" }}>

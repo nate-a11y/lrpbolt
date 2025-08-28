@@ -26,11 +26,7 @@ import NotesIcon from "@mui/icons-material/Notes";
 import dayjs from "dayjs";
 
 import logError from "./utils/logError.js";
-import {
-  fmtTime,
-  fmtDurationHM,
-  safe,
-} from "./utils/rideFormatters";
+import { fmtTime, fmtDurationHM, safe } from "./utils/rideFormatters";
 
 const RideDetailRow = ({
   icon,
@@ -253,9 +249,8 @@ function RideGroup({
                         sx={{ color: theme.palette.text.secondary }}
                       />
                       <Typography variant="body2" color="text.primary">
-                        {fmtTime(ride.pickupTime)} • {fmtDurationHM(
-                          ride.rideDuration,
-                        )}
+                        {fmtTime(ride.pickupTime)} •{" "}
+                        {fmtDurationHM(ride.rideDuration)}
                       </Typography>
                     </Box>
 

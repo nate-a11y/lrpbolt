@@ -33,7 +33,9 @@ function ToastProvider({ children }) {
         autoHideDuration={toast?.autoHideDuration ?? 4000}
         onClose={handleClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        sx={{ "@media (prefers-reduced-motion: reduce)": { transition: "none" } }}
+        sx={{
+          "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+        }}
       >
         <Alert
           onClose={handleClose}
@@ -48,4 +50,3 @@ function ToastProvider({ children }) {
 }
 
 export default memo(ToastProvider);
-

@@ -10,7 +10,7 @@
  * @returns {number}
  */
 export const toNumber = (v, d = 0) =>
-  typeof v === 'number' && !Number.isNaN(v) ? v : d;
+  typeof v === "number" && !Number.isNaN(v) ? v : d;
 
 /**
  * Safely coerce a value to a string.
@@ -18,7 +18,7 @@ export const toNumber = (v, d = 0) =>
  * @param {string} [d=""] - Default if coercion fails.
  * @returns {string}
  */
-export const toString = (v, d = '') => (typeof v === 'string' ? v : d);
+export const toString = (v, d = "") => (typeof v === "string" ? v : d);
 
 /**
  * Safely coerce a value to a boolean.
@@ -26,14 +26,14 @@ export const toString = (v, d = '') => (typeof v === 'string' ? v : d);
  * @param {boolean} [d=false] - Default if coercion fails.
  * @returns {boolean}
  */
-export const toBool = (v, d = false) => (typeof v === 'boolean' ? v : d);
+export const toBool = (v, d = false) => (typeof v === "boolean" ? v : d);
 
 /**
  * Ensure a Firestore Timestamp-like object.
  * @param {*} v - Candidate timestamp.
  * @returns {object|null} Firestore Timestamp-like or null.
  */
-export const toTs = (v) => (v && typeof v.toDate === 'function' ? v : null);
+export const toTs = (v) => (v && typeof v.toDate === "function" ? v : null);
 
 /**
  * Convert a Firestore Timestamp-like object to a Date.
@@ -41,4 +41,3 @@ export const toTs = (v) => (v && typeof v.toDate === 'function' ? v : null);
  * @returns {Date|null}
  */
 export const tsToDate = (v) => toTs(v)?.toDate?.() ?? null;
-

@@ -103,10 +103,10 @@ export default function TicketGenerator() {
     e.preventDefault();
     if (!validate() || loading) return;
     setLoading(true);
-    
+
     const id = uuidv4().split("-")[0];
     const ticketId = `TICKET-${id.toUpperCase()}`;
-  
+
     // ✅ Combine date & time into a Firestore Timestamp
     const pickupTimestamp = Timestamp.fromDate(
       dayjs(`${formData.date} ${formData.time}`, "YYYY-MM-DD HH:mm").toDate(),
@@ -124,7 +124,7 @@ export default function TicketGenerator() {
       scannedReturn: false,
       createdAt: Timestamp.now(),
     };
-  
+
     try {
       await apiAddTicket(newTicket);
       setTicket(newTicket);
@@ -150,7 +150,7 @@ export default function TicketGenerator() {
     } finally {
       setLoading(false);
     }
-  }; 
+  };
 
   const downloadTicket = async () => {
     if (!ticketRef.current || !ticket) return;

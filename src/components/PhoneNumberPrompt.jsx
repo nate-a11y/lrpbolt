@@ -44,7 +44,11 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
 
     try {
       setLoading(true);
-      await setDoc(doc(db, "userAccess", email.toLowerCase()), { phone: trimmed }, { merge: true });
+      await setDoc(
+        doc(db, "userAccess", email.toLowerCase()),
+        { phone: trimmed },
+        { merge: true },
+      );
       onClose();
     } catch (e) {
       console.error("[PhoneNumberPrompt] save error:", e?.message || e);
@@ -59,7 +63,10 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
       <DialogTitle>Enter Phone Number</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography>Please provide a phone number for notifications in international format.</Typography>
+          <Typography>
+            Please provide a phone number for notifications in international
+            format.
+          </Typography>
           <TextField
             label="Phone"
             value={phone}
@@ -72,7 +79,9 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
+        </Button>
         <Button onClick={handleSave} variant="contained" disabled={loading}>
           {loading ? "Saving…" : "Save"}
         </Button>
@@ -80,4 +89,3 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
     </Dialog>
   );
 }
-

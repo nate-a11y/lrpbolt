@@ -30,13 +30,14 @@ export async function ensureServiceWorkerRegistered() {
           );
         }
         const sendConfig = (r) =>
-          r.active?.postMessage({ type: "FIREBASE_CONFIG", config: firebaseConfig });
+          r.active?.postMessage({
+            type: "FIREBASE_CONFIG",
+            config: firebaseConfig,
+          });
         sendConfig(reg);
         navigator.serviceWorker.ready
           .then(sendConfig)
-          .catch((err) =>
-            logError(err, { where: "fcm", action: "sw-ready" }),
-          );
+          .catch((err) => logError(err, { where: "fcm", action: "sw-ready" }));
         return reg;
       })
       .catch((err) => {

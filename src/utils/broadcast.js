@@ -1,7 +1,7 @@
 let chan = null;
 let closed = false;
 
-export function getChannel(name = 'lrp-sync') {
+export function getChannel(name = "lrp-sync") {
   if (chan && !closed) return chan;
   try {
     chan = new BroadcastChannel(name);
@@ -18,7 +18,7 @@ export function getChannel(name = 'lrp-sync') {
   }
 }
 
-export function safePost(msg, name = 'lrp-sync') {
+export function safePost(msg, name = "lrp-sync") {
   const c = getChannel(name);
   if (!c || closed) return false;
   try {

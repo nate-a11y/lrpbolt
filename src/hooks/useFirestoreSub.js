@@ -24,9 +24,7 @@ export function useFirestoreSub(makeQuery, deps) {
       q,
       (snap) => {
         setDocs(
-          snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .filter(Boolean),
+          snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter(Boolean),
         );
         setError(null);
       },

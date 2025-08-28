@@ -19,7 +19,6 @@ import {
   Tooltip,
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
-// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
@@ -278,7 +277,8 @@ function RideVehicleCalendar() {
                   sx={{
                     backgroundColor:
                       option === "ALL" ? undefined : getVehicleColor(option),
-                    color: option === "ALL" ? undefined : theme.palette.common.white,
+                    color:
+                      option === "ALL" ? undefined : theme.palette.common.white,
                     fontWeight: 500,
                     "&:hover": {
                       backgroundColor:

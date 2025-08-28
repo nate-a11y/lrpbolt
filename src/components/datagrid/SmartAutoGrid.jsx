@@ -10,13 +10,18 @@ import ResponsiveDataGridPro from "./ResponsiveDataGridPro.jsx";
 
 const isFSTimestamp = (v) => !!v && typeof v?.toDate === "function";
 const isFSTimestampLike = (v) =>
-  v && typeof v === "object" && Number.isFinite(v.seconds) && Number.isFinite(v.nanoseconds);
+  v &&
+  typeof v === "object" &&
+  Number.isFinite(v.seconds) &&
+  Number.isFinite(v.nanoseconds);
 const isDate = (v) => v instanceof Date;
 const isBool = (v) => v === true || v === false;
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
 const looksLikeDurationField = (field = "") =>
-  ["duration", "durationmins", "rideduration", "totalminutes"].includes(field.toLowerCase());
+  ["duration", "durationmins", "rideduration", "totalminutes"].includes(
+    field.toLowerCase(),
+  );
 
 const widthFor = (field, sample) => {
   if (isFSTimestamp(sample) || isFSTimestampLike(sample)) return 200;
@@ -37,7 +42,8 @@ function formatAny(field, v) {
   if (isDate(v)) return formatDateTime(v);
   if (looksLikeDurationField(field)) {
     if (isNum(v)) return formatHMFromMinutes(v);
-    if (v && typeof v === "object" && isNum(v.minutes)) return formatHMFromMinutes(v.minutes);
+    if (v && typeof v === "object" && isNum(v.minutes))
+      return formatHMFromMinutes(v.minutes);
     return "N/A";
   }
   if (isNum(v)) return String(v);
@@ -70,7 +76,16 @@ function buildAutoCol(field, headerName, sampleValue) {
 }
 
 /** Build inferred columns from the first row */
-function useAutoColumns(rows, { headerMap = {}, order = [], hide = [], overrides = {}, forceHide = [] } = {}) {
+function useAutoColumns(
+  rows,
+  {
+    headerMap = {},
+    order = [],
+    hide = [],
+    overrides = {},
+    forceHide = [],
+  } = {},
+) {
   return useMemo(() => {
     const first = rows?.find(Boolean) || {};
     const fields = Object.keys(first);
@@ -146,8 +161,17 @@ export default function SmartAutoGrid({
   columnVisibilityModel: columnVisibilityModelProp,
   ...rest
 }) {
-  const autoCols = useAutoColumns(rows, { headerMap, order, hide, overrides, forceHide });
-  const compatCols = useMemo(() => sanitizeCompatColumns(columnsCompat, forceHide), [columnsCompat, forceHide]);
+  const autoCols = useAutoColumns(rows, {
+    headerMap,
+    order,
+    hide,
+    overrides,
+    forceHide,
+  });
+  const compatCols = useMemo(
+    () => sanitizeCompatColumns(columnsCompat, forceHide),
+    [columnsCompat, forceHide],
+  );
 
   let columns = columnsCompat ? compatCols : autoCols;
   if (actionsColumn && !columns.find((c) => c.field === actionsColumn.field)) {
@@ -156,7 +180,8 @@ export default function SmartAutoGrid({
 
   const stableGetRowId =
     getRowId ||
-    ((row) => row?.id ?? row?.uid ?? row?._id ?? String(row?.docId ?? row?.key ?? ""));
+    ((row) =>
+      row?.id ?? row?.uid ?? row?._id ?? String(row?.docId ?? row?.key ?? ""));
 
   const mergedInitialState = useMemo(
     () => ({ density: "compact", ...initialStateProp }),
@@ -190,7 +215,12 @@ export default function SmartAutoGrid({
       slots={showToolbar ? { toolbar: GridToolbar } : undefined}
       slotProps={
         showToolbar
-          ? { toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }
+          ? {
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300 },
+              },
+            }
           : undefined
       }
       {...rest}

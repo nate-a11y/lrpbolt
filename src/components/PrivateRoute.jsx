@@ -9,7 +9,10 @@ export default function PrivateRoute() {
 
   if (authLoading || roleLoading) return null;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (!canAccessRoute(location.pathname, role) && location.pathname !== "/shootout") {
+  if (
+    !canAccessRoute(location.pathname, role) &&
+    location.pathname !== "/shootout"
+  ) {
     const to = `/shootout${location.search || ""}`;
     return <Navigate to={to} replace />;
   }

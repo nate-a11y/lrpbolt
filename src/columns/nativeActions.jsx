@@ -34,7 +34,7 @@ export function buildNativeActionsColumn(opts = {}) {
             label="Edit"
             onClick={() => onEdit(id, row)}
             showInMenu={showInMenu}
-          />
+          />,
         );
       }
       if (typeof onDelete === "function") {
@@ -54,7 +54,7 @@ export function buildNativeActionsColumn(opts = {}) {
               }
             }}
             showInMenu={showInMenu}
-          />
+          />,
         );
       }
       return items;

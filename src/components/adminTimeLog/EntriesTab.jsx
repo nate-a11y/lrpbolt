@@ -97,64 +97,57 @@ export default function EntriesTab() {
     event.defaultMuiPrevented = true;
   };
 
-    useEffect(() => {
-      const unsub = subscribeTimeLogs(
-        async (logs) => {
-          const withNames = await enrichDriverNames(logs || []);
-          setRows(withNames);
-          setLoading(false);
-        },
-        (err) => {
-          setError(err?.message || "Failed to load time logs.");
-          setLoading(false);
-        },
-      );
-      return () => typeof unsub === "function" && unsub();
-    }, []);
+  useEffect(() => {
+    const unsub = subscribeTimeLogs(
+      async (logs) => {
+        const withNames = await enrichDriverNames(logs || []);
+        setRows(withNames);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err?.message || "Failed to load time logs.");
+        setLoading(false);
+      },
+    );
+    return () => typeof unsub === "function" && unsub();
+  }, []);
 
-    const filteredRows = useMemo(() => {
-      return (rows || []).filter((r) => {
-        const driverMatch = driverFilter
-          ? (r.driverId ?? r.driverEmail)
-              ?.toLowerCase()
-              .includes(driverFilter.toLowerCase())
-          : true;
-        const startMatch = startFilter
-          ? r.startTime?.getTime() >= startFilter.toDate().getTime()
-          : true;
-        const endMatch = endFilter
-          ? (r.endTime ?? r.startTime)?.getTime() <=
-            endFilter.toDate().getTime()
-          : true;
-        const searchMatch = search
-          ? [
-              r.driverId ?? r.driverEmail,
-              r.rideId,
-              formatDateTime(r.startTime),
-              formatDateTime(r.endTime),
-              formatDateTime(r.loggedAt),
-              r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
-            ]
-              .filter(Boolean)
-              .some((v) =>
-                String(v).toLowerCase().includes(search.toLowerCase()),
-              )
-          : true;
-        return driverMatch && startMatch && endMatch && searchMatch;
-      });
-    }, [rows, driverFilter, startFilter, endFilter, search]);
+  const filteredRows = useMemo(() => {
+    return (rows || []).filter((r) => {
+      const driverMatch = driverFilter
+        ? (r.driverId ?? r.driverEmail)
+            ?.toLowerCase()
+            .includes(driverFilter.toLowerCase())
+        : true;
+      const startMatch = startFilter
+        ? r.startTime?.getTime() >= startFilter.toDate().getTime()
+        : true;
+      const endMatch = endFilter
+        ? (r.endTime ?? r.startTime)?.getTime() <= endFilter.toDate().getTime()
+        : true;
+      const searchMatch = search
+        ? [
+            r.driverId ?? r.driverEmail,
+            r.rideId,
+            formatDateTime(r.startTime),
+            formatDateTime(r.endTime),
+            formatDateTime(r.loggedAt),
+            r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
+          ]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(search.toLowerCase()))
+        : true;
+      return driverMatch && startMatch && endMatch && searchMatch;
+    });
+  }, [rows, driverFilter, startFilter, endFilter, search]);
 
   const safeRows = useMemo(
     () =>
-      (filteredRows || [])
-        .filter(Boolean)
-        .map((r) => ({
-          ...r,
-          duration:
-            r.duration ??
-            r.minutes ??
-            Math.round((r.durationMs || 0) / 60000),
-        })),
+      (filteredRows || []).filter(Boolean).map((r) => ({
+        ...r,
+        duration:
+          r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
+      })),
     [filteredRows],
   );
 
@@ -175,9 +168,7 @@ export default function EntriesTab() {
 
   return (
     <Paper sx={{ p: 1 }}>
-      <Box
-        sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}
-      >
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
         <TextField
           label="Search"
           value={search}
@@ -203,7 +194,7 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-        <ResponsiveScrollBox>
+      <ResponsiveScrollBox>
         <SmartAutoGrid
           rows={safeRows}
           headerMap={{
@@ -220,8 +211,29 @@ export default function EntriesTab() {
             driverId: "driverId",
             mode: "mode",
           }}
-          order={["driver","driverEmail","rideId","startTime","endTime","duration","loggedAt","note","id","userEmail","driverId","mode"]}
-          forceHide={["note","id","userEmail","driverId","mode","driver","driverEmail"]}
+          order={[
+            "driver",
+            "driverEmail",
+            "rideId",
+            "startTime",
+            "endTime",
+            "duration",
+            "loggedAt",
+            "note",
+            "id",
+            "userEmail",
+            "driverId",
+            "mode",
+          ]}
+          forceHide={[
+            "note",
+            "id",
+            "userEmail",
+            "driverId",
+            "mode",
+            "driver",
+            "driverEmail",
+          ]}
           overrides={overrides}
           actionsColumn={actionsColumn}
           loading={loading}
@@ -234,8 +246,7 @@ export default function EntriesTab() {
           apiRef={apiRef}
           experimentalFeatures={{ newEditingApi: true }}
         />
-        </ResponsiveScrollBox>
+      </ResponsiveScrollBox>
     </Paper>
   );
 }
-
