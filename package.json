@@ -123,7 +123,7 @@
     "npmlog": "^7.0.1",
     "gauge": "^5.0.0",
     "are-we-there-yet": "^4.0.0",
-    "@npmcli/move-file": "^3.0.1"
+    "@npmcli/move-file": "^3.0.0"
   },
   "type": "module"
 }
