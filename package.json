@@ -28,6 +28,8 @@
     "deps:check": "npx npm-check-updates",
     "deps:update": "npx npm-check-updates -u && npm install",
     "deps:unused": "npx depcheck",
+    "deps:refresh": "rm -rf node_modules package-lock.json && npm install",
+    "deps:why": "npm ls read-package-json npmlog gauge are-we-there-yet @npmcli/move-file",
     "audit": "npm audit --omit=dev",
     "verify:env": "node ./scripts/verify-env.js",
     "verify:prod": "npm run verify:env && npm run lint && npm run format:check && npm run test && npm run build:prod",
@@ -116,7 +118,12 @@
     "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.5.4",
     "source-map": "^0.7.6",
     "glob": "^11.0.3",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "read-package-json": "^7.0.0",
+    "npmlog": "^7.0.1",
+    "gauge": "^5.0.0",
+    "are-we-there-yet": "^4.0.0",
+    "@npmcli/move-file": "^3.0.1"
   },
   "type": "module"
 }
