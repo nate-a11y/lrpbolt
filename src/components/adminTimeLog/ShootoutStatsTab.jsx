@@ -4,6 +4,7 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { patchShootoutStat } from "../../hooks/api";
@@ -96,6 +97,7 @@ export default function ShootoutStatsTab() {
   };
 
   return (
+    <ResponsiveScrollBox>
     <SmartAutoGrid
       rows={rows}
       headerMap={{
@@ -134,5 +136,6 @@ export default function ShootoutStatsTab() {
       apiRef={apiRef}
       experimentalFeatures={{ newEditingApi: true }}
     />
+    </ResponsiveScrollBox>
   );
 }

@@ -1,7 +1,16 @@
 /* Proprietary and confidential. See LICENSE. */
 
+import {
+  isSupportedBrowser,
+  requestFcmPermission,
+  getFcmTokenSafe,
+  revokeFcmToken,
+} from "../services/fcm";
+
+import logError from "./logError";
+
 export async function notificationsSupported() {
-  return false;
+  return isSupportedBrowser();
 }
 
 export function getPermission() {
@@ -9,13 +18,26 @@ export function getPermission() {
 }
 
 export async function enableFcmForUser() {
-  throw new Error("FCM disabled");
+  const perm = await requestFcmPermission();
+  if (perm !== "granted") throw new Error("permission denied");
+  const token = await getFcmTokenSafe();
+  if (!token) throw new Error("token unavailable");
+  return token;
 }
 
 export async function disableFcmForUser() {
-  /* no-op */
+  try {
+    await revokeFcmToken();
+  } catch (err) {
+    logError(err, { where: "fcm", action: "disable" });
+  }
 }
 
 export async function ensureFcmToken() {
-  return null;
+  try {
+    return await getFcmTokenSafe();
+  } catch (err) {
+    logError(err, { where: "fcm", action: "ensure-token" });
+    return null;
+  }
 }

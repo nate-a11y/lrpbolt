@@ -27,6 +27,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DRIVER_LIST from "../data/driverDirectory";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import VehicleChip from "./VehicleChip";
 
 // LRP brand tokens
@@ -126,6 +127,7 @@ export default function DriverDirectory() {
         field: "list",
         headerName: "Driver",
         flex: 1,
+        minWidth: 140,
         sortable: false,
         disableColumnMenu: true,
         // Enable quick filter by providing searchable text
@@ -362,9 +364,10 @@ export default function DriverDirectory() {
         </Stack>
       </Box>
 
-      <Box sx={{ height: 640, width: "100%", "& .MuiDataGrid-root": { border: "none" } }}>
-        <SmartAutoGrid
-          apiRef={apiRef}
+      <ResponsiveScrollBox>
+        <Box sx={{ height: 640, width: "100%", "& .MuiDataGrid-root": { border: "none" } }}>
+          <SmartAutoGrid
+            apiRef={apiRef}
           rows={rows}
           columnsCompat={columns}
           getRowId={(row) => row.id}
@@ -413,8 +416,9 @@ export default function DriverDirectory() {
             "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
           }}
           showToolbar
-        />
-      </Box>
+          />
+        </Box>
+      </ResponsiveScrollBox>
 
       <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
       <Typography variant="caption" sx={{ color: LRP.textDim }}>

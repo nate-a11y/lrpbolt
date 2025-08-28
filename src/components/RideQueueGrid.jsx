@@ -7,6 +7,7 @@ import { mapSnapshotToRows } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function RideQueueGrid() {
@@ -35,6 +36,7 @@ export default function RideQueueGrid() {
 
   return (
     <>
+      <ResponsiveScrollBox>
         <SmartAutoGrid
           rows={rows}
           headerMap={{
@@ -69,6 +71,7 @@ export default function RideQueueGrid() {
             showInMenu: true,
           })}
         />
+      </ResponsiveScrollBox>
       {editOpen && (
         <EditRideDialog
           open={editOpen}

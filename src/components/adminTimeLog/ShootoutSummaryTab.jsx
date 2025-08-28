@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
 
@@ -60,6 +61,7 @@ export default function ShootoutSummaryTab() {
   }, []);
 
   return (
+    <ResponsiveScrollBox>
     <SmartAutoGrid
       rows={rows}
       headerMap={{
@@ -90,5 +92,6 @@ export default function ShootoutSummaryTab() {
       ]}
       forceHide={["id"]}
     />
+    </ResponsiveScrollBox>
   );
 }

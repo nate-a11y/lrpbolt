@@ -44,10 +44,12 @@ import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import AppShortcutIcon from "@mui/icons-material/AppShortcut";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
+import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
 import { useColorMode } from "../context/ColorModeContext.jsx";
+import useFcmEnable from "../hooks/useFcmEnable";
 
 const DRAWER_WIDTH = 260;
 const MINI_WIDTH = 72;
@@ -108,6 +110,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   const isAdmin = role === "admin";
   const selectedDriver = driver?.name || "";
   const { mode, toggle } = useColorMode();
+  const { enableFcm, supported: fcmSupported, token: fcmToken } = useFcmEnable();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -522,6 +525,19 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                   </Tooltip>
                 )}
               </>
+            )}
+
+            {fcmSupported && !fcmToken && (
+              <Tooltip title="Enable Notifications">
+                <IconButton
+                  onClick={enableFcm}
+                  size="small"
+                  sx={{ flexShrink: 0 }}
+                  aria-label="Enable notifications"
+                >
+                  <NotificationsActiveOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             )}
 
             <IconButton id="user-menu-btn" onClick={userMenu.handleOpen} size="small">

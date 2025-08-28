@@ -2,12 +2,14 @@
 import React from "react";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 
 export default function WeeklySummaryTab() {
   const weeklyRows = useWeeklySummary();
 
   return (
+    <ResponsiveScrollBox>
     <SmartAutoGrid
       rows={weeklyRows}
       headerMap={{
@@ -21,5 +23,6 @@ export default function WeeklySummaryTab() {
       }}
       order={["driver","driverEmail","sessions","totalMinutes","hours","firstStart","lastEnd"]}
     />
+    </ResponsiveScrollBox>
   );
 }

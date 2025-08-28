@@ -44,6 +44,7 @@ import { tsToDate } from "../utils/safe";
 import { waitForAuth } from "../utils/waitForAuth";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 
@@ -338,6 +339,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
           <Typography variant="subtitle1">Previous Sessions</Typography>
         </Box>
+        <ResponsiveScrollBox>
           <SmartAutoGrid
             rows={rows}
             headerMap={{
@@ -357,6 +359,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             order={["rideId", "startTime", "endTime", "duration", "loggedAt", "note", "id", "userEmail", "driverId", "mode", "driver", "driverEmail"]}
             forceHide={["loggedAt", "note", "id", "userEmail", "driverId", "mode", "driver", "driverEmail"]}
           />
+        </ResponsiveScrollBox>
         {rows.length === 0 && (
           <Typography textAlign="center" color="text.secondary" mt={2}>
             No time logs found.

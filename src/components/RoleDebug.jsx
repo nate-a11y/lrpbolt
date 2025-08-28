@@ -5,6 +5,7 @@ import { db } from "src/utils/firebaseInit";
 import { useRole } from "@/hooks";
 
 import { useAuth } from "../context/AuthContext.jsx";
+import useFcmEnable from "../hooks/useFcmEnable";
 
 export default function RoleDebug() {
   const { role, authLoading } = useRole();
@@ -12,6 +13,8 @@ export default function RoleDebug() {
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
   const loading = authLoading;
+  const fcm = useFcmEnable();
+  const showFcm = import.meta.env.VITE_SHOW_DEBUG_PANELS === "true" || import.meta.env.DEV;
 
   if (!user) return <Typography variant="body2">Not signed in.</Typography>;
 
@@ -61,6 +64,15 @@ export default function RoleDebug() {
         )}
         <Button size="small" color="warning" variant="contained" onClick={seedAdmin}>Seed my admin (DEV)</Button>
       </Stack>
+      {showFcm && (
+        <>
+          <Divider />
+          <Typography fontWeight={700}>FCM Diagnostics</Typography>
+          <Typography variant="body2">Supported: {fcm.supported ? "yes" : "no"}</Typography>
+          <Typography variant="body2">Permission: {fcm.permission}</Typography>
+          <Typography variant="body2">Token present: {fcm.token ? "yes" : "no"}</Typography>
+        </>
+      )}
     </Stack>
   );
 }

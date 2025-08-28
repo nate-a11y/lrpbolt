@@ -31,7 +31,6 @@ import useToast from "./hooks/useToast";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
-import FcmToaster from "./components/FcmToaster.jsx";
 import NotificationsOptInDialog from "./components/NotificationsOptInDialog.jsx";
 import { getUserAccess } from "./hooks/api";
 import { ensureFcmToken } from "./utils/fcm";
@@ -337,7 +336,6 @@ function App() {
               onClose={() => setPhonePromptOpen(false)}
             />
             <NotificationsOptInDialog user={user} />
-            <FcmToaster />
 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
