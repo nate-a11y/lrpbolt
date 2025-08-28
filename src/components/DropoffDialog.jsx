@@ -1,8 +1,16 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useState, useEffect } from "react";
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Stack, TextField, FormControlLabel, Switch, Typography
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Stack,
+  TextField,
+  FormControlLabel,
+  Switch,
+  Typography,
 } from "@mui/material";
 
 export default function DropoffDialog({ open, onClose, onSubmit }) {
@@ -28,8 +36,10 @@ export default function DropoffDialog({ open, onClose, onSubmit }) {
   }, [open]);
 
   const canSubmit = useMemo(
-    () => !isDropoff || (vehicleNumber.trim().length > 0 && chargePercent.trim().length > 0),
-    [isDropoff, vehicleNumber, chargePercent]
+    () =>
+      !isDropoff ||
+      (vehicleNumber.trim().length > 0 && chargePercent.trim().length > 0),
+    [isDropoff, vehicleNumber, chargePercent],
   );
 
   async function handleSubmit() {
@@ -79,7 +89,12 @@ export default function DropoffDialog({ open, onClose, onSubmit }) {
       <DialogContent>
         <Stack gap={2} mt={1}>
           <FormControlLabel
-            control={<Switch checked={isDropoff} onChange={(e) => setIsDropoff(e.target.checked)} />}
+            control={
+              <Switch
+                checked={isDropoff}
+                onChange={(e) => setIsDropoff(e.target.checked)}
+              />
+            }
             label={isDropoff ? "Yes, dropped off" : "No, not dropped off"}
           />
 
@@ -91,7 +106,9 @@ export default function DropoffDialog({ open, onClose, onSubmit }) {
                 inputProps={{ inputMode: "numeric", maxLength: 2 }}
                 value={vehicleNumber}
                 onChange={(e) =>
-                  setVehicleNumber(e.target.value.replace(/\D/g, "").slice(0, 2))
+                  setVehicleNumber(
+                    e.target.value.replace(/\D/g, "").slice(0, 2),
+                  )
                 }
                 required
                 fullWidth
@@ -102,17 +119,29 @@ export default function DropoffDialog({ open, onClose, onSubmit }) {
                 inputProps={{ inputMode: "numeric", maxLength: 3 }}
                 value={chargePercent}
                 onChange={(e) =>
-                  setChargePercent(e.target.value.replace(/\D/g, "").slice(0, 3))
+                  setChargePercent(
+                    e.target.value.replace(/\D/g, "").slice(0, 3),
+                  )
                 }
                 required
                 fullWidth
               />
               <FormControlLabel
-                control={<Switch checked={needsWash} onChange={(e) => setNeedsWash(e.target.checked)} />}
+                control={
+                  <Switch
+                    checked={needsWash}
+                    onChange={(e) => setNeedsWash(e.target.checked)}
+                  />
+                }
                 label={`Needs Car Wash? ${needsWash ? "Yes" : "No"}`}
               />
               <FormControlLabel
-                control={<Switch checked={needsInterior} onChange={(e) => setNeedsInterior(e.target.checked)} />}
+                control={
+                  <Switch
+                    checked={needsInterior}
+                    onChange={(e) => setNeedsInterior(e.target.checked)}
+                  />
+                }
                 label={`Needs Interior Clean? ${needsInterior ? "Yes" : "No"}`}
               />
               <TextField
@@ -132,12 +161,17 @@ export default function DropoffDialog({ open, onClose, onSubmit }) {
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCancel} disabled={submitting}>Cancel</Button>
-        <Button onClick={handleSubmit} disabled={!canSubmit || submitting} variant="contained">
+        <Button onClick={handleCancel} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={!canSubmit || submitting}
+          variant="contained"
+        >
           {isDropoff ? "Save & Send Text" : "Save"}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
-

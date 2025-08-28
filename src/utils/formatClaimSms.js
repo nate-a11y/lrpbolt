@@ -2,11 +2,7 @@
 // src/utils/formatClaimSms.js
 import { fmtDate, fmtTime, fmtDurationHM, safe } from "./rideFormatters";
 
-export const formatClaimSms = (
-  ride,
-  pickupTime,
-  claimTime = new Date(),
-) =>
+export const formatClaimSms = (ride, pickupTime, claimTime = new Date()) =>
   `Trip ID: ${ride.tripId}\n` +
   `Vehicle: ${safe(ride.vehicle)}\n` +
   `Date/Time: ${fmtDate(pickupTime)} ${fmtTime(pickupTime)}\n` +
@@ -16,4 +12,3 @@ export const formatClaimSms = (
   `Claimed At: ${fmtDate(claimTime)} ${fmtTime(claimTime)}`;
 
 export default formatClaimSms;
-

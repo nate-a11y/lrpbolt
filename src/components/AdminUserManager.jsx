@@ -32,7 +32,7 @@ import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 function parseUserLines(input) {
   const raw = typeof input === "string" ? input : "";
   return raw
-    .split(/\r?\n|\r/g)     // CRLF/CR/LF safe
+    .split(/\r?\n|\r/g) // CRLF/CR/LF safe
     .map((line) => line.trim())
     .filter(Boolean);
 }
@@ -54,7 +54,7 @@ export default function AdminUserManager() {
   const { user, role: currentRole, authLoading, roleLoading } = useAuth();
   const role = driver?.access || currentRole || "user";
   const isAdmin = role === "admin";
-  const isSmall = useMediaQuery((t) => t.breakpoints.down('sm'));
+  const isSmall = useMediaQuery((t) => t.breakpoints.down("sm"));
   const [input, setInput] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +106,11 @@ export default function AdminUserManager() {
     [isAdmin],
   );
 
-  const { dedupeRows } = useGridDoctor({ name: "AdminUserManager", rows, columns });
+  const { dedupeRows } = useGridDoctor({
+    name: "AdminUserManager",
+    rows,
+    columns,
+  });
 
   // 🔄 Subscribe to Firestore
   useEffect(() => {
@@ -121,7 +125,8 @@ export default function AdminUserManager() {
           phone: r.phone || "",
           access: (r.access || "").toLowerCase(),
         }));
-        if (import.meta.env.MODE !== "production") warnMissingFields(columns, mapped);
+        if (import.meta.env.MODE !== "production")
+          warnMissingFields(columns, mapped);
         setRows((prev) => dedupeRows(prev, mapped));
         setLoading(false);
       },
@@ -141,7 +146,7 @@ export default function AdminUserManager() {
     };
   }, [authLoading, user?.email, columns, dedupeRows]);
 
-  if (authLoading || roleLoading || currentRole === 'shootout') return null;
+  if (authLoading || roleLoading || currentRole === "shootout") return null;
 
   // ➕ Add Users
   const handleAddUsers = async () => {
@@ -170,10 +175,17 @@ export default function AdminUserManager() {
         return;
       }
       if (!ROLES.includes(access)) {
-        invalids.push(`Line ${idx + 1}: Access must be one of ${ROLES.join(", ")}`);
+        invalids.push(
+          `Line ${idx + 1}: Access must be one of ${ROLES.join(", ")}`,
+        );
         return;
       }
-      validUsers.push({ name: name.trim(), email, phone: phone.trim(), access });
+      validUsers.push({
+        name: name.trim(),
+        email,
+        phone: phone.trim(),
+        access,
+      });
     });
 
     if (invalids.length) {
@@ -192,7 +204,7 @@ export default function AdminUserManager() {
         await setDoc(
           doc(db, "users", u.email),
           { name: u.name, email: u.email, phone: u.phone, role: u.access },
-          { merge: true }
+          { merge: true },
         );
       } catch (err) {
         logError(err, "AdminUserManager:createUser");
@@ -243,9 +255,9 @@ export default function AdminUserManager() {
     try {
       await createUser({ name, email, phone, access });
       await setDoc(
-        doc(db, 'users', email),
+        doc(db, "users", email),
         { name, email, phone, role: access },
-        { merge: true }
+        { merge: true },
       );
       setNewUser({ name: "", email: "", phone: "", access: "driver" });
       setSnackbar({
@@ -281,9 +293,14 @@ export default function AdminUserManager() {
         phone: newRow.phone,
       });
       await setDoc(
-        doc(db, 'users', newRow.email),
-        { name: newRow.name, email: newRow.email, phone: newRow.phone, role: newRow.access },
-        { merge: true }
+        doc(db, "users", newRow.email),
+        {
+          name: newRow.name,
+          email: newRow.email,
+          phone: newRow.phone,
+          role: newRow.access,
+        },
+        { merge: true },
       );
       return newRow;
     } catch (err) {
@@ -297,11 +314,11 @@ export default function AdminUserManager() {
     }
   };
 
-    const handleMobileFieldChange = (id, field, value) => {
-      setRows((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-      );
-    };
+  const handleMobileFieldChange = (id, field, value) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
+    );
+  };
 
   const handleMobileUpdate = async (id) => {
     if (!isAdmin) {
@@ -321,9 +338,14 @@ export default function AdminUserManager() {
         phone: row.phone,
       });
       await setDoc(
-        doc(db, 'users', row.email),
-        { name: row.name, email: row.email, phone: row.phone, role: row.access },
-        { merge: true }
+        doc(db, "users", row.email),
+        {
+          name: row.name,
+          email: row.email,
+          phone: row.phone,
+          role: row.access,
+        },
+        { merge: true },
       );
     } catch (err) {
       logError(err, "AdminUserManager:handleMobileUpdate");
@@ -339,33 +361,43 @@ export default function AdminUserManager() {
     <Card sx={{ p: 2, m: "auto", maxWidth: 900 }}>
       <Stack spacing={2}>
         {!isAdmin && (
-          <Typography color="error">Admin access required to modify users</Typography>
+          <Typography color="error">
+            Admin access required to modify users
+          </Typography>
         )}
 
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
             label="Name"
             value={newUser.name}
-            onChange={(e) => setNewUser((u) => ({ ...u, name: e.target.value }))}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, name: e.target.value }))
+            }
             fullWidth
           />
           <TextField
             label="Email"
             value={newUser.email}
-            onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, email: e.target.value }))
+            }
             fullWidth
           />
           <TextField
             label="Phone"
             value={newUser.phone}
-            onChange={(e) => setNewUser((u) => ({ ...u, phone: e.target.value }))}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, phone: e.target.value }))
+            }
             fullWidth
           />
           <TextField
             label="Access"
             select
             value={newUser.access}
-            onChange={(e) => setNewUser((u) => ({ ...u, access: e.target.value }))}
+            onChange={(e) =>
+              setNewUser((u) => ({ ...u, access: e.target.value }))
+            }
             sx={{ minWidth: 160 }}
             helperText="Shootout = only Shootout Ride & Time Tracker"
           >
@@ -375,7 +407,11 @@ export default function AdminUserManager() {
               </MenuItem>
             ))}
           </TextField>
-          <Button variant="contained" onClick={handleManualAdd} disabled={!isAdmin}>
+          <Button
+            variant="contained"
+            onClick={handleManualAdd}
+            disabled={!isAdmin}
+          >
             Add User
           </Button>
         </Stack>
@@ -388,7 +424,11 @@ export default function AdminUserManager() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
-        <Button variant="contained" onClick={handleAddUsers} disabled={!isAdmin}>
+        <Button
+          variant="contained"
+          onClick={handleAddUsers}
+          disabled={!isAdmin}
+        >
           Add Users
         </Button>
 
@@ -398,28 +438,37 @@ export default function AdminUserManager() {
               <Stack
                 key={r.id}
                 spacing={1}
-                sx={{ p: 1, border: 1, borderColor: "divider", borderRadius: 1 }}
+                sx={{
+                  p: 1,
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: 1,
+                }}
               >
-              <TextField
-                label="Name"
-                value={r.name}
-                disabled={!isAdmin}
-                onChange={(e) => handleMobileFieldChange(r.id, "name", e.target.value)}
-                onBlur={() => handleMobileUpdate(r.id)}
-              />
-              <TextField label="Email" value={r.email} disabled />
-              <TextField
-                label="Phone"
-                value={r.phone}
-                disabled={!isAdmin}
-                onChange={(e) => handleMobileFieldChange(r.id, "phone", e.target.value)}
-                onBlur={() => handleMobileUpdate(r.id)}
-              />
-              <TextField
-                label="Access"
-                select
-                value={r.access}
-                disabled={!isAdmin}
+                <TextField
+                  label="Name"
+                  value={r.name}
+                  disabled={!isAdmin}
+                  onChange={(e) =>
+                    handleMobileFieldChange(r.id, "name", e.target.value)
+                  }
+                  onBlur={() => handleMobileUpdate(r.id)}
+                />
+                <TextField label="Email" value={r.email} disabled />
+                <TextField
+                  label="Phone"
+                  value={r.phone}
+                  disabled={!isAdmin}
+                  onChange={(e) =>
+                    handleMobileFieldChange(r.id, "phone", e.target.value)
+                  }
+                  onBlur={() => handleMobileUpdate(r.id)}
+                />
+                <TextField
+                  label="Access"
+                  select
+                  value={r.access}
+                  disabled={!isAdmin}
                   onChange={(e) => {
                     handleMobileFieldChange(r.id, "access", e.target.value);
                     handleMobileUpdate(r.id);
@@ -436,28 +485,30 @@ export default function AdminUserManager() {
           </Stack>
         ) : (
           <ResponsiveScrollBox>
-            <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <Box sx={{ width: "100%", overflowX: "auto" }}>
               <SmartAutoGrid
                 rows={rows || []}
                 columnsCompat={columns}
-              autoHeight
-              loading={loading}
-              disableRowSelectionOnClick
-              processRowUpdate={handleProcessRowUpdate}
-              isCellEditable={(params) => isAdmin && params.field !== 'email'}
-              pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) => r.id}
-              experimentalFeatures={{ newEditingApi: true }}
-              columnVisibilityModel={isSmall ? { access: false, phone: false } : undefined}
-              showToolbar
-            />
+                autoHeight
+                loading={loading}
+                disableRowSelectionOnClick
+                processRowUpdate={handleProcessRowUpdate}
+                isCellEditable={(params) => isAdmin && params.field !== "email"}
+                pageSizeOptions={[5, 10, 25]}
+                getRowId={(r) => r.id}
+                experimentalFeatures={{ newEditingApi: true }}
+                columnVisibilityModel={
+                  isSmall ? { access: false, phone: false } : undefined
+                }
+                showToolbar
+              />
             </Box>
           </ResponsiveScrollBox>
         )}
       </Stack>
 
       <Snackbar
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
         open={snackbar.open}
         autoHideDuration={3000}
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
@@ -465,7 +516,7 @@ export default function AdminUserManager() {
         <Alert
           onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
           severity={snackbar.severity}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbar.message}
         </Alert>

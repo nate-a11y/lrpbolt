@@ -58,8 +58,7 @@ export default function EditableRideGrid({
       {
         field: "endTime",
         headerName: "End",
-        valueGetter: (p) =>
-          p?.row?.endTime ?? p?.row?.dropoffTime ?? null,
+        valueGetter: (p) => p?.row?.endTime ?? p?.row?.dropoffTime ?? null,
         valueFormatter: vfTime,
       },
       {
@@ -101,14 +100,14 @@ export default function EditableRideGrid({
         <SmartAutoGrid
           rows={stableRows}
           columnsCompat={columns}
-        loading={loading}
-        checkboxSelection
-        disableRowSelectionOnClick
-        getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
-        initialState={initialState}
-        getRowId={(r) => r.id}
-        showToolbar
-      />
+          loading={loading}
+          checkboxSelection
+          disableRowSelectionOnClick
+          getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
+          initialState={initialState}
+          getRowId={(r) => r.id}
+          showToolbar
+        />
       </Box>
     </ResponsiveScrollBox>
   );

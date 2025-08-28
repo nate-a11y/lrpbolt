@@ -24,7 +24,9 @@ export default function DateTimeFieldPro({
       disableMaskedInput
       minDateTime={minDateTime || null}
       maxDateTime={maxDateTime || null}
-      slotProps={{ textField: { fullWidth: true, size: isXs ? "small" : "medium" } }}
+      slotProps={{
+        textField: { fullWidth: true, size: isXs ? "small" : "medium" },
+      }}
       {...rest}
     />
   );

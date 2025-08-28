@@ -36,7 +36,9 @@ export function fmtTime(d, fmt = "h:mm A") {
 }
 export function fmtDateTime(d) {
   const dj = tsToDayjs(d);
-  return dj && dj.isValid() ? `${dj.format("MMM D, YYYY")} ${dj.format("h:mm A")}` : "—";
+  return dj && dj.isValid()
+    ? `${dj.format("MMM D, YYYY")} ${dj.format("h:mm A")}`
+    : "—";
 }
 
 export function minutesBetween(startTs, endTs) {

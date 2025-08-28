@@ -20,7 +20,10 @@ import { useTheme } from "@mui/material/styles";
 
 export default function CalendarUpdateTab() {
   const theme = useTheme();
-  const surface = theme.palette.mode === "dark" ? theme.palette.background.paper : theme.palette.grey[50];
+  const surface =
+    theme.palette.mode === "dark"
+      ? theme.palette.background.paper
+      : theme.palette.grey[50];
   const accent = theme.palette.success.main;
 
   const Card = ({ icon, title, children, defaultExpanded = false }) => (
@@ -34,7 +37,10 @@ export default function CalendarUpdateTab() {
       }}
     >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography fontWeight={700} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Typography
+          fontWeight={700}
+          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+        >
           {icon} {title}
         </Typography>
       </AccordionSummary>
@@ -43,17 +49,22 @@ export default function CalendarUpdateTab() {
   );
 
   return (
-    <Container maxWidth="md" sx={{ pl: { xs: 1, sm: 0 }, pr: { xs: 1, sm: 2 }, pt: 2, pb: 4 }}>
+    <Container
+      maxWidth="md"
+      sx={{ pl: { xs: 1, sm: 0 }, pr: { xs: 1, sm: 2 }, pt: 2, pb: 4 }}
+    >
       <Typography variant="h5" fontWeight={800} gutterBottom>
         🗓️ How to Mark Yourself Unavailable
       </Typography>
 
       <Typography variant="body1" sx={{ mb: 2 }}>
-        Keeping your availability current prevents overbooking. Please complete both steps in Google Calendar and Moovs.
+        Keeping your availability current prevents overbooking. Please complete
+        both steps in Google Calendar and Moovs.
       </Typography>
 
       <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 3 }}>
-        <strong>Quick tip:</strong> Update <em>both</em> Google Calendar and Moovs so dispatch knows when you’re out.
+        <strong>Quick tip:</strong> Update <em>both</em> Google Calendar and
+        Moovs so dispatch knows when you’re out.
       </Alert>
 
       <Divider sx={{ mb: 3 }} />
@@ -64,7 +75,8 @@ export default function CalendarUpdateTab() {
         title="Step 1: Google Calendar"
       >
         <Typography variant="body2" gutterBottom>
-          Use Google Calendar to show you’re unavailable to dispatch and managers:
+          Use Google Calendar to show you’re unavailable to dispatch and
+          managers:
         </Typography>
         <List dense sx={{ pl: 1 }}>
           <ListItem disableGutters>
@@ -85,7 +97,10 @@ export default function CalendarUpdateTab() {
         </List>
       </Card>
 
-      <Card icon={<BlockIcon fontSize="small" color="success" />} title="Step 2: Block Time in Moovs">
+      <Card
+        icon={<BlockIcon fontSize="small" color="success" />}
+        title="Step 2: Block Time in Moovs"
+      >
         <Typography variant="body2" gutterBottom>
           Block your vehicle inside Moovs to avoid customer bookings:
         </Typography>
@@ -120,9 +135,13 @@ export default function CalendarUpdateTab() {
         </List>
       </Card>
 
-      <Card icon={<StarIcon fontSize="small" color="success" />} title="Bonus: Duplicate Days Off">
+      <Card
+        icon={<StarIcon fontSize="small" color="success" />}
+        title="Bonus: Duplicate Days Off"
+      >
         <Typography variant="body2" gutterBottom>
-          Going on vacation? Duplicate your reservation for multiple dates at once:
+          Going on vacation? Duplicate your reservation for multiple dates at
+          once:
         </Typography>
         <List dense sx={{ pl: 1 }}>
           <ListItem disableGutters>

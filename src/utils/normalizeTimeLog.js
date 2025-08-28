@@ -10,10 +10,11 @@ const deriveMode = (rideId, explicit) => {
   return id ? "RIDE" : "N/A";
 };
 
-const deriveStatus = (endTime, explicit) => (explicit ? explicit : isNil(endTime) ? "Open" : "Closed");
+const deriveStatus = (endTime, explicit) =>
+  explicit ? explicit : isNil(endTime) ? "Open" : "Closed";
 
 export const normalizeTimeLog = (docId, d = {}) => {
-  const driver     = firstKey(d, [
+  const driver = firstKey(d, [
     "driverDisplay",
     "driverEmail",
     "driver",
@@ -22,33 +23,38 @@ export const normalizeTimeLog = (docId, d = {}) => {
     "email",
     "driverName",
   ]);
-  const rideId     = firstKey(d, ["rideId", "RideID", "tripId", "TripID"]);
-  const startTime  = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
-  const endTime    = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
-  const createdAt  = firstKey(d, ["createdAt", "loggedAt", "startTime"]);
-  const mode       = deriveMode(rideId, d?.mode);
-  const status     = deriveStatus(endTime, d?.status);
+  const rideId = firstKey(d, ["rideId", "RideID", "tripId", "TripID"]);
+  const startTime = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
+  const endTime = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
+  const createdAt = firstKey(d, ["createdAt", "loggedAt", "startTime"]);
+  const mode = deriveMode(rideId, d?.mode);
+  const status = deriveStatus(endTime, d?.status);
 
-  const storedDur  = firstKey(d, ["duration", "durationMin"]);
+  const storedDur = firstKey(d, ["duration", "durationMin"]);
   const durationMin = !isNil(storedDur)
-    ? (Number.isFinite(Number(storedDur)) ? Math.max(0, Math.round(Number(storedDur))) : null)
+    ? Number.isFinite(Number(storedDur))
+      ? Math.max(0, Math.round(Number(storedDur)))
+      : null
     : diffMinutes(startTime, endTime);
 
   return {
     id: docId,
-    _raw: d,                      // keep raw for last-resort rendering
+    _raw: d, // keep raw for last-resort rendering
     driverDisplay: driver || "—",
     rideId: rideId ?? null,
-    startTime, endTime, createdAt,
+    startTime,
+    endTime,
+    createdAt,
     durationMin,
-    mode, status,
+    mode,
+    status,
     trips: isNil(d?.trips) ? null : Number(d.trips),
     passengers: isNil(d?.passengers) ? null : Number(d.passengers),
   };
 };
 
 export const normalizeShootout = (docId, d = {}) => {
-  const driver    = firstKey(d, [
+  const driver = firstKey(d, [
     "driverDisplay",
     "driverEmail",
     "driver",
@@ -58,11 +64,13 @@ export const normalizeShootout = (docId, d = {}) => {
     "driverName",
   ]);
   const startTime = firstKey(d, ["startTime", "start", "clockIn", "startedAt"]);
-  const endTime   = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
+  const endTime = firstKey(d, ["endTime", "end", "clockOut", "endedAt"]);
   const createdAt = firstKey(d, ["createdAt", "loggedAt", "startTime"]);
   const storedDur = firstKey(d, ["duration", "durationMin"]);
   const durationMin = !isNil(storedDur)
-    ? (Number.isFinite(Number(storedDur)) ? Math.max(0, Math.round(Number(storedDur))) : null)
+    ? Number.isFinite(Number(storedDur))
+      ? Math.max(0, Math.round(Number(storedDur)))
+      : null
     : diffMinutes(startTime, endTime);
 
   return {

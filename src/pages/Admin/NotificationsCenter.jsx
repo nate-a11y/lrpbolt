@@ -36,8 +36,16 @@ import { useToast } from "src/context/ToastProvider.jsx";
 const SEGMENTS = [
   { id: "admins", label: "All Admins", filter: filterAdmins },
   { id: "drivers_core", label: "All Drivers", filter: filterDriversCore },
-  { id: "shootout", label: "All Shootout (Tracker Only)", filter: filterShootout },
-  { id: "drivers_combined", label: "Drivers + Shootout", filter: filterDriversCombined },
+  {
+    id: "shootout",
+    label: "All Shootout (Tracker Only)",
+    filter: filterShootout,
+  },
+  {
+    id: "drivers_combined",
+    label: "Drivers + Shootout",
+    filter: filterDriversCombined,
+  },
   { id: "custom", label: "Custom Topic", filter: null },
 ];
 
@@ -56,7 +64,12 @@ export default function Notifications() {
   const [dataError, setDataError] = React.useState("");
 
   const segmentCounts = React.useMemo(() => {
-    const map = { admins: 0, drivers_core: 0, shootout: 0, drivers_combined: 0 };
+    const map = {
+      admins: 0,
+      drivers_core: 0,
+      shootout: 0,
+      drivers_combined: 0,
+    };
     map.admins = filterAdmins(allUsers).length;
     map.drivers_core = filterDriversCore(allUsers).length;
     map.shootout = filterShootout(allUsers).length;
@@ -138,25 +151,39 @@ export default function Notifications() {
 
   const handleSend = async () => {
     try {
-      const payloadData = dataJson && !dataError ? JSON.parse(dataJson) : undefined;
+      const payloadData =
+        dataJson && !dataError ? JSON.parse(dataJson) : undefined;
       const recipients = directRecipients;
-      if (!recipients.length) return;
+      if (!recipients.length && !(segment === "custom" && customTopic)) return;
 
       if (mode === "push") {
-        await sendPortalNotification({
-          segment,
-          customTopic: segment === "custom" ? customTopic || "" : "",
+        const base = {
           title,
           body,
           iconUrl: iconUrl || undefined,
           data: payloadData,
-          recipients,
-        });
+        };
+        if (segment === "custom" && customTopic) {
+          await sendPortalNotification({ topic: customTopic, ...base });
+        } else {
+          await Promise.all(
+            recipients
+              .filter((u) => u?.email)
+              .map((u) => sendPortalNotification({ email: u.email, ...base })),
+          );
+        }
       } else {
-        await enqueueSms({
-          body,
-          recipients,
-        });
+        await Promise.all(
+          recipients
+            .filter((u) => u?.phone)
+            .map((u) =>
+              enqueueSms({
+                to: u.phone,
+                body,
+                context: { email: u.email },
+              }),
+            ),
+        );
       }
       enqueue("Notification sent", { severity: "success" });
     } catch (err) {
@@ -169,10 +196,18 @@ export default function Notifications() {
     <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 1.5, sm: 2, md: 3 } }}>
       <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
         <Grid2 xs={12}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
             <Typography variant="h6">Notifications</Typography>
             <Tooltip title="Refresh">
-              <IconButton aria-label="Refresh users" onClick={onRefresh} disabled={loading}>
+              <IconButton
+                aria-label="Refresh users"
+                onClick={onRefresh}
+                disabled={loading}
+              >
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
@@ -186,7 +221,8 @@ export default function Notifications() {
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <InfoOutlinedIcon fontSize="small" />
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    Choose a segment or pick specific recipients. Push requires a title; SMS requires a body. Data must be JSON (key/value).
+                    Choose a segment or pick specific recipients. Push requires
+                    a title; SMS requires a body. Data must be JSON (key/value).
                   </Typography>
                 </Stack>
 
@@ -202,11 +238,16 @@ export default function Notifications() {
                       sx={{
                         borderRadius: 2,
                         textTransform: "none",
-                        "&.Mui-selected": { bgcolor: "primary.main", color: "#000" },
+                        "&.Mui-selected": {
+                          bgcolor: "primary.main",
+                          color: "#000",
+                        },
                       }}
                     >
                       {s.label}
-                      {typeof segmentCounts[s.id] === "number" ? ` (${segmentCounts[s.id]})` : ""}
+                      {typeof segmentCounts[s.id] === "number"
+                        ? ` (${segmentCounts[s.id]})`
+                        : ""}
                     </ToggleButton>
                   ))}
                 </Stack>
@@ -238,7 +279,11 @@ export default function Notifications() {
                     ))
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Pick users by name/email" placeholder="Type to search..." />
+                    <TextField
+                      {...params}
+                      label="Pick users by name/email"
+                      placeholder="Type to search..."
+                    />
                   )}
                 />
 
@@ -254,16 +299,38 @@ export default function Notifications() {
           <Card>
             <CardContent>
               <Stack spacing={1.5}>
-                <ToggleButtonGroup exclusive value={mode} onChange={(_, v) => v && setMode(v)} size="small">
+                <ToggleButtonGroup
+                  exclusive
+                  value={mode}
+                  onChange={(_, v) => v && setMode(v)}
+                  size="small"
+                >
                   <ToggleButton value="push">Push</ToggleButton>
                   <ToggleButton value="sms">SMS</ToggleButton>
                 </ToggleButtonGroup>
 
                 {mode === "push" ? (
                   <Stack spacing={1.5}>
-                    <TextField label="Title *" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
-                    <TextField label="Body" value={body} onChange={(e) => setBody(e.target.value)} fullWidth multiline minRows={2} />
-                    <TextField label="Icon URL (optional)" value={iconUrl} onChange={(e) => setIconUrl(e.target.value)} fullWidth />
+                    <TextField
+                      label="Title *"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Body"
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                    />
+                    <TextField
+                      label="Icon URL (optional)"
+                      value={iconUrl}
+                      onChange={(e) => setIconUrl(e.target.value)}
+                      fullWidth
+                    />
                     <TextField
                       label='Data (JSON, e.g. {"tripId":"123"})'
                       value={dataJson}
@@ -277,16 +344,29 @@ export default function Notifications() {
                   </Stack>
                 ) : (
                   <Stack spacing={1.5}>
-                    <TextField label="Body *" value={body} onChange={(e) => setBody(e.target.value)} fullWidth multiline minRows={3} />
+                    <TextField
+                      label="Body *"
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                      fullWidth
+                      multiline
+                      minRows={3}
+                    />
                     {body && body.length > 160 && (
-                      <Alert severity="info">SMS body exceeds 160 characters (will be split).</Alert>
+                      <Alert severity="info">
+                        SMS body exceeds 160 characters (will be split).
+                      </Alert>
                     )}
                   </Stack>
                 )}
 
                 <Divider />
 
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 1, sm: 1.5 }} alignItems={{ xs: "stretch", sm: "center" }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={{ xs: 1, sm: 1.5 }}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                >
                   <Button
                     variant="contained"
                     color="primary"
@@ -297,7 +377,8 @@ export default function Notifications() {
                     Send
                   </Button>
                   <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    {selectedCount} direct recipient{selectedCount === 1 ? "" : "s"}
+                    {selectedCount} direct recipient
+                    {selectedCount === 1 ? "" : "s"}
                   </Typography>
                 </Stack>
               </Stack>

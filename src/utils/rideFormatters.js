@@ -10,13 +10,25 @@ export const safe = (v, fallback = "—") =>
   v === null || v === undefined || v === "" ? fallback : v;
 
 export const fmtDate = (ts) =>
-  ts ? dayjs(ts.toDate ? ts.toDate() : ts).tz(TIMEZONE).format("MM/DD/YYYY") : "—";
+  ts
+    ? dayjs(ts.toDate ? ts.toDate() : ts)
+        .tz(TIMEZONE)
+        .format("MM/DD/YYYY")
+    : "—";
 
 export const fmtTime = (ts) =>
-  ts ? dayjs(ts.toDate ? ts.toDate() : ts).tz(TIMEZONE).format("h:mm A") : "—";
+  ts
+    ? dayjs(ts.toDate ? ts.toDate() : ts)
+        .tz(TIMEZONE)
+        .format("h:mm A")
+    : "—";
 
 export const fmtDow = (ts) =>
-  ts ? dayjs(ts.toDate ? ts.toDate() : ts).tz(TIMEZONE).format("dddd") : "—";
+  ts
+    ? dayjs(ts.toDate ? ts.toDate() : ts)
+        .tz(TIMEZONE)
+        .format("dddd")
+    : "—";
 
 export const fmtDurationHM = (mins) => {
   if (typeof mins !== "number" || Number.isNaN(mins)) return "00:00";

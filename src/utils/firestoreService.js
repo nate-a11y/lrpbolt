@@ -64,12 +64,19 @@ export function subscribeShootoutStats({ driverEmail, onData, onError }) {
   }
 }
 
-export async function createShootoutSession({ driverEmail, vehicle, startTime }) {
+export async function createShootoutSession({
+  driverEmail,
+  vehicle,
+  startTime,
+}) {
   try {
     const payload = {
       driverEmail,
       vehicle: vehicle || "",
-      startTime: startTime instanceof Timestamp ? startTime : Timestamp.fromDate(startTime || new Date()),
+      startTime:
+        startTime instanceof Timestamp
+          ? startTime
+          : Timestamp.fromDate(startTime || new Date()),
       endTime: null,
       trips: 0,
       passengers: 0,
@@ -107,7 +114,13 @@ const COLL = "userAccess";
  * Fields required by rules: name, email, access ("admin" | "driver")
  * Extra fields (active, createdAt/updatedAt) are allowed.
  */
-export async function createUser({ name, email, access, phone, active = true }) {
+export async function createUser({
+  name,
+  email,
+  access,
+  phone,
+  active = true,
+}) {
   const lcEmail = (email || "").toLowerCase();
   const lcAccess = (access || "").toLowerCase();
   const ref = doc(db, COLL, lcEmail);
@@ -121,7 +134,7 @@ export async function createUser({ name, email, access, phone, active = true }) 
       active: Boolean(active),
       createdAt: new Date(),
     },
-    { merge: true }
+    { merge: true },
   );
 }
 
@@ -135,4 +148,3 @@ export async function updateUser({ email, access, name, phone, active }) {
   patch.updatedAt = new Date();
   await updateDoc(doc(db, COLL, lcEmail), patch);
 }
-

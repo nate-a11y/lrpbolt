@@ -21,7 +21,11 @@ export function startMonitoring() {
     const table = [];
     requestMap.forEach((value, key) => {
       const perMin = value.count / ((now - value.start) / 60000);
-      table.push({ endpoint: key, count: value.count, perMin: perMin.toFixed(1) });
+      table.push({
+        endpoint: key,
+        count: value.count,
+        perMin: perMin.toFixed(1),
+      });
       if (perMin > 50) {
         console.warn(
           `⚠️ High request volume: ${key} @ ${perMin.toFixed(1)} req/min`,

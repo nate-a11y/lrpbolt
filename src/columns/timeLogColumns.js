@@ -13,7 +13,12 @@ export function timeLogColumns(opts = {}) {
 
   const columns = [
     { field: "driverName", headerName: "Driver", minWidth: 160, flex: 0.8 },
-    { field: "driverEmail", headerName: "Driver Email", minWidth: 220, flex: 1 },
+    {
+      field: "driverEmail",
+      headerName: "Driver Email",
+      minWidth: 220,
+      flex: 1,
+    },
     { field: "rideId", headerName: "Ride ID", minWidth: 120, flex: 0.5 },
     {
       field: "clockIn",
@@ -50,8 +55,7 @@ export function timeLogColumns(opts = {}) {
     { field: "note", headerName: "Note", minWidth: 240, flex: 1.2 },
   ];
 
-  if (withActions)
-    columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
+  if (withActions) columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
   return columns;
 }

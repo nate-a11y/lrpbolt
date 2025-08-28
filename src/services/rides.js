@@ -6,13 +6,23 @@ import { db } from "../utils/firebaseInit";
 import { toTimestampOrNull } from "../utils/dateSafe";
 
 const ALLOWED = new Set([
-  "tripId","pickupTime","rideDuration","rideType","vehicle","rideNotes",
-  "claimedBy","claimedAt","ClaimedBy","ClaimedAt",
-  "status","importedFromQueueAt",
-  "updatedAt","lastModifiedBy"
+  "tripId",
+  "pickupTime",
+  "rideDuration",
+  "rideType",
+  "vehicle",
+  "rideNotes",
+  "claimedBy",
+  "claimedAt",
+  "ClaimedBy",
+  "ClaimedAt",
+  "status",
+  "importedFromQueueAt",
+  "updatedAt",
+  "lastModifiedBy",
 ]);
 
-const NA_STRINGS = new Set(["N/A","NA","-",""]);
+const NA_STRINGS = new Set(["N/A", "NA", "-", ""]);
 
 /**
  * Patch a ride doc with only allowed keys and normalized types.
@@ -31,7 +41,11 @@ export async function patchRide(collectionName, id, patch, currentUserEmail) {
     // Skip placeholders
     if (typeof val === "string" && NA_STRINGS.has(val.trim())) continue;
 
-    if (k === "pickupTime" || k === "claimedAt" || k === "importedFromQueueAt") {
+    if (
+      k === "pickupTime" ||
+      k === "claimedAt" ||
+      k === "importedFromQueueAt"
+    ) {
       const ts = toTimestampOrNull(val); // accepts Dayjs/Date/Timestamp/null
       if (!ts) continue; // do not write invalid timestamp
       data[k] = ts;

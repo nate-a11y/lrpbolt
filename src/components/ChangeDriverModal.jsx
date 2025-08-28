@@ -1,5 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState, useCallback, forwardRef, memo } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  forwardRef,
+  memo,
+} from "react";
 import {
   Dialog,
   DialogTitle,
@@ -85,7 +92,7 @@ const ChangeDriverModal = ({ open, onClose }) => {
       }
       (onClose || (() => {}))();
     },
-    [isSubmitting, onClose]
+    [isSubmitting, onClose],
   );
 
   return (

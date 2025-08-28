@@ -64,8 +64,7 @@ export function rideColumns(opts = {}) {
     },
   ];
 
-  if (withActions)
-    columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
+  if (withActions) columns.push(buildNativeActionsColumn({ onEdit, onDelete }));
 
   return columns;
 }

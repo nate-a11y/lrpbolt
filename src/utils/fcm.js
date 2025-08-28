@@ -14,7 +14,9 @@ export async function notificationsSupported() {
 }
 
 export function getPermission() {
-  return typeof Notification !== "undefined" ? Notification.permission : "denied";
+  return typeof Notification !== "undefined"
+    ? Notification.permission
+    : "denied";
 }
 
 export async function enableFcmForUser() {

@@ -21,7 +21,13 @@ import LockIcon from "@mui/icons-material/Lock";
  *  - isTracking: boolean
  *  - role: "admin" | "driver" | string
  */
-const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) => {
+const DriverSelector = ({
+  driver,
+  setDriver,
+  drivers = [],
+  isTracking,
+  role,
+}) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isAdmin = role === "admin";
@@ -45,15 +51,18 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
     const byId = new Map();
     for (const d of mapped) if (d.id) byId.set(d.id, d);
 
-    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(byId.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }, [drivers]);
 
   // Controlled Select value = option id
   const valueId = useMemo(() => {
     if (!driver) return "";
     return typeof driver === "string"
-      ? options.find((o) => o.id === driver || o.name === driver)?.id ?? ""
-      : options.find((o) => o.id === driver.id || o.name === driver.name)?.id ?? "";
+      ? (options.find((o) => o.id === driver || o.name === driver)?.id ?? "")
+      : (options.find((o) => o.id === driver.id || o.name === driver.name)
+          ?.id ?? "");
   }, [driver, options]);
 
   const disabled = !isAdmin || isTracking;
@@ -68,7 +77,7 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
         setDriver(null);
       }
     },
-    [driver, options, setDriver]
+    [driver, options, setDriver],
   );
 
   const handleClear = useCallback(() => {
@@ -102,7 +111,12 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
 
       {isAdmin ? (
         <>
-          <Button onClick={handleClear} disabled={disabled} variant="outlined" size="small">
+          <Button
+            onClick={handleClear}
+            disabled={disabled}
+            variant="outlined"
+            size="small"
+          >
             🔁 Clear
           </Button>
 
@@ -117,7 +131,8 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
               disabled={disabled}
               displayEmpty
               renderValue={(selectedId) => {
-                if (!selectedId) return <span style={{ opacity: 0.7 }}>Select a driver…</span>;
+                if (!selectedId)
+                  return <span style={{ opacity: 0.7 }}>Select a driver…</span>;
                 const opt = options.find((o) => o.id === selectedId);
                 return opt ? opt.name : "";
               }}
@@ -149,7 +164,10 @@ const DriverSelector = ({ driver, setDriver, drivers = [], isTracking, role }) =
           icon={<LockIcon fontSize="small" />}
           label="Locked"
           size="small"
-          sx={{ backgroundColor: isDark ? "#555" : "#888", color: "common.white" }}
+          sx={{
+            backgroundColor: isDark ? "#555" : "#888",
+            color: "common.white",
+          }}
         />
       )}
     </Box>

@@ -1,4 +1,10 @@
-import { addDoc, collection, serverTimestamp, doc, onSnapshot } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  doc,
+  onSnapshot,
+} from "firebase/firestore";
 
 import { db } from "../utils/firebaseInit";
 import AppError from "../utils/AppError.js";
@@ -27,7 +33,9 @@ export async function enqueueSms({ to, body, context = {} }) {
     const appErr =
       err instanceof AppError
         ? err
-        : new AppError(err.message || "enqueueSms failed", "FIRESTORE_WRITE", { to });
+        : new AppError(err.message || "enqueueSms failed", "FIRESTORE_WRITE", {
+            to,
+          });
     logError(appErr, { where: "messaging", action: "enqueueSms" });
     throw appErr;
   }
@@ -35,16 +43,21 @@ export async function enqueueSms({ to, body, context = {} }) {
 
 export function watchMessage(ref, cb) {
   try {
-    return onSnapshot(doc(db, "outboundMessages", ref.id), (s) =>
-      s.exists() && cb(s.data()),
+    return onSnapshot(
+      doc(db, "outboundMessages", ref.id),
+      (s) => s.exists() && cb(s.data()),
     );
   } catch (err) {
     const appErr =
       err instanceof AppError
         ? err
-        : new AppError(err.message || "watchMessage failed", "FIRESTORE_LISTEN", {
-            id: ref?.id,
-          });
+        : new AppError(
+            err.message || "watchMessage failed",
+            "FIRESTORE_LISTEN",
+            {
+              id: ref?.id,
+            },
+          );
     logError(appErr, { where: "messaging", action: "watchMessage" });
     throw appErr;
   }

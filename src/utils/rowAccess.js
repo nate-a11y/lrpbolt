@@ -20,7 +20,9 @@ export function getField(row, key) {
 
 /** Read Firestore Timestamp seconds (null-safe). */
 export function getTsSec(v) {
-  return v && typeof v === "object" && typeof v.seconds === "number" ? v.seconds : -1;
+  return v && typeof v === "object" && typeof v.seconds === "number"
+    ? v.seconds
+    : -1;
 }
 
 /** Legacy claimed helpers */

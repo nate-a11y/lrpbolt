@@ -58,7 +58,10 @@ async function logTimeCreate(payload) {
     userEmail,
     driverEmail: userEmail,
     driverId: payload.driverId ?? null,
-    startTime: payload.startTime instanceof Timestamp ? payload.startTime : serverTimestamp(),
+    startTime:
+      payload.startTime instanceof Timestamp
+        ? payload.startTime
+        : serverTimestamp(),
     endTime: payload.endTime ?? null,
     rideId: payload.rideId ?? null,
     mode: payload.mode ?? "N/A",
@@ -79,7 +82,6 @@ function tsToMillis(v) {
   return d ? d.getTime() : null;
 }
 
-
 export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [rideId, setRideId] = useState("");
   const [startTime, setStartTime] = useState(null);
@@ -89,45 +91,48 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
-  const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
+  const [snack, setSnack] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [logId, setLogId] = useState(null);
   const driverRef = useRef(driver);
   const isRunningRef = useRef(isRunning);
 
-    const { role, authLoading: roleLoading } = useRole();
-    const { user } = useAuth();
-    const isAdmin = role === "admin";
-    const isDriver = role === "driver";
-    const [error, setError] = useState(null);
-    const [ready, setReady] = useState(false);
+  const { role, authLoading: roleLoading } = useRole();
+  const { user } = useAuth();
+  const isAdmin = role === "admin";
+  const isDriver = role === "driver";
+  const [error, setError] = useState(null);
+  const [ready, setReady] = useState(false);
 
-
-    useEffect(() => {
-      if (!user?.email) return;
-      setReady(false);
-      const q = query(
-        collection(db, "timeLogs"),
-        where("userEmail", "==", user.email.toLowerCase()),
-        orderBy("startTime", "desc"),
-        limit(200),
-      );
-      const unsub = onSnapshot(
-        q,
-        async (snap) => {
-          const base = mapSnapshotToRows("timeLogs", snap);
-          const withNames = await enrichDriverNames(base);
-          setRows(withNames);
-          setReady(true);
-        },
-        (err) => {
-          logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
-          setError(err);
-          setReady(true);
-        },
-      );
-      return () => unsub();
-    }, [user?.email]);
+  useEffect(() => {
+    if (!user?.email) return;
+    setReady(false);
+    const q = query(
+      collection(db, "timeLogs"),
+      where("userEmail", "==", user.email.toLowerCase()),
+      orderBy("startTime", "desc"),
+      limit(200),
+    );
+    const unsub = onSnapshot(
+      q,
+      async (snap) => {
+        const base = mapSnapshotToRows("timeLogs", snap);
+        const withNames = await enrichDriverNames(base);
+        setRows(withNames);
+        setReady(true);
+      },
+      (err) => {
+        logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
+        setError(err);
+        setReady(true);
+      },
+    );
+    return () => unsub();
+  }, [user?.email]);
 
   // logs are populated via Firestore subscription
 
@@ -147,7 +152,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const c = getChannel(bcName);
     if (c) {
       c.onmessage = (e) => {
-        if (e?.data?.type === "timeclock:started" && e.data.driver === driverRef.current) {
+        if (
+          e?.data?.type === "timeclock:started" &&
+          e.data.driver === driverRef.current
+        ) {
           if (!isRunningRef.current) {
             const s = e.data.payload;
             setRideId(s.rideId || "");
@@ -157,7 +165,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             setIsRunning(true);
           }
         }
-        if (e?.data?.type === "timeclock:ended" && e.data.driver === driverRef.current) {
+        if (
+          e?.data?.type === "timeclock:ended" &&
+          e.data.driver === driverRef.current
+        ) {
           setIsRunning(false);
           setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
           localStorage.removeItem("lrp_timeTrack");
@@ -183,7 +194,9 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     if (!isRunning || !startTime) return;
     const timer = setInterval(() => {
       setElapsed(
-        Math.floor((tsToMillis(Timestamp.now()) - tsToMillis(startTime)) / 1000),
+        Math.floor(
+          (tsToMillis(Timestamp.now()) - tsToMillis(startTime)) / 1000,
+        ),
       );
     }, 1000);
     return () => clearInterval(timer);
@@ -199,12 +212,20 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
   const handleStart = async () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {
-      return setSnack({ open: true, message: "Enter Ride ID or select a mode", severity: "error" });
+      return setSnack({
+        open: true,
+        message: "Enter Ride ID or select a mode",
+        severity: "error",
+      });
     }
     if (isRunning) return;
 
     const now = Timestamp.now();
-    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
+    const idToTrack = isNA
+      ? "N/A"
+      : isMulti
+        ? "MULTI"
+        : rideId.trim().toUpperCase();
     setSubmitting(true);
     try {
       const ref = await logTimeCreate({
@@ -243,7 +264,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       );
     } catch (e) {
       logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
-      setSnack({ open: true, message: `❌ Failed: ${e.message}`, severity: "error" });
+      setSnack({
+        open: true,
+        message: `❌ Failed: ${e.message}`,
+        severity: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -257,7 +282,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     setIsRunning(false);
     setSubmitting(true);
 
-    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
+    const idToTrack = isNA
+      ? "N/A"
+      : isMulti
+        ? "MULTI"
+        : rideId.trim().toUpperCase();
     try {
       await logTimeUpdate(logId, {
         endTime: serverTimestamp(),
@@ -272,11 +301,19 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       setElapsed(0);
       setLogId(null);
       safePost(
-        { type: "timeclock:ended", driver, payload: { endTime: tsToMillis(end) } },
+        {
+          type: "timeclock:ended",
+          driver,
+          payload: { endTime: tsToMillis(end) },
+        },
         bcName,
       );
     } catch (err) {
-      setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
+      setSnack({
+        open: true,
+        message: `❌ Failed: ${err.message}`,
+        severity: "error",
+      });
       setIsRunning(true);
     }
 
@@ -284,7 +321,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   };
 
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
-  if (!(isAdmin || isDriver)) return <Alert severity="error">You don’t have permission to view this.</Alert>;
+  if (!(isAdmin || isDriver))
+    return (
+      <Alert severity="error">You don’t have permission to view this.</Alert>
+    );
   if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
 
   return (
@@ -292,7 +332,9 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       {import.meta.env.DEV && <RoleDebug />}
       <ErrorBanner error={error} />
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Time Clock</Typography>
+        <Typography variant="h6" gutterBottom>
+          Time Clock
+        </Typography>
         <TextField
           label="Ride ID"
           fullWidth
@@ -302,24 +344,50 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           helperText="Enter Ride ID or select a task type"
         />
         <FormControlLabel
-          control={<Checkbox checked={isNA} onChange={(e) => {
-            setIsNA(e.target.checked); if (e.target.checked) setIsMulti(false);
-          }} disabled={isRunning} />}
+          control={
+            <Checkbox
+              checked={isNA}
+              onChange={(e) => {
+                setIsNA(e.target.checked);
+                if (e.target.checked) setIsMulti(false);
+              }}
+              disabled={isRunning}
+            />
+          }
           label="N/A – Non-Ride Task"
         />
         <FormControlLabel
-          control={<Checkbox checked={isMulti} onChange={(e) => {
-            setIsMulti(e.target.checked); if (e.target.checked) setIsNA(false);
-          }} disabled={isRunning} />}
+          control={
+            <Checkbox
+              checked={isMulti}
+              onChange={(e) => {
+                setIsMulti(e.target.checked);
+                if (e.target.checked) setIsNA(false);
+              }}
+              disabled={isRunning}
+            />
+          }
           label="Multiple Back-to-Back Rides"
         />
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={2}>
-          <Button onClick={handleStart} disabled={isRunning || submitting}
-            startIcon={<PlayArrowIcon />} variant="contained" color="success" sx={{ flex: 1 }}>
+          <Button
+            onClick={handleStart}
+            disabled={isRunning || submitting}
+            startIcon={<PlayArrowIcon />}
+            variant="contained"
+            color="success"
+            sx={{ flex: 1 }}
+          >
             {submitting && !isRunning ? "Starting…" : "Start"}
           </Button>
-          <Button onClick={handleEnd} disabled={!isRunning || submitting}
-            startIcon={<StopIcon />} variant="contained" color="error" sx={{ flex: 1 }}>
+          <Button
+            onClick={handleEnd}
+            disabled={!isRunning || submitting}
+            startIcon={<StopIcon />}
+            variant="contained"
+            color="error"
+            sx={{ flex: 1 }}
+          >
             {submitting && isRunning ? "Logging…" : "End"}
           </Button>
         </Stack>
@@ -336,7 +404,12 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       </Paper>
 
       <Paper elevation={2} sx={{ p: 2 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={1}
+        >
           <Typography variant="subtitle1">Previous Sessions</Typography>
         </Box>
         <ResponsiveScrollBox>
@@ -356,8 +429,30 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
               driver: "Driver",
               driverEmail: "Driver Email",
             }}
-            order={["rideId", "startTime", "endTime", "duration", "loggedAt", "note", "id", "userEmail", "driverId", "mode", "driver", "driverEmail"]}
-            forceHide={["loggedAt", "note", "id", "userEmail", "driverId", "mode", "driver", "driverEmail"]}
+            order={[
+              "rideId",
+              "startTime",
+              "endTime",
+              "duration",
+              "loggedAt",
+              "note",
+              "id",
+              "userEmail",
+              "driverId",
+              "mode",
+              "driver",
+              "driverEmail",
+            ]}
+            forceHide={[
+              "loggedAt",
+              "note",
+              "id",
+              "userEmail",
+              "driverId",
+              "mode",
+              "driver",
+              "driverEmail",
+            ]}
           />
         </ResponsiveScrollBox>
         {rows.length === 0 && (
@@ -373,7 +468,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         onClose={() => setSnack({ ...snack, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity={snack.severity} variant="filled" onClose={() => setSnack({ ...snack, open: false })}>
+        <Alert
+          severity={snack.severity}
+          variant="filled"
+          onClose={() => setSnack({ ...snack, open: false })}
+        >
           {snack.message}
         </Alert>
       </Snackbar>

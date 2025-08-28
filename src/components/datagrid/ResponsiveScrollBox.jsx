@@ -5,7 +5,10 @@ import { Box } from "@mui/material";
  * Ensures horizontal scroll/swipe on narrow screens, without breaking desktop.
  * Wrap DataGrid containers with this to allow pan-x and native momentum scrolling.
  */
-const ResponsiveScrollBox = React.forwardRef(function ResponsiveScrollBox({ children, sx }, ref) {
+const ResponsiveScrollBox = React.forwardRef(function ResponsiveScrollBox(
+  { children, sx },
+  ref,
+) {
   return (
     <Box
       ref={ref}

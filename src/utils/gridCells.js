@@ -4,7 +4,11 @@ import dayjs from "dayjs";
 export const coalesce = (...vals) => {
   for (const v of vals) {
     if (v === 0) return 0;
-    if (v !== undefined && v !== null && !(typeof v === "string" && v.trim() === "")) {
+    if (
+      v !== undefined &&
+      v !== null &&
+      !(typeof v === "string" && v.trim() === "")
+    ) {
       return v;
     }
   }
@@ -30,17 +34,23 @@ export const getField = (row, logicalKeyOrExact) => {
   for (const k of keys) {
     const v = row?.[k];
     if (v === 0) return 0;
-    if (v !== undefined && v !== null && !(typeof v === "string" && v.trim() === "")) {
+    if (
+      v !== undefined &&
+      v !== null &&
+      !(typeof v === "string" && v.trim() === "")
+    ) {
       return v;
     }
   }
   return null;
 };
 
-export const fmtDateTime = (ts) => (ts ? dayjs(ts).format("MM/DD/YYYY hh:mm A") : null);
+export const fmtDateTime = (ts) =>
+  ts ? dayjs(ts).format("MM/DD/YYYY hh:mm A") : null;
 
 export const fmtMinutes = (mins) => {
-  if (mins === null || mins === undefined || Number.isNaN(Number(mins))) return null;
+  if (mins === null || mins === undefined || Number.isNaN(Number(mins)))
+    return null;
   const m = Math.max(0, Number(mins));
   const h = Math.floor(m / 60);
   const r = m % 60;
@@ -52,4 +62,3 @@ export const asText = (v) => {
   if (v === null || v === undefined) return null;
   return typeof v === "string" ? v : String(v);
 };
-

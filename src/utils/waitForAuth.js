@@ -23,7 +23,7 @@ export function waitForAuth(requireUser = true) {
       (e) => {
         unsub();
         reject(e);
-      }
+      },
     );
   });
 }

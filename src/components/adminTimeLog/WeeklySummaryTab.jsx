@@ -10,19 +10,27 @@ export default function WeeklySummaryTab() {
 
   return (
     <ResponsiveScrollBox>
-    <SmartAutoGrid
-      rows={weeklyRows}
-      headerMap={{
-        driver: "Driver",
-        driverEmail: "Driver Email",
-        sessions: "Sessions",
-        totalMinutes: "Total Minutes",
-        hours: "Total Hours",
-        firstStart: "First In",
-        lastEnd: "Last Out",
-      }}
-      order={["driver","driverEmail","sessions","totalMinutes","hours","firstStart","lastEnd"]}
-    />
+      <SmartAutoGrid
+        rows={weeklyRows}
+        headerMap={{
+          driver: "Driver",
+          driverEmail: "Driver Email",
+          sessions: "Sessions",
+          totalMinutes: "Total Minutes",
+          hours: "Total Hours",
+          firstStart: "First In",
+          lastEnd: "Last Out",
+        }}
+        order={[
+          "driver",
+          "driverEmail",
+          "sessions",
+          "totalMinutes",
+          "hours",
+          "firstStart",
+          "lastEnd",
+        ]}
+      />
     </ResponsiveScrollBox>
   );
 }

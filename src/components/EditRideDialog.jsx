@@ -1,8 +1,16 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField, useMediaQuery } from "@mui/material";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Stack,
+  TextField,
+  useMediaQuery,
+} from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
-// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useTheme } from "@mui/material/styles";
 
@@ -15,7 +23,12 @@ import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";
 
 const NUM_FIELDS = new Set(["rideDuration"]);
 
-export default function EditRideDialog({ open, onClose, collectionName, ride }) {
+export default function EditRideDialog({
+  open,
+  onClose,
+  collectionName,
+  ride,
+}) {
   const { user } = useAuth();
   const theme = useTheme();
   const fullOnXs = useMediaQuery(theme.breakpoints.down("sm"));
@@ -52,11 +65,18 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
     }
   };
 
-  const isTsField = (f) => f.toLowerCase().includes("time") || f.toLowerCase().endsWith("at");
+  const isTsField = (f) =>
+    f.toLowerCase().includes("time") || f.toLowerCase().endsWith("at");
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Dialog open={open} onClose={() => onClose(false)} maxWidth="sm" fullWidth fullScreen={fullOnXs}>
+      <Dialog
+        open={open}
+        onClose={() => onClose(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={fullOnXs}
+      >
         <DialogTitle>Edit Ride</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} mt={1}>
@@ -68,7 +88,9 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
                     key={field}
                     label={field}
                     value={val}
-                    onChange={(v) => handleChange(field, isValidDayjs(v) ? v : null)}
+                    onChange={(v) =>
+                      handleChange(field, isValidDayjs(v) ? v : null)
+                    }
                   />
                 );
               }
@@ -78,7 +100,12 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
                   label={field}
                   value={val ?? ""}
                   onChange={(e) =>
-                    handleChange(field, NUM_FIELDS.has(field) ? Number(e.target.value) : e.target.value)
+                    handleChange(
+                      field,
+                      NUM_FIELDS.has(field)
+                        ? Number(e.target.value)
+                        : e.target.value,
+                    )
                   }
                   type={NUM_FIELDS.has(field) ? "number" : "text"}
                   fullWidth
@@ -89,7 +116,10 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => onClose(false)} sx={{ width: { xs: "100%", sm: "auto" } }}>
+          <Button
+            onClick={() => onClose(false)}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
             Cancel
           </Button>
           <Button

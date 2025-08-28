@@ -35,9 +35,11 @@ export default function getEnv() {
     env[k] = import.meta.env[k];
   });
   if (missing.length) {
-    throw new AppError(`Missing env vars: ${missing.join(", ")}`, "ENV_MISSING");
+    throw new AppError(
+      `Missing env vars: ${missing.join(", ")}`,
+      "ENV_MISSING",
+    );
   }
   cached = env;
   return env;
 }
-

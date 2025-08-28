@@ -134,8 +134,16 @@ export default function DriverDirectory() {
         valueGetter: (params) => {
           const row = params?.row;
           if (!row) return null;
-          const vehicles = Array.isArray(row.vehicles) ? row.vehicles.join(" ") : "";
-          const parts = [row.name, row.lrp, row.email, row.phone, vehicles].filter(Boolean);
+          const vehicles = Array.isArray(row.vehicles)
+            ? row.vehicles.join(" ")
+            : "";
+          const parts = [
+            row.name,
+            row.lrp,
+            row.email,
+            row.phone,
+            vehicles,
+          ].filter(Boolean);
           return parts.length ? parts.join(" ") : null;
         },
         renderCell: (params) => {
@@ -154,7 +162,11 @@ export default function DriverDirectory() {
           };
 
           return (
-            <Stack direction="row" spacing={2} sx={{ alignItems: "center", width: "100%", py: 1.25 }}>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ alignItems: "center", width: "100%", py: 1.25 }}
+            >
               <Box
                 sx={{
                   position: "relative",
@@ -187,10 +199,16 @@ export default function DriverDirectory() {
                   <Box sx={{ minWidth: 0 }}>
                     <Typography
                       fontWeight={800}
-                      sx={{ color: "#fff", textShadow: `0 0 6px rgba(76,187,23,0.45)` }}
+                      sx={{
+                        color: "#fff",
+                        textShadow: `0 0 6px rgba(76,187,23,0.45)`,
+                      }}
                       noWrap
                     >
-                      <Highlight text={`${d.name} (${d.lrp})`} keyword={search} />
+                      <Highlight
+                        text={`${d.name} (${d.lrp})`}
+                        keyword={search}
+                      />
                     </Typography>
 
                     <Stack
@@ -200,7 +218,11 @@ export default function DriverDirectory() {
                       sx={{ color: LRP.textDim, mt: 0.25, flexWrap: "wrap" }}
                     >
                       <LocalShippingIcon fontSize="inherit" />
-                      <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap" }}>
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ flexWrap: "wrap" }}
+                      >
                         {Array.isArray(d.vehicles) &&
                           d.vehicles.slice(0, 4).map((v, i) => (
                             <VehicleChip
@@ -236,14 +258,21 @@ export default function DriverDirectory() {
                       </Stack>
                     </Stack>
 
-                    <Typography variant="caption" sx={{ color: LRP.textDim, display: "block", mt: 0.25 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: LRP.textDim, display: "block", mt: 0.25 }}
+                    >
                       <Highlight text={d.phone} keyword={search} /> ·{" "}
                       <Highlight text={d.email} keyword={search} />
                     </Typography>
                   </Box>
 
                   {/* Actions */}
-                  <Stack direction="row" spacing={0.75} sx={{ flexShrink: 0, alignItems: "center" }}>
+                  <Stack
+                    direction="row"
+                    spacing={0.75}
+                    sx={{ flexShrink: 0, alignItems: "center" }}
+                  >
                     <ButtonGroup
                       size="small"
                       variant="outlined"
@@ -260,11 +289,19 @@ export default function DriverDirectory() {
                         },
                       }}
                     >
-                      <Button component="a" href={tel} startIcon={<PhoneIcon />}>
+                      <Button
+                        component="a"
+                        href={tel}
+                        startIcon={<PhoneIcon />}
+                      >
                         Call
                       </Button>
                       {sms ? (
-                        <Button component="a" href={sms} startIcon={<SmsIcon />}>
+                        <Button
+                          component="a"
+                          href={sms}
+                          startIcon={<SmsIcon />}
+                        >
                           SMS
                         </Button>
                       ) : (
@@ -272,15 +309,28 @@ export default function DriverDirectory() {
                           SMS
                         </Button>
                       )}
-                      <Button component="a" href={email} startIcon={<EmailIcon />}>
+                      <Button
+                        component="a"
+                        href={email}
+                        startIcon={<EmailIcon />}
+                      >
                         Email
                       </Button>
                     </ButtonGroup>
 
                     {/* Compact icons on mobile */}
-                    <Stack direction="row" spacing={0.25} sx={{ display: { xs: "flex", md: "none" } }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.25}
+                      sx={{ display: { xs: "flex", md: "none" } }}
+                    >
                       <Tooltip title="Call">
-                        <IconButton component="a" href={tel} size="small" sx={iconBtnSx()}>
+                        <IconButton
+                          component="a"
+                          href={tel}
+                          size="small"
+                          sx={iconBtnSx()}
+                        >
                           <PhoneIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -296,12 +346,21 @@ export default function DriverDirectory() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Email">
-                        <IconButton component="a" href={email} size="small" sx={iconBtnSx()}>
+                        <IconButton
+                          component="a"
+                          href={email}
+                          size="small"
+                          sx={iconBtnSx()}
+                        >
                           <EmailIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Copy #">
-                        <IconButton onClick={onCopy} size="small" sx={iconBtnSx()}>
+                        <IconButton
+                          onClick={onCopy}
+                          size="small"
+                          sx={iconBtnSx()}
+                        >
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -330,11 +389,17 @@ export default function DriverDirectory() {
   );
 
   return (
-    <Box sx={{ width: "100%", "& *": { fontFamily: theme.typography.fontFamily } }}>
+    <Box
+      sx={{ width: "100%", "& *": { fontFamily: theme.typography.fontFamily } }}
+    >
       <Typography
         variant="h5"
         gutterBottom
-        sx={{ fontWeight: 900, color: "#fff", textShadow: `0 0 12px rgba(76,187,23,0.6)` }}
+        sx={{
+          fontWeight: 900,
+          color: "#fff",
+          textShadow: `0 0 12px rgba(76,187,23,0.6)`,
+        }}
       >
         📇 Driver Directory
       </Typography>
@@ -345,7 +410,8 @@ export default function DriverDirectory() {
           mb: 1,
           borderRadius: 2,
           p: 1,
-          background: "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
+          background:
+            "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
           border: `1px solid rgba(76,187,23,0.35)`,
         }}
       >
@@ -365,57 +431,70 @@ export default function DriverDirectory() {
       </Box>
 
       <ResponsiveScrollBox>
-        <Box sx={{ height: 640, width: "100%", "& .MuiDataGrid-root": { border: "none" } }}>
+        <Box
+          sx={{
+            height: 640,
+            width: "100%",
+            "& .MuiDataGrid-root": { border: "none" },
+          }}
+        >
           <SmartAutoGrid
             apiRef={apiRef}
-          rows={rows}
-          columnsCompat={columns}
-          getRowId={(row) => row.id}
-          getRowHeight={() => "auto"}
-          disableColumnMenu
-          disableColumnSelector
-          hideFooterSelectedRowCount
-          initialState={{ pagination: { paginationModel: { pageSize: 25, page: 0 } } }}
-          pageSizeOptions={[10, 25, 50, 100]}
-          sx={{
-            bgcolor: LRP.black,
-            color: "#fff",
-            borderRadius: 2,
-            border: `1px solid rgba(255,255,255,0.06)`,
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
-            "--DataGrid-containerBackground": LRP.card,
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: "transparent",
-              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
-              "& .MuiDataGrid-columnHeaderTitle": { fontWeight: 800, letterSpacing: 0.4 },
-            },
-            "& .MuiDataGrid-row": {
-              position: "relative",
-              background: "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 3,
-                background: "transparent",
+            rows={rows}
+            columnsCompat={columns}
+            getRowId={(row) => row.id}
+            getRowHeight={() => "auto"}
+            disableColumnMenu
+            disableColumnSelector
+            hideFooterSelectedRowCount
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25, page: 0 } },
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+            sx={{
+              bgcolor: LRP.black,
+              color: "#fff",
+              borderRadius: 2,
+              border: `1px solid rgba(255,255,255,0.06)`,
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+              "--DataGrid-containerBackground": LRP.card,
+              "& .MuiDataGrid-columnHeaders": {
+                bgcolor: "transparent",
+                borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+                "& .MuiDataGrid-columnHeaderTitle": {
+                  fontWeight: 800,
+                  letterSpacing: 0.4,
+                },
               },
-              "&:hover": {
-                background: "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
-                boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
-                "&::before": { background: LRP.green },
+              "& .MuiDataGrid-row": {
+                position: "relative",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 3,
+                  background: "transparent",
+                },
+                "&:hover": {
+                  background:
+                    "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
+                  boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
+                  "&::before": { background: LRP.green },
+                },
               },
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
-              py: 0,
-            },
-            "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
-            "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
-            "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
-          }}
-          showToolbar
+              "& .MuiDataGrid-cell": {
+                borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+                py: 0,
+              },
+              "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
+              "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
+              "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            }}
+            showToolbar
           />
         </Box>
       </ResponsiveScrollBox>

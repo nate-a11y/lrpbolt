@@ -52,7 +52,10 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
   const railWidth = expanded ? DRAWER_WIDTH : RAIL_WIDTH;
 
   const vars = useMemo(
-    () => ({ "--appbar-height": `${APP_BAR_HEIGHT}px`, "--rail-width": `${railWidth}px` }),
+    () => ({
+      "--appbar-height": `${APP_BAR_HEIGHT}px`,
+      "--rail-width": `${railWidth}px`,
+    }),
     [railWidth],
   );
 
@@ -84,7 +87,12 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
         >
           <List sx={{ py: 1 }}>
             {(railItems || []).map(({ label, icon: Icon, to }, idx) => (
-              <Tooltip key={idx} title={label} placement="right" disableInteractive>
+              <Tooltip
+                key={idx}
+                title={label}
+                placement="right"
+                disableInteractive
+              >
                 <ListItemButton
                   onClick={() => onNavigate?.(to)}
                   sx={{ justifyContent: expanded ? "initial" : "center" }}
@@ -112,7 +120,13 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           <Toolbar />
           <List>
             {(railItems || []).map(({ label, icon: Icon, to }, idx) => (
-              <ListItemButton key={idx} onClick={() => { onNavigate?.(to); toggleMobile(); }}>
+              <ListItemButton
+                key={idx}
+                onClick={() => {
+                  onNavigate?.(to);
+                  toggleMobile();
+                }}
+              >
                 <ListItemIcon>{Icon ? <Icon /> : null}</ListItemIcon>
                 <ListItemText primary={label} />
               </ListItemButton>
@@ -127,12 +141,14 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           flex: 1,
           minWidth: 0,
           pt: `${APP_BAR_HEIGHT}px`,
-          ml: { xs: 0, sm: `var(--rail-width)` },   // space for rail
-          pr: { xs: 1.5, sm: 2 },                   // keep RIGHT padding
-          pl: { xs: 1.5, sm: 2 },                   // remove LEFT padding
-          pb: 3,                                     // keep bottom padding
+          ml: { xs: 0, sm: `var(--rail-width)` }, // space for rail
+          pr: { xs: 1.5, sm: 2 }, // keep RIGHT padding
+          pl: { xs: 1.5, sm: 2 }, // remove LEFT padding
+          pb: 3, // keep bottom padding
           transition: (t) =>
-            t.transitions.create("margin-left", { duration: t.transitions.duration.enteringScreen }),
+            t.transitions.create("margin-left", {
+              duration: t.transitions.duration.enteringScreen,
+            }),
         }}
       >
         {children}

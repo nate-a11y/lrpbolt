@@ -1,12 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState, memo } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  IconButton,
-  Slide,
-} from "@mui/material";
+import { Box, Typography, Button, IconButton, Slide } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
 const isIosSafari = () => {
@@ -59,19 +53,19 @@ const InstallBanner = () => {
   return (
     <Slide direction="down" in={visible} mountOnEnter unmountOnExit>
       <Box
-          sx={{
-            backgroundColor: "#4cbb17",
-            color: "common.white",
-            textAlign: "center",
-            p: 2,
-            zIndex: 2000,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            px: 3,
-            flexWrap: "wrap",
-            rowGap: 1,
-          }}
+        sx={{
+          backgroundColor: "#4cbb17",
+          color: "common.white",
+          textAlign: "center",
+          p: 2,
+          zIndex: 2000,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          px: 3,
+          flexWrap: "wrap",
+          rowGap: 1,
+        }}
       >
         <Typography variant="body1" sx={{ flex: 1, pr: 2 }}>
           {isIos
@@ -80,26 +74,26 @@ const InstallBanner = () => {
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {!isIos && deferredPrompt && (
-              <Button
-                onClick={handleInstall}
-                variant="contained"
-                sx={{
-                  backgroundColor: "common.white",
-                  color: "#4cbb17",
-                  fontWeight: "bold",
-                  "&:hover": { backgroundColor: "#eafbe3" },
-                }}
-              >
-                TAP TO INSTALL
-              </Button>
-            )}
-            <IconButton
-              onClick={handleDismiss}
-              sx={{ color: "common.white" }}
-              aria-label="Dismiss banner"
+            <Button
+              onClick={handleInstall}
+              variant="contained"
+              sx={{
+                backgroundColor: "common.white",
+                color: "#4cbb17",
+                fontWeight: "bold",
+                "&:hover": { backgroundColor: "#eafbe3" },
+              }}
             >
-              <CloseIcon />
-            </IconButton>
+              TAP TO INSTALL
+            </Button>
+          )}
+          <IconButton
+            onClick={handleDismiss}
+            sx={{ color: "common.white" }}
+            aria-label="Dismiss banner"
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
       </Box>
     </Slide>

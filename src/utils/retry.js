@@ -34,7 +34,10 @@ export default async function retry(fn, options = {}) {
     try {
       return await fn({ signal });
     } catch (err) {
-      lastErr = err instanceof AppError ? err : new AppError(err.message || err, "RETRY_FAIL");
+      lastErr =
+        err instanceof AppError
+          ? err
+          : new AppError(err.message || err, "RETRY_FAIL");
       onError?.(lastErr, attempt + 1);
       attempt += 1;
       if (attempt >= tries) break;
@@ -48,4 +51,3 @@ export default async function retry(fn, options = {}) {
   }
   throw lastErr;
 }
-

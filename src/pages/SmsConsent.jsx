@@ -51,7 +51,11 @@ export default function SmsConsent() {
       <Container component="main" maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
         <Paper sx={{ p: { xs: 2, md: 4 } }}>
           <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
               <Typography variant="h3" component="h1">
                 Lake Ride Pros — SMS Consent
               </Typography>
@@ -73,45 +77,74 @@ export default function SmsConsent() {
               What you’re agreeing to
             </Typography>
             <Typography variant="body1">
-              By providing your mobile number to Lake Ride Pros verbally or in writing, you agree to receive <strong>transactional</strong> text messages related to rides, vehicle status, and schedule updates. Message frequency varies; message and data rates may apply. <strong>No marketing</strong> texts will be sent on this channel.
+              By providing your mobile number to Lake Ride Pros verbally or in
+              writing, you agree to receive <strong>transactional</strong> text
+              messages related to rides, vehicle status, and schedule updates.
+              Message frequency varies; message and data rates may apply.{" "}
+              <strong>No marketing</strong> texts will be sent on this channel.
             </Typography>
 
             <Typography variant="h6" component="h2">
               Opt-in methods
             </Typography>
             <Typography variant="body1">
-              Consent may be collected verbally during booking/dispatch/onboarding or in writing via forms or portal checkboxes.
+              Consent may be collected verbally during
+              booking/dispatch/onboarding or in writing via forms or portal
+              checkboxes.
             </Typography>
 
             <Typography variant="h6" component="h2">
               Opt-out / Help
             </Typography>
             <Typography variant="body1">
-              Reply <strong>STOP</strong> to opt out at any time. Reply <strong>HELP</strong> for help. You can also email <Link href="mailto:support@lakeridepros.com">support@lakeridepros.com</Link> to revoke consent. Opt-out is honored immediately and logged in our system.
+              Reply <strong>STOP</strong> to opt out at any time. Reply{" "}
+              <strong>HELP</strong> for help. You can also email{" "}
+              <Link href="mailto:support@lakeridepros.com">
+                support@lakeridepros.com
+              </Link>{" "}
+              to revoke consent. Opt-out is honored immediately and logged in
+              our system.
             </Typography>
 
             <Typography variant="h6" component="h2">
               Data handling
             </Typography>
             <Typography variant="body1">
-              We log the time, method, and source of consent in our system of record. We do not sell personal data. See our Privacy Policy for more details.
+              We log the time, method, and source of consent in our system of
+              record. We do not sell personal data. See our Privacy Policy for
+              more details.
             </Typography>
 
             <Typography variant="h6" component="h2">
               Contact
             </Typography>
             <Typography variant="body1">
-              Lake Ride Pros — <Link href="https://lakeridepros.xyz/" target="_blank" rel="noopener">https://lakeridepros.xyz/</Link> — <Link href="mailto:support@lakeridepros.com">support@lakeridepros.com</Link>
+              Lake Ride Pros —{" "}
+              <Link
+                href="https://lakeridepros.xyz/"
+                target="_blank"
+                rel="noopener"
+              >
+                https://lakeridepros.xyz/
+              </Link>{" "}
+              —{" "}
+              <Link href="mailto:support@lakeridepros.com">
+                support@lakeridepros.com
+              </Link>
             </Typography>
 
             <Typography variant="h6" component="h2">
               Quick summary
             </Typography>
             <List component="ul" sx={{ pl: 4 }}>
-              <ListItem component="li">Transactional only (status/confirmations/alerts)</ListItem>
+              <ListItem component="li">
+                Transactional only (status/confirmations/alerts)
+              </ListItem>
               <ListItem component="li">STOP/HELP supported</ListItem>
               <ListItem component="li">US/CA only</ListItem>
-              <ListItem component="li">Typical send hours: local business hours</ListItem>
+              <ListItem component="li">
+                Typical send hours: local business hours
+              </ListItem>
             </List>
 
             <Divider />
@@ -124,4 +157,3 @@ export default function SmsConsent() {
     </>
   );
 }
-

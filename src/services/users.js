@@ -13,11 +13,11 @@ export async function fetchAllUsersAccess() {
       const email = (val.email || d.id || "").toLowerCase();
       const roles = Array.isArray(val.roles)
         ? val.roles.map(String).map((r) => r.toLowerCase())
-        : (
-            Array.isArray(val.access)
-              ? val.access.map(String).map((r) => r.toLowerCase())
-              : (val.role ? [String(val.role).toLowerCase()] : [])
-          );
+        : Array.isArray(val.access)
+          ? val.access.map(String).map((r) => r.toLowerCase())
+          : val.role
+            ? [String(val.role).toLowerCase()]
+            : [];
       out.push({
         id: email || d.id,
         email,
@@ -39,7 +39,9 @@ export function filterAdmins(users) {
 }
 export function filterDriversCore(users) {
   // 'core' drivers who have 'driver' but NOT 'shootout' only
-  return users.filter((u) => u.roles?.includes("driver") && !u.roles?.includes("shootout"));
+  return users.filter(
+    (u) => u.roles?.includes("driver") && !u.roles?.includes("shootout"),
+  );
 }
 export function filterShootout(users) {
   return users.filter((u) => u.roles?.includes("shootout"));

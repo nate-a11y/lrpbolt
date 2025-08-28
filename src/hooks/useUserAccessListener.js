@@ -16,9 +16,11 @@ function getKey({ activeOnly, roles, max }) {
  * listeners. Multiple components using this hook with the same options will
  * share one Firestore onSnapshot listener.
  */
-export default function useUserAccessListener(
-  { activeOnly = false, roles = ["admin", "driver"], max = 100 } = {},
-) {
+export default function useUserAccessListener({
+  activeOnly = false,
+  roles = ["admin", "driver"],
+  max = 100,
+} = {}) {
   const [data, setData] = useState([]);
   const { user, authLoading } = useAuth();
 

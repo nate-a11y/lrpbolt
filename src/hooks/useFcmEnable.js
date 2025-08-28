@@ -15,11 +15,15 @@ export default function useFcmEnable() {
   const [permission, setPermission] = useState(() =>
     typeof Notification !== "undefined" ? Notification.permission : "denied",
   );
-  const [token, setToken] = useState(() => localStorage.getItem("lrp_fcm_token"));
+  const [token, setToken] = useState(() =>
+    localStorage.getItem("lrp_fcm_token"),
+  );
 
   useEffect(() => {
     if (!FCM_ENABLED || !supported) return;
-    setPermission(typeof Notification !== "undefined" ? Notification.permission : "denied");
+    setPermission(
+      typeof Notification !== "undefined" ? Notification.permission : "denied",
+    );
     setToken(localStorage.getItem("lrp_fcm_token"));
   }, [supported]);
 

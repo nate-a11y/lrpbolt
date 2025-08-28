@@ -39,7 +39,10 @@ export function useGridDoctor({ name, rows, columns, sample = 3 }) {
       });
       const allMissing = calcValues.every((v) => v === undefined || v === null);
       if (allMissing) {
-        console.warn(`${tag} Column "${field}" resolves to undefined/null for sample rows.`, calcValues);
+        console.warn(
+          `${tag} Column "${field}" resolves to undefined/null for sample rows.`,
+          calcValues,
+        );
       }
     });
   }, [name, rows, columns, sample]);

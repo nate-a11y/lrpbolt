@@ -45,7 +45,9 @@ export default function AuthProvider({ children }) {
         let r = snap.data()?.role;
         if (!r) {
           try {
-            const legacy = await getDoc(doc(db, "userAccess", user.email.toLowerCase()));
+            const legacy = await getDoc(
+              doc(db, "userAccess", user.email.toLowerCase()),
+            );
             r = legacy.data()?.access;
           } catch {
             r = null;

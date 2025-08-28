@@ -1,6 +1,11 @@
 import ResponsiveContainer from "./responsive/ResponsiveContainer.jsx";
 
-export default function PageContainer({ children, maxWidth = 1400, pt = 2, pb = 4 }) {
+export default function PageContainer({
+  children,
+  maxWidth = 1400,
+  pt = 2,
+  pb = 4,
+}) {
   return (
     <ResponsiveContainer
       sx={{

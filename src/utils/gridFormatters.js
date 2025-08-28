@@ -12,7 +12,8 @@ export function toDateOrNull(v) {
     const t = Date.parse(v);
     return Number.isNaN(t) ? null : new Date(t);
   }
-  if (typeof v === "object" && typeof v.toDate === "function") return v.toDate();
+  if (typeof v === "object" && typeof v.toDate === "function")
+    return v.toDate();
   return null;
 }
 
@@ -116,4 +117,3 @@ export const actionsCol = (render) => ({
   width: 120,
   renderCell: (p) => (render ? render(p) : null),
 });
-

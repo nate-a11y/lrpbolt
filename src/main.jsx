@@ -27,13 +27,13 @@ const Root = () => {
           <DriverProvider>
             <ToastProvider>
               <NotificationsProvider>
-                <Suspense fallback={<LoadingScreen />}> 
+                <Suspense fallback={<LoadingScreen />}>
                   <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/sms-consent" element={<SmsConsent />} />
-                  <Route element={<PrivateRoute />}>
-                    <Route path="/*" element={<AppRoot />} />
-                  </Route>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/sms-consent" element={<SmsConsent />} />
+                    <Route element={<PrivateRoute />}>
+                      <Route path="/*" element={<AppRoot />} />
+                    </Route>
                   </Routes>
                 </Suspense>
               </NotificationsProvider>

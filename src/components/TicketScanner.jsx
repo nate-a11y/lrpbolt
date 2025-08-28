@@ -127,12 +127,12 @@ function TicketScanner() {
     let alive = true;
     async function load() {
       try {
-    const devices = await Html5Qrcode.getCameras();
-    if (!alive) return;
-    const rearCamera =
-      devices.find((d) => d.label.toLowerCase().includes("back")) ||
-      devices[0];
-    setCurrentCameraId(rearCamera?.id || null);
+        const devices = await Html5Qrcode.getCameras();
+        if (!alive) return;
+        const rearCamera =
+          devices.find((d) => d.label.toLowerCase().includes("back")) ||
+          devices[0];
+        setCurrentCameraId(rearCamera?.id || null);
       } catch (err) {
         logError(err, "TicketScanner:getCameras");
         if (alive) setCameraError(true);
