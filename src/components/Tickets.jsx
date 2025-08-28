@@ -58,7 +58,7 @@ import { useGridDoctor } from "../utils/useGridDoctor";
 import PageContainer from "./PageContainer.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import { toV8Model, idsArray } from "./datagrid/selectionV8";
+import { toV8Model } from "./datagrid/selectionV8";
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -74,7 +74,7 @@ function Tickets() {
     ids: new Set(),
     type: "include",
   });
-  const selectedIds = idsArray(rowSelectionModel);
+  const selectedIds = Array.from(rowSelectionModel?.ids ?? []);
   const [_deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
