@@ -42,7 +42,7 @@ import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
 import { dayjs } from "@/utils/time";
-import { safeRow } from "@/utils/gridUtils";
+import { safeRow, toIdArray } from "@/utils/gridUtils";
 import { assertGridScrollable } from "@/utils/devGridCheck";
 
 import {
@@ -70,7 +70,7 @@ function Tickets() {
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
-  const selectedIds = Array.isArray(rowSelectionModel) ? rowSelectionModel : [];
+  const selectedIds = toIdArray(rowSelectionModel);
   const [_deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -533,17 +533,22 @@ function Tickets() {
               <SmartAutoGrid
                 rows={rows}
                 columnsCompat={columns}
-                getRowId={(r) => r.id}
+                getRowId={(r) =>
+                  r?.id ??
+                  r?.ticketId ??
+                  r?.uid ??
+                  r?.docId ??
+                  r?._id ??
+                  JSON.stringify(r)
+                }
                 autoHeight
                 checkboxSelection
                 pageSizeOptions={[5, 10, 25, 100]}
                 disableRowSelectionOnClick
                 onRowSelectionModelChange={(model) =>
-                  setRowSelectionModel(Array.isArray(model) ? model : [])
+                  setRowSelectionModel(toIdArray(model))
                 }
-                rowSelectionModel={
-                  Array.isArray(rowSelectionModel) ? rowSelectionModel : []
-                }
+                rowSelectionModel={toIdArray(rowSelectionModel)}
                 initialState={initialState}
                 sx={{
                   "& .MuiDataGrid-row:nth-of-type(odd)": {

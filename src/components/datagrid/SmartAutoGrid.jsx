@@ -9,6 +9,7 @@ import {
   GridPagination,
 } from "@mui/x-data-grid-pro";
 
+import { toIdArray } from "@/utils/gridUtils";
 import useIsMobile from "src/hooks/useIsMobile";
 
 import {
@@ -216,12 +217,12 @@ export default function SmartAutoGrid(props) {
   const [internalRowSelectionModel, setInternalRowSelectionModel] = useState(
     [],
   );
-  const controlledRsm = Array.isArray(props?.rowSelectionModel)
-    ? props.rowSelectionModel
-    : internalRowSelectionModel;
+  const controlledRsm = toIdArray(
+    props?.rowSelectionModel ?? internalRowSelectionModel,
+  );
   const handleRowSelectionModelChange = useCallback(
     (model) => {
-      const next = Array.isArray(model) ? model : [];
+      const next = toIdArray(model);
       if (typeof props?.onRowSelectionModelChange === "function") {
         props.onRowSelectionModelChange(next);
       }
@@ -233,7 +234,12 @@ export default function SmartAutoGrid(props) {
   const stableGetRowId =
     getRowId ||
     ((row) =>
-      row?.id ?? row?.uid ?? row?._id ?? String(row?.docId ?? row?.key ?? ""));
+      row?.id ??
+      row?.uid ??
+      row?._id ??
+      row?.docId ??
+      row?.key ??
+      JSON.stringify(row));
 
   const mergedInitialState = useMemo(
     () => ({ density: "compact", ...initialStateProp }),
@@ -252,9 +258,7 @@ export default function SmartAutoGrid(props) {
   );
 
   function SmartGridFooter() {
-    const selectedCount = Array.isArray(controlledRsm)
-      ? controlledRsm.length
-      : 0;
+    const selectedCount = controlledRsm.length;
     return (
       <GridFooterContainer>
         <Box sx={{ pl: 2 }}>{selectedCount} selected</Box>
@@ -269,7 +273,7 @@ export default function SmartAutoGrid(props) {
       rows={safeRows}
       columns={safeColumns}
       getRowId={stableGetRowId}
-      rowSelectionModel={Array.isArray(controlledRsm) ? controlledRsm : []}
+      rowSelectionModel={toIdArray(controlledRsm)}
       onRowSelectionModelChange={handleRowSelectionModelChange}
       columnVisibilityModel={columnVisibilityModel}
       checkboxSelection={rest.checkboxSelection ?? true}

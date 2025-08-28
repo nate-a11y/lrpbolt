@@ -7,6 +7,8 @@ import {
   GridToolbarExport as _GridToolbarExport,
 } from "@mui/x-data-grid-pro";
 
+import { toIdArray } from "@/utils/gridUtils";
+
 import useIsMobile from "../../hooks/useIsMobile";
 
 /**
@@ -41,11 +43,11 @@ export default function ResponsiveDataGridPro(props) {
   const safeColumns = Array.isArray(columnsProp) ? columnsProp : [];
 
   const [rowSelectionModel, setRowSelectionModel] = useState(
-    Array.isArray(rowSelectionModelProp) ? rowSelectionModelProp : [],
+    toIdArray(rowSelectionModelProp),
   );
   const handleRowSelectionModelChange = useCallback(
     (m) => {
-      const next = Array.isArray(m) ? m : [];
+      const next = toIdArray(m);
       setRowSelectionModel(next);
       if (onRowSelectionModelChangeProp) onRowSelectionModelChangeProp(next);
     },
@@ -90,11 +92,15 @@ export default function ResponsiveDataGridPro(props) {
         rows={safeRows}
         columns={safeColumns}
         getRowId={
-          getRowId || ((row) => row.id || row.docId || row.ticketId || row._id)
+          getRowId ||
+          ((row) =>
+            row?.id ??
+            row?.docId ??
+            row?.ticketId ??
+            row?._id ??
+            JSON.stringify(row))
         }
-        rowSelectionModel={
-          Array.isArray(rowSelectionModel) ? rowSelectionModel : []
-        }
+        rowSelectionModel={toIdArray(rowSelectionModel)}
         onRowSelectionModelChange={handleRowSelectionModelChange}
         paginationModel={paginationModel}
         onPaginationModelChange={handlePaginationModelChange}
