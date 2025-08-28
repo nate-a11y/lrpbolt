@@ -7,7 +7,6 @@ import {
   AccordionDetails,
   Box,
   Paper,
-  Grid,
   Chip,
   FormHelperText,
   Stack,
@@ -28,6 +27,7 @@ import {
   useMediaQuery,
   Fade,
 } from "@mui/material";
+import Grid2 from "@mui/material/Grid";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
@@ -35,7 +35,7 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
-import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
 import {
@@ -69,9 +69,6 @@ import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import LiveRidesGrid from "./LiveRidesGrid";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-
-
-
 
 // --- Shared field props ---
 const FIELD_PROPS = {
@@ -164,9 +161,9 @@ function RideBuilderFields({
   };
 
   return (
-    <Grid container spacing={2}>
+    <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
       {/* Row 1: Trip ID (full width) */}
-      <Grid item xs={12}>
+      <Grid2 xs={12}>
         <TextField
           {...FIELD_PROPS}
           label="Trip ID"
@@ -180,10 +177,10 @@ function RideBuilderFields({
             touched.tripId && (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
           }
         />
-      </Grid>
+      </Grid2>
 
       {/* Row 2: Pickup At, Duration (H/M short & same width) */}
-      <Grid item xs={12} sm={6} md={4}>
+      <Grid2 xs={12} sm={6} md={4}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -209,9 +206,9 @@ function RideBuilderFields({
             },
           }}
         />
-      </Grid>
+      </Grid2>
 
-      <Grid item xs={6} sm={"auto"}>
+      <Grid2 xs={12} sm="auto">
         <TextField
           {...shortNumberProps}
           label="Duration Hours"
@@ -224,9 +221,9 @@ function RideBuilderFields({
           helperText={touched.hours && (hours === "" ? "Required" : " ")}
           error={touched.hours && (hours === "" || hours < 0 || hours > 24)}
         />
-      </Grid>
+      </Grid2>
 
-      <Grid item xs={6} sm={"auto"}>
+      <Grid2 xs={12} sm="auto">
         <TextField
           {...shortNumberProps}
           label="Duration Minutes"
@@ -239,10 +236,10 @@ function RideBuilderFields({
           helperText={touched.minutes && (minutes === "" ? "Required" : " ")}
           error={touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)}
         />
-      </Grid>
+      </Grid2>
 
       {/* Row 3: Ride Type (full width) */}
-      <Grid item xs={12}>
+      <Grid2 xs={12}>
         <ChipSelect
           label="Ride Type"
           options={rideTypeOptions}
@@ -251,10 +248,10 @@ function RideBuilderFields({
           required
           error={touched.rideType}
         />
-      </Grid>
+      </Grid2>
 
       {/* Row 4: Vehicle (full width) */}
-      <Grid item xs={12}>
+      <Grid2 xs={12}>
         <ChipSelect
           label="Vehicle"
           options={vehicleOptions}
@@ -263,10 +260,10 @@ function RideBuilderFields({
           required
           error={touched.vehicle}
         />
-      </Grid>
+      </Grid2>
 
       {/* Row 5: Notes (full width) */}
-      <Grid item xs={12}>
+      <Grid2 xs={12}>
         <TextField
           {...FIELD_PROPS}
           multiline
@@ -276,8 +273,8 @@ function RideBuilderFields({
           onChange={set("notes")}
           placeholder="Optional notes"
         />
-      </Grid>
-    </Grid>
+      </Grid2>
+    </Grid2>
   );
 }
 
@@ -895,8 +892,8 @@ if (totalMinutes <= 0) {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <Grid container spacing={2} sx={{ mb: isMobile ? 2 : 3 }}>
-      <Grid item xs={12} md={4}>
+    <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }} sx={{ mb: isMobile ? 2 : 3 }}>
+      <Grid2 xs={12} md={4}>
         <Button
           variant="outlined"
           fullWidth
@@ -905,8 +902,8 @@ if (totalMinutes <= 0) {
         >
           Download Template
         </Button>
-      </Grid>
-      <Grid item xs={12} md={8}>
+      </Grid2>
+      <Grid2 xs={12} md={8}>
         <Paper
           variant="outlined"
           sx={{
@@ -928,8 +925,8 @@ if (totalMinutes <= 0) {
             </Typography>
           )}
         </Paper>
-      </Grid>
-    </Grid>
+      </Grid2>
+    </Grid2>
   );
 
   // ---------- Render ----------

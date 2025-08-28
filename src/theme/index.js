@@ -32,7 +32,7 @@ const buildPalette = (mode) => {
       mode,
       ...common,
       text: { primary: "#e8eaed", secondary: "#b0b7c3", disabled: alpha("#e8eaed", 0.38) },
-      background: { default: "#0b0c0d", paper: "#111214" },
+      background: { default: "#060606", paper: "#0b0b0b" },
       divider: alpha("#ffffff", 0.12),
     };
   }
@@ -47,6 +47,14 @@ const buildPalette = (mode) => {
 export const getDesignTokens = (mode) => ({
   palette: buildPalette(mode),
   ...base,
+  typography: {
+    ...base.typography,
+    h1: { fontSize: "clamp(1.6rem, 2.5vw, 2.2rem)" },
+    h2: { fontSize: "clamp(1.4rem, 2.2vw, 1.9rem)" },
+    h3: { fontSize: "clamp(1.2rem, 2vw, 1.6rem)" },
+    body1: { fontSize: "clamp(0.95rem, 1.2vw, 1rem)" },
+    body2: { fontSize: "clamp(0.85rem, 1vw, 0.95rem)" },
+  },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
@@ -79,7 +87,7 @@ export const getDesignTokens = (mode) => ({
     },
     MuiButton: {
       styleOverrides: {
-        root: { borderRadius: 12, fontWeight: 700 },
+        root: { borderRadius: 12, fontWeight: 700, textTransform: "none" },
         containedPrimary: ({ theme }) => ({
           backgroundColor: theme.palette.primary.main,
           "&:hover": { backgroundColor: theme.palette.primary.dark },
@@ -124,7 +132,32 @@ export const getDesignTokens = (mode) => ({
     },
     MuiDialog: {
       styleOverrides: {
-        paper: ({ theme }) => ({ backgroundColor: theme.palette.background.paper }),
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          margin: 8,
+          width: "min(100%, 560px)",
+        }),
+      },
+    },
+    MuiContainer: {
+      defaultProps: { maxWidth: false },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          padding: "8px",
+          "@media (max-width:600px)": { padding: "6px" },
+        },
+      },
+    },
+    MuiTextField: {
+      defaultProps: { variant: "outlined", fullWidth: true },
+    },
+    MuiDataGrid: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
       },
     },
   },

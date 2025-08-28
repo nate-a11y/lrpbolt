@@ -53,4 +53,11 @@ This document describes all automation, AI agents, and external integrations tha
 - Firebase deployment requires correct Firestore security rules — GitHub Actions will block deploy if invalid.
 - Prettier, Dependabot, and Security Bot are recommended for consistent formatting, dependency hygiene, and security.
 - Codex AI prompts must follow the updated Firestore schema to avoid runtime write failures.
-- Firestore is schemaless — schema is enforced via rules and documented in `docs/firestore-schema.md`.  
+- Firestore is schemaless — schema is enforced via rules and documented in `docs/firestore-schema.md`.
+
+## Responsive Components
+
+- `src/hooks/useIsMobile.js` – hook providing `{ isXs, isSm, isMdDown }` for breakpoint logic.
+- `src/components/responsive/ResponsiveContainer.jsx` – page wrapper enforcing mobile-first padding and max width.
+ - `src/components/datagrid/ResponsiveDataGridPro.jsx` – wrapper around DataGridPro adding auto-height and compact density on small screens.
+ - Layouts are standardized on MUI Grid v2 (`@mui/material/Grid`); convert legacy Grid v1 instances to `Grid2` when touched.

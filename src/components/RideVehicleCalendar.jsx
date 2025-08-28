@@ -19,7 +19,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
-import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 
@@ -373,6 +373,7 @@ export default function RideVehicleCalendar() {
           onClose={() => setModalOpen(false)}
           fullWidth
           maxWidth="sm"
+          fullScreen={isMobile}
         >
           <Box p={3}>
             <Typography variant="h6" gutterBottom>
@@ -417,7 +418,11 @@ export default function RideVehicleCalendar() {
               </Box>
             )}
             <Box textAlign="right" mt={3}>
-              <Button onClick={() => setModalOpen(false)} variant="outlined">
+              <Button
+                onClick={() => setModalOpen(false)}
+                variant="outlined"
+                sx={{ width: { xs: "100%", sm: "auto" } }}
+              >
                 Close
               </Button>
             </Box>
