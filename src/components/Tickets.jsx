@@ -52,7 +52,6 @@ import {
 } from "../hooks/api";
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { asArray } from "../utils/arrays.js";
 import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
@@ -71,7 +70,7 @@ function Tickets() {
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
-  const selectedIds = rowSelectionModel;
+  const selectedIds = Array.isArray(rowSelectionModel) ? rowSelectionModel : [];
   const [_deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -540,9 +539,11 @@ function Tickets() {
                 pageSizeOptions={[5, 10, 25, 100]}
                 disableRowSelectionOnClick
                 onRowSelectionModelChange={(model) =>
-                  setRowSelectionModel(asArray(model))
+                  setRowSelectionModel(Array.isArray(model) ? model : [])
                 }
-                rowSelectionModel={rowSelectionModel ?? []}
+                rowSelectionModel={
+                  Array.isArray(rowSelectionModel) ? rowSelectionModel : []
+                }
                 initialState={initialState}
                 sx={{
                   "& .MuiDataGrid-row:nth-of-type(odd)": {

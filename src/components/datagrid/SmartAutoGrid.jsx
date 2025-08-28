@@ -7,9 +7,6 @@ import {
   GridToolbarExport as _GridToolbarExport,
   GridFooterContainer,
   GridPagination,
-  useGridApiContext,
-  useGridSelector,
-  gridRowSelectionSelector,
 } from "@mui/x-data-grid-pro";
 
 import useIsMobile from "src/hooks/useIsMobile";
@@ -79,7 +76,8 @@ function formatForExport(field, v) {
   }
   if (looksLikeDurationField(field)) {
     if (isNum(v)) return String(v);
-    if (v && typeof v === "object" && isNum(v.minutes)) return String(v.minutes);
+    if (v && typeof v === "object" && isNum(v.minutes))
+      return String(v.minutes);
     return "";
   }
   if (isNum(v) || isBool(v)) return String(v);
@@ -215,8 +213,9 @@ export default function SmartAutoGrid(props) {
 
   const safeColumns = Array.isArray(columns) ? columns : [];
 
-  const [internalRowSelectionModel, setInternalRowSelectionModel] =
-    useState([]);
+  const [internalRowSelectionModel, setInternalRowSelectionModel] = useState(
+    [],
+  );
   const controlledRsm = Array.isArray(props?.rowSelectionModel)
     ? props.rowSelectionModel
     : internalRowSelectionModel;
@@ -253,10 +252,9 @@ export default function SmartAutoGrid(props) {
   );
 
   function SmartGridFooter() {
-    const apiRef = useGridApiContext();
-    const selection =
-      useGridSelector(apiRef, gridRowSelectionSelector) || new Set();
-    const selectedCount = selection.size;
+    const selectedCount = Array.isArray(controlledRsm)
+      ? controlledRsm.length
+      : 0;
     return (
       <GridFooterContainer>
         <Box sx={{ pl: 2 }}>{selectedCount} selected</Box>
@@ -271,7 +269,7 @@ export default function SmartAutoGrid(props) {
       rows={safeRows}
       columns={safeColumns}
       getRowId={stableGetRowId}
-      rowSelectionModel={controlledRsm}
+      rowSelectionModel={Array.isArray(controlledRsm) ? controlledRsm : []}
       onRowSelectionModelChange={handleRowSelectionModelChange}
       columnVisibilityModel={columnVisibilityModel}
       checkboxSelection={rest.checkboxSelection ?? true}
