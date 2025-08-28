@@ -7,9 +7,9 @@ import {
   GridToolbarExport as _GridToolbarExport,
 } from "@mui/x-data-grid-pro";
 
-import { toIdArray } from "@/utils/gridUtils";
-
 import useIsMobile from "../../hooks/useIsMobile";
+
+import { toV8Model } from "./selectionV8";
 
 /**
  * Drop-in wrapper for DataGridPro that improves mobile ergonomics.
@@ -43,13 +43,14 @@ export default function ResponsiveDataGridPro(props) {
   const safeColumns = Array.isArray(columnsProp) ? columnsProp : [];
 
   const [rowSelectionModel, setRowSelectionModel] = useState(
-    toIdArray(rowSelectionModelProp),
+    toV8Model(rowSelectionModelProp),
   );
   const handleRowSelectionModelChange = useCallback(
-    (m) => {
-      const next = toIdArray(m);
+    (m, details) => {
+      const next = toV8Model(m);
       setRowSelectionModel(next);
-      if (onRowSelectionModelChangeProp) onRowSelectionModelChangeProp(next);
+      if (onRowSelectionModelChangeProp)
+        onRowSelectionModelChangeProp(next, details);
     },
     [onRowSelectionModelChangeProp],
   );
@@ -100,7 +101,7 @@ export default function ResponsiveDataGridPro(props) {
             row?._id ??
             JSON.stringify(row))
         }
-        rowSelectionModel={toIdArray(rowSelectionModel)}
+        rowSelectionModel={toV8Model(rowSelectionModel)}
         onRowSelectionModelChange={handleRowSelectionModelChange}
         paginationModel={paginationModel}
         onPaginationModelChange={handlePaginationModelChange}
