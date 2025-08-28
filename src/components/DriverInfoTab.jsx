@@ -12,7 +12,7 @@ import {
   Stack,
   Link as MUILink,
 } from "@mui/material";
-import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
+import { GridToolbar } from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -21,6 +21,9 @@ import Lightbox from "yet-another-react-lightbox";
 import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen";
 import "yet-another-react-lightbox/styles.css";
 import QRCode from "react-qr-code";
+
+import ResponsiveDataGridPro from "src/components/datagrid/ResponsiveDataGridPro";
+import useIsMobile from "src/hooks/useIsMobile";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";
@@ -102,6 +105,12 @@ export default function DriverInfoTab() {
   const slides = useMemo(
     () => (selectedImage ? [{ src: selectedImage.mapUrl || "" }] : []),
     [selectedImage]
+  );
+
+  const { isMdDown } = useIsMobile();
+  const columnVisibilityModel = useMemo(
+    () => (isMdDown ? { id: false, internalOnly: false } : undefined),
+    [isMdDown],
   );
 
   // --- QR download helpers ---
@@ -272,12 +281,12 @@ export default function DriverInfoTab() {
           <Typography fontWeight="bold">🔐 Gate Codes & Access Notes</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <DataGridPro
+          <ResponsiveDataGridPro
             autoHeight
             rows={rows}
             columns={columns}
             getRowId={getRowId}
-            disableRowSelectionOnClick
+            columnVisibilityModel={columnVisibilityModel}
             slots={{
               toolbar: GridToolbar,
               noRowsOverlay: NoRowsOverlay,
@@ -292,6 +301,8 @@ export default function DriverInfoTab() {
                 },
               },
             }}
+            pagination
+            hideFooterSelectedRowCount
           />
         </AccordionDetails>
       </Accordion>
@@ -327,14 +338,17 @@ export default function DriverInfoTab() {
               }}
             >
               {slide?.src ? (
-                <img
+                <Box
+                  component="img"
                   src={slide.src}
                   alt={selectedImage?.name || "Dropoff map"}
-                  style={{
+                  sx={{
                     maxWidth: "100%",
                     maxHeight: "70vh",
                     objectFit: "contain",
                     borderRadius: 8,
+                    height: "auto",
+                    display: "block",
                   }}
                 />
               ) : null}

@@ -1,8 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo } from "react";
-import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
+import { GridToolbar } from "@mui/x-data-grid-pro";
+
+import useIsMobile from "src/hooks/useIsMobile";
 
 import { formatDateTime, formatHMFromMinutes } from "../../utils/timeUtils";
+
+import ResponsiveDataGridPro from "./ResponsiveDataGridPro.jsx";
 
 const isFSTimestamp = (v) => !!v && typeof v?.toDate === "function";
 const isFSTimestampLike = (v) =>
@@ -130,6 +134,7 @@ export default function SmartAutoGrid({
   showToolbar = true,
   getRowId,
   initialState: initialStateProp,
+  columnVisibilityModel: columnVisibilityModelProp,
   ...rest
 }) {
   const autoCols = useAutoColumns(rows, { headerMap, order, hide, overrides, forceHide });
@@ -149,15 +154,28 @@ export default function SmartAutoGrid({
     [initialStateProp],
   );
 
+  const { isMdDown } = useIsMobile();
+  const columnVisibilityModel = useMemo(
+    () =>
+      columnVisibilityModelProp !== undefined
+        ? columnVisibilityModelProp
+        : isMdDown
+          ? { id: false, internalOnly: false }
+          : undefined,
+    [columnVisibilityModelProp, isMdDown],
+  );
+
   return (
-    <DataGridPro
+    <ResponsiveDataGridPro
       rows={rows}
       columns={columns}
       getRowId={stableGetRowId}
+      columnVisibilityModel={columnVisibilityModel}
       disableRowSelectionOnClick
       checkboxSelection={false}
       autoHeight
       pagination
+      hideFooterSelectedRowCount
       pageSizeOptions={[25, 50, 100]}
       initialState={mergedInitialState}
       slots={showToolbar ? { toolbar: GridToolbar } : undefined}

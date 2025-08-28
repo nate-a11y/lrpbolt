@@ -577,7 +577,12 @@ export default function Tickets() {
         </Paper>
       )}
 
-      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)}>
+      <Dialog
+        open={emailDialogOpen}
+        onClose={() => setEmailDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Email Ticket</DialogTitle>
         <DialogContent>
           <TextField

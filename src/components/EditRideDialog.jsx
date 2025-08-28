@@ -1,8 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField, useMediaQuery } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
-import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { useTheme } from "@mui/material/styles";
 
 import dayjs, { isValidDayjs } from "../utils/dates"; // extended dayjs with tz
 import { patchRide } from "../services/rides";
@@ -15,6 +16,8 @@ const NUM_FIELDS = new Set(["rideDuration"]);
 
 export default function EditRideDialog({ open, onClose, collectionName, ride }) {
   const { user } = useAuth();
+  const theme = useTheme();
+  const fullOnXs = useMediaQuery(theme.breakpoints.down("sm"));
 
   const initForm = useCallback(() => {
     const obj = {};
@@ -52,7 +55,7 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Dialog open={open} onClose={() => onClose(false)} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={() => onClose(false)} maxWidth="sm" fullWidth fullScreen={fullOnXs}>
         <DialogTitle>Edit Ride</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} mt={1}>
@@ -85,8 +88,15 @@ export default function EditRideDialog({ open, onClose, collectionName, ride }) 
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => onClose(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="success">
+          <Button onClick={() => onClose(false)} sx={{ width: { xs: "100%", sm: "auto" } }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            color="success"
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
             Save
           </Button>
         </DialogActions>
