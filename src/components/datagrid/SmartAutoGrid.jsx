@@ -4,12 +4,60 @@ import PropTypes from "prop-types";
 import { Box } from "@mui/material";
 import { DataGridPro, useGridApiRef } from "@mui/x-data-grid-pro";
 
-import { toV8Model } from "./selectionV8";
+import {
+  toV8Model,
+  stringifyCell,
+  isFsTimestamp,
+  formatMaybeTs,
+} from "./selectionV8";
+
+// Build a readable header from object key: "startTime" -> "Start Time"
+function headerFromKey(k) {
+  if (!k) return "";
+  return String(k)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (s) => s.toUpperCase());
+}
+
+// Heuristic auto-column factory.
+// - Skips obvious internal keys if requested
+// - Null-safe valueGetter signature for v7/v8: (value, row)
+function buildAutoColumns(sampleRow, opts = {}) {
+  const { hideKeys = [], preferredOrder = [] } = opts;
+  const keys = Object.keys(sampleRow || {}).filter((k) => !hideKeys.includes(k));
+
+  // Put preferred keys first if present
+  const ordered = [
+    ...preferredOrder.filter((k) => keys.includes(k)),
+    ...keys.filter((k) => !preferredOrder.includes(k)),
+  ];
+
+  return ordered.map((field) => {
+    return {
+      field,
+      headerName: headerFromKey(field),
+      minWidth: 140,
+      flex: 1,
+      // valueGetter signature in v7+/v8 is (value, row)
+      valueGetter: (value, row) => {
+        const raw = value ?? row?.[field];
+        if (isFsTimestamp(raw)) return formatMaybeTs(raw);
+        if (raw == null) return "";
+        if (typeof raw === "object") return stringifyCell(raw);
+        return raw;
+      },
+    };
+  });
+}
 
 /**
- * SmartAutoGrid – shared wrapper with safe defaults for MUI X Pro v8.
- * - Always provides a controlled v8 rowSelectionModel: { ids: Set, type: 'include' | 'exclude' }.
- * - Guards rows/columns arrays and getRowId stability.
+ * SmartAutoGrid – shared wrapper with:
+ *  - v8-safe row selection model (object with Set)
+ *  - Auto-generated columns when none are provided
+ *  - Defensive null guards for rows/columns/getRowId
  */
 export default function SmartAutoGrid(props) {
   const {
@@ -18,27 +66,47 @@ export default function SmartAutoGrid(props) {
     getRowId,
     checkboxSelection = true,
     disableRowSelectionOnClick = false,
-    rowSelectionModel, // may be array/Set/object; we normalize
-    onRowSelectionModelChange, // must emit v8 object
+    rowSelectionModel,
+    onRowSelectionModelChange,
     initialState,
     columnVisibilityModel,
+    autoColumns = true,                // NEW: enable auto columns by default
+    autoHideKeys = [],                 // e.g., ["id", "userEmail", "driverId"]
+    autoPreferredOrder = [],           // e.g., ["startTime", "endTime", "duration"]
     ...rest
   } = props;
 
   const apiRef = useGridApiRef();
 
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const safeCols = useMemo(
-    () => (Array.isArray(columns) ? columns : []),
-    [columns],
-  );
+  const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
+  const dataHasRows = safeRows.length > 0;
 
+  const explicitCols = useMemo(() => (Array.isArray(columns) ? columns : []), [columns]);
+  const autoCols = useMemo(() => {
+    if (!autoColumns || explicitCols.length > 0 || !dataHasRows) return [];
+    return buildAutoColumns(safeRows[0], {
+      hideKeys: autoHideKeys,
+      preferredOrder: autoPreferredOrder,
+    });
+  }, [
+    autoColumns,
+    explicitCols.length,
+    dataHasRows,
+    safeRows,
+    autoHideKeys,
+    autoPreferredOrder,
+  ]);
+
+  const safeCols = useMemo(() => {
+    return explicitCols.length > 0 ? explicitCols : autoCols;
+  }, [explicitCols, autoCols]);
+
+  // Stable getRowId
   const safeGetRowId = useCallback(
     (row) => {
       try {
         if (typeof getRowId === "function") return getRowId(row);
-        if (row && (row.id || row.uid || row._id))
-          return row.id ?? row.uid ?? row._id;
+        if (row && (row.id || row.uid || row._id)) return row.id ?? row.uid ?? row._id;
       } catch (err) {
         console.warn("getRowId error; falling back to JSON key", err);
       }
@@ -47,13 +115,8 @@ export default function SmartAutoGrid(props) {
     [getRowId],
   );
 
-  // Internal v8 selection model
-  const [internalRsm, setInternalRsm] = useState({
-    ids: new Set(),
-    type: "include",
-  });
-
-  // If parent passes something, normalize it; else use internal
+  // v8 selection model control
+  const [internalRsm, setInternalRsm] = useState({ ids: new Set(), type: "include" });
   const externalNormalized = useMemo(
     () => toV8Model(rowSelectionModel),
     [rowSelectionModel],
@@ -120,4 +183,7 @@ SmartAutoGrid.propTypes = {
   onRowSelectionModelChange: PropTypes.func,
   initialState: PropTypes.object,
   columnVisibilityModel: PropTypes.object,
+  autoColumns: PropTypes.bool,
+  autoHideKeys: PropTypes.array,
+  autoPreferredOrder: PropTypes.array,
 };
