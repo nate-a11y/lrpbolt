@@ -25,7 +25,7 @@ import {
   addTicket as apiAddTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 import PageContainer from "./PageContainer.jsx";
 

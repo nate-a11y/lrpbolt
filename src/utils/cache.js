@@ -1,5 +1,5 @@
 import { fetchWithRetry } from "./network";
-import { logError } from "./logError";
+import logError from "./logError.js";
 
 export async function fetchWithCache(key, url, ttl = 86400000) {
   const cached = localStorage.getItem(key);

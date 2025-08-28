@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Stack, TextField, useMediaQuery } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
+// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useTheme } from "@mui/material/styles";
 

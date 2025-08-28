@@ -35,6 +35,7 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
+// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
@@ -56,7 +57,7 @@ import { db } from "src/utils/firebaseInit";
 
 import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
 import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe";  
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import useAuth from "../hooks/useAuth.js";
 import useRides from "../hooks/useRides";
 import { callDropDailyRidesNow } from "../utils/functions";

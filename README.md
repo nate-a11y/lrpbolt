@@ -91,3 +91,17 @@ Expected response:
 ### Clearing Service Worker Cache
 
 After deploying a new build, open your browser DevTools and navigate to **Application → Service Workers**. Unregister old service workers and perform a hard refresh to clear cached assets.
+
+## ✅ Production Checklist
+
+Before committing or deploying, run:
+
+```bash
+npm run verify:prod     # lint + format:check + tests + build
+npm run audit           # check for security vulnerabilities
+npm run deps:check      # see if dependencies are outdated
+npm run deps:unused     # detect unused dependencies
+npm run env:sync        # ensure .env.sample is up to date
+```
+
+Pre-commit and pre-push hooks (via Husky) run automatically to keep code clean.

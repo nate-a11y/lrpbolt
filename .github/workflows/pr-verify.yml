@@ -1,0 +1,72 @@
+name: pr-verify
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - "README.md"
+      - ".vscode/**"
+      - ".github/ISSUE_TEMPLATE/**"
+
+concurrency:
+  group: pr-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (lint, format, tests, build, audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Note: PRs from forks won't have repo secrets. This is fine:
+    # - @sentry/vite-plugin will auto-disable if SENTRY_* are missing
+    # - Build still runs; sourcemaps simply won't upload in PR context
+    env:
+      # Sentry (optional; present on same-repo PRs, absent on forks)
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
+      # Vite envs (present on same-repo PRs; absent on forks). Build should not rely on secrets in tests.
+      VITE_MUIX_LICENSE_KEY: ${{ secrets.YOUR_MUI_PRO_KEY }}
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
+      VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+      VITE_ENABLE_FCM: ${{ secrets.VITE_ENABLE_FCM }}
+      VITE_SHOW_DEBUG_PANELS: ${{ secrets.VITE_SHOW_DEBUG_PANELS }}
+      # Add other VITE_* you rely on at build-time as needed
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      # Optional Lighthouse is configured to be non-fatal if LHCI isn't installed.
+      # verify:all already runs verify:prod (lint, format:check, tests, build:prod) + npm audit
+      - name: Verify (lint → format:check → tests → build → audit)
+        run: npm run verify:all
+        env:
+          SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ env.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ env.SENTRY_PROJECT }}
+
+      - name: Upload dist artifact (for review)
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-dist-${{ github.run_id }}
+          path: dist
+          if-no-files-found: warn
+          retention-days: 5
+

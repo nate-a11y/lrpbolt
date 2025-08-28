@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 import { getUserAccess } from "./api";
 import useAuth from "./useAuth.js";

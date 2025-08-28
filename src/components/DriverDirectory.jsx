@@ -310,7 +310,7 @@ export default function DriverDirectory() {
                           component="a"
                           href="https://messages.google.com/web"
                           target="_blank"
-                          rel="noopener"
+                          rel="noopener noreferrer"
                           size="small"
                           sx={iconBtnSx()}
                         >

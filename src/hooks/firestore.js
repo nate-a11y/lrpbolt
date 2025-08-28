@@ -3,7 +3,7 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
 
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import { mapSnapshotToRows } from "../services/normalizers";
 
 // Realtime listener for timeLogs collection

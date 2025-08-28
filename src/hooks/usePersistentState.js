@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 export default function usePersistentState(key, defaultValue) {
   const [state, setState] = useState(() => {

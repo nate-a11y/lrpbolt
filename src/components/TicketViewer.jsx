@@ -15,7 +15,7 @@ import dayjs from "dayjs";
 
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 export default function TicketViewer() {
   const { ticketId } = useParams();

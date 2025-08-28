@@ -14,6 +14,7 @@ import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import NotificationsProvider from "./context/NotificationsProvider.jsx";
+import ToastProvider from "./context/ToastProvider.jsx";
 import "./utils/firebaseInit.js";
 
 LicenseInfo.setLicenseKey(import.meta.env.VITE_MUIX_LICENSE_KEY);
@@ -24,17 +25,19 @@ const Root = () => {
       <ColorModeProvider>
         <AuthProvider>
           <DriverProvider>
-            <NotificationsProvider>
-              <Suspense fallback={<LoadingScreen />}>
-                <Routes>
+            <ToastProvider>
+              <NotificationsProvider>
+                <Suspense fallback={<LoadingScreen />}> 
+                  <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/sms-consent" element={<SmsConsent />} />
                   <Route element={<PrivateRoute />}>
                     <Route path="/*" element={<AppRoot />} />
                   </Route>
-                </Routes>
-              </Suspense>
-            </NotificationsProvider>
+                  </Routes>
+                </Suspense>
+              </NotificationsProvider>
+            </ToastProvider>
           </DriverProvider>
         </AuthProvider>
       </ColorModeProvider>

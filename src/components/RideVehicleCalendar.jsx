@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // RideVehicleCalendar.jsx — Fully updated with vehicle chips, dynamic coloring, compact mode, summary, and improved light mode readability
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -19,13 +19,15 @@ import {
   Tooltip,
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
+// eslint-disable-next-line import/no-unresolved
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 
+import { toIso } from "../utils/time.js";
 import { TIMEZONE } from "../constants";
 import { fetchWithRetry } from "../utils/network";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 import PageContainer from "./PageContainer.jsx";
 
@@ -36,7 +38,7 @@ const CST = TIMEZONE;
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export default function RideVehicleCalendar() {
+function RideVehicleCalendar() {
   const [date, setDate] = useState(dayjs().tz(CST));
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,8 +159,8 @@ export default function RideVehicleCalendar() {
     const controller = new AbortController();
     const fetchEvents = async () => {
       setLoading(true);
-      const start = dayjs(date).startOf("day").toISOString();
-      const end = dayjs(date).endOf("day").toISOString();
+      const start = toIso(dayjs(date).startOf("day"));
+      const end = toIso(dayjs(date).endOf("day"));
 
       const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
         CALENDAR_ID,
@@ -432,3 +434,5 @@ export default function RideVehicleCalendar() {
     </LocalizationProvider>
   );
 }
+
+export default memo(RideVehicleCalendar);

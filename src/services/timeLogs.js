@@ -3,7 +3,7 @@
 import { doc, updateDoc, deleteDoc, Timestamp } from "firebase/firestore";
 
 import { db } from "../utils/firebaseInit";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 function backoff(attempt) {
   return new Promise((res) => setTimeout(res, 2 ** attempt * 100));

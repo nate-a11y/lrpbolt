@@ -96,6 +96,18 @@ export default function DriverInfoTab() {
         minWidth: 150,
         valueGetter: (params) =>
           Array.isArray(params?.row?.codes) ? params.row.codes.join(", ") : "N/A",
+        renderCell: (p) => (
+          <Box
+            sx={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              maxWidth: { xs: 180, md: "unset" },
+            }}
+          >
+            {p?.value ?? "N/A"}
+          </Box>
+        ),
       },
     ],
     []

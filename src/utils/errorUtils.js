@@ -1,6 +1,6 @@
 /* Shared error handling utilities */
 
-export { logError } from "./logError";
+export { default as logError } from "./logError.js";
 
 /**
  * Convert Firebase auth error codes to human friendly messages.

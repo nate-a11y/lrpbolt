@@ -19,6 +19,7 @@ export default function ResponsiveDataGridPro(props) {
     disableRowSelectionOnClick = true,
     pagination = true,
     hideFooterSelectedRowCount = true,
+    rowBuffer = 3,
     ...rest
   } = props;
 
@@ -50,6 +51,7 @@ export default function ResponsiveDataGridPro(props) {
         disableRowSelectionOnClick={disableRowSelectionOnClick}
         pagination={pagination}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
+        rowBuffer={rowBuffer}
       />
     </Box>
   );

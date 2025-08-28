@@ -1,7 +1,7 @@
 import { getToken, onMessage, deleteToken } from "firebase/messaging";
 
 import { firebaseConfig, getMessagingOrNull } from "../utils/firebaseInit";
-import logError from "../utils/logError";
+import logError from "../utils/logError.js";
 
 const TOKEN_KEY = "lrp_fcm_token";
 const FCM_ENABLED = import.meta.env.VITE_ENABLE_FCM === "true";

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   useCallback,
+  memo,
 } from "react";
 import {
   Box,
@@ -39,13 +40,13 @@ import { sanitize } from "../utils/sanitize";
 import { formatDateTime } from "../utils/timeUtils";
 import { fetchTicket, updateTicketScan } from "../hooks/api";
 import useAuth from "../hooks/useAuth.js";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 
 const formatDate = (v) => formatDateTime(v, "MMM D, YYYY") || "—";
 
 const formatTime = (v) => formatDateTime(v, "h:mm A") || "—";
 
-export default function TicketScanner() {
+function TicketScanner() {
   const [ticket, setTicket] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -535,3 +536,5 @@ export default function TicketScanner() {
     </Box>
   );
 }
+
+export default memo(TicketScanner);

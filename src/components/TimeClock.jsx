@@ -39,7 +39,7 @@ import RoleDebug from "@/components/RoleDebug";
 import { useAuth } from "../context/AuthContext.jsx";
 import { mapSnapshotToRows, enrichDriverNames } from "../services/normalizers";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import { tsToDate } from "../utils/safe";
 import { waitForAuth } from "../utils/waitForAuth";
 

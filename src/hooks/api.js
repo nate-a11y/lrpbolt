@@ -23,7 +23,7 @@ import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
 import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
-import { logError } from "../utils/logError";
+import logError from "../utils/logError.js";
 import { durationMinutes } from "../utils/timeUtils";
 import { normalizeTimeLog } from "../utils/normalizeTimeLog.js";
 import { nullifyMissing } from "../utils/formatters.js";
