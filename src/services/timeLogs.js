@@ -25,6 +25,8 @@ export async function patchTimeLog(id, updates = {}) {
   if ("note" in updates) data.note = updates.note;
   if ("startTime" in updates) data.startTime = coerceTs(updates.startTime);
   if ("endTime" in updates) data.endTime = coerceTs(updates.endTime);
+  if ("loggedAt" in updates) data.loggedAt = coerceTs(updates.loggedAt);
+  if ("duration" in updates) data.duration = Number(updates.duration) || 0;
 
   const s = data.startTime?.toMillis?.();
   const e = data.endTime?.toMillis?.();
