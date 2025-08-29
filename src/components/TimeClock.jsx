@@ -1,5 +1,5 @@
 // src/components/TimeClockGodMode.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Box,
   Paper,
@@ -13,6 +13,7 @@ import {
   Stack,
   CircularProgress,
 } from "@mui/material";
+import { GridToolbar } from "@mui/x-data-grid-pro";
 import {
   PlayArrow as PlayArrowIcon,
   Stop as StopIcon,
@@ -43,8 +44,14 @@ import logError from "../utils/logError.js";
 import { tsToDate } from "../utils/safe";
 import { waitForAuth } from "../utils/waitForAuth";
 
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import {
+  formatTs,
+  minutesToHuman,
+  diffMinutes,
+  DEFAULT_TZ,
+} from "./datagrid/selectionV8.js";
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 
@@ -107,6 +114,75 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const isDriver = role === "driver";
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "id",
+        headerName: "Id",
+        minWidth: 90,
+        flex: 0.6,
+        valueGetter: (p) => p?.row?.id ?? "N/A",
+      },
+      {
+        field: "driver",
+        headerName: "Driver",
+        minWidth: 160,
+        flex: 1,
+        valueGetter: (p) => p?.row?.driver ?? "N/A",
+      },
+      {
+        field: "rideId",
+        headerName: "Ride Id",
+        minWidth: 120,
+        flex: 0.8,
+        valueGetter: (p) => p?.row?.rideId ?? "N/A",
+      },
+      {
+        field: "startTime",
+        headerName: "Start Time",
+        minWidth: 170,
+        flex: 1,
+        valueGetter: (p) =>
+          formatTs(p?.row?.startTime, "MMM D, h:mm a", DEFAULT_TZ),
+      },
+      {
+        field: "endTime",
+        headerName: "End Time",
+        minWidth: 170,
+        flex: 1,
+        valueGetter: (p) =>
+          formatTs(p?.row?.endTime, "MMM D, h:mm a", DEFAULT_TZ),
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        minWidth: 130,
+        flex: 0.7,
+        valueGetter: (p) => {
+          const minutes =
+            typeof p?.row?.duration === "number"
+              ? p.row.duration
+              : diffMinutes(p?.row?.startTime, p?.row?.endTime, DEFAULT_TZ);
+          return minutesToHuman(minutes);
+        },
+      },
+      {
+        field: "updatedAt",
+        headerName: "Updated At",
+        minWidth: 170,
+        flex: 1,
+        valueGetter: (p) =>
+          formatTs(p?.row?.updatedAt, "MMM D, h:mm a", DEFAULT_TZ),
+      },
+    ],
+    [],
+  );
+
+  const getRowId = useCallback(
+    (r) => r?.id ?? r?.docId ?? r?._id ?? JSON.stringify(r),
+    [],
+  );
 
   useEffect(() => {
     if (!user?.email) return;
@@ -415,44 +491,16 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <ResponsiveScrollBox>
           <SmartAutoGrid
             rows={rows}
-            headerMap={{
-              rideId: "Trip ID",
-              startTime: "Clock In",
-              endTime: "Clock Out",
-              duration: "Duration", // auto "Hh Mm"
-              loggedAt: "Logged At",
-              note: "Note",
-              id: "id",
-              userEmail: "userEmail",
-              driverId: "driverId",
-              mode: "mode",
-              driver: "Driver",
-              driverEmail: "Driver Email",
+            columns={columns}
+            getRowId={getRowId}
+            autoHeight
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 500 },
+              },
             }}
-            order={[
-              "rideId",
-              "startTime",
-              "endTime",
-              "duration",
-              "loggedAt",
-              "note",
-              "id",
-              "userEmail",
-              "driverId",
-              "mode",
-              "driver",
-              "driverEmail",
-            ]}
-            forceHide={[
-              "loggedAt",
-              "note",
-              "id",
-              "userEmail",
-              "driverId",
-              "mode",
-              "driver",
-              "driverEmail",
-            ]}
           />
         </ResponsiveScrollBox>
         {rows.length === 0 && (
