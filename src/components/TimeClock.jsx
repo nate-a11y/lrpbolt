@@ -469,7 +469,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         rideId: idToTrack,
         mode: isNA ? "N/A" : isMulti ? "MULTI" : "RIDE",
       });
-      setUndo({ id: logId, prevEnd });
+      setUndo({
+        id: logId,
+        prevEnd,
+        rideId: idToTrack,
+        isNA,
+        isMulti,
+        startTime,
+      });
       setSnack({
         open: true,
         message: "Session ended. Undo?",
@@ -669,6 +676,47 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
                 onClick={async () => {
                   try {
                     await logTimeUpdate(undo.id, { endTime: null });
+                    setLogId(undo.id);
+                    setEndTime(null);
+                    setIsRunning(true);
+                    setRideId(
+                      undo.isNA || undo.isMulti ? "" : undo.rideId || "",
+                    );
+                    setIsNA(!!undo.isNA);
+                    setIsMulti(!!undo.isMulti);
+                    setStartTime(undo.startTime);
+                    setElapsed(
+                      Math.floor(
+                        (tsToMillis(Timestamp.now()) -
+                          tsToMillis(undo.startTime)) /
+                          1000,
+                      ),
+                    );
+                    localStorage.setItem(
+                      "lrp_timeTrack",
+                      JSON.stringify({
+                        driver,
+                        rideId: undo.rideId,
+                        isNA: undo.isNA,
+                        isMulti: undo.isMulti,
+                        startTime: tsToMillis(undo.startTime),
+                        logId: undo.id,
+                      }),
+                    );
+                    safePost(
+                      {
+                        type: "timeclock:started",
+                        driver,
+                        payload: {
+                          rideId: undo.rideId,
+                          isNA: undo.isNA,
+                          isMulti: undo.isMulti,
+                          startTime: tsToMillis(undo.startTime),
+                          logId: undo.id,
+                        },
+                      },
+                      bcName,
+                    );
                     setSnack({
                       open: true,
                       message: "Clock-out undone",
