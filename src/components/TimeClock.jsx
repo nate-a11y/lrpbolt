@@ -12,6 +12,9 @@ import {
   Alert,
   Stack,
   CircularProgress,
+  useTheme,
+  useMediaQuery,
+  keyframes,
 } from "@mui/material";
 import { GridToolbar } from "@mui/x-data-grid-pro";
 import {
@@ -46,16 +49,96 @@ import { waitForAuth } from "../utils/waitForAuth";
 
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import {
-  formatTs,
-  minutesToHuman,
-  diffMinutes,
-  DEFAULT_TZ,
-} from "./datagrid/selectionV8.js";
+import { DEFAULT_TZ } from "./datagrid/selectionV8.js";
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 
 const bcName = "lrp-timeclock";
+
+// ---------- Local, null-safe time helpers ----------
+function tsToDayjsTZ(tsLike, tz = DEFAULT_TZ || "America/Chicago") {
+  if (!tsLike) return null;
+  try {
+    if (typeof tsLike?.seconds === "number") {
+      return dayjs.unix(tsLike.seconds).tz(tz);
+    }
+    const d = dayjs(tsLike);
+    return d.isValid() ? d.tz(tz) : null;
+  } catch {
+    return null;
+  }
+}
+function safeFormatTs(
+  tsLike,
+  fmt = "MMM D, h:mm a",
+  tz = DEFAULT_TZ || "America/Chicago",
+) {
+  const dj = tsToDayjsTZ(tsLike, tz);
+  return dj ? dj.format(fmt) : "N/A";
+}
+function diffMinutesSafe(
+  startLike,
+  endLike,
+  tz = DEFAULT_TZ || "America/Chicago",
+) {
+  const s = tsToDayjsTZ(startLike, tz);
+  const e = tsToDayjsTZ(endLike, tz);
+  if (!s || !e) return null;
+  const mins = Math.max(0, e.diff(s, "minute"));
+  return Number.isFinite(mins) ? mins : null;
+}
+function minutesToHuman(mins) {
+  if (mins == null) return "N/A";
+  const m = Math.max(0, Math.floor(mins));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (!h && !r) return "0m";
+  if (!h) return `${r}m`;
+  if (!r) return `${h}h`;
+  return `${h}h ${r}m`;
+}
+function normalizeRow(r) {
+  const id =
+    r?.id ??
+    r?.docId ??
+    r?._id ??
+    `${r?.userEmail || "unknown"}-${(r?.startTime && r.startTime.seconds) || r?.startTime || Math.random()}`;
+  const driverName =
+    r?.driver ??
+    r?.driverName ??
+    r?.name ??
+    (typeof r?.driverEmail === "string" ? r.driverEmail.split("@")[0] : null) ??
+    (typeof r?.userEmail === "string" ? r.userEmail.split("@")[0] : null);
+  const start = r?.startTime ?? r?.clockIn ?? r?.inTime ?? null;
+  const end = r?.endTime ?? r?.clockOut ?? r?.outTime ?? null;
+  const updatedAt = r?.updatedAt ?? r?.loggedAt ?? r?._updatedAt ?? null;
+  return {
+    ...r,
+    id,
+    driver: driverName || null,
+    rideId: r?.rideId ?? r?.ride ?? r?.mode ?? null,
+    startTime: start,
+    endTime: end,
+    updatedAt,
+    duration: typeof r?.duration === "number" ? r.duration : null,
+  };
+}
+function tzFriendlyName(tz = DEFAULT_TZ || "America/Chicago") {
+  try {
+    if (/America\/Chicago/i.test(tz)) return "Central Time";
+    if (/America\/New_York/i.test(tz)) return "Eastern Time";
+    if (/America\/Denver/i.test(tz)) return "Mountain Time";
+    if (/America\/Los_Angeles/i.test(tz)) return "Pacific Time";
+    return tz.replace("_", " ");
+  } catch {
+    return "Local Time";
+  }
+}
+const pulse = keyframes`
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+`;
 
 async function logTimeCreate(payload) {
   const user = await waitForAuth(true);
@@ -114,73 +197,85 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const isDriver = role === "driver";
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
+  const theme = useTheme();
+  const isXs = useMediaQuery(theme.breakpoints.down("sm"));
+  const tzLabel = tzFriendlyName(DEFAULT_TZ || "America/Chicago");
+  const [undo, setUndo] = useState(null); // { id, prevEnd }
+  const [startingAnim, setStartingAnim] = useState(false);
+  const [endingAnim, setEndingAnim] = useState(false);
 
   const columns = useMemo(
     () => [
       {
-        field: "id",
-        headerName: "Id",
-        minWidth: 90,
-        flex: 0.6,
-        valueGetter: (p) => p?.row?.id ?? "N/A",
-      },
-      {
         field: "driver",
         headerName: "Driver",
-        minWidth: 160,
+        minWidth: 140,
         flex: 1,
-        valueGetter: (p) => p?.row?.driver ?? "N/A",
+        valueGetter: (p) =>
+          p?.row?.driver ??
+          p?.row?.driverName ??
+          p?.row?.name ??
+          (typeof p?.row?.driverEmail === "string"
+            ? p.row.driverEmail.split("@")[0]
+            : null) ??
+          (typeof p?.row?.userEmail === "string"
+            ? p.row.userEmail.split("@")[0]
+            : "N/A"),
       },
       {
         field: "rideId",
         headerName: "Ride Id",
-        minWidth: 120,
+        minWidth: 110,
         flex: 0.8,
-        valueGetter: (p) => p?.row?.rideId ?? "N/A",
+        valueGetter: (p) =>
+          p?.row?.rideId ?? p?.row?.ride ?? p?.row?.mode ?? "N/A",
       },
       {
         field: "startTime",
         headerName: "Start Time",
-        minWidth: 170,
+        minWidth: 150,
         flex: 1,
-        valueGetter: (p) =>
-          formatTs(p?.row?.startTime, "MMM D, h:mm a", DEFAULT_TZ),
+        valueGetter: (p) => {
+          const raw = p?.row?.startTime ?? p?.row?.clockIn ?? p?.row?.inTime;
+          return safeFormatTs(raw, "MMM D, h:mm a");
+        },
       },
       {
         field: "endTime",
         headerName: "End Time",
-        minWidth: 170,
+        minWidth: 150,
         flex: 1,
-        valueGetter: (p) =>
-          formatTs(p?.row?.endTime, "MMM D, h:mm a", DEFAULT_TZ),
+        valueGetter: (p) => {
+          const raw = p?.row?.endTime ?? p?.row?.clockOut ?? p?.row?.outTime;
+          return safeFormatTs(raw, "MMM D, h:mm a");
+        },
       },
       {
         field: "duration",
         headerName: "Duration",
-        minWidth: 130,
+        minWidth: 110,
         flex: 0.7,
         valueGetter: (p) => {
           const minutes =
             typeof p?.row?.duration === "number"
               ? p.row.duration
-              : diffMinutes(p?.row?.startTime, p?.row?.endTime, DEFAULT_TZ);
+              : diffMinutesSafe(
+                  p?.row?.startTime ?? p?.row?.clockIn ?? p?.row?.inTime,
+                  p?.row?.endTime ?? p?.row?.clockOut ?? p?.row?.outTime,
+                );
           return minutesToHuman(minutes);
         },
-      },
-      {
-        field: "updatedAt",
-        headerName: "Updated At",
-        minWidth: 170,
-        flex: 1,
-        valueGetter: (p) =>
-          formatTs(p?.row?.updatedAt, "MMM D, h:mm a", DEFAULT_TZ),
       },
     ],
     [],
   );
 
   const getRowId = useCallback(
-    (r) => r?.id ?? r?.docId ?? r?._id ?? JSON.stringify(r),
+    (r) =>
+      r?.id ??
+      r?.docId ??
+      r?._id ??
+      `${r?.userEmail || "unknown"}-${(r?.startTime && r.startTime.seconds) || r?.startTime || Math.random()}`,
     [],
   );
 
@@ -198,7 +293,8 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       async (snap) => {
         const base = mapSnapshotToRows("timeLogs", snap);
         const withNames = await enrichDriverNames(base);
-        setRows(withNames);
+        const normalized = withNames.map(normalizeRow);
+        setRows(normalized);
         setReady(true);
       },
       (err) => {
@@ -303,6 +399,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         ? "MULTI"
         : rideId.trim().toUpperCase();
     setSubmitting(true);
+    setStartingAnim(true);
     try {
       const ref = await logTimeCreate({
         driverId: driver,
@@ -347,6 +444,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       });
     } finally {
       setSubmitting(false);
+      setTimeout(() => setStartingAnim(false), 420);
     }
   };
 
@@ -357,6 +455,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     setEndTime(end);
     setIsRunning(false);
     setSubmitting(true);
+    setEndingAnim(true);
 
     const idToTrack = isNA
       ? "N/A"
@@ -364,12 +463,18 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         ? "MULTI"
         : rideId.trim().toUpperCase();
     try {
+      const prevEnd = null;
       await logTimeUpdate(logId, {
         endTime: serverTimestamp(),
         rideId: idToTrack,
         mode: isNA ? "N/A" : isMulti ? "MULTI" : "RIDE",
       });
-      setSnack({ open: true, message: "✅ Time logged", severity: "success" });
+      setUndo({ id: logId, prevEnd });
+      setSnack({
+        open: true,
+        message: "Session ended. Undo?",
+        severity: "info",
+      });
       localStorage.removeItem("lrp_timeTrack");
       setRideId("");
       setIsNA(false);
@@ -394,6 +499,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     }
 
     setSubmitting(false);
+    setTimeout(() => setEndingAnim(false), 420);
   };
 
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
@@ -452,7 +558,12 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             startIcon={<PlayArrowIcon />}
             variant="contained"
             color="success"
-            sx={{ flex: 1 }}
+            sx={{
+              flex: 1,
+              animation: startingAnim ? `${pulse} 400ms ease-in-out` : "none",
+              transition: "transform 120ms ease",
+              "&:active": { transform: "scale(0.98)" },
+            }}
           >
             {submitting && !isRunning ? "Starting…" : "Start"}
           </Button>
@@ -462,7 +573,12 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             startIcon={<StopIcon />}
             variant="contained"
             color="error"
-            sx={{ flex: 1 }}
+            sx={{
+              flex: 1,
+              animation: endingAnim ? `${pulse} 400ms ease-in-out` : "none",
+              transition: "transform 120ms ease, background 120ms ease",
+              "&:active": { transform: "scale(0.98)" },
+            }}
           >
             {submitting && isRunning ? "Logging…" : "End"}
           </Button>
@@ -485,8 +601,24 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           justifyContent="space-between"
           alignItems="center"
           mb={1}
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            bgcolor: "background.paper",
+            py: 1,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
         >
           <Typography variant="subtitle1">Previous Sessions</Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontStyle: "italic" }}
+          >
+            {tzLabel}
+          </Typography>
         </Box>
         <ResponsiveScrollBox>
           <SmartAutoGrid
@@ -494,6 +626,15 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             columns={columns}
             getRowId={getRowId}
             autoHeight
+            checkboxSelection={false}
+            disableRowSelectionOnClick
+            density={isXs ? "compact" : "standard"}
+            sx={{
+              width: "100%",
+              maxWidth: "100%",
+              overflowX: "hidden",
+              "& .MuiDataGrid-virtualScroller": { overflowX: "hidden" },
+            }}
             slots={{ toolbar: GridToolbar }}
             slotProps={{
               toolbar: {
@@ -520,6 +661,35 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           severity={snack.severity}
           variant="filled"
           onClose={() => setSnack({ ...snack, open: false })}
+          action={
+            undo?.id ? (
+              <Button
+                size="small"
+                color="inherit"
+                onClick={async () => {
+                  try {
+                    await logTimeUpdate(undo.id, { endTime: null });
+                    setSnack({
+                      open: true,
+                      message: "Clock-out undone",
+                      severity: "success",
+                    });
+                  } catch (e) {
+                    logError(e, { area: "timeclock-undo" });
+                    setSnack({
+                      open: true,
+                      message: "Undo failed",
+                      severity: "error",
+                    });
+                  } finally {
+                    setUndo(null);
+                  }
+                }}
+              >
+                UNDO
+              </Button>
+            ) : null
+          }
         >
           {snack.message}
         </Alert>
