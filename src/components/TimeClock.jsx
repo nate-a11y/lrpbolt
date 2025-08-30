@@ -285,7 +285,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   );
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      setRows([]);
+      setReady(true);
+      return;
+    }
     setReady(false);
     const q = query(
       collection(db, "timeLogs"),
