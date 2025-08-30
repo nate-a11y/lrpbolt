@@ -145,9 +145,8 @@ function Tickets() {
         ? dayjs(t.date).format("MM-DD-YYYY") === filteredDate
         : t.date === filteredDate);
 
-    const matchSearch = t.ticketId
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+    const ticketId = (t?.ticketId || "").toString().toLowerCase();
+    const matchSearch = ticketId.includes(searchQuery.toLowerCase());
 
     return matchDate && matchSearch;
   });
@@ -156,7 +155,7 @@ function Tickets() {
     const date = dayjs(t.date).isValid()
       ? dayjs(t.date).format("MM-DD-YYYY")
       : t.date || "Unknown";
-    const count = parseInt(t.passengercount ?? 0, 10);
+    const count = parseInt(t.passengers ?? 0, 10);
     acc[date] = (acc[date] || 0) + count;
     return acc;
   }, {});
