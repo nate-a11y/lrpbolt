@@ -50,7 +50,7 @@ function buildAutoColumns(sampleRow, opts = {}) {
         flex: 1,
         valueGetter: (value, row) => {
           const raw = value ?? row?.[field];
-          if (!raw) return "";
+          if (!raw) return "N/A";
           // Handle FS Timestamp or ISOish strings
           return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ); // e.g., Aug 24, 12:30 pm
         },
@@ -74,7 +74,7 @@ function buildAutoColumns(sampleRow, opts = {}) {
             row?.endTime ?? row?.end_time,
             DEFAULT_TZ,
           );
-          return dm == null ? "" : minutesToHuman(dm);
+          return dm == null ? "N/A" : minutesToHuman(dm);
         },
       };
     }
@@ -87,7 +87,7 @@ function buildAutoColumns(sampleRow, opts = {}) {
       flex: 1,
       valueGetter: (value, row) => {
         const raw = value ?? row?.[field];
-        if (raw == null) return "";
+        if (raw == null) return "N/A";
         if (isFsTimestamp(raw))
           return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ);
         if (typeof raw === "object") return stringifyCell(raw);
@@ -110,6 +110,7 @@ export default function SmartAutoGrid(props) {
     columnVisibilityModel,
     autoColumns = true,
     autoHideKeys = [],
+    forceHide = [],
     autoPreferredOrder = [],
     ...rest
   } = props;
@@ -123,10 +124,18 @@ export default function SmartAutoGrid(props) {
     () => (Array.isArray(columns) ? columns : []),
     [columns],
   );
+  const hideKeys = useMemo(
+    () => [
+      ...(Array.isArray(autoHideKeys) ? autoHideKeys : []),
+      ...(Array.isArray(forceHide) ? forceHide : []),
+    ],
+    [autoHideKeys, forceHide],
+  );
+
   const autoCols = useMemo(() => {
     if (!autoColumns || explicitCols.length > 0 || !dataHasRows) return [];
     return buildAutoColumns(safeRows[0], {
-      hideKeys: autoHideKeys,
+      hideKeys,
       preferredOrder: autoPreferredOrder,
     });
   }, [
@@ -134,7 +143,7 @@ export default function SmartAutoGrid(props) {
     explicitCols.length,
     dataHasRows,
     safeRows,
-    autoHideKeys,
+    hideKeys,
     autoPreferredOrder,
   ]);
 
@@ -225,5 +234,6 @@ SmartAutoGrid.propTypes = {
   columnVisibilityModel: PropTypes.object,
   autoColumns: PropTypes.bool,
   autoHideKeys: PropTypes.array,
+  forceHide: PropTypes.array,
   autoPreferredOrder: PropTypes.array,
 };
