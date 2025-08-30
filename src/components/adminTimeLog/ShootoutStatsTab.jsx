@@ -3,6 +3,8 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { doc, deleteDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
+import { formatTz, durationHm } from "@/utils/timeSafe";
+
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
@@ -19,12 +21,16 @@ export default function ShootoutStatsTab() {
   useEffect(() => {
     const unsub = subscribeShootoutStats(
       async (stats) => {
-        const withNames = await enrichDriverNames(stats || []);
+        const mapped = (stats || []).map((s) => ({
+          id: s.id ?? s.docId ?? s._id ?? Math.random().toString(36).slice(2),
+          ...s,
+        }));
+        const withNames = await enrichDriverNames(mapped);
         const withDates = withNames.map((r) => ({
           ...r,
-          startTime: r?.startTime?.toDate?.() || null,
-          endTime: r?.endTime?.toDate?.() || null,
-          createdAt: r?.createdAt?.toDate?.() || null,
+          startTime: r?.startTime?.toDate?.() || r?.startTime || null,
+          endTime: r?.endTime?.toDate?.() || r?.endTime || null,
+          createdAt: r?.createdAt?.toDate?.() || r?.createdAt || null,
         }));
         setRows(withDates);
       },
@@ -63,16 +69,23 @@ export default function ShootoutStatsTab() {
       startTime: {
         editable: true,
         type: "dateTime",
+        valueFormatter: (p) => formatTz(p?.value),
       },
       endTime: {
         editable: true,
         type: "dateTime",
+        valueFormatter: (p) => formatTz(p?.value),
+      },
+      duration: {
+        editable: false,
+        valueGetter: (p) => durationHm(p?.row?.startTime, p?.row?.endTime),
       },
       trips: { editable: true, type: "number" },
       passengers: { editable: true, type: "number" },
       createdAt: {
         editable: true,
         type: "dateTime",
+        valueFormatter: (p) => formatTz(p?.value),
       },
     }),
     [],
@@ -99,7 +112,7 @@ export default function ShootoutStatsTab() {
   return (
     <ResponsiveScrollBox>
       <SmartAutoGrid
-        rows={rows}
+        rows={rows || []}
         headerMap={{
           driverEmail: "Driver Email",
           driver: "Driver",

@@ -2,7 +2,9 @@
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Box } from "@mui/material";
-import { DataGridPro, useGridApiRef } from "@mui/x-data-grid-pro";
+import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
+
+import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
 
 import {
   stringifyCell,
@@ -108,14 +110,13 @@ export default function SmartAutoGrid(props) {
     onRowSelectionModelChange,
     initialState,
     columnVisibilityModel,
+    slotProps,
     autoColumns = true,
     autoHideKeys = [],
     forceHide = [],
     autoPreferredOrder = [],
     ...rest
   } = props;
-
-  const apiRef = useGridApiRef();
 
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const dataHasRows = safeRows.length > 0;
@@ -152,34 +153,24 @@ export default function SmartAutoGrid(props) {
     [explicitCols, autoCols],
   );
 
-  const safeGetRowId = useCallback(
-    (row) => {
-      try {
-        if (typeof getRowId === "function") return getRowId(row);
-        if (row && (row.id || row.uid || row._id))
-          return row.id ?? row.uid ?? row._id;
-      } catch (err) {
-        console.warn("getRowId error; falling back to JSON key", err);
-      }
-      return JSON.stringify(row);
-    },
+  const rowIdFn = useCallback(
+    (row) =>
+      typeof getRowId === "function" ? getRowId(row) : safeGetRowId(row),
     [getRowId],
   );
 
   const [internalRsm, setInternalRsm] = useState([]);
   const controlledRsm =
     rowSelectionModel !== undefined
-      ? Array.isArray(rowSelectionModel)
-        ? rowSelectionModel
-        : []
+      ? toArraySelection(rowSelectionModel)
       : internalRsm;
 
   const handleRsmChange = useCallback(
-    (next) => {
-      const clean = Array.isArray(next) ? next : [];
-      setInternalRsm(clean);
+    (model) => {
+      const next = toArraySelection(model);
+      setInternalRsm(next);
       if (typeof onRowSelectionModelChange === "function")
-        onRowSelectionModelChange(clean);
+        onRowSelectionModelChange(next);
     },
     [onRowSelectionModelChange],
   );
@@ -200,13 +191,20 @@ export default function SmartAutoGrid(props) {
     [initialState],
   );
 
+  const mergedSlotProps = useMemo(
+    () => ({
+      toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
+      ...(slotProps || {}),
+    }),
+    [slotProps],
+  );
+
   return (
     <Box sx={{ height: "100%", width: "100%" }}>
       <DataGridPro
-        apiRef={apiRef}
         rows={safeRows}
         columns={safeCols}
-        getRowId={safeGetRowId}
+        getRowId={rowIdFn}
         checkboxSelection={checkboxSelection}
         disableRowSelectionOnClick={disableRowSelectionOnClick}
         rowSelectionModel={controlledRsm}
@@ -216,6 +214,11 @@ export default function SmartAutoGrid(props) {
         pagination
         autoHeight={rest.autoHeight ?? false}
         density={rest.density ?? "compact"}
+        slotProps={mergedSlotProps}
+        sx={{
+          [`& .${gridClasses.cell}`]: { outline: "none" },
+          ...(rest.sx || {}),
+        }}
         {...rest}
       />
     </Box>
@@ -232,6 +235,7 @@ SmartAutoGrid.propTypes = {
   onRowSelectionModelChange: PropTypes.func,
   initialState: PropTypes.object,
   columnVisibilityModel: PropTypes.object,
+  slotProps: PropTypes.object,
   autoColumns: PropTypes.bool,
   autoHideKeys: PropTypes.array,
   forceHide: PropTypes.array,
