@@ -9,8 +9,6 @@ import {
 
 import useIsMobile from "../../hooks/useIsMobile";
 
-import { toV8Model } from "./selectionV8";
-
 /**
  * Drop-in wrapper for DataGridPro that improves mobile ergonomics.
  * - autoHeight on small screens
@@ -43,11 +41,11 @@ export default function ResponsiveDataGridPro(props) {
   const safeColumns = Array.isArray(columnsProp) ? columnsProp : [];
 
   const [rowSelectionModel, setRowSelectionModel] = useState(
-    toV8Model(rowSelectionModelProp),
+    Array.isArray(rowSelectionModelProp) ? rowSelectionModelProp : [],
   );
   const handleRowSelectionModelChange = useCallback(
     (m, details) => {
-      const next = toV8Model(m);
+      const next = Array.isArray(m) ? m : [];
       setRowSelectionModel(next);
       if (onRowSelectionModelChangeProp)
         onRowSelectionModelChangeProp(next, details);
@@ -101,7 +99,9 @@ export default function ResponsiveDataGridPro(props) {
             row?._id ??
             JSON.stringify(row))
         }
-        rowSelectionModel={toV8Model(rowSelectionModel)}
+        rowSelectionModel={
+          Array.isArray(rowSelectionModel) ? rowSelectionModel : []
+        }
         onRowSelectionModelChange={handleRowSelectionModelChange}
         paginationModel={paginationModel}
         onPaginationModelChange={handlePaginationModelChange}

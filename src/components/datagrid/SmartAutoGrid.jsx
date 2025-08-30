@@ -5,7 +5,6 @@ import { Box } from "@mui/material";
 import { DataGridPro, useGridApiRef } from "@mui/x-data-grid-pro";
 
 import {
-  toV8Model,
   stringifyCell,
   isFsTimestamp,
   formatTs,
@@ -158,24 +157,20 @@ export default function SmartAutoGrid(props) {
     [getRowId],
   );
 
-  // v8 selection control
-  const [internalRsm, setInternalRsm] = useState({
-    ids: new Set(),
-    type: "include",
-  });
-  const externalNormalized = useMemo(
-    () => toV8Model(rowSelectionModel),
-    [rowSelectionModel],
-  );
+  const [internalRsm, setInternalRsm] = useState([]);
   const controlledRsm =
-    rowSelectionModel !== undefined ? externalNormalized : internalRsm;
+    rowSelectionModel !== undefined
+      ? Array.isArray(rowSelectionModel)
+        ? rowSelectionModel
+        : []
+      : internalRsm;
 
   const handleRsmChange = useCallback(
-    (next, details) => {
-      const clean = toV8Model(next);
+    (next) => {
+      const clean = Array.isArray(next) ? next : [];
       setInternalRsm(clean);
       if (typeof onRowSelectionModelChange === "function")
-        onRowSelectionModelChange(clean, details);
+        onRowSelectionModelChange(clean);
     },
     [onRowSelectionModelChange],
   );
@@ -224,7 +219,7 @@ SmartAutoGrid.propTypes = {
   getRowId: PropTypes.func,
   checkboxSelection: PropTypes.bool,
   disableRowSelectionOnClick: PropTypes.bool,
-  rowSelectionModel: PropTypes.any,
+  rowSelectionModel: PropTypes.array,
   onRowSelectionModelChange: PropTypes.func,
   initialState: PropTypes.object,
   columnVisibilityModel: PropTypes.object,
