@@ -48,7 +48,12 @@ import { tsToDate } from "../utils/safe";
 import { waitForAuth } from "../utils/waitForAuth";
 
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveDataGridPro from "./datagrid/ResponsiveDataGridPro.jsx";
+import {
+  LoadingOverlay,
+  NoRowsOverlay,
+  ErrorOverlay,
+} from "./grid/overlays.jsx";
 import { DEFAULT_TZ } from "./datagrid/selectionV8.js";
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
@@ -523,7 +528,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return (
       <Alert severity="error">You don’t have permission to view this.</Alert>
     );
-  if (!ready) return <CircularProgress sx={{ mt: 2 }} />;
 
   return (
     <PageContainer maxWidth={600}>
@@ -637,7 +641,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           </Typography>
         </Box>
         <ResponsiveScrollBox>
-          <SmartAutoGrid
+          <ResponsiveDataGridPro
             rows={rows}
             columns={columns}
             getRowId={getRowId}
@@ -646,27 +650,26 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             disableRowSelectionOnClick
             rowSelectionModel={rowSelectionModel}
             onRowSelectionModelChange={handleRowSelectionModelChange}
-            density={isXs ? "compact" : "standard"}
             sx={{
               width: "100%",
               maxWidth: "100%",
               overflowX: "hidden",
               "& .MuiDataGrid-virtualScroller": { overflowX: "hidden" },
             }}
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 500 },
-              },
+            slots={{
+              toolbar: GridToolbar,
+              loadingOverlay: LoadingOverlay,
+              noRowsOverlay: NoRowsOverlay,
+              errorOverlay: ErrorOverlay,
             }}
+            slotProps={{
+              toolbar: { quickFilterProps: { debounceMs: 500 } },
+            }}
+            loading={!ready}
+            error={error}
+            density={isXs ? "compact" : "standard"}
           />
         </ResponsiveScrollBox>
-        {rows.length === 0 && (
-          <Typography textAlign="center" color="text.secondary" mt={2}>
-            No time logs found.
-          </Typography>
-        )}
       </Paper>
 
       <Snackbar

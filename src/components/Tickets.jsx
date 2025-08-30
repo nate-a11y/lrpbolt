@@ -57,7 +57,12 @@ import { useGridDoctor } from "../utils/useGridDoctor";
 
 import PageContainer from "./PageContainer.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveDataGridPro from "./datagrid/ResponsiveDataGridPro.jsx";
+import {
+  LoadingOverlay,
+  NoRowsOverlay,
+  ErrorOverlay,
+} from "./grid/overlays.jsx";
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -93,6 +98,9 @@ function Tickets() {
     [isSmall],
   );
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     if (import.meta.env.MODE !== "production") {
       assertGridScrollable(scrollRef.current);
@@ -109,15 +117,23 @@ function Tickets() {
         dayjs(filteredDate, "MM-DD-YYYY").toDate(),
       );
     }
+    setLoading(true);
+    setError(null);
     const unsubscribe = subscribeTickets(
-      (data) => setTickets(data),
+      (data) => {
+        setTickets(data);
+        setLoading(false);
+      },
       filters,
-      () =>
+      (err) => {
+        setError(err);
         setSnackbar({
           open: true,
           message: "Permissions issue loading tickets",
           severity: "error",
-        }),
+        });
+        setLoading(false);
+      },
     );
     return () => unsubscribe();
   }, [authLoading, user?.email, searchQuery, filteredDate]);
@@ -333,7 +349,7 @@ function Tickets() {
         minWidth: 130,
         flex: 1,
         renderCell: (params = {}) => (
-          <Typography fontWeight="bold">{params?.value}</Typography>
+          <Typography fontWeight="bold">{params?.value ?? "N/A"}</Typography>
         ),
       },
       { field: "date", headerName: "Date", minWidth: 110 },
@@ -345,6 +361,7 @@ function Tickets() {
         sortable: false,
         renderCell: (p = {}) => {
           const id = safeRow(p)?.ticketId;
+          if (!id) return "N/A";
           return (
             <a
               href={`/ticket/${id}`}
@@ -406,6 +423,12 @@ function Tickets() {
   const rows = useMemo(
     () => (filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t })),
     [filteredTickets],
+  );
+
+  const getRowId = useCallback(
+    (r) =>
+      r?.id ?? r?.ticketId ?? r?.uid ?? r?.docId ?? r?._id ?? JSON.stringify(r),
+    [],
   );
   useGridDoctor({ name: "Tickets", rows, columns });
 
@@ -541,20 +564,12 @@ function Tickets() {
         ) : (
           <ResponsiveScrollBox ref={scrollRef}>
             <Box sx={{ width: "100%", overflowX: "auto" }}>
-              <SmartAutoGrid
+              <ResponsiveDataGridPro
                 rows={rows}
                 columns={columns}
-                getRowId={(r) =>
-                  r?.id ??
-                  r?.ticketId ??
-                  r?.uid ??
-                  r?.docId ??
-                  r?._id ??
-                  JSON.stringify(r)
-                }
+                getRowId={getRowId}
                 autoHeight
                 checkboxSelection
-                pageSizeOptions={[5, 10, 25, 100]}
                 disableRowSelectionOnClick
                 onRowSelectionModelChange={(model) =>
                   setRowSelectionModel(Array.isArray(model) ? model : [])
@@ -563,6 +578,22 @@ function Tickets() {
                   Array.isArray(rowSelectionModel) ? rowSelectionModel : []
                 }
                 initialState={initialState}
+                pageSizeOptions={[5, 10, 25, 100]}
+                columnVisibilityModel={
+                  isSmall
+                    ? { link: false, scanStatus: false, pickup: false }
+                    : undefined
+                }
+                slots={{
+                  toolbar: GridToolbar,
+                  loadingOverlay: LoadingOverlay,
+                  noRowsOverlay: NoRowsOverlay,
+                  errorOverlay: ErrorOverlay,
+                }}
+                slotProps={{
+                  pagination: { labelRowsPerPage: "Rows" },
+                  toolbar: { quickFilterProps: { debounceMs: 500 } },
+                }}
                 sx={{
                   "& .MuiDataGrid-row:nth-of-type(odd)": {
                     backgroundColor: "rgba(255,255,255,0.04)",
@@ -584,19 +615,8 @@ function Tickets() {
                     flexWrap: { xs: "wrap", sm: "nowrap" },
                   },
                 }}
-                slots={{ toolbar: GridToolbar }}
-                slotProps={{
-                  pagination: { labelRowsPerPage: "Rows" },
-                  toolbar: {
-                    showQuickFilter: true,
-                    quickFilterProps: { debounceMs: 500 },
-                  },
-                }}
-                columnVisibilityModel={
-                  isSmall
-                    ? { link: false, scanStatus: false, pickup: false }
-                    : undefined
-                }
+                loading={loading}
+                error={error}
               />
             </Box>
           </ResponsiveScrollBox>
