@@ -319,6 +319,10 @@ function Tickets() {
     [handleDelete],
   );
   const handleDownload = useCallback((row) => setPreviewTicket(row), []);
+  const handleEmail = useCallback((row) => {
+    setPreviewTicket(row);
+    setEmailDialogOpen(true);
+  }, []);
 
   const rawColumns = useMemo(
     () => [
@@ -368,7 +372,7 @@ function Tickets() {
         field: "actions",
         type: "actions",
         headerName: "Actions",
-        minWidth: 120,
+        minWidth: 150,
         getActions: (params) => [
           <GridActionsCellItem
             key="delete"
@@ -384,10 +388,17 @@ function Tickets() {
             onClick={() => handleDownload(params.row)}
             showInMenu={false}
           />,
+          <GridActionsCellItem
+            key="email"
+            icon={<EmailIcon />}
+            label="Email"
+            onClick={() => handleEmail(params.row)}
+            showInMenu={false}
+          />,
         ],
       },
     ],
-    [handleDeleteClick, handleDownload],
+    [handleDeleteClick, handleDownload, handleEmail],
   );
 
   const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
