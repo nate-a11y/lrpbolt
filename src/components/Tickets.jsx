@@ -58,7 +58,6 @@ import { useGridDoctor } from "../utils/useGridDoctor";
 import PageContainer from "./PageContainer.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import { toV8Model } from "./datagrid/selectionV8";
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -70,11 +69,8 @@ function Tickets() {
   });
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
-  const [rowSelectionModel, setRowSelectionModel] = useState({
-    ids: new Set(),
-    type: "include",
-  });
-  const selectedIds = Array.from(rowSelectionModel?.ids ?? []);
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+  const selectedIds = Array.isArray(rowSelectionModel) ? rowSelectionModel : [];
   const [_deletingId, setDeletingId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -550,9 +546,11 @@ function Tickets() {
                 pageSizeOptions={[5, 10, 25, 100]}
                 disableRowSelectionOnClick
                 onRowSelectionModelChange={(model) =>
-                  setRowSelectionModel(toV8Model(model))
+                  setRowSelectionModel(Array.isArray(model) ? model : [])
                 }
-                rowSelectionModel={toV8Model(rowSelectionModel)}
+                rowSelectionModel={
+                  Array.isArray(rowSelectionModel) ? rowSelectionModel : []
+                }
                 initialState={initialState}
                 sx={{
                   "& .MuiDataGrid-row:nth-of-type(odd)": {

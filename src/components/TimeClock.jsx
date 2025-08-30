@@ -181,6 +181,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+  const handleRowSelectionModelChange = useCallback(
+    (m) => setRowSelectionModel(Array.isArray(m) ? m : []),
+    [],
+  );
   const [snack, setSnack] = useState({
     open: false,
     message: "",
@@ -635,6 +640,8 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             autoHeight
             checkboxSelection={false}
             disableRowSelectionOnClick
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={handleRowSelectionModelChange}
             density={isXs ? "compact" : "standard"}
             sx={{
               width: "100%",
