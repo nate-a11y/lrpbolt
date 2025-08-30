@@ -92,7 +92,9 @@ export default function ResponsiveDataGridPro(props) {
         getRowId={
           getRowId || ((row) => row.id || row.docId || row.ticketId || row._id)
         }
-        rowSelectionModel={rowSelectionModel}
+        rowSelectionModel={
+          Array.isArray(rowSelectionModel) ? rowSelectionModel : []
+        }
         onRowSelectionModelChange={handleRowSelectionModelChange}
         paginationModel={paginationModel}
         onPaginationModelChange={handlePaginationModelChange}

@@ -12,7 +12,10 @@ import {
   Stack,
   Link as MUILink,
 } from "@mui/material";
-import { GridToolbar, GridToolbarExport as _GridToolbarExport } from "@mui/x-data-grid-pro";
+import {
+  GridToolbar,
+  GridToolbarExport as _GridToolbarExport,
+} from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";

@@ -91,6 +91,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const [snack, setSnack] = useState({
     open: false,
     message: "",
@@ -414,7 +415,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         </Box>
         <ResponsiveScrollBox>
           <SmartAutoGrid
-            rows={rows}
+            rows={Array.isArray(rows) ? rows : []}
+            rowSelectionModel={
+              Array.isArray(rowSelectionModel) ? rowSelectionModel : []
+            }
+            onRowSelectionModelChange={(m) =>
+              setRowSelectionModel(Array.isArray(m) ? m : [])
+            }
+            getRowId={(row) => row.id}
             headerMap={{
               rideId: "Trip ID",
               startTime: "Clock In",
