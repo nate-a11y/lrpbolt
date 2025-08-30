@@ -31,7 +31,7 @@ import {
   useMediaQuery,
   Stack,
 } from "@mui/material";
-import { GridActionsCellItem } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem, GridToolbar } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -543,7 +543,7 @@ function Tickets() {
             <Box sx={{ width: "100%", overflowX: "auto" }}>
               <SmartAutoGrid
                 rows={rows}
-                columnsCompat={columns}
+                columns={columns}
                 getRowId={(r) =>
                   r?.id ??
                   r?.ticketId ??
@@ -584,15 +584,19 @@ function Tickets() {
                     flexWrap: { xs: "wrap", sm: "nowrap" },
                   },
                 }}
+                slots={{ toolbar: GridToolbar }}
                 slotProps={{
                   pagination: { labelRowsPerPage: "Rows" },
+                  toolbar: {
+                    showQuickFilter: true,
+                    quickFilterProps: { debounceMs: 500 },
+                  },
                 }}
                 columnVisibilityModel={
                   isSmall
                     ? { link: false, scanStatus: false, pickup: false }
                     : undefined
                 }
-                showToolbar
               />
             </Box>
           </ResponsiveScrollBox>
