@@ -57,7 +57,7 @@ import { useGridDoctor } from "../utils/useGridDoctor";
 
 import PageContainer from "./PageContainer.jsx";
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
-import ResponsiveDataGridPro from "./datagrid/ResponsiveDataGridPro.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
   LoadingOverlay,
   NoRowsOverlay,
@@ -563,9 +563,9 @@ function Tickets() {
         ) : (
           <ResponsiveScrollBox ref={scrollRef}>
             <Box sx={{ width: "100%", overflowX: "auto" }}>
-              <ResponsiveDataGridPro
-                rows={rows}
-                columns={columns}
+              <SmartAutoGrid
+                rows={rows || []}
+                columns={columns || []}
                 getRowId={getRowId}
                 autoHeight
                 checkboxSelection

@@ -39,69 +39,29 @@ import { dayjs } from "@/utils/time";
 import { db } from "src/utils/firebaseInit";
 import { useRole } from "@/hooks";
 import RoleDebug from "@/components/RoleDebug";
+import { formatTz, durationHm, friendlyTzLabel } from "@/utils/timeSafe";
 
 import { useAuth } from "../context/AuthContext.jsx";
-import { mapSnapshotToRows, enrichDriverNames } from "../services/normalizers";
+import { enrichDriverNames } from "../services/normalizers";
 import { getChannel, safePost, closeChannel } from "../utils/broadcast";
 import logError from "../utils/logError.js";
 import { tsToDate } from "../utils/safe";
 import { waitForAuth } from "../utils/waitForAuth";
 
 import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
-import ResponsiveDataGridPro from "./datagrid/ResponsiveDataGridPro.jsx";
+import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
   LoadingOverlay,
   NoRowsOverlay,
   ErrorOverlay,
 } from "./grid/overlays.jsx";
-import { DEFAULT_TZ } from "./datagrid/selectionV8.js";
 import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 
 const bcName = "lrp-timeclock";
 
-// ---------- Local, null-safe time helpers ----------
-function tsToDayjsTZ(tsLike, tz = DEFAULT_TZ || "America/Chicago") {
-  if (!tsLike) return null;
-  try {
-    if (typeof tsLike?.seconds === "number") {
-      return dayjs.unix(tsLike.seconds).tz(tz);
-    }
-    const d = dayjs(tsLike);
-    return d.isValid() ? d.tz(tz) : null;
-  } catch {
-    return null;
-  }
-}
-function safeFormatTs(
-  tsLike,
-  fmt = "MMM D, h:mm a",
-  tz = DEFAULT_TZ || "America/Chicago",
-) {
-  const dj = tsToDayjsTZ(tsLike, tz);
-  return dj ? dj.format(fmt) : "N/A";
-}
-function diffMinutesSafe(
-  startLike,
-  endLike,
-  tz = DEFAULT_TZ || "America/Chicago",
-) {
-  const s = tsToDayjsTZ(startLike, tz);
-  const e = tsToDayjsTZ(endLike, tz);
-  if (!s || !e) return null;
-  const mins = Math.max(0, e.diff(s, "minute"));
-  return Number.isFinite(mins) ? mins : null;
-}
-function minutesToHuman(mins) {
-  if (mins == null) return "N/A";
-  const m = Math.max(0, Math.floor(mins));
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  if (!h && !r) return "0m";
-  if (!h) return `${r}m`;
-  if (!r) return `${h}h`;
-  return `${h}h ${r}m`;
-}
+const tzLabel = friendlyTzLabel();
+
 function normalizeRow(r) {
   const id =
     r?.id ??
@@ -127,17 +87,6 @@ function normalizeRow(r) {
     updatedAt,
     duration: typeof r?.duration === "number" ? r.duration : null,
   };
-}
-function tzFriendlyName(tz = DEFAULT_TZ || "America/Chicago") {
-  try {
-    if (/America\/Chicago/i.test(tz)) return "Central Time";
-    if (/America\/New_York/i.test(tz)) return "Eastern Time";
-    if (/America\/Denver/i.test(tz)) return "Mountain Time";
-    if (/America\/Los_Angeles/i.test(tz)) return "Pacific Time";
-    return tz.replace("_", " ");
-  } catch {
-    return "Local Time";
-  }
 }
 const pulse = keyframes`
   0% { transform: scale(1); opacity: 1; }
@@ -209,7 +158,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [ready, setReady] = useState(false);
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
-  const tzLabel = tzFriendlyName(DEFAULT_TZ || "America/Chicago");
   const [undo, setUndo] = useState(null); // { id, prevEnd }
   const [startingAnim, setStartingAnim] = useState(false);
   const [endingAnim, setEndingAnim] = useState(false);
@@ -217,75 +165,46 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const columns = useMemo(
     () => [
       {
-        field: "driver",
-        headerName: "Driver",
-        minWidth: 140,
+        field: "driverEmail",
+        headerName: "Driver Email",
         flex: 1,
-        valueGetter: (p) =>
-          p?.row?.driver ??
-          p?.row?.driverName ??
-          p?.row?.name ??
-          (typeof p?.row?.driverEmail === "string"
-            ? p.row.driverEmail.split("@")[0]
-            : null) ??
-          (typeof p?.row?.userEmail === "string"
-            ? p.row.userEmail.split("@")[0]
-            : "N/A"),
+        minWidth: 160,
+        valueGetter: (p) => p?.row?.driverEmail || "N/A",
+      },
+      {
+        field: "driverId",
+        headerName: "Driver",
+        flex: 1,
+        minWidth: 140,
+        valueGetter: (p) => p?.row?.driverId || "N/A",
       },
       {
         field: "rideId",
-        headerName: "Ride Id",
-        minWidth: 110,
-        flex: 0.8,
-        valueGetter: (p) =>
-          p?.row?.rideId ?? p?.row?.ride ?? p?.row?.mode ?? "N/A",
+        headerName: "Ride ID",
+        width: 120,
+        valueGetter: (p) => p?.row?.rideId || "N/A",
       },
       {
         field: "startTime",
-        headerName: "Start Time",
-        minWidth: 150,
+        headerName: "Start",
         flex: 1,
-        valueGetter: (p) => {
-          const raw = p?.row?.startTime ?? p?.row?.clockIn ?? p?.row?.inTime;
-          return safeFormatTs(raw, "MMM D, h:mm a");
-        },
+        minWidth: 200,
+        valueGetter: (p) => formatTz(p?.row?.startTime),
       },
       {
         field: "endTime",
-        headerName: "End Time",
-        minWidth: 150,
+        headerName: "End",
         flex: 1,
-        valueGetter: (p) => {
-          const raw = p?.row?.endTime ?? p?.row?.clockOut ?? p?.row?.outTime;
-          return safeFormatTs(raw, "MMM D, h:mm a");
-        },
+        minWidth: 200,
+        valueGetter: (p) => formatTz(p?.row?.endTime),
       },
       {
         field: "duration",
         headerName: "Duration",
-        minWidth: 110,
-        flex: 0.7,
-        valueGetter: (p) => {
-          const minutes =
-            typeof p?.row?.duration === "number"
-              ? p.row.duration
-              : diffMinutesSafe(
-                  p?.row?.startTime ?? p?.row?.clockIn ?? p?.row?.inTime,
-                  p?.row?.endTime ?? p?.row?.clockOut ?? p?.row?.outTime,
-                );
-          return minutesToHuman(minutes);
-        },
+        width: 120,
+        valueGetter: (p) => durationHm(p?.row?.startTime, p?.row?.endTime),
       },
     ],
-    [],
-  );
-
-  const getRowId = useCallback(
-    (r) =>
-      r?.id ??
-      r?.docId ??
-      r?._id ??
-      `${r?.userEmail || "unknown"}-${(r?.startTime && r.startTime.seconds) || r?.startTime || Math.random()}`,
     [],
   );
 
@@ -305,7 +224,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const unsub = onSnapshot(
       q,
       async (snap) => {
-        const base = mapSnapshotToRows("timeLogs", snap);
+        const base = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         const withNames = await enrichDriverNames(base);
         const normalized = withNames.map(normalizeRow);
         setRows(normalized);
@@ -641,11 +560,10 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           </Typography>
         </Box>
         <ResponsiveScrollBox>
-          <ResponsiveDataGridPro
-            rows={rows}
-            columns={columns}
-            getRowId={getRowId}
-            autoHeight
+          <SmartAutoGrid
+            rows={rows || []}
+            columns={columns || []}
+            autoHeight={false}
             checkboxSelection={false}
             disableRowSelectionOnClick
             rowSelectionModel={rowSelectionModel}

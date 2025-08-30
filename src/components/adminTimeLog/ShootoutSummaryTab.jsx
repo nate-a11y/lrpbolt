@@ -1,5 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+
+import { formatTz } from "@/utils/timeSafe";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
@@ -8,6 +10,13 @@ import { enrichDriverNames } from "../../services/normalizers";
 
 export default function ShootoutSummaryTab() {
   const [rows, setRows] = useState([]);
+  const overrides = useMemo(
+    () => ({
+      firstStart: { valueGetter: (p) => formatTz(p?.row?.firstStart) },
+      lastEnd: { valueGetter: (p) => formatTz(p?.row?.lastEnd) },
+    }),
+    [],
+  );
 
   useEffect(() => {
     const unsub = subscribeShootoutStats(
@@ -69,7 +78,7 @@ export default function ShootoutSummaryTab() {
   return (
     <ResponsiveScrollBox>
       <SmartAutoGrid
-        rows={rows}
+        rows={rows || []}
         headerMap={{
           driver: "Driver",
           driverEmail: "Driver Email",
@@ -97,6 +106,7 @@ export default function ShootoutSummaryTab() {
           "id",
         ]}
         forceHide={["id"]}
+        overrides={overrides}
       />
     </ResponsiveScrollBox>
   );

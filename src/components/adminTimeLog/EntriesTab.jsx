@@ -7,6 +7,7 @@ import { useGridApiRef } from "@mui/x-data-grid-pro";
 import { tsToDate } from "@/utils/fsTime";
 import { formatDateTime } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
+import { formatTz, durationHm } from "@/utils/timeSafe";
 import logError from "@/utils/logError.js";
 
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -85,17 +86,21 @@ export default function EntriesTab() {
         editable: true,
         type: "dateTime",
         valueGetter: (p) => tsToDate(p?.row?.startTime) ?? null,
-        valueFormatter: (p) => formatDateTime(p?.value),
+        valueFormatter: (p) => formatTz(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
       endTime: {
         editable: true,
         type: "dateTime",
         valueGetter: (p) => tsToDate(p?.row?.endTime) ?? null,
-        valueFormatter: (p) => formatDateTime(p?.value),
+        valueFormatter: (p) => formatTz(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
-      duration: { editable: false, type: "number" }, // derived
+      duration: {
+        editable: false,
+        type: "string",
+        valueGetter: (p) => durationHm(p?.row?.startTime, p?.row?.endTime),
+      },
       loggedAt: {
         editable: true,
         type: "dateTime",
@@ -130,7 +135,11 @@ export default function EntriesTab() {
     const unsub = subscribeTimeLogs(
       async (logs) => {
         try {
-          const withNames = await enrichDriverNames(logs || []);
+          const mapped = (logs || []).map((d) => ({
+            id: d.id ?? d.docId ?? d._id ?? Math.random().toString(36).slice(2),
+            ...d,
+          }));
+          const withNames = await enrichDriverNames(mapped);
           setRows(withNames);
         } catch (e) {
           logError(e, "EntriesTab.subscribeTimeLogs.enrich");
