@@ -5,6 +5,7 @@ import { Box } from "@mui/material";
 import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
 
 import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
+import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
 
 import {
   stringifyCell,
@@ -111,10 +112,12 @@ export default function SmartAutoGrid(props) {
     initialState,
     columnVisibilityModel,
     slotProps,
+    slots,
     autoColumns = true,
     autoHideKeys = [],
     forceHide = [],
     autoPreferredOrder = [],
+    hideFooterSelectedRowCount = false,
     ...rest
   } = props;
 
@@ -161,7 +164,7 @@ export default function SmartAutoGrid(props) {
 
   const [internalRsm, setInternalRsm] = useState([]);
   const controlledRsm =
-    rowSelectionModel !== undefined
+    rowSelectionModel != null
       ? toArraySelection(rowSelectionModel)
       : internalRsm;
 
@@ -199,6 +202,11 @@ export default function SmartAutoGrid(props) {
     [slotProps],
   );
 
+  const mergedSlots = useMemo(
+    () => ({ footer: SafeGridFooter, ...(slots || {}) }),
+    [slots],
+  );
+
   return (
     <Box sx={{ height: "100%", width: "100%" }}>
       <DataGridPro
@@ -214,6 +222,8 @@ export default function SmartAutoGrid(props) {
         pagination
         autoHeight={rest.autoHeight ?? false}
         density={rest.density ?? "compact"}
+        slots={mergedSlots}
+        hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         slotProps={mergedSlotProps}
         sx={{
           [`& .${gridClasses.cell}`]: { outline: "none" },
@@ -236,8 +246,10 @@ SmartAutoGrid.propTypes = {
   initialState: PropTypes.object,
   columnVisibilityModel: PropTypes.object,
   slotProps: PropTypes.object,
+  slots: PropTypes.object,
   autoColumns: PropTypes.bool,
   autoHideKeys: PropTypes.array,
   forceHide: PropTypes.array,
   autoPreferredOrder: PropTypes.array,
+  hideFooterSelectedRowCount: PropTypes.bool,
 };
