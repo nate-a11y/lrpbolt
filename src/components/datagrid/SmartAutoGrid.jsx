@@ -54,14 +54,16 @@ function buildAutoColumns(sampleRow, opts = {}) {
         headerName: headerFromKey(field),
         minWidth: 170,
         flex: 1,
-        valueGetter: (value, row) => {
-          const raw = value ?? row?.[field];
-          if (!raw) return "N/A";
-          // Handle FS Timestamp or ISOish strings
+        valueGetter: (p) => {
+          const raw = p?.value ?? p?.row?.[field];
+          return raw ?? "N/A";
+        },
+        valueFormatter: (p) => {
+          const raw = p?.value;
+          if (raw === "N/A") return "N/A";
           return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ); // e.g., Aug 24, 12:30 pm
         },
-        sortComparator: (v1, v2, p1, p2) =>
-          timestampSortComparator(p1?.row?.[field], p2?.row?.[field]),
+        sortComparator: (v1, v2) => timestampSortComparator(v1, v2),
       };
     }
 
@@ -72,18 +74,20 @@ function buildAutoColumns(sampleRow, opts = {}) {
         headerName: headerFromKey(field),
         minWidth: 130,
         flex: 0.7,
-        valueGetter: (value, row) => {
-          const raw = value ?? row?.[field];
+        valueGetter: (p) => {
+          const raw = p?.value ?? p?.row?.[field];
           const asNum = Number(raw);
-          if (Number.isFinite(asNum) && asNum >= 0)
-            return minutesToHuman(asNum);
+          if (Number.isFinite(asNum) && asNum >= 0) return asNum;
           const dm = diffMinutes(
-            row?.startTime ?? row?.start_time,
-            row?.endTime ?? row?.end_time,
+            p?.row?.startTime ?? p?.row?.start_time,
+            p?.row?.endTime ?? p?.row?.end_time,
             DEFAULT_TZ,
           );
-          return dm == null ? "N/A" : minutesToHuman(dm);
+          return dm == null ? "N/A" : dm;
         },
+        valueFormatter: (p) =>
+          typeof p?.value === "number" ? minutesToHuman(p.value) : "N/A",
+        sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       };
     }
 
@@ -93,9 +97,13 @@ function buildAutoColumns(sampleRow, opts = {}) {
       headerName: headerFromKey(field),
       minWidth: 140,
       flex: 1,
-      valueGetter: (value, row) => {
-        const raw = value ?? row?.[field];
-        if (raw == null) return "N/A";
+      valueGetter: (p) => {
+        const raw = p?.value ?? p?.row?.[field];
+        return raw ?? "N/A";
+      },
+      valueFormatter: (p) => {
+        const raw = p?.value;
+        if (raw === "N/A") return "N/A";
         if (isFsTimestamp(raw))
           return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ);
         if (typeof raw === "object") return stringifyCell(raw);
