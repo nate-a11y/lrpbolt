@@ -28,7 +28,6 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DRIVER_LIST from "../data/driverDirectory";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import VehicleChip from "./VehicleChip";
 
 // LRP brand tokens
@@ -431,81 +430,74 @@ export default function DriverDirectory() {
         </Stack>
       </Box>
 
-      <ResponsiveScrollBox>
-        <Paper
-          sx={{
-            height: 640,
-            width: "100%",
-            overflow: "auto",
-            "& .MuiDataGrid-root": { border: "none" },
+      <Paper
+        sx={{
+          height: 640,
+          width: "100%",
+          "& .MuiDataGrid-root": { border: "none" },
+        }}
+      >
+        <SmartAutoGrid
+          apiRef={apiRef}
+          rows={rows}
+          columnsCompat={columns}
+          getRowId={(row) =>
+            row?.id ?? row?.uid ?? row?._id ?? row?.docId ?? JSON.stringify(row)
+          }
+          getRowHeight={() => "auto"}
+          disableColumnMenu
+          disableColumnSelector
+          hideFooterSelectedRowCount
+          initialState={{
+            pagination: { paginationModel: { pageSize: 25, page: 0 } },
           }}
-        >
-          <SmartAutoGrid
-            apiRef={apiRef}
-            rows={rows}
-            columnsCompat={columns}
-            getRowId={(row) =>
-              row?.id ??
-              row?.uid ??
-              row?._id ??
-              row?.docId ??
-              JSON.stringify(row)
-            }
-            getRowHeight={() => "auto"}
-            disableColumnMenu
-            disableColumnSelector
-            hideFooterSelectedRowCount
-            initialState={{
-              pagination: { paginationModel: { pageSize: 25, page: 0 } },
-            }}
-            pageSizeOptions={[10, 25, 50, 100]}
-            sx={{
-              bgcolor: LRP.black,
-              color: "#fff",
-              borderRadius: 2,
-              border: `1px solid rgba(255,255,255,0.06)`,
-              boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
-              "--DataGrid-containerBackground": LRP.card,
-              "& .MuiDataGrid-columnHeaders": {
-                bgcolor: "transparent",
-                borderBottom: `1px dashed rgba(255,255,255,0.12)`,
-                "& .MuiDataGrid-columnHeaderTitle": {
-                  fontWeight: 800,
-                  letterSpacing: 0.4,
-                },
+          pageSizeOptions={[10, 25, 50, 100]}
+          sx={{
+            bgcolor: LRP.black,
+            color: "#fff",
+            borderRadius: 2,
+            border: `1px solid rgba(255,255,255,0.06)`,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+            "--DataGrid-containerBackground": LRP.card,
+            "& .MuiDataGrid-columnHeaders": {
+              bgcolor: "transparent",
+              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+              "& .MuiDataGrid-columnHeaderTitle": {
+                fontWeight: 800,
+                letterSpacing: 0.4,
               },
-              "& .MuiDataGrid-row": {
-                position: "relative",
+            },
+            "& .MuiDataGrid-row": {
+              position: "relative",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                background: "transparent",
+              },
+              "&:hover": {
                 background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 3,
-                  background: "transparent",
-                },
-                "&:hover": {
-                  background:
-                    "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
-                  boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
-                  "&::before": { background: LRP.green },
-                },
+                  "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
+                boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
+                "&::before": { background: LRP.green },
               },
-              "& .MuiDataGrid-cell": {
-                borderBottom: `1px dashed rgba(255,255,255,0.10)`,
-                py: 0,
-              },
-              "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
-              "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
-              "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
-            }}
-            showToolbar
-          />
-        </Paper>
-      </ResponsiveScrollBox>
+            },
+            "& .MuiDataGrid-cell": {
+              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+              py: 0,
+            },
+            "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
+            "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
+            "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+          }}
+          showToolbar
+        />
+      </Paper>
 
       <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
       <Typography variant="caption" sx={{ color: LRP.textDim }}>

@@ -5,7 +5,6 @@ import { Paper } from "@mui/material";
 import { formatTz } from "@/utils/timeSafe";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
 
@@ -77,40 +76,38 @@ export default function ShootoutSummaryTab() {
   }, []);
 
   return (
-    <ResponsiveScrollBox>
-      <Paper sx={{ width: "100%", overflow: "auto" }}>
-        <SmartAutoGrid
-          rows={rows || []}
-          headerMap={{
-            driver: "Driver",
-            driverEmail: "Driver Email",
-            vehicle: "Vehicle",
-            sessions: "Sessions",
-            trips: "Trips",
-            passengers: "PAX",
-            totalMinutes: "Minutes",
-            hours: "Hours",
-            firstStart: "First Start",
-            lastEnd: "Last End",
-            id: "id",
-          }}
-          order={[
-            "driver",
-            "driverEmail",
-            "vehicle",
-            "sessions",
-            "trips",
-            "passengers",
-            "totalMinutes",
-            "hours",
-            "firstStart",
-            "lastEnd",
-            "id",
-          ]}
-          forceHide={["id"]}
-          overrides={overrides}
-        />
-      </Paper>
-    </ResponsiveScrollBox>
+    <Paper sx={{ width: "100%" }}>
+      <SmartAutoGrid
+        rows={rows || []}
+        headerMap={{
+          driver: "Driver",
+          driverEmail: "Driver Email",
+          vehicle: "Vehicle",
+          sessions: "Sessions",
+          trips: "Trips",
+          passengers: "PAX",
+          totalMinutes: "Minutes",
+          hours: "Hours",
+          firstStart: "First Start",
+          lastEnd: "Last End",
+          id: "id",
+        }}
+        order={[
+          "driver",
+          "driverEmail",
+          "vehicle",
+          "sessions",
+          "trips",
+          "passengers",
+          "totalMinutes",
+          "hours",
+          "firstStart",
+          "lastEnd",
+          "id",
+        ]}
+        forceHide={["id"]}
+        overrides={overrides}
+      />
+    </Paper>
   );
 }

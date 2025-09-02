@@ -21,7 +21,6 @@ import "./utils/firebaseInit.js";
 LicenseInfo.setLicenseKey(import.meta.env.VITE_MUIX_LICENSE_KEY);
 
 if (import.meta.env.PROD) {
-  // eslint-disable-next-line import/no-unresolved
   import("eruda")
     .then(({ default: eruda }) => eruda.init())
     .catch((err) => logError(err));

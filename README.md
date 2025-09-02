@@ -6,7 +6,8 @@ React 18 + Vite application using Material UI v7 and MUI X Pro (DataGridPro, Dat
 
 - `src/hooks/useIsMobile.js` – breakpoint helpers.
 - `src/components/responsive/ResponsiveContainer.jsx` – page wrapper with adaptive padding.
-- `src/components/datagrid/ResponsiveDataGridPro.jsx` – mobile-friendly DataGridPro wrapper.
+- `src/components/datagrid/SmartAutoGrid.jsx` – responsive DataGridPro wrapper with toolbar and auto-height.
+- `src/components/datagrid/ResponsiveScrollBox.jsx` – touch-friendly scroll container for grids.
 
 ## Development
 

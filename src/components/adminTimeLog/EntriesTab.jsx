@@ -14,7 +14,6 @@ import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
 import { patchTimeLog, deleteTimeLog } from "../../services/timeLogs";
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 
 export default function EntriesTab() {
@@ -256,58 +255,56 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-      <ResponsiveScrollBox>
-        <Paper sx={{ width: "100%", overflow: "auto" }}>
-          <SmartAutoGrid
-            rows={safeRows}
-            headerMap={{
-              driver: "Driver",
-              driverEmail: "Driver Email",
-              rideId: "Ride ID",
-              startTime: "Clock In",
-              endTime: "Clock Out",
-              duration: "Duration (min)",
-              loggedAt: "Logged At",
-              note: "Note",
-              id: "id",
-              userEmail: "userEmail",
-              driverId: "driverId",
-              mode: "mode",
-            }}
-            order={[
-              "driver",
-              "driverEmail",
-              "rideId",
-              "startTime",
-              "endTime",
-              "duration",
-              "loggedAt",
-              "note",
-              "id",
-              "userEmail",
-              "driverId",
-              "mode",
-            ]}
-            // Hide only the truly internal fields
-            forceHide={["id", "userEmail", "driverId", "mode"]}
-            overrides={overrides}
-            actionsColumn={actionsColumn}
-            loading={loading}
-            editMode="row"
-            rowModesModel={rowModesModel}
-            onRowModesModelChange={(m) => setRowModesModel(m)}
-            processRowUpdate={handleProcessRowUpdate}
-            onProcessRowUpdateError={(e) => console.error(e)}
-            onRowEditStart={handleRowEditStart}
-            onRowEditStop={handleRowEditStop}
-            apiRef={apiRef}
-            experimentalFeatures={{ newEditingApi: true }}
-            getRowId={(r) =>
-              r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
-            }
-          />
-        </Paper>
-      </ResponsiveScrollBox>
+      <Paper sx={{ width: "100%" }}>
+        <SmartAutoGrid
+          rows={safeRows}
+          headerMap={{
+            driver: "Driver",
+            driverEmail: "Driver Email",
+            rideId: "Ride ID",
+            startTime: "Clock In",
+            endTime: "Clock Out",
+            duration: "Duration (min)",
+            loggedAt: "Logged At",
+            note: "Note",
+            id: "id",
+            userEmail: "userEmail",
+            driverId: "driverId",
+            mode: "mode",
+          }}
+          order={[
+            "driver",
+            "driverEmail",
+            "rideId",
+            "startTime",
+            "endTime",
+            "duration",
+            "loggedAt",
+            "note",
+            "id",
+            "userEmail",
+            "driverId",
+            "mode",
+          ]}
+          // Hide only the truly internal fields
+          forceHide={["id", "userEmail", "driverId", "mode"]}
+          overrides={overrides}
+          actionsColumn={actionsColumn}
+          loading={loading}
+          editMode="row"
+          rowModesModel={rowModesModel}
+          onRowModesModelChange={(m) => setRowModesModel(m)}
+          processRowUpdate={handleProcessRowUpdate}
+          onProcessRowUpdateError={(e) => console.error(e)}
+          onRowEditStart={handleRowEditStart}
+          onRowEditStop={handleRowEditStop}
+          apiRef={apiRef}
+          experimentalFeatures={{ newEditingApi: true }}
+          getRowId={(r) =>
+            r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
+          }
+        />
+      </Paper>
     </Paper>
   );
 }

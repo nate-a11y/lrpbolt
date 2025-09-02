@@ -26,7 +26,6 @@ import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 // --- helpers: robust parsing for lines and "email,role" ---
 function parseUserLines(input) {
@@ -484,28 +483,26 @@ export default function AdminUserManager() {
             ))}
           </Stack>
         ) : (
-          <ResponsiveScrollBox>
-            <Paper sx={{ width: "100%", overflow: "auto" }}>
-              <SmartAutoGrid
-                rows={rows || []}
-                columnsCompat={columns}
-                autoHeight
-                loading={loading}
-                disableRowSelectionOnClick
-                processRowUpdate={handleProcessRowUpdate}
-                isCellEditable={(params) => isAdmin && params.field !== "email"}
-                pageSizeOptions={[5, 10, 25]}
-                getRowId={(r) =>
-                  r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
-                }
-                experimentalFeatures={{ newEditingApi: true }}
-                columnVisibilityModel={
-                  isSmall ? { access: false, phone: false } : undefined
-                }
-                showToolbar
-              />
-            </Paper>
-          </ResponsiveScrollBox>
+          <Paper sx={{ width: "100%" }}>
+            <SmartAutoGrid
+              rows={rows || []}
+              columnsCompat={columns}
+              autoHeight
+              loading={loading}
+              disableRowSelectionOnClick
+              processRowUpdate={handleProcessRowUpdate}
+              isCellEditable={(params) => isAdmin && params.field !== "email"}
+              pageSizeOptions={[5, 10, 25]}
+              getRowId={(r) =>
+                r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
+              }
+              experimentalFeatures={{ newEditingApi: true }}
+              columnVisibilityModel={
+                isSmall ? { access: false, phone: false } : undefined
+              }
+              showToolbar
+            />
+          </Paper>
         )}
       </Stack>
 

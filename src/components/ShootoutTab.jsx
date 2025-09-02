@@ -20,7 +20,6 @@ import { db } from "../utils/firebaseInit";
 import { useAuth } from "../context/AuthContext.jsx";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 function ShootoutTab() {
   const { user } = useAuth();
@@ -83,43 +82,41 @@ function ShootoutTab() {
           </Button>
         )}
       </Box>
-      <ResponsiveScrollBox>
-        <Paper sx={{ width: "100%", overflow: "auto" }}>
-          <SmartAutoGrid
-            rows={sessionRows}
-            headerMap={{
-              driverEmail: "Driver Email",
-              driver: "Driver",
-              vehicle: "Vehicle",
-              startTime: "Start",
-              endTime: "End",
-              duration: "Duration",
-              trips: "Trips",
-              passengers: "PAX",
-              createdAt: "Created",
-              id: "id",
-            }}
-            order={[
-              "driver",
-              "driverEmail",
-              "vehicle",
-              "startTime",
-              "endTime",
-              "duration",
-              "trips",
-              "passengers",
-              "createdAt",
-              "id",
-            ]}
-            hide={["driverEmail", "createdAt"]}
-            forceHide={["id"]}
-            actionsColumn={buildNativeActionsColumn({
-              onEdit: (_id, _row) => null,
-              onDelete: async (id) => await deleteShootoutStatById(id),
-            })}
-          />
-        </Paper>
-      </ResponsiveScrollBox>
+      <Paper sx={{ width: "100%" }}>
+        <SmartAutoGrid
+          rows={sessionRows}
+          headerMap={{
+            driverEmail: "Driver Email",
+            driver: "Driver",
+            vehicle: "Vehicle",
+            startTime: "Start",
+            endTime: "End",
+            duration: "Duration",
+            trips: "Trips",
+            passengers: "PAX",
+            createdAt: "Created",
+            id: "id",
+          }}
+          order={[
+            "driver",
+            "driverEmail",
+            "vehicle",
+            "startTime",
+            "endTime",
+            "duration",
+            "trips",
+            "passengers",
+            "createdAt",
+            "id",
+          ]}
+          hide={["driverEmail", "createdAt"]}
+          forceHide={["id"]}
+          actionsColumn={buildNativeActionsColumn({
+            onEdit: (_id, _row) => null,
+            onDelete: async (id) => await deleteShootoutStatById(id),
+          })}
+        />
+      </Paper>
     </>
   );
 }
