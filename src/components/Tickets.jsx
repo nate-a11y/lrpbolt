@@ -29,7 +29,6 @@ import {
   OutlinedInput,
   useTheme,
   useMediaQuery,
-  Stack,
 } from "@mui/material";
 import { GridActionsCellItem, GridToolbar } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -601,80 +600,66 @@ function Tickets() {
         <Tab label="Passenger Summary" />
       </Tabs>
 
-      {tab === 0 &&
-        (isSmall ? (
-          <Stack spacing={2} sx={{ mb: 2 }}>
-            {filteredTickets.map((t) => (
-              <Paper key={t.ticketId} variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle2">{t.ticketId}</Typography>
-                <Typography variant="body2">
-                  Passenger: {t.passenger}
-                </Typography>
-                <Typography variant="body2">Date: {t.date}</Typography>
-                <Typography variant="body2">Pickup: {t.pickup}</Typography>
-              </Paper>
-            ))}
-          </Stack>
-        ) : (
-          <ResponsiveScrollBox ref={scrollRef}>
-            <Paper sx={{ width: "100%", overflow: "auto" }}>
-              <SmartAutoGrid
-                rows={rows || []}
-                columns={columns || []}
-                getRowId={getRowId}
-                autoHeight
-                checkboxSelection
-                disableRowSelectionOnClick
-                onRowSelectionModelChange={(model) =>
-                  setRowSelectionModel(Array.isArray(model) ? model : [])
-                }
-                rowSelectionModel={
-                  Array.isArray(rowSelectionModel) ? rowSelectionModel : []
-                }
-                initialState={initialState}
-                pageSizeOptions={[5, 10, 25, 100]}
-                columnVisibilityModel={
-                  isSmall
-                    ? { link: false, scanStatus: false, pickup: false }
-                    : undefined
-                }
-                slots={{
-                  toolbar: GridToolbar,
-                  loadingOverlay: LoadingOverlay,
-                  noRowsOverlay: NoRowsOverlay,
-                  errorOverlay: ErrorOverlay,
-                }}
-                slotProps={{
-                  pagination: { labelRowsPerPage: "Rows" },
-                  toolbar: { quickFilterProps: { debounceMs: 500 } },
-                }}
-                sx={{
-                  "& .MuiDataGrid-row:nth-of-type(odd)": {
-                    backgroundColor: "rgba(255,255,255,0.04)",
+      {tab === 0 && (
+        <ResponsiveScrollBox ref={scrollRef}>
+          <Paper sx={{ width: "100%", overflow: "auto" }}>
+            <SmartAutoGrid
+              rows={rows || []}
+              columns={columns || []}
+              getRowId={getRowId}
+              autoHeight
+              checkboxSelection
+              disableRowSelectionOnClick
+              onRowSelectionModelChange={(model) =>
+                setRowSelectionModel(Array.isArray(model) ? model : [])
+              }
+              rowSelectionModel={
+                Array.isArray(rowSelectionModel) ? rowSelectionModel : []
+              }
+              initialState={initialState}
+              pageSizeOptions={[5, 10, 25, 100]}
+              columnVisibilityModel={
+                isSmall
+                  ? { link: false, scanStatus: false, pickup: false }
+                  : undefined
+              }
+              slots={{
+                toolbar: GridToolbar,
+                loadingOverlay: LoadingOverlay,
+                noRowsOverlay: NoRowsOverlay,
+                errorOverlay: ErrorOverlay,
+              }}
+              slotProps={{
+                pagination: { labelRowsPerPage: "Rows" },
+                toolbar: { quickFilterProps: { debounceMs: 500 } },
+              }}
+              sx={{
+                "& .MuiDataGrid-row:nth-of-type(odd)": {
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                },
+                "& .MuiDataGrid-row:hover": {
+                  backgroundColor: "rgba(76,187,23,0.1)",
+                },
+                "& .MuiDataGrid-row.Mui-selected": {
+                  backgroundColor: "rgba(76,187,23,0.2)",
+                },
+                "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus":
+                  {
+                    outline: "none",
                   },
-                  "& .MuiDataGrid-row:hover": {
-                    backgroundColor: "rgba(76,187,23,0.1)",
-                  },
-                  "& .MuiDataGrid-row.Mui-selected": {
-                    backgroundColor: "rgba(76,187,23,0.2)",
-                  },
-                  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus":
-                    {
-                      outline: "none",
-                    },
-                  "& .MuiDataGrid-footerContainer": {
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  },
-                  "& .MuiTablePagination-toolbar": {
-                    flexWrap: { xs: "wrap", sm: "nowrap" },
-                  },
-                }}
-                loading={loading}
-                error={error}
-              />
-            </Paper>
-          </ResponsiveScrollBox>
-        ))}
+                "& .MuiDataGrid-footerContainer": {
+                  flexWrap: { xs: "wrap", sm: "nowrap" },
+                },
+                "& .MuiTablePagination-toolbar": {
+                  flexWrap: { xs: "wrap", sm: "nowrap" },
+                },
+              }}
+              loading={loading}
+              error={error}
+            />
+          </Paper>
+        </ResponsiveScrollBox>
+      )}
       {editingTicket && (
         <EditTicketDialog
           open={Boolean(editingTicket)}
