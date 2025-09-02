@@ -636,7 +636,7 @@ export const subscribeLiveRides = (onNext, onError) =>
 
 export const subscribeQueueRides = (onNext, onError) =>
   onSnapshot(
-    collection(db, "queueRides"),
+    collection(db, "rideQueue"),
     (snap) => onNext(mapSnapshotToRows("rideQueue", snap)),
     (err) => onError?.(err),
   );

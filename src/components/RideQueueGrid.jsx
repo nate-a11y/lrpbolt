@@ -17,7 +17,7 @@ export default function RideQueueGrid() {
 
   useEffect(() => {
     const unsub = onSnapshot(
-      collection(db, "queueRides"),
+      collection(db, "rideQueue"),
       (snap) => setRows(mapSnapshotToRows("rideQueue", snap)),
       console.error,
     );
