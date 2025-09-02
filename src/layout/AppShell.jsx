@@ -21,7 +21,7 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
         display: "flex",
         minHeight: "100vh",
         minWidth: 0,
-        overflowX: "hidden",
+        overflowX: "auto",
         bgcolor: (t) => t.palette.background.default,
       }}
     >

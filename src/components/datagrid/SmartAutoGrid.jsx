@@ -239,7 +239,7 @@ export default function SmartAutoGrid(props) {
       pagination: { paginationModel: { pageSize: MAX_VISIBLE_ROWS, page: 0 } },
       filter: { filterModel: { quickFilterValues: [], items: [] } },
     };
-    return {
+    const merged = {
       ...base,
       ...initialState,
       pagination: {
@@ -259,7 +259,15 @@ export default function SmartAutoGrid(props) {
         },
       },
     };
+    // Always enforce the default page size
+    merged.pagination.paginationModel.pageSize = MAX_VISIBLE_ROWS;
+    return merged;
   }, [initialState]);
+
+  const safePageSizeOptions = useMemo(() => {
+    const opts = Array.isArray(pageSizeOptions) ? pageSizeOptions : [];
+    return [MAX_VISIBLE_ROWS, ...opts.filter((v) => v !== MAX_VISIBLE_ROWS)];
+  }, [pageSizeOptions]);
 
   const mergedSlots = useMemo(() => {
     const base = {
@@ -308,7 +316,7 @@ export default function SmartAutoGrid(props) {
         initialState={safeInitialState}
         columnVisibilityModel={columnVisibilityModel}
         pagination
-        pageSizeOptions={pageSizeOptions}
+        pageSizeOptions={safePageSizeOptions}
         autoHeight={autoHeight}
         density={density}
         slots={mergedSlots}
