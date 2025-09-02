@@ -247,7 +247,7 @@ export default function EntriesTab() {
   }
 
   return (
-    <Paper sx={{ p: 1 }}>
+    <Paper sx={{ width: "100%", p: 1 }}>
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
         <TextField
           label="Search"

@@ -4,6 +4,7 @@ import {
   useGridApiContext,
   useGridRootProps,
   GridFooterContainer,
+  GridPagination,
 } from "@mui/x-data-grid-pro";
 import { Box, Typography } from "@mui/material";
 
@@ -35,7 +36,7 @@ export default function SafeGridFooter() {
       )}
       <Box sx={{ flex: 1 }} />
       {rootProps.pagination && pagination ? (
-        <Box sx={{ pr: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", pr: 2, gap: 2 }}>
           <Typography
             variant="caption"
             component="span"
@@ -43,6 +44,7 @@ export default function SafeGridFooter() {
           >
             Rows: {rowCount}
           </Typography>
+          <GridPagination />
         </Box>
       ) : null}
     </GridFooterContainer>

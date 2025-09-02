@@ -19,6 +19,7 @@ import { mapSnapshotToRows, enrichDriverNames } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 import { useAuth } from "../context/AuthContext.jsx";
 
+import PageContainer from "./PageContainer.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 
 function ShootoutTab() {
@@ -70,7 +71,7 @@ function ShootoutTab() {
   const running = Boolean(activeId);
 
   return (
-    <>
+    <PageContainer>
       <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
         {running ? (
           <Button variant="contained" color="error" onClick={handleEnd}>
@@ -117,7 +118,7 @@ function ShootoutTab() {
           })}
         />
       </Paper>
-    </>
+    </PageContainer>
   );
 }
 

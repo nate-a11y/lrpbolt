@@ -429,7 +429,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     <PageContainer maxWidth={600}>
       {import.meta.env.DEV && <RoleDebug />}
       <ErrorBanner error={error} />
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+      <Paper elevation={3} sx={{ p: 3, mb: 3, width: "100%" }}>
         <Typography variant="h6" gutterBottom>
           Time Clock
         </Typography>
@@ -511,7 +511,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         )}
       </Paper>
 
-      <Paper elevation={2} sx={{ p: 2 }}>
+      <Paper elevation={2} sx={{ p: 2, width: "100%" }}>
         <Box
           display="flex"
           justifyContent="space-between"
