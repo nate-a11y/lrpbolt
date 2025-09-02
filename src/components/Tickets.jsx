@@ -38,6 +38,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
+import EditIcon from "@mui/icons-material/Edit";
 import { motion } from "framer-motion";
 import { Timestamp } from "firebase/firestore";
 
@@ -63,6 +64,7 @@ import {
   NoRowsOverlay,
   ErrorOverlay,
 } from "./grid/overlays.jsx";
+import EditTicketDialog from "./EditTicketDialog.jsx";
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
@@ -80,6 +82,7 @@ function Tickets() {
   const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
+  const [editingTicket, setEditingTicket] = useState(null);
   const previewRef = useRef(null);
   const scrollRef = useRef(null);
   const { user, authLoading } = useAuth();
@@ -338,10 +341,34 @@ function Tickets() {
     setPreviewTicket(row);
     setEmailDialogOpen(true);
   }, []);
+  const handleEditClick = useCallback((row) => setEditingTicket(row), []);
+  const handleEditClose = useCallback(
+    (updated) => {
+      setEditingTicket(null);
+      if (updated) {
+        setTickets((prev) =>
+          prev.map((t) =>
+            t.ticketId === updated.ticketId ? { ...t, ...updated } : t,
+          ),
+        );
+        setSnackbar({
+          open: true,
+          message: "✏️ Ticket updated",
+          severity: "success",
+        });
+      }
+    },
+    [setTickets, setSnackbar],
+  );
 
   const rawColumns = useMemo(
     () => [
-      { field: "ticketId", headerName: "Ticket ID", minWidth: 120 },
+      {
+        field: "ticketId",
+        headerName: "Ticket ID",
+        minWidth: 120,
+        valueGetter: (p) => p?.row?.ticketId ?? "N/A",
+      },
       {
         field: "passenger",
         headerName: "Passenger",
@@ -351,8 +378,29 @@ function Tickets() {
           <Typography fontWeight="bold">{params?.value ?? "N/A"}</Typography>
         ),
       },
-      { field: "date", headerName: "Date", minWidth: 110 },
-      { field: "pickup", headerName: "Pickup", minWidth: 110 },
+      {
+        field: "date",
+        headerName: "Date",
+        minWidth: 110,
+        valueGetter: (p) => {
+          const src = p?.row?.date || p?.row?.pickupTime;
+          const d =
+            src && typeof src.toDate === "function" ? src.toDate() : src;
+          return d ? dayjs(d).format("MM-DD-YYYY") : "N/A";
+        },
+      },
+      {
+        field: "pickup",
+        headerName: "Pickup",
+        minWidth: 110,
+        valueGetter: (p) => p?.row?.pickup ?? "N/A",
+      },
+      {
+        field: "dropoff",
+        headerName: "Dropoff",
+        minWidth: 110,
+        valueGetter: (p) => p?.row?.dropoff ?? "N/A",
+      },
       {
         field: "link",
         headerName: "Link",
@@ -391,6 +439,13 @@ function Tickets() {
         minWidth: 150,
         getActions: (params) => [
           <GridActionsCellItem
+            key="edit"
+            icon={<EditIcon />}
+            label="Edit"
+            onClick={() => handleEditClick(params.row)}
+            showInMenu={false}
+          />,
+          <GridActionsCellItem
             key="delete"
             icon={<DeleteIcon />}
             label="Delete"
@@ -414,7 +469,7 @@ function Tickets() {
         ],
       },
     ],
-    [handleDeleteClick, handleDownload, handleEmail],
+    [handleDeleteClick, handleDownload, handleEmail, handleEditClick],
   );
 
   const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
@@ -620,6 +675,13 @@ function Tickets() {
             </Box>
           </ResponsiveScrollBox>
         ))}
+      {editingTicket && (
+        <EditTicketDialog
+          open={Boolean(editingTicket)}
+          ticket={editingTicket}
+          onClose={handleEditClose}
+        />
+      )}
 
       {tab === 1 && (
         <Paper sx={{ p: 3 }} elevation={4}>

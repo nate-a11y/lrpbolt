@@ -172,9 +172,16 @@ export function normalizeRowFor(collectionKey, raw = {}) {
 }
 
 export function mapSnapshotToRows(collectionKey, snapshot) {
+  if (!snapshot || !Array.isArray(snapshot.docs)) return [];
   return snapshot.docs.map((d) => {
-    const data = d.data() || {};
-    return { id: d.id, ...normalizeRowFor(collectionKey, data) };
+    try {
+      const data = d?.data ? d.data() || {} : {};
+      const id = d?.id || Math.random().toString(36).slice(2);
+      return { id, ...normalizeRowFor(collectionKey, data) };
+    } catch (err) {
+      console.warn("mapSnapshotToRows error", err);
+      return { id: Math.random().toString(36).slice(2) };
+    }
   });
 }
 
