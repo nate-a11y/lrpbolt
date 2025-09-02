@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
+import { DataGridPro, gridClasses, GridToolbar } from "@mui/x-data-grid-pro";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -111,7 +111,7 @@ export default function SmartAutoGrid(props) {
     order,
     hide,
     getRowId,
-    checkboxSelection = true,
+    checkboxSelection = false,
     disableRowSelectionOnClick = false,
     rowSelectionModel,
     onRowSelectionModelChange,
@@ -228,20 +228,27 @@ export default function SmartAutoGrid(props) {
     [initialState],
   );
 
-  const mergedSlots = useMemo(
-    () => ({
+  const mergedSlots = useMemo(() => {
+    const base = {
       footer: SafeGridFooter,
-      ...(showToolbar ? {} : { toolbar: null }),
-      ...(slots || {}),
+      ...(showToolbar ? { toolbar: GridToolbar } : { toolbar: null }),
+    };
+    return { ...base, ...(slots || {}) };
+  }, [slots, showToolbar]);
+
+  const mergedSlotProps = useMemo(
+    () => ({
+      toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 500 } },
+      ...(slotProps || {}),
     }),
-    [slots, showToolbar],
+    [slotProps],
   );
 
   const autoHeight = isMdDown ? true : (rest.autoHeight ?? false);
   const density = isMdDown ? "compact" : (rest.density ?? "compact");
 
   return (
-    <ResponsiveScrollBox sx={{ width: "100%" }}>
+    <ResponsiveScrollBox sx={{ width: "100%", maxWidth: "100%" }}>
       <DataGridPro
         rows={safeRows}
         columns={safeCols}
@@ -257,10 +264,12 @@ export default function SmartAutoGrid(props) {
         density={density}
         slots={mergedSlots}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
-        slotProps={slotProps}
+        slotProps={mergedSlotProps}
         sx={{
           [`& .${gridClasses.cell}`]: { outline: "none" },
           width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
           ...(rest.sx || {}),
         }}
         {...rest}
