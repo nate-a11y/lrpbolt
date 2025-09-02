@@ -1,8 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
-import { GridToolbar } from "@mui/x-data-grid";
+import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -10,6 +9,7 @@ import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 import ResponsiveScrollBox from "./ResponsiveScrollBox.jsx";
+import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
 import {
   stringifyCell,
   isFsTimestamp,
@@ -19,6 +19,8 @@ import {
   DEFAULT_TZ,
   toV8Model,
 } from "./selectionV8";
+
+const MAX_VISIBLE_ROWS = 15;
 
 function headerFromKey(k) {
   if (!k) return "";
@@ -137,6 +139,7 @@ export default function SmartAutoGrid(props) {
 
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const dataHasRows = safeRows.length > 0;
+  const rowCount = safeRows.length;
 
   const explicitCols = useMemo(() => {
     if (Array.isArray(columns) && columns.length > 0) return columns;
@@ -244,6 +247,8 @@ export default function SmartAutoGrid(props) {
   const mergedSlots = useMemo(() => {
     const base = {
       footer: SafeGridFooter,
+      noRowsOverlay: NoRowsOverlay,
+      errorOverlay: ErrorOverlay,
       ...(showToolbar ? { toolbar: GridToolbar } : { toolbar: null }),
     };
     return { ...base, ...(slots || {}) };
@@ -257,11 +262,24 @@ export default function SmartAutoGrid(props) {
     [slotProps],
   );
 
-  const autoHeight = isMdDown ? true : (rest.autoHeight ?? false);
-  const density = isMdDown ? "compact" : (rest.density ?? "compact");
+  const autoHeight = rowCount <= MAX_VISIBLE_ROWS;
+  const density = rest.density ?? "compact";
+  const maxGridHeight = `calc(var(--DataGrid-rowHeight) * ${MAX_VISIBLE_ROWS} + var(--DataGrid-columnHeadersHeight))`;
 
   return (
-    <ResponsiveScrollBox sx={{ width: "100%", maxWidth: "100%" }}>
+    <ResponsiveScrollBox
+      sx={{
+        width: "100%",
+        maxWidth: "100%",
+        ...(autoHeight
+          ? {}
+          : {
+              height: maxGridHeight,
+              maxHeight: maxGridHeight,
+              overflowY: "hidden",
+            }),
+      }}
+    >
       <DataGridPro
         rows={safeRows}
         columns={responsiveCols}
@@ -283,6 +301,7 @@ export default function SmartAutoGrid(props) {
           width: "100%",
           maxWidth: "100%",
           minWidth: 0,
+          ...(autoHeight ? {} : { height: "100%" }),
           ...(rest.sx || {}),
         }}
         {...rest}
