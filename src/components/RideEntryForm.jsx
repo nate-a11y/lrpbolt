@@ -1216,7 +1216,9 @@ export default function RideEntryForm() {
                   </Box>
                 )}
                 <ResponsiveScrollBox>
-                  <Box sx={{ width: "100%", overflowX: "auto", minWidth: 600 }}>
+                  <Paper
+                    sx={{ width: "100%", overflow: "auto", minWidth: 600 }}
+                  >
                     <SmartAutoGrid
                       autoHeight
                       rows={
@@ -1240,7 +1242,7 @@ export default function RideEntryForm() {
                       checkboxSelection={false}
                       showToolbar
                     />
-                  </Box>
+                  </Paper>
                 </ResponsiveScrollBox>
                 <Button
                   variant="outlined"

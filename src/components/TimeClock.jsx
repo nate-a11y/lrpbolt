@@ -560,28 +560,30 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           </Typography>
         </Box>
         <ResponsiveScrollBox>
-          <SmartAutoGrid
-            rows={rows || []}
-            columns={columns || []}
-            autoHeight={false}
-            checkboxSelection={false}
-            disableRowSelectionOnClick
-            rowSelectionModel={rowSelectionModel}
-            onRowSelectionModelChange={handleRowSelectionModelChange}
-            sx={{ width: "100%", maxWidth: "100%" }}
-            slots={{
-              toolbar: GridToolbar,
-              loadingOverlay: LoadingOverlay,
-              noRowsOverlay: NoRowsOverlay,
-              errorOverlay: ErrorOverlay,
-            }}
-            slotProps={{
-              toolbar: { quickFilterProps: { debounceMs: 500 } },
-            }}
-            loading={!ready}
-            error={error}
-            density={isXs ? "compact" : "standard"}
-          />
+          <Paper sx={{ width: "100%", overflow: "auto" }}>
+            <SmartAutoGrid
+              rows={rows || []}
+              columns={columns || []}
+              autoHeight={false}
+              checkboxSelection={false}
+              disableRowSelectionOnClick
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={handleRowSelectionModelChange}
+              sx={{ width: "100%", maxWidth: "100%" }}
+              slots={{
+                toolbar: GridToolbar,
+                loadingOverlay: LoadingOverlay,
+                noRowsOverlay: NoRowsOverlay,
+                errorOverlay: ErrorOverlay,
+              }}
+              slotProps={{
+                toolbar: { quickFilterProps: { debounceMs: 500 } },
+              }}
+              loading={!ready}
+              error={error}
+              density={isXs ? "compact" : "standard"}
+            />
+          </Paper>
         </ResponsiveScrollBox>
       </Paper>
 

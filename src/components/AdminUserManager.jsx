@@ -3,13 +3,13 @@
 import { useEffect, useState, useMemo } from "react";
 import {
   Card,
+  Paper,
   TextField,
   Button,
   Snackbar,
   Alert,
   Typography,
   Stack,
-  Box,
   useMediaQuery,
   MenuItem,
 } from "@mui/material";
@@ -485,7 +485,7 @@ export default function AdminUserManager() {
           </Stack>
         ) : (
           <ResponsiveScrollBox>
-            <Box sx={{ width: "100%", overflowX: "auto" }}>
+            <Paper sx={{ width: "100%", overflow: "auto" }}>
               <SmartAutoGrid
                 rows={rows || []}
                 columnsCompat={columns}
@@ -504,7 +504,7 @@ export default function AdminUserManager() {
                 }
                 showToolbar
               />
-            </Box>
+            </Paper>
           </ResponsiveScrollBox>
         )}
       </Stack>

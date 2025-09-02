@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   Box,
+  Paper,
   Stack,
   Typography,
   IconButton,
@@ -431,10 +432,11 @@ export default function DriverDirectory() {
       </Box>
 
       <ResponsiveScrollBox>
-        <Box
+        <Paper
           sx={{
             height: 640,
             width: "100%",
+            overflow: "auto",
             "& .MuiDataGrid-root": { border: "none" },
           }}
         >
@@ -502,7 +504,7 @@ export default function DriverDirectory() {
             }}
             showToolbar
           />
-        </Box>
+        </Paper>
       </ResponsiveScrollBox>
 
       <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />

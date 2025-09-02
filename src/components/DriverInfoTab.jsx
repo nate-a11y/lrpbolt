@@ -2,6 +2,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Box,
+  Paper,
   Typography,
   Divider,
   Button,
@@ -369,28 +370,30 @@ export default function DriverInfoTab() {
         </AccordionSummary>
         <AccordionDetails>
           <ResponsiveScrollBox>
-            <SmartAutoGrid
-              autoHeight
-              rows={rows || []}
-              columns={columns || []}
-              getRowId={getRowId}
-              columnVisibilityModel={columnVisibilityModel}
-              slots={{
-                toolbar: GridToolbar,
-                noRowsOverlay: NoRowsOverlay,
-                noResultsOverlay: NoResultsOverlay,
-              }}
-              slotProps={{
-                toolbar: {
-                  quickFilterProps: {
-                    debounceMs: 300,
-                    placeholder: "Search by location...",
+            <Paper sx={{ width: "100%", overflow: "auto" }}>
+              <SmartAutoGrid
+                autoHeight
+                rows={rows || []}
+                columns={columns || []}
+                getRowId={getRowId}
+                columnVisibilityModel={columnVisibilityModel}
+                slots={{
+                  toolbar: GridToolbar,
+                  noRowsOverlay: NoRowsOverlay,
+                  noResultsOverlay: NoResultsOverlay,
+                }}
+                slotProps={{
+                  toolbar: {
+                    quickFilterProps: {
+                      debounceMs: 300,
+                      placeholder: "Search by location...",
+                    },
                   },
-                },
-              }}
-              pagination
-              hideFooterSelectedRowCount
-            />
+                }}
+                pagination
+                hideFooterSelectedRowCount
+              />
+            </Paper>
           </ResponsiveScrollBox>
         </AccordionDetails>
       </Accordion>
