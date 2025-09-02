@@ -21,11 +21,11 @@ const DRIVER_LIST = [
     vehicles: ["Suburban", "Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
-    name: "Paige Blankenship",
+    name: "Jasey Brandt",
     lrp: "LRP4",
-    phone: "573.286.5149",
-    email: "p.blankenship@842@gmail.com",
-    vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
+    phone: "573.286.9740",
+    email: "jasey.brandt@gmail.com",
+    vehicles: ["SUV", "Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
     name: "Miguel Rodriguez",
@@ -63,11 +63,11 @@ const DRIVER_LIST = [
     vehicles: ["SUV", "Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
-    name: "Jasey Brandt",
+    name: "Paige Blankenship",
     lrp: "LRP10",
-    phone: "573.286.9740",
-    email: "jasey.brandt@gmail.com",
-    vehicles: ["SUV", "Limo Bus", "Rescue Squad", "Sprinter"],
+    phone: "573.286.5149",
+    email: "p.blankenship@842@gmail.com",
+    vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
     name: "Tom Morrow",
