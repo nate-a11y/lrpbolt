@@ -432,7 +432,6 @@ export default function DriverDirectory() {
 
       <Paper
         sx={{
-          height: 640,
           width: "100%",
           "& .MuiDataGrid-root": { border: "none" },
         }}
@@ -448,6 +447,7 @@ export default function DriverDirectory() {
           disableColumnMenu
           disableColumnSelector
           hideFooterSelectedRowCount
+          autoHeight
           initialState={{
             pagination: { paginationModel: { pageSize: 25, page: 0 } },
           }}
