@@ -146,8 +146,7 @@ function Tickets() {
     const dateStr = pickupDate
       ? dayjs(pickupDate).format("MM-DD-YYYY")
       : "Unknown";
-    const matchDate =
-      filteredDate === "All Dates" || dateStr === filteredDate;
+    const matchDate = filteredDate === "All Dates" || dateStr === filteredDate;
 
     const q = searchQuery.toLowerCase();
     const ticketId = (t.ticketId || "").toString().toLowerCase();
@@ -745,8 +744,7 @@ function Tickets() {
                   <strong>Passenger:</strong> {previewTicket.passenger}
                 </Typography>
                 <Typography>
-                  <strong>Passenger Count:</strong>{" "}
-                  {previewTicket.passengers}
+                  <strong>Passenger Count:</strong> {previewTicket.passengers}
                 </Typography>
                 <Typography>
                   <strong>Date:</strong> {previewTicket.date}
