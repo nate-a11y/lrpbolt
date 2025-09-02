@@ -85,11 +85,6 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => {
-          const row = p?.row;
-          const d = tsToDate(row?.startTime);
-          return d || "N/A";
-        },
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -98,11 +93,6 @@ export default function EntriesTab() {
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => {
-          const row = p?.row;
-          const d = tsToDate(row?.endTime);
-          return d || "N/A";
-        },
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -116,11 +106,6 @@ export default function EntriesTab() {
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => {
-          const row = p?.row;
-          const d = tsToDate(row?.loggedAt);
-          return d || "N/A";
-        },
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatDateTime(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -158,7 +143,13 @@ export default function EntriesTab() {
             ...d,
           }));
           const withNames = await enrichDriverNames(mapped);
-          setRows(withNames);
+          const withDates = withNames.map((r) => ({
+            ...r,
+            startTime: tsToDate(r.startTime),
+            endTime: tsToDate(r.endTime),
+            loggedAt: tsToDate(r.loggedAt),
+          }));
+          setRows(withDates);
         } catch (e) {
           logError(e, "EntriesTab.subscribeTimeLogs.enrich");
           setError("Failed to enrich driver names.");
