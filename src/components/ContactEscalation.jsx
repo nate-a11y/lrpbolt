@@ -260,6 +260,7 @@ export default function ContactEscalation() {
           getRowId={(row) =>
             row?.id ?? row?.email ?? row?.phone ?? JSON.stringify(row)
           }
+          getRowHeight={() => "auto"}
           disableColumnMenu
           disableColumnSelector
           hideFooterSelectedRowCount
