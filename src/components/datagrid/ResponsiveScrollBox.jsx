@@ -16,7 +16,9 @@ const ResponsiveScrollBox = React.forwardRef(function ResponsiveScrollBox(
       className="lrp-scroll"
       sx={{
         width: "100%",
-        maxWidth: "100vw",
+        // Constrain width to parent to avoid viewport overflow on mobile
+        maxWidth: "100%",
+        boxSizing: "border-box",
         overflowX: "auto",
         overflowY: "auto",
         WebkitOverflowScrolling: "touch",
