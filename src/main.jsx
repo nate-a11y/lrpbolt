@@ -9,7 +9,6 @@ import Login from "./pages/Login.jsx";
 import SmsConsent from "./pages/SmsConsent.jsx";
 import PrivateRoute from "./components/PrivateRoute.jsx";
 import "./index.css";
-import "@mui/x-data-grid/index.css";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
