@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
-import { GridToolbar } from "@mui/x-data-grid-pro";
+import { GridToolbar } from "@mui/x-data-grid";
 
 export const brand = {
   green500: "#4cbb17",
