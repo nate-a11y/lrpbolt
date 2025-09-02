@@ -191,6 +191,15 @@ export default function SmartAutoGrid(props) {
     [mappedCols, actionsColumn],
   );
 
+  const responsiveCols = useMemo(() => {
+    if (!isMdDown) return safeCols;
+    return safeCols.map((c) => ({
+      ...c,
+      minWidth: c.minWidth ? Math.min(c.minWidth, 100) : 100,
+      flex: c.flex ?? 1,
+    }));
+  }, [safeCols, isMdDown]);
+
   const rowIdFn = useCallback(
     (row) =>
       typeof getRowId === "function" ? getRowId(row) : safeGetRowId(row),
@@ -254,7 +263,7 @@ export default function SmartAutoGrid(props) {
     <ResponsiveScrollBox sx={{ width: "100%", maxWidth: "100%" }}>
       <DataGridPro
         rows={safeRows}
-        columns={safeCols}
+        columns={responsiveCols}
         getRowId={rowIdFn}
         checkboxSelection={checkboxSelection}
         disableRowSelectionOnClick={disableRowSelectionOnClick}
