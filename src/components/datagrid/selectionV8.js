@@ -10,26 +10,29 @@ export const DEFAULT_TZ = "America/Chicago";
 
 // Existing exports (keep them if already present)
 export function toV8Model(input) {
-  if (!input) return { ids: [], type: "include" };
-  if (Array.isArray(input)) return { ids: input, type: "include" };
-  if (input instanceof Set) return { ids: Array.from(input), type: "include" };
+  if (!input) return { ids: new Set(), type: "include" };
+  if (Array.isArray(input)) return { ids: new Set(input), type: "include" };
+  if (input instanceof Set) return { ids: new Set(input), type: "include" };
   if (typeof input === "object") {
     const rawIds = input.ids;
-    let ids;
-    if (Array.isArray(rawIds)) ids = rawIds;
-    else if (rawIds instanceof Set) ids = Array.from(rawIds);
-    else if (rawIds && Array.isArray(rawIds.current)) ids = rawIds.current;
-    else if (input.id != null) ids = [input.id];
-    else ids = [];
+    let idsSet;
+    if (rawIds instanceof Set) idsSet = new Set(rawIds);
+    else if (Array.isArray(rawIds)) idsSet = new Set(rawIds);
+    else if (rawIds && Array.isArray(rawIds.current))
+      idsSet = new Set(rawIds.current);
+    else if (input.id != null) idsSet = new Set([input.id]);
+    else idsSet = new Set();
     const type = input.type === "exclude" ? "exclude" : "include";
-    return { ids, type };
+    return { ids: idsSet, type };
   }
-  return { ids: [], type: "include" };
+  return { ids: new Set(), type: "include" };
 }
 
 export function selectedCount(model) {
   const ids = model?.ids;
-  return Array.isArray(ids) ? ids.length : 0;
+  if (ids instanceof Set) return ids.size;
+  if (Array.isArray(ids)) return ids.length;
+  return 0;
 }
 
 // --- Firestore Timestamp detection ---
