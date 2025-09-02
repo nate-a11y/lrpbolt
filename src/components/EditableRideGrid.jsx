@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useCallback } from "react";
-import { Box, useMediaQuery, useTheme, IconButton } from "@mui/material";
+import { Paper, useMediaQuery, useTheme, IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
@@ -99,7 +99,7 @@ export default function EditableRideGrid({
 
   return (
     <ResponsiveScrollBox>
-      <Box sx={{ width: "100%", height: 600 }}>
+      <Paper sx={{ width: "100%", height: 600, overflow: "auto" }}>
         <SmartAutoGrid
           rows={stableRows}
           columnsCompat={columns}
@@ -113,7 +113,7 @@ export default function EditableRideGrid({
           }
           showToolbar
         />
-      </Box>
+      </Paper>
     </ResponsiveScrollBox>
   );
 }

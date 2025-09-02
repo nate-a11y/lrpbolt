@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useCallback, memo } from "react";
-import { Box, Button } from "@mui/material";
+import { Box, Button, Paper } from "@mui/material";
 import {
   addDoc,
   collection,
@@ -84,39 +84,41 @@ function ShootoutTab() {
         )}
       </Box>
       <ResponsiveScrollBox>
-        <SmartAutoGrid
-          rows={sessionRows}
-          headerMap={{
-            driverEmail: "Driver Email",
-            driver: "Driver",
-            vehicle: "Vehicle",
-            startTime: "Start",
-            endTime: "End",
-            duration: "Duration",
-            trips: "Trips",
-            passengers: "PAX",
-            createdAt: "Created",
-            id: "id",
-          }}
-          order={[
-            "driver",
-            "driverEmail",
-            "vehicle",
-            "startTime",
-            "endTime",
-            "duration",
-            "trips",
-            "passengers",
-            "createdAt",
-            "id",
-          ]}
-          hide={["driverEmail", "createdAt"]}
-          forceHide={["id"]}
-          actionsColumn={buildNativeActionsColumn({
-            onEdit: (_id, _row) => null,
-            onDelete: async (id) => await deleteShootoutStatById(id),
-          })}
-        />
+        <Paper sx={{ width: "100%", overflow: "auto" }}>
+          <SmartAutoGrid
+            rows={sessionRows}
+            headerMap={{
+              driverEmail: "Driver Email",
+              driver: "Driver",
+              vehicle: "Vehicle",
+              startTime: "Start",
+              endTime: "End",
+              duration: "Duration",
+              trips: "Trips",
+              passengers: "PAX",
+              createdAt: "Created",
+              id: "id",
+            }}
+            order={[
+              "driver",
+              "driverEmail",
+              "vehicle",
+              "startTime",
+              "endTime",
+              "duration",
+              "trips",
+              "passengers",
+              "createdAt",
+              "id",
+            ]}
+            hide={["driverEmail", "createdAt"]}
+            forceHide={["id"]}
+            actionsColumn={buildNativeActionsColumn({
+              onEdit: (_id, _row) => null,
+              onDelete: async (id) => await deleteShootoutStatById(id),
+            })}
+          />
+        </Paper>
       </ResponsiveScrollBox>
     </>
   );

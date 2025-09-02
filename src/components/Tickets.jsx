@@ -617,7 +617,7 @@ function Tickets() {
           </Stack>
         ) : (
           <ResponsiveScrollBox ref={scrollRef}>
-            <Box sx={{ width: "100%", overflowX: "auto" }}>
+            <Paper sx={{ width: "100%", overflow: "auto" }}>
               <SmartAutoGrid
                 rows={rows || []}
                 columns={columns || []}
@@ -672,7 +672,7 @@ function Tickets() {
                 loading={loading}
                 error={error}
               />
-            </Box>
+            </Paper>
           </ResponsiveScrollBox>
         ))}
       {editingTicket && (
