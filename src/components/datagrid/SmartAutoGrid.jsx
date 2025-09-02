@@ -6,6 +6,7 @@ import { DataGridPro, gridClasses, GridToolbar } from "@mui/x-data-grid-pro";
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
 import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
+import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 import ResponsiveScrollBox from "./ResponsiveScrollBox.jsx";
 import {
@@ -59,6 +60,8 @@ function buildAutoColumns(sampleRow, opts = {}) {
           // Handle FS Timestamp or ISOish strings
           return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ); // e.g., Aug 24, 12:30 pm
         },
+        sortComparator: (v1, v2, p1, p2) =>
+          timestampSortComparator(p1?.row?.[field], p2?.row?.[field]),
       };
     }
 
