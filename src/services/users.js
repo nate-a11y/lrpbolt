@@ -15,9 +15,11 @@ export async function fetchAllUsersAccess() {
         ? val.roles.map(String).map((r) => r.toLowerCase())
         : Array.isArray(val.access)
           ? val.access.map(String).map((r) => r.toLowerCase())
-          : val.role
-            ? [String(val.role).toLowerCase()]
-            : [];
+          : typeof val.access === "string"
+            ? [val.access.toLowerCase()]
+            : val.role
+              ? [String(val.role).toLowerCase()]
+              : [];
       out.push({
         id: email || d.id,
         email,
