@@ -10,7 +10,7 @@ export function buildNativeActionsColumn(opts = {}) {
     headerName = "Actions",
     onEdit,
     onDelete,
-    showInMenu = true,
+    showInMenu = false,
     width = 90,
   } = opts;
 

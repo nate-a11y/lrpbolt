@@ -568,12 +568,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             disableRowSelectionOnClick
             rowSelectionModel={rowSelectionModel}
             onRowSelectionModelChange={handleRowSelectionModelChange}
-            sx={{
-              width: "100%",
-              maxWidth: "100%",
-              overflowX: "hidden",
-              "& .MuiDataGrid-virtualScroller": { overflowX: "hidden" },
-            }}
+            sx={{ width: "100%", maxWidth: "100%" }}
             slots={{
               toolbar: GridToolbar,
               loadingOverlay: LoadingOverlay,

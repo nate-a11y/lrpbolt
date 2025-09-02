@@ -78,7 +78,7 @@ export default function ShootoutSummaryTab() {
 
   return (
     <ResponsiveScrollBox>
-      <Paper sx={{ width: "100%", overflow: "hidden" }}>
+      <Paper sx={{ width: "100%", overflow: "auto" }}>
         <SmartAutoGrid
           rows={rows || []}
           headerMap={{
