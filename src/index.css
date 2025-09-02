@@ -1,10 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
 /* index.css — Lake Ride Pros: Claim Portal */
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
-  overflow-x: hidden;
 }
 body {
   margin: 0;
@@ -20,7 +21,7 @@ body {
 
 :root {
   --card-selected-bg: #102c10;
-  --card-selected-text: #FFFFFF;
+  --card-selected-text: #ffffff;
   --card-selected-border: #4cbb17;
   --space-sm: 0.5rem;
   --space-md: 1rem;

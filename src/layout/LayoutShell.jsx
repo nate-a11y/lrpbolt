@@ -63,7 +63,15 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
   const toggleMobile = () => setMobileOpen((v) => !v);
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100%", ...vars }}>
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100%",
+        minWidth: 0,
+        overflowX: "hidden",
+        ...vars,
+      }}
+    >
       <AppBar position="fixed" color="default" elevation={1}>
         <Toolbar sx={{ minHeight: APP_BAR_HEIGHT }}>
           {!smUp ? (
