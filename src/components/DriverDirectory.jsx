@@ -29,6 +29,7 @@ import DRIVER_LIST from "../data/driverDirectory";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import VehicleChip from "./VehicleChip";
+import PageContainer from "./PageContainer.jsx";
 
 // LRP brand tokens
 const LRP = {
@@ -409,120 +410,129 @@ export default function DriverDirectory() {
   );
 
   return (
-    <Box
-      sx={{ width: "100%", "& *": { fontFamily: theme.typography.fontFamily } }}
-    >
-      <Typography
-        variant="h5"
-        gutterBottom
-        sx={{
-          fontWeight: 900,
-          color: "#fff",
-          textShadow: `0 0 12px rgba(76,187,23,0.6)`,
-        }}
-      >
-        📇 Driver Directory
-      </Typography>
-
-      {/* Quick filter bar */}
+    <PageContainer>
       <Box
         sx={{
-          mb: 1,
-          borderRadius: 2,
-          p: 1,
-          background:
-            "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
-          border: `1px solid rgba(76,187,23,0.35)`,
-        }}
-      >
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <SearchIcon sx={{ color: LRP.green }} />
-          <TextField
-            variant="standard"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search name, LRP #, email, vehicle…"
-            InputProps={{
-              disableUnderline: true,
-              sx: { color: "#fff" },
-            }}
-          />
-        </Stack>
-      </Box>
-
-      <Paper
-        sx={{
           width: "100%",
-          "& .MuiDataGrid-root": { border: "none" },
+          "& *": { fontFamily: theme.typography.fontFamily },
         }}
       >
-        <SmartAutoGrid
-          apiRef={apiRef}
-          rows={rows}
-          columnsCompat={columns}
-          getRowId={(row) =>
-            row?.id ?? row?.uid ?? row?._id ?? row?.docId ?? JSON.stringify(row)
-          }
-          getRowHeight={() => "auto"}
-          disableColumnMenu
-          disableColumnSelector
-          hideFooterSelectedRowCount
-          autoHeight
-          initialState={{
-            pagination: { paginationModel: { pageSize: 25, page: 0 } },
-          }}
-          pageSizeOptions={[10, 25, 50, 100]}
+        <Typography
+          variant="h5"
+          gutterBottom
           sx={{
-            bgcolor: LRP.black,
+            fontWeight: 900,
             color: "#fff",
-            borderRadius: 2,
-            border: `1px solid rgba(255,255,255,0.06)`,
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
-            "--DataGrid-containerBackground": LRP.card,
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: "transparent",
-              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
-              "& .MuiDataGrid-columnHeaderTitle": {
-                fontWeight: 800,
-                letterSpacing: 0.4,
-              },
-            },
-            "& .MuiDataGrid-row": {
-              position: "relative",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 3,
-                background: "transparent",
-              },
-              "&:hover": {
-                background:
-                  "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
-                boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
-                "&::before": { background: LRP.green },
-              },
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
-              py: 0,
-            },
-            "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
-            "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
-            "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            textShadow: `0 0 12px rgba(76,187,23,0.6)`,
           }}
-          showToolbar
-        />
-      </Paper>
+        >
+          📇 Driver Directory
+        </Typography>
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
-      <Typography variant="caption" sx={{ color: LRP.textDim }}>
-        Lake Ride Pros • Real Rides. Real Pros.
-      </Typography>
-    </Box>
+        {/* Quick filter bar */}
+        <Box
+          sx={{
+            mb: 1,
+            borderRadius: 2,
+            p: 1,
+            background:
+              "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
+            border: `1px solid rgba(76,187,23,0.35)`,
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <SearchIcon sx={{ color: LRP.green }} />
+            <TextField
+              variant="standard"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Search name, LRP #, email, vehicle…"
+              InputProps={{
+                disableUnderline: true,
+                sx: { color: "#fff" },
+              }}
+            />
+          </Stack>
+        </Box>
+
+        <Paper
+          sx={{
+            width: "100%",
+            "& .MuiDataGrid-root": { border: "none" },
+          }}
+        >
+          <SmartAutoGrid
+            apiRef={apiRef}
+            rows={rows}
+            columnsCompat={columns}
+            getRowId={(row) =>
+              row?.id ??
+              row?.uid ??
+              row?._id ??
+              row?.docId ??
+              JSON.stringify(row)
+            }
+            getRowHeight={() => "auto"}
+            disableColumnMenu
+            disableColumnSelector
+            hideFooterSelectedRowCount
+            autoHeight
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25, page: 0 } },
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+            sx={{
+              bgcolor: LRP.black,
+              color: "#fff",
+              borderRadius: 2,
+              border: `1px solid rgba(255,255,255,0.06)`,
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+              "--DataGrid-containerBackground": LRP.card,
+              "& .MuiDataGrid-columnHeaders": {
+                bgcolor: "transparent",
+                borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+                "& .MuiDataGrid-columnHeaderTitle": {
+                  fontWeight: 800,
+                  letterSpacing: 0.4,
+                },
+              },
+              "& .MuiDataGrid-row": {
+                position: "relative",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 3,
+                  background: "transparent",
+                },
+                "&:hover": {
+                  background:
+                    "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
+                  boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
+                  "&::before": { background: LRP.green },
+                },
+              },
+              "& .MuiDataGrid-cell": {
+                borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+                py: 0,
+              },
+              "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
+              "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
+              "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            }}
+            showToolbar
+          />
+        </Paper>
+
+        <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
+        <Typography variant="caption" sx={{ color: LRP.textDim }}>
+          Lake Ride Pros • Real Rides. Real Pros.
+        </Typography>
+      </Box>
+    </PageContainer>
   );
 }

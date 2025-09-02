@@ -17,6 +17,7 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import SearchIcon from "@mui/icons-material/Search";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import PageContainer from "./PageContainer.jsx";
 
 const LRP = {
   green: "#4cbb17",
@@ -201,124 +202,129 @@ export default function ContactEscalation() {
   );
 
   return (
-    <Box
-      sx={{ width: "100%", "& *": { fontFamily: theme.typography.fontFamily } }}
-    >
-      <Typography
-        variant="h5"
-        gutterBottom
-        sx={{
-          fontWeight: 900,
-          color: "#fff",
-          textShadow: `0 0 12px rgba(76,187,23,0.6)`,
-        }}
-      >
-        📞 Who to Contact & When
-      </Typography>
-
-      <Typography variant="body1" sx={{ mb: 3 }}>
-        Use this guide to contact the right person based on the issue you’re
-        having. Tap to call or email!
-      </Typography>
-
+    <PageContainer>
       <Box
         sx={{
-          mb: 1,
-          borderRadius: 2,
-          p: 1,
-          background:
-            "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
-          border: `1px solid rgba(76,187,23,0.35)`,
-        }}
-      >
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <SearchIcon sx={{ color: LRP.green }} />
-          <TextField
-            variant="standard"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search name, phone, email, responsibility…"
-            InputProps={{
-              disableUnderline: true,
-              sx: { color: "#fff" },
-            }}
-          />
-        </Stack>
-      </Box>
-
-      <Paper
-        sx={{
-          height: 640,
           width: "100%",
-          "& .MuiDataGrid-root": { border: "none" },
+          "& *": { fontFamily: theme.typography.fontFamily },
         }}
       >
-        <SmartAutoGrid
-          apiRef={apiRef}
-          rows={rows}
-          columnsCompat={columns}
-          getRowId={(row) =>
-            row?.id ?? row?.email ?? row?.phone ?? JSON.stringify(row)
-          }
-          getRowHeight={() => "auto"}
-          disableColumnMenu
-          disableColumnSelector
-          hideFooterSelectedRowCount
-          initialState={{
-            pagination: { paginationModel: { pageSize: 25, page: 0 } },
-          }}
-          pageSizeOptions={[10, 25, 50, 100]}
+        <Typography
+          variant="h5"
+          gutterBottom
           sx={{
-            bgcolor: LRP.black,
+            fontWeight: 900,
             color: "#fff",
-            borderRadius: 2,
-            border: `1px solid rgba(255,255,255,0.06)`,
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
-            "--DataGrid-containerBackground": LRP.card,
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: "transparent",
-              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
-              "& .MuiDataGrid-columnHeaderTitle": {
-                fontWeight: 800,
-                letterSpacing: 0.4,
-              },
-            },
-            "& .MuiDataGrid-row": {
-              position: "relative",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 3,
-                background: "transparent",
-              },
-              "&:hover": {
-                background:
-                  "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
-                boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
-                "&::before": { background: LRP.green },
-              },
-            },
-            "& .MuiDataGrid-cell": {
-              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
-              py: 0,
-            },
-            "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
-            "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
-            "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            textShadow: `0 0 12px rgba(76,187,23,0.6)`,
           }}
-          showToolbar
-        />
-      </Paper>
+        >
+          📞 Who to Contact & When
+        </Typography>
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
-      <Typography variant="caption" sx={{ color: LRP.textDim }}>
-        Lake Ride Pros • Real Rides. Real Pros.
-      </Typography>
-    </Box>
+        <Typography variant="body1" sx={{ mb: 3 }}>
+          Use this guide to contact the right person based on the issue you’re
+          having. Tap to call or email!
+        </Typography>
+
+        <Box
+          sx={{
+            mb: 1,
+            borderRadius: 2,
+            p: 1,
+            background:
+              "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
+            border: `1px solid rgba(76,187,23,0.35)`,
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <SearchIcon sx={{ color: LRP.green }} />
+            <TextField
+              variant="standard"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Search name, phone, email, responsibility…"
+              InputProps={{
+                disableUnderline: true,
+                sx: { color: "#fff" },
+              }}
+            />
+          </Stack>
+        </Box>
+
+        <Paper
+          sx={{
+            height: 640,
+            width: "100%",
+            "& .MuiDataGrid-root": { border: "none" },
+          }}
+        >
+          <SmartAutoGrid
+            apiRef={apiRef}
+            rows={rows}
+            columnsCompat={columns}
+            getRowId={(row) =>
+              row?.id ?? row?.email ?? row?.phone ?? JSON.stringify(row)
+            }
+            getRowHeight={() => "auto"}
+            disableColumnMenu
+            disableColumnSelector
+            hideFooterSelectedRowCount
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25, page: 0 } },
+            }}
+            pageSizeOptions={[10, 25, 50, 100]}
+            sx={{
+              bgcolor: LRP.black,
+              color: "#fff",
+              borderRadius: 2,
+              border: `1px solid rgba(255,255,255,0.06)`,
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+              "--DataGrid-containerBackground": LRP.card,
+              "& .MuiDataGrid-columnHeaders": {
+                bgcolor: "transparent",
+                borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+                "& .MuiDataGrid-columnHeaderTitle": {
+                  fontWeight: 800,
+                  letterSpacing: 0.4,
+                },
+              },
+              "& .MuiDataGrid-row": {
+                position: "relative",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 3,
+                  background: "transparent",
+                },
+                "&:hover": {
+                  background:
+                    "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
+                  boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
+                  "&::before": { background: LRP.green },
+                },
+              },
+              "& .MuiDataGrid-cell": {
+                borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+                py: 0,
+              },
+              "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
+              "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
+              "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            }}
+            showToolbar
+          />
+        </Paper>
+
+        <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
+        <Typography variant="caption" sx={{ color: LRP.textDim }}>
+          Lake Ride Pros • Real Rides. Real Pros.
+        </Typography>
+      </Box>
+    </PageContainer>
   );
 }

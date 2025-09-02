@@ -38,6 +38,7 @@ import { COLLECTIONS } from "../constants";
 import { formatClaimSms } from "../utils/formatClaimSms.js";
 
 import BlackoutOverlay from "./BlackoutOverlay";
+import PageContainer from "./PageContainer.jsx";
 
 const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   const theme = useTheme();
@@ -180,187 +181,189 @@ const RideClaimTab = ({ driver, isAdmin = true, isLockedOut = false }) => {
   // No desktop grid; mobile-style grouping for all viewports
 
   return (
-    <Box position="relative">
-      {isLockedOut && (
-        <BlackoutOverlay
-          isAdmin={isAdmin}
-          isLocked={isLockedOut}
-          onUnlock={() => showToast("🔥 Real-time updates active", "info")}
-        />
-      )}
+    <PageContainer>
+      <Box position="relative">
+        {isLockedOut && (
+          <BlackoutOverlay
+            isAdmin={isAdmin}
+            isLocked={isLockedOut}
+            onUnlock={() => showToast("🔥 Real-time updates active", "info")}
+          />
+        )}
 
-      <Box
-        display="flex"
-        gap={2}
-        mb={2}
-        flexDirection={isMobile ? "column" : "row"}
-      >
-        <TextField
-          select
-          label="Day"
-          size="small"
-          value={dayFilter}
-          onChange={(e) => setDayFilter(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <CalendarTodayIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 160, flex: isMobile ? 1 : "inherit" }}
-        >
-          <MenuItem value="">All</MenuItem>
-          {[
-            "Sunday",
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-          ].map((d) => (
-            <MenuItem key={d} value={d}>
-              {d}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          label="Vehicle"
-          size="small"
-          value={vehicleFilter}
-          onChange={(e) => setVehicleFilter(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <DirectionsCarIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 160, flex: isMobile ? 1 : "inherit" }}
-        >
-          <MenuItem value="">All</MenuItem>
-          {uniqueVehicles.map((v) => (
-            <MenuItem key={v} value={v}>
-              {v}
-            </MenuItem>
-          ))}
-        </TextField>
-        <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-          slotProps={{ textField: { size: "small", fullWidth: isMobile } }}
-        />
-
-        <Button
-          variant="outlined"
-          color="primary"
-          startIcon={
-            loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />
-          }
-          onClick={() => showToast("🔥 Real-time updates active", "info")}
-          disabled={loadingRides}
-          sx={{ alignSelf: isMobile ? "stretch" : "center" }}
-        >
-          Refresh
-        </Button>
-      </Box>
-
-      {loadingRides ? (
         <Box
           display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight={200}
+          gap={2}
+          mb={2}
+          flexDirection={isMobile ? "column" : "row"}
         >
-          <Typography variant="body1" color="text.secondary" mr={2}>
-            Loading rides...
-          </Typography>
-          <CircularProgress size={28} />
+          <TextField
+            select
+            label="Day"
+            size="small"
+            value={dayFilter}
+            onChange={(e) => setDayFilter(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <CalendarTodayIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ minWidth: 160, flex: isMobile ? 1 : "inherit" }}
+          >
+            <MenuItem value="">All</MenuItem>
+            {[
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ].map((d) => (
+              <MenuItem key={d} value={d}>
+                {d}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Vehicle"
+            size="small"
+            value={vehicleFilter}
+            onChange={(e) => setVehicleFilter(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <DirectionsCarIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ minWidth: 160, flex: isMobile ? 1 : "inherit" }}
+          >
+            <MenuItem value="">All</MenuItem>
+            {uniqueVehicles.map((v) => (
+              <MenuItem key={v} value={v}>
+                {v}
+              </MenuItem>
+            ))}
+          </TextField>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            slotProps={{ textField: { size: "small", fullWidth: isMobile } }}
+          />
+
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={
+              loadingRides ? <CircularProgress size={16} /> : <RefreshIcon />
+            }
+            onClick={() => showToast("🔥 Real-time updates active", "info")}
+            disabled={loadingRides}
+            sx={{ alignSelf: isMobile ? "stretch" : "center" }}
+          >
+            Refresh
+          </Button>
         </Box>
-      ) : (
-        <>
-          {Object.entries(groupedRides).map(([gKey, rides]) => {
-            const [vehicle, day] = gKey.split("___");
-            if (
-              (vehicleFilter && vehicle !== vehicleFilter) ||
-              (dayFilter && day !== dayFilter)
-            )
-              return null;
 
-            return (
-              <RideGroup
-                key={gKey}
-                groupKey={gKey}
-                rides={rides}
-                onClaim={claimRide}
-                showToast={showToast}
-                selectedRides={selectedRides}
-                onToggleSelect={toggleRideSelection}
-                onGroupToggle={toggleGroupSelection}
-                onClearSelected={clearSelections}
-              />
-            );
-          })}
-
-          {Object.keys(groupedRides).length === 0 && (
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              textAlign="center"
-              mt={5}
-            >
-              🚫 No unclaimed rides available right now.
+        {loadingRides ? (
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight={200}
+          >
+            <Typography variant="body1" color="text.secondary" mr={2}>
+              Loading rides...
             </Typography>
-          )}
-        </>
-      )}
+            <CircularProgress size={28} />
+          </Box>
+        ) : (
+          <>
+            {Object.entries(groupedRides).map(([gKey, rides]) => {
+              const [vehicle, day] = gKey.split("___");
+              if (
+                (vehicleFilter && vehicle !== vehicleFilter) ||
+                (dayFilter && day !== dayFilter)
+              )
+                return null;
 
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
-        onClose={() => setToast({ ...toast, open: false })}
-      >
-        <Alert severity={toast.severity} variant="filled">
-          {toast.message}
-        </Alert>
-      </Snackbar>
+              return (
+                <RideGroup
+                  key={gKey}
+                  groupKey={gKey}
+                  rides={rides}
+                  onClaim={claimRide}
+                  showToast={showToast}
+                  selectedRides={selectedRides}
+                  onToggleSelect={toggleRideSelection}
+                  onGroupToggle={toggleGroupSelection}
+                  onClearSelected={clearSelections}
+                />
+              );
+            })}
 
-      {claimLog.length > 0 && (
-        <Box mt={4} data-testid="claim-log">
-          {claimLog.map((entry, idx) => (
-            <Box key={idx} mb={3}>
-              <Typography>Trip ID: {entry.tripId}</Typography>
-              <Typography>Vehicle: {safe(entry.vehicle)}</Typography>
-              <Typography>
-                Date/Time: {fmtDate(entry.pickupTime)}{" "}
-                {fmtTime(entry.pickupTime)}
+            {Object.keys(groupedRides).length === 0 && (
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                textAlign="center"
+                mt={5}
+              >
+                🚫 No unclaimed rides available right now.
               </Typography>
-              <Typography>
-                Duration:{" "}
-                {(() => {
-                  const m = durationMinutes(
-                    entry.pickupTime,
-                    entry.pickupTime + entry.rideDuration * 60000,
-                  );
-                  return m == null ? "—" : `${m}m`;
-                })()}
-              </Typography>
-              <Typography>Trip Type: {safe(entry.rideType)}</Typography>
-              <Typography>
-                Trip Notes: {safe(entry.rideNotes, "none")}
-              </Typography>
-              <Typography mt={2}>
-                Claimed At: {fmtDate(entry.claimedAt)}{" "}
-                {fmtTime(entry.claimedAt)}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      )}
-    </Box>
+            )}
+          </>
+        )}
+
+        <Snackbar
+          open={toast.open}
+          autoHideDuration={3000}
+          onClose={() => setToast({ ...toast, open: false })}
+        >
+          <Alert severity={toast.severity} variant="filled">
+            {toast.message}
+          </Alert>
+        </Snackbar>
+
+        {claimLog.length > 0 && (
+          <Box mt={4} data-testid="claim-log">
+            {claimLog.map((entry, idx) => (
+              <Box key={idx} mb={3}>
+                <Typography>Trip ID: {entry.tripId}</Typography>
+                <Typography>Vehicle: {safe(entry.vehicle)}</Typography>
+                <Typography>
+                  Date/Time: {fmtDate(entry.pickupTime)}{" "}
+                  {fmtTime(entry.pickupTime)}
+                </Typography>
+                <Typography>
+                  Duration:{" "}
+                  {(() => {
+                    const m = durationMinutes(
+                      entry.pickupTime,
+                      entry.pickupTime + entry.rideDuration * 60000,
+                    );
+                    return m == null ? "—" : `${m}m`;
+                  })()}
+                </Typography>
+                <Typography>Trip Type: {safe(entry.rideType)}</Typography>
+                <Typography>
+                  Trip Notes: {safe(entry.rideNotes, "none")}
+                </Typography>
+                <Typography mt={2}>
+                  Claimed At: {fmtDate(entry.claimedAt)}{" "}
+                  {fmtTime(entry.claimedAt)}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Box>
+    </PageContainer>
   );
 };
 

@@ -31,6 +31,7 @@ import useIsMobile from "src/hooks/useIsMobile";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";
+import PageContainer from "./PageContainer.jsx";
 
 void _GridToolbarExport;
 
@@ -182,7 +183,7 @@ export default function DriverInfoTab() {
   };
 
   return (
-    <Box sx={{ pb: 4 }}>
+    <PageContainer pb={4}>
       <Typography variant="h5" gutterBottom fontWeight="bold">
         🚗 Driver Drop-Off Info & Instructions
       </Typography>
@@ -460,6 +461,6 @@ export default function DriverInfoTab() {
 
       {/* Passenger App Walkthrough Modal */}
       <PassengerAppModal open={modalOpen} onClose={() => setModalOpen(false)} />
-    </Box>
+    </PageContainer>
   );
 }

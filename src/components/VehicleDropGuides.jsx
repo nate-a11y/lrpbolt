@@ -1,12 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 import {
-  Box,
   Typography,
   Accordion,
   AccordionSummary,
   AccordionDetails,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+
+import PageContainer from "./PageContainer.jsx";
 
 const VEHICLE_GUIDES = [
   {
@@ -53,7 +54,7 @@ Ensure your tablet is collected before leaving the vehicle unattended.`,
 
 export default function VehicleDropGuides() {
   return (
-    <Box sx={{ pb: 4 }}>
+    <PageContainer pb={4}>
       <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
         🚐 Vehicle Drop-off Instructions
       </Typography>
@@ -77,6 +78,6 @@ export default function VehicleDropGuides() {
           </AccordionDetails>
         </Accordion>
       ))}
-    </Box>
+    </PageContainer>
   );
 }

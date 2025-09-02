@@ -1,7 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useState, memo } from "react";
-import { Box, Tabs, Tab } from "@mui/material";
+import { Tabs, Tab } from "@mui/material";
 
+import PageContainer from "./PageContainer.jsx";
 import EntriesTab from "./adminTimeLog/EntriesTab.jsx";
 import WeeklySummaryTab from "./adminTimeLog/WeeklySummaryTab.jsx";
 import ShootoutStatsTab from "./adminTimeLog/ShootoutStatsTab.jsx";
@@ -11,7 +12,7 @@ function AdminTimeLog() {
   const [tab, setTab] = useState(0);
 
   return (
-    <Box sx={{ p: 2 }}>
+    <PageContainer pt={2} pb={2}>
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
@@ -32,7 +33,7 @@ function AdminTimeLog() {
       {tab === 1 && <WeeklySummaryTab />}
       {tab === 2 && <ShootoutStatsTab />}
       {tab === 3 && <ShootoutSummaryTab />}
-    </Box>
+    </PageContainer>
   );
 }
 
