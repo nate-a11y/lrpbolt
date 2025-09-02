@@ -2,7 +2,6 @@
 import React from "react";
 import Grid2 from "@mui/material/Grid";
 import {
-  Box,
   Card,
   CardContent,
   Typography,
@@ -32,6 +31,7 @@ import { sendPortalNotification } from "src/utils/notify";
 import { enqueueSms } from "src/services/messaging";
 import logError from "src/utils/logError";
 import { useToast } from "src/context/ToastProvider.jsx";
+import ResponsiveContainer from "src/components/responsive/ResponsiveContainer.jsx";
 
 const SEGMENTS = [
   { id: "admins", label: "All Admins", filter: filterAdmins },
@@ -193,7 +193,7 @@ export default function Notifications() {
   };
 
   return (
-    <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 1.5, sm: 2, md: 3 } }}>
+    <ResponsiveContainer>
       <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
         <Grid2 xs={12}>
           <Stack
@@ -227,14 +227,17 @@ export default function Notifications() {
                 </Stack>
 
                 <Typography variant="subtitle2">Recipients</Typography>
-                <Stack direction="row" flexWrap="wrap" spacing={1}>
+                <ToggleButtonGroup
+                  value={segment}
+                  exclusive
+                  onChange={(_, val) => val && setSegment(val)}
+                  size="small"
+                  sx={{ flexWrap: "wrap" }}
+                >
                   {SEGMENTS.map((s) => (
                     <ToggleButton
                       key={s.id}
                       value={s.id}
-                      selected={segment === s.id}
-                      onChange={() => setSegment(s.id)}
-                      size="small"
                       sx={{
                         borderRadius: 2,
                         textTransform: "none",
@@ -250,7 +253,7 @@ export default function Notifications() {
                         : ""}
                     </ToggleButton>
                   ))}
-                </Stack>
+                </ToggleButtonGroup>
 
                 {segment === "custom" && (
                   <TextField
@@ -267,8 +270,22 @@ export default function Notifications() {
                   options={allUsers}
                   value={pickedUsers}
                   disableCloseOnSelect
+                  loading={loading}
+                  isOptionEqualToValue={(o, v) => o.id === v.id}
                   onChange={(_, val) => setPickedUsers(val)}
                   getOptionLabel={(o) => o?.name || o?.email || ""}
+                  renderOption={(props, option) => (
+                    <li {...props} key={option.id}>
+                      <Stack>
+                        <Typography>{option.name || option.email}</Typography>
+                        {option.roles?.length ? (
+                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                            {option.roles.join(", ")}
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    </li>
+                  )}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
                       <Chip
@@ -386,6 +403,6 @@ export default function Notifications() {
           </Card>
         </Grid2>
       </Grid2>
-    </Box>
+    </ResponsiveContainer>
   );
 }
