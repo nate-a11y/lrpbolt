@@ -1,7 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, gridClasses, GridToolbar } from "@mui/x-data-grid-pro";
+import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
+import { GridToolbar } from "@mui/x-data-grid";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
