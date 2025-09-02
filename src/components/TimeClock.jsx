@@ -48,7 +48,6 @@ import logError from "../utils/logError.js";
 import { tsToDate } from "../utils/safe";
 import { waitForAuth } from "../utils/waitForAuth";
 
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
   LoadingOverlay,
@@ -559,32 +558,30 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             {tzLabel}
           </Typography>
         </Box>
-        <ResponsiveScrollBox>
-          <Paper sx={{ width: "100%", overflow: "auto" }}>
-            <SmartAutoGrid
-              rows={rows || []}
-              columns={columns || []}
-              autoHeight={false}
-              checkboxSelection={false}
-              disableRowSelectionOnClick
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={handleRowSelectionModelChange}
-              sx={{ width: "100%", maxWidth: "100%" }}
-              slots={{
-                toolbar: GridToolbar,
-                loadingOverlay: LoadingOverlay,
-                noRowsOverlay: NoRowsOverlay,
-                errorOverlay: ErrorOverlay,
-              }}
-              slotProps={{
-                toolbar: { quickFilterProps: { debounceMs: 500 } },
-              }}
-              loading={!ready}
-              error={error}
-              density={isXs ? "compact" : "standard"}
-            />
-          </Paper>
-        </ResponsiveScrollBox>
+        <Paper sx={{ width: "100%" }}>
+          <SmartAutoGrid
+            rows={rows || []}
+            columns={columns || []}
+            autoHeight={false}
+            checkboxSelection={false}
+            disableRowSelectionOnClick
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={handleRowSelectionModelChange}
+            sx={{ width: "100%", maxWidth: "100%" }}
+            slots={{
+              toolbar: GridToolbar,
+              loadingOverlay: LoadingOverlay,
+              noRowsOverlay: NoRowsOverlay,
+              errorOverlay: ErrorOverlay,
+            }}
+            slotProps={{
+              toolbar: { quickFilterProps: { debounceMs: 500 } },
+            }}
+            loading={!ready}
+            error={error}
+            density={isXs ? "compact" : "standard"}
+          />
+        </Paper>
       </Paper>
 
       <Snackbar

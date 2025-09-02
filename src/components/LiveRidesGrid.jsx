@@ -8,7 +8,6 @@ import { mapSnapshotToRows } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function LiveRidesGrid() {
@@ -37,43 +36,41 @@ export default function LiveRidesGrid() {
 
   return (
     <>
-      <ResponsiveScrollBox>
-        <Paper sx={{ width: "100%", overflow: "auto" }}>
-          <SmartAutoGrid
-            rows={rows}
-            headerMap={{
-              tripId: "Trip ID",
-              pickupTime: "Pickup",
-              rideDuration: "Duration",
-              rideType: "Type",
-              vehicle: "Vehicle",
-              rideNotes: "Notes",
-              createdAt: "Created",
-              claimedBy: "Claimed By",
-              claimedAt: "Claimed At",
-              status: "Status",
-            }}
-            order={[
-              "tripId",
-              "pickupTime",
-              "rideDuration",
-              "rideType",
-              "vehicle",
-              "rideNotes",
-              "createdAt",
-              "claimedBy",
-              "claimedAt",
-              "status",
-            ]}
-            hide={["claimedBy", "claimedAt", "status"]}
-            forceHide={[]}
-            actionsColumn={buildNativeActionsColumn({
-              onEdit: (id, row) => handleEditRide(row),
-              onDelete: async (id) => await deleteRide("liveRides", id),
-            })}
-          />
-        </Paper>
-      </ResponsiveScrollBox>
+      <Paper sx={{ width: "100%" }}>
+        <SmartAutoGrid
+          rows={rows}
+          headerMap={{
+            tripId: "Trip ID",
+            pickupTime: "Pickup",
+            rideDuration: "Duration",
+            rideType: "Type",
+            vehicle: "Vehicle",
+            rideNotes: "Notes",
+            createdAt: "Created",
+            claimedBy: "Claimed By",
+            claimedAt: "Claimed At",
+            status: "Status",
+          }}
+          order={[
+            "tripId",
+            "pickupTime",
+            "rideDuration",
+            "rideType",
+            "vehicle",
+            "rideNotes",
+            "createdAt",
+            "claimedBy",
+            "claimedAt",
+            "status",
+          ]}
+          hide={["claimedBy", "claimedAt", "status"]}
+          forceHide={[]}
+          actionsColumn={buildNativeActionsColumn({
+            onEdit: (id, row) => handleEditRide(row),
+            onDelete: async (id) => await deleteRide("liveRides", id),
+          })}
+        />
+      </Paper>
       {editOpen && (
         <EditRideDialog
           open={editOpen}

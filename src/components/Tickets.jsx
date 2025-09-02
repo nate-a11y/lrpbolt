@@ -56,7 +56,6 @@ import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import PageContainer from "./PageContainer.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
   LoadingOverlay,
@@ -601,8 +600,8 @@ function Tickets() {
       </Tabs>
 
       {tab === 0 && (
-        <ResponsiveScrollBox ref={scrollRef}>
-          <Paper sx={{ width: "100%", overflow: "auto" }}>
+        <Box ref={scrollRef}>
+          <Paper sx={{ width: "100%" }}>
             <SmartAutoGrid
               rows={rows || []}
               columns={columns || []}
@@ -658,7 +657,7 @@ function Tickets() {
               error={error}
             />
           </Paper>
-        </ResponsiveScrollBox>
+        </Box>
       )}
       {editingTicket && (
         <EditTicketDialog

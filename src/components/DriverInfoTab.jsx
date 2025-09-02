@@ -27,7 +27,6 @@ import "yet-another-react-lightbox/styles.css";
 import QRCode from "react-qr-code";
 
 import SmartAutoGrid from "src/components/datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "src/components/datagrid/ResponsiveScrollBox";
 import useIsMobile from "src/hooks/useIsMobile";
 
 import DropoffAccordion from "./DropoffAccordion";
@@ -369,32 +368,30 @@ export default function DriverInfoTab() {
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <ResponsiveScrollBox>
-            <Paper sx={{ width: "100%", overflow: "auto" }}>
-              <SmartAutoGrid
-                autoHeight
-                rows={rows || []}
-                columns={columns || []}
-                getRowId={getRowId}
-                columnVisibilityModel={columnVisibilityModel}
-                slots={{
-                  toolbar: GridToolbar,
-                  noRowsOverlay: NoRowsOverlay,
-                  noResultsOverlay: NoResultsOverlay,
-                }}
-                slotProps={{
-                  toolbar: {
-                    quickFilterProps: {
-                      debounceMs: 300,
-                      placeholder: "Search by location...",
-                    },
+          <Paper sx={{ width: "100%" }}>
+            <SmartAutoGrid
+              autoHeight
+              rows={rows || []}
+              columns={columns || []}
+              getRowId={getRowId}
+              columnVisibilityModel={columnVisibilityModel}
+              slots={{
+                toolbar: GridToolbar,
+                noRowsOverlay: NoRowsOverlay,
+                noResultsOverlay: NoResultsOverlay,
+              }}
+              slotProps={{
+                toolbar: {
+                  quickFilterProps: {
+                    debounceMs: 300,
+                    placeholder: "Search by location...",
                   },
-                }}
-                pagination
-                hideFooterSelectedRowCount
-              />
-            </Paper>
-          </ResponsiveScrollBox>
+                },
+              }}
+              pagination
+              hideFooterSelectedRowCount
+            />
+          </Paper>
         </AccordionDetails>
       </Accordion>
 

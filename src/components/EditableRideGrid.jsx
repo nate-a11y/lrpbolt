@@ -12,7 +12,6 @@ import { vfTime, vfDurationHM } from "@/utils/vf";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 export default function EditableRideGrid({
   rows,
@@ -98,22 +97,20 @@ export default function EditableRideGrid({
   useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
 
   return (
-    <ResponsiveScrollBox>
-      <Paper sx={{ width: "100%", height: 600, overflow: "auto" }}>
-        <SmartAutoGrid
-          rows={stableRows}
-          columnsCompat={columns}
-          loading={loading}
-          checkboxSelection
-          disableRowSelectionOnClick
-          getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
-          initialState={initialState}
-          getRowId={(r) =>
-            r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
-          }
-          showToolbar
-        />
-      </Paper>
-    </ResponsiveScrollBox>
+    <Paper sx={{ width: "100%", height: 600 }}>
+      <SmartAutoGrid
+        rows={stableRows}
+        columnsCompat={columns}
+        loading={loading}
+        checkboxSelection
+        disableRowSelectionOnClick
+        getRowClassName={(params) => (params.row?.fading ? "fading" : "")}
+        initialState={initialState}
+        getRowId={(r) =>
+          r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
+        }
+        showToolbar
+      />
+    </Paper>
   );
 }

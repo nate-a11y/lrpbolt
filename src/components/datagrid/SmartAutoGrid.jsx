@@ -1,12 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { Box } from "@mui/material";
 import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
 
-import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
+import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
+import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
 
+import ResponsiveScrollBox from "./ResponsiveScrollBox.jsx";
 import {
   stringifyCell,
   isFsTimestamp,
@@ -128,6 +129,8 @@ export default function SmartAutoGrid(props) {
     ...rest
   } = props;
 
+  const { isMdDown } = useIsMobile();
+
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const dataHasRows = safeRows.length > 0;
 
@@ -242,8 +245,11 @@ export default function SmartAutoGrid(props) {
     [slots, showToolbar],
   );
 
+  const autoHeight = isMdDown ? true : (rest.autoHeight ?? false);
+  const density = isMdDown ? "compact" : (rest.density ?? "compact");
+
   return (
-    <Box sx={{ height: "100%", width: "100%" }}>
+    <ResponsiveScrollBox sx={{ width: "100%" }}>
       <DataGridPro
         rows={safeRows}
         columns={safeCols}
@@ -255,18 +261,19 @@ export default function SmartAutoGrid(props) {
         initialState={safeInitialState}
         columnVisibilityModel={columnVisibilityModel}
         pagination
-        autoHeight={rest.autoHeight ?? false}
-        density={rest.density ?? "compact"}
+        autoHeight={autoHeight}
+        density={density}
         slots={mergedSlots}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         slotProps={mergedSlotProps}
         sx={{
           [`& .${gridClasses.cell}`]: { outline: "none" },
+          width: "100%",
           ...(rest.sx || {}),
         }}
         {...rest}
       />
-    </Box>
+    </ResponsiveScrollBox>
   );
 }
 

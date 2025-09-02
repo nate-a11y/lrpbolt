@@ -5,7 +5,6 @@ import { Paper } from "@mui/material";
 import { formatTz } from "@/utils/timeSafe";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "../datagrid/ResponsiveScrollBox.jsx";
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 
 export default function WeeklySummaryTab() {
@@ -19,31 +18,29 @@ export default function WeeklySummaryTab() {
   );
 
   return (
-    <ResponsiveScrollBox>
-      <Paper sx={{ width: "100%", overflow: "auto" }}>
-        <SmartAutoGrid
-          rows={weeklyRows || []}
-          headerMap={{
-            driver: "Driver",
-            driverEmail: "Driver Email",
-            sessions: "Sessions",
-            totalMinutes: "Total Minutes",
-            hours: "Total Hours",
-            firstStart: "First In",
-            lastEnd: "Last Out",
-          }}
-          order={[
-            "driver",
-            "driverEmail",
-            "sessions",
-            "totalMinutes",
-            "hours",
-            "firstStart",
-            "lastEnd",
-          ]}
-          overrides={overrides}
-        />
-      </Paper>
-    </ResponsiveScrollBox>
+    <Paper sx={{ width: "100%" }}>
+      <SmartAutoGrid
+        rows={weeklyRows || []}
+        headerMap={{
+          driver: "Driver",
+          driverEmail: "Driver Email",
+          sessions: "Sessions",
+          totalMinutes: "Total Minutes",
+          hours: "Total Hours",
+          firstStart: "First In",
+          lastEnd: "Last Out",
+        }}
+        order={[
+          "driver",
+          "driverEmail",
+          "sessions",
+          "totalMinutes",
+          "hours",
+          "firstStart",
+          "lastEnd",
+        ]}
+        overrides={overrides}
+      />
+    </Paper>
   );
 }

@@ -59,5 +59,6 @@ This document describes all automation, AI agents, and external integrations tha
 
 - `src/hooks/useIsMobile.js` – hook providing `{ isXs, isSm, isMdDown }` for breakpoint logic.
 - `src/components/responsive/ResponsiveContainer.jsx` – page wrapper enforcing mobile-first padding and max width.
- - `src/components/datagrid/ResponsiveDataGridPro.jsx` – wrapper around DataGridPro adding auto-height and compact density on small screens.
- - Layouts are standardized on MUI Grid v2 (`@mui/material/Grid`); convert legacy Grid v1 instances to `Grid2` when touched.
+- `src/components/datagrid/SmartAutoGrid.jsx` – DataGridPro wrapper with toolbar, auto-height and mobile defaults.
+- `src/components/datagrid/ResponsiveScrollBox.jsx` – enables touch-friendly scrolling for grids on narrow screens.
+- Layouts are standardized on MUI Grid v2 (`@mui/material/Grid`); convert legacy Grid v1 instances to `Grid2` when touched.

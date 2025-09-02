@@ -69,7 +69,6 @@ import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import LiveRidesGrid from "./LiveRidesGrid";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import ResponsiveScrollBox from "./datagrid/ResponsiveScrollBox.jsx";
 
 // --- Shared field props ---
 const FIELD_PROPS = {
@@ -1225,29 +1224,27 @@ export default function RideEntryForm() {
                     👉 Swipe horizontally to view more columns
                   </Box>
                 )}
-                <ResponsiveScrollBox>
-                  <Paper sx={{ width: "100%", overflow: "auto" }}>
-                    <SmartAutoGrid
-                      autoHeight
-                      rows={Array.isArray(uploadedRows) ? uploadedRows : []}
-                      columns={expectedCsvCols.map((col) => ({
-                        field: col,
-                        headerName: col.replace(/([A-Z])/g, " $1"),
-                        flex: 1,
-                        minWidth: 140,
-                        valueFormatter: vfText,
-                        editable: true,
-                      }))}
-                      getRowId={(r) => r.id}
-                      processRowUpdate={handlePreviewUpdate}
-                      pageSizeOptions={[5]}
-                      disableRowSelectionOnClick
-                      loading={false}
-                      checkboxSelection={false}
-                      showToolbar
-                    />
-                  </Paper>
-                </ResponsiveScrollBox>
+                <Paper sx={{ width: "100%" }}>
+                  <SmartAutoGrid
+                    autoHeight
+                    rows={Array.isArray(uploadedRows) ? uploadedRows : []}
+                    columns={expectedCsvCols.map((col) => ({
+                      field: col,
+                      headerName: col.replace(/([A-Z])/g, " $1"),
+                      flex: 1,
+                      minWidth: 140,
+                      valueFormatter: vfText,
+                      editable: true,
+                    }))}
+                    getRowId={(r) => r.id}
+                    processRowUpdate={handlePreviewUpdate}
+                    pageSizeOptions={[5]}
+                    disableRowSelectionOnClick
+                    loading={false}
+                    checkboxSelection={false}
+                    showToolbar
+                  />
+                </Paper>
                 <Button
                   variant="outlined"
                   color="success"
