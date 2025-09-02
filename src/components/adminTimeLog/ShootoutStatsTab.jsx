@@ -112,7 +112,7 @@ export default function ShootoutStatsTab() {
 
   return (
     <ResponsiveScrollBox>
-      <Paper sx={{ width: "100%", overflow: "hidden" }}>
+      <Paper sx={{ width: "100%", overflow: "auto" }}>
         <SmartAutoGrid
           rows={rows || []}
           headerMap={{

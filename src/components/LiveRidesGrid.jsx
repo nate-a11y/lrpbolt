@@ -38,7 +38,7 @@ export default function LiveRidesGrid() {
   return (
     <>
       <ResponsiveScrollBox>
-        <Paper sx={{ width: "100%", overflow: "hidden" }}>
+        <Paper sx={{ width: "100%", overflow: "auto" }}>
           <SmartAutoGrid
             rows={rows}
             headerMap={{
@@ -70,7 +70,6 @@ export default function LiveRidesGrid() {
             actionsColumn={buildNativeActionsColumn({
               onEdit: (id, row) => handleEditRide(row),
               onDelete: async (id) => await deleteRide("liveRides", id),
-              showInMenu: true,
             })}
           />
         </Paper>

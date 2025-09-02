@@ -2,8 +2,9 @@ import React from "react";
 import { Box } from "@mui/material";
 
 /**
- * Ensures horizontal scroll/swipe on narrow screens, without breaking desktop.
- * Wrap DataGrid containers with this to allow pan-x and native momentum scrolling.
+ * Enables touch-friendly scrolling in both directions on narrow screens
+ * without impacting desktop behavior. Wrap DataGrid containers with this
+ * to allow natural momentum scrolling.
  */
 const ResponsiveScrollBox = React.forwardRef(function ResponsiveScrollBox(
   { children, sx },
@@ -12,15 +13,16 @@ const ResponsiveScrollBox = React.forwardRef(function ResponsiveScrollBox(
   return (
     <Box
       ref={ref}
-      className="lrp-scroll-x"
+      className="lrp-scroll"
       sx={{
         width: "100%",
         maxWidth: "100%",
         overflowX: "auto",
-        overflowY: "hidden",
+        overflowY: "auto",
         WebkitOverflowScrolling: "touch",
         overscrollBehaviorX: "contain",
-        touchAction: "pan-x",
+        overscrollBehaviorY: "contain",
+        touchAction: "pan-x pan-y",
         // Prevent parent flex containers from shrinking the scroller
         minWidth: 0,
         ...sx,

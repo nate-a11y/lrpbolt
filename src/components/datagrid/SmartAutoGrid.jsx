@@ -2,7 +2,7 @@
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Box } from "@mui/material";
-import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
+import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
 
 import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -114,6 +114,7 @@ export default function SmartAutoGrid(props) {
     columnVisibilityModel,
     slotProps,
     slots,
+    showToolbar = true,
     autoColumns = true,
     autoHideKeys = [],
     forceHide = [],
@@ -206,8 +207,12 @@ export default function SmartAutoGrid(props) {
   );
 
   const mergedSlots = useMemo(
-    () => ({ footer: SafeGridFooter, ...(slots || {}) }),
-    [slots],
+    () => ({
+      footer: SafeGridFooter,
+      ...(showToolbar ? { toolbar: GridToolbar } : {}),
+      ...(slots || {}),
+    }),
+    [slots, showToolbar],
   );
 
   return (
@@ -250,6 +255,7 @@ SmartAutoGrid.propTypes = {
   columnVisibilityModel: PropTypes.object,
   slotProps: PropTypes.object,
   slots: PropTypes.object,
+  showToolbar: PropTypes.bool,
   autoColumns: PropTypes.bool,
   autoHideKeys: PropTypes.array,
   forceHide: PropTypes.array,
