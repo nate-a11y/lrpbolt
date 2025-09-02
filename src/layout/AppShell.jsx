@@ -45,6 +45,9 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
         component="main"
         sx={{
           flex: 1,
+          minWidth: 0,
+          maxWidth: "100%",
+          overflowX: "hidden",
           pt: `calc(${APP_BAR_HEIGHT}px + 6px)`, // nothing hides under blur
           ml: { xs: 0, md: `var(--rail-width)` }, // space for rail when permanent
           pr: { xs: 0, md: 2 }, // horizontal padding when rail visible
