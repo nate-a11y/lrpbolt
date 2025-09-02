@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo } from "react";
+import { Paper } from "@mui/material";
 
 import { formatTz } from "@/utils/timeSafe";
 
@@ -19,28 +20,30 @@ export default function WeeklySummaryTab() {
 
   return (
     <ResponsiveScrollBox>
-      <SmartAutoGrid
-        rows={weeklyRows || []}
-        headerMap={{
-          driver: "Driver",
-          driverEmail: "Driver Email",
-          sessions: "Sessions",
-          totalMinutes: "Total Minutes",
-          hours: "Total Hours",
-          firstStart: "First In",
-          lastEnd: "Last Out",
-        }}
-        order={[
-          "driver",
-          "driverEmail",
-          "sessions",
-          "totalMinutes",
-          "hours",
-          "firstStart",
-          "lastEnd",
-        ]}
-        overrides={overrides}
-      />
+      <Paper sx={{ width: "100%", overflow: "hidden" }}>
+        <SmartAutoGrid
+          rows={weeklyRows || []}
+          headerMap={{
+            driver: "Driver",
+            driverEmail: "Driver Email",
+            sessions: "Sessions",
+            totalMinutes: "Total Minutes",
+            hours: "Total Hours",
+            firstStart: "First In",
+            lastEnd: "Last Out",
+          }}
+          order={[
+            "driver",
+            "driverEmail",
+            "sessions",
+            "totalMinutes",
+            "hours",
+            "firstStart",
+            "lastEnd",
+          ]}
+          overrides={overrides}
+        />
+      </Paper>
     </ResponsiveScrollBox>
   );
 }

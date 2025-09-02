@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from "react";
+import { Paper } from "@mui/material";
 
 import { formatTz } from "@/utils/timeSafe";
 
@@ -77,37 +78,39 @@ export default function ShootoutSummaryTab() {
 
   return (
     <ResponsiveScrollBox>
-      <SmartAutoGrid
-        rows={rows || []}
-        headerMap={{
-          driver: "Driver",
-          driverEmail: "Driver Email",
-          vehicle: "Vehicle",
-          sessions: "Sessions",
-          trips: "Trips",
-          passengers: "PAX",
-          totalMinutes: "Minutes",
-          hours: "Hours",
-          firstStart: "First Start",
-          lastEnd: "Last End",
-          id: "id",
-        }}
-        order={[
-          "driver",
-          "driverEmail",
-          "vehicle",
-          "sessions",
-          "trips",
-          "passengers",
-          "totalMinutes",
-          "hours",
-          "firstStart",
-          "lastEnd",
-          "id",
-        ]}
-        forceHide={["id"]}
-        overrides={overrides}
-      />
+      <Paper sx={{ width: "100%", overflow: "hidden" }}>
+        <SmartAutoGrid
+          rows={rows || []}
+          headerMap={{
+            driver: "Driver",
+            driverEmail: "Driver Email",
+            vehicle: "Vehicle",
+            sessions: "Sessions",
+            trips: "Trips",
+            passengers: "PAX",
+            totalMinutes: "Minutes",
+            hours: "Hours",
+            firstStart: "First Start",
+            lastEnd: "Last End",
+            id: "id",
+          }}
+          order={[
+            "driver",
+            "driverEmail",
+            "vehicle",
+            "sessions",
+            "trips",
+            "passengers",
+            "totalMinutes",
+            "hours",
+            "firstStart",
+            "lastEnd",
+            "id",
+          ]}
+          forceHide={["id"]}
+          overrides={overrides}
+        />
+      </Paper>
     </ResponsiveScrollBox>
   );
 }
