@@ -137,12 +137,14 @@ export default function DriverDirectory() {
           const vehicles = Array.isArray(row.vehicles)
             ? row.vehicles.join(" ")
             : "";
+          const roles = Array.isArray(row.roles) ? row.roles.join(" ") : "";
           const parts = [
             row.name,
             row.lrp,
             row.email,
             row.phone,
             vehicles,
+            roles,
           ].filter(Boolean);
           return parts.length ? parts.join(" ") : "N/A";
         },
@@ -223,6 +225,24 @@ export default function DriverDirectory() {
                         spacing={0.5}
                         sx={{ flexWrap: "wrap" }}
                       >
+                        {Array.isArray(d.roles) &&
+                          d.roles.map((r, i) => (
+                            <Chip
+                              key={`role-${i}`}
+                              size="small"
+                              label={r}
+                              sx={{
+                                bgcolor: LRP.chipBg,
+                                color: "#fff",
+                                border: `1px solid ${LRP.chipBorder}`,
+                                borderRadius: "999px",
+                                fontWeight: 700,
+                                px: 0.75,
+                                height: 24,
+                                mb: 0.5,
+                              }}
+                            />
+                          ))}
                         {Array.isArray(d.vehicles) &&
                           d.vehicles.slice(0, 4).map((v, i) => (
                             <VehicleChip

@@ -68,6 +68,7 @@ const DRIVER_LIST = [
     phone: "573.286.5149",
     email: "p.blankenship@842@gmail.com",
     vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
+    roles: ["Dispatcher"],
   },
   {
     name: "Tom Morrow",
