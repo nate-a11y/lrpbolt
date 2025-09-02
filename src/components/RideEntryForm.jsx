@@ -1406,7 +1406,7 @@ export default function RideEntryForm() {
           </Tabs>
         </Box>
 
-        <Box sx={{ width: "100%", overflowX: "auto" }}>
+        <Box sx={{ width: "100%" }}>
           {dataTab === 0 && (
             <Fade in>
               <Box>
