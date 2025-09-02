@@ -68,7 +68,7 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
         display: "flex",
         minHeight: "100%",
         minWidth: 0,
-        overflowX: "hidden",
+        overflowX: "auto",
         ...vars,
       }}
     >
