@@ -132,6 +132,11 @@ export default function SmartAutoGrid(props) {
     autoPreferredOrder = [],
     actionsColumn,
     hideFooterSelectedRowCount = false,
+    pageSizeOptions = [
+      MAX_VISIBLE_ROWS,
+      MAX_VISIBLE_ROWS * 2,
+      MAX_VISIBLE_ROWS * 4,
+    ],
     ...rest
   } = props;
 
@@ -228,21 +233,33 @@ export default function SmartAutoGrid(props) {
 
   const v8Selection = useMemo(() => toV8Model(controlledRsm), [controlledRsm]);
 
-  const safeInitialState = useMemo(
-    () => ({
+  const safeInitialState = useMemo(() => {
+    const base = {
       density: "compact",
+      pagination: { paginationModel: { pageSize: MAX_VISIBLE_ROWS, page: 0 } },
+      filter: { filterModel: { quickFilterValues: [], items: [] } },
+    };
+    return {
+      ...base,
       ...initialState,
-      filter: {
-        ...initialState?.filter,
-        filterModel: {
-          quickFilterValues:
-            initialState?.filter?.filterModel?.quickFilterValues ?? [],
-          items: initialState?.filter?.filterModel?.items ?? [],
+      pagination: {
+        ...base.pagination,
+        ...initialState?.pagination,
+        paginationModel: {
+          ...base.pagination.paginationModel,
+          ...initialState?.pagination?.paginationModel,
         },
       },
-    }),
-    [initialState],
-  );
+      filter: {
+        ...base.filter,
+        ...initialState?.filter,
+        filterModel: {
+          ...base.filter.filterModel,
+          ...initialState?.filter?.filterModel,
+        },
+      },
+    };
+  }, [initialState]);
 
   const mergedSlots = useMemo(() => {
     const base = {
@@ -291,6 +308,7 @@ export default function SmartAutoGrid(props) {
         initialState={safeInitialState}
         columnVisibilityModel={columnVisibilityModel}
         pagination
+        pageSizeOptions={pageSizeOptions}
         autoHeight={autoHeight}
         density={density}
         slots={mergedSlots}

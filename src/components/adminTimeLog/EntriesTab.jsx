@@ -8,6 +8,7 @@ import { tsToDate } from "@/utils/fsTime";
 import { formatDateTime } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
 import { formatTz, durationHm } from "@/utils/timeSafe";
+import { timestampSortComparator } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
 
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -84,16 +85,28 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.startTime) ?? null,
-        valueFormatter: (p) => formatTz(p?.value),
+        valueGetter: (p) => {
+          const row = p?.row;
+          const d = tsToDate(row?.startTime);
+          return d || "N/A";
+        },
+        valueFormatter: (p) =>
+          p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
+        sortComparator: timestampSortComparator,
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.endTime) ?? null,
-        valueFormatter: (p) => formatTz(p?.value),
+        valueGetter: (p) => {
+          const row = p?.row;
+          const d = tsToDate(row?.endTime);
+          return d || "N/A";
+        },
+        valueFormatter: (p) =>
+          p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
+        sortComparator: timestampSortComparator,
       },
       duration: {
         editable: false,
@@ -103,9 +116,15 @@ export default function EntriesTab() {
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.loggedAt) ?? null,
-        valueFormatter: (p) => formatDateTime(p?.value),
+        valueGetter: (p) => {
+          const row = p?.row;
+          const d = tsToDate(row?.loggedAt);
+          return d || "N/A";
+        },
+        valueFormatter: (p) =>
+          p?.value instanceof Date ? formatDateTime(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
+        sortComparator: timestampSortComparator,
       },
       note: { editable: true },
     }),
@@ -300,6 +319,8 @@ export default function EntriesTab() {
           onRowEditStop={handleRowEditStop}
           apiRef={apiRef}
           experimentalFeatures={{ newEditingApi: true }}
+          showToolbar
+          pageSizeOptions={[15, 30, 60, 100]}
           getRowId={(r) =>
             r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
           }
