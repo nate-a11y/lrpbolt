@@ -139,23 +139,31 @@ function Tickets() {
     return () => unsubscribe();
   }, [authLoading, user?.email, searchQuery, filteredDate]);
 
-  const filteredTickets = tickets.filter((t) => {
+  const filteredTickets = tickets.filter((t = {}) => {
+    const pickupDate = t?.pickupTime?.toDate
+      ? t.pickupTime.toDate()
+      : t.pickupTime;
+    const dateStr = pickupDate
+      ? dayjs(pickupDate).format("MM-DD-YYYY")
+      : "Unknown";
     const matchDate =
-      filteredDate === "All Dates" ||
-      (dayjs(t.date).isValid()
-        ? dayjs(t.date).format("MM-DD-YYYY") === filteredDate
-        : t.date === filteredDate);
+      filteredDate === "All Dates" || dateStr === filteredDate;
 
-    const ticketId = (t?.ticketId || "").toString().toLowerCase();
-    const matchSearch = ticketId.includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const ticketId = (t.ticketId || "").toString().toLowerCase();
+    const passenger = (t.passenger || "").toLowerCase();
+    const matchSearch = !q || ticketId.includes(q) || passenger.includes(q);
 
     return matchDate && matchSearch;
   });
 
-  const passengerSummary = filteredTickets.reduce((acc, t) => {
-    const date = dayjs(t.date).isValid()
-      ? dayjs(t.date).format("MM-DD-YYYY")
-      : t.date || "Unknown";
+  const passengerSummary = filteredTickets.reduce((acc, t = {}) => {
+    const pickupDate = t?.pickupTime?.toDate
+      ? t.pickupTime.toDate()
+      : t.pickupTime;
+    const date = pickupDate
+      ? dayjs(pickupDate).format("MM-DD-YYYY")
+      : "Unknown";
     const count = parseInt(t.passengers ?? 0, 10);
     acc[date] = (acc[date] || 0) + count;
     return acc;
@@ -246,7 +254,7 @@ function Tickets() {
             <strong>Passenger:</strong> {ticket.passenger}
           </Typography>
           <Typography>
-            <strong>Passenger Count:</strong> {ticket.passengercount}
+            <strong>Passenger Count:</strong> {ticket.passengers}
           </Typography>
           <Typography>
             <strong>Date:</strong> {ticket.date}
@@ -473,7 +481,11 @@ function Tickets() {
   const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
 
   const rows = useMemo(
-    () => (filteredTickets ?? []).map((t) => ({ id: t.ticketId, ...t })),
+    () =>
+      (filteredTickets ?? []).map((t = {}) => ({
+        id: t.ticketId || t.id,
+        ...t,
+      })),
     [filteredTickets],
   );
 
@@ -685,31 +697,6 @@ function Tickets() {
         </Paper>
       )}
 
-      <Dialog
-        open={emailDialogOpen}
-        onClose={() => setEmailDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Email Ticket</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Email Address"
-            value={emailAddress}
-            onChange={(e) => setEmailAddress(e.target.value)}
-            type="email"
-            autoFocus
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
-          <Button onClick={emailTicket} variant="contained" color="primary">
-            Send
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       <Modal open={!!previewTicket} onClose={() => setPreviewTicket(null)}>
         <Box
           component={motion.div}
@@ -759,7 +746,7 @@ function Tickets() {
                 </Typography>
                 <Typography>
                   <strong>Passenger Count:</strong>{" "}
-                  {previewTicket.passengercount}
+                  {previewTicket.passengers}
                 </Typography>
                 <Typography>
                   <strong>Date:</strong> {previewTicket.date}
@@ -831,6 +818,33 @@ function Tickets() {
           )}
         </Box>
       </Modal>
+
+      {emailDialogOpen && (
+        <Dialog
+          open
+          onClose={() => setEmailDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Email Ticket</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Email Address"
+              value={emailAddress}
+              onChange={(e) => setEmailAddress(e.target.value)}
+              type="email"
+              autoFocus
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+            <Button onClick={emailTicket} variant="contained" color="primary">
+              Send
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       <Snackbar
         open={snackbar.open}

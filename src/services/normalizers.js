@@ -104,7 +104,12 @@ const SHOOTOUT_COERCE = {
 };
 
 // ---------- Tickets ----------
-const TICKET_ALIASES = { passengercount: "passengers" };
+const TICKET_ALIASES = {
+  passengercount: "passengers",
+  ticketid: "ticketId",
+  pickupLocation: "pickup",
+  dropoffLocation: "dropoff",
+};
 const TICKET_COERCE = {
   pickupTime: coerceTimestamp,
   passengers: coerceNumber,
