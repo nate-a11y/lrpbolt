@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
+import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -228,18 +228,10 @@ export default function SmartAutoGrid(props) {
     [initialState],
   );
 
-  const mergedSlotProps = useMemo(
-    () => ({
-      toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
-      ...(slotProps || {}),
-    }),
-    [slotProps],
-  );
-
   const mergedSlots = useMemo(
     () => ({
       footer: SafeGridFooter,
-      ...(showToolbar ? { toolbar: GridToolbar } : {}),
+      ...(showToolbar ? {} : { toolbar: null }),
       ...(slots || {}),
     }),
     [slots, showToolbar],
@@ -265,7 +257,7 @@ export default function SmartAutoGrid(props) {
         density={density}
         slots={mergedSlots}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
-        slotProps={mergedSlotProps}
+        slotProps={slotProps}
         sx={{
           [`& .${gridClasses.cell}`]: { outline: "none" },
           width: "100%",

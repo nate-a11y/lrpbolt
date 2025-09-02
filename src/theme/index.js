@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
+import { GridToolbar } from "@mui/x-data-grid-pro";
 
 export const brand = {
   green500: "#4cbb17",
@@ -181,10 +182,42 @@ export const getDesignTokens = (mode) => ({
       defaultProps: { variant: "outlined", fullWidth: true },
     },
     MuiDataGrid: {
+      defaultProps: {
+        slots: { toolbar: GridToolbar },
+        slotProps: {
+          toolbar: {
+            showQuickFilter: true,
+            quickFilterProps: {
+              debounceMs: 300,
+              sx: {
+                minWidth: 0,
+                flexGrow: 1,
+                maxWidth: {
+                  xs: "100%",
+                  sm: 240,
+                  md: 300,
+                },
+              },
+            },
+          },
+        },
+      },
       styleOverrides: {
         root: {
           borderRadius: 12,
         },
+        toolbarContainer: ({ theme }) => ({
+          display: "flex",
+          flexWrap: "wrap",
+          gap: theme.spacing(1),
+          "& .MuiInputBase-root": {
+            minWidth: 0,
+            flexGrow: 1,
+            maxWidth: "100%",
+            [theme.breakpoints.up("sm")]: { maxWidth: 240 },
+            [theme.breakpoints.up("md")]: { maxWidth: 300 },
+          },
+        }),
       },
     },
   },
