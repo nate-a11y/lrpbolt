@@ -8,13 +8,13 @@ export default function PageContainer({
 }) {
   return (
     <ResponsiveContainer
+      maxWidth={maxWidth}
       sx={{
         // IMPORTANT: no left padding on mobile; add when drawer is visible
         pl: { xs: 0, md: 3 },
         pr: { xs: 2, md: 3 },
         pt,
         pb,
-        maxWidth,
       }}
     >
       {children}
