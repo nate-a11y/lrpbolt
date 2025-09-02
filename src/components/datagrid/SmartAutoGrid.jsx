@@ -105,6 +105,10 @@ export default function SmartAutoGrid(props) {
   const {
     rows,
     columns,
+    columnsCompat,
+    headerMap,
+    order,
+    hide,
     getRowId,
     checkboxSelection = true,
     disableRowSelectionOnClick = false,
@@ -119,6 +123,7 @@ export default function SmartAutoGrid(props) {
     autoHideKeys = [],
     forceHide = [],
     autoPreferredOrder = [],
+    actionsColumn,
     hideFooterSelectedRowCount = false,
     ...rest
   } = props;
@@ -126,23 +131,32 @@ export default function SmartAutoGrid(props) {
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const dataHasRows = safeRows.length > 0;
 
-  const explicitCols = useMemo(
-    () => (Array.isArray(columns) ? columns : []),
-    [columns],
-  );
+  const explicitCols = useMemo(() => {
+    if (Array.isArray(columns) && columns.length > 0) return columns;
+    if (Array.isArray(columnsCompat) && columnsCompat.length > 0)
+      return columnsCompat;
+    return [];
+  }, [columns, columnsCompat]);
+
   const hideKeys = useMemo(
     () => [
       ...(Array.isArray(autoHideKeys) ? autoHideKeys : []),
+      ...(Array.isArray(hide) ? hide : []),
       ...(Array.isArray(forceHide) ? forceHide : []),
     ],
-    [autoHideKeys, forceHide],
+    [autoHideKeys, hide, forceHide],
+  );
+
+  const preferredOrder = useMemo(
+    () => order || autoPreferredOrder,
+    [order, autoPreferredOrder],
   );
 
   const autoCols = useMemo(() => {
     if (!autoColumns || explicitCols.length > 0 || !dataHasRows) return [];
     return buildAutoColumns(safeRows[0], {
       hideKeys,
-      preferredOrder: autoPreferredOrder,
+      preferredOrder,
     });
   }, [
     autoColumns,
@@ -150,12 +164,25 @@ export default function SmartAutoGrid(props) {
     dataHasRows,
     safeRows,
     hideKeys,
-    autoPreferredOrder,
+    preferredOrder,
   ]);
 
-  const safeCols = useMemo(
+  const baseCols = useMemo(
     () => (explicitCols.length > 0 ? explicitCols : autoCols),
     [explicitCols, autoCols],
+  );
+
+  const mappedCols = useMemo(() => {
+    if (!headerMap) return baseCols;
+    return baseCols.map((c) => ({
+      ...c,
+      headerName: headerMap[c.field] || c.headerName,
+    }));
+  }, [baseCols, headerMap]);
+
+  const safeCols = useMemo(
+    () => (actionsColumn ? [...mappedCols, actionsColumn] : mappedCols),
+    [mappedCols, actionsColumn],
   );
 
   const rowIdFn = useCallback(
@@ -246,6 +273,10 @@ export default function SmartAutoGrid(props) {
 SmartAutoGrid.propTypes = {
   rows: PropTypes.array,
   columns: PropTypes.array,
+  columnsCompat: PropTypes.array,
+  headerMap: PropTypes.object,
+  order: PropTypes.array,
+  hide: PropTypes.array,
   getRowId: PropTypes.func,
   checkboxSelection: PropTypes.bool,
   disableRowSelectionOnClick: PropTypes.bool,
@@ -260,5 +291,6 @@ SmartAutoGrid.propTypes = {
   autoHideKeys: PropTypes.array,
   forceHide: PropTypes.array,
   autoPreferredOrder: PropTypes.array,
+  actionsColumn: PropTypes.object,
   hideFooterSelectedRowCount: PropTypes.bool,
 };

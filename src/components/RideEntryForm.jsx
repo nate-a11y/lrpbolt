@@ -428,7 +428,9 @@ export default function RideEntryForm() {
                 });
                 return;
               }
-              setUploadedRows(results.data);
+              setUploadedRows(
+                results.data.map((r) => ({ id: crypto.randomUUID(), ...r })),
+              );
             },
             error: (err) => setFileError(err?.message || JSON.stringify(err)),
           });
@@ -796,9 +798,17 @@ export default function RideEntryForm() {
       });
       return;
     }
-    setUploadedRows((prev) => [...prev, csvBuilder]);
+    setUploadedRows((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), ...csvBuilder },
+    ]);
     setCsvBuilder(defaultValues);
   }, [csvBuilder, validateFields]);
+
+  const handlePreviewUpdate = useCallback((row) => {
+    setUploadedRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
+    return row;
+  }, []);
 
   const handleDownloadTemplate = () => {
     const sample = {
@@ -1216,26 +1226,20 @@ export default function RideEntryForm() {
                   </Box>
                 )}
                 <ResponsiveScrollBox>
-                  <Paper
-                    sx={{ width: "100%", overflow: "auto", minWidth: 600 }}
-                  >
+                  <Paper sx={{ width: "100%", overflow: "auto" }}>
                     <SmartAutoGrid
                       autoHeight
-                      rows={
-                        Array.isArray(uploadedRows)
-                          ? uploadedRows.map((r, i) => ({
-                              id: i,
-                              ...(r || {}),
-                            }))
-                          : []
-                      }
-                      columnsCompat={expectedCsvCols.map((col) => ({
+                      rows={Array.isArray(uploadedRows) ? uploadedRows : []}
+                      columns={expectedCsvCols.map((col) => ({
                         field: col,
                         headerName: col.replace(/([A-Z])/g, " $1"),
                         flex: 1,
                         minWidth: 140,
                         valueFormatter: vfText,
+                        editable: true,
                       }))}
+                      getRowId={(r) => r.id}
+                      processRowUpdate={handlePreviewUpdate}
                       pageSizeOptions={[5]}
                       disableRowSelectionOnClick
                       loading={false}
