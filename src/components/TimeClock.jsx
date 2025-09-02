@@ -1,5 +1,5 @@
 // src/components/TimeClockGodMode.jsx
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box,
   Paper,
@@ -16,7 +16,6 @@ import {
   useMediaQuery,
   keyframes,
 } from "@mui/material";
-import { GridToolbar } from "@mui/x-data-grid-pro";
 import {
   PlayArrow as PlayArrowIcon,
   Stop as StopIcon,
@@ -39,7 +38,7 @@ import { dayjs } from "@/utils/time";
 import { db } from "src/utils/firebaseInit";
 import { useRole } from "@/hooks";
 import RoleDebug from "@/components/RoleDebug";
-import { formatTz, durationHm, friendlyTzLabel } from "@/utils/timeSafe";
+import { friendlyTzLabel } from "@/utils/timeSafe";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { enrichDriverNames } from "../services/normalizers";
@@ -134,11 +133,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
-  const [rowSelectionModel, setRowSelectionModel] = useState([]);
-  const handleRowSelectionModelChange = useCallback(
-    (m) => setRowSelectionModel(Array.isArray(m) ? m : []),
-    [],
-  );
   const [snack, setSnack] = useState({
     open: false,
     message: "",
@@ -161,51 +155,35 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [startingAnim, setStartingAnim] = useState(false);
   const [endingAnim, setEndingAnim] = useState(false);
 
-  const columns = useMemo(
+  const headerMap = useMemo(
+    () => ({
+      driver: "Driver",
+      userEmail: "Driver Email",
+      rideId: "Ride ID",
+      startTime: "Clock In",
+      endTime: "Clock Out",
+      duration: "Duration",
+      loggedAt: "Logged At",
+      note: "Note",
+    }),
+    [],
+  );
+
+  const order = useMemo(
     () => [
-      {
-        field: "driverEmail",
-        headerName: "Driver Email",
-        flex: 1,
-        minWidth: 160,
-        valueGetter: (p) => p?.row?.driverEmail || "N/A",
-      },
-      {
-        field: "driverId",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 140,
-        valueGetter: (p) => p?.row?.driverId || "N/A",
-      },
-      {
-        field: "rideId",
-        headerName: "Ride ID",
-        width: 120,
-        valueGetter: (p) => p?.row?.rideId || "N/A",
-      },
-      {
-        field: "startTime",
-        headerName: "Start",
-        flex: 1,
-        minWidth: 200,
-        valueGetter: (p) => formatTz(p?.row?.startTime),
-      },
-      {
-        field: "endTime",
-        headerName: "End",
-        flex: 1,
-        minWidth: 200,
-        valueGetter: (p) => formatTz(p?.row?.endTime),
-      },
-      {
-        field: "duration",
-        headerName: "Duration",
-        width: 120,
-        valueGetter: (p) => durationHm(p?.row?.startTime, p?.row?.endTime),
-      },
+      "driver",
+      "userEmail",
+      "rideId",
+      "startTime",
+      "endTime",
+      "duration",
+      "loggedAt",
+      "note",
     ],
     [],
   );
+
+  const forceHide = useMemo(() => ["id", "driverId", "mode"], []);
 
   useEffect(() => {
     if (!user?.email) {
@@ -561,21 +539,17 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <Paper sx={{ width: "100%" }}>
           <SmartAutoGrid
             rows={rows || []}
-            columns={columns || []}
+            headerMap={headerMap}
+            order={order}
+            forceHide={forceHide}
             autoHeight={false}
             checkboxSelection={false}
             disableRowSelectionOnClick
-            rowSelectionModel={rowSelectionModel}
-            onRowSelectionModelChange={handleRowSelectionModelChange}
             sx={{ width: "100%", maxWidth: "100%" }}
             slots={{
-              toolbar: GridToolbar,
               loadingOverlay: LoadingOverlay,
               noRowsOverlay: NoRowsOverlay,
               errorOverlay: ErrorOverlay,
-            }}
-            slotProps={{
-              toolbar: { quickFilterProps: { debounceMs: 500 } },
             }}
             loading={!ready}
             error={error}
