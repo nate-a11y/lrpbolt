@@ -235,13 +235,21 @@ export default function Notifications() {
       <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
         {/* Header */}
         <Grid item xs={12}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
             <Typography variant="h6" fontWeight={700}>
               Notifications
             </Typography>
             <Tooltip title="Refresh users">
               <span>
-                <IconButton aria-label="Refresh users" onClick={onRefresh} disabled={loading || sending}>
+                <IconButton
+                  aria-label="Refresh users"
+                  onClick={onRefresh}
+                  disabled={loading || sending}
+                >
                   <RefreshIcon />
                 </IconButton>
               </span>
@@ -257,12 +265,16 @@ export default function Notifications() {
                 <Stack direction="row" alignItems="flex-start" spacing={1}>
                   <InfoOutlinedIcon fontSize="small" sx={{ mt: "2px" }} />
                   <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    Choose a segment or pick users. <strong>Push</strong> requires a title; <strong>SMS</strong> requires a body.
+                    Choose a segment or pick users. <strong>Push</strong>{" "}
+                    requires a title; <strong>SMS</strong> requires a body.
                     Optional <em>Data</em> must be valid JSON.
                   </Typography>
                 </Stack>
 
-                <Typography variant="subtitle2" sx={{ mt: 0.5, letterSpacing: 0.2 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ mt: 0.5, letterSpacing: 0.2 }}
+                >
                   Recipients
                 </Typography>
 
@@ -272,7 +284,10 @@ export default function Notifications() {
                   exclusive
                   onChange={(_, val) => val && setSegment(val)}
                   size="small"
-                  sx={{ flexWrap: "wrap", "& .MuiToggleButton-root": { py: 0.5, px: 1.25 } }}
+                  sx={{
+                    flexWrap: "wrap",
+                    "& .MuiToggleButton-root": { py: 0.5, px: 1.25 },
+                  }}
                   disabled={sending}
                 >
                   {SEGMENTS.map((s) => (
@@ -287,7 +302,9 @@ export default function Notifications() {
                       }}
                     >
                       {s.label}
-                      {typeof segmentCounts[s.id] === "number" ? ` (${segmentCounts[s.id]})` : ""}
+                      {typeof segmentCounts[s.id] === "number"
+                        ? ` (${segmentCounts[s.id]})`
+                        : ""}
                     </ToggleButton>
                   ))}
                 </ToggleButtonGroup>
@@ -350,9 +367,14 @@ export default function Notifications() {
                   disabled={sending}
                 />
 
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    Selected: {selectedCount} user{selectedCount === 1 ? "" : "s"}
+                    Selected: {selectedCount} user
+                    {selectedCount === 1 ? "" : "s"}
                   </Typography>
                   {!!pickedUsers.length && (
                     <Button
@@ -375,7 +397,12 @@ export default function Notifications() {
         {/* Right: Composer */}
         <Grid item xs={12} md={7}>
           <Card sx={{ borderRadius: 3, position: "relative" }}>
-            <CardContent sx={{ p: { xs: 2, sm: 3 }, pb: { xs: 10, sm: 3 } /* leave room for sticky bar on mobile */ }}>
+            <CardContent
+              sx={{
+                p: { xs: 2, sm: 3 },
+                pb: { xs: 10, sm: 3 } /* leave room for sticky bar on mobile */,
+              }}
+            >
               <Stack spacing={1.5}>
                 {/* Mode switch */}
                 <ToggleButtonGroup
@@ -391,7 +418,13 @@ export default function Notifications() {
                 </ToggleButtonGroup>
 
                 <FormControlLabel
-                  control={<Switch size="small" checked={showPreview} onChange={(_, v) => setShowPreview(v)} />}
+                  control={
+                    <Switch
+                      size="small"
+                      checked={showPreview}
+                      onChange={(_, v) => setShowPreview(v)}
+                    />
+                  }
                   label="Preview"
                   sx={{ alignSelf: "flex-start" }}
                 />
@@ -463,7 +496,10 @@ export default function Notifications() {
                           size="small"
                           variant="text"
                           color="inherit"
-                          onClick={() => { setDataJson(""); setDataError(""); }}
+                          onClick={() => {
+                            setDataJson("");
+                            setDataError("");
+                          }}
                           disabled={!dataJson || sending}
                         >
                           Clear
@@ -484,7 +520,9 @@ export default function Notifications() {
                       disabled={sending}
                     />
                     {body && body.length > 160 && (
-                      <Alert severity="info">SMS body exceeds 160 characters (will be split).</Alert>
+                      <Alert severity="info">
+                        SMS body exceeds 160 characters (will be split).
+                      </Alert>
                     )}
                   </Stack>
                 )}
@@ -492,28 +530,67 @@ export default function Notifications() {
                 {showPreview && (
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                     {mode === "push" ? (
-                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                        <Avatar src={iconUrl || undefined} sx={{ width: 36, height: 36 }}>
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                        alignItems="flex-start"
+                      >
+                        <Avatar
+                          src={iconUrl || undefined}
+                          sx={{ width: 36, height: 36 }}
+                        >
                           <NotificationsActiveIcon fontSize="small" />
                         </Avatar>
                         <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                          <Typography variant="subtitle2" noWrap title={title || "(no title)"} sx={{ fontWeight: 700 }}>
+                          <Typography
+                            variant="subtitle2"
+                            noWrap
+                            title={title || "(no title)"}
+                            sx={{ fontWeight: 700 }}
+                          >
                             {title || "(no title)"}
                           </Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.9 }} noWrap title={body}>
+                          <Typography
+                            variant="body2"
+                            sx={{ opacity: 0.9 }}
+                            noWrap
+                            title={body}
+                          >
                             {body || "—"}
                           </Typography>
                           {!!dataJson && !dataError && (
                             <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                              {(() => { try { return Object.keys(JSON.parse(dataJson)).join(", "); } catch { return "data"; } })()}
+                              {(() => {
+                                try {
+                                  return Object.keys(JSON.parse(dataJson)).join(
+                                    ", ",
+                                  );
+                                } catch {
+                                  return "data";
+                                }
+                              })()}
                             </Typography>
                           )}
                         </Stack>
                       </Stack>
                     ) : (
-                      <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                      <Stack
+                        direction="row"
+                        spacing={1.25}
+                        alignItems="flex-start"
+                      >
                         <SmartphoneIcon sx={{ opacity: 0.7 }} />
-                        <Box sx={{ bgcolor: "background.default", border: "1px solid", borderColor: "divider", borderRadius: 2, px: 1.25, py: 1, maxWidth: 420 }}>
+                        <Box
+                          sx={{
+                            bgcolor: "background.default",
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 2,
+                            px: 1.25,
+                            py: 1,
+                            maxWidth: 420,
+                          }}
+                        >
                           <Typography variant="body2">{body || "…"}</Typography>
                         </Box>
                       </Stack>
@@ -554,11 +631,21 @@ export default function Notifications() {
                       fontWeight: 700,
                     }}
                   >
-                    {sending ? <CircularProgress size={20} color="inherit" sx={{ mr: 0.5 }} /> : null}
+                    {sending ? (
+                      <CircularProgress
+                        size={20}
+                        color="inherit"
+                        sx={{ mr: 0.5 }}
+                      />
+                    ) : null}
                     {sending ? "Sending…" : "Send"}
                   </Button>
-                  <Typography variant="caption" sx={{ opacity: sending ? 1 : 0.8 }}>
-                    {selectedCount} direct recipient{selectedCount === 1 ? "" : "s"}
+                  <Typography
+                    variant="caption"
+                    sx={{ opacity: sending ? 1 : 0.8 }}
+                  >
+                    {selectedCount} direct recipient
+                    {selectedCount === 1 ? "" : "s"}
                     {sending ? " • working…" : ""}
                   </Typography>
                 </Stack>
