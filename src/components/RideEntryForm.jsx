@@ -180,17 +180,10 @@ function RideBuilderFields({
   const hours = value.hours === "" ? "" : Number(value.hours);
   const minutes = value.minutes === "" ? "" : Number(value.minutes);
 
-  const shortNumberProps = {
-    ...FIELD_PROPS,
-    type: "number",
-    inputProps: { min: 0, max: 59, inputMode: "numeric", pattern: "[0-9]*" },
-    sx: { width: 160, maxWidth: "100%" },
-  };
-
   return (
     <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
-      {/* Row 1: Trip ID (full width) */}
-      <Grid item xs={12}>
+      {/* Row 1 (stack on mobile): Trip ID */}
+      <Grid item xs={12} md={4}>
         <TextField
           {...FIELD_PROPS}
           label="Trip ID"
@@ -215,8 +208,8 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 2: Pickup At, Duration (H/M short & same width) */}
-      <Grid item xs={12} sm={6} md={4}>
+      {/* Row 1 cont.: Date / Pickup At */}
+      <Grid item xs={12} md={4}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -227,7 +220,7 @@ function RideBuilderFields({
             }
             onChange({ ...value, pickupAt: val.second(0).millisecond(0) });
           }}
-          ampm={true}
+          ampm
           minutesStep={5}
           slotProps={{
             textField: {
@@ -246,9 +239,11 @@ function RideBuilderFields({
         />
       </Grid>
 
-      <Grid item xs={12} sm="auto">
+      {/* Row 1 cont.: Duration H / M (side-by-side on md+) */}
+      <Grid item xs={6} md={2}>
         <TextField
-          {...shortNumberProps}
+          {...FIELD_PROPS}
+          type="number"
           label="Duration Hours"
           value={hours}
           onBlur={mark("hours")}
@@ -261,12 +256,20 @@ function RideBuilderFields({
           }}
           helperText={touched.hours && (hours === "" ? "Required" : " ")}
           error={touched.hours && (hours === "" || hours < 0 || hours > 24)}
+          inputProps={{
+            min: 0,
+            max: 24,
+            inputMode: "numeric",
+            pattern: "[0-9]*",
+          }}
+          sx={{ maxWidth: 200 }}
         />
       </Grid>
 
-      <Grid item xs={12} sm="auto">
+      <Grid item xs={6} md={2}>
         <TextField
-          {...shortNumberProps}
+          {...FIELD_PROPS}
+          type="number"
           label="Duration Minutes"
           value={minutes}
           onBlur={mark("minutes")}
@@ -281,13 +284,20 @@ function RideBuilderFields({
           error={
             touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)
           }
+          inputProps={{
+            min: 0,
+            max: 59,
+            inputMode: "numeric",
+            pattern: "[0-9]*",
+          }}
+          sx={{ maxWidth: 200 }}
         />
       </Grid>
 
-      {/* Row 3: Ride Type (full width) */}
+      {/* Row 2: Ride Type (full width) */}
       <Grid item xs={12}>
         <ChipSelect
-          label="Ride Type"
+          label="RIDE TYPE"
           options={rideTypeOptions}
           value={value.rideType || ""}
           onChange={(v) => onChange({ ...value, rideType: v })}
@@ -296,10 +306,10 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 4: Vehicle (full width) */}
+      {/* Row 3: Vehicle (full width) */}
       <Grid item xs={12}>
         <ChipSelect
-          label="Vehicle"
+          label="VEHICLE"
           options={vehicleOptions}
           value={value.vehicle || ""}
           onChange={(v) => onChange({ ...value, vehicle: v })}
@@ -308,7 +318,7 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 5: Notes (full width) */}
+      {/* Row 4: Ride Notes (full width on mobile and desktop) */}
       <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
