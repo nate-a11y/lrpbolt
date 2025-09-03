@@ -78,8 +78,7 @@ function buildAutoColumns(sampleRow, opts = {}) {
         valueGetter: (value, row) => {
           const raw = value ?? row?.[field];
           const asNum = Number(raw);
-          if (Number.isFinite(asNum) && asNum >= 0)
-            return minutesToHuman(asNum);
+          if (Number.isFinite(asNum) && asNum > 0) return minutesToHuman(asNum);
           const dm = diffMinutes(
             row?.startTime ?? row?.start_time,
             row?.endTime ?? row?.end_time,
