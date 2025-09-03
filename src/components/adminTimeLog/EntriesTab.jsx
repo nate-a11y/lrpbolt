@@ -85,6 +85,8 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
+        valueGetter: (p) =>
+          p?.row?.startTime instanceof Date ? p.row.startTime : null,
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -93,6 +95,8 @@ export default function EntriesTab() {
       endTime: {
         editable: true,
         type: "dateTime",
+        valueGetter: (p) =>
+          p?.row?.endTime instanceof Date ? p.row.endTime : null,
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -106,6 +110,8 @@ export default function EntriesTab() {
       loggedAt: {
         editable: true,
         type: "dateTime",
+        valueGetter: (p) =>
+          p?.row?.loggedAt instanceof Date ? p.row.loggedAt : null,
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatDateTime(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),

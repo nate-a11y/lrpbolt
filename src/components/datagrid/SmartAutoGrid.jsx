@@ -131,6 +131,7 @@ export default function SmartAutoGrid(props) {
     forceHide = [],
     autoPreferredOrder = [],
     actionsColumn,
+    overrides,
     hideFooterSelectedRowCount = false,
     pageSizeOptions = [
       MAX_VISIBLE_ROWS,
@@ -195,9 +196,14 @@ export default function SmartAutoGrid(props) {
     }));
   }, [baseCols, headerMap]);
 
+  const overriddenCols = useMemo(() => {
+    if (!overrides) return mappedCols;
+    return mappedCols.map((c) => ({ ...c, ...(overrides[c.field] || {}) }));
+  }, [mappedCols, overrides]);
+
   const safeCols = useMemo(
-    () => (actionsColumn ? [...mappedCols, actionsColumn] : mappedCols),
-    [mappedCols, actionsColumn],
+    () => (actionsColumn ? [...overriddenCols, actionsColumn] : overriddenCols),
+    [overriddenCols, actionsColumn],
   );
 
   const responsiveCols = useMemo(() => {
@@ -358,5 +364,6 @@ SmartAutoGrid.propTypes = {
   forceHide: PropTypes.array,
   autoPreferredOrder: PropTypes.array,
   actionsColumn: PropTypes.object,
+  overrides: PropTypes.object,
   hideFooterSelectedRowCount: PropTypes.bool,
 };
