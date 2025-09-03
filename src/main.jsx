@@ -15,16 +15,9 @@ import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import ToastProvider from "./context/ToastProvider.jsx";
-import logError from "./utils/logError.js";
 import "./utils/firebaseInit.js";
 
 LicenseInfo.setLicenseKey(import.meta.env.VITE_MUIX_LICENSE_KEY);
-
-if (import.meta.env.PROD) {
-  import("eruda")
-    .then(({ default: eruda }) => eruda.init())
-    .catch((err) => logError(err));
-}
 
 const Root = () => {
   return (
