@@ -181,8 +181,8 @@ function RideBuilderFields({
   const minutes = value.minutes === "" ? "" : Number(value.minutes);
 
   return (
-    <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
-      {/* Row 1 (stack on mobile): Trip ID */}
+    <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} alignItems="flex-start">
+      {/* Row 1: Trip ID (xs=12) then Date (xs=12) on mobile; one row on desktop */}
       <Grid item xs={12} md={4}>
         <TextField
           {...FIELD_PROPS}
@@ -208,7 +208,6 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 1 cont.: Date / Pickup At */}
       <Grid item xs={12} md={4}>
         <DateTimePicker
           label="Pickup At"
@@ -239,7 +238,7 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 1 cont.: Duration H / M (side-by-side on md+) */}
+      {/* Row 1 end: Duration Hours + Minutes side-by-side on mobile and desktop */}
       <Grid item xs={6} md={2}>
         <TextField
           {...FIELD_PROPS}
@@ -262,7 +261,7 @@ function RideBuilderFields({
             inputMode: "numeric",
             pattern: "[0-9]*",
           }}
-          sx={{ maxWidth: 200 }}
+          sx={{ maxWidth: 220 }}
         />
       </Grid>
 
@@ -290,7 +289,7 @@ function RideBuilderFields({
             inputMode: "numeric",
             pattern: "[0-9]*",
           }}
-          sx={{ maxWidth: 200 }}
+          sx={{ maxWidth: 220 }}
         />
       </Grid>
 
