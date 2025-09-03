@@ -98,30 +98,35 @@ function TicketScanner() {
   };
 
   // 🚀 Start scanner
-  const initScanner = useCallback(async (cameraId = null) => {
-    if (scannerReadyRef.current || !qrContainerRef.current) return;
-    scannerReadyRef.current = true;
+  const initScanner = useCallback(
+    async (cameraId = null) => {
+      if (scannerReadyRef.current || !qrContainerRef.current) return;
+      scannerReadyRef.current = true;
 
-    if (!html5QrCodeRef.current) {
-      html5QrCodeRef.current = new Html5Qrcode("qr-reader");
-    }
-
-    try {
-      if (safeGetState() !== 2) {
-        await html5QrCodeRef.current.start(
-          cameraId || { facingMode: "environment" },
-          { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.333 },
-          (text) => handleScanRef.current?.(text),
-        );
-        const capabilities =
-          html5QrCodeRef.current.getRunningTrackCapabilities?.();
-        setTorchAvailable(!!capabilities?.torch);
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode("qr-reader");
       }
-    } catch (err) {
-      logError(err, "Scanner start error");
-      setCameraError(true);
-    }
-  }, []);
+
+      handleScanRef.current = handleScan;
+
+      try {
+        if (safeGetState() !== 2) {
+          await html5QrCodeRef.current.start(
+            cameraId || { facingMode: "environment" },
+            { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.333 },
+            (text) => handleScanRef.current?.(text),
+          );
+          const capabilities =
+            html5QrCodeRef.current.getRunningTrackCapabilities?.();
+          setTorchAvailable(!!capabilities?.torch);
+        }
+      } catch (err) {
+        logError(err, "Scanner start error");
+        setCameraError(true);
+      }
+    },
+    [handleScan],
+  );
 
   // 🎯 Fetch cameras first
   useEffect(() => {
@@ -278,10 +283,6 @@ function TicketScanner() {
     },
     [resetScanner],
   );
-
-  useEffect(() => {
-    handleScanRef.current = handleScan;
-  }, [handleScan]);
 
   useEffect(() => {
     return () => {
