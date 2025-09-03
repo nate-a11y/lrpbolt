@@ -175,14 +175,9 @@ function RideBuilderFields({
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
   const tripIdError = !!value.tripId && !isTripIdValid(value.tripId);
-
-  // coerce numbers but allow "" for controlled inputs
-  const hours = value.hours === "" ? "" : Number(value.hours);
-  const minutes = value.minutes === "" ? "" : Number(value.minutes);
-
   return (
     <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} alignItems="flex-start">
-      {/* Row 1: Trip ID (xs=12) then Date (xs=12) on mobile; one row on desktop */}
+      {/* Mobile row 1: Trip ID (12) */}
       <Grid item xs={12} md={4}>
         <TextField
           {...FIELD_PROPS}
@@ -202,12 +197,13 @@ function RideBuilderFields({
           inputProps={{
             maxLength: 7,
             inputMode: "text",
-            "aria-label": "Trip ID XXXX-XX",
+            "aria-label": "Trip ID format XXXX dash XX",
           }}
           sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
         />
       </Grid>
 
+      {/* Mobile row 2: Date (12) */}
       <Grid item xs={12} md={4}>
         <DateTimePicker
           label="Pickup At"
@@ -238,13 +234,13 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 1 end: Duration Hours + Minutes side-by-side on mobile and desktop */}
+      {/* Mobile row 3: Hours (6) + Minutes (6) — short labels to avoid ellipsis */}
       <Grid item xs={6} md={2}>
         <TextField
           {...FIELD_PROPS}
           type="number"
-          label="Duration Hours"
-          value={hours}
+          label="Hours"
+          value={value.hours === "" ? "" : Number(value.hours)}
           onBlur={mark("hours")}
           onChange={(e) => {
             const v =
@@ -253,14 +249,18 @@ function RideBuilderFields({
                 : Math.min(24, Math.max(0, Number(e.target.value)));
             onChange({ ...value, hours: v });
           }}
-          helperText={touched.hours && (hours === "" ? "Required" : " ")}
-          error={touched.hours && (hours === "" || hours < 0 || hours > 24)}
           inputProps={{
             min: 0,
             max: 24,
             inputMode: "numeric",
             pattern: "[0-9]*",
+            "aria-label": "Duration Hours",
           }}
+          helperText={touched.hours && (value.hours === "" ? "Required" : " ")}
+          error={
+            touched.hours &&
+            (value.hours === "" || value.hours < 0 || value.hours > 24)
+          }
           sx={{ maxWidth: 220 }}
         />
       </Grid>
@@ -269,8 +269,8 @@ function RideBuilderFields({
         <TextField
           {...FIELD_PROPS}
           type="number"
-          label="Duration Minutes"
-          value={minutes}
+          label="Minutes"
+          value={value.minutes === "" ? "" : Number(value.minutes)}
           onBlur={mark("minutes")}
           onChange={(e) => {
             const v =
@@ -279,21 +279,25 @@ function RideBuilderFields({
                 : Math.min(59, Math.max(0, Number(e.target.value)));
             onChange({ ...value, minutes: v });
           }}
-          helperText={touched.minutes && (minutes === "" ? "Required" : " ")}
-          error={
-            touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)
-          }
           inputProps={{
             min: 0,
             max: 59,
             inputMode: "numeric",
             pattern: "[0-9]*",
+            "aria-label": "Duration Minutes",
           }}
+          helperText={
+            touched.minutes && (value.minutes === "" ? "Required" : " ")
+          }
+          error={
+            touched.minutes &&
+            (value.minutes === "" || value.minutes < 0 || value.minutes > 59)
+          }
           sx={{ maxWidth: 220 }}
         />
       </Grid>
 
-      {/* Row 2: Ride Type (full width) */}
+      {/* Row 4: Ride Type (full width) */}
       <Grid item xs={12}>
         <ChipSelect
           label="RIDE TYPE"
@@ -305,7 +309,7 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 3: Vehicle (full width) */}
+      {/* Row 5: Vehicle (full width) */}
       <Grid item xs={12}>
         <ChipSelect
           label="VEHICLE"
@@ -317,7 +321,7 @@ function RideBuilderFields({
         />
       </Grid>
 
-      {/* Row 4: Ride Notes (full width on mobile and desktop) */}
+      {/* Row 6: Ride Notes — FULL WIDTH on all breakpoints */}
       <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
