@@ -58,8 +58,8 @@ function minutesBetween(tsStart, tsEnd) {
 
 // ---------- Rides ----------
 const RIDE_ALIASES = {
-  ClaimedBy: "claimedBy",
-  ClaimedAt: "claimedAt",
+  claimedby: "claimedBy",
+  claimedat: "claimedAt",
   pickup: "pickupTime",
 };
 const RIDE_COERCE = {
@@ -80,7 +80,7 @@ const RIDE_COERCE = {
 };
 
 // ---------- Time Logs ----------
-const TIMELOG_ALIASES = { driverName: "driver" };
+const TIMELOG_ALIASES = { drivername: "driver" };
 const TIMELOG_COERCE = {
   driverEmail: id,
   driver: id,
@@ -106,9 +106,16 @@ const SHOOTOUT_COERCE = {
 // ---------- Tickets ----------
 const TICKET_ALIASES = {
   passengercount: "passengers",
+  passenger_count: "passengers",
   ticketid: "ticketId",
-  pickupLocation: "pickup",
-  dropoffLocation: "dropoff",
+  pickup: "pickup",
+  pickuplocation: "pickup",
+  pickup_location: "pickup",
+  dropoff: "dropoff",
+  dropofflocation: "dropoff",
+  dropoff_location: "dropoff",
+  pickuptime: "pickupTime",
+  pickup_time: "pickupTime",
 };
 const TICKET_COERCE = {
   pickupTime: coerceTimestamp,
@@ -130,7 +137,8 @@ const TICKET_COERCE = {
 function applyAliases(data, aliasMap) {
   const out = {};
   for (const k of Object.keys(data)) {
-    const target = aliasMap[k] || k;
+    const lk = k.toLowerCase();
+    const target = aliasMap[lk] || k;
     if (out[target] === undefined) out[target] = data[k];
   }
   return out;
