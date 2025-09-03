@@ -17,6 +17,7 @@ try {
 export function toDayjs(input) {
   try {
     if (!input) return null;
+    if (dayjs.isDayjs?.(input)) return input;
     if (typeof input?.toDate === "function") return dayjs(input.toDate()); // Firestore Timestamp
     if (typeof input?.seconds === "number")
       return dayjs(new Date(input.seconds * 1000)); // raw TS object
