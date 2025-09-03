@@ -85,7 +85,7 @@ const isInLockoutWindow = () => {
 function App() {
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
-  const { user, authLoading } = useAuth();
+  const { user, authLoading, role: authRole } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -115,8 +115,7 @@ function App() {
   const hasFetchedRef = useRef(false);
   const hadUserRef = useRef(!!localStorage.getItem("lrpUser"));
   const selectedDriver = driver?.name || "";
-  const role = driver?.access || "";
-  const isAdmin = role === "admin";
+  const isAdmin = authRole === "admin";
 
   const {
     showOffline,
