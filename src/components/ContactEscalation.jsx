@@ -16,6 +16,8 @@ import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
 import SearchIcon from "@mui/icons-material/Search";
 
+import useIsMobile from "@/hooks/useIsMobile.js";
+
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import PageContainer from "./PageContainer.jsx";
 
@@ -100,14 +102,28 @@ const contacts = [
 export default function ContactEscalation() {
   const theme = useTheme();
   const apiRef = useGridApiRef();
+  const { isMdDown } = useIsMobile();
   const [search, setSearch] = React.useState("");
+  const debounceRef = React.useRef();
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearch(value);
-    const terms = value.split(/\s+/).filter(Boolean);
-    apiRef.current.setQuickFilterValues(terms);
-  };
+  const handleSearchChange = React.useCallback(
+    (e) => {
+      const value = e.target.value;
+      setSearch(value);
+      const terms = value.split(/\s+/).filter(Boolean);
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        apiRef.current.setQuickFilterValues(terms);
+      }, 300);
+    },
+    [apiRef],
+  );
+
+  React.useEffect(() => {
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const rows = React.useMemo(
     () =>
@@ -124,7 +140,7 @@ export default function ContactEscalation() {
         field: "contact",
         headerName: "Contact",
         flex: 1,
-        minWidth: 200,
+        minWidth: isMdDown ? 160 : 200,
         sortable: false,
         disableColumnMenu: true,
         valueGetter: (params) => {
@@ -174,8 +190,8 @@ export default function ContactEscalation() {
       {
         field: "responsibilities",
         headerName: "Responsibilities",
-        flex: 2,
-        minWidth: 300,
+        flex: isMdDown ? 1 : 2,
+        minWidth: isMdDown ? 240 : 300,
         sortable: false,
         valueGetter: (params) => {
           const row = params?.row;
@@ -198,7 +214,7 @@ export default function ContactEscalation() {
         },
       },
     ],
-    [],
+    [isMdDown],
   );
 
   return (
@@ -247,14 +263,15 @@ export default function ContactEscalation() {
                 disableUnderline: true,
                 sx: { color: "#fff" },
               }}
+              sx={{ flex: 1 }}
             />
           </Stack>
         </Box>
 
         <Paper
           sx={{
-            height: 640,
             width: "100%",
+            ...(isMdDown ? {} : { height: 640 }),
             "& .MuiDataGrid-root": { border: "none" },
           }}
         >
