@@ -85,8 +85,7 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) =>
-          p?.row?.startTime instanceof Date ? p.row.startTime : null,
+        valueGetter: (p) => tsToDate(p?.row?.startTime),
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -95,8 +94,7 @@ export default function EntriesTab() {
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) =>
-          p?.row?.endTime instanceof Date ? p.row.endTime : null,
+        valueGetter: (p) => tsToDate(p?.row?.endTime),
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatTz(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
@@ -105,13 +103,13 @@ export default function EntriesTab() {
       duration: {
         editable: false,
         type: "string",
-        valueGetter: (p) => durationHm(p?.row?.startTime, p?.row?.endTime),
+        valueGetter: (p) =>
+          durationHm(tsToDate(p?.row?.startTime), tsToDate(p?.row?.endTime)),
       },
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) =>
-          p?.row?.loggedAt instanceof Date ? p.row.loggedAt : null,
+        valueGetter: (p) => tsToDate(p?.row?.loggedAt),
         valueFormatter: (p) =>
           p?.value instanceof Date ? formatDateTime(p.value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),

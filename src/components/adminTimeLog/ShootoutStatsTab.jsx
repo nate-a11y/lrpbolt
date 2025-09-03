@@ -5,6 +5,7 @@ import { useGridApiRef } from "@mui/x-data-grid-pro";
 import { Paper } from "@mui/material";
 
 import { formatTz, durationHm } from "@/utils/timeSafe";
+import { tsToDate } from "@/utils/fsTime";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
@@ -28,9 +29,9 @@ export default function ShootoutStatsTab() {
         const withNames = await enrichDriverNames(mapped);
         const withDates = withNames.map((r) => ({
           ...r,
-          startTime: r?.startTime?.toDate?.() || r?.startTime || null,
-          endTime: r?.endTime?.toDate?.() || r?.endTime || null,
-          createdAt: r?.createdAt?.toDate?.() || r?.createdAt || null,
+          startTime: tsToDate(r.startTime),
+          endTime: tsToDate(r.endTime),
+          createdAt: tsToDate(r.createdAt),
         }));
         setRows(withDates);
       },
@@ -69,30 +70,28 @@ export default function ShootoutStatsTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) =>
-          p?.row?.startTime instanceof Date ? p.row.startTime : null,
+        valueGetter: (p) => tsToDate(p?.row?.startTime),
         valueFormatter: (p) => formatTz(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) =>
-          p?.row?.endTime instanceof Date ? p.row.endTime : null,
+        valueGetter: (p) => tsToDate(p?.row?.endTime),
         valueFormatter: (p) => formatTz(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },
       duration: {
         editable: false,
-        valueGetter: (p) => durationHm(p?.row?.startTime, p?.row?.endTime),
+        valueGetter: (p) =>
+          durationHm(tsToDate(p?.row?.startTime), tsToDate(p?.row?.endTime)),
       },
       trips: { editable: true, type: "number" },
       passengers: { editable: true, type: "number" },
       createdAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) =>
-          p?.row?.createdAt instanceof Date ? p.row.createdAt : null,
+        valueGetter: (p) => tsToDate(p?.row?.createdAt),
         valueFormatter: (p) => formatTz(p?.value),
         valueParser: (v) => (v ? new Date(v) : null),
       },

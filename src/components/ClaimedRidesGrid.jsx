@@ -41,29 +41,29 @@ export default function ClaimedRidesGrid() {
           rows={rows}
           headerMap={{
             tripId: "Trip ID",
+            claimedBy: "Claimed By",
             pickupTime: "Pickup",
             rideDuration: "Duration",
             rideType: "Type",
             vehicle: "Vehicle",
             rideNotes: "Notes",
             createdAt: "Created",
-            claimedBy: "Claimed By",
             claimedAt: "Claimed At",
             status: "Status",
           }}
           order={[
             "tripId",
+            "claimedBy",
             "pickupTime",
             "rideDuration",
             "rideType",
             "vehicle",
             "rideNotes",
             "createdAt",
-            "claimedBy",
             "claimedAt",
             "status",
           ]}
-          hide={["claimedBy", "claimedAt", "status"]}
+          hide={["claimedAt", "status"]}
           forceHide={[]}
           actionsColumn={buildNativeActionsColumn({
             onEdit: (id, row) => handleEditRide(row),
