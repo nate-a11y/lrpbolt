@@ -1,37 +1,59 @@
 /* Proprietary and confidential. See LICENSE. */
 import React from "react";
-import Grid2 from "@mui/material/Grid";
+import Grid from "@mui/material/Grid";
 import {
+  Alert,
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
   Card,
   CardContent,
-  Typography,
+  Chip,
+  CircularProgress,
+  Divider,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  Paper,
   Stack,
-  Button,
+  Switch,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
-  TextField,
-  Chip,
-  IconButton,
   Tooltip,
-  Autocomplete,
-  Divider,
-  Alert,
+  Typography,
 } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DataObjectIcon from "@mui/icons-material/DataObject";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LinkIcon from "@mui/icons-material/Link";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SmartphoneIcon from "@mui/icons-material/Smartphone";
 
+import ResponsiveContainer from "src/components/responsive/ResponsiveContainer.jsx";
+import { useToast } from "src/context/ToastProvider.jsx";
+import { enqueueSms } from "src/services/messaging";
 import {
   fetchAllUsersAccess,
   filterAdmins,
+  filterDriversCombined,
   filterDriversCore,
   filterShootout,
-  filterDriversCombined,
 } from "src/services/users";
-import { sendPortalNotification } from "src/utils/notify";
-import { enqueueSms } from "src/services/messaging";
 import logError from "src/utils/logError";
-import { useToast } from "src/context/ToastProvider.jsx";
-import ResponsiveContainer from "src/components/responsive/ResponsiveContainer.jsx";
+import { sendPortalNotification } from "src/utils/notify";
+
+const count = (s) => (s ? String(s).length : 0);
+const prettyJson = (s) => {
+  try {
+    return JSON.stringify(JSON.parse(s || "{}"), null, 2);
+  } catch {
+    return s;
+  }
+};
 
 const SEGMENTS = [
   { id: "admins", label: "All Admins", filter: filterAdmins },
@@ -53,7 +75,9 @@ export default function Notifications() {
   const { enqueue } = useToast();
   const [mode, setMode] = React.useState("push");
   const [allUsers, setAllUsers] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(false); // fetching users
+  const [sending, setSending] = React.useState(false); // sending messages
+  const [showPreview, setShowPreview] = React.useState(true);
   const [segment, setSegment] = React.useState("drivers_core");
   const [customTopic, setCustomTopic] = React.useState("");
   const [pickedUsers, setPickedUsers] = React.useState([]);
@@ -62,6 +86,15 @@ export default function Notifications() {
   const [iconUrl, setIconUrl] = React.useState("");
   const [dataJson, setDataJson] = React.useState("");
   const [dataError, setDataError] = React.useState("");
+
+  const resetComposer = React.useCallback((clearRecipients = false) => {
+    setTitle("");
+    setBody("");
+    setIconUrl("");
+    setDataJson("");
+    setDataError("");
+    if (clearRecipients) setPickedUsers([]);
+  }, []);
 
   const segmentCounts = React.useMemo(() => {
     const map = {
@@ -144,12 +177,14 @@ export default function Notifications() {
   };
 
   const canSend = React.useMemo(() => {
+    if (sending) return false;
     if (mode === "push") return !!title && selectedCount > 0 && !dataError;
     if (mode === "sms") return !!body && selectedCount > 0;
     return false;
-  }, [mode, title, body, selectedCount, dataError]);
+  }, [mode, title, body, selectedCount, dataError, sending]);
 
   const handleSend = async () => {
+    setSending(true);
     try {
       const payloadData =
         dataJson && !dataError ? JSON.parse(dataJson) : undefined;
@@ -186,53 +221,59 @@ export default function Notifications() {
         );
       }
       enqueue("Notification sent", { severity: "success" });
+      resetComposer(false);
     } catch (err) {
       enqueue("Send failed", { severity: "error" });
       logError(err, { where: "Notifications", action: "handleSend", mode });
+    } finally {
+      setSending(false);
     }
   };
 
   return (
     <ResponsiveContainer>
-      <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
-        <Grid2 xs={12}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography variant="h6">Notifications</Typography>
-            <Tooltip title="Refresh">
-              <IconButton
-                aria-label="Refresh users"
-                onClick={onRefresh}
-                disabled={loading}
-              >
-                <RefreshIcon />
-              </IconButton>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
+        {/* Header */}
+        <Grid item xs={12}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" fontWeight={700}>
+              Notifications
+            </Typography>
+            <Tooltip title="Refresh users">
+              <span>
+                <IconButton aria-label="Refresh users" onClick={onRefresh} disabled={loading || sending}>
+                  <RefreshIcon />
+                </IconButton>
+              </span>
             </Tooltip>
           </Stack>
-        </Grid2>
+        </Grid>
 
-        <Grid2 xs={12} md={4}>
-          <Card>
-            <CardContent>
+        {/* Left: Recipients */}
+        <Grid item xs={12} md={5}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack spacing={1.5}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <InfoOutlinedIcon fontSize="small" />
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    Choose a segment or pick specific recipients. Push requires
-                    a title; SMS requires a body. Data must be JSON (key/value).
+                <Stack direction="row" alignItems="flex-start" spacing={1}>
+                  <InfoOutlinedIcon fontSize="small" sx={{ mt: "2px" }} />
+                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                    Choose a segment or pick users. <strong>Push</strong> requires a title; <strong>SMS</strong> requires a body.
+                    Optional <em>Data</em> must be valid JSON.
                   </Typography>
                 </Stack>
 
-                <Typography variant="subtitle2">Recipients</Typography>
+                <Typography variant="subtitle2" sx={{ mt: 0.5, letterSpacing: 0.2 }}>
+                  Recipients
+                </Typography>
+
+                {/* Segment pills */}
                 <ToggleButtonGroup
                   value={segment}
                   exclusive
                   onChange={(_, val) => val && setSegment(val)}
                   size="small"
-                  sx={{ flexWrap: "wrap" }}
+                  sx={{ flexWrap: "wrap", "& .MuiToggleButton-root": { py: 0.5, px: 1.25 } }}
+                  disabled={sending}
                 >
                   {SEGMENTS.map((s) => (
                     <ToggleButton
@@ -241,20 +282,17 @@ export default function Notifications() {
                       sx={{
                         borderRadius: 2,
                         textTransform: "none",
-                        "&.Mui-selected": {
-                          bgcolor: "primary.main",
-                          color: "#000",
-                        },
+                        px: 1.25,
+                        "&.Mui-selected": { bgcolor: "#4cbb17", color: "#000" },
                       }}
                     >
                       {s.label}
-                      {typeof segmentCounts[s.id] === "number"
-                        ? ` (${segmentCounts[s.id]})`
-                        : ""}
+                      {typeof segmentCounts[s.id] === "number" ? ` (${segmentCounts[s.id]})` : ""}
                     </ToggleButton>
                   ))}
                 </ToggleButtonGroup>
 
+                {/* Custom topic when needed */}
                 {segment === "custom" && (
                   <TextField
                     label="Custom Topic"
@@ -262,15 +300,20 @@ export default function Notifications() {
                     onChange={(e) => setCustomTopic(e.target.value)}
                     fullWidth
                     placeholder="/topics/lrp-shootout"
+                    size="small"
+                    disabled={sending}
                   />
                 )}
 
+                {/* People picker */}
                 <Autocomplete
                   multiple
                   options={allUsers}
                   value={pickedUsers}
                   disableCloseOnSelect
                   loading={loading}
+                  disablePortal
+                  filterSelectedOptions
                   isOptionEqualToValue={(o, v) => o.id === v.id}
                   onChange={(_, val) => setPickedUsers(val)}
                   getOptionLabel={(o) => o?.name || o?.email || ""}
@@ -279,7 +322,7 @@ export default function Notifications() {
                       <Stack>
                         <Typography>{option.name || option.email}</Typography>
                         {option.roles?.length ? (
-                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          <Typography variant="caption" sx={{ opacity: 0.72 }}>
                             {option.roles.join(", ")}
                           </Typography>
                         ) : null}
@@ -292,6 +335,7 @@ export default function Notifications() {
                         {...getTagProps({ index })}
                         key={option.id}
                         label={option.name || option.email}
+                        size="small"
                       />
                     ))
                   }
@@ -299,110 +343,230 @@ export default function Notifications() {
                     <TextField
                       {...params}
                       label="Pick users by name/email"
-                      placeholder="Type to search..."
+                      placeholder="Type to search…"
+                      size="small"
                     />
                   )}
+                  disabled={sending}
                 />
 
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  Selected: {selectedCount} user{selectedCount === 1 ? "" : "s"}
-                </Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                    Selected: {selectedCount} user{selectedCount === 1 ? "" : "s"}
+                  </Typography>
+                  {!!pickedUsers.length && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      color="inherit"
+                      onClick={() => setPickedUsers([])}
+                      startIcon={<HighlightOffIcon fontSize="small" />}
+                      disabled={sending}
+                    >
+                      Clear picks
+                    </Button>
+                  )}
+                </Stack>
               </Stack>
             </CardContent>
           </Card>
-        </Grid2>
+        </Grid>
 
-        <Grid2 xs={12} md={8}>
-          <Card>
-            <CardContent>
+        {/* Right: Composer */}
+        <Grid item xs={12} md={7}>
+          <Card sx={{ borderRadius: 3, position: "relative" }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 }, pb: { xs: 10, sm: 3 } /* leave room for sticky bar on mobile */ }}>
               <Stack spacing={1.5}>
+                {/* Mode switch */}
                 <ToggleButtonGroup
                   exclusive
                   value={mode}
                   onChange={(_, v) => v && setMode(v)}
                   size="small"
+                  sx={{ "& .MuiToggleButton-root": { py: 0.5, px: 1.25 } }}
+                  disabled={sending}
                 >
                   <ToggleButton value="push">Push</ToggleButton>
                   <ToggleButton value="sms">SMS</ToggleButton>
                 </ToggleButtonGroup>
 
+                <FormControlLabel
+                  control={<Switch size="small" checked={showPreview} onChange={(_, v) => setShowPreview(v)} />}
+                  label="Preview"
+                  sx={{ alignSelf: "flex-start" }}
+                />
+
+                {/* Fields */}
                 {mode === "push" ? (
                   <Stack spacing={1.5}>
                     <TextField
-                      label="Title *"
+                      label={`Title * (${count(title)}/80)`}
                       value={title}
+                      inputProps={{ maxLength: 80 }}
                       onChange={(e) => setTitle(e.target.value)}
                       fullWidth
+                      disabled={sending}
                     />
                     <TextField
-                      label="Body"
+                      label={`Body (${count(body)}/240)`}
                       value={body}
+                      inputProps={{ maxLength: 240 }}
                       onChange={(e) => setBody(e.target.value)}
                       fullWidth
                       multiline
                       minRows={2}
+                      disabled={sending}
                     />
                     <TextField
                       label="Icon URL (optional)"
                       value={iconUrl}
                       onChange={(e) => setIconUrl(e.target.value)}
                       fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LinkIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      disabled={sending}
                     />
-                    <TextField
-                      label='Data (JSON, e.g. {"tripId":"123"})'
-                      value={dataJson}
-                      onChange={(e) => onChangeDataJson(e.target.value)}
-                      error={!!dataError}
-                      helperText={dataError || "Optional key/value payload"}
-                      fullWidth
-                      multiline
-                      minRows={2}
-                    />
+                    <Stack spacing={0.75}>
+                      <TextField
+                        label='Data (JSON, e.g. {"tripId":"123"})'
+                        value={dataJson}
+                        onChange={(e) => onChangeDataJson(e.target.value)}
+                        error={!!dataError}
+                        helperText={dataError || "Optional key/value payload"}
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <DataObjectIcon fontSize="small" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        disabled={sending}
+                      />
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setDataJson(prettyJson(dataJson))}
+                          disabled={!dataJson || sending}
+                        >
+                          Pretty-print JSON
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="text"
+                          color="inherit"
+                          onClick={() => { setDataJson(""); setDataError(""); }}
+                          disabled={!dataJson || sending}
+                        >
+                          Clear
+                        </Button>
+                      </Stack>
+                    </Stack>
                   </Stack>
                 ) : (
                   <Stack spacing={1.5}>
                     <TextField
-                      label="Body *"
+                      label={`Body * (${count(body)}/320)`}
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
                       fullWidth
                       multiline
                       minRows={3}
+                      inputProps={{ maxLength: 320 }}
+                      disabled={sending}
                     />
                     {body && body.length > 160 && (
-                      <Alert severity="info">
-                        SMS body exceeds 160 characters (will be split).
-                      </Alert>
+                      <Alert severity="info">SMS body exceeds 160 characters (will be split).</Alert>
                     )}
                   </Stack>
                 )}
 
-                <Divider />
+                {showPreview && (
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    {mode === "push" ? (
+                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                        <Avatar src={iconUrl || undefined} sx={{ width: 36, height: 36 }}>
+                          <NotificationsActiveIcon fontSize="small" />
+                        </Avatar>
+                        <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                          <Typography variant="subtitle2" noWrap title={title || "(no title)"} sx={{ fontWeight: 700 }}>
+                            {title || "(no title)"}
+                          </Typography>
+                          <Typography variant="body2" sx={{ opacity: 0.9 }} noWrap title={body}>
+                            {body || "—"}
+                          </Typography>
+                          {!!dataJson && !dataError && (
+                            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                              {(() => { try { return Object.keys(JSON.parse(dataJson)).join(", "); } catch { return "data"; } })()}
+                            </Typography>
+                          )}
+                        </Stack>
+                      </Stack>
+                    ) : (
+                      <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                        <SmartphoneIcon sx={{ opacity: 0.7 }} />
+                        <Box sx={{ bgcolor: "background.default", border: "1px solid", borderColor: "divider", borderRadius: 2, px: 1.25, py: 1, maxWidth: 420 }}>
+                          <Typography variant="body2">{body || "…"}</Typography>
+                        </Box>
+                      </Stack>
+                    )}
+                  </Paper>
+                )}
 
+                <Divider sx={{ my: 1 }} />
+
+                {/* Sticky Send bar on mobile */}
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={{ xs: 1, sm: 1.5 }}
                   alignItems={{ xs: "stretch", sm: "center" }}
+                  sx={{
+                    position: { xs: "fixed", sm: "static" },
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 2,
+                    px: { xs: 2, sm: 0 },
+                    pb: { xs: 1.25, sm: 0 },
+                    pt: { xs: 1.25, sm: 0 },
+                    bgcolor: { xs: "background.paper", sm: "transparent" },
+                    borderTop: { xs: "1px solid", sm: "none" },
+                    borderColor: "divider",
+                  }}
                 >
                   <Button
                     variant="contained"
-                    color="primary"
-                    disabled={!canSend || loading}
+                    disabled={!canSend || loading || sending}
                     onClick={handleSend}
-                    sx={{ width: { xs: "100%", sm: "auto" } }}
+                    startIcon={!sending ? <CheckCircleIcon /> : null}
+                    sx={{
+                      width: { xs: "100%", sm: "auto" },
+                      bgcolor: "#4cbb17",
+                      "&:hover": { bgcolor: "#3ea212" },
+                      fontWeight: 700,
+                    }}
                   >
-                    Send
+                    {sending ? <CircularProgress size={20} color="inherit" sx={{ mr: 0.5 }} /> : null}
+                    {sending ? "Sending…" : "Send"}
                   </Button>
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    {selectedCount} direct recipient
-                    {selectedCount === 1 ? "" : "s"}
+                  <Typography variant="caption" sx={{ opacity: sending ? 1 : 0.8 }}>
+                    {selectedCount} direct recipient{selectedCount === 1 ? "" : "s"}
+                    {sending ? " • working…" : ""}
                   </Typography>
                 </Stack>
               </Stack>
             </CardContent>
           </Card>
-        </Grid2>
-      </Grid2>
+        </Grid>
+      </Grid>
     </ResponsiveContainer>
   );
 }
