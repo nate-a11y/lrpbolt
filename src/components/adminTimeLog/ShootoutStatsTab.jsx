@@ -69,12 +69,18 @@ export default function ShootoutStatsTab() {
       startTime: {
         editable: true,
         type: "dateTime",
+        valueGetter: (p) =>
+          p?.row?.startTime instanceof Date ? p.row.startTime : null,
         valueFormatter: (p) => formatTz(p?.value),
+        valueParser: (v) => (v ? new Date(v) : null),
       },
       endTime: {
         editable: true,
         type: "dateTime",
+        valueGetter: (p) =>
+          p?.row?.endTime instanceof Date ? p.row.endTime : null,
         valueFormatter: (p) => formatTz(p?.value),
+        valueParser: (v) => (v ? new Date(v) : null),
       },
       duration: {
         editable: false,
@@ -85,7 +91,10 @@ export default function ShootoutStatsTab() {
       createdAt: {
         editable: true,
         type: "dateTime",
+        valueGetter: (p) =>
+          p?.row?.createdAt instanceof Date ? p.row.createdAt : null,
         valueFormatter: (p) => formatTz(p?.value),
+        valueParser: (v) => (v ? new Date(v) : null),
       },
     }),
     [],
