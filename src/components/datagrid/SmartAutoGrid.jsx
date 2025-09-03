@@ -121,6 +121,7 @@ export default function SmartAutoGrid(props) {
     disableRowSelectionOnClick = false,
     rowSelectionModel,
     onRowSelectionModelChange,
+    apiRef,
     initialState,
     columnVisibilityModel,
     slotProps,
@@ -312,6 +313,7 @@ export default function SmartAutoGrid(props) {
       }}
     >
       <DataGridPro
+        apiRef={apiRef}
         rows={safeRows}
         columns={responsiveCols}
         getRowId={rowIdFn}
@@ -354,6 +356,7 @@ SmartAutoGrid.propTypes = {
   disableRowSelectionOnClick: PropTypes.bool,
   rowSelectionModel: PropTypes.oneOfType([PropTypes.array, PropTypes.object]),
   onRowSelectionModelChange: PropTypes.func,
+  apiRef: PropTypes.object,
   initialState: PropTypes.object,
   columnVisibilityModel: PropTypes.object,
   slotProps: PropTypes.object,
