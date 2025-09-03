@@ -4,8 +4,9 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 import { Paper } from "@mui/material";
 
-import { formatTz, durationHm } from "@/utils/timeSafe";
 import { tsToDate } from "@/utils/fsTime";
+import { formatTz, durationHm } from "@/utils/timeSafe";
+import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
@@ -70,30 +71,36 @@ export default function ShootoutStatsTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.startTime),
-        valueFormatter: (p) => formatTz(p?.value),
+        valueGetter: (_, row) => tsToDate(row?.startTime),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
+        sortComparator: timestampSortComparator,
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.endTime),
-        valueFormatter: (p) => formatTz(p?.value),
+        valueGetter: (_, row) => tsToDate(row?.endTime),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
+        sortComparator: timestampSortComparator,
       },
       duration: {
         editable: false,
-        valueGetter: (p) =>
-          durationHm(tsToDate(p?.row?.startTime), tsToDate(p?.row?.endTime)),
+        valueGetter: (_, row) =>
+          durationHm(tsToDate(row?.startTime), tsToDate(row?.endTime)),
       },
       trips: { editable: true, type: "number" },
       passengers: { editable: true, type: "number" },
       createdAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.createdAt),
-        valueFormatter: (p) => formatTz(p?.value),
+        valueGetter: (_, row) => tsToDate(row?.createdAt),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
+        sortComparator: timestampSortComparator,
       },
     }),
     [],

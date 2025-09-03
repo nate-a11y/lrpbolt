@@ -85,33 +85,33 @@ export default function EntriesTab() {
       startTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.startTime),
-        valueFormatter: (p) =>
-          p?.value instanceof Date ? formatTz(p.value) : "N/A",
+        valueGetter: (_, row) => tsToDate(row?.startTime),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
         sortComparator: timestampSortComparator,
       },
       endTime: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.endTime),
-        valueFormatter: (p) =>
-          p?.value instanceof Date ? formatTz(p.value) : "N/A",
+        valueGetter: (_, row) => tsToDate(row?.endTime),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
         sortComparator: timestampSortComparator,
       },
       duration: {
         editable: false,
         type: "string",
-        valueGetter: (p) =>
-          durationHm(tsToDate(p?.row?.startTime), tsToDate(p?.row?.endTime)),
+        valueGetter: (_, row) =>
+          durationHm(tsToDate(row?.startTime), tsToDate(row?.endTime)),
       },
       loggedAt: {
         editable: true,
         type: "dateTime",
-        valueGetter: (p) => tsToDate(p?.row?.loggedAt),
-        valueFormatter: (p) =>
-          p?.value instanceof Date ? formatDateTime(p.value) : "N/A",
+        valueGetter: (_, row) => tsToDate(row?.loggedAt),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatDateTime(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
         sortComparator: timestampSortComparator,
       },

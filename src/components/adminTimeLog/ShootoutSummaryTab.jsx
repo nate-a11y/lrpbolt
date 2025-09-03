@@ -12,8 +12,8 @@ export default function ShootoutSummaryTab() {
   const [rows, setRows] = useState([]);
   const overrides = useMemo(
     () => ({
-      firstStart: { valueGetter: (p) => formatTz(p?.row?.firstStart) },
-      lastEnd: { valueGetter: (p) => formatTz(p?.row?.lastEnd) },
+      firstStart: { valueGetter: (_, row) => formatTz(row?.firstStart) },
+      lastEnd: { valueGetter: (_, row) => formatTz(row?.lastEnd) },
     }),
     [],
   );
