@@ -116,6 +116,9 @@ const TICKET_ALIASES = {
   dropoff_location: "dropoff",
   pickuptime: "pickupTime",
   pickup_time: "pickupTime",
+  created: "createdAt",
+  createdat: "createdAt",
+  created_at: "createdAt",
 };
 const TICKET_COERCE = {
   pickupTime: coerceTimestamp,
@@ -137,8 +140,9 @@ const TICKET_COERCE = {
 function applyAliases(data, aliasMap) {
   const out = {};
   for (const k of Object.keys(data)) {
-    const lk = k.toLowerCase();
-    const target = aliasMap[lk] || k;
+    const cleanKey = String(k).trim();
+    const lk = cleanKey.toLowerCase();
+    const target = aliasMap[lk] || cleanKey;
     if (out[target] === undefined) out[target] = data[k];
   }
   return out;

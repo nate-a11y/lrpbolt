@@ -102,6 +102,24 @@ function Tickets() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const getTicketDate = useCallback((t = {}) => {
+    const src = t?.pickupTime || t?.createdAt || t?.created || t?.date || null;
+    const d = src && typeof src.toDate === "function" ? src.toDate() : src;
+    return d && dayjs(d).isValid() ? dayjs(d) : null;
+  }, []);
+
+  const dateOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          tickets
+            .map((t) => getTicketDate(t)?.format("MM-DD-YYYY"))
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [tickets, getTicketDate],
+  );
+
   useEffect(() => {
     if (import.meta.env.MODE !== "production") {
       assertGridScrollable(scrollRef.current);
@@ -140,12 +158,8 @@ function Tickets() {
   }, [authLoading, user?.email, searchQuery, filteredDate]);
 
   const filteredTickets = tickets.filter((t = {}) => {
-    const pickupDate = t?.pickupTime?.toDate
-      ? t.pickupTime.toDate()
-      : t.pickupTime;
-    const dateStr = pickupDate
-      ? dayjs(pickupDate).format("MM-DD-YYYY")
-      : "Unknown";
+    const d = getTicketDate(t);
+    const dateStr = d ? d.format("MM-DD-YYYY") : "Unknown";
     const matchDate = filteredDate === "All Dates" || dateStr === filteredDate;
 
     const q = searchQuery.toLowerCase();
@@ -157,12 +171,8 @@ function Tickets() {
   });
 
   const passengerSummary = filteredTickets.reduce((acc, t = {}) => {
-    const pickupDate = t?.pickupTime?.toDate
-      ? t.pickupTime.toDate()
-      : t.pickupTime;
-    const date = pickupDate
-      ? dayjs(pickupDate).format("MM-DD-YYYY")
-      : "Unknown";
+    const d = getTicketDate(t);
+    const date = d ? d.format("MM-DD-YYYY") : "Unknown";
     const count = parseInt(t.passengers ?? 0, 10);
     acc[date] = (acc[date] || 0) + count;
     return acc;
@@ -388,23 +398,27 @@ function Tickets() {
         headerName: "Date",
         minWidth: 110,
         valueGetter: (p) => {
-          const src = p?.row?.date || p?.row?.pickupTime;
-          const d =
-            src && typeof src.toDate === "function" ? src.toDate() : src;
-          return d ? dayjs(d).format("MM-DD-YYYY") : "N/A";
+          const d = getTicketDate(p?.row);
+          return d ? d.format("MM-DD-YYYY") : "N/A";
         },
       },
       {
         field: "pickup",
         headerName: "Pickup",
         minWidth: 110,
-        valueGetter: (p) => p?.row?.pickup ?? "N/A",
+        valueGetter: (p) => {
+          const r = p?.row || {};
+          return r.pickup ?? r.pickupLocation ?? r.pickup_location ?? "N/A";
+        },
       },
       {
         field: "dropoff",
         headerName: "Dropoff",
         minWidth: 110,
-        valueGetter: (p) => p?.row?.dropoff ?? "N/A",
+        valueGetter: (p) => {
+          const r = p?.row || {};
+          return r.dropoff ?? r.dropoffLocation ?? r.dropoff_location ?? "N/A";
+        },
       },
       {
         field: "link",
@@ -474,7 +488,13 @@ function Tickets() {
         ],
       },
     ],
-    [handleDeleteClick, handleDownload, handleEmail, handleEditClick],
+    [
+      handleDeleteClick,
+      handleDownload,
+      handleEmail,
+      handleEditClick,
+      getTicketDate,
+    ],
   );
 
   const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
@@ -526,21 +546,11 @@ function Tickets() {
             }
           >
             <MenuItem value="All Dates">All Dates</MenuItem>
-            {[
-              ...new Set(
-                tickets.map((t) =>
-                  dayjs(t.date).isValid()
-                    ? dayjs(t.date).format("MM-DD-YYYY")
-                    : t.date,
-                ),
-              ),
-            ]
-              .sort()
-              .map((date) => (
-                <MenuItem key={date} value={date}>
-                  {date}
-                </MenuItem>
-              ))}
+            {dateOptions.map((date) => (
+              <MenuItem key={date} value={date}>
+                {date}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
 
