@@ -27,7 +27,7 @@ import {
   useMediaQuery,
   Fade,
 } from "@mui/material";
-import Grid2 from "@mui/material/Grid";
+import Grid from "@mui/material/Grid";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
@@ -54,15 +54,16 @@ import {
 import { vfText } from "@/utils/vf";
 import { db } from "src/utils/firebaseInit";
 
-import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
-import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe";
-import logError from "../utils/logError.js";
-import useAuth from "../hooks/useAuth.js";
-import useRides from "../hooks/useRides";
-import { callDropDailyRidesNow } from "../utils/functions";
-import { useDriver } from "../context/DriverContext.jsx";
 import { TIMEZONE, COLLECTIONS } from "../constants";
 import { RIDE_TYPES, VEHICLES } from "../constants/rides";
+import { useDriver } from "../context/DriverContext.jsx";
+import useAuth from "../hooks/useAuth.js";
+import useRides from "../hooks/useRides";
+import { toISOorNull, toTimestampOrNull } from "../utils/dateSafe";
+import dayjs, { isValidDayjs } from "../utils/dates"; // ← our extended dayjs
+import { formatTripId, isTripIdValid } from "../utils/formatters";
+import { callDropDailyRidesNow } from "../utils/functions";
+import logError from "../utils/logError.js";
 
 import DropDailyWidget from "./DropDailyWidget";
 import ClaimedRidesGrid from "./ClaimedRidesGrid";
@@ -89,7 +90,6 @@ const defaultValues = {
   RideNotes: "",
 };
 
-const tripIdPattern = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/;
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const expectedCsvCols = [
   "TripID",
@@ -136,6 +136,7 @@ function ChipSelect({
         useFlexGap
         flexWrap="wrap"
         alignItems="center"
+        sx={{ rowGap: 1 }}
       >
         {normalized.map((opt) => {
           const selected = value === opt.value;
@@ -173,8 +174,7 @@ function RideBuilderFields({
   const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
-  const tripIdError =
-    !!value.tripId && !/^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(value.tripId);
+  const tripIdError = !!value.tripId && !isTripIdValid(value.tripId);
 
   // coerce numbers but allow "" for controlled inputs
   const hours = value.hours === "" ? "" : Number(value.hours);
@@ -184,20 +184,20 @@ function RideBuilderFields({
     ...FIELD_PROPS,
     type: "number",
     inputProps: { min: 0, max: 59, inputMode: "numeric", pattern: "[0-9]*" },
-    sx: { maxWidth: 120 }, // <- keep both the same visual width
+    sx: { width: 160, maxWidth: "100%" },
   };
 
   return (
-    <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
+    <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
       {/* Row 1: Trip ID (full width) */}
-      <Grid2 xs={12}>
+      <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
           label="Trip ID"
           value={value.tripId || ""}
           onBlur={mark("tripId")}
           onChange={(e) =>
-            onChange({ ...value, tripId: e.target.value.toUpperCase() })
+            onChange({ ...value, tripId: formatTripId(e.target.value) })
           }
           placeholder="e.g., 6K5G-RS"
           disabled={disableTripId}
@@ -206,11 +206,17 @@ function RideBuilderFields({
             touched.tripId &&
             (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
           }
+          inputProps={{
+            maxLength: 7,
+            inputMode: "text",
+            "aria-label": "Trip ID XXXX-XX",
+          }}
+          sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
         />
-      </Grid2>
+      </Grid>
 
       {/* Row 2: Pickup At, Duration (H/M short & same width) */}
-      <Grid2 xs={12} sm={6} md={4}>
+      <Grid item xs={12} sm={6} md={4}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -238,9 +244,9 @@ function RideBuilderFields({
             },
           }}
         />
-      </Grid2>
+      </Grid>
 
-      <Grid2 xs={12} sm="auto">
+      <Grid item xs={12} sm="auto">
         <TextField
           {...shortNumberProps}
           label="Duration Hours"
@@ -256,9 +262,9 @@ function RideBuilderFields({
           helperText={touched.hours && (hours === "" ? "Required" : " ")}
           error={touched.hours && (hours === "" || hours < 0 || hours > 24)}
         />
-      </Grid2>
+      </Grid>
 
-      <Grid2 xs={12} sm="auto">
+      <Grid item xs={12} sm="auto">
         <TextField
           {...shortNumberProps}
           label="Duration Minutes"
@@ -276,10 +282,10 @@ function RideBuilderFields({
             touched.minutes && (minutes === "" || minutes < 0 || minutes > 59)
           }
         />
-      </Grid2>
+      </Grid>
 
       {/* Row 3: Ride Type (full width) */}
-      <Grid2 xs={12}>
+      <Grid item xs={12}>
         <ChipSelect
           label="Ride Type"
           options={rideTypeOptions}
@@ -288,10 +294,10 @@ function RideBuilderFields({
           required
           error={touched.rideType}
         />
-      </Grid2>
+      </Grid>
 
       {/* Row 4: Vehicle (full width) */}
-      <Grid2 xs={12}>
+      <Grid item xs={12}>
         <ChipSelect
           label="Vehicle"
           options={vehicleOptions}
@@ -300,10 +306,10 @@ function RideBuilderFields({
           required
           error={touched.vehicle}
         />
-      </Grid2>
+      </Grid>
 
       {/* Row 5: Notes (full width) */}
-      <Grid2 xs={12}>
+      <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
           multiline
@@ -313,8 +319,8 @@ function RideBuilderFields({
           onChange={set("notes")}
           placeholder="Optional notes"
         />
-      </Grid2>
-    </Grid2>
+      </Grid>
+    </Grid>
   );
 }
 
@@ -458,7 +464,7 @@ export default function RideEntryForm() {
     }
 
     // Trip ID format XXXX-XX
-    if (data.TripID && !tripIdPattern.test(data.TripID)) errors.TripID = true;
+    if (data.TripID && !isTripIdValid(data.TripID)) errors.TripID = true;
 
     // Date must be valid and NOT in the past (today OK)
     const dateValid = dayjs(data.Date, "YYYY-MM-DD", true).isValid();
@@ -926,7 +932,7 @@ export default function RideEntryForm() {
     const h = Number(durationHours || 0);
     const m = Number(durationMinutes || 0);
     const durOK = h > 0 || m > 0;
-    const tripOK = /^[A-Z0-9]{4}-[A-Z0-9]{2}$/.test(formData.TripID || "");
+    const tripOK = isTripIdValid(formData.TripID);
     return !!(
       tripOK &&
       isValidDayjs(pickupAt) &&
@@ -1001,12 +1007,12 @@ export default function RideEntryForm() {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <Grid2
+    <Grid
       container
       spacing={{ xs: 1.5, sm: 2, md: 3 }}
       sx={{ mb: isMobile ? 2 : 3 }}
     >
-      <Grid2 xs={12} md={4}>
+      <Grid item xs={12} md={4}>
         <Button
           variant="outlined"
           fullWidth
@@ -1015,8 +1021,8 @@ export default function RideEntryForm() {
         >
           Download Template
         </Button>
-      </Grid2>
-      <Grid2 xs={12} md={8}>
+      </Grid>
+      <Grid item xs={12} md={8}>
         <Paper
           variant="outlined"
           sx={{
@@ -1024,6 +1030,7 @@ export default function RideEntryForm() {
             borderStyle: "dashed",
             textAlign: "center",
             cursor: "pointer",
+            borderRadius: 2,
           }}
           {...getRootProps()}
         >
@@ -1038,24 +1045,31 @@ export default function RideEntryForm() {
             </Typography>
           )}
         </Paper>
-      </Grid2>
-    </Grid2>
+      </Grid>
+    </Grid>
   );
 
   // ---------- Render ----------
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ maxWidth: 1180, mx: "auto", p: isMobile ? 2 : 3 }}>
+      <Box
+        sx={{
+          maxWidth: 1240,
+          mx: "auto",
+          px: { xs: 1.5, sm: 2, md: 3 },
+          py: { xs: 2, sm: 3 },
+        }}
+      >
         <Paper
           elevation={3}
           sx={{
-            p: isMobile ? 2 : 3,
-            mb: isMobile ? 3 : 4,
+            p: { xs: 2, sm: 3 },
+            borderRadius: 3,
+            mb: { xs: 2, sm: 3 },
             bgcolor: (t) =>
               t.palette.mode === "dark"
                 ? "background.paper"
                 : "background.default",
-            borderRadius: 3,
           }}
         >
           <Typography variant="h6" fontWeight={700} gutterBottom>
@@ -1071,7 +1085,10 @@ export default function RideEntryForm() {
             allowScrollButtonsMobile
             sx={{
               mb: 3,
-              "& .MuiTab-root": { fontWeight: 600 },
+              "& .MuiTab-root": {
+                minWidth: { xs: "auto", sm: 120 },
+                fontWeight: 600,
+              },
             }}
           >
             <Tab label="SINGLE RIDE" />
@@ -1083,7 +1100,15 @@ export default function RideEntryForm() {
         {rideTab === 0 && (
           <Paper
             elevation={3}
-            sx={{ p: isMobile ? 2 : 3, borderRadius: 3, mb: isMobile ? 2 : 3 }}
+            sx={{
+              p: { xs: 2, sm: 3 },
+              borderRadius: 3,
+              mb: { xs: 2, sm: 3 },
+              bgcolor: (t) =>
+                t.palette.mode === "dark"
+                  ? "background.paper"
+                  : "background.default",
+            }}
           >
             <Typography variant="h6" fontWeight={700} gutterBottom>
               SINGLE RIDE
@@ -1096,33 +1121,51 @@ export default function RideEntryForm() {
               vehicleOptions={vehicleOptions}
             />
 
-            <Stack
-              direction={isMobile ? "column" : "row"}
-              spacing={isMobile ? 1.5 : 2}
-              sx={{ mt: isMobile ? 2 : 3 }}
-              alignItems={isMobile ? "stretch" : "center"}
+            <Box
+              sx={{
+                position: { xs: "sticky", md: "static" },
+                bottom: 0,
+                zIndex: 2,
+                bgcolor: { xs: "background.paper", md: "transparent" },
+                borderTop: { xs: "1px solid", md: "none" },
+                borderColor: "divider",
+                pt: 2,
+                mt: 2,
+              }}
             >
-              <Button
-                variant="outlined"
-                onClick={onResetSingle}
-                sx={{ minHeight: 48 }}
-                fullWidth={isMobile}
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                spacing={isMobile ? 1.5 : 2}
+                alignItems={isMobile ? "stretch" : "center"}
               >
-                Reset
-              </Button>
-              <Box sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }} />
-              <Button
-                variant="contained"
-                color="success"
-                onClick={onSubmitSingle}
-                sx={{ minHeight: 48 }}
-                disabled={singleSubmitting || !isSingleValid}
-                startIcon={<RocketLaunchIcon />}
-                fullWidth={isMobile}
-              >
-                Submit
-              </Button>
-            </Stack>
+                <Button
+                  variant="outlined"
+                  onClick={onResetSingle}
+                  sx={{ minHeight: 48 }}
+                  fullWidth={isMobile}
+                >
+                  Reset
+                </Button>
+                <Box
+                  sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<RocketLaunchIcon />}
+                  sx={{
+                    bgcolor: "#4cbb17",
+                    "&:hover": { bgcolor: "#3ea212" },
+                    fontWeight: 700,
+                    minHeight: 48,
+                  }}
+                  onClick={onSubmitSingle}
+                  disabled={singleSubmitting || !isSingleValid}
+                  fullWidth={isMobile}
+                >
+                  Submit
+                </Button>
+              </Stack>
+            </Box>
           </Paper>
         )}
 
@@ -1132,9 +1175,13 @@ export default function RideEntryForm() {
             <Paper
               elevation={3}
               sx={{
-                p: isMobile ? 2 : 3,
+                p: { xs: 2, sm: 3 },
                 borderRadius: 3,
-                mb: isMobile ? 2 : 3,
+                mb: { xs: 2, sm: 3 },
+                bgcolor: (t) =>
+                  t.palette.mode === "dark"
+                    ? "background.paper"
+                    : "background.default",
               }}
             >
               <Typography variant="h6" fontWeight={700} gutterBottom>
@@ -1175,36 +1222,52 @@ export default function RideEntryForm() {
                 vehicleOptions={vehicleOptions}
               />
 
-              <Stack
-                direction={isMobile ? "column" : "row"}
-                spacing={isMobile ? 1.5 : 2}
-                sx={{ mt: isMobile ? 2 : 3 }}
-                alignItems={isMobile ? "stretch" : "center"}
+              <Box
+                sx={{
+                  position: { xs: "sticky", md: "static" },
+                  bottom: 0,
+                  zIndex: 2,
+                  bgcolor: { xs: "background.paper", md: "transparent" },
+                  borderTop: { xs: "1px solid", md: "none" },
+                  borderColor: "divider",
+                  pt: 2,
+                  mt: 2,
+                }}
               >
-                <Button
-                  variant="outlined"
-                  onClick={onAddToList}
-                  startIcon={<AddIcon />}
-                  sx={{ minHeight: 48 }}
-                  fullWidth={isMobile}
+                <Stack
+                  direction={isMobile ? "column" : "row"}
+                  spacing={isMobile ? 1.5 : 2}
+                  alignItems={isMobile ? "stretch" : "center"}
                 >
-                  Add to List
-                </Button>
-                <Box
-                  sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }}
-                />
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={onSubmitAll}
-                  startIcon={<RocketLaunchIcon />}
-                  sx={{ minHeight: 48 }}
-                  disabled={submitDisabled}
-                  fullWidth={isMobile}
-                >
-                  Submit All Rides
-                </Button>
-              </Stack>
+                  <Button
+                    variant="outlined"
+                    onClick={onAddToList}
+                    startIcon={<AddIcon />}
+                    sx={{ minHeight: 48 }}
+                    fullWidth={isMobile}
+                  >
+                    Add to List
+                  </Button>
+                  <Box
+                    sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }}
+                  />
+                  <Button
+                    variant="contained"
+                    startIcon={<RocketLaunchIcon />}
+                    sx={{
+                      bgcolor: "#4cbb17",
+                      "&:hover": { bgcolor: "#3ea212" },
+                      fontWeight: 700,
+                      minHeight: 48,
+                    }}
+                    onClick={onSubmitAll}
+                    disabled={submitDisabled}
+                    fullWidth={isMobile}
+                  >
+                    Submit All Rides
+                  </Button>
+                </Stack>
+              </Box>
             </Paper>
 
             {uploadedRows.length > 0 && (
@@ -1224,27 +1287,29 @@ export default function RideEntryForm() {
                     👉 Swipe horizontally to view more columns
                   </Box>
                 )}
-                <Paper sx={{ width: "100%" }}>
-                  <SmartAutoGrid
-                    autoHeight
-                    rows={Array.isArray(uploadedRows) ? uploadedRows : []}
-                    columns={expectedCsvCols.map((col) => ({
-                      field: col,
-                      headerName: col.replace(/([A-Z])/g, " $1"),
-                      flex: 1,
-                      minWidth: 140,
-                      valueFormatter: vfText,
-                      editable: true,
-                    }))}
-                    getRowId={(r) => r.id}
-                    processRowUpdate={handlePreviewUpdate}
-                    pageSizeOptions={[5]}
-                    disableRowSelectionOnClick
-                    loading={false}
-                    checkboxSelection={false}
-                    showToolbar
-                  />
-                </Paper>
+                <Box sx={{ width: "100%", overflowX: "auto" }}>
+                  <Paper sx={{ width: "100%" }}>
+                    <SmartAutoGrid
+                      autoHeight
+                      rows={Array.isArray(uploadedRows) ? uploadedRows : []}
+                      columns={expectedCsvCols.map((col) => ({
+                        field: col,
+                        headerName: col.replace(/([A-Z])/g, " $1"),
+                        flex: 1,
+                        minWidth: 140,
+                        valueFormatter: vfText,
+                        editable: true,
+                      }))}
+                      getRowId={(r) => r.id}
+                      processRowUpdate={handlePreviewUpdate}
+                      pageSizeOptions={[5]}
+                      disableRowSelectionOnClick
+                      loading={false}
+                      checkboxSelection={false}
+                      showToolbar
+                    />
+                  </Paper>
+                </Box>
                 <Button
                   variant="outlined"
                   color="success"
@@ -1334,7 +1399,10 @@ export default function RideEntryForm() {
             allowScrollButtonsMobile
             sx={{
               flexGrow: 1,
-              "& .MuiTab-root": { minWidth: { xs: "auto", sm: 120 } },
+              "& .MuiTab-root": {
+                minWidth: { xs: "auto", sm: 120 },
+                fontWeight: 600,
+              },
             }}
           >
             <Tab
@@ -1409,21 +1477,21 @@ export default function RideEntryForm() {
         <Box sx={{ width: "100%" }}>
           {dataTab === 0 && (
             <Fade in>
-              <Box>
+              <Box sx={{ width: "100%", overflowX: "auto" }}>
                 <LiveRidesGrid />
               </Box>
             </Fade>
           )}
           {dataTab === 1 && (
             <Fade in>
-              <Box>
+              <Box sx={{ width: "100%", overflowX: "auto" }}>
                 <RideQueueGrid />
               </Box>
             </Fade>
           )}
           {dataTab === 2 && (
             <Fade in>
-              <Box>
+              <Box sx={{ width: "100%", overflowX: "auto" }}>
                 <ClaimedRidesGrid />
               </Box>
             </Fade>
@@ -1471,7 +1539,6 @@ export default function RideEntryForm() {
               <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
               <Button
                 variant="contained"
-                color="success"
                 onClick={handleSubmit}
                 disabled={saving || !isValidDayjs(pickupAt)}
                 startIcon={
@@ -1479,6 +1546,12 @@ export default function RideEntryForm() {
                     <CircularProgress size={18} color="inherit" />
                   ) : undefined
                 }
+                sx={{
+                  bgcolor: "#4cbb17",
+                  "&:hover": { bgcolor: "#3ea212" },
+                  fontWeight: 700,
+                  minHeight: 48,
+                }}
               >
                 {saving ? "Saving…" : "Confirm & Submit"}
               </Button>
