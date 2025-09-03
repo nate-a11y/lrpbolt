@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // RideVehicleCalendar.jsx — Fully updated with vehicle chips, dynamic coloring, compact mode, summary, and improved light mode readability
-import { useEffect, useState, useMemo, memo } from "react";
+import { useEffect, useState, useMemo, memo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -14,11 +14,14 @@ import {
   TextField,
   Switch,
   Tooltip,
+  IconButton,
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { dayjs, toDayjs } from "@/utils/time";
 
@@ -233,12 +236,40 @@ function RideVehicleCalendar() {
     return { count: events.length, vehicles: vehicles.size, tight };
   }, [events]);
 
+  const handlePrevDay = useCallback(() => {
+    setDate((d) => dayjs(d).subtract(1, "day"));
+  }, []);
+
+  const handleNextDay = useCallback(() => {
+    setDate((d) => dayjs(d).add(1, "day"));
+  }, []);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <PageContainer>
         <Typography variant="h5" gutterBottom>
-          🚖 Ride & Vehicle Calendar — {date.format("dddd, MMMM D")}
+          🚖 Ride & Vehicle Calendar
         </Typography>
+
+        <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+          <IconButton
+            size="small"
+            onClick={handlePrevDay}
+            aria-label="Previous day"
+          >
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+          <Typography variant="subtitle1">
+            {date.format("dddd, MMMM D")}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleNextDay}
+            aria-label="Next day"
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+        </Stack>
 
         <Stack
           direction={isMobile ? "column" : "row"}
