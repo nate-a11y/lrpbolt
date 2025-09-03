@@ -132,8 +132,7 @@ export default function DriverDirectory() {
         sortable: false,
         disableColumnMenu: true,
         // Enable quick filter by providing searchable text
-        valueGetter: (params) => {
-          const row = params?.row;
+        valueGetter: (value, row) => {
           if (!row) return "N/A";
           const vehicles = Array.isArray(row.vehicles)
             ? row.vehicles.join(" ")
