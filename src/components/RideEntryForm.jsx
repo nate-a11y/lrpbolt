@@ -176,7 +176,12 @@ function RideBuilderFields({
 
   const tripIdError = !!value.tripId && !isTripIdValid(value.tripId);
   return (
-    <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} alignItems="flex-start">
+    <Grid
+      container
+      rowSpacing={{ xs: 1.5, sm: 2, md: 3 }}
+      columnSpacing={{ xs: 1.5, sm: 2, md: 3 }}
+      alignItems="flex-start"
+    >
       {/* Mobile row 1: Trip ID (12) */}
       <Grid item xs={12} md={4}>
         <TextField
