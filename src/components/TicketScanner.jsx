@@ -88,6 +88,75 @@ function TicketScanner() {
     to { opacity: 0; }
   `;
 
+  const resetScanner = useCallback(() => {
+    setTicket(null);
+    setModalOpen(false);
+    setShowSuccess(false);
+    isScanningRef.current = false;
+    setTimeout(() => {
+      html5QrCodeRef.current
+        ?.resume?.()
+        .catch((err) => logError(err, "TicketScanner:resume"));
+    }, 800);
+    setCameraPaused(false);
+  }, []);
+
+  const handleScan = useCallback(
+    async (text) => {
+      const ticketId = text?.split("/").pop()?.trim();
+      if (
+        !ticketId ||
+        isScanningRef.current ||
+        cooldownRef.current?.id === ticketId
+      )
+        return;
+      isScanningRef.current = true;
+      cooldownRef.current = {
+        id: ticketId,
+        timer: setTimeout(() => {
+          cooldownRef.current = null;
+        }, 3000),
+      };
+
+      html5QrCodeRef.current
+        ?.pause?.()
+        .catch((err) => logError(err, "TicketScanner:pause"));
+      setLoading(true);
+
+      fetchTicket(ticketId)
+        .then((data) => {
+          setLoading(false);
+          if (data?.ticketId) {
+            setTicket(data);
+            setModalOpen(true);
+            navigator.vibrate?.([100]);
+          } else {
+            setScanFeedback("error");
+            setTimeout(() => setScanFeedback(null), 600);
+            setSnackbar({
+              open: true,
+              message: "❌ Ticket not found",
+              severity: "error",
+            });
+            resetScanner();
+          }
+        })
+        .catch((err) => {
+          logError(err, "TicketScanner:fetchTicket");
+          setLoading(false);
+          setScanFeedback("error");
+          setTimeout(() => setScanFeedback(null), 600);
+          setSnackbar({
+            open: true,
+            message: "🚨 Failed to fetch ticket",
+            severity: "error",
+          });
+          resetScanner();
+        });
+    },
+    [resetScanner],
+  );
+
   const safeGetState = () => {
     try {
       return html5QrCodeRef.current?.getState?.();
@@ -163,19 +232,6 @@ function TicketScanner() {
     };
   }, [currentCameraId, initScanner]);
 
-  const resetScanner = useCallback(() => {
-    setTicket(null);
-    setModalOpen(false);
-    setShowSuccess(false);
-    isScanningRef.current = false;
-    setTimeout(() => {
-      html5QrCodeRef.current
-        ?.resume?.()
-        .catch((err) => logError(err, "TicketScanner:resume"));
-    }, 800);
-    setCameraPaused(false);
-  }, []);
-
   const toggleTorch = async () => {
     if (!torchAvailable) return;
     try {
@@ -227,62 +283,6 @@ function TicketScanner() {
         .catch((err) => logError(err, "TicketScanner:toggleCamera"));
     }
   };
-
-  const handleScan = useCallback(
-    async (text) => {
-      const ticketId = text?.split("/").pop()?.trim();
-      if (
-        !ticketId ||
-        isScanningRef.current ||
-        cooldownRef.current?.id === ticketId
-      )
-        return;
-      isScanningRef.current = true;
-      cooldownRef.current = {
-        id: ticketId,
-        timer: setTimeout(() => {
-          cooldownRef.current = null;
-        }, 3000),
-      };
-
-      html5QrCodeRef.current
-        ?.pause?.()
-        .catch((err) => logError(err, "TicketScanner:pause"));
-      setLoading(true);
-
-      fetchTicket(ticketId)
-        .then((data) => {
-          setLoading(false);
-          if (data?.ticketId) {
-            setTicket(data);
-            setModalOpen(true);
-            navigator.vibrate?.([100]);
-          } else {
-            setScanFeedback("error");
-            setTimeout(() => setScanFeedback(null), 600);
-            setSnackbar({
-              open: true,
-              message: "❌ Ticket not found",
-              severity: "error",
-            });
-            resetScanner();
-          }
-        })
-        .catch((err) => {
-          logError(err, "TicketScanner:fetchTicket");
-          setLoading(false);
-          setScanFeedback("error");
-          setTimeout(() => setScanFeedback(null), 600);
-          setSnackbar({
-            open: true,
-            message: "🚨 Failed to fetch ticket",
-            severity: "error",
-          });
-          resetScanner();
-        });
-    },
-    [resetScanner],
-  );
 
   useEffect(() => {
     return () => {
