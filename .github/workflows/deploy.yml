@@ -34,7 +34,7 @@ jobs:
         run: |
           if [ ! -f package-lock.json ]; then
             echo "No package-lock.json found; generating one…"
-            npm run ci:install
+            npm install --package-lock-only --no-audit --no-fund
           fi
 
       - name: Validate required secrets
