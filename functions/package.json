@@ -3,6 +3,7 @@
   "private": true,
   "engines": { "node": "20" },
   "scripts": {
+    "ci:install": "npm ci --no-progress --foreground-scripts=false --loglevel=error",
     "serve": "firebase emulators:start --only functions",
     "deploy:drop": "firebase deploy --only functions:dropDailyRidesNow --force"
   },

@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci
+      - run: npm run ci:install
       - run: npm run images:build
       - name: Commit WebP outputs
         uses: stefanzweifel/git-auto-commit-action@v5

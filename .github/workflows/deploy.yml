@@ -121,7 +121,7 @@ jobs:
           echo "VITE_APP_VERSION=$FINAL_VERSION" | tee -a .env .env.production
 
       - name: Install dependencies
-        run: npm ci
+        run: npm run ci:install
 
       - name: Verify WebP assets
         run: npm run images:verify
@@ -256,7 +256,7 @@ jobs:
       - name: Install Functions deps
         if: steps.diff.outputs.changed == 'true'
         working-directory: functions
-        run: npm ci
+        run: npm run ci:install
 
       - name: Set Twilio secrets in Firebase (idempotent)
         if: steps.diff.outputs.changed == 'true'
