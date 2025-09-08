@@ -15,8 +15,8 @@ export default defineConfig(async ({ mode }) => {
       filename: "sw.js",
       injectManifest: {
         globDirectory: "dist",
-        globPatterns: ["**/*.{html,js,css}", "assets/**/*.{js,css}"],
-        // Don’t precache external URLs
+        globPatterns: ["**/*.{js,css,html,webp,png,svg,woff2}"],
+        globIgnores: ["**/*.map", "**/asset-manifest.json"],
       },
       workbox: {
         cleanupOutdatedCaches: true,

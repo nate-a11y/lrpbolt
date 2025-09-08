@@ -1,0 +1,16 @@
+{
+  // Only prod deps (scripts already omit dev)
+  "levels": {
+    "prod": "high"
+  },
+  // Allowlist deep/transitive advisories that currently have no safe, non-breaking fix.
+  // We still fail CI on any *new* high/critical not on this list.
+  "allowlist": [
+    "GHSA-8mgj-vmr8-frr6", // debug
+    "GHSA-5g7q-qh7p-jjvm", // error-ex
+    "GHSA-hfm8-9jrf-7g9w", // is-arrayish
+    "GHSA-ch7m-m9rf-8gvv", // color-convert
+    "GHSA-m99c-cfww-cxqx"  // color-name
+  ],
+  "report-type": "summary"
+}
