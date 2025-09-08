@@ -20,6 +20,13 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+      - name: Check lockfile sync
+        run: npm run lock:check
+
+      - name: Rebuild lockfile if needed
+        if: failure()
+        run: npm run lock:rebuild
+
       - run: npm run ci:install
       - run: npm run images:build
       - name: Commit WebP outputs

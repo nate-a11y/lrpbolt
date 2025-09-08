@@ -120,6 +120,13 @@ jobs:
           sed -i '/^VITE_APP_VERSION=/d' .env .env.production 2>/dev/null || true
           echo "VITE_APP_VERSION=$FINAL_VERSION" | tee -a .env .env.production
 
+      - name: Check lockfile sync
+        run: npm run lock:check
+
+      - name: Rebuild lockfile if needed
+        if: failure()
+        run: npm run lock:rebuild
+
       - name: Install dependencies
         run: npm run ci:install
 
@@ -252,6 +259,14 @@ jobs:
       - name: Install Firebase CLI
         if: steps.diff.outputs.changed == 'true'
         run: npm i -g firebase-tools@14
+
+      - name: Check lockfile sync
+        if: steps.diff.outputs.changed == 'true'
+        run: npm run lock:check
+
+      - name: Rebuild lockfile if needed
+        if: steps.diff.outputs.changed == 'true' && failure()
+        run: npm run lock:rebuild
 
       - name: Install Functions deps
         if: steps.diff.outputs.changed == 'true'
