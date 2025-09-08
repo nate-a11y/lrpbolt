@@ -9,7 +9,35 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import semver from 'semver';
+
+let semver;
+try {
+  ({ default: semver } = await import('semver'));
+} catch {
+  console.warn('⚠️  semver not found; using basic range checks');
+  semver = {
+    valid: (v) => /^\d+\.\d+\.\d+(?:-.+)?$/.test(v),
+    satisfies: (v, range) => {
+      if (range.startsWith('^')) {
+        const [maj, min = 0, pat = 0] = range.slice(1).split('.').map(Number);
+        const [vMaj, vMin = 0, vPat = 0] = v.split('.').map(Number);
+        if (Number.isNaN(maj) || Number.isNaN(vMaj)) return false;
+        if (vMaj !== maj) return false;
+        if (vMin > min) return true;
+        if (vMin === min) return vPat >= pat;
+        return false;
+      }
+      if (range.startsWith('~')) {
+        const [maj, min = 0, pat = 0] = range.slice(1).split('.').map(Number);
+        const [vMaj, vMin = 0, vPat = 0] = v.split('.').map(Number);
+        if (Number.isNaN(maj) || Number.isNaN(vMaj)) return false;
+        if (vMaj !== maj || vMin !== min) return false;
+        return vPat >= pat;
+      }
+      return v === range;
+    }
+  };
+}
 
 const root = process.cwd();
 const pkgPath = path.join(root, 'package.json');
