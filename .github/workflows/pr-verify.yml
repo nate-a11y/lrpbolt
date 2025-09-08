@@ -50,7 +50,7 @@ jobs:
           cache: 'npm'
 
       - name: Install
-        run: npm ci
+        run: npm run ci:install
 
       # Optional Lighthouse is configured to be non-fatal if LHCI isn't installed.
       # verify:all already runs verify:prod (lint, format:check, tests, build:prod) + npm audit
