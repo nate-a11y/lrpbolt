@@ -37,7 +37,7 @@
     "verify:all": "npm run verify:prod && npm run audit",
     "env:sync": "node ./scripts/sync-env.js",
     "lock:check": "node ./scripts/ensure-lock-sync.mjs",
-    "lock:rebuild": "rimraf node_modules package-lock.json && npm install --package-lock-only --ignore-scripts",
+    "lock:rebuild": "node ./scripts/rebuild-lock.mjs",
     "fix:lock": "npm run lock:rebuild",
     "lh": "lhci autorun || echo \"(optional) LHCI not installed; skipping\"",
     "typecheck": "echo 'JS-only project: skipping TS typecheck'",
