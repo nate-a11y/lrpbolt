@@ -299,13 +299,20 @@ export default function SmartAutoGrid(props) {
   }, [pageSizeOptions]);
 
   const mergedSlots = useMemo(() => {
+    const safeSlots = { ...(slots || {}) };
     const base = {
       footer: SafeGridFooter,
       noRowsOverlay: NoRowsOverlay,
       errorOverlay: ErrorOverlay,
-      ...(showToolbar ? { toolbar: AutoGridToolbar } : { toolbar: null }),
     };
-    return { ...base, ...(slots || {}) };
+    if (showToolbar) {
+      const userToolbar = safeSlots.toolbar;
+      safeSlots.toolbar =
+        typeof userToolbar === "function" ? userToolbar : AutoGridToolbar;
+    } else {
+      delete safeSlots.toolbar;
+    }
+    return { ...base, ...safeSlots };
   }, [slots, showToolbar]);
 
   const mergedSlotProps = useMemo(
