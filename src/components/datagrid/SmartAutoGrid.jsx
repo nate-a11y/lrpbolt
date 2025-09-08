@@ -1,7 +1,16 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, memo } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
+import {
+  DataGridPro,
+  GridToolbarContainer,
+  GridToolbarExport,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarQuickFilter,
+  gridClasses,
+} from "@mui/x-data-grid-pro";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -21,6 +30,20 @@ import {
 } from "./selectionV8";
 
 const MAX_VISIBLE_ROWS = 15;
+
+const AutoGridToolbar = memo(function AutoGridToolbar(props = {}) {
+  const { csvOptions, printOptions, quickFilterProps } = props;
+  const qfProps = { debounceMs: 500, ...(quickFilterProps || {}) };
+  return (
+    <GridToolbarContainer>
+      <GridToolbarColumnsButton />
+      <GridToolbarFilterButton />
+      <GridToolbarDensitySelector />
+      <GridToolbarExport csvOptions={csvOptions} printOptions={printOptions} />
+      <GridToolbarQuickFilter {...qfProps} />
+    </GridToolbarContainer>
+  );
+});
 
 function headerFromKey(k) {
   if (!k) return "";
@@ -280,16 +303,13 @@ export default function SmartAutoGrid(props) {
       footer: SafeGridFooter,
       noRowsOverlay: NoRowsOverlay,
       errorOverlay: ErrorOverlay,
-      ...(showToolbar ? { toolbar: GridToolbar } : { toolbar: null }),
+      ...(showToolbar ? { toolbar: AutoGridToolbar } : { toolbar: null }),
     };
     return { ...base, ...(slots || {}) };
   }, [slots, showToolbar]);
 
   const mergedSlotProps = useMemo(
-    () => ({
-      toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 500 } },
-      ...(slotProps || {}),
-    }),
+    () => ({ ...(slotProps || {}) }),
     [slotProps],
   );
 
