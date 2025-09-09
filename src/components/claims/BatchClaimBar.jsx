@@ -1,7 +1,13 @@
 import React from "react";
-import { Paper, Stack, Typography, Button } from "@mui/material";
+import { Button, Paper, Stack, Typography } from "@mui/material";
 
-export default function BatchClaimBar({ count, onClear, onClaimAll, loading }) {
+export default function BatchClaimBar({
+  count,
+  onClear,
+  onClaimAll,
+  loading,
+  disabled = false,
+}) {
   if (!count) return null;
   return (
     <Paper
@@ -25,7 +31,11 @@ export default function BatchClaimBar({ count, onClear, onClaimAll, loading }) {
           <Button onClick={onClear} variant="text">
             Clear
           </Button>
-          <Button onClick={onClaimAll} variant="contained" disabled={loading}>
+          <Button
+            onClick={onClaimAll}
+            variant="contained"
+            disabled={loading || disabled}
+          >
             {loading ? "Claiming…" : "Claim Selected"}
           </Button>
         </Stack>
