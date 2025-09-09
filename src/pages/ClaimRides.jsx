@@ -1,6 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { Box, Stack, CircularProgress } from "@mui/material";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Box, CircularProgress, Stack } from "@mui/material";
 
+import BlackoutOverlay, {
+  BLACKOUT_END_HOUR,
+  BLACKOUT_START_HOUR,
+} from "@/components/BlackoutOverlay.jsx";
 import BatchClaimBar from "@/components/claims/BatchClaimBar.jsx";
 import RideCard from "@/components/claims/RideCard.jsx";
 import RideGroup from "@/components/claims/RideGroup.jsx";
@@ -10,14 +14,31 @@ import useAutoRefresh from "@/hooks/useAutoRefresh";
 import useClaimSelection from "@/hooks/useClaimSelection";
 import useRides from "@/hooks/useRides";
 import { claimRideOnce } from "@/services/claims";
+import { TIMEZONE } from "@/constants.js";
 import { tsToDayjs } from "@/utils/claimTime";
+import { dayjs } from "@/utils/time";
 
 export default function ClaimRides() {
   const toast = useToast();
   const sel = useClaimSelection((r) => r?.id);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { liveRides = [], fetchRides } = useRides();
+  const [isLocked, setIsLocked] = useState(false);
+
+  const checkLockout = useCallback(() => {
+    const now = dayjs().tz(TIMEZONE);
+    const h = now.hour();
+    setIsLocked(h >= BLACKOUT_START_HOUR && h < BLACKOUT_END_HOUR);
+  }, []);
+
+  useEffect(() => {
+    checkLockout();
+    const t = setInterval(checkLockout, 30000);
+    return () => clearInterval(t);
+  }, [checkLockout]);
+
+  const lockedOut = useMemo(() => role !== "admin" && isLocked, [role, isLocked]);
 
   const ridesByVehicleDate = useMemo(() => {
     const groups = new Map();
@@ -40,6 +61,12 @@ export default function ClaimRides() {
 
   const onClaim = useCallback(
     async (ride) => {
+      if (lockedOut) {
+        toast.show?.("Ride claims locked until 8:00 PM (CT)", {
+          severity: "warning",
+        });
+        return;
+      }
       try {
         await claimRideOnce(ride.id, user);
         toast.show?.("Ride claimed", { severity: "success" });
@@ -48,10 +75,16 @@ export default function ClaimRides() {
         toast.show?.(e.message || "Failed to claim", { severity: "error" });
       }
     },
-    [toast, refetch, user],
+    [toast, refetch, user, lockedOut],
   );
 
   const onClaimAll = useCallback(async () => {
+    if (lockedOut) {
+      toast.show?.("Ride claims locked until 8:00 PM (CT)", {
+        severity: "warning",
+      });
+      return;
+    }
     setBulkLoading(true);
     const ids = sel.selectedIds.slice(0);
     try {
@@ -76,7 +109,7 @@ export default function ClaimRides() {
     } finally {
       setBulkLoading(false);
     }
-  }, [sel, toast, user, refetch]);
+  }, [sel, toast, user, refetch, lockedOut]);
 
   if (!liveRides.length)
     return (
@@ -86,7 +119,20 @@ export default function ClaimRides() {
     );
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, maxWidth: 1100, mx: "auto", pb: 10 }}>
+    <Box
+      sx={{
+        position: "relative",
+        px: { xs: 1, sm: 2 },
+        maxWidth: 1100,
+        mx: "auto",
+        pb: 10,
+      }}
+    >
+      <BlackoutOverlay
+        isAdmin={role === "admin"}
+        isLocked={isLocked}
+        onUnlock={checkLockout}
+      />
       {/* Your existing filter bar goes here; ensure flexWrap on mobile */}
       <Stack
         direction="row"
@@ -115,6 +161,7 @@ export default function ClaimRides() {
                 selected={sel.isSelected(ride)}
                 onToggleSelect={() => sel.toggle(ride)}
                 onClaim={() => onClaim(ride)}
+                claimDisabled={lockedOut}
                 claiming={false}
                 highlight={Boolean(ride.__isNew)}
               />
@@ -128,6 +175,7 @@ export default function ClaimRides() {
         onClear={sel.clear}
         onClaimAll={onClaimAll}
         loading={bulkLoading}
+        disabled={lockedOut}
       />
     </Box>
   );

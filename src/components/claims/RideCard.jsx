@@ -25,6 +25,7 @@ export default function RideCard({
   onClaim,
   claiming,
   highlight = false,
+  claimDisabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const start = tsToDayjs(ride?.startTime);
@@ -134,7 +135,7 @@ export default function RideCard({
           variant="contained"
           color="primary"
           size="small"
-          disabled={claimed || claiming}
+          disabled={claimDisabled || claimed || claiming}
           onClick={onClaim}
           aria-label="Claim ride"
         >
