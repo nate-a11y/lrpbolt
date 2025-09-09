@@ -14,10 +14,11 @@ function ExportSelectedButton() {
 
   const handleExportSelected = () => {
     try {
-      const selectedIds = Array.from(apiRef.current.getSelectedRows().keys());
+      const sel = apiRef.current?.getSelectedRows?.() || new Map();
+      const selectedIds = Array.from(sel.keys());
       if (!selectedIds.length) return;
 
-      apiRef.current.exportDataAsCsv({
+      apiRef.current?.exportDataAsCsv?.({
         utf8WithBom: true,
         // Export only selected rows
         getRowsToExport: () => selectedIds,
