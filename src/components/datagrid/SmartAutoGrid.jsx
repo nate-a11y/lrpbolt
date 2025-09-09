@@ -1,16 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useCallback, useMemo, useState, memo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import {
-  DataGridPro,
-  GridToolbarContainer,
-  GridToolbarExport,
-  GridToolbarColumnsButton,
-  GridToolbarFilterButton,
-  GridToolbarDensitySelector,
-  GridToolbarQuickFilter,
-  gridClasses,
-} from "@mui/x-data-grid-pro";
+import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -31,19 +22,10 @@ import {
 
 const MAX_VISIBLE_ROWS = 15;
 
-const AutoGridToolbar = memo(function AutoGridToolbar(props = {}) {
-  const { csvOptions, printOptions, quickFilterProps } = props;
-  const qfProps = { debounceMs: 500, ...(quickFilterProps || {}) };
-  return (
-    <GridToolbarContainer>
-      <GridToolbarColumnsButton />
-      <GridToolbarFilterButton />
-      <GridToolbarDensitySelector />
-      <GridToolbarExport csvOptions={csvOptions} printOptions={printOptions} />
-      <GridToolbarQuickFilter {...qfProps} />
-    </GridToolbarContainer>
-  );
-});
+const DEFAULT_TOOLBAR_PROPS = {
+  showQuickFilter: true,
+  quickFilterProps: { debounceMs: 500 },
+};
 
 function headerFromKey(k) {
   if (!k) return "";
@@ -308,17 +290,28 @@ export default function SmartAutoGrid(props) {
     if (showToolbar) {
       const userToolbar = safeSlots.toolbar;
       safeSlots.toolbar =
-        typeof userToolbar === "function" ? userToolbar : AutoGridToolbar;
+        typeof userToolbar === "function" ? userToolbar : GridToolbar;
     } else {
       delete safeSlots.toolbar;
     }
     return { ...base, ...safeSlots };
   }, [slots, showToolbar]);
 
-  const mergedSlotProps = useMemo(
-    () => ({ ...(slotProps || {}) }),
-    [slotProps],
-  );
+  const mergedSlotProps = useMemo(() => {
+    const safeProps = { ...(slotProps || {}) };
+    if (showToolbar) {
+      const userToolbarProps = safeProps.toolbar || {};
+      safeProps.toolbar = {
+        ...DEFAULT_TOOLBAR_PROPS,
+        ...userToolbarProps,
+        quickFilterProps: {
+          ...DEFAULT_TOOLBAR_PROPS.quickFilterProps,
+          ...(userToolbarProps.quickFilterProps || {}),
+        },
+      };
+    }
+    return safeProps;
+  }, [slotProps, showToolbar]);
 
   const autoHeight = rowCount <= MAX_VISIBLE_ROWS;
   const density = rest.density ?? "compact";
