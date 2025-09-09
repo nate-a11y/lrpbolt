@@ -5,7 +5,7 @@ import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import BulkDeleteButton from "@/components/datagrid/bulkDelete/BulkDeleteButton.jsx";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
-import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.js";
+import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import { deleteRide, createRide } from "../services/firestoreService";

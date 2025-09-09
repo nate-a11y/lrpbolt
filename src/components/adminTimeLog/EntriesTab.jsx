@@ -6,7 +6,7 @@ import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import BulkDeleteButton from "@/components/datagrid/bulkDelete/BulkDeleteButton.jsx";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
-import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.js";
+import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import { tsToDate } from "@/utils/fsTime";
 import { formatDateTime } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
