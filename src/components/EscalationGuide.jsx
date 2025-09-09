@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
   Box,
   Stack,
@@ -125,20 +125,17 @@ export default function EscalationGuide(props) {
   const loading = Boolean(props?.loading);
   const error = props?.error ?? null;
 
-  const toggleExpanded = useCallback(
-    (id) => {
-      setExpandedMap((m) => {
-        const next = { ...m, [id]: !m[id] };
-        try {
-          apiRef.current?.resetRowHeights({ rowIds: [id] });
-        } catch (e) {
-          logError(e, { action: "reset-row-heights" });
-        }
-        return next;
-      });
-    },
-    [apiRef],
-  );
+  const toggleExpanded = useCallback((id) => {
+    setExpandedMap((m) => ({ ...m, [id]: !m[id] }));
+  }, []);
+
+  useEffect(() => {
+    try {
+      apiRef.current?.resetRowHeights();
+    } catch (e) {
+      logError(e, { action: "reset-row-heights" });
+    }
+  }, [expandedMap, apiRef]);
 
   const columns = useMemo(
     () => [
@@ -301,7 +298,7 @@ export default function EscalationGuide(props) {
   }
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, pb: 2 }}>
+    <Box sx={{ px: { xs: 1, sm: 2 }, pb: 2, height: "100%", overflow: "auto" }}>
       <Typography
         variant="h5"
         sx={{ fontWeight: 900, mb: 1, color: "primary.main" }}
