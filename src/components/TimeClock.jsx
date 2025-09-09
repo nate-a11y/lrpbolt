@@ -110,7 +110,9 @@ function normalizeRow(r) {
   const end = r?.endTime ?? r?.clockOut ?? r?.outTime ?? null;
   const updatedAt = r?.updatedAt ?? r?.loggedAt ?? r?._updatedAt ?? null;
   const durationMin =
-    start && end ? Math.round((tsToMillis(end) - tsToMillis(start)) / 60000) : null;
+    start && end
+      ? Math.round((tsToMillis(end) - tsToMillis(start)) / 60000)
+      : null;
   return {
     ...r,
     id,
@@ -164,7 +166,11 @@ export default function TimeClock({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
-  const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
+  const [snack, setSnack] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const [logId, setLogId] = useState(null);
   const [undo, setUndo] = useState(null); // { id, prevEnd }
   const [error, setError] = useState(null);
@@ -229,10 +235,7 @@ export default function TimeClock({ driver, setIsTracking }) {
   );
 
   const columnVisibilityModel = useMemo(
-    () =>
-      isXs
-        ? { userEmail: false, loggedAt: false, note: false }
-        : {},
+    () => (isXs ? { userEmail: false, loggedAt: false, note: false } : {}),
     [isXs],
   );
 
@@ -289,7 +292,10 @@ export default function TimeClock({ driver, setIsTracking }) {
     const c = getChannel(bcName);
     if (c) {
       c.onmessage = (e) => {
-        if (e?.data?.type === "timeclock:started" && e.data.driver === driverRef.current) {
+        if (
+          e?.data?.type === "timeclock:started" &&
+          e.data.driver === driverRef.current
+        ) {
           if (!isRunningRef.current) {
             const s = e.data.payload;
             setRideId(s.rideId || "");
@@ -299,7 +305,10 @@ export default function TimeClock({ driver, setIsTracking }) {
             setIsRunning(true);
           }
         }
-        if (e?.data?.type === "timeclock:ended" && e.data.driver === driverRef.current) {
+        if (
+          e?.data?.type === "timeclock:ended" &&
+          e.data.driver === driverRef.current
+        ) {
           setIsRunning(false);
           setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
           localStorage.removeItem("lrp_timeTrack");
@@ -351,7 +360,11 @@ export default function TimeClock({ driver, setIsTracking }) {
     if (isRunning || starting || ending) return;
 
     const now = Timestamp.now();
-    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
+    const idToTrack = isNA
+      ? "N/A"
+      : isMulti
+        ? "MULTI"
+        : rideId.trim().toUpperCase();
     setStarting(true);
     try {
       const ref = await logTimeCreate({
@@ -408,7 +421,11 @@ export default function TimeClock({ driver, setIsTracking }) {
     setIsRunning(false);
     setEnding(true);
 
-    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
+    const idToTrack = isNA
+      ? "N/A"
+      : isMulti
+        ? "MULTI"
+        : rideId.trim().toUpperCase();
     try {
       const prevEnd = null;
       await logTimeUpdate(logId, {
@@ -432,20 +449,40 @@ export default function TimeClock({ driver, setIsTracking }) {
       setElapsed(0);
       setLogId(null);
       safePost(
-        { type: "timeclock:ended", driver, payload: { endTime: tsToMillis(end) } },
+        {
+          type: "timeclock:ended",
+          driver,
+          payload: { endTime: tsToMillis(end) },
+        },
         bcName,
       );
     } catch (err) {
-      setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
+      setSnack({
+        open: true,
+        message: `❌ Failed: ${err.message}`,
+        severity: "error",
+      });
       setIsRunning(true);
     } finally {
       setEnding(false);
     }
-  }, [isRunning, startTime, logId, isNA, isMulti, rideId, driver, starting, ending]);
+  }, [
+    isRunning,
+    startTime,
+    logId,
+    isNA,
+    isMulti,
+    rideId,
+    driver,
+    starting,
+    ending,
+  ]);
 
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
   if (!(isAdmin || isDriver))
-    return <Alert severity="error">You don’t have permission to view this.</Alert>;
+    return (
+      <Alert severity="error">You don’t have permission to view this.</Alert>
+    );
 
   return (
     <PageContainer maxWidth={600}>
@@ -550,7 +587,11 @@ export default function TimeClock({ driver, setIsTracking }) {
           }}
         >
           <Typography variant="subtitle1">Previous Sessions</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontStyle: "italic" }}
+          >
             {tzLabel}
           </Typography>
         </Box>
@@ -606,13 +647,16 @@ export default function TimeClock({ driver, setIsTracking }) {
                     setLogId(undo.id);
                     setEndTime(null);
                     setIsRunning(true);
-                    setRideId(undo.isNA || undo.isMulti ? "" : undo.rideId || "");
+                    setRideId(
+                      undo.isNA || undo.isMulti ? "" : undo.rideId || "",
+                    );
                     setIsNA(!!undo.isNA);
                     setIsMulti(!!undo.isMulti);
                     setStartTime(undo.startTime);
                     setElapsed(
                       Math.floor(
-                        (tsToMillis(Timestamp.now()) - tsToMillis(undo.startTime)) /
+                        (tsToMillis(Timestamp.now()) -
+                          tsToMillis(undo.startTime)) /
                           1000,
                       ),
                     );
