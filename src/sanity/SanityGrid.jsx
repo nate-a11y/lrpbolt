@@ -16,9 +16,9 @@ export default function SanityGrid() {
         getRowId={(r) => r.id}
         density="compact"
         slots={{ toolbar: LrpGridToolbar }}
-        slotProps={{ toolbar: { quickFilterPlaceholder: "Search…" } }}
+        slotProps={{ toolbar: { quickFilterPlaceholder: "Search" } }}
         components={{ Toolbar: LrpGridToolbar }}
-        componentsProps={{ toolbar: { quickFilterPlaceholder: "Search…" } }}
+        componentsProps={{ toolbar: { quickFilterPlaceholder: "Search" } }}
       />
     </Box>
   );
