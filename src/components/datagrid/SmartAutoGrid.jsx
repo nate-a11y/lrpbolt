@@ -322,7 +322,10 @@ export default function SmartAutoGrid(props) {
 
   const autoHeight = rowCount <= MAX_VISIBLE_ROWS;
   const density = rest.density ?? "compact";
-  const maxGridHeight = `calc(var(--DataGrid-rowHeight) * ${MAX_VISIBLE_ROWS} + var(--DataGrid-columnHeadersHeight))`;
+  const toolbarHeightVar = showToolbar
+    ? " + var(--DataGrid-toolbarHeight)"
+    : "";
+  const maxGridHeight = `calc(var(--DataGrid-rowHeight) * ${MAX_VISIBLE_ROWS} + var(--DataGrid-columnHeadersHeight)${toolbarHeightVar})`;
 
   return (
     <ResponsiveScrollBox
@@ -334,7 +337,6 @@ export default function SmartAutoGrid(props) {
           : {
               height: maxGridHeight,
               maxHeight: maxGridHeight,
-              overflowY: "hidden",
             }),
       }}
     >
