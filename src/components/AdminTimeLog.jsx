@@ -2,6 +2,8 @@
 import React, { useState, memo } from "react";
 import { Tabs, Tab } from "@mui/material";
 
+import useIsMobile from "@/hooks/useIsMobile.js";
+
 import PageContainer from "./PageContainer.jsx";
 import EntriesTab from "./adminTimeLog/EntriesTab.jsx";
 import WeeklySummaryTab from "./adminTimeLog/WeeklySummaryTab.jsx";
@@ -10,6 +12,7 @@ import ShootoutSummaryTab from "./adminTimeLog/ShootoutSummaryTab.jsx";
 
 function AdminTimeLog() {
   const [tab, setTab] = useState(0);
+  const { isMdDown } = useIsMobile();
 
   return (
     <PageContainer pt={2} pb={2}>
@@ -19,6 +22,9 @@ function AdminTimeLog() {
         textColor="inherit"
         indicatorColor="primary"
         aria-label="Admin Time Log Tabs"
+        variant={isMdDown ? "scrollable" : "standard"}
+        scrollButtons={isMdDown ? "auto" : false}
+        allowScrollButtonsMobile
         sx={{
           "& .MuiTab-root": { textTransform: "none", minHeight: 40 },
           mb: 1,
