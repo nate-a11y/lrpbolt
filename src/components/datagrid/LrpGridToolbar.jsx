@@ -103,7 +103,7 @@ export default function LrpGridToolbar(props = {}) {
       >
         <GridToolbarQuickFilter
           quickFilterParser={(v) => v.split(" ").filter(Boolean)}
-          debounceMs={500}
+          debounceMs={300}
           placeholder={quickFilterPlaceholder}
           sx={{ minWidth: 220, "& .MuiInputBase-input": { fontSize: 14 } }}
         />
