@@ -8,7 +8,6 @@ import {
   lazy,
   useCallback,
 } from "react";
-import { motion } from "framer-motion";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -19,8 +18,6 @@ import {
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-
-import { dayjs } from "@/utils/time";
 
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
@@ -38,7 +35,6 @@ import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
 import ContactEscalation from "./components/ContactEscalation";
 import { logout } from "./services/auth";
-import { TIMEZONE } from "./constants";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
 import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
@@ -46,19 +42,12 @@ import { initAnalytics, trackPageView } from "./utils/analytics";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
 import PhoneNumberPrompt from "./components/PhoneNumberPrompt.jsx";
-import {
-  BLACKOUT_START_HOUR,
-  BLACKOUT_END_HOUR,
-} from "./components/BlackoutOverlay.jsx";
-
-const CST = TIMEZONE;
-
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 if (import.meta.env.PROD && typeof APP_VERSION !== "undefined") {
   console.info("LRP version:", APP_VERSION);
 }
 
-const RideClaimTab = lazy(() => import("./components/RideClaimTab"));
+const ClaimRides = lazy(() => import("./pages/ClaimRides.jsx"));
 const TimeClock = lazy(() => import("./components/TimeClock"));
 const AdminTimeLog = lazy(() => import("./components/AdminTimeLog"));
 const AdminUserManager = lazy(() => import("./components/AdminUserManager"));
@@ -75,12 +64,6 @@ const TicketGenerator = lazy(() => import("./components/TicketGenerator"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
 const TicketScanner = lazy(() => import("./components/TicketScanner"));
 const Tickets = lazy(() => import("./components/Tickets"));
-
-const isInLockoutWindow = () => {
-  const now = dayjs().tz(CST);
-  const hour = now.hour();
-  return hour >= BLACKOUT_START_HOUR && hour < BLACKOUT_END_HOUR;
-};
 
 function App() {
   const { driver, setDriver } = useDriver();
@@ -108,7 +91,6 @@ function App() {
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
-  const [isLockedOut, setIsLockedOut] = useState(isInLockoutWindow());
   const [isAppReady, setIsAppReady] = useState(false);
   const [phonePromptOpen, setPhonePromptOpen] = useState(false);
   const isFullyReady = isAppReady && !!driver;
@@ -129,17 +111,6 @@ function App() {
   const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
 
   const noop = useCallback(() => {}, []);
-
-  const handleClearCache = useCallback(() => {
-    if (window.confirm("Clear cache and reload? You'll be signed out.")) {
-      localStorage.clear();
-      sessionStorage.clear();
-      logout();
-      if ("caches" in window)
-        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
-      window.location.href = window.location.origin;
-    }
-  }, []);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -214,14 +185,6 @@ function App() {
   }, [enqueue]);
 
   useEffect(() => {
-    const interval = setInterval(
-      () => setIsLockedOut(isInLockoutWindow()),
-      5000,
-    );
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (showEliteBadge) {
       const t = setTimeout(() => setShowEliteBadge(false), 5000);
       return () => clearTimeout(t);
@@ -254,16 +217,7 @@ function App() {
         <Suspense fallback={<LinearProgress aria-label="Loading" />}>
           <Routes>
             <Route path="/" element={<Navigate to="/rides" replace />} />
-            <Route
-              path="/rides"
-              element={
-                <RideClaimTab
-                  driver={selectedDriver}
-                  isAdmin={isAdmin}
-                  isLockedOut={!isAdmin && isLockedOut}
-                />
-              }
-            />
+            <Route path="/rides" element={<ClaimRides />} />
             <Route path="/__/auth/iframe" element={<div />} />
             <Route
               path="/clock"
@@ -339,66 +293,6 @@ function App() {
           onClose={() => setPhonePromptOpen(false)}
         />
         <NotificationsOptInDialog user={user} />
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
-        >
-          <Box
-            sx={{
-              mt: 6,
-              py: 3,
-              px: 3,
-              borderTop: "2px dashed",
-              borderColor: "primary.main",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 2,
-              fontSize: "0.9rem",
-              color: "text.secondary",
-              backgroundColor: (theme) =>
-                theme.palette.mode === "dark" ? "#111" : "#f4fff4",
-              textAlign: "center",
-            }}
-          >
-            <Typography
-              variant="caption"
-              sx={{
-                color: "success.main",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              🚀 Version:{" "}
-              <span style={{ fontFamily: "monospace" }}>
-                v{APP_VERSION || "dev"}
-              </span>{" "}
-              • Lake Ride Pros © {new Date().getFullYear()}
-            </Typography>
-
-            <Button
-              size="small"
-              variant="outlined"
-              color="error"
-              sx={{
-                fontWeight: "bold",
-                borderWidth: 2,
-                "&:hover": {
-                  backgroundColor: "error.main",
-                  color: "common.white",
-                },
-              }}
-              onClick={handleClearCache}
-            >
-              🧹 CLEAR CACHE & RELOAD
-            </Button>
-          </Box>
-        </motion.div>
       </AppShell>
     </LocalizationProvider>
   );

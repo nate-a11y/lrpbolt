@@ -2,7 +2,6 @@
 import { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { LicenseInfo } from "@mui/x-license";
 
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
@@ -16,10 +15,7 @@ import ColorModeProvider from "./context/ColorModeContext.jsx";
 import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import ToastProvider from "./context/ToastProvider.jsx";
 import "./utils/firebaseInit.js";
-
-if (import.meta?.env?.VITE_MUIX_LICENSE_KEY) {
-  LicenseInfo.setLicenseKey(import.meta.env.VITE_MUIX_LICENSE_KEY);
-}
+import "./muix-license.js";
 
 const Root = () => {
   return (
