@@ -650,7 +650,7 @@ function Tickets() {
               }}
               slotProps={{
                 pagination: { labelRowsPerPage: "Rows" },
-                toolbar: { quickFilterProps: { debounceMs: 500 } },
+                toolbar: { quickFilterPlaceholder: "Search" },
               }}
               showToolbar
               sx={{

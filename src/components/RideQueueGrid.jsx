@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
 import { Paper } from "@mui/material";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
-import BulkDeleteButton from "@/components/datagrid/bulkDelete/BulkDeleteButton.jsx";
+import logError from "@/utils/logError.js";
+import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
-import { deleteRide, createRide } from "../services/firestoreService";
+import { deleteRide } from "../services/firestoreService";
 import { mapSnapshotToRows } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 
@@ -42,21 +43,45 @@ export default function RideQueueGrid() {
   }, []);
 
   const performDelete = useCallback(async (ids) => {
-    for (const id of ids) {
+    const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await deleteRide("rideQueue", id);
+        const batch = writeBatch(db);
+        ids.forEach((id) => batch.delete(doc(db, "rideQueue", id)));
+        await batch.commit();
+        return;
       } catch (err) {
-        console.error("Failed deleting ride", id, err);
+        if (attempt === 2) {
+          logError(err, { where: "RideQueueGrid", action: "bulkDelete" });
+          throw new AppError(
+            err.message || "Bulk delete failed",
+            "FIRESTORE_DELETE",
+            { collection: "rideQueue" },
+          );
+        }
+        await backoff(attempt);
       }
     }
   }, []);
 
   performDelete.restore = async (rowsToRestore) => {
-    for (const r of rowsToRestore) {
+    const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await createRide("rideQueue", r);
+        const batch = writeBatch(db);
+        rowsToRestore.forEach((r) => {
+          if (!r) return;
+          const { id, ...rest } = r;
+          batch.set(doc(db, "rideQueue", id), rest);
+        });
+        await batch.commit();
+        return;
       } catch (err) {
-        console.error("Failed restoring ride", r?.id, err);
+        if (attempt === 2) {
+          logError(err, { where: "RideQueueGrid", action: "bulkRestore" });
+        } else {
+          await backoff(attempt);
+        }
       }
     }
   };
@@ -64,12 +89,15 @@ export default function RideQueueGrid() {
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
     useBulkDelete({ performDelete });
 
-  const handleBulkDelete = useCallback(() => {
-    const sel = apiRef.current?.getSelectedRows?.() || new Map();
-    const ids = Array.from(sel.keys());
-    const rowsToDelete = Array.from(sel.values());
-    openDialog(ids, rowsToDelete);
-  }, [apiRef, openDialog]);
+  const handleBulkDelete = useCallback(
+    async (ids) => {
+      const rowsToDelete = ids
+        .map((id) => apiRef.current?.getRow?.(id))
+        .filter(Boolean);
+      openDialog(ids, rowsToDelete);
+    },
+    [apiRef, openDialog],
+  );
 
   const sampleRows = useMemo(() => {
     const sel = apiRef.current?.getSelectedRows?.() || new Map();
@@ -119,13 +147,8 @@ export default function RideQueueGrid() {
           showToolbar
           slotProps={{
             toolbar: {
-              extraActions: (
-                <BulkDeleteButton
-                  count={selectionModel.length}
-                  disabled={deleting}
-                  onClick={handleBulkDelete}
-                />
-              ),
+              onDeleteSelected: handleBulkDelete,
+              quickFilterPlaceholder: "Search",
             },
           }}
         />

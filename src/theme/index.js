@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
 
-import CustomToolbar from "@/components/datagrid/CustomToolbar.jsx";
+import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
 
 export const brand = {
   green500: "#4cbb17",
@@ -184,23 +184,9 @@ export const getDesignTokens = (mode) => ({
     },
     MuiDataGrid: {
       defaultProps: {
-        slots: { toolbar: CustomToolbar },
+        slots: { toolbar: LrpGridToolbar },
         slotProps: {
-          toolbar: {
-            showQuickFilter: true,
-            quickFilterProps: {
-              debounceMs: 300,
-              sx: {
-                minWidth: 0,
-                flexGrow: 1,
-                maxWidth: {
-                  xs: "100%",
-                  sm: 240,
-                  md: 300,
-                },
-              },
-            },
-          },
+          toolbar: { quickFilterPlaceholder: "Search" },
         },
       },
       styleOverrides: {
