@@ -26,15 +26,104 @@ import ContactCard from "@/components/contacts/ContactCard.jsx";
 import { downloadVcards } from "@/utils/vcard";
 import logError from "@/utils/logError";
 
-export default function EscalationGuide({
-  rows = [],
-  loading = false,
-  error = null,
-}) {
+/** ===== Local fallback data (matches your original list) ===== */
+const fallbackContacts = [
+  {
+    name: "Jim Brentlinger (LRP1)",
+    phone: "573.353.2849",
+    email: "Jim@lakeridepros.com",
+    responsibilities: [
+      "Trip issues (larger vehicles)",
+      "Vehicle issues, schedule issues",
+      "Incident reporting",
+      "Payroll (including direct deposit or deductions)",
+      "Commercial insurance questions",
+      "Permit questions (Lake Ozark, Osage Beach, Camdenton, Eldon, Jeff City)",
+      "Quote questions for larger vehicles",
+    ],
+  },
+  {
+    name: "Nate Bullock (LRP2)",
+    phone: "417.380.8853",
+    email: "Nate@lakeridepros.com",
+    responsibilities: [
+      "Moovs issues (driver or backend)",
+      "Claim Portal / Tech support",
+      "Website & logo support",
+      "Schedule issues",
+      "Passenger incident follow-ups",
+      "Payment or closeout note issues",
+      "Quote questions for larger vehicles",
+    ],
+  },
+  {
+    name: "Michael Brandt (LRP3)",
+    phone: "573.286.9110",
+    email: "Michael@lakeridepros.com",
+    responsibilities: [
+      "Social Media / Promotions",
+      "Insider memberships",
+      "Schedule issues",
+      "Apparel, branding, and business cards",
+      "Advertising partnerships or referrals",
+      "Passenger experience issues",
+      "Quote questions for larger vehicles",
+    ],
+  },
+];
+
+/** ===== Helpers ===== */
+function normalizeContacts(input = []) {
+  return input.map((r, idx) => {
+    const id =
+      r?.id ||
+      r?.contactId ||
+      r?.uid ||
+      (r?.email ? `email:${r.email}` : null) ||
+      (r?.phone ? `phone:${String(r.phone).replace(/[^\d+]/g, "")}` : null) ||
+      `row-${idx}`;
+
+    let responsibilities = r?.responsibilities;
+    if (typeof responsibilities === "string") {
+      responsibilities = responsibilities
+        .split(/\r?\n|,/g)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (!Array.isArray(responsibilities)) responsibilities = [];
+
+    return {
+      ...r,
+      id,
+      name: r?.name || r?.displayName || "N/A",
+      phone: r?.phone || r?.phoneNumber || "",
+      email: r?.email || r?.emailAddress || "",
+      responsibilities,
+    };
+  });
+}
+
+const getIdSafe = (r) =>
+  r?.id ||
+  (r?.email ? `email:${r.email}` : null) ||
+  (r?.phone ? `phone:${String(r.phone).replace(/[^\d+]/g, "")}` : null) ||
+  `row-${Math.random().toString(36).slice(2)}`;
+
+/** ===== Component ===== */
+export default function EscalationGuide(props) {
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
   const apiRef = useGridApiRef();
   const [expandedMap, setExpandedMap] = useState({}); // {id: boolean}
+
+  // Prefer prop rows if provided; else use local fallback
+  const rowsSource = Array.isArray(props?.rows) && props.rows.length
+    ? props.rows
+    : fallbackContacts;
+
+  const rows = useMemo(() => normalizeContacts(rowsSource), [rowsSource]);
+  const loading = Boolean(props?.loading);
+  const error = props?.error ?? null;
 
   const toggleExpanded = (id) =>
     setExpandedMap((m) => ({ ...m, [id]: !m[id] }));
@@ -90,9 +179,11 @@ export default function EscalationGuide({
                   </>
                 ) : null}
               </Stack>
-              <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                {phone}
-              </Typography>
+              {phone ? (
+                <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                  {phone}
+                </Typography>
+              ) : null}
               {email ? (
                 <Typography variant="body2" sx={{ opacity: 0.85 }}>
                   {email}
@@ -185,10 +276,13 @@ export default function EscalationGuide({
         </Typography>
         <Stack spacing={1.25}>
           {rows?.length ? (
-            rows.map((c) => <ContactCard key={c.id} contact={c} />)
+            rows.map((c) => <ContactCard key={getIdSafe(c)} contact={c} />)
           ) : (
             <Alert severity="info">No contacts found.</Alert>
           )}
+        </Stack>
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1 }}>
+          <ExportVcardsButton />
         </Stack>
       </Box>
     );
@@ -207,7 +301,7 @@ export default function EscalationGuide({
         apiRef={apiRef}
         rows={rows}
         loading={loading}
-        getRowId={(r) => r?.id}
+        getRowId={getIdSafe}
         columns={columns}
         autoHeight
         density="compact"
@@ -229,7 +323,6 @@ export default function EscalationGuide({
             textDecoration: "underline",
           },
         }}
-        // Overlays
         localeText={{
           noRowsLabel: "No contacts found.",
           errorOverlayDefaultLabel: "Error loading contacts.",
