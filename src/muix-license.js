@@ -1,11 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
-import { setLicenseKey } from "@mui/x-license"; // eslint-disable-line import/named
+import { LicenseInfo } from "@mui/x-license";
+
+import logError from "./utils/logError.js";
 
 const key = import.meta.env?.VITE_MUIX_LICENSE_KEY;
 if (key) {
   try {
-    setLicenseKey(key);
+    LicenseInfo.setLicenseKey(key);
   } catch (e) {
-    console.warn("MUIX license warn:", e?.message || e);
+    logError(e, { where: "muix-license" });
   }
 }
