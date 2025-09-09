@@ -53,7 +53,7 @@ export default function WeeklySummaryTab() {
         overrides={overrides}
         checkboxSelection
         disableRowSelectionOnClick
-        showToolbar
+        sx={{ height: 520 }}
       />
     </Paper>
   );

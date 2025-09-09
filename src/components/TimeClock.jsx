@@ -545,7 +545,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             autoHeight={false}
             checkboxSelection
             disableRowSelectionOnClick
-            sx={{ width: "100%", maxWidth: "100%" }}
+            sx={{ width: "100%", maxWidth: "100%", height: 520 }}
             slots={{
               loadingOverlay: LoadingOverlay,
               noRowsOverlay: NoRowsOverlay,
@@ -554,7 +554,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             loading={!ready}
             error={error}
             density={isXs ? "compact" : "standard"}
-            showToolbar
           />
         </Paper>
       </Paper>
