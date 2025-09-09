@@ -28,14 +28,23 @@ export default function RideCard({
   claimDisabled = false,
 }) {
   const [open, setOpen] = useState(false);
-  const start = tsToDayjs(ride?.startTime);
+  const start = tsToDayjs(ride?.startTime || ride?.pickupTime);
+  const endSrc = ride?.endTime || ride?.dropoffTime;
   const meta = useMemo(
     () => ({
-      range: formatRange(ride?.startTime, ride?.endTime),
-      duration: durationHM(ride?.startTime, ride?.endTime),
+      range: formatRange(
+        ride?.startTime || ride?.pickupTime,
+        endSrc,
+        ride?.rideDuration,
+      ),
+      duration: durationHM(
+        ride?.startTime || ride?.pickupTime,
+        endSrc,
+        ride?.rideDuration,
+      ),
       date: start ? start.format("ddd, MMM D") : "N/A",
     }),
-    [ride, start],
+    [ride, start, endSrc],
   );
 
   const claimed = Boolean(ride?.claimedBy);
