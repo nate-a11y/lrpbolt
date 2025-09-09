@@ -543,7 +543,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             order={order}
             forceHide={forceHide}
             autoHeight={false}
-            checkboxSelection={false}
+            checkboxSelection
             disableRowSelectionOnClick
             sx={{ width: "100%", maxWidth: "100%" }}
             slots={{

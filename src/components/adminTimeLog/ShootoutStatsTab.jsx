@@ -163,6 +163,8 @@ export default function ShootoutStatsTab() {
         onRowEditStop={handleRowEditStop}
         apiRef={apiRef}
         experimentalFeatures={{ newEditingApi: true }}
+        checkboxSelection
+        disableRowSelectionOnClick
         showToolbar
       />
     </Paper>

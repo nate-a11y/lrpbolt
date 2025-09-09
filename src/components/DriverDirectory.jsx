@@ -475,6 +475,8 @@ export default function DriverDirectory() {
             disableColumnMenu
             disableColumnSelector
             hideFooterSelectedRowCount
+            checkboxSelection
+            disableRowSelectionOnClick
             autoHeight
             initialState={{
               pagination: { paginationModel: { pageSize: 25, page: 0 } },

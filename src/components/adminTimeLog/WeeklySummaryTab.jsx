@@ -51,6 +51,8 @@ export default function WeeklySummaryTab() {
           "lastEnd",
         ]}
         overrides={overrides}
+        checkboxSelection
+        disableRowSelectionOnClick
         showToolbar
       />
     </Paper>

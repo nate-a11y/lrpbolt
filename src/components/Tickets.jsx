@@ -30,7 +30,7 @@ import {
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import { GridActionsCellItem, GridToolbar } from "@mui/x-data-grid-pro";
+import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -644,7 +644,6 @@ function Tickets() {
                   : undefined
               }
               slots={{
-                toolbar: GridToolbar,
                 loadingOverlay: LoadingOverlay,
                 noRowsOverlay: NoRowsOverlay,
                 errorOverlay: ErrorOverlay,

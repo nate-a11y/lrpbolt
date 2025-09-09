@@ -38,6 +38,7 @@ export default function SafeDataGrid(props: Props) {
         columnsCompat={columns}
         getRowId={getRowId}
         disableRowSelectionOnClick
+        checkboxSelection
         slots={{ noRowsOverlay: NoRows }}
         showToolbar
         {...props}

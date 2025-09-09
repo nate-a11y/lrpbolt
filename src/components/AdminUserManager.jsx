@@ -489,6 +489,7 @@ export default function AdminUserManager() {
               columnsCompat={columns}
               autoHeight
               loading={loading}
+              checkboxSelection
               disableRowSelectionOnClick
               processRowUpdate={handleProcessRowUpdate}
               isCellEditable={(params) => isAdmin && params.field !== "email"}

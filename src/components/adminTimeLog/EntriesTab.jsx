@@ -4,6 +4,9 @@ import { Box, Paper, CircularProgress, Alert, TextField } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
+import BulkDeleteButton from "@/components/datagrid/bulkDelete/BulkDeleteButton.jsx";
+import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
+import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.js";
 import { tsToDate } from "@/utils/fsTime";
 import { formatDateTime } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
@@ -13,7 +16,11 @@ import logError from "@/utils/logError.js";
 
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
-import { patchTimeLog, deleteTimeLog } from "../../services/timeLogs";
+import {
+  patchTimeLog,
+  deleteTimeLog,
+  createTimeLog,
+} from "../../services/timeLogs";
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 
@@ -27,6 +34,7 @@ export default function EntriesTab() {
   const [search, setSearch] = useState("");
   const apiRef = useGridApiRef();
   const [rowModesModel, setRowModesModel] = useState({});
+  const [selectionModel, setSelectionModel] = useState([]);
 
   const handleDelete = useCallback(async (row) => {
     if (!window.confirm("Delete this time log?")) return;
@@ -226,6 +234,29 @@ export default function EntriesTab() {
     [filteredRows],
   );
 
+  const performDelete = useCallback(async (ids) => {
+    for (const id of ids) {
+      try {
+        await deleteTimeLog(id);
+      } catch (err) {
+        console.error("Failed deleting time log", id, err);
+      }
+    }
+  }, []);
+
+  performDelete.restore = async (rowsToRestore) => {
+    for (const r of rowsToRestore) {
+      try {
+        await createTimeLog(r);
+      } catch (err) {
+        console.error("Failed restoring time log", r?.id, err);
+      }
+    }
+  };
+
+  const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
+    useBulkDelete({ performDelete });
+
   if (loading) {
     return (
       <Box p={2}>
@@ -314,11 +345,39 @@ export default function EntriesTab() {
           onRowEditStop={handleRowEditStop}
           apiRef={apiRef}
           experimentalFeatures={{ newEditingApi: true }}
+          checkboxSelection
+          disableRowSelectionOnClick
+          rowSelectionModel={selectionModel}
+          onRowSelectionModelChange={(m) => setSelectionModel(m)}
           showToolbar
+          slotProps={{
+            toolbar: {
+              extraActions: (
+                <BulkDeleteButton
+                  count={selectionModel.length}
+                  disabled={deleting}
+                  onClick={() => {
+                    const sel = apiRef.current.getSelectedRows();
+                    const ids = Array.from(sel.keys());
+                    const rows = Array.from(sel.values());
+                    openDialog(ids, rows);
+                  }}
+                />
+              ),
+            },
+          }}
           pageSizeOptions={[15, 30, 60, 100]}
           getRowId={(r) =>
             r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
           }
+        />
+        <ConfirmBulkDeleteDialog
+          open={dialogOpen}
+          total={selectionModel.length}
+          deleting={deleting}
+          onClose={closeDialog}
+          onConfirm={onConfirm}
+          sampleRows={Array.from(apiRef.current.getSelectedRows().values())}
         />
       </Paper>
     </Paper>

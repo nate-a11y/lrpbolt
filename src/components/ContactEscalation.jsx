@@ -286,6 +286,8 @@ export default function ContactEscalation() {
             disableColumnMenu
             disableColumnSelector
             hideFooterSelectedRowCount
+            checkboxSelection
+            disableRowSelectionOnClick
             initialState={{
               pagination: { paginationModel: { pageSize: 25, page: 0 } },
             }}
