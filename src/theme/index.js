@@ -136,11 +136,11 @@ export const getDesignTokens = (mode) => ({
     },
     MuiCard: {
       styleOverrides: {
-        root: {
-          background: "#0d0d0d",
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
           borderRadius: 18,
-          border: "1px solid rgba(255,255,255,0.06)",
-        },
+          border: `1px solid ${theme.palette.divider}`,
+        }),
       },
     },
     MuiTabs: {
