@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
+import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
@@ -287,7 +287,11 @@ export default function SmartAutoGrid(props) {
       noRowsOverlay: NoRowsOverlay,
       errorOverlay: ErrorOverlay,
     };
-    if (!showToolbar) safeSlots.toolbar = null;
+    if (showToolbar) {
+      if (!safeSlots.toolbar) safeSlots.toolbar = GridToolbar;
+    } else {
+      safeSlots.toolbar = null;
+    }
     return { ...base, ...safeSlots };
   }, [slots, showToolbar]);
 
