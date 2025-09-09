@@ -1,44 +1,45 @@
-// src/components/TimeClockGodMode.jsx
-import { useState, useEffect, useRef, useMemo } from "react";
+// src/components/TimeClock.jsx
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  Snackbar,
   Alert,
-  Stack,
+  Box,
+  Button,
+  Checkbox,
   CircularProgress,
-  useTheme,
-  useMediaQuery,
+  FormControlLabel,
   keyframes,
+  Paper,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
   Stop as StopIcon,
+  Undo as UndoIcon,
 } from "@mui/icons-material";
 import {
-  addDoc,
-  updateDoc,
-  collection,
-  serverTimestamp,
   Timestamp,
+  addDoc,
+  collection,
   doc,
-  query,
-  where,
-  orderBy,
   limit,
   onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 
 import { dayjs } from "@/utils/time";
 import { db } from "src/utils/firebaseInit";
+import { friendlyTzLabel } from "@/utils/timeSafe";
 import { useRole } from "@/hooks";
 import RoleDebug from "@/components/RoleDebug";
-import { friendlyTzLabel } from "@/utils/timeSafe";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { enrichDriverNames } from "../services/normalizers";
@@ -57,8 +58,41 @@ import ErrorBanner from "./ErrorBanner";
 import PageContainer from "./PageContainer.jsx";
 
 const bcName = "lrp-timeclock";
-
 const tzLabel = friendlyTzLabel();
+const TZ = "America/Chicago";
+
+const pulse = keyframes`
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+`;
+
+function toDayjsTz(ts) {
+  try {
+    if (!ts) return null;
+    if (typeof ts.toDate === "function") return dayjs(ts.toDate()).tz(TZ);
+    if (typeof ts?.seconds === "number")
+      return dayjs(new Date(ts.seconds * 1000)).tz(TZ);
+    return dayjs(ts).tz(TZ);
+  } catch {
+    return null;
+  }
+}
+
+function formatTimestamp(ts) {
+  const d = toDayjsTz(ts);
+  return d ? d.format("MMM D, h:mm A") : "N/A";
+}
+
+function formatDuration(startTs, endTs) {
+  const s = toDayjsTz(startTs);
+  const e = toDayjsTz(endTs || Timestamp.now());
+  if (!s || !e) return "N/A";
+  const mins = e.diff(s, "minute");
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
 
 function normalizeRow(r) {
   const id =
@@ -75,6 +109,8 @@ function normalizeRow(r) {
   const start = r?.startTime ?? r?.clockIn ?? r?.inTime ?? null;
   const end = r?.endTime ?? r?.clockOut ?? r?.outTime ?? null;
   const updatedAt = r?.updatedAt ?? r?.loggedAt ?? r?._updatedAt ?? null;
+  const durationMin =
+    start && end ? Math.round((tsToMillis(end) - tsToMillis(start)) / 60000) : null;
   return {
     ...r,
     id,
@@ -83,14 +119,9 @@ function normalizeRow(r) {
     startTime: start,
     endTime: end,
     updatedAt,
-    duration: typeof r?.duration === "number" ? r.duration : null,
+    duration: durationMin,
   };
 }
-const pulse = keyframes`
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.03); opacity: 0.9; }
-  100% { transform: scale(1); opacity: 1; }
-`;
 
 async function logTimeCreate(payload) {
   const user = await waitForAuth(true);
@@ -124,7 +155,7 @@ function tsToMillis(v) {
   return d ? d.getTime() : null;
 }
 
-export default function TimeClockGodMode({ driver, setIsTracking }) {
+export default function TimeClock({ driver, setIsTracking }) {
   const [rideId, setRideId] = useState("");
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
@@ -133,13 +164,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const [isMulti, setIsMulti] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [rows, setRows] = useState([]);
-  const [snack, setSnack] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-  const [submitting, setSubmitting] = useState(false);
+  const [snack, setSnack] = useState({ open: false, message: "", severity: "success" });
   const [logId, setLogId] = useState(null);
+  const [undo, setUndo] = useState(null); // { id, prevEnd }
+  const [error, setError] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [ending, setEnding] = useState(false);
+
   const driverRef = useRef(driver);
   const isRunningRef = useRef(isRunning);
 
@@ -147,13 +179,8 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
   const { user } = useAuth();
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
-  const [error, setError] = useState(null);
-  const [ready, setReady] = useState(false);
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
-  const [undo, setUndo] = useState(null); // { id, prevEnd }
-  const [startingAnim, setStartingAnim] = useState(false);
-  const [endingAnim, setEndingAnim] = useState(false);
 
   const headerMap = useMemo(
     () => ({
@@ -185,6 +212,30 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
 
   const forceHide = useMemo(() => ["id", "driverId", "mode"], []);
 
+  const overrides = useMemo(
+    () => ({
+      startTime: { valueGetter: (v, row) => formatTimestamp(row.startTime) },
+      endTime: { valueGetter: (v, row) => formatTimestamp(row.endTime) },
+      duration: {
+        valueGetter: (v, row) => formatDuration(row.startTime, row.endTime),
+        sortComparator: (v1, v2, p1, p2) => {
+          const d1 = p1?.row?.duration ?? 0;
+          const d2 = p2?.row?.duration ?? 0;
+          return d1 - d2;
+        },
+      },
+    }),
+    [],
+  );
+
+  const columnVisibilityModel = useMemo(
+    () =>
+      isXs
+        ? { userEmail: false, loggedAt: false, note: false }
+        : {},
+    [isXs],
+  );
+
   useEffect(() => {
     if (!user?.email) {
       setRows([]);
@@ -201,11 +252,17 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const unsub = onSnapshot(
       q,
       async (snap) => {
-        const base = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        const withNames = await enrichDriverNames(base);
-        const normalized = withNames.map(normalizeRow);
-        setRows(normalized);
-        setReady(true);
+        try {
+          const base = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const withNames = await enrichDriverNames(base);
+          const normalized = withNames.map(normalizeRow);
+          setRows(normalized);
+          setReady(true);
+        } catch (err) {
+          logError(err, { area: "processTimeLogs", comp: "TimeClock" });
+          setError(err);
+          setReady(true);
+        }
       },
       (err) => {
         logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
@@ -215,8 +272,6 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     );
     return () => unsub();
   }, [user?.email]);
-
-  // logs are populated via Firestore subscription
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
@@ -234,10 +289,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     const c = getChannel(bcName);
     if (c) {
       c.onmessage = (e) => {
-        if (
-          e?.data?.type === "timeclock:started" &&
-          e.data.driver === driverRef.current
-        ) {
+        if (e?.data?.type === "timeclock:started" && e.data.driver === driverRef.current) {
           if (!isRunningRef.current) {
             const s = e.data.payload;
             setRideId(s.rideId || "");
@@ -247,10 +299,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             setIsRunning(true);
           }
         }
-        if (
-          e?.data?.type === "timeclock:ended" &&
-          e.data.driver === driverRef.current
-        ) {
+        if (e?.data?.type === "timeclock:ended" && e.data.driver === driverRef.current) {
           setIsRunning(false);
           setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
           localStorage.removeItem("lrp_timeTrack");
@@ -284,15 +333,14 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
     return () => clearInterval(timer);
   }, [isRunning, startTime]);
 
-  // subscription handled by useFirestoreSub above
+  const formatElapsed = useCallback((seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h ? `${h}h ${m}m` : `${m}m`;
+  }, []);
 
-  const formatElapsed = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}m ${s.toString().padStart(2, "0")}s`;
-  };
-
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     if (!driver || (!rideId && !isNA && !isMulti)) {
       return setSnack({
         open: true,
@@ -300,16 +348,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         severity: "error",
       });
     }
-    if (isRunning) return;
+    if (isRunning || starting || ending) return;
 
     const now = Timestamp.now();
-    const idToTrack = isNA
-      ? "N/A"
-      : isMulti
-        ? "MULTI"
-        : rideId.trim().toUpperCase();
-    setSubmitting(true);
-    setStartingAnim(true);
+    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
+    setStarting(true);
     try {
       const ref = await logTimeCreate({
         driverId: driver,
@@ -346,32 +389,26 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         bcName,
       );
     } catch (e) {
-      logError(e, { area: "FirestoreSubscribe", comp: "TimeClock" });
+      logError(e, { area: "startSession", comp: "TimeClock" });
       setSnack({
         open: true,
         message: `❌ Failed: ${e.message}`,
         severity: "error",
       });
     } finally {
-      setSubmitting(false);
-      setTimeout(() => setStartingAnim(false), 420);
+      setStarting(false);
     }
-  };
+  }, [driver, rideId, isNA, isMulti, isRunning, starting, ending]);
 
-  const handleEnd = async () => {
-    if (!isRunning || !startTime || !logId) return;
+  const handleEnd = useCallback(async () => {
+    if (!isRunning || !startTime || !logId || starting || ending) return;
 
     const end = Timestamp.now();
     setEndTime(end);
     setIsRunning(false);
-    setSubmitting(true);
-    setEndingAnim(true);
+    setEnding(true);
 
-    const idToTrack = isNA
-      ? "N/A"
-      : isMulti
-        ? "MULTI"
-        : rideId.trim().toUpperCase();
+    const idToTrack = isNA ? "N/A" : isMulti ? "MULTI" : rideId.trim().toUpperCase();
     try {
       const prevEnd = null;
       await logTimeUpdate(logId, {
@@ -387,11 +424,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         isMulti,
         startTime,
       });
-      setSnack({
-        open: true,
-        message: "Session ended. Undo?",
-        severity: "info",
-      });
+      setSnack({ open: true, message: "Session ended", severity: "info" });
       localStorage.removeItem("lrp_timeTrack");
       setRideId("");
       setIsNA(false);
@@ -399,31 +432,20 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       setElapsed(0);
       setLogId(null);
       safePost(
-        {
-          type: "timeclock:ended",
-          driver,
-          payload: { endTime: tsToMillis(end) },
-        },
+        { type: "timeclock:ended", driver, payload: { endTime: tsToMillis(end) } },
         bcName,
       );
     } catch (err) {
-      setSnack({
-        open: true,
-        message: `❌ Failed: ${err.message}`,
-        severity: "error",
-      });
+      setSnack({ open: true, message: `❌ Failed: ${err.message}`, severity: "error" });
       setIsRunning(true);
+    } finally {
+      setEnding(false);
     }
-
-    setSubmitting(false);
-    setTimeout(() => setEndingAnim(false), 420);
-  };
+  }, [isRunning, startTime, logId, isNA, isMulti, rideId, driver, starting, ending]);
 
   if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
   if (!(isAdmin || isDriver))
-    return (
-      <Alert severity="error">You don’t have permission to view this.</Alert>
-    );
+    return <Alert severity="error">You don’t have permission to view this.</Alert>;
 
   return (
     <PageContainer maxWidth={600}>
@@ -470,33 +492,33 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={2}>
           <Button
             onClick={handleStart}
-            disabled={isRunning || submitting}
+            disabled={isRunning || starting || ending}
             startIcon={<PlayArrowIcon />}
             variant="contained"
             color="success"
             sx={{
               flex: 1,
-              animation: startingAnim ? `${pulse} 400ms ease-in-out` : "none",
+              animation: starting ? `${pulse} 400ms ease-in-out` : "none",
               transition: "transform 120ms ease",
               "&:active": { transform: "scale(0.98)" },
             }}
           >
-            {submitting && !isRunning ? "Starting…" : "Start"}
+            {starting ? "Starting…" : "Start"}
           </Button>
           <Button
             onClick={handleEnd}
-            disabled={!isRunning || submitting}
+            disabled={!isRunning || starting || ending}
             startIcon={<StopIcon />}
             variant="contained"
             color="error"
             sx={{
               flex: 1,
-              animation: endingAnim ? `${pulse} 400ms ease-in-out` : "none",
+              animation: ending ? `${pulse} 400ms ease-in-out` : "none",
               transition: "transform 120ms ease, background 120ms ease",
               "&:active": { transform: "scale(0.98)" },
             }}
           >
-            {submitting && isRunning ? "Logging…" : "End"}
+            {ending ? "Logging…" : "End"}
           </Button>
         </Stack>
         {isRunning && (
@@ -506,7 +528,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
         )}
         {!isRunning && endTime && (
           <Typography mt={2} color="text.secondary">
-            Ended at {dayjs(tsToMillis(endTime)).format("HH:mm")}
+            Ended at {formatTimestamp(endTime)}
           </Typography>
         )}
       </Paper>
@@ -528,11 +550,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
           }}
         >
           <Typography variant="subtitle1">Previous Sessions</Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ fontStyle: "italic" }}
-          >
+          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
             {tzLabel}
           </Typography>
         </Box>
@@ -542,9 +560,11 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             headerMap={headerMap}
             order={order}
             forceHide={forceHide}
+            overrides={overrides}
             autoHeight={false}
             checkboxSelection
             disableRowSelectionOnClick
+            columnVisibilityModel={columnVisibilityModel}
             sx={{ width: "100%", maxWidth: "100%", height: 520 }}
             slots={{
               loadingOverlay: LoadingOverlay,
@@ -561,34 +581,38 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}
-        onClose={() => setSnack({ ...snack, open: false })}
+        onClose={() => {
+          setSnack({ ...snack, open: false });
+          setUndo(null);
+        }}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
         <Alert
           severity={snack.severity}
           variant="filled"
-          onClose={() => setSnack({ ...snack, open: false })}
+          onClose={() => {
+            setSnack({ ...snack, open: false });
+            setUndo(null);
+          }}
           action={
             undo?.id ? (
               <Button
                 size="small"
                 color="inherit"
+                startIcon={<UndoIcon fontSize="small" />}
                 onClick={async () => {
                   try {
                     await logTimeUpdate(undo.id, { endTime: null });
                     setLogId(undo.id);
                     setEndTime(null);
                     setIsRunning(true);
-                    setRideId(
-                      undo.isNA || undo.isMulti ? "" : undo.rideId || "",
-                    );
+                    setRideId(undo.isNA || undo.isMulti ? "" : undo.rideId || "");
                     setIsNA(!!undo.isNA);
                     setIsMulti(!!undo.isMulti);
                     setStartTime(undo.startTime);
                     setElapsed(
                       Math.floor(
-                        (tsToMillis(Timestamp.now()) -
-                          tsToMillis(undo.startTime)) /
+                        (tsToMillis(Timestamp.now()) - tsToMillis(undo.startTime)) /
                           1000,
                       ),
                     );
@@ -634,7 +658,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
                   }
                 }}
               >
-                UNDO
+                Undo
               </Button>
             ) : null
           }
