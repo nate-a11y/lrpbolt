@@ -38,7 +38,10 @@ export default function ClaimRides() {
     return () => clearInterval(t);
   }, [checkLockout]);
 
-  const lockedOut = useMemo(() => role !== "admin" && isLocked, [role, isLocked]);
+  const lockedOut = useMemo(
+    () => role !== "admin" && isLocked,
+    [role, isLocked],
+  );
 
   const ridesByVehicleDate = useMemo(() => {
     const groups = new Map();
