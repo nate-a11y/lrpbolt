@@ -4,7 +4,7 @@ import { setLicenseKey } from "@mui/x-license"; // eslint-disable-line import/na
 const key = import.meta.env?.VITE_MUIX_LICENSE_KEY;
 if (key) {
   try {
-    LicenseInfo.setLicenseKey(key);
+    setLicenseKey(key);
   } catch (e) {
     console.warn("MUIX license warn:", e?.message || e);
   }
