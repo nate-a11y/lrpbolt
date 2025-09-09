@@ -163,6 +163,7 @@ export default function ShootoutStatsTab() {
         onRowEditStop={handleRowEditStop}
         apiRef={apiRef}
         experimentalFeatures={{ newEditingApi: true }}
+        showToolbar
       />
     </Paper>
   );

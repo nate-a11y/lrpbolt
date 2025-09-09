@@ -389,6 +389,7 @@ export default function DriverInfoTab() {
                   },
                 },
               }}
+              showToolbar
               pagination
               hideFooterSelectedRowCount
             />

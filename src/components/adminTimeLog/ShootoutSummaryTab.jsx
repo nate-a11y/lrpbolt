@@ -107,6 +107,7 @@ export default function ShootoutSummaryTab() {
         ]}
         forceHide={["id"]}
         overrides={overrides}
+        showToolbar
       />
     </Paper>
   );

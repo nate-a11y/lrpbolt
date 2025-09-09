@@ -69,6 +69,7 @@ export default function LiveRidesGrid() {
             onEdit: (id, row) => handleEditRide(row),
             onDelete: async (id) => await deleteRide("liveRides", id),
           })}
+          showToolbar
         />
       </Paper>
       {editOpen && (

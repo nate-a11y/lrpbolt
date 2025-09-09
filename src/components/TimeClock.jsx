@@ -554,6 +554,7 @@ export default function TimeClockGodMode({ driver, setIsTracking }) {
             loading={!ready}
             error={error}
             density={isXs ? "compact" : "standard"}
+            showToolbar
           />
         </Paper>
       </Paper>

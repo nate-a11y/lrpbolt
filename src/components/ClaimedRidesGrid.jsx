@@ -69,6 +69,7 @@ export default function ClaimedRidesGrid() {
             onEdit: (id, row) => handleEditRide(row),
             onDelete: async (id) => await deleteRide("claimedRides", id),
           })}
+          showToolbar
         />
       </Paper>
       {editOpen && (
