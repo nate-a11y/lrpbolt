@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   Box,
   Stack,
@@ -10,8 +10,6 @@ import {
   Alert,
 } from "@mui/material";
 import {
-  DataGridPro,
-  GridToolbar,
   gridFilteredSortedRowIdsSelector,
   gridRowSelectionStateSelector,
   useGridApiRef,
@@ -25,6 +23,7 @@ import CopyButton from "@/components/common/CopyButton.jsx";
 import ContactCard from "@/components/contacts/ContactCard.jsx";
 import { downloadVcards } from "@/utils/vcard";
 import logError from "@/utils/logError";
+import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
 
 /** ===== Local fallback data (matches your original list) ===== */
 const fallbackContacts = [
@@ -117,16 +116,29 @@ export default function EscalationGuide(props) {
   const [expandedMap, setExpandedMap] = useState({}); // {id: boolean}
 
   // Prefer prop rows if provided; else use local fallback
-  const rowsSource = Array.isArray(props?.rows) && props.rows.length
-    ? props.rows
-    : fallbackContacts;
+  const rowsSource =
+    Array.isArray(props?.rows) && props.rows.length
+      ? props.rows
+      : fallbackContacts;
 
   const rows = useMemo(() => normalizeContacts(rowsSource), [rowsSource]);
   const loading = Boolean(props?.loading);
   const error = props?.error ?? null;
 
-  const toggleExpanded = (id) =>
-    setExpandedMap((m) => ({ ...m, [id]: !m[id] }));
+  const toggleExpanded = useCallback(
+    (id) => {
+      setExpandedMap((m) => {
+        const next = { ...m, [id]: !m[id] };
+        try {
+          apiRef.current?.resetRowHeights({ rowIds: [id] });
+        } catch (e) {
+          logError(e, { action: "reset-row-heights" });
+        }
+        return next;
+      });
+    },
+    [apiRef],
+  );
 
   const columns = useMemo(
     () => [
@@ -234,7 +246,7 @@ export default function EscalationGuide(props) {
         },
       },
     ],
-    [expandedMap],
+    [expandedMap, toggleExpanded],
   );
 
   // vCard export from toolbar (selected rows; else all filtered)
@@ -297,21 +309,13 @@ export default function EscalationGuide(props) {
         Who to Contact & When
       </Typography>
 
-      <DataGridPro
+      <LrpGrid
         apiRef={apiRef}
         rows={rows}
         loading={loading}
         getRowId={getIdSafe}
         columns={columns}
-        autoHeight
-        density="compact"
-        slots={{ toolbar: GridToolbar }}
-        slotProps={{
-          toolbar: {
-            showQuickFilter: true,
-            quickFilterProps: { debounceMs: 300 },
-          },
-        }}
+        getRowHeight={() => "auto"}
         checkboxSelection
         disableRowSelectionOnClick
         initialState={{
