@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   GridToolbarContainer,
   GridToolbarColumnsButton,
@@ -68,10 +68,19 @@ export default function LrpGridToolbar(props = {}) {
     }
   }, [getSelectedIds, onDeleteSelected]);
 
-  const selectionCount = useMemo(
-    () => getSelectedIds().length,
-    [getSelectedIds],
-  );
+  const [selectionCount, setSelectionCount] = useState(0);
+
+  useEffect(() => {
+    const update = () => setSelectionCount(getSelectedIds().length);
+    update();
+    const unsub = apiRef?.current?.subscribeEvent?.(
+      "rowSelectionModelChange",
+      update,
+    );
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [apiRef, getSelectedIds]);
 
   return (
     <>
