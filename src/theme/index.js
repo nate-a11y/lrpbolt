@@ -3,11 +3,14 @@ import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
 
 import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
 
+const LRP_GREEN = "#4cbb17";
+const BG_DARK = "#060606";
+
 export const brand = {
-  green500: "#4cbb17",
+  green500: LRP_GREEN,
   green400: "#60e421",
   green700: "#3a8e11",
-  black: "#060606",
+  black: BG_DARK,
   white: "#ffffff",
   grey200: "#e6e6e6",
 };
@@ -47,7 +50,7 @@ const buildPalette = (mode) => {
         secondary: "#b0b7c3",
         disabled: alpha("#e8eaed", 0.38),
       },
-      background: { default: "#060606", paper: "#0b0b0b" },
+      background: { default: BG_DARK, paper: "#0d0d0d" },
       divider: alpha("#ffffff", 0.12),
     };
   }
@@ -102,7 +105,15 @@ export const getDesignTokens = (mode) => ({
     },
     MuiButton: {
       styleOverrides: {
-        root: { borderRadius: 12, fontWeight: 700, textTransform: "none" },
+        root: {
+          borderRadius: 14,
+          textTransform: "none",
+          fontWeight: 600,
+          "&:focus-visible": {
+            outline: `2px solid ${LRP_GREEN}`,
+            outlineOffset: 2,
+          },
+        },
         containedPrimary: ({ theme }) => ({
           backgroundColor: theme.palette.primary.main,
           "&:hover": { backgroundColor: theme.palette.primary.dark },
@@ -112,6 +123,7 @@ export const getDesignTokens = (mode) => ({
           "&:focus-visible": {
             boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.35)}`,
           },
+          boxShadow: "0 6px 18px rgba(76,187,23,0.28)",
         }),
         outlinedPrimary: ({ theme }) => ({
           borderColor: alpha(theme.palette.primary.main, 0.6),
@@ -120,6 +132,15 @@ export const getDesignTokens = (mode) => ({
             background: alpha(theme.palette.primary.main, 0.08),
           },
         }),
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          background: "#0d0d0d",
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.06)",
+        },
       },
     },
     MuiTabs: {
@@ -132,6 +153,7 @@ export const getDesignTokens = (mode) => ({
       },
     },
     MuiChip: {
+      defaultProps: { size: "small" },
       styleOverrides: {
         colorSuccess: ({ theme }) => ({
           backgroundColor: alpha(theme.palette.success.main, 0.15),
