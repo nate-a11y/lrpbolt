@@ -1,4 +1,42 @@
-# Agents
+# LRP Driver Portal — AGENTS.md
+
+## LRP Agent Rules (Scoped)
+**Stack:** React 19 • Vite • MUI v7 • MUI X Pro v7 • Firebase v12 • dayjs (utc+tz)  
+**Brand:** dark #060606, primary #4cbb17. **JS/JSX only**. Use import.meta.env.*.
+
+### Must Do
+- Theme/SX only; no ad-hoc CSS.
+- Times are Firestore **Timestamp**; convert at UI edge via dayjs.tz.guess().
+- MUI X Pro license: `@mui/x-license` + `setLicenseKey(import.meta.env.VITE_MUIX_LICENSE_KEY)` (called once in `src/muix-license.js`, imported by `main.jsx`).
+- DataGridPro v7: use **slots** API.
+  - `slots={{ toolbar: GridToolbar }}`  
+  - `slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } } }}`
+  - `density="compact"` • **stable getRowId** • null-safe valueGetters → "N/A".
+- Firestore/HTTP goes in `/src/services/*`. Implement retries as needed; log via `src/utils/logError.js`.
+- Perf: memo heavy cells; `useMemo` for columns/rows; `useCallback` for handlers.
+- UX: explicit loading/empty/error; disable async buttons; snackbar "Undo" on destructive/bulk actions.
+
+### Must Not
+- No TypeScript. No empty blocks. No `process.env.*`. No duplicate utils/components.
+
+### Patterns
+- **Time helpers:** `src/utils/timeUtils.js` exports `tsToDayjs`, `formatRange`, `durationHM`.
+- **Grid wrapper:** prefer `src/components/datagrid/LrpGrid.jsx` to centralize defaults.
+- **Claim flows:** use `src/services/claims.js` and show snackbar results with optional Undo.
+
+### Checklists
+- [ ] Builds on Node 22 (Vite).  
+- [ ] Grids use v7 slots + quick filter + stable ids.  
+- [ ] Time formatting is tz-aware and null-safe.  
+- [ ] Async actions disable controls + show feedback.  
+- [ ] Mobile layouts don’t overflow horizontally.
+
+## File Map (References)
+- `src/muix-license.js` — `@mui/x-license` key setup.  
+- `src/utils/timeUtils.js` — dayjs helpers (tz, range, duration).  
+- `src/utils/logError.js` — centralized logging.  
+- `src/components/datagrid/LrpGrid.jsx` — DataGridPro defaults.  
+- `src/services/*` — Firestore/HTTP.
 
 ## Purpose
 This document describes all automation, AI agents, and external integrations that interact with the `lrpbolt` repository. It clarifies what each agent does, how it is triggered, and what parts of the project it can change.
