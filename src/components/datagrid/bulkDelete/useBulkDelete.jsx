@@ -1,5 +1,6 @@
 import * as React from "react";
-import { enqueueSnackbar } from "notistack";
+
+import { useToast } from "@/context/ToastProvider.jsx";
 
 /**
  * useBulkDelete
@@ -8,6 +9,7 @@ import { enqueueSnackbar } from "notistack";
  * @returns {Object} control api
  */
 export default function useBulkDelete({ performDelete }) {
+  const { enqueue } = useToast();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState([]);
@@ -31,19 +33,19 @@ export default function useBulkDelete({ performDelete }) {
       setDeleting(false);
 
       // Offer UNDO
-      enqueueSnackbar(`Deleted ${selectedIds.length} item(s)`, {
-        variant: "info",
-        action: () => (
+      enqueue(`Deleted ${selectedIds.length} item(s)`, {
+        severity: "info",
+        action: (
           <button
             onClick={async () => {
               try {
                 if (typeof performDelete.restore === "function") {
                   await performDelete.restore(selectedRowsCache);
-                  enqueueSnackbar("Undo complete", { variant: "success" });
+                  enqueue("Undo complete", { severity: "success" });
                 }
               } catch (err) {
                 console.error("Undo failed", err);
-                enqueueSnackbar("Undo failed", { variant: "error" });
+                enqueue("Undo failed", { severity: "error" });
               }
             }}
             style={{
@@ -61,7 +63,7 @@ export default function useBulkDelete({ performDelete }) {
     } catch (err) {
       setDeleting(false);
       console.error("Bulk delete failed", err);
-      enqueueSnackbar("Delete failed", { variant: "error" });
+      enqueue("Delete failed", { severity: "error" });
     }
   };
 

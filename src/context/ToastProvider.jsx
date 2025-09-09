@@ -41,6 +41,7 @@ function ToastProvider({ children }) {
           onClose={handleClose}
           severity={toast?.severity || "info"}
           variant="filled"
+          action={toast?.action}
         >
           {toast?.message}
         </Alert>
