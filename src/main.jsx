@@ -2,7 +2,7 @@
 import { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { LicenseInfo } from "@mui/x-license-pro";
+import { LicenseInfo } from "@mui/x-license";
 
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
