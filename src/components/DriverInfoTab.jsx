@@ -379,10 +379,7 @@ export default function DriverInfoTab() {
               }}
               slotProps={{
                 toolbar: {
-                  quickFilterProps: {
-                    debounceMs: 300,
-                    placeholder: "Search by location...",
-                  },
+                  quickFilterPlaceholder: "Search by location...",
                 },
               }}
               checkboxSelection

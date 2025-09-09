@@ -3,8 +3,10 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Box, Paper, CircularProgress, Alert, TextField } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
+import { writeBatch, doc } from "firebase/firestore";
 
-import BulkDeleteButton from "@/components/datagrid/bulkDelete/BulkDeleteButton.jsx";
+import logError from "@/utils/logError.js";
+import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import { tsToDate } from "@/utils/fsTime";
@@ -12,15 +14,11 @@ import { formatDateTime } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
 import { formatTz, durationHm } from "@/utils/timeSafe";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
-import logError from "@/utils/logError.js";
 
+import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
-import {
-  patchTimeLog,
-  deleteTimeLog,
-  createTimeLog,
-} from "../../services/timeLogs";
+import { patchTimeLog, deleteTimeLog } from "../../services/timeLogs";
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 
@@ -235,21 +233,45 @@ export default function EntriesTab() {
   );
 
   const performDelete = useCallback(async (ids) => {
-    for (const id of ids) {
+    const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await deleteTimeLog(id);
+        const batch = writeBatch(db);
+        ids.forEach((id) => batch.delete(doc(db, "timeLogs", id)));
+        await batch.commit();
+        return;
       } catch (err) {
-        console.error("Failed deleting time log", id, err);
+        if (attempt === 2) {
+          logError(err, { where: "EntriesTab", action: "bulkDelete" });
+          throw new AppError(
+            err.message || "Bulk delete failed",
+            "FIRESTORE_DELETE",
+            { collection: "timeLogs" },
+          );
+        }
+        await backoff(attempt);
       }
     }
   }, []);
 
   performDelete.restore = async (rowsToRestore) => {
-    for (const r of rowsToRestore) {
+    const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await createTimeLog(r);
+        const batch = writeBatch(db);
+        rowsToRestore.forEach((r) => {
+          if (!r) return;
+          const { id, ...rest } = r;
+          batch.set(doc(db, "timeLogs", id), rest);
+        });
+        await batch.commit();
+        return;
       } catch (err) {
-        console.error("Failed restoring time log", r?.id, err);
+        if (attempt === 2) {
+          logError(err, { where: "EntriesTab", action: "bulkRestore" });
+        } else {
+          await backoff(attempt);
+        }
       }
     }
   };
@@ -257,12 +279,15 @@ export default function EntriesTab() {
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
     useBulkDelete({ performDelete });
 
-  const handleBulkDelete = useCallback(() => {
-    const sel = apiRef.current?.getSelectedRows?.() || new Map();
-    const ids = Array.from(sel.keys());
-    const rows = Array.from(sel.values());
-    openDialog(ids, rows);
-  }, [apiRef, openDialog]);
+  const handleBulkDelete = useCallback(
+    async (ids) => {
+      const rows = ids
+        .map((id) => apiRef.current?.getRow?.(id))
+        .filter(Boolean);
+      openDialog(ids, rows);
+    },
+    [apiRef, openDialog],
+  );
 
   const sampleRows = useMemo(() => {
     const sel = apiRef.current?.getSelectedRows?.() || new Map();
@@ -364,13 +389,8 @@ export default function EntriesTab() {
           showToolbar
           slotProps={{
             toolbar: {
-              extraActions: (
-                <BulkDeleteButton
-                  count={selectionModel.length}
-                  disabled={deleting}
-                  onClick={handleBulkDelete}
-                />
-              ),
+              onDeleteSelected: handleBulkDelete,
+              quickFilterPlaceholder: "Search",
             },
           }}
           pageSizeOptions={[15, 30, 60, 100]}

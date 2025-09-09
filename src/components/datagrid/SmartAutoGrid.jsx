@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
 
-import CustomToolbar from "@/components/datagrid/CustomToolbar.jsx";
+import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
 import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
@@ -22,11 +22,6 @@ import {
 } from "./selectionV8";
 
 const MAX_VISIBLE_ROWS = 15;
-
-const DEFAULT_TOOLBAR_PROPS = {
-  showQuickFilter: true,
-  quickFilterProps: { debounceMs: 500 },
-};
 
 function headerFromKey(k) {
   if (!k) return "";
@@ -289,7 +284,7 @@ export default function SmartAutoGrid(props) {
       errorOverlay: ErrorOverlay,
     };
     if (showToolbar) {
-      if (!safeSlots.toolbar) safeSlots.toolbar = CustomToolbar;
+      if (!safeSlots.toolbar) safeSlots.toolbar = LrpGridToolbar;
     } else {
       safeSlots.toolbar = null;
     }
@@ -301,12 +296,12 @@ export default function SmartAutoGrid(props) {
     if (showToolbar) {
       const userToolbarProps = safeProps.toolbar || {};
       safeProps.toolbar = {
-        ...DEFAULT_TOOLBAR_PROPS,
+        quickFilterPlaceholder: "Search",
         ...userToolbarProps,
-        quickFilterProps: {
-          ...DEFAULT_TOOLBAR_PROPS.quickFilterProps,
-          ...(userToolbarProps.quickFilterProps || {}),
-        },
+        onDeleteSelected:
+          typeof userToolbarProps.onDeleteSelected === "function"
+            ? userToolbarProps.onDeleteSelected
+            : undefined,
       };
     } else {
       delete safeProps.toolbar;
