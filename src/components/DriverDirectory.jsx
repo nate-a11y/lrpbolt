@@ -525,7 +525,6 @@ export default function DriverDirectory() {
               "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
               "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
             }}
-            showToolbar
           />
         </Paper>
 

@@ -126,7 +126,8 @@ export default function SmartAutoGrid(props) {
     columnVisibilityModel,
     slotProps,
     slots,
-    showToolbar = true,
+    components,
+    componentsProps,
     autoColumns = true,
     autoHideKeys = [],
     forceHide = [],
@@ -276,38 +277,57 @@ export default function SmartAutoGrid(props) {
     return [MAX_VISIBLE_ROWS, ...opts.filter((v) => v !== MAX_VISIBLE_ROWS)];
   }, [pageSizeOptions]);
 
-  const mergedSlots = useMemo(() => {
-    const safeSlots = { ...(slots || {}) };
-    const base = {
+  const mergedSlots = useMemo(
+    () => ({
       footer: SafeGridFooter,
       noRowsOverlay: NoRowsOverlay,
       errorOverlay: ErrorOverlay,
-    };
-    if (showToolbar) {
-      if (!safeSlots.toolbar) safeSlots.toolbar = LrpGridToolbar;
-    } else {
-      safeSlots.toolbar = null;
-    }
-    return { ...base, ...safeSlots };
-  }, [slots, showToolbar]);
+      toolbar: LrpGridToolbar,
+      ...(slots || {}),
+    }),
+    [slots],
+  );
 
-  const mergedSlotProps = useMemo(() => {
-    const safeProps = { ...(slotProps || {}) };
-    if (showToolbar) {
-      const userToolbarProps = safeProps.toolbar || {};
-      safeProps.toolbar = {
+  const mergedSlotProps = useMemo(
+    () => ({
+      toolbar: {
         quickFilterPlaceholder: "Search",
-        ...userToolbarProps,
+        ...slotProps?.toolbar,
         onDeleteSelected:
-          typeof userToolbarProps.onDeleteSelected === "function"
-            ? userToolbarProps.onDeleteSelected
+          typeof slotProps?.toolbar?.onDeleteSelected === "function"
+            ? slotProps.toolbar.onDeleteSelected
             : undefined,
-      };
-    } else {
-      delete safeProps.toolbar;
-    }
-    return safeProps;
-  }, [slotProps, showToolbar]);
+      },
+      ...slotProps,
+    }),
+    [slotProps],
+  );
+
+  const mergedComponents = useMemo(
+    () => ({
+      Footer: SafeGridFooter,
+      NoRowsOverlay: NoRowsOverlay,
+      ErrorOverlay: ErrorOverlay,
+      Toolbar: LrpGridToolbar,
+      ...(components || {}),
+    }),
+    [components],
+  );
+
+  const mergedComponentsProps = useMemo(
+    () => ({
+      toolbar: {
+        quickFilterPlaceholder: "Search",
+        ...componentsProps?.toolbar,
+        onDeleteSelected:
+          typeof componentsProps?.toolbar?.onDeleteSelected === "function"
+            ? componentsProps.toolbar.onDeleteSelected
+            : undefined,
+      },
+      ...componentsProps,
+    }),
+    [componentsProps],
+  );
 
   const autoHeight = rowCount <= MAX_VISIBLE_ROWS;
   const density = rest.density ?? "compact";
@@ -343,8 +363,10 @@ export default function SmartAutoGrid(props) {
         autoHeight={autoHeight}
         density={density}
         slots={mergedSlots}
-        hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         slotProps={mergedSlotProps}
+        components={mergedComponents}
+        componentsProps={mergedComponentsProps}
+        hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         sx={{
           [`& .${gridClasses.cell}`]: { outline: "none" },
           "& .MuiDataGrid-columnHeader:focus": { outline: "none" },
@@ -391,7 +413,8 @@ SmartAutoGrid.propTypes = {
   columnVisibilityModel: PropTypes.object,
   slotProps: PropTypes.object,
   slots: PropTypes.object,
-  showToolbar: PropTypes.bool,
+  components: PropTypes.object,
+  componentsProps: PropTypes.object,
   autoColumns: PropTypes.bool,
   autoHideKeys: PropTypes.array,
   forceHide: PropTypes.array,

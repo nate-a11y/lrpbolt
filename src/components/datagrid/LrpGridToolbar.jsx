@@ -12,14 +12,10 @@ import {
 import { Box, Button, Tooltip, Snackbar, Alert } from "@mui/material";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 
-import logError from "@/utils/logError.js";
-
 /**
- * Unified LRP toolbar for all DataGridPro instances.
- * - Always renders (even with 0 rows, loading, or error overlays).
- * - QuickFilter debounced for perf; respects column visibility.
- * - Optional bulk delete via onDeleteSelected prop.
- *
+ * LrpGridToolbar: single source of truth for all DataGridPro toolbars.
+ * - Supports both new 'slots' API (v7/8) and legacy 'components' (v5/6) via consumers.
+ * - Includes debounced QuickFilter, Columns, Filter, Density, Export, and optional Delete Selected.
  * Props:
  *   onDeleteSelected?: (ids: string[]) => Promise<void> | void
  *   quickFilterPlaceholder?: string
@@ -28,11 +24,9 @@ export default function LrpGridToolbar(props = {}) {
   const { onDeleteSelected, quickFilterPlaceholder = "Search…" } = props;
   const apiRef = useGridApiContext();
 
-  // Safely read selected IDs across MUI X versions.
   const getSelectedIds = useCallback(() => {
     try {
       const state = apiRef?.current?.state || {};
-      // v7/8: rowSelection is a Set or object-like collection of IDs
       const sel =
         state?.rowSelection ??
         state?.selectionModel ??
@@ -55,18 +49,17 @@ export default function LrpGridToolbar(props = {}) {
   });
 
   const handleBulkDelete = useCallback(async () => {
+    if (typeof onDeleteSelected !== "function") return;
     const ids = getSelectedIds();
-    if (!ids.length || !onDeleteSelected) return;
-
+    if (!ids.length) return;
     try {
       await onDeleteSelected(ids);
       setSnack({
         open: true,
-        msg: `Deleted ${ids.length} item(s). Undo available in the grid's page logic.`,
+        msg: `Deleted ${ids.length} item(s).`,
         severity: "success",
       });
-    } catch (err) {
-      logError(err, { where: "LrpGridToolbar", action: "bulkDelete" });
+    } catch {
       setSnack({
         open: true,
         msg: "Failed to delete selection.",
@@ -81,8 +74,9 @@ export default function LrpGridToolbar(props = {}) {
   );
 
   return (
-    <React.Fragment>
+    <>
       <GridToolbarContainer
+        className="lrp-grid-toolbar"
         sx={{
           px: 1,
           py: 0.5,
@@ -102,24 +96,15 @@ export default function LrpGridToolbar(props = {}) {
           quickFilterParser={(v) => v.split(" ").filter(Boolean)}
           debounceMs={500}
           placeholder={quickFilterPlaceholder}
-          sx={{
-            minWidth: 220,
-            "& .MuiInputBase-input": { fontSize: 14 },
-          }}
+          sx={{ minWidth: 220, "& .MuiInputBase-input": { fontSize: 14 } }}
         />
-
         <Box sx={{ flex: 1 }} />
-
         <GridToolbarColumnsButton />
         <GridToolbarFilterButton />
         <GridToolbarDensitySelector />
         <GridToolbarExport
           printOptions={{ hideFooter: true, hideToolbar: true }}
-          slotProps={{
-            tooltip: { title: "Export" },
-          }}
         />
-
         {typeof onDeleteSelected === "function" && (
           <Tooltip
             title={
@@ -161,6 +146,6 @@ export default function LrpGridToolbar(props = {}) {
           {snack.msg}
         </Alert>
       </Snackbar>
-    </React.Fragment>
+    </>
   );
 }

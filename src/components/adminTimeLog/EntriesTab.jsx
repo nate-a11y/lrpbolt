@@ -386,7 +386,6 @@ export default function EntriesTab() {
           disableRowSelectionOnClick
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          showToolbar
           slotProps={{
             toolbar: {
               onDeleteSelected: handleBulkDelete,
@@ -397,6 +396,7 @@ export default function EntriesTab() {
           getRowId={(r) =>
             r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
           }
+          sx={{ height: 520 }}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}

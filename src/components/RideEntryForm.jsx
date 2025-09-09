@@ -1324,7 +1324,6 @@ export default function RideEntryForm() {
                       disableRowSelectionOnClick
                       loading={false}
                       checkboxSelection
-                      showToolbar
                     />
                   </Paper>
                 </Box>

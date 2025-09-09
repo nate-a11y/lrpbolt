@@ -144,13 +144,13 @@ export default function LiveRidesGrid() {
           apiRef={apiRef}
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          showToolbar
           slotProps={{
             toolbar: {
               onDeleteSelected: handleBulkDelete,
               quickFilterPlaceholder: "Search",
             },
           }}
+          sx={{ height: 520 }}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}

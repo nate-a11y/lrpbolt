@@ -118,7 +118,7 @@ function ShootoutTab() {
           })}
           checkboxSelection
           disableRowSelectionOnClick
-          showToolbar
+          sx={{ height: 520 }}
         />
       </Paper>
     </PageContainer>

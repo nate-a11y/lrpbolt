@@ -384,7 +384,6 @@ export default function DriverInfoTab() {
               }}
               checkboxSelection
               disableRowSelectionOnClick
-              showToolbar
               pagination
               hideFooterSelectedRowCount
             />

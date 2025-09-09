@@ -109,7 +109,7 @@ export default function EditableRideGrid({
         getRowId={(r) =>
           r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
         }
-        showToolbar
+        sx={{ height: 600 }}
       />
     </Paper>
   );

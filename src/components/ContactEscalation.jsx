@@ -293,6 +293,7 @@ export default function ContactEscalation() {
             }}
             pageSizeOptions={[10, 25, 50, 100]}
             sx={{
+              height: isMdDown ? 520 : 640,
               bgcolor: LRP.black,
               color: "#fff",
               borderRadius: 2,
@@ -335,7 +336,6 @@ export default function ContactEscalation() {
               "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
               "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
             }}
-            showToolbar
           />
         </Paper>
 

@@ -165,7 +165,7 @@ export default function ShootoutStatsTab() {
         experimentalFeatures={{ newEditingApi: true }}
         checkboxSelection
         disableRowSelectionOnClick
-        showToolbar
+        sx={{ height: 520 }}
       />
     </Paper>
   );
