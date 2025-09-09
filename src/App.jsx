@@ -33,7 +33,7 @@ import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
 import DriverDirectory from "./components/DriverDirectory";
-import ContactEscalation from "./components/ContactEscalation";
+import EscalationGuide from "./components/EscalationGuide.jsx";
 import { logout } from "./services/auth";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
@@ -231,7 +231,7 @@ function App() {
             <Route path="/drop-guides" element={<VehicleDropGuides />} />
             <Route path="/directory" element={<DriverDirectory />} />
             <Route path="/calendar" element={<CalendarUpdateTab />} />
-            <Route path="/escalation" element={<ContactEscalation />} />
+            <Route path="/escalation" element={<EscalationGuide />} />
             <Route path="/vehicle-calendar" element={<RideVehicleCalendar />} />
             <Route path="/settings" element={<ProfilePage />} />
             <Route
