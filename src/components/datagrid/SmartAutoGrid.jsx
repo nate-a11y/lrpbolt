@@ -18,7 +18,6 @@ import {
   minutesToHuman,
   diffMinutes,
   DEFAULT_TZ,
-  toV8Model,
 } from "./selectionV8";
 
 const MAX_VISIBLE_ROWS = 15;
@@ -239,8 +238,6 @@ export default function SmartAutoGrid(props) {
     [onRowSelectionModelChange],
   );
 
-  const v8Selection = useMemo(() => toV8Model(controlledRsm), [controlledRsm]);
-
   const safeInitialState = useMemo(() => {
     const base = {
       density: "compact",
@@ -354,7 +351,7 @@ export default function SmartAutoGrid(props) {
         getRowId={rowIdFn}
         checkboxSelection={checkboxSelection}
         disableRowSelectionOnClick={disableRowSelectionOnClick}
-        rowSelectionModel={v8Selection}
+        rowSelectionModel={controlledRsm}
         onRowSelectionModelChange={handleRsmChange}
         initialState={safeInitialState}
         columnVisibilityModel={columnVisibilityModel}
