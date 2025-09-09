@@ -1,8 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { DataGridPro, GridToolbar, gridClasses } from "@mui/x-data-grid-pro";
+import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
 
+import CustomToolbar from "@/components/datagrid/CustomToolbar.jsx";
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
 import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
@@ -288,7 +289,7 @@ export default function SmartAutoGrid(props) {
       errorOverlay: ErrorOverlay,
     };
     if (showToolbar) {
-      if (!safeSlots.toolbar) safeSlots.toolbar = GridToolbar;
+      if (!safeSlots.toolbar) safeSlots.toolbar = CustomToolbar;
     } else {
       safeSlots.toolbar = null;
     }
@@ -315,10 +316,6 @@ export default function SmartAutoGrid(props) {
 
   const autoHeight = rowCount <= MAX_VISIBLE_ROWS;
   const density = rest.density ?? "compact";
-  const toolbarHeightVar = showToolbar
-    ? " + var(--DataGrid-toolbarHeight)"
-    : "";
-  const maxGridHeight = `calc(var(--DataGrid-rowHeight) * ${MAX_VISIBLE_ROWS} + var(--DataGrid-columnHeadersHeight)${toolbarHeightVar})`;
 
   return (
     <ResponsiveScrollBox
@@ -328,8 +325,10 @@ export default function SmartAutoGrid(props) {
         ...(autoHeight
           ? {}
           : {
-              height: maxGridHeight,
-              maxHeight: maxGridHeight,
+              height: 600,
+              "@media (max-width:600px)": {
+                height: "calc(100vh - 180px)",
+              },
             }),
       }}
     >
@@ -353,6 +352,21 @@ export default function SmartAutoGrid(props) {
         slotProps={mergedSlotProps}
         sx={{
           [`& .${gridClasses.cell}`]: { outline: "none" },
+          "& .MuiDataGrid-columnHeader:focus": { outline: "none" },
+          "& .MuiDataGrid-toolbarContainer": {
+            backgroundColor: "#060606",
+            color: "#ffffff",
+            padding: "4px 8px",
+            gap: 1,
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+          },
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "#4cbb17",
+            color: "#ffffff",
+          },
           width: "100%",
           maxWidth: "100%",
           minWidth: 0,

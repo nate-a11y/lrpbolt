@@ -1,6 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/services/timeLogs.js
-import { doc, updateDoc, deleteDoc, Timestamp } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  deleteDoc,
+  Timestamp,
+  setDoc,
+  collection,
+} from "firebase/firestore";
 
 import { db } from "../utils/firebaseInit";
 import logError from "../utils/logError.js";
@@ -57,6 +64,28 @@ export async function deleteTimeLog(id) {
     } catch (err) {
       if (attempt === 2) {
         logError(err, `deleteTimeLog:${id}`);
+        throw err;
+      }
+      await backoff(attempt);
+    }
+  }
+}
+
+export async function createTimeLog(data) {
+  if (!data) return;
+  const id = data.id;
+  const payload = { ...data };
+  delete payload.id;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const ref = id
+        ? doc(db, "timeLogs", id)
+        : doc(collection(db, "timeLogs"));
+      await setDoc(ref, payload);
+      return ref.id;
+    } catch (err) {
+      if (attempt === 2) {
+        logError(err, `createTimeLog:${id || "new"}`);
         throw err;
       }
       await backoff(attempt);

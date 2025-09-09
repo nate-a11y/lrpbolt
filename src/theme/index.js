@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
-import { GridToolbar } from "@mui/x-data-grid";
+
+import CustomToolbar from "@/components/datagrid/CustomToolbar.jsx";
 
 export const brand = {
   green500: "#4cbb17",
@@ -183,7 +184,7 @@ export const getDesignTokens = (mode) => ({
     },
     MuiDataGrid: {
       defaultProps: {
-        slots: { toolbar: GridToolbar },
+        slots: { toolbar: CustomToolbar },
         slotProps: {
           toolbar: {
             showQuickFilter: true,

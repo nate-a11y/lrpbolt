@@ -160,3 +160,25 @@ export async function deleteRide(collectionName, docId) {
     throw appErr;
   }
 }
+
+export async function createRide(collectionName, data) {
+  try {
+    const id = data?.id;
+    const ref = doc(db, collectionName, id);
+    await setDoc(ref, { ...data });
+    return { success: true };
+  } catch (err) {
+    const appErr =
+      err instanceof AppError
+        ? err
+        : new AppError(err.message || "createRide failed", "FIRESTORE_CREATE", {
+            collectionName,
+            docId: data?.id,
+          });
+    logError(appErr, {
+      where: "firestoreService",
+      action: `createRide:${collectionName}/${data?.id}`,
+    });
+    throw appErr;
+  }
+}

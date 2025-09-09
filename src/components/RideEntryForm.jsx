@@ -1323,7 +1323,7 @@ export default function RideEntryForm() {
                       pageSizeOptions={[5]}
                       disableRowSelectionOnClick
                       loading={false}
-                      checkboxSelection={false}
+                      checkboxSelection
                       showToolbar
                     />
                   </Paper>

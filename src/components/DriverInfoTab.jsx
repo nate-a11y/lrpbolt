@@ -13,10 +13,7 @@ import {
   Stack,
   Link as MUILink,
 } from "@mui/material";
-import {
-  GridToolbar,
-  GridToolbarExport as _GridToolbarExport,
-} from "@mui/x-data-grid-pro";
+import { GridToolbarExport as _GridToolbarExport } from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -377,7 +374,6 @@ export default function DriverInfoTab() {
               getRowId={getRowId}
               columnVisibilityModel={columnVisibilityModel}
               slots={{
-                toolbar: GridToolbar,
                 noRowsOverlay: NoRowsOverlay,
                 noResultsOverlay: NoResultsOverlay,
               }}
@@ -389,6 +385,8 @@ export default function DriverInfoTab() {
                   },
                 },
               }}
+              checkboxSelection
+              disableRowSelectionOnClick
               showToolbar
               pagination
               hideFooterSelectedRowCount

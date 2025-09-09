@@ -107,6 +107,8 @@ export default function ShootoutSummaryTab() {
         ]}
         forceHide={["id"]}
         overrides={overrides}
+        checkboxSelection
+        disableRowSelectionOnClick
         showToolbar
       />
     </Paper>
