@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { Paper } from "@mui/material";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
@@ -64,6 +64,18 @@ export default function ClaimedRidesGrid() {
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
     useBulkDelete({ performDelete });
 
+  const handleBulkDelete = useCallback(() => {
+    const sel = apiRef.current?.getSelectedRows?.() || new Map();
+    const ids = Array.from(sel.keys());
+    const rows = Array.from(sel.values());
+    openDialog(ids, rows);
+  }, [apiRef, openDialog]);
+
+  const sampleRows = useMemo(() => {
+    const sel = apiRef.current?.getSelectedRows?.() || new Map();
+    return selectionModel.map((id) => sel.get(id)).filter(Boolean);
+  }, [apiRef, selectionModel]);
+
   return (
     <>
       <Paper sx={{ width: "100%" }}>
@@ -111,12 +123,7 @@ export default function ClaimedRidesGrid() {
                 <BulkDeleteButton
                   count={selectionModel.length}
                   disabled={deleting}
-                  onClick={() => {
-                    const sel = apiRef.current.getSelectedRows();
-                    const ids = Array.from(sel.keys());
-                    const rows = Array.from(sel.values());
-                    openDialog(ids, rows);
-                  }}
+                  onClick={handleBulkDelete}
                 />
               ),
             },
@@ -128,7 +135,7 @@ export default function ClaimedRidesGrid() {
           deleting={deleting}
           onClose={closeDialog}
           onConfirm={onConfirm}
-          sampleRows={Array.from(apiRef.current.getSelectedRows().values())}
+          sampleRows={sampleRows}
         />
       </Paper>
       {editOpen && (

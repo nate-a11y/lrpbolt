@@ -257,6 +257,18 @@ export default function EntriesTab() {
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
     useBulkDelete({ performDelete });
 
+  const handleBulkDelete = useCallback(() => {
+    const sel = apiRef.current?.getSelectedRows?.() || new Map();
+    const ids = Array.from(sel.keys());
+    const rows = Array.from(sel.values());
+    openDialog(ids, rows);
+  }, [apiRef, openDialog]);
+
+  const sampleRows = useMemo(() => {
+    const sel = apiRef.current?.getSelectedRows?.() || new Map();
+    return selectionModel.map((id) => sel.get(id)).filter(Boolean);
+  }, [apiRef, selectionModel]);
+
   if (loading) {
     return (
       <Box p={2}>
@@ -356,12 +368,7 @@ export default function EntriesTab() {
                 <BulkDeleteButton
                   count={selectionModel.length}
                   disabled={deleting}
-                  onClick={() => {
-                    const sel = apiRef.current.getSelectedRows();
-                    const ids = Array.from(sel.keys());
-                    const rows = Array.from(sel.values());
-                    openDialog(ids, rows);
-                  }}
+                  onClick={handleBulkDelete}
                 />
               ),
             },
@@ -377,7 +384,7 @@ export default function EntriesTab() {
           deleting={deleting}
           onClose={closeDialog}
           onConfirm={onConfirm}
-          sampleRows={Array.from(apiRef.current.getSelectedRows().values())}
+          sampleRows={sampleRows}
         />
       </Paper>
     </Paper>
