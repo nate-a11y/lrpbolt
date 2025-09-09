@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-// Tickets.jsx — Email, Download, Search, Summary, Scanner Status
+// Tickets.jsx — Ticket grid with search, filters, preview, bulk ops
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import ReactDOM from "react-dom/client";
 import QRCode from "react-qr-code";
@@ -32,60 +32,161 @@ import {
 } from "@mui/material";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import DownloadIcon from "@mui/icons-material/Download";
 import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
 import EditIcon from "@mui/icons-material/Edit";
 import { motion } from "framer-motion";
-import { Timestamp } from "firebase/firestore";
+import relativeTime from "dayjs/plugin/relativeTime";
 
 import { dayjs } from "@/utils/time";
-import { safeRow } from "@/utils/gridUtils";
-import { assertGridScrollable } from "@/utils/devGridCheck";
 
+import logError from "../utils/logError.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { withSafeColumns } from "../utils/gridFormatters";
+import { useGridDoctor } from "../utils/useGridDoctor";
 import {
   subscribeTickets,
   deleteTicket as apiDeleteTicket,
   emailTicket as apiEmailTicket,
 } from "../hooks/api";
-import logError from "../utils/logError.js";
-import { useAuth } from "../context/AuthContext.jsx";
-import { withSafeColumns } from "../utils/gridFormatters";
-import { useGridDoctor } from "../utils/useGridDoctor";
 
-import PageContainer from "./PageContainer.jsx";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
   LoadingOverlay,
   NoRowsOverlay,
   ErrorOverlay,
 } from "./grid/overlays.jsx";
+import PageContainer from "./PageContainer.jsx";
 import EditTicketDialog from "./EditTicketDialog.jsx";
+
+dayjs.extend(relativeTime);
+
+// null-safe Timestamp → dayjs
+function toDayjsTs(v, dayjsLib) {
+  if (!v) return null;
+  try {
+    const d = typeof v.toDate === "function" ? v.toDate() : v;
+    const dj = dayjsLib(d);
+    return dj.isValid() ? dj : null;
+  } catch {
+    return null;
+  }
+}
+function formatDate(dj) {
+  return dj ? dj.format("MM-DD-YYYY") : "N/A";
+}
+function formatTime(dj) {
+  return dj ? dj.format("h:mm A") : "N/A";
+}
+function rel(dj) {
+  return dj ? dj.fromNow() : "—";
+}
+
+function normalizeTicket(raw = {}, dayjsLib) {
+  const pickupTime = toDayjsTs(
+    raw.pickupTime || raw.createdAt || raw.created || raw.date || null,
+    dayjsLib,
+  );
+  const pickup =
+    raw.pickup ?? raw.pickupLocation ?? raw.pickup_location ?? "N/A";
+  const dropoff =
+    raw.dropoff ?? raw.dropoffLocation ?? raw.dropoff_location ?? "N/A";
+  return {
+    id: raw.ticketId || raw.id || raw.docId || raw._id || null,
+    ticketId: raw.ticketId || raw.id || raw.docId || raw._id || "N/A",
+    passenger: raw.passenger || "N/A",
+    passengerCount:
+      Number(raw.passengercount ?? raw.passengers ?? raw.passengerCount ?? 0) ||
+      0,
+    pickup,
+    dropoff,
+    notes: raw.notes || "",
+    pickupTime,
+    pickupDateStr: pickupTime ? pickupTime.format("MM-DD-YYYY") : "Unknown",
+    pickupTimeStr: pickupTime ? pickupTime.format("h:mm A") : "—",
+    scannedOutbound: !!raw.scannedOutbound,
+    scannedOutboundAt: toDayjsTs(raw.scannedOutboundAt, dayjsLib),
+    scannedOutboundBy: raw.scannedOutboundBy || "",
+    scannedReturn: !!raw.scannedReturn,
+    scannedReturnAt: toDayjsTs(raw.scannedReturnAt, dayjsLib),
+    scannedReturnBy: raw.scannedReturnBy || "",
+    linkUrl: raw.ticketId ? `/ticket/${raw.ticketId}` : null,
+  };
+}
+
+function buildCsv(rows = []) {
+  const esc = (s = "") => `"${String(s).replace(/"/g, '""')}"`;
+  const header = [
+    "Ticket ID",
+    "Passenger",
+    "Count",
+    "Date",
+    "Time",
+    "Pickup",
+    "Dropoff",
+    "Scan Status",
+  ];
+  const body = rows.map((r) => {
+    const scan = r.scannedReturn
+      ? "Return"
+      : r.scannedOutbound
+        ? "Outbound"
+        : "Not Scanned";
+    return [
+      r.ticketId,
+      r.passenger,
+      r.passengerCount,
+      formatDate(r.pickupTime),
+      formatTime(r.pickupTime),
+      r.pickup,
+      r.dropoff,
+      scan,
+    ]
+      .map(esc)
+      .join(",");
+  });
+  return [header.join(","), ...body].join("\n");
+}
+function download(filename, text, type = "text/plain") {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [filteredDate, setFilteredDate] = useState("All Dates");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "info",
+    action: null,
   });
   const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const selectedIds = Array.isArray(rowSelectionModel) ? rowSelectionModel : [];
-  const [_deletingId, setDeletingId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const [editingTicket, setEditingTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const previewRef = useRef(null);
-  const scrollRef = useRef(null);
+  const deleteTimerRef = useRef();
   const { user, authLoading } = useAuth();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
+
   const initialState = useMemo(
     () => ({
       columns: {
@@ -99,421 +200,468 @@ function Tickets() {
     [isSmall],
   );
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const getTicketDate = useCallback((t = {}) => {
-    const src = t?.pickupTime || t?.createdAt || t?.created || t?.date || null;
-    const d = src && typeof src.toDate === "function" ? src.toDate() : src;
-    return d && dayjs(d).isValid() ? dayjs(d) : null;
-  }, []);
-
-  const dateOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          tickets
-            .map((t) => getTicketDate(t)?.format("MM-DD-YYYY"))
-            .filter(Boolean),
-        ),
-      ).sort(),
-    [tickets, getTicketDate],
-  );
-
   useEffect(() => {
-    if (import.meta.env.MODE !== "production") {
-      assertGridScrollable(scrollRef.current);
-    }
-  }, []);
+    const id = setTimeout(
+      () => setSearchQuery(searchInput.trim().toLowerCase()),
+      300,
+    );
+    return () => clearTimeout(id);
+  }, [searchInput]);
 
-  // ✅ Real-time ticket subscription with indexed search
   useEffect(() => {
     if (authLoading || !user?.email) return;
-    const filters = {};
-    if (searchQuery.trim()) filters.passenger = searchQuery.trim();
-    if (filteredDate !== "All Dates") {
-      filters.pickupTime = Timestamp.fromDate(
-        dayjs(filteredDate, "MM-DD-YYYY").toDate(),
-      );
-    }
     setLoading(true);
     setError(null);
-    const unsubscribe = subscribeTickets(
+    const unsub = subscribeTickets(
       (data) => {
-        setTickets(data);
+        try {
+          const rows = (data || []).map((d) => normalizeTicket(d, dayjs));
+          setTickets(rows);
+        } catch (e) {
+          logError(e);
+        }
         setLoading(false);
       },
-      filters,
       (err) => {
         setError(err);
         setSnackbar({
           open: true,
           message: "Permissions issue loading tickets",
           severity: "error",
+          action: null,
         });
         setLoading(false);
       },
     );
-    return () => unsubscribe();
-  }, [authLoading, user?.email, searchQuery, filteredDate]);
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [authLoading, user?.email]);
 
-  const filteredTickets = tickets.filter((t = {}) => {
-    const d = getTicketDate(t);
-    const dateStr = d ? d.format("MM-DD-YYYY") : "Unknown";
-    const matchDate = filteredDate === "All Dates" || dateStr === filteredDate;
+  const dateOptions = useMemo(() => {
+    const dates = Array.from(new Set(tickets.map((t) => t.pickupDateStr)))
+      .filter(Boolean)
+      .sort();
+    return dates;
+  }, [tickets]);
 
-    const q = searchQuery.toLowerCase();
-    const ticketId = (t.ticketId || "").toString().toLowerCase();
-    const passenger = (t.passenger || "").toLowerCase();
-    const matchSearch = !q || ticketId.includes(q) || passenger.includes(q);
+  const filteredTickets = useMemo(
+    () =>
+      tickets.filter((t) => {
+        const matchDate =
+          filteredDate === "All Dates" || t.pickupDateStr === filteredDate;
+        const q = searchQuery;
+        const matchSearch =
+          !q ||
+          [t.ticketId, t.passenger, t.pickup, t.dropoff, t.notes]
+            .map((s) => (s || "").toString().toLowerCase())
+            .some((s) => s.includes(q));
+        return matchDate && matchSearch;
+      }),
+    [tickets, filteredDate, searchQuery],
+  );
 
-    return matchDate && matchSearch;
-  });
+  const passengerSummary = useMemo(
+    () =>
+      filteredTickets.reduce((acc, t) => {
+        acc[t.pickupDateStr] =
+          (acc[t.pickupDateStr] || 0) + (t.passengerCount || 0);
+        return acc;
+      }, {}),
+    [filteredTickets],
+  );
 
-  const passengerSummary = filteredTickets.reduce((acc, t = {}) => {
-    const d = getTicketDate(t);
-    const date = d ? d.format("MM-DD-YYYY") : "Unknown";
-    const count = parseInt(t.passengers ?? 0, 10);
-    acc[date] = (acc[date] || 0) + count;
-    return acc;
-  }, {});
-  const downloadTicket = async () => {
-    if (!previewRef.current || !previewTicket) return;
+  const rows = useMemo(() => filteredTickets, [filteredTickets]);
+
+  const getRowId = useCallback((r) => r.id || r.ticketId, []);
+
+  const handleEditClick = useCallback((row) => setEditingTicket(row), []);
+  const handleEditClose = useCallback(() => setEditingTicket(null), []);
+
+  const handleDeleteClick = useCallback((row) => {
+    const snapshot = row;
+    setTickets((prev) => prev.filter((t) => t.ticketId !== snapshot.ticketId));
+    const undo = () => {
+      clearTimeout(deleteTimerRef.current);
+      setTickets((prev) => [snapshot, ...prev]);
+      setSnackbar({
+        open: true,
+        message: "♻️ Delete undone",
+        severity: "success",
+        action: null,
+      });
+      if (apiDeleteTicket.length > 1) {
+        try {
+          apiDeleteTicket("undo", snapshot.ticketId, snapshot);
+        } catch (e) {
+          logError(e);
+        }
+      }
+    };
+    setSnackbar({
+      open: true,
+      message: "🗑️ Ticket deleted — Undo",
+      severity: "info",
+      action: (
+        <Button color="inherit" size="small" onClick={undo}>
+          Undo
+        </Button>
+      ),
+    });
+    deleteTimerRef.current = setTimeout(async () => {
+      try {
+        await apiDeleteTicket(snapshot.ticketId);
+        setSnackbar({
+          open: true,
+          message: "✅ Ticket deleted",
+          severity: "success",
+          action: null,
+        });
+      } catch (e) {
+        logError(e);
+        setTickets((prev) => [snapshot, ...prev]);
+        setSnackbar({
+          open: true,
+          message: "❌ Failed to delete ticket",
+          severity: "error",
+          action: null,
+        });
+      }
+    }, 6000);
+  }, []);
+
+  const columns = useMemo(
+    () =>
+      withSafeColumns([
+        {
+          field: "ticketId",
+          headerName: "Ticket ID",
+          minWidth: 140,
+          valueGetter: (p) => p?.row?.ticketId || "N/A",
+        },
+        {
+          field: "passenger",
+          headerName: "Passenger",
+          flex: 1,
+          minWidth: 160,
+          renderCell: (p) => (
+            <Typography fontWeight="bold">
+              {p?.row?.passenger || "N/A"}
+            </Typography>
+          ),
+        },
+        {
+          field: "date",
+          headerName: "Date",
+          minWidth: 110,
+          valueGetter: (p) => formatDate(p?.row?.pickupTime),
+        },
+        {
+          field: "time",
+          headerName: "Time",
+          minWidth: 110,
+          valueGetter: (p) => formatTime(p?.row?.pickupTime),
+        },
+        {
+          field: "pickup",
+          headerName: "Pickup",
+          minWidth: 160,
+          valueGetter: (p) => p?.row?.pickup || "N/A",
+        },
+        {
+          field: "dropoff",
+          headerName: "Dropoff",
+          minWidth: 160,
+          valueGetter: (p) => p?.row?.dropoff || "N/A",
+        },
+        {
+          field: "link",
+          headerName: "Link",
+          minWidth: 100,
+          sortable: false,
+          renderCell: (p) =>
+            p?.row?.linkUrl ? (
+              <a
+                href={p.row.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#0af" }}
+              >
+                View
+              </a>
+            ) : (
+              "N/A"
+            ),
+        },
+        {
+          field: "scanStatus",
+          headerName: "Scan",
+          minWidth: 160,
+          sortable: false,
+          renderCell: (p) => {
+            const r = p?.row || {};
+            if (r.scannedReturn) {
+              return (
+                <Tooltip
+                  title={`Return by ${r.scannedReturnBy || "Unknown"} • ${
+                    r.scannedReturnAt?.format("MMM D, h:mm A") || "—"
+                  }`}
+                >
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.5,
+                      bgcolor: "rgba(76,187,23,0.18)",
+                      border: "1px solid #4cbb17",
+                      borderRadius: 1,
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ✅ Return • {rel(r.scannedReturnAt, dayjs)}
+                  </Box>
+                </Tooltip>
+              );
+            }
+            if (r.scannedOutbound) {
+              return (
+                <Tooltip
+                  title={`Outbound by ${r.scannedOutboundBy || "Unknown"} • ${
+                    r.scannedOutboundAt?.format("MMM D, h:mm A") || "—"
+                  }`}
+                >
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.5,
+                      bgcolor: "rgba(76,187,23,0.12)",
+                      border: "1px dashed #4cbb17",
+                      borderRadius: 1,
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ↗️ Outbound • {rel(r.scannedOutboundAt, dayjs)}
+                  </Box>
+                </Tooltip>
+              );
+            }
+            return (
+              <Box
+                sx={{
+                  px: 1,
+                  py: 0.5,
+                  bgcolor: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  borderRadius: 1,
+                  fontSize: 12,
+                }}
+              >
+                ❌ Not Scanned
+              </Box>
+            );
+          },
+        },
+        {
+          field: "actions",
+          type: "actions",
+          headerName: "Actions",
+          minWidth: 200,
+          getActions: (params) => [
+            <GridActionsCellItem
+              key="preview"
+              icon={<DownloadIcon />}
+              label="Preview/Download"
+              onClick={() => setPreviewTicket(params.row)}
+            />,
+            <GridActionsCellItem
+              key="email"
+              icon={<EmailIcon />}
+              label="Email"
+              onClick={() => {
+                setPreviewTicket(params.row);
+                setEmailDialogOpen(true);
+              }}
+            />,
+            <GridActionsCellItem
+              key="edit"
+              icon={<EditIcon />}
+              label="Edit"
+              onClick={() => handleEditClick(params.row)}
+            />,
+            <GridActionsCellItem
+              key="delete"
+              icon={<DeleteIcon />}
+              label="Delete"
+              onClick={() => handleDeleteClick(params.row)}
+            />,
+          ],
+        },
+      ]),
+    [handleDeleteClick, handleEditClick],
+  );
+
+  useGridDoctor({ name: "Tickets", rows, columns });
+
+  const downloadTicket = useCallback(async () => {
+    const node = previewRef.current;
+    const t = previewTicket;
+    if (!node || !t) return;
     try {
-      const dataUrl = await toPng(previewRef.current, {
+      const dataUrl = await toPng(node, {
         backgroundColor: theme.palette.background.paper,
       });
       const link = document.createElement("a");
-      link.download = `${previewTicket.ticketId}.png`;
+      link.download = `${t.ticketId}.png`;
       link.href = dataUrl;
       link.click();
       setSnackbar({
         open: true,
         message: "📸 Ticket saved as image",
         severity: "success",
+        action: null,
       });
     } catch (err) {
-      logError(err, "Download failed");
+      logError(err);
       setSnackbar({
         open: true,
         message: "❌ Failed to generate image",
         severity: "error",
+        action: null,
       });
     }
-  };
+  }, [previewTicket, theme.palette.background.paper]);
 
-  const handleDelete = useCallback(async (ticketId) => {
-    const confirmDelete = window.confirm(`Delete ticket ${ticketId}?`);
-    if (!confirmDelete) return;
-
-    setDeletingId(ticketId);
+  const emailTicket = useCallback(async () => {
+    const node = previewRef.current;
+    const t = previewTicket;
+    if (!node || !t || !emailAddress) return;
+    setEmailSending(true);
     try {
-      const data = await apiDeleteTicket(ticketId);
-      if (data.success) {
-        setTickets((prev) => prev.filter((t) => t.ticketId !== ticketId));
-        setSnackbar({
-          open: true,
-          message: "🗑️ Ticket deleted",
-          severity: "success",
-        });
-      } else {
-        throw new Error("Delete failed");
-      }
-    } catch (err) {
-      logError(err, "Delete error");
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to delete ticket",
-        severity: "error",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  }, []);
-
-  const bulkDownload = async () => {
-    const selected = tickets.filter((t) => selectedIds.includes(t.ticketId));
-    for (const ticket of selected) {
-      const container = document.createElement("div");
-      document.body.appendChild(container);
-
-      const root = ReactDOM.createRoot(container);
-      root.render(
-        <Box
-          sx={{
-            p: 2,
-            width: 360,
-            backgroundColor: theme.palette.background.paper,
-            borderRadius: 2,
-            color: theme.palette.text.primary,
-          }}
-        >
-          <Box display="flex" justifyContent="center" mb={2}>
-            <img
-              src="/android-chrome-512x512.png"
-              alt="Lake Ride Pros"
-              style={{ height: 48 }}
-            />
-          </Box>
-          <Typography variant="h6" align="center" gutterBottom>
-            🎟️ Shuttle Ticket
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Typography>
-            <strong>Passenger:</strong> {ticket.passenger}
-          </Typography>
-          <Typography>
-            <strong>Passenger Count:</strong> {ticket.passengers}
-          </Typography>
-          <Typography>
-            <strong>Date:</strong> {ticket.date}
-          </Typography>
-          <Typography>
-            <strong>Time:</strong> {ticket.time}
-          </Typography>
-          <Typography>
-            <strong>Pickup:</strong> {ticket.pickup}
-          </Typography>
-          <Typography>
-            <strong>Dropoff:</strong> {ticket.dropoff}
-          </Typography>
-          {ticket.notes && (
-            <Typography>
-              <strong>Notes:</strong> {ticket.notes}
-            </Typography>
-          )}
-          <Typography>
-            <strong>Ticket ID:</strong> {ticket.ticketId}
-          </Typography>
-          <Box mt={2} display="flex" justifyContent="center">
-            <QRCode
-              value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
-              size={160}
-            />
-          </Box>
-        </Box>,
-      );
-
-      await new Promise((res) => setTimeout(res, 250));
-
-      try {
-        const dataUrl = await toPng(container);
-        const link = document.createElement("a");
-        link.download = `${ticket.ticketId}.png`;
-        link.href = dataUrl;
-        link.click();
-      } catch (err) {
-        logError(err, "Bulk download failed");
-      } finally {
-        root.unmount();
-        document.body.removeChild(container);
-      }
-    }
-    setSnackbar({
-      open: true,
-      message: "📦 Bulk tickets downloaded",
-      severity: "success",
-    });
-  };
-
-  const emailTicket = async () => {
-    if (!previewRef.current || !previewTicket || !emailAddress) return;
-    try {
-      const dataUrl = await toPng(previewRef.current, {
+      const dataUrl = await toPng(node, {
         backgroundColor: theme.palette.background.paper,
       });
       const base64 = dataUrl.split(",")[1];
-      const data = await apiEmailTicket(
-        previewTicket.ticketId,
-        emailAddress,
-        base64,
-      );
-      if (data.success) {
+      const res = await apiEmailTicket(t.ticketId, emailAddress, base64);
+      if (res?.success) {
         setSnackbar({
           open: true,
           message: "📧 Ticket emailed",
           severity: "success",
+          action: null,
         });
+        setEmailDialogOpen(false);
       } else throw new Error("Email failed");
     } catch (err) {
-      logError(err, "Email error");
+      logError(err);
       setSnackbar({
         open: true,
-        message: "❌ Email failed",
+        message: "❌ Failed to email ticket",
         severity: "error",
+        action: null,
       });
+    } finally {
+      setEmailSending(false);
     }
-    setEmailDialogOpen(false);
-    setEmailAddress("");
-  };
+  }, [previewTicket, emailAddress, theme.palette.background.paper]);
 
-  const handleDeleteClick = useCallback(
-    (row) => handleDelete(row.ticketId),
-    [handleDelete],
-  );
-  const handleDownload = useCallback((row) => setPreviewTicket(row), []);
-  const handleEmail = useCallback((row) => {
-    setPreviewTicket(row);
-    setEmailDialogOpen(true);
-  }, []);
-  const handleEditClick = useCallback((row) => setEditingTicket(row), []);
-  const handleEditClose = useCallback(
-    (updated) => {
-      setEditingTicket(null);
-      if (updated) {
-        setTickets((prev) =>
-          prev.map((t) =>
-            t.ticketId === updated.ticketId ? { ...t, ...updated } : t,
-          ),
+  const bulkDownload = useCallback(async () => {
+    const selected = rows.filter((r) =>
+      rowSelectionModel.includes(r.id || r.ticketId),
+    );
+    if (!selected.length) return;
+    setBulkDownloading(true);
+    try {
+      for (const ticket of selected) {
+        const container = document.createElement("div");
+        document.body.appendChild(container);
+        const root = ReactDOM.createRoot(container);
+        root.render(
+          <Box
+            sx={{
+              p: 2,
+              width: 360,
+              bgcolor: theme.palette.background.paper,
+              borderRadius: 2,
+              color: theme.palette.text.primary,
+            }}
+          >
+            <Box display="flex" justifyContent="center" mb={2}>
+              <img
+                src="/android-chrome-512x512.png"
+                alt="Lake Ride Pros"
+                style={{ height: 48 }}
+              />
+            </Box>
+            <Typography variant="h6" align="center" gutterBottom>
+              🎟️ Shuttle Ticket
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Typography>
+              <strong>Passenger:</strong> {ticket.passenger}
+            </Typography>
+            <Typography>
+              <strong>Passenger Count:</strong> {ticket.passengerCount}
+            </Typography>
+            <Typography>
+              <strong>Date:</strong> {formatDate(ticket.pickupTime)}
+            </Typography>
+            <Typography>
+              <strong>Time:</strong> {formatTime(ticket.pickupTime)}
+            </Typography>
+            <Typography>
+              <strong>Pickup:</strong> {ticket.pickup}
+            </Typography>
+            <Typography>
+              <strong>Dropoff:</strong> {ticket.dropoff}
+            </Typography>
+            {ticket.notes && (
+              <Typography>
+                <strong>Notes:</strong> {ticket.notes}
+              </Typography>
+            )}
+            <Typography>
+              <strong>Ticket ID:</strong> {ticket.ticketId}
+            </Typography>
+            <Box mt={2} display="flex" justifyContent="center">
+              <QRCode
+                value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
+                size={160}
+              />
+            </Box>
+          </Box>,
         );
-        setSnackbar({
-          open: true,
-          message: "✏️ Ticket updated",
-          severity: "success",
-        });
+        await new Promise((res) => setTimeout(res, 180));
+        try {
+          const dataUrl = await toPng(container, {
+            backgroundColor: theme.palette.background.paper,
+          });
+          const link = document.createElement("a");
+          link.download = `${ticket.ticketId}.png`;
+          link.href = dataUrl;
+          link.click();
+        } catch (err) {
+          logError(err);
+        } finally {
+          root.unmount();
+          document.body.removeChild(container);
+        }
       }
-    },
-    [setTickets, setSnackbar],
-  );
-
-  const rawColumns = useMemo(
-    () => [
-      {
-        field: "ticketId",
-        headerName: "Ticket ID",
-        minWidth: 120,
-        valueGetter: (p) => p?.row?.ticketId ?? "N/A",
-      },
-      {
-        field: "passenger",
-        headerName: "Passenger",
-        minWidth: 130,
-        flex: 1,
-        renderCell: (params = {}) => (
-          <Typography fontWeight="bold">{params?.value ?? "N/A"}</Typography>
-        ),
-      },
-      {
-        field: "date",
-        headerName: "Date",
-        minWidth: 110,
-        valueGetter: (p) => {
-          const d = getTicketDate(p?.row);
-          return d ? d.format("MM-DD-YYYY") : "N/A";
-        },
-      },
-      {
-        field: "pickup",
-        headerName: "Pickup",
-        minWidth: 110,
-        valueGetter: (p) => {
-          const r = p?.row || {};
-          return r.pickup ?? r.pickupLocation ?? r.pickup_location ?? "N/A";
-        },
-      },
-      {
-        field: "dropoff",
-        headerName: "Dropoff",
-        minWidth: 110,
-        valueGetter: (p) => {
-          const r = p?.row || {};
-          return r.dropoff ?? r.dropoffLocation ?? r.dropoff_location ?? "N/A";
-        },
-      },
-      {
-        field: "link",
-        headerName: "Link",
-        minWidth: 100,
-        sortable: false,
-        renderCell: (p = {}) => {
-          const id = safeRow(p)?.ticketId;
-          if (!id) return "N/A";
-          return (
-            <a
-              href={`/ticket/${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#0af" }}
-            >
-              View
-            </a>
-          );
-        },
-      },
-      {
-        field: "scanStatus",
-        headerName: "Scan",
-        minWidth: 120,
-        renderCell: (p = {}) => {
-          const r = safeRow(p);
-          if (r?.scannedReturn) return "✅ Return";
-          if (r?.scannedOutbound) return "↗️ Outbound";
-          return "❌ Not Scanned";
-        },
-      },
-      {
-        field: "actions",
-        type: "actions",
-        headerName: "Actions",
-        minWidth: 150,
-        getActions: (params) => [
-          <GridActionsCellItem
-            key="edit"
-            icon={<EditIcon />}
-            label="Edit"
-            onClick={() => handleEditClick(params.row)}
-            showInMenu={false}
-          />,
-          <GridActionsCellItem
-            key="delete"
-            icon={<DeleteIcon />}
-            label="Delete"
-            onClick={() => handleDeleteClick(params.row)}
-            showInMenu={false}
-          />,
-          <GridActionsCellItem
-            key="download"
-            icon={<DownloadIcon />}
-            label="Download"
-            onClick={() => handleDownload(params.row)}
-            showInMenu={false}
-          />,
-          <GridActionsCellItem
-            key="email"
-            icon={<EmailIcon />}
-            label="Email"
-            onClick={() => handleEmail(params.row)}
-            showInMenu={false}
-          />,
-        ],
-      },
-    ],
-    [
-      handleDeleteClick,
-      handleDownload,
-      handleEmail,
-      handleEditClick,
-      getTicketDate,
-    ],
-  );
-
-  const columns = useMemo(() => withSafeColumns(rawColumns), [rawColumns]);
-
-  const rows = useMemo(
-    () =>
-      (filteredTickets ?? []).map((t = {}) => ({
-        id: t.ticketId || t.id,
-        ...t,
-      })),
-    [filteredTickets],
-  );
-
-  const getRowId = useCallback(
-    (r) =>
-      r?.id ?? r?.ticketId ?? r?.uid ?? r?.docId ?? r?._id ?? JSON.stringify(r),
-    [],
-  );
-  useGridDoctor({ name: "Tickets", rows, columns });
+      setSnackbar({
+        open: true,
+        message: "📦 Bulk tickets downloaded",
+        severity: "success",
+        action: null,
+      });
+    } finally {
+      setBulkDownloading(false);
+    }
+  }, [
+    rows,
+    rowSelectionModel,
+    theme.palette.background.paper,
+    theme.palette.text.primary,
+  ]);
 
   return (
     <PageContainer maxWidth={960}>
@@ -555,11 +703,11 @@ function Tickets() {
         </FormControl>
 
         <TextField
-          placeholder="Search by Passenger or Ticket ID"
+          placeholder="Search tickets"
           variant="outlined"
           size="small"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -570,20 +718,6 @@ function Tickets() {
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
 
-        <Button
-          onClick={() =>
-            setSnackbar({
-              open: true,
-              message: "🔥 Real-time updates active",
-              severity: "info",
-            })
-          }
-          variant="outlined"
-          color="primary"
-          startIcon={<RefreshIcon />}
-        >
-          Refresh
-        </Button>
         <Tooltip
           title={
             selectedIds.length
@@ -597,94 +731,73 @@ function Tickets() {
               variant="contained"
               color="success"
               startIcon={<DownloadIcon />}
-              disabled={!selectedIds.length}
+              disabled={!selectedIds.length || bulkDownloading}
             >
               Bulk Download
             </Button>
           </span>
         </Tooltip>
+
+        <Button
+          variant="outlined"
+          onClick={() =>
+            download(
+              `tickets-${dayjs().format("YYYYMMDD-HHmmss")}.csv`,
+              buildCsv(rows),
+              "text/csv",
+            )
+          }
+        >
+          Export CSV
+        </Button>
       </Box>
 
-      <Tabs
-        value={tab}
-        onChange={(_, val) => setTab(val)}
-        textColor="primary"
-        indicatorColor="primary"
-        sx={{
-          mb: 2,
-          "& .MuiTab-root.Mui-selected": { fontWeight: "bold" },
-          "& .MuiTab-root:hover": { color: "primary.main" },
-        }}
-      >
-        <Tab label="Ticket List" />
+      <Tabs value={tab} onChange={(_, val) => setTab(val)} sx={{ mb: 2 }}>
+        <Tab label="Tickets" />
         <Tab label="Passenger Summary" />
       </Tabs>
 
       {tab === 0 && (
-        <Box ref={scrollRef}>
-          <Paper sx={{ width: "100%" }}>
-            <SmartAutoGrid
-              rows={rows || []}
-              columns={columns || []}
-              getRowId={getRowId}
-              autoHeight
-              checkboxSelection
-              disableRowSelectionOnClick
-              onRowSelectionModelChange={(model) =>
-                setRowSelectionModel(Array.isArray(model) ? model : [])
-              }
-              rowSelectionModel={
-                Array.isArray(rowSelectionModel) ? rowSelectionModel : []
-              }
-              initialState={initialState}
-              pageSizeOptions={[5, 10, 25, 100]}
-              columnVisibilityModel={
-                isSmall
-                  ? { link: false, scanStatus: false, pickup: false }
-                  : undefined
-              }
-              slots={{
-                loadingOverlay: LoadingOverlay,
-                noRowsOverlay: NoRowsOverlay,
-                errorOverlay: ErrorOverlay,
-              }}
-              slotProps={{
-                pagination: { labelRowsPerPage: "Rows" },
-                toolbar: { quickFilterPlaceholder: "Search" },
-              }}
-              sx={{
-                "& .MuiDataGrid-row:nth-of-type(odd)": {
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  backgroundColor: "rgba(76,187,23,0.1)",
-                },
-                "& .MuiDataGrid-row.Mui-selected": {
-                  backgroundColor: "rgba(76,187,23,0.2)",
-                },
-                "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus":
-                  {
-                    outline: "none",
-                  },
-                "& .MuiDataGrid-footerContainer": {
-                  flexWrap: { xs: "wrap", sm: "nowrap" },
-                },
-                "& .MuiTablePagination-toolbar": {
-                  flexWrap: { xs: "wrap", sm: "nowrap" },
-                },
-              }}
-              loading={loading}
-              error={error}
-            />
-          </Paper>
-        </Box>
-      )}
-      {editingTicket && (
-        <EditTicketDialog
-          open={Boolean(editingTicket)}
-          ticket={editingTicket}
-          onClose={handleEditClose}
-        />
+        <Paper sx={{ width: "100%" }}>
+          <SmartAutoGrid
+            rows={rows}
+            columns={columns}
+            getRowId={getRowId}
+            checkboxSelection
+            disableRowSelectionOnClick
+            rowSelectionModel={rowSelectionModel}
+            onRowSelectionModelChange={(model) =>
+              setRowSelectionModel(Array.isArray(model) ? model : [])
+            }
+            initialState={initialState}
+            pageSizeOptions={[5, 10, 25, 100]}
+            columnVisibilityModel={
+              isSmall
+                ? { link: false, scanStatus: false, pickup: false }
+                : undefined
+            }
+            slots={{
+              loadingOverlay: LoadingOverlay,
+              noRowsOverlay: NoRowsOverlay,
+              errorOverlay: ErrorOverlay,
+            }}
+            slotProps={{ toolbar: { quickFilterProps: { debounceMs: 300 } } }}
+            density="compact"
+            sx={{
+              "& .MuiDataGrid-row:nth-of-type(odd)": {
+                backgroundColor: "rgba(255,255,255,0.04)",
+              },
+              "& .MuiDataGrid-row:hover": {
+                backgroundColor: "rgba(76,187,23,0.1)",
+              },
+              "& .MuiDataGrid-row.Mui-selected": {
+                backgroundColor: "rgba(76,187,23,0.2)",
+              },
+            }}
+            loading={loading}
+            error={error}
+          />
+        </Paper>
       )}
 
       {tab === 1 && (
@@ -705,6 +818,14 @@ function Tickets() {
         </Paper>
       )}
 
+      {editingTicket && (
+        <EditTicketDialog
+          open={Boolean(editingTicket)}
+          ticket={editingTicket}
+          onClose={handleEditClose}
+        />
+      )}
+
       <Modal open={!!previewTicket} onClose={() => setPreviewTicket(null)}>
         <Box
           component={motion.div}
@@ -718,21 +839,13 @@ function Tickets() {
             p: 4,
             width: 360,
             mx: "auto",
-            mt: "10vh",
-            boxShadow: 24,
+            mt: 8,
+            outline: "none",
           }}
         >
           {previewTicket && (
             <>
-              <Box
-                ref={previewRef}
-                sx={{
-                  p: 2,
-                  backgroundColor: theme.palette.background.paper,
-                  borderRadius: 2,
-                  color: theme.palette.text.primary,
-                }}
-              >
+              <Box ref={previewRef}>
                 <Box display="flex" justifyContent="center" mb={2}>
                   <img
                     src="/android-chrome-512x512.png"
@@ -740,12 +853,7 @@ function Tickets() {
                     style={{ height: 48 }}
                   />
                 </Box>
-                <Typography
-                  variant="h6"
-                  align="center"
-                  gutterBottom
-                  sx={{ color: theme.palette.text.primary }}
-                >
+                <Typography variant="h6" align="center" gutterBottom>
                   🎟️ Shuttle Ticket
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
@@ -753,13 +861,14 @@ function Tickets() {
                   <strong>Passenger:</strong> {previewTicket.passenger}
                 </Typography>
                 <Typography>
-                  <strong>Passenger Count:</strong> {previewTicket.passengers}
+                  <strong>Passenger Count:</strong>{" "}
+                  {previewTicket.passengerCount}
                 </Typography>
                 <Typography>
-                  <strong>Date:</strong> {previewTicket.date}
+                  <strong>Date:</strong> {formatDate(previewTicket.pickupTime)}
                 </Typography>
                 <Typography>
-                  <strong>Time:</strong> {previewTicket.time}
+                  <strong>Time:</strong> {formatTime(previewTicket.pickupTime)}
                 </Typography>
                 <Typography>
                   <strong>Pickup:</strong> {previewTicket.pickup}
@@ -775,15 +884,30 @@ function Tickets() {
                 <Typography>
                   <strong>Ticket ID:</strong> {previewTicket.ticketId}
                 </Typography>
-                <Typography>
-                  <strong>Scanned By:</strong> {previewTicket.scannedBy || "—"}
-                </Typography>
+                {previewTicket.scannedOutbound && (
+                  <Typography>
+                    <strong>Outbound:</strong>{" "}
+                    {previewTicket.scannedOutboundAt?.format("MMM D, h:mm A") ||
+                      "—"}
+                    {" by "}
+                    {previewTicket.scannedOutboundBy || "Unknown"}
+                  </Typography>
+                )}
+                {previewTicket.scannedReturn && (
+                  <Typography>
+                    <strong>Return:</strong>{" "}
+                    {previewTicket.scannedReturnAt?.format("MMM D, h:mm A") ||
+                      "—"}
+                    {" by "}
+                    {previewTicket.scannedReturnBy || "Unknown"}
+                  </Typography>
+                )}
                 <Box mt={2} display="flex" justifyContent="center">
                   <Box
                     p={1.5}
                     bgcolor={(t) => t.palette.background.paper}
                     borderRadius={2}
-                    boxShadow="0 0 10px lime"
+                    boxShadow="0 0 10px #4cbb17"
                   >
                     <QRCode
                       value={`https://lakeridepros.xyz/ticket/${previewTicket.ticketId}`}
@@ -803,17 +927,13 @@ function Tickets() {
                   Email
                 </Button>
                 <Button
-                  variant="outlined"
-                  color="primary"
-                  onClick={() => window.print()}
-                >
-                  Print
-                </Button>
-                <Button
                   variant="contained"
                   color="success"
                   onClick={downloadTicket}
-                  sx={{ boxShadow: "0 0 8px 2px lime", fontWeight: 700 }}
+                  sx={{
+                    boxShadow: "0 0 8px 2px #4cbb17",
+                    fontWeight: 700,
+                  }}
                 >
                   Download
                 </Button>
@@ -846,7 +966,12 @@ function Tickets() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
-            <Button onClick={emailTicket} variant="contained" color="primary">
+            <Button
+              onClick={emailTicket}
+              variant="contained"
+              color="primary"
+              disabled={emailSending}
+            >
               Send
             </Button>
           </DialogActions>
@@ -855,14 +980,15 @@ function Tickets() {
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        autoHideDuration={snackbar.action ? 6000 : 4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
           severity={snackbar.severity}
           variant="filled"
+          action={snackbar.action}
         >
           {snackbar.message}
         </Alert>
