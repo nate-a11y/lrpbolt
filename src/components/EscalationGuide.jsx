@@ -24,6 +24,7 @@ import ContactCard from "@/components/contacts/ContactCard.jsx";
 import { downloadVcards } from "@/utils/vcard";
 import logError from "@/utils/logError";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
+import ResponsiveScrollBox from "@/components/datagrid/ResponsiveScrollBox.jsx";
 
 /** ===== Local fallback data (matches your original list) ===== */
 const fallbackContacts = [
@@ -298,7 +299,15 @@ export default function EscalationGuide(props) {
   }
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, pb: 2, height: "100%", overflow: "auto" }}>
+    <Box
+      sx={{
+        px: { xs: 1, sm: 2 },
+        pb: 2,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <Typography
         variant="h5"
         sx={{ fontWeight: 900, mb: 1, color: "primary.main" }}
@@ -306,29 +315,33 @@ export default function EscalationGuide(props) {
         Who to Contact & When
       </Typography>
 
-      <LrpGrid
-        apiRef={apiRef}
-        rows={rows}
-        loading={loading}
-        getRowId={getIdSafe}
-        columns={columns}
-        getRowHeight={() => "auto"}
-        checkboxSelection
-        disableRowSelectionOnClick
-        initialState={{
-          pagination: { paginationModel: { pageSize: 15, page: 0 } },
-        }}
-        sx={{
-          "& .MuiDataGrid-cell:focus": { outline: "none" },
-          "& .MuiDataGrid-row:hover .MuiTypography-root:first-of-type": {
-            textDecoration: "underline",
-          },
-        }}
-        localeText={{
-          noRowsLabel: "No contacts found.",
-          errorOverlayDefaultLabel: "Error loading contacts.",
-        }}
-      />
+      <ResponsiveScrollBox sx={{ flexGrow: 1, minHeight: 0 }}>
+        <LrpGrid
+          apiRef={apiRef}
+          rows={rows}
+          loading={loading}
+          getRowId={getIdSafe}
+          columns={columns}
+          getRowHeight={() => "auto"}
+          checkboxSelection
+          disableRowSelectionOnClick
+          initialState={{
+            pagination: { paginationModel: { pageSize: 15, page: 0 } },
+          }}
+          autoHeight={false}
+          sx={{
+            "& .MuiDataGrid-cell:focus": { outline: "none" },
+            "& .MuiDataGrid-row:hover .MuiTypography-root:first-of-type": {
+              textDecoration: "underline",
+            },
+            height: "100%",
+          }}
+          localeText={{
+            noRowsLabel: "No contacts found.",
+            errorOverlayDefaultLabel: "Error loading contacts.",
+          }}
+        />
+      </ResponsiveScrollBox>
 
       <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1 }}>
         <ExportVcardsButton />
