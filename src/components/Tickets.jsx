@@ -653,6 +653,7 @@ function Tickets() {
                 pagination: { labelRowsPerPage: "Rows" },
                 toolbar: { quickFilterProps: { debounceMs: 500 } },
               }}
+              showToolbar
               sx={{
                 "& .MuiDataGrid-row:nth-of-type(odd)": {
                   backgroundColor: "rgba(255,255,255,0.04)",

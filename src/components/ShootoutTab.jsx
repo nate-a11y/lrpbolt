@@ -116,6 +116,7 @@ function ShootoutTab() {
             onEdit: (_id, _row) => null,
             onDelete: async (id) => await deleteShootoutStatById(id),
           })}
+          showToolbar
         />
       </Paper>
     </PageContainer>

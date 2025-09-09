@@ -51,6 +51,7 @@ export default function WeeklySummaryTab() {
           "lastEnd",
         ]}
         overrides={overrides}
+        showToolbar
       />
     </Paper>
   );

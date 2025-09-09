@@ -69,6 +69,7 @@ export default function RideQueueGrid() {
             onEdit: (id, row) => handleEditRide(row),
             onDelete: async (id) => await deleteRide("rideQueue", id),
           })}
+          showToolbar
         />
       </Paper>
       {editOpen && (
