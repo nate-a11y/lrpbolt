@@ -1,11 +1,12 @@
 import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
 
 import { db } from "@/utils/firebaseInit";
+import { COLLECTIONS } from "@/constants";
 
 export async function claimRideOnce(rideId, user) {
   if (!rideId) throw new Error("Missing rideId");
   if (!user) throw new Error("Missing user");
-  const ref = doc(db, "rides", rideId);
+  const ref = doc(db, COLLECTIONS.LIVE_RIDES, rideId);
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("Ride not found");
