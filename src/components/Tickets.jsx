@@ -86,17 +86,31 @@ function rel(dj) {
 
 function normalizeTicket(raw = {}, dayjsLib) {
   const pickupTime = toDayjsTs(
-    raw.pickupTime || raw.createdAt || raw.created || raw.date || null,
+    raw.pickupTime ||
+      raw.createdAt ||
+      raw.created ||
+      (raw.date && raw.time ? `${raw.date} ${raw.time}` : raw.date) ||
+      null,
     dayjsLib,
   );
   const pickup =
-    raw.pickup ?? raw.pickupLocation ?? raw.pickup_location ?? "N/A";
+    raw.pickup ??
+    raw.pickupLocation ??
+    raw.pickup_location ??
+    raw.pickupAddress ??
+    raw.pickup_address ??
+    "N/A";
   const dropoff =
-    raw.dropoff ?? raw.dropoffLocation ?? raw.dropoff_location ?? "N/A";
+    raw.dropoff ??
+    raw.dropoffLocation ??
+    raw.dropoff_location ??
+    raw.dropoffAddress ??
+    raw.dropoff_address ??
+    "N/A";
   return {
     id: raw.ticketId || raw.id || raw.docId || raw._id || null,
     ticketId: raw.ticketId || raw.id || raw.docId || raw._id || "N/A",
-    passenger: raw.passenger || "N/A",
+    passenger: raw.passenger || raw.passengerName || "N/A",
     passengerCount:
       Number(raw.passengercount ?? raw.passengers ?? raw.passengerCount ?? 0) ||
       0,
