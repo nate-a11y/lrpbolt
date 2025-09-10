@@ -89,7 +89,9 @@ function normalizeTicket(raw = {}, dayjsLib) {
     raw.pickupTime ||
       raw.createdAt ||
       raw.created ||
-      (raw.date && raw.time ? `${raw.date} ${raw.time}` : raw.date) ||
+      (typeof raw.date === "string" && raw.time
+        ? `${raw.date} ${raw.time}`
+        : raw.date) ||
       null,
     dayjsLib,
   );
