@@ -278,6 +278,8 @@ function RideVehicleCalendar() {
       Array.from({ length: 25 }, (_, i) => date.startOf("day").add(i, "hour")),
     [date],
   );
+  // width of the sticky label gutter
+  const labelW = useMemo(() => (isMobile ? 140 : 200), [isMobile]);
   // ===== [RVTC:state:end] =====
 
   useEffect(() => {
@@ -745,16 +747,27 @@ function RideVehicleCalendar() {
 
               {/* Lanes per vehicle */}
               <Stack
-                sx={{ pt: 1, minWidth: `${24 * pxPerHour}px` }}
+                sx={{ pt: 1, minWidth: `${labelW + 24 * pxPerHour}px` }}
                 spacing={1}
               >
                 {groupedPacked.map(({ vehicle, lanes }) => (
-                  <Box key={vehicle}>
+                  <Box key={vehicle} sx={{ position: "relative" }}>
+                    {/* Sticky vehicle label */}
                     <Stack
                       direction="row"
                       alignItems="center"
                       spacing={1}
-                      sx={{ mb: 0.5 }}
+                      sx={{
+                        position: "sticky",
+                        left: 0,
+                        zIndex: 2,
+                        width: labelW,
+                        pr: 1,
+                        mb: 0.5,
+                        bgcolor: theme.palette.background.paper,
+                        borderRight: "1px solid",
+                        borderColor: "divider",
+                      }}
                     >
                       <Chip
                         size="small"
@@ -770,9 +783,17 @@ function RideVehicleCalendar() {
                       </Typography>
                     </Stack>
 
-                    <Stack spacing={0.5}>
+                    {/* Lanes shifted to clear the sticky label gutter */}
+                    <Stack spacing={0.5} sx={{ ml: `${labelW + 8}px` }}>
                       {lanes.map((lane, li) => (
-                        <Box key={li} sx={{ position: "relative", height: 22 }}>
+                        <Box
+                          key={li}
+                          sx={{
+                            position: "relative",
+                            height: 22,
+                            minWidth: `${24 * pxPerHour}px`,
+                          }}
+                        >
                           {lane.map((ev) => {
                             const { left, width } = percentSpan(
                               ev,
