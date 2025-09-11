@@ -197,8 +197,19 @@ const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
 
-const OVERVIEW_LABEL_COL = 140; // px — vehicle chip column
-const OVERVIEW_GRID = `${OVERVIEW_LABEL_COL}px 1fr`;
+// Overview sizing (mobile-dense)
+const OVERVIEW_LABEL_COL_DESKTOP = 140; // px
+const OVERVIEW_LABEL_COL_MOBILE = 116; // px
+const OVERVIEW_ROW_GAP_DESKTOP = 6; // px
+const OVERVIEW_ROW_GAP_MOBILE = 3; // px
+const OVERVIEW_TRACK_H_DESKTOP = 8; // px
+const OVERVIEW_TRACK_H_MOBILE = 5; // px
+const OVERVIEW_CHIP_H_DESKTOP = 22; // px
+const OVERVIEW_CHIP_H_MOBILE = 18; // px
+const OVERVIEW_SECTION_PADY_DESKTOP = 1; // theme spacing unit
+const OVERVIEW_SECTION_PADY_MOBILE = 0.5; // theme spacing unit
+const OVERVIEW_TICK_LABEL_FS_DESKTOP = 10; // px
+const OVERVIEW_TICK_LABEL_FS_MOBILE = 9; // px
 
 function RideVehicleCalendar() {
   const [date, setDate] = useState(() => {
@@ -224,6 +235,20 @@ function RideVehicleCalendar() {
   const rideRefs = useRef({});
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const labelCol = isMobile
+    ? OVERVIEW_LABEL_COL_MOBILE
+    : OVERVIEW_LABEL_COL_DESKTOP;
+  const rowGap = isMobile ? OVERVIEW_ROW_GAP_MOBILE : OVERVIEW_ROW_GAP_DESKTOP;
+  const trackH = isMobile ? OVERVIEW_TRACK_H_MOBILE : OVERVIEW_TRACK_H_DESKTOP;
+  const chipH = isMobile ? OVERVIEW_CHIP_H_MOBILE : OVERVIEW_CHIP_H_DESKTOP;
+  const tickFs = isMobile
+    ? OVERVIEW_TICK_LABEL_FS_MOBILE
+    : OVERVIEW_TICK_LABEL_FS_DESKTOP;
+  const overviewPadY = isMobile
+    ? OVERVIEW_SECTION_PADY_MOBILE
+    : OVERVIEW_SECTION_PADY_DESKTOP;
+  const OVERVIEW_GRID = `${labelCol}px 1fr`;
 
   useEffect(() => {
     const id = setInterval(() => setNow(dayjs().tz(CST)), 60000);
@@ -537,7 +562,7 @@ function RideVehicleCalendar() {
             borderBottom: 1,
             borderColor: "divider",
             py: 1,
-            mb: 2,
+            mb: isMobile ? 1 : 2,
           }}
         >
           <Stack
@@ -577,13 +602,13 @@ function RideVehicleCalendar() {
             backgroundColor: theme.palette.background.default,
             borderBottom: 1,
             borderColor: "divider",
-            py: 1.25,
-            mb: 2,
+            py: overviewPadY,
+            mb: 1, // was 2
           }}
         >
           <Typography
             variant="caption"
-            sx={{ display: "block", mb: 1, opacity: 0.85 }}
+            sx={{ display: "block", mb: 0.5, opacity: 0.85, lineHeight: 1 }}
           >
             Vehicle Availability Overview
           </Typography>
@@ -593,7 +618,7 @@ function RideVehicleCalendar() {
             sx={{
               display: "grid",
               gridTemplateColumns: OVERVIEW_GRID,
-              rowGap: 8,
+              rowGap, // responsive gap
               // IMPORTANT: no horizontal padding on the grid — keeps perfect alignment
             }}
           >
@@ -602,7 +627,7 @@ function RideVehicleCalendar() {
             <Box
               sx={{
                 position: "relative",
-                height: 18,
+                height: trackH + 10, // small band for labels to sit over
                 borderRadius: 999,
                 bgcolor: theme.palette.mode === "dark" ? "#202020" : "#e8e8e8",
               }}
@@ -635,11 +660,12 @@ function RideVehicleCalendar() {
                     sx={{
                       position: "absolute",
                       left: `${pct}%`,
-                      top: -16,
+                      top: -14,
                       transform: "translateX(-50%)",
                       whiteSpace: "nowrap",
                       opacity: 0.75,
-                      fontSize: 10,
+                      fontSize: tickFs,
+                      lineHeight: 1,
                       pointerEvents: "none",
                     }}
                   >
@@ -700,8 +726,8 @@ function RideVehicleCalendar() {
                       backgroundColor: vehicleColors[vehicle],
                       color: vehicleText[vehicle],
                       fontWeight: 700,
-                      height: 22,
-                      "& .MuiChip-label": { px: 1 },
+                      height: chipH,
+                      "& .MuiChip-label": { px: 0.75, lineHeight: 1 },
                       cursor: "pointer",
                     }}
                   />
@@ -712,7 +738,7 @@ function RideVehicleCalendar() {
                   sx={{
                     gridColumn: "2 / 3",
                     position: "relative",
-                    height: 8,
+                    height: trackH,
                     borderRadius: 999,
                     bgcolor:
                       theme.palette.mode === "dark" ? "grey.800" : "grey.300",
