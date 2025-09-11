@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, Stack } from "@mui/material";
+import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 
 import BlackoutOverlay, {
   BLACKOUT_END_HOUR,
@@ -23,7 +23,7 @@ export default function ClaimRides() {
   const sel = useClaimSelection((r) => r?.id);
   const [bulkLoading, setBulkLoading] = useState(false);
   const { user, role } = useAuth();
-  const { liveRides = [], fetchRides } = useRides();
+  const { liveRides = [], fetchRides, loading } = useRides();
   const [isLocked, setIsLocked] = useState(false);
 
   const checkLockout = useCallback(() => {
@@ -114,10 +114,19 @@ export default function ClaimRides() {
     }
   }, [sel, toast, user, refetch, lockedOut]);
 
-  if (!liveRides.length)
+  if (loading)
     return (
       <Stack alignItems="center" sx={{ py: 6 }}>
         <CircularProgress />
+      </Stack>
+    );
+
+  if (!liveRides.length)
+    return (
+      <Stack alignItems="center" sx={{ py: 6 }}>
+        <Typography color="text.secondary">
+          No rides available to claim
+        </Typography>
       </Stack>
     );
 
