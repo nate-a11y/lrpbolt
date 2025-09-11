@@ -190,6 +190,15 @@ const adjustColor = (hex, adjustment) => {
 // ===== [RVTC:helpers:start] =====
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
+function parseGcTime({ dateTime, date }) {
+  try {
+    return dayjs.tz(dateTime || date, CST);
+  } catch (e) {
+    logError(e, "RideVehicleCalendar:parseGcTime");
+    return dayjs.tz(dateTime || date, CST);
+  }
+}
+
 /** Greedy packing of events into non-overlapping lanes. Each lane is an array of events. */
 function packIntoLanes(items) {
   const lanes = [];
@@ -362,10 +371,8 @@ function RideVehicleCalendar() {
             const title =
               item.summary?.replace("(Lake Ride Pros)", "").trim() ||
               "Untitled";
-            const start = dayjs
-              .utc(item.start.dateTime || item.start.date)
-              .tz(CST);
-            const end = dayjs.utc(item.end.dateTime || item.end.date).tz(CST);
+            const start = parseGcTime(item.start);
+            const end = parseGcTime(item.end);
             return { start, end, vehicle, title, description: desc };
           })
           .sort((a, b) => a.start.valueOf() - b.start.valueOf())
