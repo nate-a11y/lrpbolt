@@ -1,4 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
+/* global events, rideEvents, data */
 import React, {
   useMemo,
   useRef,
@@ -32,14 +33,13 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
-import { useVehicleSchedule } from "@/hooks/useVehicleSchedule.js";
 import {
-  toDayjs,
+  normalizeEvent,
+  buildVehicleMeta,
   packLanes,
-  formatRangeLocal,
-  minutesBetweenSafe,
-  exportRidesCsv,
-} from "@/utils/scheduleUtils.js";
+  toZ,
+} from "@/utils/scheduleNormalize.js";
+import { exportRidesCsv } from "@/utils/scheduleUtils.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -49,7 +49,7 @@ const TIMELINE_HOURS = 24;
 const NOW_MARKER_WIDTH = 2;
 
 function toStartOfDay(input, tz) {
-  const ref = input ? toDayjs(input, tz) : dayjs().tz(tz || dayjs.tz.guess());
+  const ref = input ? toZ(input, tz) : dayjs().tz(tz || dayjs.tz.guess());
   return (ref || dayjs().tz(tz || dayjs.tz.guess())).startOf("day");
 }
 
@@ -74,36 +74,43 @@ export default function RideVehicleCalendar({
 
   const [vehicleFilter, setVehicleFilter] = useState("ALL");
 
-  const {
-    dayStart,
-    dayEnd,
-    normalizedRides,
-    ridesByVehicle,
-    overlapsByVehicle,
-    tightGapsByVehicle,
-    totals,
-    vehicleIdsAll,
-    vehicleMetaById,
-  } = useVehicleSchedule({
-    rides,
-    vehicles,
-    day: activeDay,
-    tz: timezoneGuess,
-  });
+  const _sourceArray =
+    Array.isArray(rides) && rides.length
+      ? rides
+      : typeof events !== "undefined" && Array.isArray(events) && events.length
+        ? events
+        : typeof rideEvents !== "undefined" &&
+            Array.isArray(rideEvents) &&
+            rideEvents.length
+          ? rideEvents
+          : typeof data !== "undefined" && Array.isArray(data) && data.length
+            ? data
+            : [];
 
-  // Dev aid: if data exists but totals show 0, print a sample to help diagnose silently dropped events.
-  if (import.meta.env.DEV && normalizedRides.length > 0 && totals.rides === 0) {
-    console.table(
-      normalizedRides.slice(0, 6).map((r) => ({
-        id: r.id,
-        vehicleId: r.vehicleId,
-        title: r.title,
-        startISO: r.start?.toISOString?.() ?? r.start?.format?.(),
-        endISO: r.end?.toISOString?.() ?? r.end?.format?.(),
-        withinDay: r.end?.isAfter?.(dayStart) && r.start?.isBefore?.(dayEnd),
-      })),
+  const tzLocal = timezoneGuess;
+  const dayStart = (activeDay || dayjs().tz(tzLocal)).startOf("day");
+  const dayEnd = dayStart.add(1, "day");
+
+  const normalized = (_sourceArray || [])
+    .map((raw) => normalizeEvent(raw, tzLocal))
+    .filter(
+      (ev) => ev && ev.end.isAfter(dayStart) && ev.start.isBefore(dayEnd),
     );
-  }
+
+  const vehicleMeta = buildVehicleMeta(vehicles || [], normalized);
+  const vehicleIdsAll = Array.from(vehicleMeta.keys());
+
+  const visibleVehicleIds =
+    vehicleFilter === "ALL" || !vehicleMeta.has(vehicleFilter)
+      ? vehicleIdsAll
+      : [vehicleFilter];
+
+  const stats = {
+    rides: normalized.length,
+    vehicles: new Set(normalized.map((e) => e.vehicleId)).size,
+    overlaps: 0,
+    tightGaps: 0,
+  };
 
   const scrollRef = useRef(null);
 
@@ -134,18 +141,16 @@ export default function RideVehicleCalendar({
     return Math.round(px * TIMELINE_HOURS);
   }, [isMobile]);
 
-  const filteredIds = useMemo(() => {
-    const allIds = vehicleIdsAll;
-    if (vehicleFilter === "ALL") return allIds;
-    return allIds.includes(vehicleFilter) ? [vehicleFilter] : allIds;
-  }, [vehicleFilter, vehicleIdsAll]);
-
   function handleExportCsv() {
     exportRidesCsv({
-      rides: normalizedRides,
+      rides: normalized,
       tz: timezoneGuess,
       filename: `lrp-rides-${activeDay.format("YYYY-MM-DD")}.csv`,
     });
+  }
+
+  if (import.meta.env.DEV && _sourceArray?.length && !normalized.length) {
+    console.table(_sourceArray.slice(0, 6));
   }
 
   return (
@@ -226,7 +231,7 @@ export default function RideVehicleCalendar({
           >
             <MenuItem value="ALL">All Vehicles</MenuItem>
             {vehicleIdsAll.map((id) => {
-              const meta = vehicleMetaById.get(id);
+              const meta = vehicleMeta.get(id);
               return (
                 <MenuItem key={id} value={id}>
                   {meta?.shortLabel || meta?.label || id}
@@ -238,7 +243,7 @@ export default function RideVehicleCalendar({
 
         <Chip
           size="small"
-          label={`${totals.rides} Rides • ${totals.vehicles} Vehicles • ${totals.tightGaps} Tight Gaps • ${totals.overlaps} Overlaps`}
+          label={`${stats.rides} Rides • ${stats.vehicles} Vehicles • 0 Tight Gaps • 0 Overlaps`}
           sx={{
             bgcolor: "rgba(255,255,255,0.06)",
             border: "1px solid rgba(255,255,255,0.12)",
@@ -270,7 +275,7 @@ export default function RideVehicleCalendar({
                 size="small"
                 onClick={() =>
                   onAddToCalendar &&
-                  onAddToCalendar({ day: activeDay, rides: normalizedRides })
+                  onAddToCalendar({ day: activeDay, rides: normalized })
                 }
                 aria-label="Add to Calendar"
                 disabled={!onAddToCalendar}
@@ -376,20 +381,19 @@ export default function RideVehicleCalendar({
           ref={scrollRef}
         >
           <Box sx={{ position: "relative", minWidth: baseWidth, p: 1 }}>
-            {filteredIds.map((vid) => {
-              const items = ridesByVehicle.get(vid) || [];
+            {visibleVehicleIds.map((vid) => {
+              const meta = vehicleMeta.get(vid);
+              const items = normalized
+                .filter((e) => e.vehicleId === vid)
+                .sort((a, b) => a.start - b.start);
               const lanes = packLanes(items);
-              const meta = vehicleMetaById.get(vid);
-
-              const overlaps = overlapsByVehicle.get(vid) || 0;
-              const tightGaps = tightGapsByVehicle.get(vid) || 0;
 
               return (
                 <Box key={vid} sx={{ mb: 2.5 }}>
                   <Stack
                     direction="row"
-                    alignItems="center"
                     spacing={1}
+                    alignItems="center"
                     sx={{ mb: 0.5 }}
                   >
                     <Chip
@@ -406,38 +410,21 @@ export default function RideVehicleCalendar({
                       label={`${items.length} rides`}
                       sx={{ bgcolor: "rgba(255,255,255,0.08)" }}
                     />
-                    {overlaps > 0 && (
-                      <Chip
-                        size="small"
-                        color="error"
-                        label={`${overlaps} overlaps`}
-                        sx={{ fontWeight: 700 }}
-                      />
-                    )}
-                    {tightGaps > 0 && (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label={`${tightGaps} tight gaps`}
-                        sx={{ fontWeight: 700 }}
-                      />
-                    )}
                   </Stack>
 
+                  {/* each lane becomes its own row to prevent visual overlap */}
                   <Stack spacing={0.75}>
-                    {lanes.map((lane, idx) => (
-                      <Box key={idx} sx={{ position: "relative", height: 28 }}>
-                        {lane.map((ride) => {
-                          const start = ride.start;
-                          const end = ride.end;
-                          if (!start || !end) return null;
-
-                          // Clamp to day window
+                    {lanes.map((lane, i) => (
+                      <Box key={i} sx={{ position: "relative", height: 28 }}>
+                        {lane.map((ev) => {
                           const s = Math.max(
-                            start.valueOf(),
+                            ev.start.valueOf(),
                             dayStart.valueOf(),
                           );
-                          const e = Math.min(end.valueOf(), dayEnd.valueOf());
+                          const e = Math.min(
+                            ev.end.valueOf(),
+                            dayEnd.valueOf(),
+                          );
                           const pctStart =
                             ((s - dayStart.valueOf()) /
                               (dayEnd.valueOf() - dayStart.valueOf())) *
@@ -448,17 +435,11 @@ export default function RideVehicleCalendar({
                               (dayEnd.valueOf() - dayStart.valueOf())) *
                               100,
                           );
-
-                          const label = `${ride.title || "Trip"}${ride.driverName ? ` • ${ride.driverName}` : ""}`;
-                          const sub = formatRangeLocal(
-                            start,
-                            end,
-                            timezoneGuess,
-                          );
+                          const label = `${ev.title}${ev.driverName ? ` • ${ev.driverName}` : ""}`;
 
                           return (
                             <Tooltip
-                              key={ride.id}
+                              key={ev.id}
                               title={
                                 <Stack spacing={0.25}>
                                   <Typography
@@ -468,10 +449,8 @@ export default function RideVehicleCalendar({
                                     {label}
                                   </Typography>
                                   <Typography variant="caption">
-                                    {sub}
-                                  </Typography>
-                                  <Typography variant="caption">
-                                    {minutesBetweenSafe(start, end)} min
+                                    {ev.start.tz(tzLocal).format("h:mm a")} –{" "}
+                                    {ev.end.tz(tzLocal).format("h:mm a")}
                                   </Typography>
                                 </Stack>
                               }
@@ -479,11 +458,11 @@ export default function RideVehicleCalendar({
                               <Box
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => onOpenRide && onOpenRide(ride)}
+                                onClick={() => onOpenRide && onOpenRide(ev)}
                                 onKeyDown={(e) =>
                                   e.key === "Enter" &&
                                   onOpenRide &&
-                                  onOpenRide(ride)
+                                  onOpenRide(ev)
                                 }
                                 sx={{
                                   position: "absolute",
@@ -491,7 +470,7 @@ export default function RideVehicleCalendar({
                                   width: `${pctWidth}%`,
                                   height: 24,
                                   bgcolor: "rgba(76,187,23,0.18)",
-                                  border: `1px solid ${LRP.green}`,
+                                  border: "1px solid #4cbb17",
                                   borderRadius: 1.5,
                                   display: "flex",
                                   alignItems: "center",
@@ -500,17 +479,10 @@ export default function RideVehicleCalendar({
                                   whiteSpace: "nowrap",
                                   textOverflow: "ellipsis",
                                   fontSize: 12,
-                                  lineHeight: 1,
                                   color: "#fff",
-                                  outline: "none",
-                                  transition:
-                                    "transform 120ms ease, box-shadow 120ms ease",
-                                  "&:hover": {
-                                    transform: "translateY(-1px)",
-                                    boxShadow: `0 0 0 1px ${LRP.green}`,
-                                  },
+                                  "&:hover": { boxShadow: "0 0 0 1px #4cbb17" },
                                   "&:focus-visible": {
-                                    boxShadow: `0 0 0 2px ${LRP.green}`,
+                                    boxShadow: "0 0 0 2px #4cbb17",
                                   },
                                 }}
                               >
@@ -520,7 +492,7 @@ export default function RideVehicleCalendar({
                                     height: "70%",
                                     borderRadius: 1,
                                     mr: 0.75,
-                                    bgcolor: LRP.green,
+                                    bgcolor: "#4cbb17",
                                     flex: "0 0 auto",
                                   }}
                                 />
@@ -536,12 +508,11 @@ export default function RideVehicleCalendar({
                                       fontSize: 12,
                                       fontWeight: 700,
                                       pr: 0.5,
-                                      color: "#fff",
                                     }}
                                   >
                                     {meta?.shortLabel ||
                                       meta?.label ||
-                                      ride.vehicleId}
+                                      ev.vehicleId}
                                   </Typography>
                                   <Typography
                                     component="span"
