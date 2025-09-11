@@ -107,3 +107,57 @@ export function buildTicks(windowStart, windowEnd, everyMinutes = 60) {
   }
   return ticks;
 }
+
+/**
+ * Given sorted rides for a vehicle and the day window, produce an array of
+ * { kind: "busy"|"free", start, end } segments that fully cover the window.
+ * Rides: [{ start: dayjs, end: dayjs }]
+ */
+export function buildBusyFreeSegments(rides, windowStart, windowEnd) {
+  const segs = [];
+  let cursor = windowStart;
+  const normalized = rides
+    .map((r) => {
+      let s = r.start;
+      let e = r.end;
+      if (e.isSame(s) || e.isBefore(s)) e = e.add(1, "day"); // overnight safe
+      // clamp to window for segment building
+      const cs = s.isBefore(windowStart) ? windowStart : s;
+      const ce = e.isAfter(windowEnd) ? windowEnd : e;
+      return { s: cs, e: ce, valid: ce.isAfter(cs) };
+    })
+    .filter((x) => x.valid)
+    .sort((a, b) => a.s.valueOf() - b.s.valueOf());
+
+  for (const { s, e } of normalized) {
+    if (s.isAfter(cursor)) {
+      segs.push({ kind: "free", start: cursor, end: s });
+    }
+    segs.push({ kind: "busy", start: s, end: e });
+    cursor = e.isAfter(cursor) ? e : cursor;
+  }
+
+  if (cursor.isBefore(windowEnd)) {
+    segs.push({ kind: "free", start: cursor, end: windowEnd });
+  }
+  return segs;
+}
+
+/**
+ * Convert a time range to {leftPct, widthPct} inside window.
+ */
+export function toPctRange(start, end, windowStart, windowEnd) {
+  const total = Math.max(windowEnd.diff(windowStart, "minute"), 1);
+  const left = Math.max(0, start.diff(windowStart, "minute"));
+  const width = Math.max(0, end.diff(start, "minute"));
+  const leftPct = Math.max(0, Math.min(100, (left / total) * 100));
+  const widthPct = Math.max(0, Math.min(100 - leftPct, (width / total) * 100));
+  return { leftPct, widthPct };
+}
+
+/**
+ * Minutes helper: clamp negative; safe for empty windows.
+ */
+export function minutesInRange(a, b) {
+  return Math.max(0, b.diff(a, "minute"));
+}
