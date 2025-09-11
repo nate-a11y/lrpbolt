@@ -815,7 +815,7 @@ function RideVehicleCalendar() {
                             return (
                               <Tooltip
                                 key={ev.id}
-                                title={`${ev.start.format("h:mm a")} – ${ev.end.format("h:mm a")} • ${ev.title}`}
+                                title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
                               >
                                 <Box
                                   onClick={() => {
