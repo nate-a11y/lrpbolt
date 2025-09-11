@@ -141,10 +141,7 @@ export default function ClaimRides() {
 
   if (!liveRides.length)
     return (
-      <EmptyRideState
-        refreshIn={refreshIntervalSec}
-        onRefresh={refetch}
-      />
+      <EmptyRideState refreshIn={refreshIntervalSec} onRefresh={refetch} />
     );
 
   return (
