@@ -1,572 +1,1097 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, {
-  useMemo,
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { useEffect, useState, useMemo, useRef, memo, useCallback } from "react";
 import {
   Box,
-  Card,
-  Chip,
-  Divider,
-  FormControl,
-  IconButton,
-  InputAdornment,
-  MenuItem,
-  Select,
-  Stack,
-  Tooltip,
   Typography,
+  Button,
+  Dialog,
+  Stack,
+  Chip,
   useMediaQuery,
+  useTheme,
+  TextField,
+  Switch,
+  Tooltip,
+  IconButton,
+  Collapse,
+  Skeleton,
+  Alert,
 } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import TodayIcon from "@mui/icons-material/Today";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import DownloadIcon from "@mui/icons-material/Download";
+import Autocomplete from "@mui/material/Autocomplete";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ShareIcon from "@mui/icons-material/Share";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import IosShareIcon from "@mui/icons-material/IosShare";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-import { useVehicleSchedule } from "@/hooks/useVehicleSchedule.js";
+import { dayjs } from "@/utils/time";
 import {
-  toDayjs,
-  packLanes,
-  formatRangeLocal,
-  minutesBetweenSafe,
-  exportRidesCsv,
-} from "@/utils/scheduleUtils.js";
+  getDayWindow,
+  clampSegmentToWindow,
+  computeNowPct,
+  buildTicks,
+  buildBusyFreeSegments,
+  toPctRange,
+  clampPct,
+} from "@/utils/timeline";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { TIMEZONE } from "../constants";
+import { fetchWithRetry } from "../utils/network";
+import logError from "../utils/logError.js";
 
-const LRP = { green: "#4cbb17", black: "#060606", card: "#0b0b0b" };
-const TIMELINE_HOURS = 24;
-const NOW_MARKER_WIDTH = 2;
+import PageContainer from "./PageContainer.jsx";
 
-function toStartOfDay(input, tz) {
-  const d = input ? toDayjs(input, tz) : dayjs().tz(tz || dayjs.tz.guess());
-  return d
-    ? d.startOf("day")
-    : dayjs()
-        .tz(tz || dayjs.tz.guess())
-        .startOf("day");
+const cache = new Map();
+
+const minutesBetween = (a, b) => Math.max(0, b.diff(a, "minute"));
+const formatHm = (mins) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+};
+
+function getLuminance(hex) {
+  const c = hex.replace("#", "");
+  const rgb = [0, 1, 2].map((i) => {
+    let v = parseInt(c.substr(i * 2, 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+}
+const getContrastText = (bg) => (getLuminance(bg) > 0.4 ? "#000" : "#fff");
+
+const formatIcsDate = (d) => d.utc().format("YYYYMMDD[T]HHmmss[Z]");
+
+function downloadCsv(rides, overlapsMap, date) {
+  const header = ["Start", "End", "Vehicle", "Title", "TightGap", "Overlap"];
+  const rows = rides.map((r) => [
+    r.start.format("HH:mm"),
+    r.end.format("HH:mm"),
+    r.vehicle,
+    r.title,
+    r.tightGap ? "true" : "false",
+    overlapsMap.has(r.id) ? "true" : "false",
+  ]);
+  const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${date.format("YYYY-MM-DD")}-rides.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
-export default function RideVehicleCalendar({
-  date,
-  vehicles = [],
-  rides = [],
-  tz,
-  onShare,
-  onAddToCalendar,
-  onOpenRide,
-  onRefresh,
-}) {
-  const isMobile = useMediaQuery("(max-width:900px)");
-  const timezoneGuess = useMemo(() => tz || dayjs.tz.guess(), [tz]);
-  const [activeDay, setActiveDay] = useState(() =>
-    toStartOfDay(date, timezoneGuess),
-  );
-  useEffect(() => {
-    setActiveDay(toStartOfDay(date, timezoneGuess));
-  }, [date, timezoneGuess]);
-
-  const [vehicleFilter, setVehicleFilter] = useState("ALL");
-
-  const {
-    dayStart,
-    dayEnd,
-    ridesByVehicle,
-    totals,
-    overlapsByVehicle,
-    tightGapsByVehicle,
-  } = useVehicleSchedule({
-    rides,
-    vehicles,
-    day: activeDay,
-    tz: timezoneGuess,
+function downloadIcs(rides, date) {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//LRP//RideCalendar//EN",
+  ];
+  rides.forEach((r) => {
+    lines.push("BEGIN:VEVENT");
+    lines.push(`DTSTART:${formatIcsDate(r.start)}`);
+    lines.push(`DTEND:${formatIcsDate(r.end)}`);
+    lines.push(`SUMMARY:${r.title}`);
+    lines.push(`LOCATION:${r.vehicle}`);
+    lines.push("END:VEVENT");
   });
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${date.format("YYYY-MM-DD")}-rides.ics`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-  const scrollRef = useRef(null);
+async function shareDay(rides, date) {
+  const text = [
+    `Rides for ${date.format("YYYY-MM-DD")}:`,
+    ...rides.map(
+      (r) =>
+        `${r.start.format("HH:mm")}-${r.end.format("HH:mm")} ${r.title} (${r.vehicle})`,
+    ),
+  ].join("\n");
+  try {
+    if (navigator.share) {
+      await navigator.share({ text });
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
+  } catch (err) {
+    logError(err, "RideVehicleCalendar:share");
+  }
+}
 
-  const scrollToNow = useCallback(() => {
-    if (!scrollRef.current) return;
-    const container = scrollRef.current;
-    const start = dayStart.valueOf();
-    const end = dayEnd.valueOf();
-    const now = dayjs().tz(timezoneGuess).valueOf();
-    const clamped = Math.min(Math.max(now, start), end);
-    const pct = (clamped - start) / (end - start);
-    const x = pct * container.scrollWidth - container.clientWidth / 2;
-    container.scrollTo({ left: Math.max(0, x), behavior: "smooth" });
-  }, [dayStart, dayEnd, timezoneGuess]);
+const BASE_COLORS = [
+  "#E6194B",
+  "#3CB44B",
+  "#FFE119",
+  "#4363D8",
+  "#F58231",
+  "#911EB4",
+  "#46F0F0",
+  "#F032E6",
+  "#BCF60C",
+  "#FABEBE",
+  "#008080",
+  "#E6BEFF",
+  "#9A6324",
+  "#FFFAC8",
+  "#800000",
+  "#AAFFC3",
+  "#808000",
+  "#FFD8B1",
+  "#000075",
+  "#808080",
+];
 
-  const shiftDay = (delta) =>
-    setActiveDay((d) => d.add(delta, "day").startOf("day"));
+const adjustColor = (hex, adjustment) => {
+  const rgb = hex.match(/\w\w/g).map((x) => parseInt(x, 16) / 255);
+  const max = Math.max(...rgb);
+  const min = Math.min(...rgb);
+  let h;
+  let s;
+  const l = (max + min) / 2;
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case rgb[0]:
+        h = (rgb[1] - rgb[2]) / d + (rgb[1] < rgb[2] ? 6 : 0);
+        break;
+      case rgb[1]:
+        h = (rgb[2] - rgb[0]) / d + 2;
+        break;
+      default:
+        h = (rgb[0] - rgb[1]) / d + 4;
+    }
+    h /= 6;
+  }
+  h = (h + adjustment) % 1;
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const r = hue2rgb(p, q, h + 1 / 3);
+  const g = hue2rgb(p, q, h);
+  const b = hue2rgb(p, q, h - 1 / 3);
+  return `#${[r, g, b]
+    .map((x) =>
+      Math.round(x * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+};
 
-  const hours = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i <= TIMELINE_HOURS; i += 1)
-      arr.push(dayStart.add(i, "hour"));
-    return arr;
-  }, [dayStart]);
+const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
+const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
+const CST = TIMEZONE;
+// Overview sizing (mobile dense)
+const OVERVIEW_LABEL_COL_DESKTOP = 140;
+const OVERVIEW_LABEL_COL_MOBILE = 116;
+const OVERVIEW_ROW_GAP_DESKTOP = 6;
+const OVERVIEW_ROW_GAP_MOBILE = 2;
+const OVERVIEW_TRACK_H_DESKTOP = 8;
+const OVERVIEW_TRACK_H_MOBILE = 4;
+const OVERVIEW_CHIP_H_DESKTOP = 22;
+const OVERVIEW_CHIP_H_MOBILE = 16;
+const OVERVIEW_TICK_FS_DESKTOP = 10;
+const OVERVIEW_TICK_FS_MOBILE = 9;
 
-  const baseWidth = useMemo(() => {
-    const px = isMobile ? 64 : 80; // responsive scale
-    return Math.round(px * TIMELINE_HOURS);
-  }, [isMobile]);
+// Availability colors and % Free logic removed
 
-  const filteredIds = useMemo(
-    () =>
-      vehicleFilter === "ALL" ? vehicles.map((v) => v.id) : [vehicleFilter],
-    [vehicleFilter, vehicles],
+function RideVehicleCalendar() {
+  const [date, setDate] = useState(() => {
+    const stored = localStorage.getItem("rvcal.date");
+    return stored ? dayjs(stored).tz(CST) : dayjs().tz(CST);
+  });
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [vehicleFilter, setVehicleFilter] = useState(() =>
+    JSON.parse(localStorage.getItem("rvcal.vehicleFilter") || '["ALL"]'),
+  );
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [compactMode, setCompactMode] = useState(
+    () => localStorage.getItem("rvcal.compact") !== "false",
+  );
+  const [sectionState, setSectionState] = useState(() =>
+    JSON.parse(localStorage.getItem("rvcal.sectionState") || "{}"),
+  );
+  const [now, setNow] = useState(dayjs().tz(CST));
+
+  const rideRefs = useRef({});
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const labelCol = isMobile
+    ? OVERVIEW_LABEL_COL_MOBILE
+    : OVERVIEW_LABEL_COL_DESKTOP;
+  const rowGap = isMobile ? OVERVIEW_ROW_GAP_MOBILE : OVERVIEW_ROW_GAP_DESKTOP;
+  const trackH = isMobile ? OVERVIEW_TRACK_H_MOBILE : OVERVIEW_TRACK_H_DESKTOP;
+  const chipH = isMobile ? OVERVIEW_CHIP_H_MOBILE : OVERVIEW_CHIP_H_DESKTOP;
+  const tickFs = isMobile ? OVERVIEW_TICK_FS_MOBILE : OVERVIEW_TICK_FS_DESKTOP;
+  const OVERVIEW_GRID = `${labelCol}px 1fr`;
+
+  // Use the full day, or swap to operational window if you want (6→27)
+  const [dayStart, dayEnd] = useMemo(
+    () => getDayWindow(date, CST /*, { startHour: 6, endHour: 27 } */),
+    [date],
   );
 
-  function handleExportCsv() {
-    exportRidesCsv({
-      rides,
-      tz: timezoneGuess,
-      filename: `lrp-rides-${activeDay.format("YYYY-MM-DD")}.csv`,
-    });
-  }
+  const isToday = date.isSame(now, "day");
+  const nowPct = useMemo(
+    () => (isToday ? computeNowPct(dayStart, dayEnd, CST) : null),
+    [isToday, dayStart, dayEnd],
+  );
 
-  const now = dayjs().tz(timezoneGuess);
+  const tickEveryMinutes = isMobile ? 120 : 60;
+  const ticks = useMemo(
+    () => buildTicks(dayStart, dayEnd, tickEveryMinutes),
+    [dayStart, dayEnd, tickEveryMinutes],
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(dayjs().tz(CST)), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("rvcal.date", date.format("YYYY-MM-DD"));
+  }, [date]);
+  useEffect(() => {
+    localStorage.setItem("rvcal.vehicleFilter", JSON.stringify(vehicleFilter));
+  }, [vehicleFilter]);
+  useEffect(() => {
+    localStorage.setItem("rvcal.compact", compactMode);
+  }, [compactMode]);
+  useEffect(() => {
+    localStorage.setItem("rvcal.sectionState", JSON.stringify(sectionState));
+  }, [sectionState]);
+
+  const vehicles = useMemo(
+    () => [...new Set(events.map((e) => e.vehicle))],
+    [events],
+  );
+
+  const vehicleColors = useMemo(() => {
+    const stored = JSON.parse(localStorage.getItem("vehicleColors") || "{}");
+    const colors = {};
+    vehicles.forEach((v, idx) => {
+      if (!stored[v]) {
+        const base = BASE_COLORS[idx % BASE_COLORS.length];
+        const adjust = Math.floor(idx / BASE_COLORS.length) * 0.07;
+        stored[v] = idx < BASE_COLORS.length ? base : adjustColor(base, adjust);
+      }
+      colors[v] = stored[v];
+    });
+    localStorage.setItem("vehicleColors", JSON.stringify(stored));
+    return colors;
+  }, [vehicles]);
+
+  const vehicleText = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(vehicleColors).map(([v, c]) => [v, getContrastText(c)]),
+      ),
+    [vehicleColors],
+  );
+
+  useEffect(() => {
+    const key = date.format("YYYY-MM-DD");
+    const cached = cache.get(key);
+    if (cached) {
+      setEvents(cached);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    const controller = new AbortController();
+    const fetchEvents = async () => {
+      setLoading(true);
+      setError(null);
+      const start = date.startOf("day").toISOString();
+      const end = date.endOf("day").toISOString();
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+        CALENDAR_ID,
+      )}/events?key=${API_KEY}&timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime`;
+      try {
+        const res = await fetchWithRetry(url, { signal: controller.signal });
+        const data = await res.json();
+        if (controller.signal.aborted) return;
+        const parsed = (data.items || [])
+          .filter((item) => !/Driver:\s*-/.test(item.description))
+          .map((item) => {
+            const desc = (item.description || "")
+              .replace("(Lake Ride Pros)", "")
+              .trim();
+            const vehicle = (
+              desc.match(/Vehicle:\s*(.+)/)?.[1] || "Unknown"
+            ).trim();
+            const title =
+              item.summary?.replace("(Lake Ride Pros)", "").trim() ||
+              "Untitled";
+            const start = dayjs
+              .utc(item.start.dateTime || item.start.date)
+              .tz(CST);
+            const end = dayjs.utc(item.end.dateTime || item.end.date).tz(CST);
+            return { start, end, vehicle, title, description: desc };
+          })
+          .sort((a, b) => a.start.valueOf() - b.start.valueOf())
+          .map((e) => ({
+            ...e,
+            id: `${e.start.unix()}-${e.end.unix()}-${e.vehicle}-${e.title}`,
+          }));
+        cache.set(key, parsed);
+        setEvents(parsed);
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          logError(err, "RideVehicleCalendar:fetch");
+          setError(err);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+    fetchEvents();
+    return () => controller.abort();
+  }, [date]);
+
+  const grouped = useMemo(() => {
+    const map = {};
+    events.forEach((e) => {
+      if (!map[e.vehicle]) map[e.vehicle] = [];
+      map[e.vehicle].push({ ...e });
+    });
+    return Object.entries(map).map(([vehicle, rides]) => {
+      rides.sort((a, b) => a.start.valueOf() - b.start.valueOf());
+      let total = 0;
+      rides.forEach((r, i) => {
+        total += minutesBetween(r.start, r.end);
+        if (i > 0) {
+          r.tightGap = minutesBetween(rides[i - 1].end, r.start) <= 10;
+        }
+      });
+      return { vehicle, rides, total };
+    });
+  }, [events]);
+
+  const overlapsMap = useMemo(() => {
+    const map = new Map();
+    grouped.forEach(({ rides }) => {
+      for (let i = 0; i < rides.length; i++) {
+        for (let j = i + 1; j < rides.length; j++) {
+          const a = rides[i];
+          const b = rides[j];
+          if (a.start.isBefore(b.end) && b.start.isBefore(a.end)) {
+            if (!map.has(a.id)) map.set(a.id, []);
+            if (!map.has(b.id)) map.set(b.id, []);
+            map.get(a.id).push(b);
+            map.get(b.id).push(a);
+          }
+        }
+      }
+    });
+    return map;
+  }, [grouped]);
+
+  const filteredGroups = useMemo(() => {
+    if (vehicleFilter.includes("ALL")) return grouped;
+    return grouped.filter((g) => vehicleFilter.includes(g.vehicle));
+  }, [grouped, vehicleFilter]);
+
+  const flatFiltered = useMemo(
+    () => filteredGroups.flatMap((g) => g.rides),
+    [filteredGroups],
+  );
+
+  const summary = useMemo(() => {
+    const vehicles = new Set();
+    let tight = 0;
+    let overlap = 0;
+    events.forEach((e) => {
+      vehicles.add(e.vehicle);
+      if (e.tightGap) tight++;
+      if (overlapsMap.has(e.id)) overlap++;
+    });
+    return {
+      rides: events.length,
+      vehicles: vehicles.size,
+      tight,
+      overlap,
+    };
+  }, [events, overlapsMap]);
+
+  const vehicleOptions = useMemo(() => ["ALL", ...vehicles], [vehicles]);
+
+  const handlePrevDay = useCallback(() => {
+    setDate((d) => d.subtract(1, "day"));
+  }, []);
+  const handleNextDay = useCallback(() => {
+    setDate((d) => d.add(1, "day"));
+  }, []);
+  const handleToggleSection = (v) => {
+    setSectionState((s) => ({ ...s, [v]: !s[v] }));
+  };
+
+  const scrollToNow = () => {
+    const target = flatFiltered.find(
+      (r) =>
+        (now.isAfter(r.start) && now.isBefore(r.end)) || r.start.isAfter(now),
+    );
+    if (target) {
+      rideRefs.current[target.id]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  };
 
   return (
-    <Stack spacing={1.5} sx={{ color: "#fff" }}>
-      {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Ride & Vehicle Calendar
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <PageContainer>
+        <Typography variant="h5" gutterBottom>
+          🚖 Ride & Vehicle Calendar
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
-          <Tooltip title="Previous day">
-            <IconButton
-              size="small"
-              onClick={() => shiftDay(-1)}
-              aria-label="Previous day"
-            >
-              <ArrowBackIosNewIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Chip
+
+        <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+          <IconButton
             size="small"
-            color="success"
-            icon={<TodayIcon />}
-            onClick={() => setActiveDay(toStartOfDay(undefined, timezoneGuess))}
-            label={activeDay.format("ddd, MMM D")}
-            sx={{
-              bgcolor: LRP.card,
-              border: "1px solid rgba(255,255,255,0.12)",
-              "& .MuiChip-icon": { color: LRP.green },
-            }}
-          />
-          <Tooltip title="Next day">
-            <IconButton
-              size="small"
-              onClick={() => shiftDay(1)}
-              aria-label="Next day"
-            >
-              <ArrowForwardIosIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Refresh">
-            <span>
-              <IconButton
-                size="small"
-                onClick={onRefresh || undefined}
-                aria-label="Refresh"
-                disabled={!onRefresh}
-              >
-                <RefreshIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Stack>
-      </Stack>
-
-      {/* Filters / Stats */}
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1 }}>
-        <FormControl size="small">
-          <Select
-            value={vehicleFilter}
-            onChange={(e) => setVehicleFilter(e.target.value)}
-            displayEmpty
-            sx={{
-              minWidth: 180,
-              bgcolor: LRP.card,
-              color: "#fff",
-              borderRadius: 2,
-              "& fieldset": { borderColor: "rgba(255,255,255,0.16)" },
-            }}
-            inputProps={{
-              "aria-label": "Filter Vehicles",
-              startAdornment: (
-                <InputAdornment position="start">
-                  <AccessTimeIcon sx={{ mr: 0.5, color: LRP.green }} />
-                </InputAdornment>
-              ),
-            }}
+            onClick={handlePrevDay}
+            aria-label="Previous day"
           >
-            <MenuItem value="ALL">All Vehicles</MenuItem>
-            {vehicles.map((v) => (
-              <MenuItem key={v.id} value={v.id}>
-                {v.shortLabel || v.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Chip
-          size="small"
-          label={`${totals.rides} Rides • ${totals.vehicles} Vehicles • ${totals.tightGaps} Tight Gaps • ${totals.overlaps} Overlaps`}
-          sx={{
-            bgcolor: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.12)",
-          }}
-        />
-
-        <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
-          <Tooltip title="Scroll to Now">
-            <IconButton
-              size="small"
-              onClick={scrollToNow}
-              aria-label="Scroll to now"
-            >
-              <AccessTimeIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Export CSV">
-            <IconButton
-              size="small"
-              onClick={handleExportCsv}
-              aria-label="Export CSV"
-            >
-              <DownloadIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Share">
-            <span>
-              <IconButton
-                size="small"
-                onClick={() => onShare && onShare({ day: activeDay, rides })}
-                aria-label="Share"
-                disabled={!onShare}
-              >
-                <IosShareIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Add to Calendar">
-            <span>
-              <IconButton
-                size="small"
-                onClick={() =>
-                  onAddToCalendar && onAddToCalendar({ day: activeDay, rides })
-                }
-                aria-label="Add to Calendar"
-                disabled={!onAddToCalendar}
-              >
-                <ShareIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+          <Typography variant="subtitle1">
+            {date.format("dddd, MMMM D")}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={handleNextDay}
+            aria-label="Next day"
+          >
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
         </Stack>
-      </Stack>
 
-      {/* Timeline */}
-      <Card
-        elevation={0}
-        sx={{
-          bgcolor: LRP.card,
-          borderRadius: 3,
-          border: "1px solid rgba(255,255,255,0.12)",
-          overflow: "hidden",
-        }}
-      >
-        {/* Sticky hour ruler */}
+        <Stack
+          direction={isMobile ? "column" : "row"}
+          spacing={2}
+          alignItems="center"
+          mb={2}
+        >
+          <DatePicker
+            value={date}
+            onChange={(newDate) => newDate && setDate(dayjs(newDate))}
+            slotProps={{ textField: { size: "small" } }}
+          />
+          <Autocomplete
+            multiple
+            options={vehicleOptions}
+            value={vehicleFilter}
+            onChange={(e, val) => {
+              if (val.includes("ALL") && val.length > 1) {
+                val = val.filter((v) => v !== "ALL");
+              }
+              setVehicleFilter(val.length === 0 ? ["ALL"] : val);
+            }}
+            filterSelectedOptions
+            disableCloseOnSelect
+            getOptionLabel={(option) =>
+              option === "ALL" ? "All Vehicles" : option
+            }
+            renderOption={(props, option) => {
+              const { key, ...rest } = props;
+              return (
+                <Box
+                  component="li"
+                  key={key}
+                  {...rest}
+                  sx={{
+                    backgroundColor:
+                      option === "ALL" ? undefined : vehicleColors[option],
+                    color: option === "ALL" ? undefined : vehicleText[option],
+                    fontWeight: 500,
+                    "&:hover": {
+                      backgroundColor:
+                        option === "ALL" ? undefined : vehicleColors[option],
+                      opacity: 0.9,
+                    },
+                  }}
+                >
+                  {option === "ALL" ? "All Vehicles" : option}
+                </Box>
+              );
+            }}
+            renderInput={(params) => (
+              <TextField {...params} label="Filter Vehicles" size="small" />
+            )}
+            sx={{ minWidth: 260 }}
+          />
+        </Stack>
+
         <Box
           sx={{
-            px: 1,
-            py: 0.5,
             position: "sticky",
             top: 0,
-            zIndex: 2,
-            bgcolor: LRP.card,
+            zIndex: 1,
+            backgroundColor: theme.palette.background.default,
+            borderBottom: 1,
+            borderColor: "divider",
+            py: 1,
+            mb: isMobile ? 1 : 2,
           }}
         >
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={2}
+            alignItems={isMobile ? "flex-start" : "center"}
+            justifyContent="space-between"
+          >
+            <Typography fontSize={14}>
+              {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
+              {summary.tight} Tight Gaps • {summary.overlap} Overlaps
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
+                Today
+              </Button>
+              <Button size="small" onClick={scrollToNow}>
+                Scroll to Now
+              </Button>
+              <Tooltip title="Toggle Compact Mode">
+                <Switch
+                  size="small"
+                  checked={compactMode}
+                  onChange={() => setCompactMode((v) => !v)}
+                />
+              </Tooltip>
+            </Stack>
+          </Stack>
+        </Box>
+
+        {/* Vehicle Availability Overview */}
+        <Box
+          sx={{
+            position: "sticky",
+            top: 56,
+            zIndex: 2,
+            backgroundColor: theme.palette.background.default,
+            borderBottom: 1,
+            borderColor: "divider",
+            py: isMobile ? 0.5 : 1,
+            mb: 1,
+            overflowX: "hidden",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{ display: "block", mb: 0.5, opacity: 0.85, lineHeight: 1 }}
+          >
+            Vehicle Availability Overview
+          </Typography>
+
           <Box
             sx={{
-              overflowX: "auto",
-              overflowY: "hidden",
-              WebkitOverflowScrolling: "touch",
+              display: "grid",
+              gridTemplateColumns: OVERVIEW_GRID,
+              rowGap,
+              width: "100%",
+              minWidth: 0,
             }}
-            ref={scrollRef}
           >
-            <Box sx={{ position: "relative", minWidth: baseWidth }}>
-              <Box
-                sx={{
-                  position: "relative",
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${TIMELINE_HOURS}, 1fr)`,
-                  gap: 0,
-                  borderBottom: "1px solid rgba(255,255,255,0.08)",
-                }}
-              >
-                {hours.map((h, i) => (
-                  <Box
-                    key={i}
+            {/* Tick row */}
+            <Box />
+            <Box
+              sx={{
+                position: "relative",
+                height: trackH + 10, // small band for labels
+                borderRadius: 999,
+                bgcolor: theme.palette.mode === "dark" ? "#202020" : "#e8e8e8",
+                width: "100%",
+                minWidth: 0,
+                px: 0,
+              }}
+            >
+              {ticks.map(({ pct }, idx) => (
+                <Box
+                  key={`tick-${idx}`}
+                  sx={{
+                    position: "absolute",
+                    left: `${pct}%`,
+                    top: 0,
+                    bottom: 0,
+                    width: 1,
+                    bgcolor:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(0,0,0,0.16)",
+                    pointerEvents: "none",
+                  }}
+                />
+              ))}
+              {ticks.map(({ t, pct }, idx) =>
+                idx % (isMobile ? 2 : 1) === 0 ? (
+                  <Typography
+                    key={`label-${idx}`}
+                    variant="caption"
                     sx={{
-                      height: 24,
-                      borderLeft:
-                        i === 0 ? "none" : "1px dashed rgba(255,255,255,0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-start",
-                      px: 0.5,
+                      position: "absolute",
+                      left: `${clampPct(pct)}%`,
+                      top: -14,
+                      transform: "translateX(-50%)",
                       whiteSpace: "nowrap",
-                      fontSize: 12,
-                      color: "rgba(255,255,255,0.72)",
+                      opacity: 0.75,
+                      fontSize: tickFs,
+                      lineHeight: 1,
+                      pointerEvents: "none",
                     }}
                   >
-                    {h.format("ha")}
-                  </Box>
-                ))}
-              </Box>
-
-              {/* NOW marker */}
-              {now.isAfter(dayStart) && now.isBefore(dayEnd) && (
+                    {t.format("h a")}
+                  </Typography>
+                ) : null,
+              )}
+              {isToday && nowPct != null && nowPct >= 0 && nowPct <= 100 && (
                 <Box
                   sx={{
                     position: "absolute",
-                    left: `${((now.valueOf() - dayStart.valueOf()) / (dayEnd.valueOf() - dayStart.valueOf())) * 100}%`,
-                    top: 0,
-                    bottom: 0,
-                    width: NOW_MARKER_WIDTH,
-                    transform: `translateX(-${NOW_MARKER_WIDTH / 2}px)`,
-                    bgcolor: LRP.green,
-                    opacity: 0.9,
+                    left: `${nowPct}%`,
+                    top: -4,
+                    bottom: -4,
+                    width: 2,
                     borderRadius: 1,
+                    bgcolor: theme.palette.primary.main,
+                    pointerEvents: "none",
                   }}
                 />
               )}
             </Box>
-          </Box>
-        </Box>
 
-        <Divider sx={{ opacity: 0.12 }} />
-
-        {/* Vehicle lanes */}
-        <Box
-          sx={{
-            overflowX: "auto",
-            overflowY: "auto",
-            WebkitOverflowScrolling: "touch",
-            maxHeight: isMobile ? 520 : 720,
-          }}
-          ref={scrollRef}
-        >
-          <Box sx={{ position: "relative", minWidth: baseWidth, p: 1 }}>
-            {filteredIds.map((vid) => {
-              const vehicle = vehicles.find((v) => v.id === vid);
-              const items = ridesByVehicle.get(vid) || [];
-              const lanes = packLanes(items); // lane: Ride[]
-
-              const overlaps = overlapsByVehicle.get(vid) || 0;
-              const tightGaps = tightGapsByVehicle.get(vid) || 0;
-
+            {/* Lanes */}
+            {filteredGroups.map(({ vehicle, rides }) => {
+              const segs = buildBusyFreeSegments(rides, dayStart, dayEnd);
               return (
-                <Box key={vid} sx={{ mb: 2.5 }}>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={1}
-                    sx={{ mb: 0.5 }}
+                <Box key={`lane-${vehicle}`} sx={{ display: "contents" }}>
+                  {/* Label */}
+                  <Box
+                    sx={{
+                      gridColumn: "1 / 2",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
                   >
                     <Chip
+                      label={vehicle}
                       size="small"
-                      label={vehicle?.shortLabel || vehicle?.label || vid}
                       sx={{
-                        bgcolor: "#111",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        color: "#fff",
+                        backgroundColor: vehicleColors[vehicle],
+                        color: vehicleText[vehicle],
+                        fontWeight: 700,
+                        height: chipH,
+                        "& .MuiChip-label": { px: 0.75, lineHeight: 1 },
                       }}
                     />
-                    <Chip
-                      size="small"
-                      label={`${items.length} rides`}
-                      sx={{ bgcolor: "rgba(255,255,255,0.08)" }}
-                    />
-                    {overlaps > 0 && (
-                      <Chip
-                        size="small"
-                        color="error"
-                        label={`${overlaps} overlaps`}
-                        sx={{ fontWeight: 700 }}
-                      />
-                    )}
-                    {tightGaps > 0 && (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label={`${tightGaps} tight gaps`}
-                        sx={{ fontWeight: 700 }}
-                      />
-                    )}
-                  </Stack>
+                  </Box>
 
-                  {/* Render each lane as its own row to avoid overlap */}
-                  <Stack spacing={0.75}>
-                    {lanes.map((lane, idx) => (
-                      <Box key={idx} sx={{ position: "relative", height: 28 }}>
-                        {lane.map((ride) => {
-                          const start = toDayjs(ride.startTime, timezoneGuess);
-                          const end = toDayjs(ride.endTime, timezoneGuess);
-                          if (!start || !end) return null;
+                  {/* Track renders BUSY and FREE segments */}
+                  <Box
+                    sx={{
+                      gridColumn: "2 / 3",
+                      position: "relative",
+                      height: trackH,
+                      borderRadius: 999,
+                      bgcolor:
+                        theme.palette.mode === "dark"
+                          ? "transparent"
+                          : "transparent",
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      width: "100%",
+                      minWidth: 0,
+                    }}
+                    onClick={() => {
+                      if (sectionState[vehicle] === false)
+                        setSectionState((s) => ({ ...s, [vehicle]: true }));
+                      const first = rides[0];
+                      if (first)
+                        rideRefs.current[first.id]?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }}
+                    aria-label={`Overview lane for ${vehicle}`}
+                  >
+                    {/* FREE segments (background), draw first */}
+                    {segs
+                      .filter((s) => s.kind === "free")
+                      .map((s, i) => {
+                        const { leftPct, widthPct } = toPctRange(
+                          s.start,
+                          s.end,
+                          dayStart,
+                          dayEnd,
+                        );
+                        if (widthPct <= 0) return null;
+                        return (
+                          <Box
+                            key={`free-${vehicle}-${i}`}
+                            sx={{
+                              position: "absolute",
+                              left: `${leftPct}%`,
+                              width: `${widthPct}%`,
+                              top: 0,
+                              bottom: 0,
+                              borderRadius: 999,
+                              bgcolor:
+                                theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.16)"
+                                  : "rgba(0,0,0,0.10)",
+                            }}
+                            title={`Available ${s.start.format("h:mm A")} – ${s.end.format("h:mm A")}`}
+                          />
+                        );
+                      })}
 
-                          // clamp to day window
-                          const s = Math.max(
-                            start.valueOf(),
-                            dayStart.valueOf(),
-                          );
-                          const e = Math.min(end.valueOf(), dayEnd.valueOf());
-                          const pctStart =
-                            ((s - dayStart.valueOf()) /
-                              (dayEnd.valueOf() - dayStart.valueOf())) *
-                            100;
-                          const pctWidth = Math.max(
-                            1.5,
-                            ((e - s) /
-                              (dayEnd.valueOf() - dayStart.valueOf())) *
-                              100,
-                          );
+                    {/* BUSY segments on top */}
+                    {segs
+                      .filter((s) => s.kind === "busy")
+                      .map((s, i) => {
+                        const { leftPct, widthPct } = toPctRange(
+                          s.start,
+                          s.end,
+                          dayStart,
+                          dayEnd,
+                        );
+                        if (widthPct <= 0) return null;
+                        return (
+                          <Tooltip
+                            key={`busy-${vehicle}-${i}`}
+                            title={`${s.start.format("h:mm A")} – ${s.end.format("h:mm A")}`}
+                            arrow
+                          >
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                left: `${leftPct}%`,
+                                width: `${widthPct}%`,
+                                top: 0,
+                                bottom: 0,
+                                borderRadius: 999,
+                                bgcolor: vehicleColors[vehicle],
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      })}
 
-                          const title = ride.title || "Trip";
-                          const driver = ride.driverName
-                            ? ` • ${ride.driverName}`
-                            : "";
-                          const label = `${title}${driver}`;
-                          const sub = formatRangeLocal(
-                            start,
-                            end,
-                            timezoneGuess,
-                          );
-
-                          return (
-                            <Tooltip
-                              key={ride.id}
-                              title={
-                                <Stack spacing={0.25}>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ fontWeight: 700 }}
-                                  >
-                                    {label}
-                                  </Typography>
-                                  <Typography variant="caption">
-                                    {sub}
-                                  </Typography>
-                                  <Typography variant="caption">
-                                    {minutesBetweenSafe(start, end)} min
-                                  </Typography>
-                                </Stack>
-                              }
-                            >
-                              <Box
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => onOpenRide && onOpenRide(ride)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && onOpenRide)
-                                    onOpenRide(ride);
-                                }}
-                                sx={{
-                                  position: "absolute",
-                                  left: `${pctStart}%`,
-                                  width: `${pctWidth}%`,
-                                  height: 24,
-                                  bgcolor: "rgba(76,187,23,0.18)",
-                                  border: `1px solid ${LRP.green}`,
-                                  borderRadius: 1.5,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  px: 1,
-                                  overflow: "hidden",
-                                  whiteSpace: "nowrap",
-                                  textOverflow: "ellipsis",
-                                  fontSize: 12,
-                                  lineHeight: 1,
-                                  color: "#fff",
-                                  outline: "none",
-                                  transition:
-                                    "transform 120ms ease, box-shadow 120ms ease",
-                                  "&:hover": {
-                                    transform: "translateY(-1px)",
-                                    boxShadow: `0 0 0 1px ${LRP.green}`,
-                                  },
-                                  "&:focus-visible": {
-                                    boxShadow: `0 0 0 2px ${LRP.green}`,
-                                  },
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    width: 8,
-                                    height: "70%",
-                                    borderRadius: 1,
-                                    mr: 0.75,
-                                    bgcolor: LRP.green,
-                                    flex: "0 0 auto",
-                                  }}
-                                />
-                                <Box
-                                  sx={{
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                  }}
-                                >
-                                  <Typography
-                                    component="span"
-                                    sx={{
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      pr: 0.5,
-                                      color: "#fff",
-                                    }}
-                                  >
-                                    {vehicle?.shortLabel ||
-                                      vehicle?.label ||
-                                      "Vehicle"}
-                                  </Typography>
-                                  <Typography
-                                    component="span"
-                                    sx={{
-                                      fontSize: 12,
-                                      color: "rgba(255,255,255,0.82)",
-                                    }}
-                                  >
-                                    {label}
-                                  </Typography>
-                                </Box>
-                              </Box>
-                            </Tooltip>
-                          );
-                        })}
-                      </Box>
-                    ))}
-                  </Stack>
+                    {/* Now line */}
+                    {isToday &&
+                      nowPct != null &&
+                      nowPct >= 0 &&
+                      nowPct <= 100 && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            left: `${nowPct}%`,
+                            top: -2,
+                            bottom: -2,
+                            width: 2,
+                            bgcolor: theme.palette.primary.main,
+                            opacity: 0.9,
+                            pointerEvents: "none",
+                          }}
+                        />
+                      )}
+                  </Box>
                 </Box>
               );
             })}
           </Box>
         </Box>
-      </Card>
-    </Stack>
+
+        <Stack direction="row" spacing={1} mb={2}>
+          <Button
+            size="small"
+            onClick={() => downloadCsv(flatFiltered, overlapsMap, date)}
+            disabled={loading || !!error}
+          >
+            Export CSV
+          </Button>
+          <Button
+            size="small"
+            onClick={() => downloadIcs(flatFiltered, date)}
+            disabled={loading || !!error}
+          >
+            Add to Calendar
+          </Button>
+          <Button
+            size="small"
+            onClick={() => shareDay(flatFiltered, date)}
+            disabled={loading || !!error}
+            startIcon={<ShareIcon fontSize="small" />}
+          >
+            Share
+          </Button>
+        </Stack>
+
+        {error && (
+          <Alert
+            severity="error"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => setDate((d) => d.clone())}
+              >
+                Retry
+              </Button>
+            }
+            sx={{ mb: 2 }}
+          >
+            Failed to load rides.
+          </Alert>
+        )}
+
+        {loading ? (
+          <Stack spacing={compactMode ? 1 : 2}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Box
+                key={i}
+                sx={{
+                  p: compactMode ? 1.25 : 2,
+                  borderRadius: 2,
+                  bgcolor:
+                    theme.palette.mode === "dark" ? "#1e1e1e" : "#f8f8f8",
+                }}
+              >
+                <Skeleton variant="text" width="60%" />
+                <Skeleton variant="text" width="40%" />
+                <Skeleton variant="rectangular" height={4} />
+              </Box>
+            ))}
+          </Stack>
+        ) : filteredGroups.length === 0 ? (
+          <Typography>No rides scheduled for this date.</Typography>
+        ) : (
+          filteredGroups.map(({ vehicle, rides, total }) => {
+            const expanded = sectionState[vehicle] !== false;
+            return (
+              <Box key={vehicle} mb={2}>
+                <Chip
+                  label={`${vehicle} • ${rides.length} • ${formatHm(total)}`}
+                  onClick={() => handleToggleSection(vehicle)}
+                  onDelete={() => handleToggleSection(vehicle)}
+                  deleteIcon={
+                    expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                  }
+                  sx={{
+                    backgroundColor: vehicleColors[vehicle],
+                    color: vehicleText[vehicle],
+                    fontWeight: 500,
+                    mb: 1,
+                  }}
+                />
+                <Collapse in={expanded} timeout="auto" unmountOnExit>
+                  <Stack spacing={compactMode ? 1 : 2}>
+                    {rides.map((event) => {
+                      const { leftPct, widthPct } = clampSegmentToWindow(
+                        event.start,
+                        event.end,
+                        dayStart,
+                        dayEnd,
+                        CST,
+                      );
+                      return (
+                        <Box
+                          key={event.id}
+                          ref={(el) => (rideRefs.current[event.id] = el)}
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setModalOpen(true);
+                          }}
+                          sx={{
+                            p: compactMode ? 1.25 : 2,
+                            borderRadius: 2,
+                            cursor: "pointer",
+                            borderLeft: `6px solid ${vehicleColors[event.vehicle]}`,
+                            backgroundColor:
+                              theme.palette.mode === "dark"
+                                ? "#1e1e1e"
+                                : "#f8f8f8",
+                            "&:hover": {
+                              backgroundColor:
+                                theme.palette.mode === "dark"
+                                  ? "#2a2a2a"
+                                  : "#f1f1f1",
+                            },
+                          }}
+                        >
+                          <Typography
+                            fontWeight="bold"
+                            display="flex"
+                            alignItems="center"
+                          >
+                            <DirectionsCarIcon
+                              fontSize="small"
+                              sx={{ mr: 1 }}
+                            />
+                            {event.title}
+                          </Typography>
+                          <Typography fontSize={14}>
+                            {event.start.format("h:mm A")} –{" "}
+                            {event.end.format("h:mm A")}
+                          </Typography>
+                          <Chip
+                            label={event.vehicle}
+                            size="small"
+                            sx={{
+                              mt: 0.5,
+                              backgroundColor: vehicleColors[event.vehicle],
+                              color: vehicleText[event.vehicle],
+                              fontWeight: 500,
+                              fontSize: "0.75rem",
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              position: "relative",
+                              height: 4,
+                              mt: 1,
+                              bgcolor:
+                                theme.palette.mode === "dark"
+                                  ? "grey.800"
+                                  : "grey.300",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                left: `${leftPct}%`,
+                                width: `${widthPct}%`,
+                                top: 0,
+                                bottom: 0,
+                                bgcolor: vehicleColors[event.vehicle],
+                              }}
+                            />
+                            {isToday &&
+                              nowPct != null &&
+                              nowPct >= 0 &&
+                              nowPct <= 100 && (
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    left: `${nowPct}%`,
+                                    top: -2,
+                                    bottom: -2,
+                                    width: 2,
+                                    bgcolor: theme.palette.primary.main,
+                                  }}
+                                />
+                              )}
+                          </Box>
+                          <Stack direction="row" spacing={1} mt={1}>
+                            {event.tightGap && (
+                              <Chip
+                                label="Tight Gap"
+                                color="warning"
+                                size="small"
+                              />
+                            )}
+                            {overlapsMap.has(event.id) && (
+                              <Chip
+                                label="Overlap"
+                                color="error"
+                                size="small"
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Collapse>
+              </Box>
+            );
+          })
+        )}
+
+        <Dialog
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          fullWidth
+          maxWidth="sm"
+          fullScreen={isMobile}
+        >
+          <Box p={3}>
+            <Typography variant="h6" gutterBottom>
+              {selectedEvent?.title}
+            </Typography>
+            <Typography variant="body2">
+              {selectedEvent?.start.format("dddd, MMMM D")}
+              <br />
+              {selectedEvent?.start.format("h:mm A")} –{" "}
+              {selectedEvent?.end.format("h:mm A")}
+            </Typography>
+            {selectedEvent?.tightGap && (
+              <Chip
+                label="Tight Gap to Previous Ride"
+                color="warning"
+                sx={{ mt: 1 }}
+              />
+            )}
+            {overlapsMap.get(selectedEvent?.id)?.length > 0 && (
+              <Box mt={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Overlaps:
+                </Typography>
+                <Stack spacing={0.5}>
+                  {overlapsMap.get(selectedEvent.id).map((o) => (
+                    <Typography key={o.id} variant="body2">
+                      {o.title} ({o.start.format("h:mm A")} –{" "}
+                      {o.end.format("h:mm A")})
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            {selectedEvent?.description && (
+              <Box mt={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Details:
+                </Typography>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                  {selectedEvent.description}
+                </Typography>
+              </Box>
+            )}
+            <Box textAlign="right" mt={3}>
+              <Button
+                onClick={() => setModalOpen(false)}
+                variant="outlined"
+                sx={{ width: { xs: "100%", sm: "auto" } }}
+              >
+                Close
+              </Button>
+            </Box>
+          </Box>
+        </Dialog>
+      </PageContainer>
+    </LocalizationProvider>
   );
 }
+
+export default memo(RideVehicleCalendar);
