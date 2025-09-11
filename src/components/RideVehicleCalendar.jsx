@@ -190,12 +190,17 @@ const adjustColor = (hex, adjustment) => {
 // ===== [RVTC:helpers:start] =====
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-function parseGcTime({ dateTime, date }) {
+function parseGcTime({ dateTime, date, timeZone }) {
   try {
-    return dayjs.tz(dateTime || date, CST);
+    const tz = timeZone || CST;
+    return dateTime
+      ? dayjs.utc(dateTime).tz(tz)
+      : dayjs.tz(date, tz).startOf("day");
   } catch (e) {
     logError(e, "RideVehicleCalendar:parseGcTime");
-    return dayjs.tz(dateTime || date, CST);
+    return dateTime
+      ? dayjs.utc(dateTime).tz(timeZone || CST)
+      : dayjs.tz(date, timeZone || CST).startOf("day");
   }
 }
 
