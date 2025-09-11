@@ -91,3 +91,19 @@ export function computeNowPct(windowStart, windowEnd, tz) {
   const pos = Math.max(0, Math.min(total, now.diff(windowStart)));
   return (pos / total) * 100;
 }
+
+export function buildTicks(windowStart, windowEnd, everyMinutes = 60) {
+  const ticks = [];
+  const totalMin = Math.max(windowEnd.diff(windowStart, "minute"), 1);
+  const steps = Math.ceil(totalMin / everyMinutes);
+  for (let i = 0; i <= steps; i++) {
+    const t = windowStart.add(i * everyMinutes, "minute");
+    if (t.isAfter(windowEnd)) break;
+    const pct = Math.min(
+      100,
+      Math.max(0, (t.diff(windowStart, "minute") / totalMin) * 100),
+    );
+    ticks.push({ t, pct });
+  }
+  return ticks;
+}
