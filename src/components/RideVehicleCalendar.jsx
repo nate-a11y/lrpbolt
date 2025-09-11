@@ -28,6 +28,11 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import { dayjs } from "@/utils/time";
+import {
+  getDayWindow,
+  clampSegmentToWindow,
+  computeNowPct,
+} from "@/utils/timeline";
 
 import { TIMEZONE } from "../constants";
 import { fetchWithRetry } from "../utils/network";
@@ -413,11 +418,22 @@ function RideVehicleCalendar() {
   };
 
   const isToday = date.isSame(now, "day");
-  const dayStart = date.startOf("day");
-  const dayEnd = date.endOf("day");
-  const nowPct = isToday
-    ? (100 * minutesBetween(dayStart, now)) / minutesBetween(dayStart, dayEnd)
-    : null;
+  const [dayStart, dayEnd] = useMemo(
+    () =>
+      getDayWindow(
+        date,
+        CST /* timezone */,
+        /* optional */ {
+          /* startHour: 6, endHour: 27 */
+        },
+      ),
+    [date],
+  );
+
+  const nowPct = useMemo(() => {
+    if (!isToday) return null;
+    return computeNowPct(dayStart, dayEnd, CST);
+  }, [isToday, dayStart, dayEnd]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -542,6 +558,119 @@ function RideVehicleCalendar() {
           </Stack>
         </Box>
 
+        {/* Vehicle Availability Overview */}
+        <Box
+          sx={{
+            position: "sticky",
+            top: 56, // sits below the first sticky bar; adjust if needed
+            zIndex: 1,
+            backgroundColor: theme.palette.background.default,
+            borderBottom: 1,
+            borderColor: "divider",
+            py: 1,
+            mb: 2,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{ display: "block", mb: 1, opacity: 0.8 }}
+          >
+            Vehicle Availability Overview
+          </Typography>
+
+          <Stack spacing={0.75}>
+            {filteredGroups.map(({ vehicle, rides }) => (
+              <Box
+                key={`mini-${vehicle}`}
+                onClick={() => {
+                  if (sectionState[vehicle] === false) {
+                    setSectionState((s) => ({ ...s, [vehicle]: true }));
+                  }
+                  const first = rides[0];
+                  if (first) {
+                    rideRefs.current[first.id]?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }
+                }}
+                sx={{
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+                aria-label={`Overview lane for ${vehicle}`}
+              >
+                <Chip
+                  label={vehicle}
+                  size="small"
+                  sx={{
+                    minWidth: 110,
+                    backgroundColor: vehicleColors[vehicle],
+                    color: vehicleText[vehicle],
+                    fontWeight: 600,
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: "relative",
+                    flex: 1,
+                    height: 6,
+                    borderRadius: 999,
+                    bgcolor:
+                      theme.palette.mode === "dark" ? "grey.800" : "grey.300",
+                  }}
+                >
+                  {/* draw busy segments */}
+                  {rides.map((r) => {
+                    const seg = clampSegmentToWindow(
+                      r.start,
+                      r.end,
+                      dayStart,
+                      dayEnd,
+                      CST,
+                    );
+                    if (seg.widthPct <= 0) return null;
+                    return (
+                      <Box
+                        key={`mini-seg-${r.id}`}
+                        sx={{
+                          position: "absolute",
+                          left: `${seg.leftPct}%`,
+                          width: `${seg.widthPct}%`,
+                          top: 0,
+                          bottom: 0,
+                          borderRadius: 999,
+                          bgcolor: vehicleColors[vehicle],
+                        }}
+                        title={`${r.start.format("h:mm A")} – ${r.end.format("h:mm A")} • ${r.title}`}
+                      />
+                    );
+                  })}
+                  {/* now marker */}
+                  {isToday &&
+                    nowPct != null &&
+                    nowPct >= 0 &&
+                    nowPct <= 100 && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          left: `${nowPct}%`,
+                          top: -2,
+                          bottom: -2,
+                          width: 2,
+                          bgcolor: theme.palette.primary.main,
+                          opacity: 0.9,
+                        }}
+                      />
+                    )}
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+
         <Stack direction="row" spacing={1} mb={2}>
           <Button
             size="small"
@@ -627,12 +756,13 @@ function RideVehicleCalendar() {
                 <Collapse in={expanded} timeout="auto" unmountOnExit>
                   <Stack spacing={compactMode ? 1 : 2}>
                     {rides.map((event) => {
-                      const startPct =
-                        (100 * minutesBetween(dayStart, event.start)) /
-                        minutesBetween(dayStart, dayEnd);
-                      const endPct =
-                        (100 * minutesBetween(dayStart, event.end)) /
-                        minutesBetween(dayStart, dayEnd);
+                      const { leftPct, widthPct } = clampSegmentToWindow(
+                        event.start,
+                        event.end,
+                        dayStart,
+                        dayEnd,
+                        CST,
+                      );
                       return (
                         <Box
                           key={event.id}
@@ -698,25 +828,28 @@ function RideVehicleCalendar() {
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${startPct}%`,
-                                width: `${endPct - startPct}%`,
+                                left: `${leftPct}%`,
+                                width: `${widthPct}%`,
                                 top: 0,
                                 bottom: 0,
                                 bgcolor: vehicleColors[event.vehicle],
                               }}
                             />
-                            {isToday && nowPct >= 0 && nowPct <= 100 && (
-                              <Box
-                                sx={{
-                                  position: "absolute",
-                                  left: `${nowPct}%`,
-                                  top: -2,
-                                  bottom: -2,
-                                  width: 2,
-                                  bgcolor: theme.palette.primary.main,
-                                }}
-                              />
-                            )}
+                            {isToday &&
+                              nowPct != null &&
+                              nowPct >= 0 &&
+                              nowPct <= 100 && (
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    left: `${nowPct}%`,
+                                    top: -2,
+                                    bottom: -2,
+                                    width: 2,
+                                    bgcolor: theme.palette.primary.main,
+                                  }}
+                                />
+                              )}
                           </Box>
                           <Stack direction="row" spacing={1} mt={1}>
                             {event.tightGap && (
