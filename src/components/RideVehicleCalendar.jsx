@@ -33,6 +33,9 @@ import {
   clampSegmentToWindow,
   computeNowPct,
   buildTicks,
+  buildBusyFreeSegments,
+  toPctRange,
+  minutesInRange,
 } from "@/utils/timeline";
 
 import { TIMEZONE } from "../constants";
@@ -196,20 +199,26 @@ const adjustColor = (hex, adjustment) => {
 const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
+// Overview sizing (mobile dense)
+const OVERVIEW_LABEL_COL_DESKTOP = 140;
+const OVERVIEW_LABEL_COL_MOBILE = 116;
+const OVERVIEW_ROW_GAP_DESKTOP = 6;
+const OVERVIEW_ROW_GAP_MOBILE = 2;
+const OVERVIEW_TRACK_H_DESKTOP = 8;
+const OVERVIEW_TRACK_H_MOBILE = 4;
+const OVERVIEW_CHIP_H_DESKTOP = 22;
+const OVERVIEW_CHIP_H_MOBILE = 16;
+const OVERVIEW_TICK_FS_DESKTOP = 10;
+const OVERVIEW_TICK_FS_MOBILE = 9;
 
-// Overview sizing (mobile-dense)
-const OVERVIEW_LABEL_COL_DESKTOP = 140; // px
-const OVERVIEW_LABEL_COL_MOBILE = 116; // px
-const OVERVIEW_ROW_GAP_DESKTOP = 6; // px
-const OVERVIEW_ROW_GAP_MOBILE = 3; // px
-const OVERVIEW_TRACK_H_DESKTOP = 8; // px
-const OVERVIEW_TRACK_H_MOBILE = 5; // px
-const OVERVIEW_CHIP_H_DESKTOP = 22; // px
-const OVERVIEW_CHIP_H_MOBILE = 18; // px
-const OVERVIEW_SECTION_PADY_DESKTOP = 1; // theme spacing unit
-const OVERVIEW_SECTION_PADY_MOBILE = 0.5; // theme spacing unit
-const OVERVIEW_TICK_LABEL_FS_DESKTOP = 10; // px
-const OVERVIEW_TICK_LABEL_FS_MOBILE = 9; // px
+// Availability colors (chip suffix)
+const AVAIL_GREEN = "#2ecc71";
+const AVAIL_ORANGE = "#f39c12";
+const AVAIL_RED = "#e74c3c";
+
+// thresholds for % free
+const AVAIL_OK = 0.55; // >= 55% free → green
+const AVAIL_WARN = 0.3; // >= 30% free → orange; else red
 
 function RideVehicleCalendar() {
   const [date, setDate] = useState(() => {
@@ -242,13 +251,26 @@ function RideVehicleCalendar() {
   const rowGap = isMobile ? OVERVIEW_ROW_GAP_MOBILE : OVERVIEW_ROW_GAP_DESKTOP;
   const trackH = isMobile ? OVERVIEW_TRACK_H_MOBILE : OVERVIEW_TRACK_H_DESKTOP;
   const chipH = isMobile ? OVERVIEW_CHIP_H_MOBILE : OVERVIEW_CHIP_H_DESKTOP;
-  const tickFs = isMobile
-    ? OVERVIEW_TICK_LABEL_FS_MOBILE
-    : OVERVIEW_TICK_LABEL_FS_DESKTOP;
-  const overviewPadY = isMobile
-    ? OVERVIEW_SECTION_PADY_MOBILE
-    : OVERVIEW_SECTION_PADY_DESKTOP;
+  const tickFs = isMobile ? OVERVIEW_TICK_FS_MOBILE : OVERVIEW_TICK_FS_DESKTOP;
   const OVERVIEW_GRID = `${labelCol}px 1fr`;
+
+  // Use the full day, or swap to operational window if you want (6→27)
+  const [dayStart, dayEnd] = useMemo(
+    () => getDayWindow(date, CST /*, { startHour: 6, endHour: 27 } */),
+    [date],
+  );
+
+  const isToday = date.isSame(now, "day");
+  const nowPct = useMemo(
+    () => (isToday ? computeNowPct(dayStart, dayEnd, CST) : null),
+    [isToday, dayStart, dayEnd],
+  );
+
+  const tickEveryMinutes = isMobile ? 120 : 60;
+  const ticks = useMemo(
+    () => buildTicks(dayStart, dayEnd, tickEveryMinutes),
+    [dayStart, dayEnd, tickEveryMinutes],
+  );
 
   useEffect(() => {
     const id = setInterval(() => setNow(dayjs().tz(CST)), 60000);
@@ -404,6 +426,45 @@ function RideVehicleCalendar() {
     [filteredGroups],
   );
 
+  const dayMinutes = useMemo(
+    () => minutesInRange(dayStart, dayEnd),
+    [dayStart, dayEnd],
+  );
+
+  const groupsWithAvailability = useMemo(() => {
+    return filteredGroups.map(({ vehicle, rides }) => {
+      // minutes busy inside window
+      const busyMins = rides.reduce((acc, r) => {
+        const seg = clampSegmentToWindow(r.start, r.end, dayStart, dayEnd, CST);
+        const start = dayStart.add((seg.leftPct / 100) * dayMinutes, "minute");
+        const end = start.add((seg.widthPct / 100) * dayMinutes, "minute");
+        return acc + minutesInRange(start, end);
+      }, 0);
+      const freeMins = Math.max(0, dayMinutes - busyMins);
+      const pctFree = dayMinutes ? freeMins / dayMinutes : 0;
+
+      // chip suffix + color
+      const pctLabel = `${Math.round(pctFree * 100)}% Free`;
+      let pctColor = AVAIL_RED;
+      if (pctFree >= AVAIL_OK) pctColor = AVAIL_GREEN;
+      else if (pctFree >= AVAIL_WARN) pctColor = AVAIL_ORANGE;
+
+      // build busy/free segments for the lane
+      const segs = buildBusyFreeSegments(rides, dayStart, dayEnd);
+
+      return {
+        vehicle,
+        rides,
+        segs,
+        busyMins,
+        freeMins,
+        pctFree,
+        pctLabel,
+        pctColor,
+      };
+    });
+  }, [filteredGroups, dayStart, dayEnd, dayMinutes]);
+
   const summary = useMemo(() => {
     const vehicles = new Set();
     let tight = 0;
@@ -445,30 +506,6 @@ function RideVehicleCalendar() {
       });
     }
   };
-
-  const isToday = date.isSame(now, "day");
-  const [dayStart, dayEnd] = useMemo(
-    () =>
-      getDayWindow(
-        date,
-        CST /* timezone */,
-        /* optional */ {
-          /* startHour: 6, endHour: 27 */
-        },
-      ),
-    [date],
-  );
-
-  const nowPct = useMemo(() => {
-    if (!isToday) return null;
-    return computeNowPct(dayStart, dayEnd, CST);
-  }, [isToday, dayStart, dayEnd]);
-
-  const tickEveryMinutes = isMobile ? 120 : 60;
-  const ticks = useMemo(
-    () => buildTicks(dayStart, dayEnd, tickEveryMinutes),
-    [dayStart, dayEnd, tickEveryMinutes],
-  );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -602,8 +639,8 @@ function RideVehicleCalendar() {
             backgroundColor: theme.palette.background.default,
             borderBottom: 1,
             borderColor: "divider",
-            py: overviewPadY,
-            mb: 1, // was 2
+            py: isMobile ? 0.5 : 1,
+            mb: 1,
           }}
         >
           <Typography
@@ -613,26 +650,19 @@ function RideVehicleCalendar() {
             Vehicle Availability Overview
           </Typography>
 
-          {/* Shared grid: column 1 = labels, column 2 = unified track */}
           <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: OVERVIEW_GRID,
-              rowGap, // responsive gap
-              // IMPORTANT: no horizontal padding on the grid — keeps perfect alignment
-            }}
+            sx={{ display: "grid", gridTemplateColumns: OVERVIEW_GRID, rowGap }}
           >
-            {/* Tick row (col 1 empty, col 2 = track with ticks) */}
+            {/* Tick row */}
             <Box />
             <Box
               sx={{
                 position: "relative",
-                height: trackH + 10, // small band for labels to sit over
+                height: trackH + 10, // small band for labels
                 borderRadius: 999,
                 bgcolor: theme.palette.mode === "dark" ? "#202020" : "#e8e8e8",
               }}
             >
-              {/* Vertical tick lines */}
               {ticks.map(({ pct }, idx) => (
                 <Box
                   key={`tick-${idx}`}
@@ -650,8 +680,6 @@ function RideVehicleCalendar() {
                   }}
                 />
               ))}
-
-              {/* Hour labels (every tick on desktop, every other on mobile) */}
               {ticks.map(({ t, pct }, idx) =>
                 idx % (isMobile ? 2 : 1) === 0 ? (
                   <Typography
@@ -673,8 +701,6 @@ function RideVehicleCalendar() {
                   </Typography>
                 ) : null,
               )}
-
-              {/* Now line */}
               {isToday && nowPct != null && nowPct >= 0 && nowPct <= 100 && (
                 <Box
                   sx={{
@@ -691,124 +717,157 @@ function RideVehicleCalendar() {
               )}
             </Box>
 
-            {/* Vehicle lanes */}
-            {filteredGroups.map(({ vehicle, rides }) => (
-              <Box
-                key={`lane-${vehicle}`}
-                sx={{
-                  display: "contents", // allow children to occupy grid columns directly
-                }}
-              >
-                {/* Col 1: label chip */}
-                <Box
-                  sx={{
-                    gridColumn: "1 / 2",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                  onClick={() => {
-                    if (sectionState[vehicle] === false) {
-                      setSectionState((s) => ({ ...s, [vehicle]: true }));
-                    }
-                    const first = rides[0];
-                    if (first) {
-                      rideRefs.current[first.id]?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                    }
-                  }}
-                >
-                  <Chip
-                    label={vehicle}
-                    size="small"
+            {/* Lanes */}
+            {groupsWithAvailability.map(
+              ({ vehicle, rides, segs, pctLabel, pctColor }) => (
+                <Box key={`lane-${vehicle}`} sx={{ display: "contents" }}>
+                  {/* Label with % Free badge */}
+                  <Box
                     sx={{
-                      backgroundColor: vehicleColors[vehicle],
-                      color: vehicleText[vehicle],
-                      fontWeight: 700,
-                      height: chipH,
-                      "& .MuiChip-label": { px: 0.75, lineHeight: 1 },
+                      gridColumn: "1 / 2",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                    }}
+                  >
+                    <Chip
+                      label={vehicle}
+                      size="small"
+                      sx={{
+                        backgroundColor: vehicleColors[vehicle],
+                        color: vehicleText[vehicle],
+                        fontWeight: 700,
+                        height: chipH,
+                        "& .MuiChip-label": { px: 0.75, lineHeight: 1 },
+                      }}
+                    />
+                    <Chip
+                      label={pctLabel}
+                      size="small"
+                      sx={{
+                        height: chipH,
+                        bgcolor: pctColor,
+                        color: "#000",
+                        "& .MuiChip-label": {
+                          px: 0.75,
+                          lineHeight: 1,
+                          fontWeight: 700,
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  {/* Track renders BUSY and FREE segments */}
+                  <Box
+                    sx={{
+                      gridColumn: "2 / 3",
+                      position: "relative",
+                      height: trackH,
+                      borderRadius: 999,
+                      bgcolor:
+                        theme.palette.mode === "dark"
+                          ? "transparent"
+                          : "transparent",
+                      overflow: "hidden",
                       cursor: "pointer",
                     }}
-                  />
-                </Box>
+                    onClick={() => {
+                      if (sectionState[vehicle] === false)
+                        setSectionState((s) => ({ ...s, [vehicle]: true }));
+                      const first = rides[0];
+                      if (first)
+                        rideRefs.current[first.id]?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }}
+                    aria-label={`Overview lane for ${vehicle}`}
+                  >
+                    {/* FREE segments (background), draw first */}
+                    {segs
+                      .filter((s) => s.kind === "free")
+                      .map((s, i) => {
+                        const { leftPct, widthPct } = toPctRange(
+                          s.start,
+                          s.end,
+                          dayStart,
+                          dayEnd,
+                        );
+                        if (widthPct <= 0) return null;
+                        return (
+                          <Box
+                            key={`free-${vehicle}-${i}`}
+                            sx={{
+                              position: "absolute",
+                              left: `${leftPct}%`,
+                              width: `${widthPct}%`,
+                              top: 0,
+                              bottom: 0,
+                              borderRadius: 999,
+                              bgcolor:
+                                theme.palette.mode === "dark"
+                                  ? "rgba(255,255,255,0.16)"
+                                  : "rgba(0,0,0,0.10)",
+                            }}
+                            title={`Available ${s.start.format("h:mm A")} – ${s.end.format("h:mm A")}`}
+                          />
+                        );
+                      })}
 
-                {/* Col 2: unified track (exact same width as ticks track above) */}
-                <Box
-                  sx={{
-                    gridColumn: "2 / 3",
-                    position: "relative",
-                    height: trackH,
-                    borderRadius: 999,
-                    bgcolor:
-                      theme.palette.mode === "dark" ? "grey.800" : "grey.300",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    if (sectionState[vehicle] === false) {
-                      setSectionState((s) => ({ ...s, [vehicle]: true }));
-                    }
-                    const first = rides[0];
-                    if (first) {
-                      rideRefs.current[first.id]?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                    }
-                  }}
-                  aria-label={`Overview lane for ${vehicle}`}
-                >
-                  {rides.map((r) => {
-                    const seg = clampSegmentToWindow(
-                      r.start,
-                      r.end,
-                      dayStart,
-                      dayEnd,
-                      CST,
-                    );
-                    if (seg.widthPct <= 0) return null;
-                    return (
-                      <Tooltip
-                        key={`seg-${r.id}`}
-                        title={`${r.start.format("h:mm A")} – ${r.end.format("h:mm A")} • ${r.title}`}
-                        arrow
-                      >
+                    {/* BUSY segments on top */}
+                    {segs
+                      .filter((s) => s.kind === "busy")
+                      .map((s, i) => {
+                        const { leftPct, widthPct } = toPctRange(
+                          s.start,
+                          s.end,
+                          dayStart,
+                          dayEnd,
+                        );
+                        if (widthPct <= 0) return null;
+                        return (
+                          <Tooltip
+                            key={`busy-${vehicle}-${i}`}
+                            title={`${s.start.format("h:mm A")} – ${s.end.format("h:mm A")}`}
+                            arrow
+                          >
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                left: `${leftPct}%`,
+                                width: `${widthPct}%`,
+                                top: 0,
+                                bottom: 0,
+                                borderRadius: 999,
+                                bgcolor: vehicleColors[vehicle],
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      })}
+
+                    {/* Now line */}
+                    {isToday &&
+                      nowPct != null &&
+                      nowPct >= 0 &&
+                      nowPct <= 100 && (
                         <Box
                           sx={{
                             position: "absolute",
-                            left: `${seg.leftPct}%`,
-                            width: `${seg.widthPct}%`,
-                            top: 0,
-                            bottom: 0,
-                            borderRadius: 999,
-                            bgcolor: vehicleColors[vehicle],
+                            left: `${nowPct}%`,
+                            top: -2,
+                            bottom: -2,
+                            width: 2,
+                            bgcolor: theme.palette.primary.main,
+                            opacity: 0.9,
+                            pointerEvents: "none",
                           }}
                         />
-                      </Tooltip>
-                    );
-                  })}
-
-                  {/* Mirror now line inside each lane for perfect visual continuity */}
-                  {isToday &&
-                    nowPct != null &&
-                    nowPct >= 0 &&
-                    nowPct <= 100 && (
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          left: `${nowPct}%`,
-                          top: -2,
-                          bottom: -2,
-                          width: 2,
-                          bgcolor: theme.palette.primary.main,
-                          opacity: 0.9,
-                          pointerEvents: "none",
-                        }}
-                      />
-                    )}
+                      )}
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              ),
+            )}
           </Box>
         </Box>
 
