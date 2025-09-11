@@ -187,6 +187,51 @@ const adjustColor = (hex, adjustment) => {
     .join("")}`;
 };
 
+// ===== [RVTC:helpers:start] =====
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** Greedy packing of events into non-overlapping lanes. Each lane is an array of events. */
+function packIntoLanes(items) {
+  const lanes = [];
+  const sorted = [...items].sort(
+    (a, b) => a.start.valueOf() - b.start.valueOf(),
+  );
+  for (const ev of sorted) {
+    let placed = false;
+    for (let i = 0; i < lanes.length; i += 1) {
+      const lane = lanes[i];
+      const last = lane[lane.length - 1];
+      if (!last || !last.end.isAfter(ev.start)) {
+        lane.push(ev);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) lanes.push([ev]);
+  }
+  return lanes;
+}
+
+/** Compute left% and width% for an event within [dayStart, dayEnd], clamped to [0..100]. */
+function percentSpan(ev, dayStart, dayEnd) {
+  const total = dayEnd.diff(dayStart, "minute");
+  const leftMins = Math.max(
+    0,
+    Math.min(total, ev.start.diff(dayStart, "minute")),
+  );
+  const rightMins = Math.max(
+    0,
+    Math.min(total, ev.end.diff(dayStart, "minute")),
+  );
+  const left = clamp01(leftMins / total) * 100;
+  const width = Math.max(
+    1.5,
+    (clamp01(rightMins / total) - clamp01(leftMins / total)) * 100,
+  );
+  return { left, width };
+}
+// ===== [RVTC:helpers:end] =====
+
 const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
@@ -215,6 +260,25 @@ function RideVehicleCalendar() {
   const rideRefs = useRef({});
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  // ===== [RVTC:state:start] =====
+  const [showOverview, setShowOverview] = useState(() => {
+    const raw = localStorage.getItem("rvcal.overview");
+    return raw == null ? true : raw === "true";
+  });
+  useEffect(() => {
+    localStorage.setItem("rvcal.overview", String(showOverview));
+  }, [showOverview]);
+
+  // Hour ruler + horizontal scroll
+  const rulerRef = useRef(null);
+  const pxPerHour = useMemo(() => (isMobile ? 62 : 88), [isMobile]);
+  const hours = useMemo(
+    () =>
+      Array.from({ length: 25 }, (_, i) => date.startOf("day").add(i, "hour")),
+    [date],
+  );
+  // ===== [RVTC:state:end] =====
 
   useEffect(() => {
     const id = setInterval(() => setNow(dayjs().tz(CST)), 60000);
@@ -370,6 +434,16 @@ function RideVehicleCalendar() {
     [filteredGroups],
   );
 
+  // ===== [RVTC:lanes:start] =====
+  const groupedPacked = useMemo(() => {
+    // Reuse filtered groups to respect vehicle filter
+    return filteredGroups.map(({ vehicle, rides }) => {
+      const lanes = packIntoLanes(rides);
+      return { vehicle, lanes };
+    });
+  }, [filteredGroups]);
+  // ===== [RVTC:lanes:end] =====
+
   const summary = useMemo(() => {
     const vehicles = new Set();
     let tight = 0;
@@ -411,6 +485,21 @@ function RideVehicleCalendar() {
       });
     }
   };
+
+  // ===== [RVTC:scrollH:start] =====
+  const scrollRulerToNow = useCallback(() => {
+    if (!rulerRef.current) return;
+    if (!date.isSame(now, "day")) return;
+    const container = rulerRef.current;
+    const totalWidth = 24 * pxPerHour;
+    const pct = clamp01(
+      minutesBetween(date.startOf("day"), now) /
+        minutesBetween(date.startOf("day"), date.endOf("day")),
+    );
+    const x = pct * totalWidth - container.clientWidth / 2;
+    container.scrollTo({ left: Math.max(0, x), behavior: "smooth" });
+  }, [now, date, pxPerHour]);
+  // ===== [RVTC:scrollH:end] =====
 
   const isToday = date.isSame(now, "day");
   const dayStart = date.startOf("day");
@@ -528,7 +617,13 @@ function RideVehicleCalendar() {
               <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
                 Today
               </Button>
-              <Button size="small" onClick={scrollToNow}>
+              <Button
+                size="small"
+                onClick={() => {
+                  scrollToNow();
+                  scrollRulerToNow();
+                }}
+              >
                 Scroll to Now
               </Button>
               <Tooltip title="Toggle Compact Mode">
@@ -541,6 +636,187 @@ function RideVehicleCalendar() {
             </Stack>
           </Stack>
         </Box>
+        {/* ===== [RVTC:overview:start] ===== */}
+        <Box
+          sx={{
+            mb: 2,
+            borderRadius: 2,
+            border: 1,
+            borderColor: "divider",
+            overflow: "hidden",
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 1, py: 0.75, bgcolor: theme.palette.action.hover }}
+          >
+            <Typography fontWeight={700} fontSize={13}>
+              Vehicle Availability Overview
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button size="small" onClick={() => setShowOverview((v) => !v)}>
+                {showOverview ? "Hide" : "Show"}
+              </Button>
+              <Button
+                size="small"
+                onClick={scrollRulerToNow}
+                disabled={!isToday}
+                title="Center now on the overview"
+              >
+                Center Now
+              </Button>
+            </Stack>
+          </Stack>
+
+          <Collapse in={showOverview} timeout="auto" unmountOnExit>
+            {/* Hour ruler + lanes */}
+            <Box
+              ref={rulerRef}
+              sx={{
+                overflowX: "auto",
+                overflowY: "hidden",
+                WebkitOverflowScrolling: "touch",
+                px: 1,
+                pb: 1,
+                bgcolor: theme.palette.background.paper,
+              }}
+            >
+              {/* Ruler */}
+              <Box
+                sx={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  bgcolor: theme.palette.background.paper,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Box
+                  sx={{ position: "relative", minWidth: `${24 * pxPerHour}px` }}
+                >
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: `repeat(24, ${pxPerHour}px)`,
+                    }}
+                  >
+                    {hours.slice(0, 24).map((h, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          height: 28,
+                          borderLeft: i === 0 ? "none" : "1px dashed",
+                          borderColor: "divider",
+                          display: "flex",
+                          alignItems: "center",
+                          fontSize: 12,
+                          color: "text.secondary",
+                          pl: 0.75,
+                        }}
+                      >
+                        {h.format("ha")}
+                      </Box>
+                    ))}
+                  </Box>
+                  {/* Now marker */}
+                  {isToday && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        left: `${
+                          clamp01(
+                            minutesBetween(dayStart, now) /
+                              minutesBetween(dayStart, dayEnd),
+                          ) * 100
+                        }%`,
+                        top: 0,
+                        bottom: 0,
+                        width: 2,
+                        transform: "translateX(-1px)",
+                        bgcolor: theme.palette.primary.main,
+                      }}
+                    />
+                  )}
+                </Box>
+              </Box>
+
+              {/* Lanes per vehicle */}
+              <Stack
+                sx={{ pt: 1, minWidth: `${24 * pxPerHour}px` }}
+                spacing={1}
+              >
+                {groupedPacked.map(({ vehicle, lanes }) => (
+                  <Box key={vehicle}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={1}
+                      sx={{ mb: 0.5 }}
+                    >
+                      <Chip
+                        size="small"
+                        label={vehicle}
+                        sx={{
+                          bgcolor: vehicleColors[vehicle],
+                          color: vehicleText[vehicle],
+                          fontWeight: 600,
+                        }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {lanes.reduce((acc, l) => acc + l.length, 0)} rides
+                      </Typography>
+                    </Stack>
+
+                    <Stack spacing={0.5}>
+                      {lanes.map((lane, li) => (
+                        <Box key={li} sx={{ position: "relative", height: 22 }}>
+                          {lane.map((ev) => {
+                            const { left, width } = percentSpan(
+                              ev,
+                              dayStart,
+                              dayEnd,
+                            );
+                            return (
+                              <Tooltip
+                                key={ev.id}
+                                title={`${ev.start.format("h:mm a")} – ${ev.end.format("h:mm a")} • ${ev.title}`}
+                              >
+                                <Box
+                                  onClick={() => {
+                                    setSelectedEvent(ev);
+                                    setModalOpen(true);
+                                  }}
+                                  sx={{
+                                    position: "absolute",
+                                    left: `${left}%`,
+                                    width: `${width}%`,
+                                    top: 0,
+                                    bottom: 0,
+                                    borderRadius: 1,
+                                    bgcolor: `${vehicleColors[vehicle]}33`,
+                                    border: `1px solid ${vehicleColors[vehicle]}`,
+                                    transition: "transform 120ms ease",
+                                    "&:hover": {
+                                      transform: "translateY(-1px)",
+                                    },
+                                  }}
+                                />
+                              </Tooltip>
+                            );
+                          })}
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          </Collapse>
+        </Box>
+        {/* ===== [RVTC:overview:end] ===== */}
 
         <Stack direction="row" spacing={1} mb={2}>
           <Button
@@ -627,12 +903,12 @@ function RideVehicleCalendar() {
                 <Collapse in={expanded} timeout="auto" unmountOnExit>
                   <Stack spacing={compactMode ? 1 : 2}>
                     {rides.map((event) => {
-                      const startPct =
-                        (100 * minutesBetween(dayStart, event.start)) /
-                        minutesBetween(dayStart, dayEnd);
-                      const endPct =
-                        (100 * minutesBetween(dayStart, event.end)) /
-                        minutesBetween(dayStart, dayEnd);
+                      const { left: startPct, width: widthPct } = percentSpan(
+                        event,
+                        dayStart,
+                        dayEnd,
+                      );
+                      const endPct = startPct + widthPct;
                       return (
                         <Box
                           key={event.id}
