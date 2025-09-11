@@ -39,6 +39,7 @@ export function normalizeEvent(raw, tz) {
     raw.vehicleId ||
     raw.vehicle ||
     raw.vehicle_id ||
+    raw.vehicleCode ||
     raw?.extendedProperties?.private?.vehicleId ||
     raw?.extendedProperties?.shared?.vehicleId ||
     null;

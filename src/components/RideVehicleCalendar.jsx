@@ -108,8 +108,6 @@ export default function RideVehicleCalendar({
   const stats = {
     rides: normalized.length,
     vehicles: new Set(normalized.map((e) => e.vehicleId)).size,
-    overlaps: 0,
-    tightGaps: 0,
   };
 
   const scrollRef = useRef(null);
@@ -243,7 +241,7 @@ export default function RideVehicleCalendar({
 
         <Chip
           size="small"
-          label={`${stats.rides} Rides • ${stats.vehicles} Vehicles • 0 Tight Gaps • 0 Overlaps`}
+          label={`${stats.rides} Rides • ${stats.vehicles} Vehicles`}
           sx={{
             bgcolor: "rgba(255,255,255,0.06)",
             border: "1px solid rgba(255,255,255,0.12)",
