@@ -292,8 +292,9 @@ function RideVehicleCalendar() {
       Array.from({ length: 25 }, (_, i) => date.startOf("day").add(i, "hour")),
     [date],
   );
-  // width of the sticky label gutter
+  // width of the sticky label gutter (+ small spacing)
   const labelW = useMemo(() => (isMobile ? 140 : 200), [isMobile]);
+  const gutter = labelW + 8;
   // ===== [RVTC:state:end] =====
 
   useEffect(() => {
@@ -709,7 +710,12 @@ function RideVehicleCalendar() {
                 }}
               >
                 <Box
-                  sx={{ position: "relative", minWidth: `${24 * pxPerHour}px` }}
+                  sx={{
+                    position: "relative",
+                    // reserve the same gutter the lanes use so labels + bars align
+                    pl: `${gutter}px`,
+                    minWidth: `${gutter + 24 * pxPerHour}px`,
+                  }}
                 >
                   <Box
                     sx={{
@@ -759,7 +765,7 @@ function RideVehicleCalendar() {
 
               {/* Lanes per vehicle */}
               <Stack
-                sx={{ pt: 1, minWidth: `${labelW + 24 * pxPerHour}px` }}
+                sx={{ pt: 1, minWidth: `${gutter + 24 * pxPerHour}px` }}
                 spacing={1}
               >
                 {groupedPacked.map(({ vehicle, lanes }) => (
@@ -796,7 +802,7 @@ function RideVehicleCalendar() {
                     </Stack>
 
                     {/* Lanes shifted to clear the sticky label gutter */}
-                    <Stack spacing={0.5} sx={{ ml: `${labelW + 8}px` }}>
+                    <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
                       {lanes.map((lane, li) => (
                         <Box
                           key={li}
