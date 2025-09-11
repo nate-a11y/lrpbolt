@@ -197,6 +197,9 @@ const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
 
+const OVERVIEW_LABEL_COL = 140; // px — vehicle chip column
+const OVERVIEW_GRID = `${OVERVIEW_LABEL_COL}px 1fr`;
+
 function RideVehicleCalendar() {
   const [date, setDate] = useState(() => {
     const stored = localStorage.getItem("rvcal.date");
@@ -436,8 +439,6 @@ function RideVehicleCalendar() {
     return computeNowPct(dayStart, dayEnd, CST);
   }, [isToday, dayStart, dayEnd]);
 
-  const headerTrackRef = useRef(null);
-
   const tickEveryMinutes = isMobile ? 120 : 60;
   const ticks = useMemo(
     () => buildTicks(dayStart, dayEnd, tickEveryMinutes),
@@ -571,7 +572,7 @@ function RideVehicleCalendar() {
         <Box
           sx={{
             position: "sticky",
-            top: 56, // below your summary bar
+            top: 56,
             zIndex: 2,
             backgroundColor: theme.palette.background.default,
             borderBottom: 1,
@@ -587,10 +588,18 @@ function RideVehicleCalendar() {
             Vehicle Availability Overview
           </Typography>
 
-          {/* Shared track head: ticks + labels */}
-          <Box sx={{ px: 1 }}>
+          {/* Shared grid: column 1 = labels, column 2 = unified track */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: OVERVIEW_GRID,
+              rowGap: 8,
+              // IMPORTANT: no horizontal padding on the grid — keeps perfect alignment
+            }}
+          >
+            {/* Tick row (col 1 empty, col 2 = track with ticks) */}
+            <Box />
             <Box
-              ref={headerTrackRef}
               sx={{
                 position: "relative",
                 height: 18,
@@ -598,7 +607,7 @@ function RideVehicleCalendar() {
                 bgcolor: theme.palette.mode === "dark" ? "#202020" : "#e8e8e8",
               }}
             >
-              {/* gridlines */}
+              {/* Vertical tick lines */}
               {ticks.map(({ pct }, idx) => (
                 <Box
                   key={`tick-${idx}`}
@@ -611,13 +620,13 @@ function RideVehicleCalendar() {
                     bgcolor:
                       theme.palette.mode === "dark"
                         ? "rgba(255,255,255,0.12)"
-                        : "rgba(0,0,0,0.12)",
+                        : "rgba(0,0,0,0.16)",
                     pointerEvents: "none",
                   }}
                 />
               ))}
 
-              {/* labels at every other tick to reduce clutter */}
+              {/* Hour labels (every tick on desktop, every other on mobile) */}
               {ticks.map(({ t, pct }, idx) =>
                 idx % (isMobile ? 2 : 1) === 0 ? (
                   <Typography
@@ -625,7 +634,7 @@ function RideVehicleCalendar() {
                     variant="caption"
                     sx={{
                       position: "absolute",
-                      left: `calc(${pct}% + 4px)`,
+                      left: `${pct}%`,
                       top: -16,
                       transform: "translateX(-50%)",
                       whiteSpace: "nowrap",
@@ -639,7 +648,7 @@ function RideVehicleCalendar() {
                 ) : null,
               )}
 
-              {/* now marker */}
+              {/* Now line */}
               {isToday && nowPct != null && nowPct >= 0 && nowPct <= 100 && (
                 <Box
                   sx={{
@@ -655,54 +664,74 @@ function RideVehicleCalendar() {
                 />
               )}
             </Box>
-          </Box>
 
-          {/* Lanes */}
-          <Stack spacing={0.75} sx={{ mt: 1, px: 1 }}>
+            {/* Vehicle lanes */}
             {filteredGroups.map(({ vehicle, rides }) => (
               <Box
-                key={`mini-${vehicle}`}
-                onClick={() => {
-                  if (sectionState[vehicle] === false)
-                    setSectionState((s) => ({ ...s, [vehicle]: true }));
-                  const first = rides[0];
-                  if (first)
-                    rideRefs.current[first.id]?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
-                }}
+                key={`lane-${vehicle}`}
                 sx={{
-                  cursor: "pointer",
-                  display: "grid",
-                  gridTemplateColumns: "140px 1fr",
-                  alignItems: "center",
-                  columnGap: 8,
-                  minHeight: 20,
+                  display: "contents", // allow children to occupy grid columns directly
                 }}
-                aria-label={`Overview lane for ${vehicle}`}
               >
-                <Chip
-                  label={vehicle}
-                  size="small"
-                  sx={{
-                    backgroundColor: vehicleColors[vehicle],
-                    color: vehicleText[vehicle],
-                    fontWeight: 700,
-                    height: 22,
-                    "& .MuiChip-label": { px: 1 },
-                  }}
-                />
+                {/* Col 1: label chip */}
                 <Box
                   sx={{
+                    gridColumn: "1 / 2",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  onClick={() => {
+                    if (sectionState[vehicle] === false) {
+                      setSectionState((s) => ({ ...s, [vehicle]: true }));
+                    }
+                    const first = rides[0];
+                    if (first) {
+                      rideRefs.current[first.id]?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                    }
+                  }}
+                >
+                  <Chip
+                    label={vehicle}
+                    size="small"
+                    sx={{
+                      backgroundColor: vehicleColors[vehicle],
+                      color: vehicleText[vehicle],
+                      fontWeight: 700,
+                      height: 22,
+                      "& .MuiChip-label": { px: 1 },
+                      cursor: "pointer",
+                    }}
+                  />
+                </Box>
+
+                {/* Col 2: unified track (exact same width as ticks track above) */}
+                <Box
+                  sx={{
+                    gridColumn: "2 / 3",
                     position: "relative",
                     height: 8,
                     borderRadius: 999,
                     bgcolor:
                       theme.palette.mode === "dark" ? "grey.800" : "grey.300",
+                    cursor: "pointer",
                   }}
+                  onClick={() => {
+                    if (sectionState[vehicle] === false) {
+                      setSectionState((s) => ({ ...s, [vehicle]: true }));
+                    }
+                    const first = rides[0];
+                    if (first) {
+                      rideRefs.current[first.id]?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                    }
+                  }}
+                  aria-label={`Overview lane for ${vehicle}`}
                 >
-                  {/* align segments to shared window */}
                   {rides.map((r) => {
                     const seg = clampSegmentToWindow(
                       r.start,
@@ -714,7 +743,7 @@ function RideVehicleCalendar() {
                     if (seg.widthPct <= 0) return null;
                     return (
                       <Tooltip
-                        key={`mini-seg-${r.id}`}
+                        key={`seg-${r.id}`}
                         title={`${r.start.format("h:mm A")} – ${r.end.format("h:mm A")} • ${r.title}`}
                         arrow
                       >
@@ -732,7 +761,8 @@ function RideVehicleCalendar() {
                       </Tooltip>
                     );
                   })}
-                  {/* now marker inside lanes too */}
+
+                  {/* Mirror now line inside each lane for perfect visual continuity */}
                   {isToday &&
                     nowPct != null &&
                     nowPct >= 0 &&
@@ -753,7 +783,7 @@ function RideVehicleCalendar() {
                 </Box>
               </Box>
             ))}
-          </Stack>
+          </Box>
         </Box>
 
         <Stack direction="row" spacing={1} mb={2}>
