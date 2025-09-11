@@ -35,7 +35,7 @@ import {
   buildTicks,
   buildBusyFreeSegments,
   toPctRange,
-  minutesInRange,
+  clampPct,
 } from "@/utils/timeline";
 
 import { TIMEZONE } from "../constants";
@@ -211,14 +211,7 @@ const OVERVIEW_CHIP_H_MOBILE = 16;
 const OVERVIEW_TICK_FS_DESKTOP = 10;
 const OVERVIEW_TICK_FS_MOBILE = 9;
 
-// Availability colors (chip suffix)
-const AVAIL_GREEN = "#2ecc71";
-const AVAIL_ORANGE = "#f39c12";
-const AVAIL_RED = "#e74c3c";
-
-// thresholds for % free
-const AVAIL_OK = 0.55; // >= 55% free → green
-const AVAIL_WARN = 0.3; // >= 30% free → orange; else red
+// Availability colors and % Free logic removed
 
 function RideVehicleCalendar() {
   const [date, setDate] = useState(() => {
@@ -426,45 +419,6 @@ function RideVehicleCalendar() {
     [filteredGroups],
   );
 
-  const dayMinutes = useMemo(
-    () => minutesInRange(dayStart, dayEnd),
-    [dayStart, dayEnd],
-  );
-
-  const groupsWithAvailability = useMemo(() => {
-    return filteredGroups.map(({ vehicle, rides }) => {
-      // minutes busy inside window
-      const busyMins = rides.reduce((acc, r) => {
-        const seg = clampSegmentToWindow(r.start, r.end, dayStart, dayEnd, CST);
-        const start = dayStart.add((seg.leftPct / 100) * dayMinutes, "minute");
-        const end = start.add((seg.widthPct / 100) * dayMinutes, "minute");
-        return acc + minutesInRange(start, end);
-      }, 0);
-      const freeMins = Math.max(0, dayMinutes - busyMins);
-      const pctFree = dayMinutes ? freeMins / dayMinutes : 0;
-
-      // chip suffix + color
-      const pctLabel = `${Math.round(pctFree * 100)}% Free`;
-      let pctColor = AVAIL_RED;
-      if (pctFree >= AVAIL_OK) pctColor = AVAIL_GREEN;
-      else if (pctFree >= AVAIL_WARN) pctColor = AVAIL_ORANGE;
-
-      // build busy/free segments for the lane
-      const segs = buildBusyFreeSegments(rides, dayStart, dayEnd);
-
-      return {
-        vehicle,
-        rides,
-        segs,
-        busyMins,
-        freeMins,
-        pctFree,
-        pctLabel,
-        pctColor,
-      };
-    });
-  }, [filteredGroups, dayStart, dayEnd, dayMinutes]);
-
   const summary = useMemo(() => {
     const vehicles = new Set();
     let tight = 0;
@@ -641,6 +595,7 @@ function RideVehicleCalendar() {
             borderColor: "divider",
             py: isMobile ? 0.5 : 1,
             mb: 1,
+            overflowX: "hidden",
           }}
         >
           <Typography
@@ -651,7 +606,13 @@ function RideVehicleCalendar() {
           </Typography>
 
           <Box
-            sx={{ display: "grid", gridTemplateColumns: OVERVIEW_GRID, rowGap }}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: OVERVIEW_GRID,
+              rowGap,
+              width: "100%",
+              minWidth: 0,
+            }}
           >
             {/* Tick row */}
             <Box />
@@ -661,6 +622,9 @@ function RideVehicleCalendar() {
                 height: trackH + 10, // small band for labels
                 borderRadius: 999,
                 bgcolor: theme.palette.mode === "dark" ? "#202020" : "#e8e8e8",
+                width: "100%",
+                minWidth: 0,
+                px: 0,
               }}
             >
               {ticks.map(({ pct }, idx) => (
@@ -687,7 +651,7 @@ function RideVehicleCalendar() {
                     variant="caption"
                     sx={{
                       position: "absolute",
-                      left: `${pct}%`,
+                      left: `${clampPct(pct)}%`,
                       top: -14,
                       transform: "translateX(-50%)",
                       whiteSpace: "nowrap",
@@ -718,16 +682,16 @@ function RideVehicleCalendar() {
             </Box>
 
             {/* Lanes */}
-            {groupsWithAvailability.map(
-              ({ vehicle, rides, segs, pctLabel, pctColor }) => (
+            {filteredGroups.map(({ vehicle, rides }) => {
+              const segs = buildBusyFreeSegments(rides, dayStart, dayEnd);
+              return (
                 <Box key={`lane-${vehicle}`} sx={{ display: "contents" }}>
-                  {/* Label with % Free badge */}
+                  {/* Label */}
                   <Box
                     sx={{
                       gridColumn: "1 / 2",
                       display: "flex",
                       alignItems: "center",
-                      gap: 0.5,
                     }}
                   >
                     <Chip
@@ -739,20 +703,6 @@ function RideVehicleCalendar() {
                         fontWeight: 700,
                         height: chipH,
                         "& .MuiChip-label": { px: 0.75, lineHeight: 1 },
-                      }}
-                    />
-                    <Chip
-                      label={pctLabel}
-                      size="small"
-                      sx={{
-                        height: chipH,
-                        bgcolor: pctColor,
-                        color: "#000",
-                        "& .MuiChip-label": {
-                          px: 0.75,
-                          lineHeight: 1,
-                          fontWeight: 700,
-                        },
                       }}
                     />
                   </Box>
@@ -770,6 +720,8 @@ function RideVehicleCalendar() {
                           : "transparent",
                       overflow: "hidden",
                       cursor: "pointer",
+                      width: "100%",
+                      minWidth: 0,
                     }}
                     onClick={() => {
                       if (sectionState[vehicle] === false)
@@ -866,8 +818,8 @@ function RideVehicleCalendar() {
                       )}
                   </Box>
                 </Box>
-              ),
-            )}
+              );
+            })}
           </Box>
         </Box>
 

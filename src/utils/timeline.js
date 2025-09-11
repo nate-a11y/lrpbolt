@@ -161,3 +161,9 @@ export function toPctRange(start, end, windowStart, windowEnd) {
 export function minutesInRange(a, b) {
   return Math.max(0, b.diff(a, "minute"));
 }
+
+// Keep a percentage inside [pad .. 100 - pad] to avoid label overflow at edges.
+export function clampPct(pct, pad = 1.5) {
+  if (Number.isNaN(pct)) return 0;
+  return Math.max(pad, Math.min(100 - pad, pct));
+}
