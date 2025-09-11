@@ -25,6 +25,7 @@ export default function ClaimRides() {
   const { user, role } = useAuth();
   const { liveRides = [], fetchRides, loading } = useRides();
   const [isLocked, setIsLocked] = useState(false);
+  const [noRideCountdown, setNoRideCountdown] = useState(30);
 
   const checkLockout = useCallback(() => {
     const now = dayjs().tz(TIMEZONE);
@@ -61,6 +62,21 @@ export default function ClaimRides() {
   const refetch = useCallback(() => fetchRides && fetchRides(), [fetchRides]);
 
   useAutoRefresh(refetch, 60000);
+
+  useEffect(() => {
+    if (liveRides.length) return;
+    setNoRideCountdown(30);
+    const t = setInterval(() => {
+      setNoRideCountdown((s) => {
+        if (s <= 1) {
+          refetch?.();
+          return 30;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [liveRides.length, refetch]);
 
   const onClaim = useCallback(
     async (ride) => {
@@ -126,6 +142,9 @@ export default function ClaimRides() {
       <Stack alignItems="center" sx={{ py: 6 }}>
         <Typography color="text.secondary">
           No rides available to claim
+        </Typography>
+        <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+          Refreshing in {noRideCountdown}s…
         </Typography>
       </Stack>
     );

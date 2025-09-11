@@ -16,7 +16,9 @@ let initialized = false;
 
 export async function fetchRides() {
   loading = true;
-  listeners.forEach((cb) => cb({ ...ridesCache, counts: countsCache, loading }));
+  listeners.forEach((cb) =>
+    cb({ ...ridesCache, counts: countsCache, loading }),
+  );
   const [queue, live, claimed] = await Promise.all([
     getRides(COLLECTIONS.RIDE_QUEUE),
     getRides(COLLECTIONS.LIVE_RIDES),
