@@ -523,6 +523,9 @@ function RideVehicleCalendar() {
     ? (100 * minutesBetween(dayStart, now)) / minutesBetween(dayStart, dayEnd)
     : null;
 
+  const selectedFromPrev = selectedEvent?.start?.isBefore(dayStart);
+  const selectedIntoNext = selectedEvent?.end?.isAfter(dayEnd);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <PageContainer>
@@ -1048,6 +1051,20 @@ function RideVehicleCalendar() {
                                 size="small"
                               />
                             )}
+                            {event.start.isBefore(dayStart) && (
+                              <Chip
+                                label="From Prev Day"
+                                color="info"
+                                size="small"
+                              />
+                            )}
+                            {event.end.isAfter(dayEnd) && (
+                              <Chip
+                                label="Into Next Day"
+                                color="info"
+                                size="small"
+                              />
+                            )}
                           </Stack>
                         </Box>
                       );
@@ -1076,6 +1093,16 @@ function RideVehicleCalendar() {
               {selectedEvent?.start.format("h:mm A")} –{" "}
               {selectedEvent?.end.format("h:mm A")}
             </Typography>
+            {(selectedFromPrev || selectedIntoNext) && (
+              <Stack direction="row" spacing={1} mt={1}>
+                {selectedFromPrev && (
+                  <Chip label="From Previous Day" color="info" />
+                )}
+                {selectedIntoNext && (
+                  <Chip label="Into Next Day" color="info" />
+                )}
+              </Stack>
+            )}
             {selectedEvent?.tightGap && (
               <Chip
                 label="Tight Gap to Previous Ride"
