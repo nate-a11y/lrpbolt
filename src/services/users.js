@@ -1,7 +1,15 @@
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 
+import AppError from "src/utils/AppError.js";
 import { db } from "src/utils/firebaseInit";
-import logError from "src/utils/logError";
+import logError from "src/utils/logError.js";
+import retry from "src/utils/retry.js";
 
 /** Normalizes a userAccess document into { id, email, name, phone, roles:[] } */
 export async function fetchAllUsersAccess() {
@@ -61,4 +69,61 @@ export function filterDriversCombined(users) {
     }
   });
   return out;
+}
+
+export async function saveUserPhoneNumber(email, phone) {
+  const normalizedEmail = (email || "").trim().toLowerCase();
+  const normalizedPhone = (phone || "").trim();
+
+  if (!normalizedEmail) {
+    throw new AppError("Email is required", "SAVE_PHONE_EMAIL");
+  }
+  if (!normalizedPhone) {
+    throw new AppError("Phone number is required", "SAVE_PHONE_VALUE", {
+      email: normalizedEmail,
+    });
+  }
+
+  const ref = doc(db, "userAccess", normalizedEmail);
+
+  try {
+    await retry(
+      async () =>
+        setDoc(
+          ref,
+          {
+            email: normalizedEmail,
+            phone: normalizedPhone,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        ),
+      {
+        tries: 3,
+        onError: (err, attempt) =>
+          logError(err, {
+            where: "users",
+            action: "saveUserPhoneNumber",
+            attempt,
+            email: normalizedEmail,
+          }),
+      },
+    );
+    return { success: true };
+  } catch (err) {
+    const appErr =
+      err instanceof AppError
+        ? err
+        : new AppError(
+            err?.message || "Failed to save phone number",
+            "FIRESTORE_UPDATE",
+            { email: normalizedEmail },
+          );
+    logError(appErr, {
+      where: "users",
+      action: "saveUserPhoneNumber",
+      email: normalizedEmail,
+    });
+    throw appErr;
+  }
 }

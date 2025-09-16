@@ -9,9 +9,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { doc, setDoc } from "firebase/firestore";
 
-import { db } from "../utils/firebaseInit";
+import logError from "../utils/logError.js";
+import { saveUserPhoneNumber } from "../services/users.js";
 
 export default function PhoneNumberPrompt({ open, email, onClose }) {
   const [phone, setPhone] = useState("");
@@ -26,8 +26,15 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
   }, [open]);
 
   const handleSave = useCallback(async () => {
+    setError("");
+    const normalizedEmail = (email || "").trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError("Missing user context. Please reload.");
+      return;
+    }
+
     let trimmed = phone.trim();
-    let digits = trimmed.replace(/\D/g, "");
+    const digits = trimmed.replace(/\D/g, "");
 
     if (trimmed.startsWith("+")) {
       trimmed = "+" + digits;
@@ -44,19 +51,15 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
 
     try {
       setLoading(true);
-      await setDoc(
-        doc(db, "userAccess", email.toLowerCase()),
-        { phone: trimmed },
-        { merge: true },
-      );
-      onClose();
+      await saveUserPhoneNumber(normalizedEmail, trimmed);
+      onClose?.();
     } catch (e) {
-      console.error("[PhoneNumberPrompt] save error:", e?.message || e);
+      logError(e, { where: "PhoneNumberPrompt", action: "savePhone" });
       setError("Failed to save. Try again.");
     } finally {
       setLoading(false);
     }
-  }, [phone, email, onClose]);
+  }, [email, onClose, phone]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -70,7 +73,10 @@ export default function PhoneNumberPrompt({ open, email, onClose }) {
           <TextField
             label="Phone"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              if (error) setError("");
+            }}
             autoFocus
             disabled={loading}
             error={!!error}

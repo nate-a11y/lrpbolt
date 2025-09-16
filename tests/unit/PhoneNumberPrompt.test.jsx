@@ -1,15 +1,12 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
-import { setDoc } from "firebase/firestore";
-
 import PhoneNumberPrompt from "../../src/components/PhoneNumberPrompt.jsx";
+import { saveUserPhoneNumber } from "src/services/users.js";
 
-vi.mock("firebase/firestore", () => ({
-  doc: vi.fn(() => "docRef"),
-  setDoc: vi.fn(() => Promise.resolve()),
+vi.mock("src/services/users.js", () => ({
+  saveUserPhoneNumber: vi.fn(() => Promise.resolve()),
 }));
-vi.mock("src/utils/firebaseInit", () => ({ db: {} }));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -22,10 +19,9 @@ test("saves phone number", async () => {
   fireEvent.change(input, { target: { value: "1234567890" } });
   fireEvent.click(screen.getByText(/save/i));
   await waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(setDoc).toHaveBeenCalledWith(
-    "docRef",
-    { phone: "+11234567890" },
-    { merge: true },
+  expect(saveUserPhoneNumber).toHaveBeenCalledWith(
+    "test@example.com",
+    "+11234567890",
   );
 });
 
@@ -35,5 +31,14 @@ test("rejects invalid phone number", async () => {
   fireEvent.change(input, { target: { value: "123" } });
   fireEvent.click(screen.getByText(/save/i));
   await screen.findByText("Enter phone number in +1234567890 format.");
-  expect(setDoc).not.toHaveBeenCalled();
+  expect(saveUserPhoneNumber).not.toHaveBeenCalled();
+});
+
+test("shows error when email missing", async () => {
+  render(<PhoneNumberPrompt open email="" onClose={vi.fn()} />);
+  const input = screen.getByRole("textbox", { name: /phone/i });
+  fireEvent.change(input, { target: { value: "1234567890" } });
+  fireEvent.click(screen.getByText(/save/i));
+  await screen.findByText(/missing user context/i);
+  expect(saveUserPhoneNumber).not.toHaveBeenCalled();
 });

@@ -73,12 +73,22 @@ export default function LrpGridToolbar(props = {}) {
   useEffect(() => {
     const update = () => setSelectionCount(getSelectedIds().length);
     update();
-    const unsub = apiRef?.current?.subscribeEvent?.(
-      "rowSelectionModelChange",
-      update,
-    );
+
+    const unsubscribers = [];
+    const subscribe = (eventName) => {
+      const unsub = apiRef?.current?.subscribeEvent?.(eventName, update);
+      if (typeof unsub === "function") {
+        unsubscribers.push(unsub);
+      }
+    };
+
+    subscribe("rowSelectionChange");
+    subscribe("rowSelectionModelChange");
+
     return () => {
-      if (typeof unsub === "function") unsub();
+      unsubscribers.forEach((unsub) => {
+        if (typeof unsub === "function") unsub();
+      });
     };
   }, [apiRef, getSelectedIds]);
 

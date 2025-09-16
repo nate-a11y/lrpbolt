@@ -22,7 +22,7 @@ export const firebaseConfig = {
   authDomain: `${env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: `${env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
-  messagingSenderId: env.VITE_FIREBASE_SENDER_ID,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: env.VITE_FIREBASE_APP_ID,
 };
 
