@@ -164,8 +164,13 @@ export default function DropDailyWidget() {
             <Divider light />
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
               <Stat label="Imported" value={stats.imported} />
+              <Stat label="Updated" value={stats.updatedExisting} />
               <Stat label="Duplicates" value={stats.duplicatesFound} />
               <Stat label="Skipped (no TripID)" value={stats.skippedNoTripId} />
+              <Stat
+                label="Skipped (claimed live)"
+                value={stats.skippedClaimedLive}
+              />
               <Stat label="Queue Unclaimed" value={stats.queueUnclaimed} />
               <Stat label="Queue Total" value={stats.queueTotal} />
               <Stat label="Queue Cleared" value={stats.queueCleared} />
@@ -186,10 +191,15 @@ export default function DropDailyWidget() {
         <DialogContent dividers>
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
             <Stat label="Imported" value={dryStats?.imported} />
+            <Stat label="Updated" value={dryStats?.updatedExisting} />
             <Stat label="Duplicates" value={dryStats?.duplicatesFound} />
             <Stat
               label="Skipped (no TripID)"
               value={dryStats?.skippedNoTripId}
+            />
+            <Stat
+              label="Skipped (claimed live)"
+              value={dryStats?.skippedClaimedLive}
             />
             <Stat label="Queue Unclaimed" value={dryStats?.queueUnclaimed} />
             <Stat label="Queue Total" value={dryStats?.queueTotal} />

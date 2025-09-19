@@ -678,7 +678,7 @@ export default function RideEntryForm() {
       setToast({
         open: true,
         severity: "success",
-        msg: `Imported ${s.imported} | Duplicates ${s.duplicatesFound} | Skipped ${s.skippedNoTripId} | Queue cleared ${s.queueCleared}`,
+        msg: `Imported ${s.imported ?? 0} | Updated ${s.updatedExisting ?? 0} | Duplicates ${s.duplicatesFound ?? 0} | Skipped (no TripID) ${s.skippedNoTripId ?? 0} | Skipped (claimed live) ${s.skippedClaimedLive ?? 0} | Queue cleared ${s.queueCleared ?? 0}`,
       });
     } catch (e) {
       console.error(e);
