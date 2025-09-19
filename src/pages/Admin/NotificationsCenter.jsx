@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import React from "react";
 import Grid from "@mui/material/Grid";
+import AvatarGroup from "@mui/material/AvatarGroup";
 import {
   Alert,
   Autocomplete,
@@ -24,13 +25,19 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DataObjectIcon from "@mui/icons-material/DataObject";
+import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
+import DirectionsCarFilledOutlinedIcon from "@mui/icons-material/DirectionsCarFilledOutlined";
+import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LinkIcon from "@mui/icons-material/Link";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import Groups3OutlinedIcon from "@mui/icons-material/Groups3Outlined";
+import HubOutlinedIcon from "@mui/icons-material/HubOutlined";
 import SmartphoneIcon from "@mui/icons-material/Smartphone";
 
 import ResponsiveContainer from "src/components/responsive/ResponsiveContainer.jsx";
@@ -55,20 +62,47 @@ const prettyJson = (s) => {
   }
 };
 
+const getInitial = (user) => {
+  const source = user?.name || user?.email || "";
+  return source ? source.charAt(0).toUpperCase() : "?";
+};
+
 const SEGMENTS = [
-  { id: "admins", label: "All Admins", filter: filterAdmins },
-  { id: "drivers_core", label: "All Drivers", filter: filterDriversCore },
+  {
+    id: "admins",
+    label: "All Admins",
+    description: "Operations and dispatch team.",
+    filter: filterAdmins,
+    icon: AdminPanelSettingsOutlinedIcon,
+  },
+  {
+    id: "drivers_core",
+    label: "All Drivers",
+    description: "Core driver roster.",
+    filter: filterDriversCore,
+    icon: DirectionsCarFilledOutlinedIcon,
+  },
   {
     id: "shootout",
     label: "All Shootout (Tracker Only)",
+    description: "Shootout tracker roster only.",
     filter: filterShootout,
+    icon: EmojiEventsOutlinedIcon,
   },
   {
     id: "drivers_combined",
     label: "Drivers + Shootout",
+    description: "Combined driver audiences.",
     filter: filterDriversCombined,
+    icon: Groups3OutlinedIcon,
   },
-  { id: "custom", label: "Custom Topic", filter: null },
+  {
+    id: "custom",
+    label: "Custom Topic",
+    description: "Send to a manual FCM topic.",
+    filter: null,
+    icon: HubOutlinedIcon,
+  },
 ];
 
 export default function Notifications() {
@@ -76,6 +110,7 @@ export default function Notifications() {
   const [mode, setMode] = React.useState("push");
   const [allUsers, setAllUsers] = React.useState([]);
   const [loading, setLoading] = React.useState(false); // fetching users
+  const [loadError, setLoadError] = React.useState("");
   const [sending, setSending] = React.useState(false); // sending messages
   const [showPreview, setShowPreview] = React.useState(true);
   const [segment, setSegment] = React.useState("drivers_core");
@@ -96,25 +131,36 @@ export default function Notifications() {
     if (clearRecipients) setPickedUsers([]);
   }, []);
 
-  const segmentCounts = React.useMemo(() => {
-    const map = {
-      admins: 0,
-      drivers_core: 0,
-      shootout: 0,
-      drivers_combined: 0,
-    };
-    map.admins = filterAdmins(allUsers).length;
-    map.drivers_core = filterDriversCore(allUsers).length;
-    map.shootout = filterShootout(allUsers).length;
-    map.drivers_combined = filterDriversCombined(allUsers).length;
-    return map;
+  const segmentStats = React.useMemo(() => {
+    return SEGMENTS.reduce((acc, def) => {
+      if (def.filter) {
+        const list = def.filter(allUsers) || [];
+        acc[def.id] = { users: list, count: list.length };
+      } else {
+        acc[def.id] = { users: [], count: 0 };
+      }
+      return acc;
+    }, {});
   }, [allUsers]);
 
-  const segmentUsers = React.useMemo(() => {
-    const def = SEGMENTS.find((s) => s.id === segment);
-    if (!def || !def.filter) return [];
-    return def.filter(allUsers);
-  }, [segment, allUsers]);
+  const segmentUsers = React.useMemo(
+    () => segmentStats[segment]?.users ?? [],
+    [segmentStats, segment],
+  );
+
+  const segmentOptions = React.useMemo(
+    () =>
+      SEGMENTS.map((option) => ({
+        ...option,
+        count: segmentStats[option.id]?.count ?? 0,
+      })),
+    [segmentStats],
+  );
+
+  const activeSegment = React.useMemo(
+    () => segmentOptions.find((option) => option.id === segment),
+    [segmentOptions, segment],
+  );
 
   const directRecipients = React.useMemo(() => {
     const seen = new Set();
@@ -130,15 +176,48 @@ export default function Notifications() {
   }, [segmentUsers, pickedUsers]);
 
   const selectedCount = directRecipients.length;
+  const selectedPreview = React.useMemo(
+    () => directRecipients.slice(0, 4),
+    [directRecipients],
+  );
+  const extraSelected = Math.max(0, selectedCount - selectedPreview.length);
+  const segmentIsCustom = activeSegment?.id === "custom";
+  const showSegmentEmpty =
+    !loading &&
+    !segmentIsCustom &&
+    !!activeSegment?.filter &&
+    segmentUsers.length === 0;
+  const rosterEmpty = !loading && allUsers.length === 0;
+  const recipientsSummary = React.useMemo(() => {
+    const parts = [
+      `${selectedCount} direct recipient${selectedCount === 1 ? "" : "s"}`,
+    ];
+    if (segmentIsCustom && customTopic) {
+      parts.push(`Topic ${customTopic}`);
+    }
+    if (extraSelected > 0) {
+      parts.push(`+${extraSelected} more`);
+    }
+    return parts.join(" • ");
+  }, [selectedCount, extraSelected, segmentIsCustom, customTopic]);
 
   React.useEffect(() => {
     let isMounted = true;
     (async () => {
       setLoading(true);
+      if (isMounted) {
+        setLoadError("");
+      }
       try {
         const list = await fetchAllUsersAccess();
-        if (isMounted) setAllUsers(list);
+        if (isMounted) {
+          setAllUsers(list);
+          setLoadError("");
+        }
       } catch (err) {
+        if (isMounted) {
+          setLoadError("We couldn't load the roster. Retry to refresh.");
+        }
         logError(err, { where: "Notifications", action: "loadUsers" });
       } finally {
         if (isMounted) setLoading(false);
@@ -151,10 +230,13 @@ export default function Notifications() {
 
   const onRefresh = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const list = await fetchAllUsersAccess();
       setAllUsers(list);
+      setLoadError("");
     } catch (err) {
+      setLoadError("Failed to refresh users. Try again.");
       logError(err, { where: "Notifications", action: "refreshUsers" });
       enqueue("Failed to refresh users", { severity: "error" });
     } finally {
@@ -178,10 +260,20 @@ export default function Notifications() {
 
   const canSend = React.useMemo(() => {
     if (sending) return false;
-    if (mode === "push") return !!title && selectedCount > 0 && !dataError;
+    const hasPushAudience = segmentIsCustom ? !!customTopic : selectedCount > 0;
+    if (mode === "push") return !!title && hasPushAudience && !dataError;
     if (mode === "sms") return !!body && selectedCount > 0;
     return false;
-  }, [mode, title, body, selectedCount, dataError, sending]);
+  }, [
+    mode,
+    title,
+    body,
+    selectedCount,
+    dataError,
+    sending,
+    segmentIsCustom,
+    customTopic,
+  ]);
 
   const handleSend = async () => {
     setSending(true);
@@ -189,7 +281,7 @@ export default function Notifications() {
       const payloadData =
         dataJson && !dataError ? JSON.parse(dataJson) : undefined;
       const recipients = directRecipients;
-      if (!recipients.length && !(segment === "custom" && customTopic)) return;
+      if (!recipients.length && !(segmentIsCustom && customTopic)) return;
 
       if (mode === "push") {
         const base = {
@@ -232,216 +324,451 @@ export default function Notifications() {
 
   return (
     <ResponsiveContainer>
-      <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
-        {/* Header */}
-        <Grid item xs={12}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography variant="h6" fontWeight={700}>
-              Notifications
-            </Typography>
-            <Tooltip title="Refresh users">
-              <span>
-                <IconButton
-                  aria-label="Refresh users"
-                  onClick={onRefresh}
-                  disabled={loading || sending}
-                >
-                  <RefreshIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Grid>
-
-        {/* Left: Recipients */}
-        <Grid item xs={12} md={5}>
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Stack spacing={1.5}>
-                <Stack direction="row" alignItems="flex-start" spacing={1}>
-                  <InfoOutlinedIcon fontSize="small" sx={{ mt: "2px" }} />
-                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    Choose a segment or pick users. <strong>Push</strong>{" "}
-                    requires a title; <strong>SMS</strong> requires a body.
-                    Optional <em>Data</em> must be valid JSON.
-                  </Typography>
+      <Stack spacing={{ xs: 2.5, md: 3 }}>
+        <Card
+          sx={{
+            borderRadius: 3,
+            border: "1px solid",
+            borderColor: "divider",
+            background: (theme) =>
+              `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)} 0%, ${alpha(
+                theme.palette.background.paper,
+                0.6,
+              )} 100%)`,
+          }}
+        >
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Stack spacing={{ xs: 2, sm: 2.5 }}>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={{ xs: 2, md: 3 }}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", md: "center" }}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Avatar
+                    sx={{
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.18),
+                      color: "primary.main",
+                      width: 48,
+                      height: 48,
+                    }}
+                  >
+                    <NotificationsActiveIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h5" fontWeight={700}>
+                      Notifications
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                      Target push or SMS updates with a polished composer.
+                    </Typography>
+                  </Box>
                 </Stack>
-
-                <Typography
-                  variant="subtitle2"
-                  sx={{ mt: 0.5, letterSpacing: 0.2 }}
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  sx={{ width: "100%", maxWidth: 360 }}
                 >
-                  Recipients
+                  <Chip
+                    variant="outlined"
+                    icon={
+                      loading ? (
+                        <CircularProgress size={14} sx={{ color: "inherit" }} />
+                      ) : (
+                        <CheckCircleIcon fontSize="small" />
+                      )
+                    }
+                    label={
+                      loading
+                        ? "Syncing roster…"
+                        : `${allUsers.length} user${allUsers.length === 1 ? "" : "s"} loaded`
+                    }
+                    sx={{
+                      "& .MuiChip-icon": { mr: 0.75 },
+                      borderColor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.3),
+                      color: "primary.main",
+                    }}
+                  />
+                  <Chip
+                    variant="outlined"
+                    label={`${selectedCount} ready to send`}
+                    sx={{
+                      borderColor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.3),
+                      color: "primary.main",
+                    }}
+                  />
+                  <Tooltip title="Refresh users">
+                    <span>
+                      <IconButton
+                        aria-label="Refresh users"
+                        onClick={onRefresh}
+                        disabled={loading || sending}
+                        size="small"
+                        sx={{
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 2,
+                        }}
+                      >
+                        <RefreshIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
+              </Stack>
+              {loadError ? (
+                <Alert
+                  severity="error"
+                  action={
+                    <Button
+                      color="inherit"
+                      size="small"
+                      onClick={onRefresh}
+                      disabled={loading || sending}
+                    >
+                      Retry
+                    </Button>
+                  }
+                >
+                  {loadError}
+                </Alert>
+              ) : (
+                <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                  Choose a segment to broadcast quickly or hand-pick individual
+                  recipients for direct follow ups.
                 </Typography>
-
-                {/* Segment pills */}
-                <ToggleButtonGroup
-                  value={segment}
-                  exclusive
-                  onChange={(_, val) => val && setSegment(val)}
-                  size="small"
-                  sx={{
-                    flexWrap: "wrap",
-                    "& .MuiToggleButton-root": { py: 0.5, px: 1.25 },
-                  }}
-                  disabled={sending}
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+        <Grid container spacing={{ xs: 2, md: 3 }}>
+          <Grid item xs={12} md={5}>
+            <Card sx={{ borderRadius: 3, height: "100%" }}>
+              <CardContent
+                sx={{
+                  p: { xs: 2, sm: 3 },
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <Alert
+                  severity="info"
+                  variant="outlined"
+                  icon={<InfoOutlinedIcon fontSize="small" />}
+                  sx={{ alignItems: "flex-start" }}
                 >
-                  {SEGMENTS.map((s) => (
-                    <ToggleButton
-                      key={s.id}
-                      value={s.id}
-                      sx={{
+                  Push requires a title, SMS needs a body. Optional data must be
+                  valid JSON.
+                </Alert>
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ mb: 1, letterSpacing: 0.2 }}
+                  >
+                    Audience
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={segment}
+                    exclusive
+                    onChange={(_, val) => val && setSegment(val)}
+                    size="small"
+                    disabled={sending}
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      "& .MuiToggleButton-root": {
+                        flex: "1 1 calc(50% - 8px)",
+                        minWidth: "45%",
                         borderRadius: 2,
                         textTransform: "none",
-                        px: 1.25,
-                        "&.Mui-selected": { bgcolor: "#4cbb17", color: "#000" },
-                      }}
-                    >
-                      {s.label}
-                      {typeof segmentCounts[s.id] === "number"
-                        ? ` (${segmentCounts[s.id]})`
-                        : ""}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-
-                {/* Custom topic when needed */}
-                {segment === "custom" && (
+                        justifyContent: "flex-start",
+                        alignItems: "flex-start",
+                        px: 1.75,
+                        py: 1.25,
+                        borderColor: "divider",
+                        gap: 0.75,
+                        bgcolor: "background.default",
+                        "&.Mui-selected": {
+                          bgcolor: (theme) =>
+                            alpha(theme.palette.primary.main, 0.12),
+                          borderColor: "primary.main",
+                        },
+                      },
+                    }}
+                  >
+                    {segmentOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <ToggleButton key={option.id} value={option.id}>
+                          <Stack spacing={0.75} alignItems="flex-start">
+                            <Stack
+                              direction="row"
+                              spacing={0.75}
+                              alignItems="center"
+                            >
+                              <Icon fontSize="small" />
+                              <Typography
+                                variant="subtitle2"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {option.label}
+                              </Typography>
+                            </Stack>
+                            <Typography
+                              variant="caption"
+                              sx={{ opacity: 0.72 }}
+                            >
+                              {option.description}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={
+                                option.id === "custom"
+                                  ? "Topic broadcast"
+                                  : `${option.count} user${option.count === 1 ? "" : "s"}`
+                              }
+                              sx={{
+                                bgcolor: (theme) =>
+                                  alpha(theme.palette.primary.main, 0.12),
+                                color: "primary.main",
+                              }}
+                            />
+                          </Stack>
+                        </ToggleButton>
+                      );
+                    })}
+                  </ToggleButtonGroup>
+                </Box>
+                {segmentIsCustom ? (
                   <TextField
                     label="Custom Topic"
                     value={customTopic}
                     onChange={(e) => setCustomTopic(e.target.value)}
-                    fullWidth
                     placeholder="/topics/lrp-shootout"
+                    helperText="FCM topic name for push broadcasts."
+                    fullWidth
                     size="small"
                     disabled={sending}
                   />
-                )}
-
-                {/* People picker */}
-                <Autocomplete
-                  multiple
-                  options={allUsers}
-                  value={pickedUsers}
-                  disableCloseOnSelect
-                  loading={loading}
-                  disablePortal
-                  filterSelectedOptions
-                  isOptionEqualToValue={(o, v) => o.id === v.id}
-                  onChange={(_, val) => setPickedUsers(val)}
-                  getOptionLabel={(o) => o?.name || o?.email || ""}
-                  renderOption={(props, option) => (
-                    <li {...props} key={option.id}>
-                      <Stack>
-                        <Typography>{option.name || option.email}</Typography>
-                        {option.roles?.length ? (
-                          <Typography variant="caption" sx={{ opacity: 0.72 }}>
-                            {option.roles.join(", ")}
-                          </Typography>
-                        ) : null}
-                      </Stack>
-                    </li>
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        {...getTagProps({ index })}
-                        key={option.id}
-                        label={option.name || option.email}
+                ) : null}
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    borderStyle: "dashed",
+                    borderRadius: 2,
+                    p: 1.5,
+                    bgcolor: "background.default",
+                  }}
+                >
+                  <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                    <InfoOutlinedIcon fontSize="small" sx={{ mt: 0.25 }} />
+                    <Box>
+                      <Typography variant="body2" sx={{ opacity: 0.88 }}>
+                        {activeSegment?.description ||
+                          "Hand-pick individuals for direct sends."}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.65 }}>
+                        {segmentIsCustom
+                          ? customTopic
+                            ? `Broadcasting to ${customTopic}`
+                            : "Add a topic to reach subscribers."
+                          : `${segmentUsers.length} user${segmentUsers.length === 1 ? "" : "s"} matched`}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+                {showSegmentEmpty ? (
+                  <Alert severity="warning" variant="outlined">
+                    No users currently match this segment.
+                  </Alert>
+                ) : null}
+                <Divider />
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle2" sx={{ letterSpacing: 0.2 }}>
+                    Direct picks
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    options={allUsers}
+                    value={pickedUsers}
+                    disableCloseOnSelect
+                    loading={loading}
+                    disablePortal
+                    filterSelectedOptions
+                    isOptionEqualToValue={(o, v) => o.id === v.id}
+                    onChange={(_, val) => setPickedUsers(val)}
+                    getOptionLabel={(o) => o?.name || o?.email || ""}
+                    noOptionsText={loading ? "Syncing roster…" : "No matches"}
+                    renderOption={(props, option) => (
+                      <li {...props} key={option.id}>
+                        <Stack>
+                          <Typography>{option.name || option.email}</Typography>
+                          {option.roles?.length ? (
+                            <Typography
+                              variant="caption"
+                              sx={{ opacity: 0.72 }}
+                            >
+                              {option.roles.join(", ")}
+                            </Typography>
+                          ) : null}
+                        </Stack>
+                      </li>
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          {...getTagProps({ index })}
+                          key={option.id}
+                          label={option.name || option.email}
+                          size="small"
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Pick users by name/email"
+                        placeholder="Type to search…"
                         size="small"
                       />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Pick users by name/email"
-                      placeholder="Type to search…"
-                      size="small"
-                    />
-                  )}
-                  disabled={sending}
-                />
-
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    Selected: {selectedCount} user
-                    {selectedCount === 1 ? "" : "s"}
-                  </Typography>
-                  {!!pickedUsers.length && (
-                    <Button
-                      size="small"
-                      variant="text"
-                      color="inherit"
-                      onClick={() => setPickedUsers([])}
-                      startIcon={<HighlightOffIcon fontSize="small" />}
-                      disabled={sending}
-                    >
-                      Clear picks
-                    </Button>
-                  )}
+                    )}
+                    disabled={sending}
+                  />
+                  {rosterEmpty ? (
+                    <Alert severity="info" variant="outlined">
+                      No eligible users loaded yet. Refresh to try again.
+                    </Alert>
+                  ) : null}
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    flexWrap="wrap"
+                    spacing={1}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <AvatarGroup
+                        max={4}
+                        sx={{
+                          "& .MuiAvatar-root": {
+                            width: 28,
+                            height: 28,
+                            fontSize: 13,
+                          },
+                        }}
+                      >
+                        {selectedPreview.map((user) => (
+                          <Avatar
+                            key={user?.id || user?.email}
+                            src={user?.photoURL || undefined}
+                          >
+                            {getInitial(user)}
+                          </Avatar>
+                        ))}
+                      </AvatarGroup>
+                      <Typography variant="caption" sx={{ opacity: 0.75 }}>
+                        {recipientsSummary}
+                      </Typography>
+                    </Stack>
+                    {!!pickedUsers.length && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        color="inherit"
+                        onClick={() => setPickedUsers([])}
+                        startIcon={<HighlightOffIcon fontSize="small" />}
+                        disabled={sending}
+                      >
+                        Clear picks
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Right: Composer */}
-        <Grid item xs={12} md={7}>
-          <Card sx={{ borderRadius: 3, position: "relative" }}>
-            <CardContent
-              sx={{
-                p: { xs: 2, sm: 3 },
-                pb: { xs: 10, sm: 3 } /* leave room for sticky bar on mobile */,
-              }}
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={7}>
+            <Card
+              sx={{ borderRadius: 3, height: "100%", position: "relative" }}
             >
-              <Stack spacing={1.5}>
-                {/* Mode switch */}
-                <ToggleButtonGroup
-                  exclusive
-                  value={mode}
-                  onChange={(_, v) => v && setMode(v)}
-                  size="small"
-                  sx={{ "& .MuiToggleButton-root": { py: 0.5, px: 1.25 } }}
-                  disabled={sending}
+              <CardContent
+                sx={{
+                  p: { xs: 2, sm: 3 },
+                  pb: { xs: 12, sm: 3 },
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  justifyContent="space-between"
+                  spacing={{ xs: 1.5, sm: 2 }}
                 >
-                  <ToggleButton value="push">Push</ToggleButton>
-                  <ToggleButton value="sms">SMS</ToggleButton>
-                </ToggleButtonGroup>
-
-                <FormControlLabel
-                  control={
-                    <Switch
-                      size="small"
-                      checked={showPreview}
-                      onChange={(_, v) => setShowPreview(v)}
-                    />
-                  }
-                  label="Preview"
-                  sx={{ alignSelf: "flex-start" }}
-                />
-
-                {/* Fields */}
+                  <ToggleButtonGroup
+                    exclusive
+                    value={mode}
+                    onChange={(_, v) => v && setMode(v)}
+                    size="small"
+                    disabled={sending}
+                    sx={{
+                      "& .MuiToggleButton-root": {
+                        textTransform: "none",
+                        px: 1.75,
+                        py: 0.75,
+                        borderRadius: 2,
+                        minWidth: 96,
+                        fontWeight: 600,
+                        borderColor: "divider",
+                        "&.Mui-selected": {
+                          bgcolor: (theme) =>
+                            alpha(theme.palette.primary.main, 0.12),
+                          borderColor: "primary.main",
+                        },
+                      },
+                    }}
+                  >
+                    <ToggleButton value="push">Push</ToggleButton>
+                    <ToggleButton value="sms" disabled={segmentIsCustom}>
+                      SMS
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={showPreview}
+                        onChange={(_, v) => setShowPreview(v)}
+                      />
+                    }
+                    label="Preview"
+                    sx={{ m: 0 }}
+                  />
+                </Stack>
                 {mode === "push" ? (
                   <Stack spacing={1.5}>
                     <TextField
-                      label={`Title * (${count(title)}/80)`}
+                      label="Title *"
                       value={title}
                       inputProps={{ maxLength: 80 }}
                       onChange={(e) => setTitle(e.target.value)}
                       fullWidth
                       disabled={sending}
+                      helperText={`${count(title)}/80 characters`}
+                      FormHelperTextProps={{
+                        sx: { textAlign: "right", opacity: 0.65 },
+                      }}
                     />
                     <TextField
-                      label={`Body (${count(body)}/240)`}
+                      label="Body"
                       value={body}
                       inputProps={{ maxLength: 240 }}
                       onChange={(e) => setBody(e.target.value)}
@@ -449,6 +776,10 @@ export default function Notifications() {
                       multiline
                       minRows={2}
                       disabled={sending}
+                      helperText={`${count(body)}/240 characters`}
+                      FormHelperTextProps={{
+                        sx: { textAlign: "right", opacity: 0.65 },
+                      }}
                     />
                     <TextField
                       label="Icon URL (optional)"
@@ -483,7 +814,7 @@ export default function Notifications() {
                         }}
                         disabled={sending}
                       />
-                      <Stack direction="row" spacing={1}>
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
                         <Button
                           size="small"
                           variant="outlined"
@@ -510,7 +841,7 @@ export default function Notifications() {
                 ) : (
                   <Stack spacing={1.5}>
                     <TextField
-                      label={`Body * (${count(body)}/320)`}
+                      label="Body *"
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
                       fullWidth
@@ -518,6 +849,10 @@ export default function Notifications() {
                       minRows={3}
                       inputProps={{ maxLength: 320 }}
                       disabled={sending}
+                      helperText={`${count(body)}/320 characters`}
+                      FormHelperTextProps={{
+                        sx: { textAlign: "right", opacity: 0.65 },
+                      }}
                     />
                     {body && body.length > 160 && (
                       <Alert severity="info">
@@ -526,9 +861,16 @@ export default function Notifications() {
                     )}
                   </Stack>
                 )}
-
                 {showPreview && (
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.background.paper, 0.4),
+                    }}
+                  >
                     {mode === "push" ? (
                       <Stack
                         direction="row"
@@ -537,7 +879,7 @@ export default function Notifications() {
                       >
                         <Avatar
                           src={iconUrl || undefined}
-                          sx={{ width: 36, height: 36 }}
+                          sx={{ width: 40, height: 40 }}
                         >
                           <NotificationsActiveIcon fontSize="small" />
                         </Avatar>
@@ -597,10 +939,7 @@ export default function Notifications() {
                     )}
                   </Paper>
                 )}
-
-                <Divider sx={{ my: 1 }} />
-
-                {/* Sticky Send bar on mobile */}
+                <Divider sx={{ mt: 1 }} />
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={{ xs: 1, sm: 1.5 }}
@@ -612,48 +951,63 @@ export default function Notifications() {
                     bottom: 0,
                     zIndex: 2,
                     px: { xs: 2, sm: 0 },
-                    pb: { xs: 1.25, sm: 0 },
-                    pt: { xs: 1.25, sm: 0 },
+                    pb: { xs: 1.5, sm: 0 },
+                    pt: { xs: 1.5, sm: 0 },
                     bgcolor: { xs: "background.paper", sm: "transparent" },
                     borderTop: { xs: "1px solid", sm: "none" },
                     borderColor: "divider",
                   }}
                 >
-                  <Button
-                    variant="contained"
-                    disabled={!canSend || loading || sending}
-                    onClick={handleSend}
-                    startIcon={!sending ? <CheckCircleIcon /> : null}
-                    sx={{
-                      width: { xs: "100%", sm: "auto" },
-                      bgcolor: "#4cbb17",
-                      "&:hover": { bgcolor: "#3ea212" },
-                      fontWeight: 700,
-                    }}
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={{ xs: 1, sm: 1.25 }}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    sx={{ width: { xs: "100%", sm: "auto" } }}
                   >
-                    {sending ? (
-                      <CircularProgress
-                        size={20}
-                        color="inherit"
-                        sx={{ mr: 0.5 }}
-                      />
-                    ) : null}
-                    {sending ? "Sending…" : "Send"}
-                  </Button>
+                    <Button
+                      variant="contained"
+                      disabled={!canSend || loading || sending}
+                      onClick={handleSend}
+                      startIcon={!sending ? <CheckCircleIcon /> : null}
+                      sx={{
+                        width: { xs: "100%", sm: "auto" },
+                        bgcolor: "#4cbb17",
+                        "&:hover": { bgcolor: "#3ea212" },
+                        fontWeight: 700,
+                      }}
+                    >
+                      {sending ? (
+                        <CircularProgress
+                          size={20}
+                          color="inherit"
+                          sx={{ mr: 0.5 }}
+                        />
+                      ) : null}
+                      {sending ? "Sending…" : "Send"}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="inherit"
+                      onClick={() => resetComposer(false)}
+                      disabled={sending}
+                      sx={{ width: { xs: "100%", sm: "auto" } }}
+                    >
+                      Reset message
+                    </Button>
+                  </Stack>
                   <Typography
                     variant="caption"
                     sx={{ opacity: sending ? 1 : 0.8 }}
                   >
-                    {selectedCount} direct recipient
-                    {selectedCount === 1 ? "" : "s"}
+                    {recipientsSummary}
                     {sending ? " • working…" : ""}
                   </Typography>
                 </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-      </Grid>
+      </Stack>
     </ResponsiveContainer>
   );
 }
