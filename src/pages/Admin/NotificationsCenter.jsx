@@ -260,7 +260,9 @@ export default function Notifications() {
 
   const canSend = React.useMemo(() => {
     if (sending) return false;
-    const hasPushAudience = segmentIsCustom ? !!customTopic : selectedCount > 0;
+    const hasPushAudience = segmentIsCustom
+      ? !!customTopic || selectedCount > 0
+      : selectedCount > 0;
     if (mode === "push") return !!title && hasPushAudience && !dataError;
     if (mode === "sms") return !!body && selectedCount > 0;
     return false;
