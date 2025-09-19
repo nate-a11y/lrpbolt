@@ -27,36 +27,53 @@ const isUnclaimed = (doc) => {
   return !d.claimedBy && !d.claimedAt;
 };
 
-async function collectLiveTripIds() {
+async function collectLiveTripIndex() {
   const snap = await db.collection("liveRides").get();
-  const ids = new Set();
+  const index = new Map();
   let liveUnclaimed = 0;
+
   for (const doc of snap.docs) {
     const data = normalizeRide(doc.data());
-    ids.add(String(doc.id).trim());
-    if (data.tripId) ids.add(String(data.tripId).trim());
+    const entry = { ref: doc.ref, data };
+
+    const docIdKey = String(doc.id || "").trim();
+    if (docIdKey) index.set(docIdKey, entry);
+
+    if (data.tripId) {
+      const tripKey = String(data.tripId || "").trim();
+      if (tripKey) index.set(tripKey, entry);
+    }
+
     if (isUnclaimed(data)) liveUnclaimed += 1;
   }
-  return { ids, liveDocs: snap.size, liveUnclaimed };
+
+  return { index, liveDocs: snap.size, liveUnclaimed };
 }
 
 /**
  * Behavior:
  * - Read all Live; duplicates are not allowed (claimed or unclaimed).
- * - From rideQueue, take ONLY unclaimed; require TripID; skip if duplicate.
- * - Copy ALL fields to liveRides with docId = TripID (create).
+ * - From rideQueue, take ONLY unclaimed; require TripID.
+ * - If TripID exists in liveRides and is unclaimed, overwrite it.
+ * - Copy ALL fields to liveRides with docId = TripID (create when new).
  * - Clear ALL docs in rideQueue.
  * - Write AdminMeta/lastDropDaily with stats.
  */
 async function dropDailyFromQueue({ dryRun = false } = {}) {
   const stats = {
-    liveDocs: 0, liveUnclaimed: 0,
-    queueTotal: 0, queueUnclaimed: 0,
-    imported: 0, duplicatesFound: 0, skippedNoTripId: 0,
+    liveDocs: 0,
+    liveUnclaimed: 0,
+    queueTotal: 0,
+    queueUnclaimed: 0,
+    imported: 0,
+    duplicatesFound: 0,
+    skippedNoTripId: 0,
     queueCleared: 0,
+    updatedExisting: 0,
+    skippedClaimedLive: 0,
   };
 
-  const { ids, liveDocs, liveUnclaimed } = await collectLiveTripIds();
+  const { index, liveDocs, liveUnclaimed } = await collectLiveTripIndex();
   stats.liveDocs = liveDocs;
   stats.liveUnclaimed = liveUnclaimed;
 
@@ -64,37 +81,63 @@ async function dropDailyFromQueue({ dryRun = false } = {}) {
   stats.queueTotal = qSnap.size;
 
   const toCreate = [];
+  const toUpdate = [];
+  const seen = new Set();
   for (const doc of qSnap.docs) {
     const data = normalizeRide(doc.data());
     if (!isUnclaimed(data)) continue;
     stats.queueUnclaimed += 1;
 
     if (!data.tripId) { stats.skippedNoTripId += 1; continue; }
-    const key = data.tripId;
-    if (ids.has(key)) { stats.duplicatesFound += 1; continue; }
+    const key = String(data.tripId || "").trim();
+    if (!key) { stats.skippedNoTripId += 1; continue; }
+
+    if (seen.has(key)) {
+      stats.duplicatesFound += 1;
+      continue;
+    }
 
     const payload = {
       ...doc.data(),                       // copy ALL fields
-      tripId: data.tripId,                 // normalized
+      tripId: key,                         // normalized
       pickupTime: data.pickupTime || FieldValue.serverTimestamp(),
       ...(doc.data().status == null ? { status: "open" } : {}),
       importedFromQueueAt: FieldValue.serverTimestamp(),
       lastModifiedBy: "system@dropDailyRides",
     };
 
+    const existing = index.get(key);
+    if (existing) {
+      stats.duplicatesFound += 1;
+      if (isUnclaimed(existing.data)) {
+        toUpdate.push({ ref: existing.ref, payload });
+      } else {
+        stats.skippedClaimedLive += 1;
+      }
+      seen.add(key);
+      continue;
+    }
+
     toCreate.push({ key, payload });
-    ids.add(key); // prevent dupes within the same run
+    seen.add(key);
   }
 
-  if (!dryRun && toCreate.length) {
-    const writer = db.bulkWriter();
-    for (const { key, payload } of toCreate) {
-      writer.create(db.collection("liveRides").doc(key), payload); // fail if exists (no dupes)
-      stats.imported += 1;
+  if (!dryRun) {
+    if (toCreate.length || toUpdate.length) {
+      const writer = db.bulkWriter();
+      for (const { key, payload } of toCreate) {
+        writer.create(db.collection("liveRides").doc(key), payload);
+      }
+      for (const { ref, payload } of toUpdate) {
+        writer.set(ref, payload, { merge: false });
+      }
+      await writer.close();
     }
-    await writer.close();
+    stats.imported = toCreate.length;
+    stats.updatedExisting = toUpdate.length;
   } else {
     stats.imported = toCreate.length;
+    stats.updatedExisting = toUpdate.length;
   }
 
   if (!dryRun && qSnap.size) {
