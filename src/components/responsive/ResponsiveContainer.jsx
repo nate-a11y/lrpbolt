@@ -5,7 +5,12 @@ import { Box } from "@mui/material";
  * Wraps page/content sections to enforce padding and max width with mobile-first rules.
  * Usage: <ResponsiveContainer><YourContent/></ResponsiveContainer>
  */
-export default function ResponsiveContainer({ children, sx, maxWidth = 1280 }) {
+export default function ResponsiveContainer({
+  children,
+  sx,
+  maxWidth = 1280,
+  ...boxProps
+}) {
   const resolvedMaxWidth =
     typeof maxWidth === "object"
       ? { xs: "100%", ...maxWidth }
@@ -13,6 +18,7 @@ export default function ResponsiveContainer({ children, sx, maxWidth = 1280 }) {
 
   return (
     <Box
+      {...boxProps}
       sx={{
         px: { xs: 1.5, sm: 2, md: 3 },
         py: { xs: 1.5, sm: 2, md: 3 },

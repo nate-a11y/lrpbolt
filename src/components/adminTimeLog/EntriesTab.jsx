@@ -296,22 +296,50 @@ export default function EntriesTab() {
 
   if (loading) {
     return (
-      <Box p={2}>
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
         <CircularProgress size={24} />
-      </Box>
+      </Paper>
     );
   }
   if (error) {
     return (
-      <Box p={2}>
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
         <Alert severity="error">{error}</Alert>
-      </Box>
+      </Paper>
     );
   }
 
   return (
-    <Paper sx={{ width: "100%", p: 1 }}>
-      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 1 }}>
+    <Paper
+      sx={{
+        width: "100%",
+        p: 1,
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        gap: 1,
+      }}
+    >
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         <TextField
           label="Search"
           value={search}
@@ -337,7 +365,15 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
+      <Paper
+        sx={{
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
         <SmartAutoGrid
           rows={safeRows}
           headerMap={{
@@ -386,6 +422,8 @@ export default function EntriesTab() {
           disableRowSelectionOnClick
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={(m) => setSelectionModel(m)}
+          gridHeight="100%"
+          containerSx={{ flex: 1, minHeight: 0 }}
           slotProps={{
             toolbar: {
               onDeleteSelected: handleBulkDelete,

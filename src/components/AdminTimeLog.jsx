@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useState, memo } from "react";
-import { Tabs, Tab } from "@mui/material";
+import { Tabs, Tab, Box } from "@mui/material";
 
 import useIsMobile from "@/hooks/useIsMobile.js";
 
@@ -15,7 +15,7 @@ function AdminTimeLog() {
   const { isMdDown } = useIsMobile();
 
   return (
-    <PageContainer pt={2} pb={2}>
+    <PageContainer pt={2} pb={2} sx={{ gap: 1 }}>
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
@@ -35,10 +35,12 @@ function AdminTimeLog() {
         <Tab label="Shootout Sessions" />
         <Tab label="Shootout Summary" />
       </Tabs>
-      {tab === 0 && <EntriesTab />}
-      {tab === 1 && <WeeklySummaryTab />}
-      {tab === 2 && <ShootoutStatsTab />}
-      {tab === 3 && <ShootoutSummaryTab />}
+      <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
+        {tab === 0 && <EntriesTab />}
+        {tab === 1 && <WeeklySummaryTab />}
+        {tab === 2 && <ShootoutStatsTab />}
+        {tab === 3 && <ShootoutSummaryTab />}
+      </Box>
     </PageContainer>
   );
 }

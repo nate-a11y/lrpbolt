@@ -45,6 +45,9 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
         component="main"
         sx={{
           flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100%",
           minWidth: 0,
           maxWidth: "100%",
           overflowX: "hidden",
