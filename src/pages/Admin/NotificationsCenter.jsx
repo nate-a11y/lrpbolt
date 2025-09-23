@@ -946,19 +946,24 @@ export default function Notifications() {
                   direction={{ xs: "column", sm: "row" }}
                   spacing={{ xs: 1, sm: 1.5 }}
                   alignItems={{ xs: "stretch", sm: "center" }}
-                  sx={{
-                    position: { xs: "fixed", sm: "static" },
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 2,
+                  sx={(theme) => ({
+                    position: { xs: "sticky", sm: "static" },
+                    bottom: { xs: 0, sm: "auto" },
+                    zIndex: { xs: theme.zIndex.appBar, sm: "auto" },
+                    mx: { xs: -2, sm: 0 },
                     px: { xs: 2, sm: 0 },
-                    pb: { xs: 1.5, sm: 0 },
                     pt: { xs: 1.5, sm: 0 },
-                    bgcolor: { xs: "background.paper", sm: "transparent" },
+                    pb: {
+                      xs: `calc(${theme.spacing(1.5)} + env(safe-area-inset-bottom, 0px))`,
+                      sm: 0,
+                    },
+                    bgcolor: {
+                      xs: theme.palette.background.paper,
+                      sm: "transparent",
+                    },
                     borderTop: { xs: "1px solid", sm: "none" },
-                    borderColor: "divider",
-                  }}
+                    borderColor: theme.palette.divider,
+                  })}
                 >
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
