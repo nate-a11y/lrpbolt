@@ -21,7 +21,9 @@ export default function WeeklySummaryTab() {
   );
 
   return (
-    <Paper sx={{ width: "100%", p: 1 }}>
+    <Paper
+      sx={{ width: "100%", p: 1, display: "flex", flexDirection: "column" }}
+    >
       <Box sx={{ mb: 1 }}>
         <DatePicker
           label="Week of"
@@ -53,7 +55,6 @@ export default function WeeklySummaryTab() {
         overrides={overrides}
         checkboxSelection
         disableRowSelectionOnClick
-        sx={{ height: 520 }}
       />
     </Paper>
   );

@@ -125,7 +125,7 @@ export default function ShootoutStatsTab() {
   };
 
   return (
-    <Paper sx={{ width: "100%" }}>
+    <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
       <SmartAutoGrid
         rows={rows || []}
         headerMap={{
@@ -165,7 +165,6 @@ export default function ShootoutStatsTab() {
         experimentalFeatures={{ newEditingApi: true }}
         checkboxSelection
         disableRowSelectionOnClick
-        sx={{ height: 520 }}
       />
     </Paper>
   );

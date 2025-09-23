@@ -337,7 +337,7 @@ export default function EntriesTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-      <Paper sx={{ width: "100%" }}>
+      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
         <SmartAutoGrid
           rows={safeRows}
           headerMap={{
@@ -396,7 +396,6 @@ export default function EntriesTab() {
           getRowId={(r) =>
             r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
           }
-          sx={{ height: 520 }}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}

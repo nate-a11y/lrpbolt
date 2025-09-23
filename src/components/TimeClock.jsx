@@ -595,7 +595,7 @@ export default function TimeClock({ driver, setIsTracking }) {
             {tzLabel}
           </Typography>
         </Box>
-        <Paper sx={{ width: "100%" }}>
+        <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
           <SmartAutoGrid
             rows={rows || []}
             headerMap={headerMap}
@@ -606,7 +606,6 @@ export default function TimeClock({ driver, setIsTracking }) {
             checkboxSelection
             disableRowSelectionOnClick
             columnVisibilityModel={columnVisibilityModel}
-            sx={{ width: "100%", maxWidth: "100%", height: 520 }}
             slots={{
               loadingOverlay: LoadingOverlay,
               noRowsOverlay: NoRowsOverlay,
