@@ -83,7 +83,7 @@ function ShootoutTab() {
           </Button>
         )}
       </Box>
-      <Paper sx={{ width: "100%" }}>
+      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
         <SmartAutoGrid
           rows={sessionRows}
           headerMap={{
@@ -118,7 +118,6 @@ function ShootoutTab() {
           })}
           checkboxSelection
           disableRowSelectionOnClick
-          sx={{ height: 520 }}
         />
       </Paper>
     </PageContainer>

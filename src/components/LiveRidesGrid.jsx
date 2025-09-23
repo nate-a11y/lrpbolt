@@ -106,7 +106,7 @@ export default function LiveRidesGrid() {
 
   return (
     <>
-      <Paper sx={{ width: "100%" }}>
+      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
         <SmartAutoGrid
           rows={rows}
           headerMap={{
@@ -150,7 +150,6 @@ export default function LiveRidesGrid() {
               quickFilterPlaceholder: "Search",
             },
           }}
-          sx={{ height: 520 }}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}

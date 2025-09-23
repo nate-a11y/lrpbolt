@@ -21,6 +21,35 @@ import {
 } from "./selectionV8";
 
 const MAX_VISIBLE_ROWS = 15;
+const DEFAULT_MIN_HEIGHT = { xs: 320, sm: 360, md: 420 };
+const DEFAULT_FILL_HEIGHT = {
+  xs: "calc(100vh - 240px)",
+  sm: "calc(100vh - 260px)",
+  md: "calc(100vh - 320px)",
+  lg: "calc(100vh - 360px)",
+};
+
+function mergeResponsive(defaultValue, override) {
+  if (override == null) return defaultValue;
+  if (typeof override === "number" || typeof override === "string") {
+    return override;
+  }
+  if (typeof override === "object" && !Array.isArray(override)) {
+    return { ...defaultValue, ...override };
+  }
+  return defaultValue;
+}
+
+function mergeSx(base, override) {
+  if (!override) return base;
+  if (Array.isArray(override)) {
+    return [base, ...override];
+  }
+  if (typeof override === "function") {
+    return (theme) => ({ ...base, ...override(theme) });
+  }
+  return { ...base, ...override };
+}
 
 function headerFromKey(k) {
   if (!k) return "";
@@ -139,6 +168,11 @@ export default function SmartAutoGrid(props) {
       MAX_VISIBLE_ROWS * 2,
       MAX_VISIBLE_ROWS * 4,
     ],
+    minHeight: minHeightProp,
+    gridHeight,
+    autoHeight: autoHeightProp,
+    containerSx,
+    sx: gridSxProp,
     ...rest
   } = props;
 
@@ -146,7 +180,6 @@ export default function SmartAutoGrid(props) {
 
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
   const dataHasRows = safeRows.length > 0;
-  const rowCount = safeRows.length;
 
   const explicitCols = useMemo(() => {
     if (Array.isArray(columns) && columns.length > 0) return columns;
@@ -326,45 +359,45 @@ export default function SmartAutoGrid(props) {
     [componentsProps],
   );
 
-  const autoHeight = rowCount <= MAX_VISIBLE_ROWS;
-  const density = rest.density ?? "compact";
+  const computedAutoHeight = autoHeightProp ?? false;
+  const resolvedMinHeight = useMemo(
+    () => mergeResponsive(DEFAULT_MIN_HEIGHT, minHeightProp),
+    [minHeightProp],
+  );
+  const resolvedFillHeight = useMemo(
+    () => mergeResponsive(DEFAULT_FILL_HEIGHT, gridHeight),
+    [gridHeight],
+  );
 
-  return (
-    <ResponsiveScrollBox
-      sx={{
-        width: "100%",
-        maxWidth: "100%",
-        ...(autoHeight
-          ? {}
-          : {
-              height: 600,
-              "@media (max-width:600px)": {
-                height: "calc(100vh - 180px)",
-              },
-            }),
-      }}
-    >
-      <DataGridPro
-        apiRef={apiRef}
-        rows={safeRows}
-        columns={responsiveCols}
-        getRowId={rowIdFn}
-        checkboxSelection={checkboxSelection}
-        disableRowSelectionOnClick={disableRowSelectionOnClick}
-        rowSelectionModel={controlledRsm}
-        onRowSelectionModelChange={handleRsmChange}
-        initialState={safeInitialState}
-        columnVisibilityModel={columnVisibilityModel}
-        pagination
-        pageSizeOptions={safePageSizeOptions}
-        autoHeight={autoHeight}
-        density={density}
-        slots={mergedSlots}
-        slotProps={mergedSlotProps}
-        components={mergedComponents}
-        componentsProps={mergedComponentsProps}
-        hideFooterSelectedRowCount={hideFooterSelectedRowCount}
-        sx={{
+  const scrollBoxSx = useMemo(() => {
+    const base = {
+      width: "100%",
+      maxWidth: "100%",
+      minWidth: 0,
+    };
+    if (computedAutoHeight) {
+      if (minHeightProp != null) {
+        return { ...base, minHeight: resolvedMinHeight };
+      }
+      return base;
+    }
+    return {
+      ...base,
+      minHeight: resolvedMinHeight,
+      height: resolvedFillHeight,
+      flexGrow: 1,
+    };
+  }, [
+    computedAutoHeight,
+    minHeightProp,
+    resolvedFillHeight,
+    resolvedMinHeight,
+  ]);
+
+  const mergedGridSx = useMemo(
+    () =>
+      mergeSx(
+        {
           [`& .${gridClasses.cell}`]: { outline: "none" },
           "& .MuiDataGrid-columnHeader:focus": { outline: "none" },
           "& .MuiDataGrid-toolbarContainer": {
@@ -384,9 +417,43 @@ export default function SmartAutoGrid(props) {
           width: "100%",
           maxWidth: "100%",
           minWidth: 0,
-          ...(autoHeight ? {} : { height: "100%" }),
-          ...(rest.sx || {}),
-        }}
+          ...(computedAutoHeight ? {} : { height: "100%" }),
+        },
+        gridSxProp,
+      ),
+    [computedAutoHeight, gridSxProp],
+  );
+
+  const mergedContainerSx = useMemo(
+    () => mergeSx(scrollBoxSx, containerSx),
+    [scrollBoxSx, containerSx],
+  );
+
+  const density = rest.density ?? "compact";
+
+  return (
+    <ResponsiveScrollBox sx={mergedContainerSx}>
+      <DataGridPro
+        apiRef={apiRef}
+        rows={safeRows}
+        columns={responsiveCols}
+        getRowId={rowIdFn}
+        checkboxSelection={checkboxSelection}
+        disableRowSelectionOnClick={disableRowSelectionOnClick}
+        rowSelectionModel={controlledRsm}
+        onRowSelectionModelChange={handleRsmChange}
+        initialState={safeInitialState}
+        columnVisibilityModel={columnVisibilityModel}
+        pagination
+        pageSizeOptions={safePageSizeOptions}
+        autoHeight={computedAutoHeight}
+        density={density}
+        slots={mergedSlots}
+        slotProps={mergedSlotProps}
+        components={mergedComponents}
+        componentsProps={mergedComponentsProps}
+        hideFooterSelectedRowCount={hideFooterSelectedRowCount}
+        sx={mergedGridSx}
         {...rest}
       />
     </ResponsiveScrollBox>
@@ -419,4 +486,22 @@ SmartAutoGrid.propTypes = {
   actionsColumn: PropTypes.object,
   overrides: PropTypes.object,
   hideFooterSelectedRowCount: PropTypes.bool,
+  pageSizeOptions: PropTypes.array,
+  minHeight: PropTypes.oneOfType([
+    PropTypes.number,
+    PropTypes.string,
+    PropTypes.object,
+  ]),
+  gridHeight: PropTypes.oneOfType([
+    PropTypes.number,
+    PropTypes.string,
+    PropTypes.object,
+  ]),
+  autoHeight: PropTypes.bool,
+  containerSx: PropTypes.oneOfType([
+    PropTypes.object,
+    PropTypes.array,
+    PropTypes.func,
+  ]),
+  sx: PropTypes.oneOfType([PropTypes.object, PropTypes.array, PropTypes.func]),
 };

@@ -97,7 +97,7 @@ export default function EditableRideGrid({
   useGridDoctor({ name: "EditableRideGrid", rows: stableRows, columns });
 
   return (
-    <Paper sx={{ width: "100%", height: 600 }}>
+    <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
       <SmartAutoGrid
         rows={stableRows}
         columnsCompat={columns}
@@ -109,7 +109,6 @@ export default function EditableRideGrid({
         getRowId={(r) =>
           r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
         }
-        sx={{ height: 600 }}
       />
     </Paper>
   );
