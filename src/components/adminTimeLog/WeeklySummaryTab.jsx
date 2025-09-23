@@ -22,9 +22,17 @@ export default function WeeklySummaryTab() {
 
   return (
     <Paper
-      sx={{ width: "100%", p: 1, display: "flex", flexDirection: "column" }}
+      sx={{
+        width: "100%",
+        p: 1,
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        gap: 1,
+      }}
     >
-      <Box sx={{ mb: 1 }}>
+      <Box>
         <DatePicker
           label="Week of"
           value={weekStart}
@@ -55,6 +63,8 @@ export default function WeeklySummaryTab() {
         overrides={overrides}
         checkboxSelection
         disableRowSelectionOnClick
+        gridHeight="100%"
+        containerSx={{ flex: 1, minHeight: 0 }}
       />
     </Paper>
   );
