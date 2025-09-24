@@ -187,23 +187,23 @@ function RideBuilderFields({
   const sizes = useMemo(() => {
     if (isMulti) {
       return {
-        trip: { xs: 12, md: 3 },
-        pickupAt: { xs: 12, md: 3 },
-        hours: { xs: 6, md: 2 },
-        minutes: { xs: 6, md: 2 },
-        rideType: { xs: 12, md: 4 },
-        vehicle: { xs: 12, md: 4 },
-        notes: { xs: 12, md: 8 },
+        trip: { xs: 12, sm: 6, md: 3 },
+        pickupAt: { xs: 12, sm: 6, md: 3 },
+        hours: { xs: 6, sm: 3, md: 2 },
+        minutes: { xs: 6, sm: 3, md: 2 },
+        rideType: { xs: 12, sm: 6, md: 4 },
+        vehicle: { xs: 12, sm: 6, md: 4 },
+        notes: { xs: 12, sm: 12, md: 8 },
       };
     }
     return {
-      trip: { xs: 12, md: 4 },
-      pickupAt: { xs: 12, md: 4 },
-      hours: { xs: 6, md: 2 },
-      minutes: { xs: 6, md: 2 },
-      rideType: { xs: 12, md: 6 },
-      vehicle: { xs: 12, md: 6 },
-      notes: { xs: 12, md: 8 },
+      trip: { xs: 12, sm: 6, md: 4 },
+      pickupAt: { xs: 12, sm: 6, md: 4 },
+      hours: { xs: 6, sm: 3, md: 2 },
+      minutes: { xs: 6, sm: 3, md: 2 },
+      rideType: { xs: 12, sm: 6, md: 6 },
+      vehicle: { xs: 12, sm: 6, md: 6 },
+      notes: { xs: 12, sm: 6, md: 8 },
     };
   }, [isMulti]);
   return (
@@ -323,7 +323,7 @@ function RideBuilderFields({
         />
       </PigmentGrid>
 
-      <PigmentGrid xs={12} md={sizes.rideType.md} sx={{ minWidth: 0 }}>
+      <PigmentGrid {...sizes.rideType} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="RIDE TYPE"
           options={rideTypeOptions}
@@ -333,7 +333,7 @@ function RideBuilderFields({
           error={touched.rideType}
         />
       </PigmentGrid>
-      <PigmentGrid xs={12} md={sizes.vehicle.md} sx={{ minWidth: 0 }}>
+      <PigmentGrid {...sizes.vehicle} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="VEHICLE"
           options={vehicleOptions}
@@ -343,7 +343,7 @@ function RideBuilderFields({
           error={touched.vehicle}
         />
       </PigmentGrid>
-      <PigmentGrid xs={12} md={sizes.notes.md}>
+      <PigmentGrid {...sizes.notes}>
         <TextField
           {...FIELD_PROPS}
           multiline
