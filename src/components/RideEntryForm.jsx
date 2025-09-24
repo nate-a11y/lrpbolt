@@ -184,9 +184,31 @@ function RideBuilderFields({
 
   const tripIdError = !!value.tripId && !isTripIdValid(value.tripId);
   const isMulti = layoutVariant === "multi";
+  const sizes = useMemo(() => {
+    if (isMulti) {
+      return {
+        trip: { xs: 12, md: 3 },
+        pickupAt: { xs: 12, md: 3 },
+        hours: { xs: 6, md: 2 },
+        minutes: { xs: 6, md: 2 },
+        rideType: { xs: 12, md: 4 },
+        vehicle: { xs: 12, md: 4 },
+        notes: { xs: 12, md: 8 },
+      };
+    }
+    return {
+      trip: { xs: 12, md: 4 },
+      pickupAt: { xs: 12, md: 4 },
+      hours: { xs: 6, md: 2 },
+      minutes: { xs: 6, md: 2 },
+      rideType: { xs: 12, md: 6 },
+      vehicle: { xs: 12, md: 6 },
+      notes: { xs: 12, md: 8 },
+    };
+  }, [isMulti]);
   return (
     <>
-      <PigmentGrid xs={12} sm={isMulti ? 3 : 6} md={isMulti ? 3 : 6}>
+      <PigmentGrid {...sizes.trip}>
         <TextField
           {...FIELD_PROPS}
           label="Trip ID"
@@ -211,7 +233,7 @@ function RideBuilderFields({
         />
       </PigmentGrid>
 
-      <PigmentGrid xs={12} sm={isMulti ? 3 : 6} md={isMulti ? 3 : 6}>
+      <PigmentGrid {...sizes.pickupAt}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -241,7 +263,7 @@ function RideBuilderFields({
         />
       </PigmentGrid>
 
-      <PigmentGrid xs={6} sm={isMulti ? 2 : 3} md={isMulti ? 2 : 3}>
+      <PigmentGrid {...sizes.hours}>
         <TextField
           {...FIELD_PROPS}
           type="number"
@@ -270,7 +292,7 @@ function RideBuilderFields({
         />
       </PigmentGrid>
 
-      <PigmentGrid xs={6} sm={isMulti ? 2 : 3} md={isMulti ? 2 : 3}>
+      <PigmentGrid {...sizes.minutes}>
         <TextField
           {...FIELD_PROPS}
           type="number"
@@ -301,12 +323,7 @@ function RideBuilderFields({
         />
       </PigmentGrid>
 
-      <PigmentGrid
-        xs={12}
-        sm={isMulti ? 6 : 6}
-        md={isMulti ? 6 : 6}
-        sx={{ minWidth: 0 }}
-      >
+      <PigmentGrid xs={12} md={sizes.rideType.md} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="RIDE TYPE"
           options={rideTypeOptions}
@@ -316,8 +333,7 @@ function RideBuilderFields({
           error={touched.rideType}
         />
       </PigmentGrid>
-
-      <PigmentGrid xs={12} sx={{ minWidth: 0 }}>
+      <PigmentGrid xs={12} md={sizes.vehicle.md} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="VEHICLE"
           options={vehicleOptions}
@@ -327,8 +343,7 @@ function RideBuilderFields({
           error={touched.vehicle}
         />
       </PigmentGrid>
-
-      <PigmentGrid xs={12} sm={isMulti ? 8 : 6} md={isMulti ? 8 : 6}>
+      <PigmentGrid xs={12} md={sizes.notes.md}>
         <TextField
           {...FIELD_PROPS}
           multiline
@@ -1025,18 +1040,29 @@ export default function RideEntryForm() {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <>
-      <PigmentGrid xs={12} sm={4} sx={{ minWidth: 0 }}>
+    <PigmentGrid
+      xs={12}
+      container
+      columns={12}
+      rowSpacing={{ xs: 1.5, sm: 2, md: 3 }}
+      columnSpacing={{ xs: 1.5, sm: 2, md: 3 }}
+      sx={{ mb: { xs: 2, sm: 3 } }}
+    >
+      <PigmentGrid xs={12} md={4} sx={{ minWidth: 0 }}>
         <Button
           variant="outlined"
           fullWidth
           startIcon={<DownloadIcon />}
           onClick={handleDownloadTemplate}
+          sx={{
+            minHeight: 64,
+            fontWeight: 700,
+          }}
         >
           Download Template
         </Button>
       </PigmentGrid>
-      <PigmentGrid xs={12} sm={8} sx={{ minWidth: 0 }}>
+      <PigmentGrid xs={12} md={8} sx={{ minWidth: 0 }}>
         <Paper
           variant="outlined"
           sx={{
@@ -1060,7 +1086,7 @@ export default function RideEntryForm() {
           )}
         </Paper>
       </PigmentGrid>
-    </>
+    </PigmentGrid>
   );
 
   // ---------- Render ----------
@@ -1116,49 +1142,57 @@ export default function RideEntryForm() {
                   layoutVariant="single"
                 />
 
-                <PigmentGrid
-                  xs={12}
-                  sm={6}
-                  sx={{ display: { xs: "none", sm: "block" } }}
-                />
-
-                <PigmentGrid xs={6} sm={3}>
-                  <Button
-                    variant="outlined"
-                    onClick={onResetSingle}
-                    fullWidth
-                    sx={{ minHeight: 48 }}
+                <PigmentGrid xs={12}>
+                  <Box
+                    sx={{
+                      position: { xs: "sticky", md: "static" },
+                      bottom: 0,
+                      zIndex: 2,
+                      bgcolor: { xs: "background.paper", md: "transparent" },
+                      borderTop: { xs: "1px solid", md: "none" },
+                      borderColor: "divider",
+                      pt: 2,
+                      mt: 2,
+                    }}
                   >
-                    Reset
-                  </Button>
-                </PigmentGrid>
-                <PigmentGrid
-                  xs={12}
-                  sm={6}
-                  sx={{ display: { xs: "none", sm: "block" } }}
-                />
-                <PigmentGrid xs={6} sm={3}>
-                  <Stack
-                    direction="row"
-                    justifyContent={{ xs: "flex-start", sm: "flex-end" }}
-                    sx={{ width: "100%" }}
-                  >
-                    <Button
-                      variant="contained"
-                      startIcon={<RocketLaunchIcon />}
-                      sx={{
-                        bgcolor: "primary.main",
-                        "&:hover": { bgcolor: "primary.dark" },
-                        fontWeight: 700,
-                        minHeight: 48,
-                        width: "100%",
-                      }}
-                      onClick={onSubmitSingle}
-                      disabled={singleSubmitting || !isSingleValid}
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={{ xs: 1.5, sm: 2 }}
+                      alignItems={{ xs: "stretch", sm: "center" }}
                     >
-                      Submit
-                    </Button>
-                  </Stack>
+                      <Button
+                        variant="outlined"
+                        onClick={onResetSingle}
+                        sx={{
+                          minHeight: 48,
+                          width: { xs: "100%", sm: "auto" },
+                        }}
+                      >
+                        Reset
+                      </Button>
+                      <Box
+                        sx={{
+                          flexGrow: 1,
+                          display: { xs: "none", sm: "block" },
+                        }}
+                      />
+                      <Button
+                        variant="contained"
+                        startIcon={<RocketLaunchIcon />}
+                        sx={{
+                          bgcolor: "primary.main",
+                          "&:hover": { bgcolor: "primary.dark" },
+                          fontWeight: 700,
+                          minHeight: 48,
+                          width: { xs: "100%", sm: "auto" },
+                        }}
+                        onClick={onSubmitSingle}
+                        disabled={singleSubmitting || !isSingleValid}
+                      >
+                        Submit
+                      </Button>
+                    </Stack>
+                  </Box>
                 </PigmentGrid>
               </PigmentGrid>
             </Paper>
@@ -1219,52 +1253,58 @@ export default function RideEntryForm() {
                     layoutVariant="multi"
                   />
 
-                  <PigmentGrid xs={12} sm={4}>
-                    <Stack
-                      direction="row"
-                      justifyContent={{ xs: "flex-start", sm: "flex-end" }}
-                      sx={{ width: "100%" }}
+                  <PigmentGrid xs={12}>
+                    <Box
+                      sx={{
+                        position: { xs: "sticky", md: "static" },
+                        bottom: 0,
+                        zIndex: 2,
+                        bgcolor: { xs: "background.paper", md: "transparent" },
+                        borderTop: { xs: "1px solid", md: "none" },
+                        borderColor: "divider",
+                        pt: 2,
+                        mt: 2,
+                      }}
                     >
-                      <Button
-                        variant="outlined"
-                        onClick={onAddToList}
-                        startIcon={<AddIcon />}
-                        fullWidth
-                        sx={{ minHeight: 48 }}
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={{ xs: 1.5, sm: 2 }}
+                        alignItems={{ xs: "stretch", sm: "center" }}
                       >
-                        Add to List
-                      </Button>
-                    </Stack>
-                  </PigmentGrid>
-
-                  <PigmentGrid
-                    xs={12}
-                    sm={8}
-                    sx={{ display: { xs: "none", sm: "block" } }}
-                  />
-
-                  <PigmentGrid xs={12} sm={4}>
-                    <Stack
-                      direction="row"
-                      justifyContent="flex-end"
-                      sx={{ width: "100%" }}
-                    >
-                      <Button
-                        variant="contained"
-                        startIcon={<RocketLaunchIcon />}
-                        sx={{
-                          bgcolor: "primary.main",
-                          "&:hover": { bgcolor: "primary.dark" },
-                          fontWeight: 700,
-                          minHeight: 48,
-                          width: "100%",
-                        }}
-                        onClick={onSubmitAll}
-                        disabled={submitDisabled}
-                      >
-                        Submit All Rides
-                      </Button>
-                    </Stack>
+                        <Button
+                          variant="outlined"
+                          onClick={onAddToList}
+                          startIcon={<AddIcon />}
+                          sx={{
+                            minHeight: 48,
+                            width: { xs: "100%", sm: "auto" },
+                          }}
+                        >
+                          Add to List
+                        </Button>
+                        <Box
+                          sx={{
+                            flexGrow: 1,
+                            display: { xs: "none", sm: "block" },
+                          }}
+                        />
+                        <Button
+                          variant="contained"
+                          startIcon={<RocketLaunchIcon />}
+                          sx={{
+                            bgcolor: "primary.main",
+                            "&:hover": { bgcolor: "primary.dark" },
+                            fontWeight: 700,
+                            minHeight: 48,
+                            width: { xs: "100%", sm: "auto" },
+                          }}
+                          onClick={onSubmitAll}
+                          disabled={submitDisabled}
+                        >
+                          Submit All Rides
+                        </Button>
+                      </Stack>
+                    </Box>
                   </PigmentGrid>
                 </PigmentGrid>
               </Paper>
