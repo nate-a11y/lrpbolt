@@ -24,7 +24,6 @@ import {
   CircularProgress,
   Badge,
   Tooltip,
-  useMediaQuery,
   Fade,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
@@ -70,6 +69,7 @@ import ClaimedRidesGrid from "./ClaimedRidesGrid";
 import RideQueueGrid from "./RideQueueGrid";
 import LiveRidesGrid from "./LiveRidesGrid";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
+import ResponsiveContainer from "./responsive/ResponsiveContainer.jsx";
 
 // --- Shared field props ---
 const FIELD_PROPS = {
@@ -101,6 +101,20 @@ const expectedCsvCols = [
   "Vehicle",
   "RideNotes",
 ];
+
+const SECTION_PAPER_SX = {
+  borderRadius: 3,
+  p: { xs: 2, sm: 3 },
+  bgcolor: (theme) =>
+    theme.palette.mode === "dark" ? "background.paper" : "background.default",
+  display: "flex",
+  flexDirection: "column",
+  gap: { xs: 2, sm: 2.5 },
+};
+
+const TAB_INDICATOR_PROPS = {
+  sx: { backgroundColor: "primary.main" },
+};
 
 /* ------------------ Reusable builder (chips) ------------------ */
 function ChipSelect({
@@ -397,7 +411,6 @@ export default function RideEntryForm() {
     () => localStorage.getItem("dropDailyOpen") === "true",
   );
 
-  const isMobile = useMediaQuery("(max-width:600px)");
   const { user, authLoading } = useAuth();
   const currentUser = user?.email || "Unknown";
 
@@ -1028,7 +1041,7 @@ export default function RideEntryForm() {
     <Grid
       container
       spacing={{ xs: 1.5, sm: 2, md: 3 }}
-      sx={{ mb: isMobile ? 2 : 3 }}
+      sx={{ mb: { xs: 2, sm: 3 } }}
     >
       <Grid item xs={12} md={4}>
         <Button
@@ -1070,243 +1083,216 @@ export default function RideEntryForm() {
   // ---------- Render ----------
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box
-        sx={{
-          maxWidth: 1240,
-          mx: "auto",
-          px: { xs: 1.5, sm: 2, md: 3 },
-          py: { xs: 2, sm: 3 },
-        }}
-      >
-        <Paper
-          elevation={3}
-          sx={{
-            p: { xs: 2, sm: 3 },
-            borderRadius: 3,
-            mb: { xs: 2, sm: 3 },
-            bgcolor: (t) =>
-              t.palette.mode === "dark"
-                ? "background.paper"
-                : "background.default",
-          }}
-        >
-          <Typography variant="h6" fontWeight={700} gutterBottom>
-            🚐 Ride Entry
-          </Typography>
-
-          <Tabs
-            value={rideTab}
-            onChange={(e, v) => setRideTab(v)}
-            TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            sx={{
-              mb: 3,
-              "& .MuiTab-root": {
-                minWidth: { xs: "auto", sm: 120 },
-                fontWeight: 600,
-              },
-            }}
-          >
-            <Tab label="SINGLE RIDE" />
-            <Tab label="MULTI RIDE UPLOAD" />
-          </Tabs>
-        </Paper>
-
-        {/* SINGLE RIDE TAB */}
-        {rideTab === 0 && (
+      <ResponsiveContainer maxWidth={1240}>
+        <Stack spacing={{ xs: 2.5, md: 3 }}>
           <Paper
             elevation={3}
-            sx={{
-              p: { xs: 2, sm: 3 },
-              borderRadius: 3,
-              mb: { xs: 2, sm: 3 },
-              bgcolor: (t) =>
-                t.palette.mode === "dark"
-                  ? "background.paper"
-                  : "background.default",
-            }}
+            sx={{ ...SECTION_PAPER_SX, gap: { xs: 1.5, sm: 2 } }}
           >
-            <Typography variant="h6" fontWeight={700} gutterBottom>
-              SINGLE RIDE
+            <Typography variant="h6" fontWeight={700}>
+              🚐 Ride Entry
             </Typography>
-
-            <RideBuilderFields
-              value={singleRide}
-              onChange={setSingleRide}
-              rideTypeOptions={rideTypeOptions}
-              vehicleOptions={vehicleOptions}
-            />
-
-            <Box
+            <Tabs
+              value={rideTab}
+              onChange={(event, value) => setRideTab(value)}
+              TabIndicatorProps={TAB_INDICATOR_PROPS}
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
               sx={{
-                position: { xs: "sticky", md: "static" },
-                bottom: 0,
-                zIndex: 2,
-                bgcolor: { xs: "background.paper", md: "transparent" },
-                borderTop: { xs: "1px solid", md: "none" },
-                borderColor: "divider",
-                pt: 2,
-                mt: 2,
+                "& .MuiTab-root": {
+                  minWidth: { xs: "auto", sm: 140 },
+                  fontWeight: 600,
+                },
               }}
             >
-              <Stack
-                direction={isMobile ? "column" : "row"}
-                spacing={isMobile ? 1.5 : 2}
-                alignItems={isMobile ? "stretch" : "center"}
-              >
-                <Button
-                  variant="outlined"
-                  onClick={onResetSingle}
-                  sx={{ minHeight: 48 }}
-                  fullWidth={isMobile}
-                >
-                  Reset
-                </Button>
-                <Box
-                  sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }}
-                />
-                <Button
-                  variant="contained"
-                  startIcon={<RocketLaunchIcon />}
-                  sx={{
-                    bgcolor: "#4cbb17",
-                    "&:hover": { bgcolor: "#3ea212" },
-                    fontWeight: 700,
-                    minHeight: 48,
-                  }}
-                  onClick={onSubmitSingle}
-                  disabled={singleSubmitting || !isSingleValid}
-                  fullWidth={isMobile}
-                >
-                  Submit
-                </Button>
-              </Stack>
-            </Box>
+              <Tab label="Single Ride" />
+              <Tab label="Multi Ride Upload" />
+            </Tabs>
           </Paper>
-        )}
 
-        {/* MULTI RIDE UPLOAD TAB */}
-        {rideTab === 1 && (
-          <>
-            <Paper
-              elevation={3}
-              sx={{
-                p: { xs: 2, sm: 3 },
-                borderRadius: 3,
-                mb: { xs: 2, sm: 3 },
-                bgcolor: (t) =>
-                  t.palette.mode === "dark"
-                    ? "background.paper"
-                    : "background.default",
-              }}
-            >
-              <Typography variant="h6" fontWeight={700} gutterBottom>
-                MULTI RIDE UPLOAD
-              </Typography>
-
-              <TextField
-                {...FIELD_PROPS}
-                multiline
-                minRows={6}
-                maxRows={16}
-                label="Paste CSV Rides"
-                placeholder="tripId, yyyy-mm-dd, hh:mm, hours, minutes, rideType, vehicle, notes"
-                value={csvText}
-                onChange={(e) => setCsvText(e.target.value)}
-                sx={{
-                  mb: 3,
-                  "& textarea": {
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, Menlo, monospace",
-                  },
-                }}
-                helperText="Tip: paste multiple lines; we’ll validate before submit."
-              />
-
-              {dropZone}
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-                Or Use Ride Builder
-              </Typography>
-
-              <RideBuilderFields
-                value={builder}
-                onChange={setBuilder}
-                rideTypeOptions={rideTypeOptions}
-                vehicleOptions={vehicleOptions}
-              />
-
-              <Box
-                sx={{
-                  position: { xs: "sticky", md: "static" },
-                  bottom: 0,
-                  zIndex: 2,
-                  bgcolor: { xs: "background.paper", md: "transparent" },
-                  borderTop: { xs: "1px solid", md: "none" },
-                  borderColor: "divider",
-                  pt: 2,
-                  mt: 2,
-                }}
-              >
-                <Stack
-                  direction={isMobile ? "column" : "row"}
-                  spacing={isMobile ? 1.5 : 2}
-                  alignItems={isMobile ? "stretch" : "center"}
-                >
-                  <Button
-                    variant="outlined"
-                    onClick={onAddToList}
-                    startIcon={<AddIcon />}
-                    sx={{ minHeight: 48 }}
-                    fullWidth={isMobile}
-                  >
-                    Add to List
-                  </Button>
-                  <Box
-                    sx={{ flexGrow: 1, display: isMobile ? "none" : "block" }}
-                  />
-                  <Button
-                    variant="contained"
-                    startIcon={<RocketLaunchIcon />}
-                    sx={{
-                      bgcolor: "#4cbb17",
-                      "&:hover": { bgcolor: "#3ea212" },
-                      fontWeight: 700,
-                      minHeight: 48,
-                    }}
-                    onClick={onSubmitAll}
-                    disabled={submitDisabled}
-                    fullWidth={isMobile}
-                  >
-                    Submit All Rides
-                  </Button>
-                </Stack>
-              </Box>
-            </Paper>
-
-            {uploadedRows.length > 0 && (
-              <Box mt={4}>
-                <Typography variant="subtitle1" fontWeight={600} mb={1}>
-                  Preview Rides ({uploadedRows.length})
+          {rideTab === 0 && (
+            <Paper elevation={3} sx={SECTION_PAPER_SX}>
+              <Stack spacing={{ xs: 2, sm: 2.5 }}>
+                <Typography variant="h6" fontWeight={700}>
+                  Single Ride
                 </Typography>
-                {isMobile && (
-                  <Box
-                    textAlign="center"
-                    py={1}
+
+                <RideBuilderFields
+                  value={singleRide}
+                  onChange={setSingleRide}
+                  rideTypeOptions={rideTypeOptions}
+                  vehicleOptions={vehicleOptions}
+                />
+
+                <Box
+                  sx={{
+                    position: { xs: "sticky", md: "static" },
+                    bottom: 0,
+                    zIndex: 2,
+                    bgcolor: { xs: "background.paper", md: "transparent" },
+                    borderTop: { xs: "1px solid", md: "none" },
+                    borderColor: "divider",
+                    pt: 2,
+                    mt: 2,
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={{ xs: 1.5, sm: 2 }}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Button
+                      variant="outlined"
+                      onClick={onResetSingle}
+                      sx={{
+                        minHeight: 48,
+                        width: { xs: "100%", sm: "auto" },
+                      }}
+                    >
+                      Reset
+                    </Button>
+                    <Box
+                      sx={{
+                        flexGrow: 1,
+                        display: { xs: "none", sm: "block" },
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      startIcon={<RocketLaunchIcon />}
+                      sx={{
+                        bgcolor: "primary.main",
+                        "&:hover": { bgcolor: "primary.dark" },
+                        fontWeight: 700,
+                        minHeight: 48,
+                        width: { xs: "100%", sm: "auto" },
+                      }}
+                      onClick={onSubmitSingle}
+                      disabled={singleSubmitting || !isSingleValid}
+                    >
+                      Submit
+                    </Button>
+                  </Stack>
+                </Box>
+              </Stack>
+            </Paper>
+          )}
+
+          {rideTab === 1 && (
+            <>
+              <Paper elevation={3} sx={SECTION_PAPER_SX}>
+                <Stack spacing={{ xs: 2, sm: 2.5 }}>
+                  <Typography variant="h6" fontWeight={700}>
+                    Multi Ride Upload
+                  </Typography>
+
+                  <TextField
+                    {...FIELD_PROPS}
+                    multiline
+                    minRows={6}
+                    maxRows={16}
+                    label="Paste CSV Rides"
+                    placeholder="tripId, yyyy-mm-dd, hh:mm, hours, minutes, rideType, vehicle, notes"
+                    value={csvText}
+                    onChange={(event) => setCsvText(event.target.value)}
                     sx={{
-                      bgcolor: (t) => t.palette.warning.light,
-                      color: (t) => t.palette.warning.dark,
+                      "& textarea": {
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, monospace",
+                      },
+                    }}
+                    helperText="Tip: paste multiple lines; we’ll validate before submit."
+                  />
+
+                  {dropZone}
+
+                  <Divider />
+
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Or Use Ride Builder
+                  </Typography>
+
+                  <RideBuilderFields
+                    value={builder}
+                    onChange={setBuilder}
+                    rideTypeOptions={rideTypeOptions}
+                    vehicleOptions={vehicleOptions}
+                  />
+
+                  <Box
+                    sx={{
+                      position: { xs: "sticky", md: "static" },
+                      bottom: 0,
+                      zIndex: 2,
+                      bgcolor: { xs: "background.paper", md: "transparent" },
+                      borderTop: { xs: "1px solid", md: "none" },
+                      borderColor: "divider",
+                      pt: 2,
+                      mt: 2,
                     }}
                   >
-                    👉 Swipe horizontally to view more columns
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={{ xs: 1.5, sm: 2 }}
+                      alignItems={{ xs: "stretch", sm: "center" }}
+                    >
+                      <Button
+                        variant="outlined"
+                        onClick={onAddToList}
+                        startIcon={<AddIcon />}
+                        sx={{
+                          minHeight: 48,
+                          width: { xs: "100%", sm: "auto" },
+                        }}
+                      >
+                        Add to List
+                      </Button>
+                      <Box
+                        sx={{
+                          flexGrow: 1,
+                          display: { xs: "none", sm: "block" },
+                        }}
+                      />
+                      <Button
+                        variant="contained"
+                        startIcon={<RocketLaunchIcon />}
+                        sx={{
+                          bgcolor: "primary.main",
+                          "&:hover": { bgcolor: "primary.dark" },
+                          fontWeight: 700,
+                          minHeight: 48,
+                          width: { xs: "100%", sm: "auto" },
+                        }}
+                        onClick={onSubmitAll}
+                        disabled={submitDisabled}
+                      >
+                        Submit All Rides
+                      </Button>
+                    </Stack>
                   </Box>
-                )}
-                <Box sx={{ width: "100%", overflowX: "auto" }}>
-                  <Paper sx={{ width: "100%" }}>
+                </Stack>
+              </Paper>
+
+              {uploadedRows.length > 0 && (
+                <Paper elevation={3} sx={SECTION_PAPER_SX}>
+                  <Stack spacing={{ xs: 2, sm: 2.5 }}>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Preview Rides ({uploadedRows.length})
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: { xs: "block", sm: "none" },
+                        textAlign: "center",
+                        py: 1,
+                        borderRadius: 2,
+                        bgcolor: (theme) => theme.palette.warning.light,
+                        color: (theme) => theme.palette.warning.dark,
+                        fontWeight: 600,
+                      }}
+                    >
+                      👉 Swipe horizontally to view more columns
+                    </Box>
                     <SmartAutoGrid
                       autoHeight
                       rows={Array.isArray(uploadedRows) ? uploadedRows : []}
@@ -1318,291 +1304,314 @@ export default function RideEntryForm() {
                         valueFormatter: vfText,
                         editable: true,
                       }))}
-                      getRowId={(r) => r.id}
+                      getRowId={(row) => row.id}
                       processRowUpdate={handlePreviewUpdate}
                       pageSizeOptions={[5]}
                       disableRowSelectionOnClick
                       loading={false}
                       checkboxSelection
+                      containerSx={{
+                        borderRadius: 2,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                      }}
                     />
-                  </Paper>
-                </Box>
-                <Button
-                  variant="outlined"
-                  color="success"
-                  onClick={handleImportConfirm}
-                  disabled={submitting}
-                  sx={{ mt: 2, fontWeight: 600 }}
-                  startIcon={
-                    submitting ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      <UploadFileIcon />
-                    )
-                  }
-                  fullWidth={isMobile}
-                >
-                  Import Rides
-                </Button>
-              </Box>
-            )}
-          </>
-        )}
-
-        {/* Admin: daily drop + status */}
-        <Box sx={{ mb: 2 }}>
-          <Stack
-            direction={isMobile ? "column" : "row"}
-            spacing={isMobile ? 1.5 : 2}
-            alignItems="stretch"
-          >
-            {isAdmin && (
-              <Tooltip title="Run daily drop now (admin only)">
-                <span>
-                  <Button
-                    variant="contained"
-                    color="warning"
-                    startIcon={<RocketLaunchIcon />}
-                    onClick={onDropNow}
-                    disabled={dropping}
-                    fullWidth={isMobile}
-                  >
-                    {dropping ? "Running…" : "Drop Daily Rides Now"}
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
-            <Box sx={{ flex: 1, minWidth: 320, mt: isMobile ? 2 : 0 }}>
-              <Accordion
-                expanded={dropOpen}
-                onChange={(_, exp) => {
-                  setDropOpen(exp);
-                  localStorage.setItem("dropDailyOpen", String(exp));
-                }}
-                sx={{
-                  bgcolor: "background.paper",
-                  borderRadius: 2,
-                  "&:before": { display: "none" },
-                }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      Daily Drop Status
-                    </Typography>
-                    <Chip
-                      size="small"
-                      label={dropOpen ? "Collapse" : "Expand"}
+                    <Button
                       variant="outlined"
-                    />
+                      color="success"
+                      onClick={handleImportConfirm}
+                      disabled={submitting}
+                      sx={{
+                        mt: 1,
+                        fontWeight: 600,
+                        minHeight: 48,
+                        width: { xs: "100%", sm: "auto" },
+                      }}
+                      startIcon={
+                        submitting ? (
+                          <CircularProgress size={20} color="inherit" />
+                        ) : (
+                          <UploadFileIcon />
+                        )
+                      }
+                    >
+                      Import Rides
+                    </Button>
                   </Stack>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <DropDailyWidget />
-                </AccordionDetails>
-              </Accordion>
-            </Box>
-          </Stack>
-        </Box>
+                </Paper>
+              )}
+            </>
+          )}
 
-        {/* Live / Queue / Claimed Tabs */}
-        <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
-          <Tabs
-            value={dataTab}
-            onChange={(e, val) => setDataTab(val)}
-            TabIndicatorProps={{ style: { backgroundColor: "#00c853" } }}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
+          <Paper elevation={3} sx={SECTION_PAPER_SX}>
+            <Stack spacing={{ xs: 2, sm: 2.5 }}>
+              <Typography variant="h6" fontWeight={700}>
+                Daily Drop
+              </Typography>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={{ xs: 1.5, md: 2 }}
+                alignItems={{ xs: "stretch", md: "center" }}
+              >
+                {isAdmin && (
+                  <Tooltip title="Run daily drop now (admin only)">
+                    <Box sx={{ width: { xs: "100%", md: "auto" } }}>
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        startIcon={<RocketLaunchIcon />}
+                        onClick={onDropNow}
+                        disabled={dropping}
+                        sx={{
+                          width: "100%",
+                          minHeight: 48,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {dropping ? "Running…" : "Drop Daily Rides Now"}
+                      </Button>
+                    </Box>
+                  </Tooltip>
+                )}
+                <Box sx={{ flex: 1, minWidth: { xs: "100%", md: 320 } }}>
+                  <Accordion
+                    expanded={dropOpen}
+                    onChange={(_, expanded) => {
+                      setDropOpen(expanded);
+                      localStorage.setItem("dropDailyOpen", String(expanded));
+                    }}
+                    sx={{
+                      bgcolor: "background.paper",
+                      borderRadius: 2,
+                      "&:before": { display: "none" },
+                    }}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle1" fontWeight={700}>
+                          Daily Drop Status
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={dropOpen ? "Collapse" : "Expand"}
+                          variant="outlined"
+                        />
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <DropDailyWidget />
+                    </AccordionDetails>
+                  </Accordion>
+                </Box>
+              </Stack>
+            </Stack>
+          </Paper>
+
+          <Paper
+            elevation={3}
             sx={{
-              flexGrow: 1,
-              "& .MuiTab-root": {
-                minWidth: { xs: "auto", sm: 120 },
-                fontWeight: 600,
-              },
+              ...SECTION_PAPER_SX,
+              p: 0,
+              gap: 0,
+              overflow: "hidden",
             }}
           >
-            <Tab
-              label={
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    fontWeight={600}
-                    color={dataTab === 0 ? "success.main" : "inherit"}
-                  >
-                    LIVE
-                  </Typography>
-                  <Badge
-                    badgeContent={liveCount}
-                    color="success"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(0.8) translate(60%, -40%)",
-                        transformOrigin: "top right",
-                      },
-                    }}
-                  />
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    fontWeight={600}
-                    color={dataTab === 1 ? "success.main" : "inherit"}
-                  >
-                    QUEUE
-                  </Typography>
-                  <Badge
-                    badgeContent={queueCount}
-                    color="primary"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(0.8) translate(60%, -40%)",
-                        transformOrigin: "top right",
-                      },
-                    }}
-                  />
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <Typography
-                    fontWeight={600}
-                    color={dataTab === 2 ? "success.main" : "inherit"}
-                  >
-                    CLAIMED
-                  </Typography>
-                  <Badge
-                    badgeContent={claimedCount}
-                    color="secondary"
-                    sx={{
-                      "& .MuiBadge-badge": {
-                        transform: "scale(0.8) translate(60%, -40%)",
-                        transformOrigin: "top right",
-                      },
-                    }}
-                  />
-                </Box>
-              }
-            />
-          </Tabs>
-        </Box>
-
-        <Box sx={{ width: "100%" }}>
-          {dataTab === 0 && (
-            <Fade in>
-              <Box sx={{ width: "100%", overflowX: "auto" }}>
-                <LiveRidesGrid />
-              </Box>
-            </Fade>
-          )}
-          {dataTab === 1 && (
-            <Fade in>
-              <Box sx={{ width: "100%", overflowX: "auto" }}>
-                <RideQueueGrid />
-              </Box>
-            </Fade>
-          )}
-          {dataTab === 2 && (
-            <Fade in>
-              <Box sx={{ width: "100%", overflowX: "auto" }}>
-                <ClaimedRidesGrid />
-              </Box>
-            </Fade>
-          )}
-        </Box>
-
-        {/* Confirm Dialog */}
-        <Dialog
-          open={confirmOpen}
-          onClose={() => setConfirmOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>Confirm Ride</DialogTitle>
-          <DialogContent dividers>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Pickup Time:</strong>{" "}
-              {isValidDayjs(pickupAt)
-                ? pickupAt.format("MM/DD/YYYY h:mm A")
-                : "—"}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Duration Hours:</strong> {Number(durationHours) || 0}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Duration Minutes:</strong> {Number(durationMinutes) || 0}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Trip ID:</strong> {formData.TripID || ""}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Ride Type:</strong> {formData.RideType || ""}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Vehicle:</strong> {formData.Vehicle || ""}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>Ride Notes:</strong> {formData.RideNotes || ""}
-            </Typography>
-            <Typography sx={{ mb: 0.5 }}>
-              <strong>End Time:</strong>{" "}
-              {endAt?.format?.("MM/DD/YYYY h:mm A") ?? "—"}
-            </Typography>
-            <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
-              <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-              <Button
-                variant="contained"
-                onClick={handleSubmit}
-                disabled={saving || !isValidDayjs(pickupAt)}
-                startIcon={
-                  saving ? (
-                    <CircularProgress size={18} color="inherit" />
-                  ) : undefined
-                }
+            <Box sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 } }}>
+              <Tabs
+                value={dataTab}
+                onChange={(event, value) => setDataTab(value)}
+                TabIndicatorProps={TAB_INDICATOR_PROPS}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
                 sx={{
-                  bgcolor: "#4cbb17",
-                  "&:hover": { bgcolor: "#3ea212" },
-                  fontWeight: 700,
-                  minHeight: 48,
+                  "& .MuiTab-root": {
+                    minWidth: { xs: "auto", sm: 140 },
+                    fontWeight: 600,
+                  },
                 }}
               >
-                {saving ? "Saving…" : "Confirm & Submit"}
-              </Button>
+                <Tab
+                  label={
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <Typography
+                        fontWeight={600}
+                        color={dataTab === 0 ? "success.main" : "inherit"}
+                      >
+                        Live
+                      </Typography>
+                      <Badge
+                        badgeContent={liveCount}
+                        color="success"
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            transform: "scale(0.8) translate(60%, -40%)",
+                            transformOrigin: "top right",
+                          },
+                        }}
+                      />
+                    </Box>
+                  }
+                />
+                <Tab
+                  label={
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <Typography
+                        fontWeight={600}
+                        color={dataTab === 1 ? "success.main" : "inherit"}
+                      >
+                        Queue
+                      </Typography>
+                      <Badge
+                        badgeContent={queueCount}
+                        color="info"
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            transform: "scale(0.8) translate(60%, -40%)",
+                            transformOrigin: "top right",
+                          },
+                        }}
+                      />
+                    </Box>
+                  }
+                />
+                <Tab
+                  label={
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <Typography
+                        fontWeight={600}
+                        color={dataTab === 2 ? "success.main" : "inherit"}
+                      >
+                        Claimed
+                      </Typography>
+                      <Badge
+                        badgeContent={claimedCount}
+                        color="secondary"
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            transform: "scale(0.8) translate(60%, -40%)",
+                            transformOrigin: "top right",
+                          },
+                        }}
+                      />
+                    </Box>
+                  }
+                />
+              </Tabs>
             </Box>
-          </DialogContent>
-        </Dialog>
+            <Box sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2.5, sm: 3 } }}>
+              {dataTab === 0 && (
+                <Fade in>
+                  <Box sx={{ width: "100%" }}>
+                    <LiveRidesGrid />
+                  </Box>
+                </Fade>
+              )}
+              {dataTab === 1 && (
+                <Fade in>
+                  <Box sx={{ width: "100%" }}>
+                    <RideQueueGrid />
+                  </Box>
+                </Fade>
+              )}
+              {dataTab === 2 && (
+                <Fade in>
+                  <Box sx={{ width: "100%" }}>
+                    <ClaimedRidesGrid />
+                  </Box>
+                </Fade>
+              )}
+            </Box>
+          </Paper>
+        </Stack>
+      </ResponsiveContainer>
 
-        {/* Toasts */}
-        <Snackbar
-          open={toast.open}
-          autoHideDuration={4000}
+      {/* Confirm Dialog */}
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Confirm Ride</DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Pickup Time:</strong>{" "}
+            {isValidDayjs(pickupAt)
+              ? pickupAt.format("MM/DD/YYYY h:mm A")
+              : "—"}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Duration Hours:</strong> {Number(durationHours) || 0}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Duration Minutes:</strong> {Number(durationMinutes) || 0}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Trip ID:</strong> {formData.TripID || ""}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Ride Type:</strong> {formData.RideType || ""}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Vehicle:</strong> {formData.Vehicle || ""}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>Ride Notes:</strong> {formData.RideNotes || ""}
+          </Typography>
+          <Typography sx={{ mb: 0.5 }}>
+            <strong>End Time:</strong>{" "}
+            {endAt?.format?.("MM/DD/YYYY h:mm A") ?? "—"}
+          </Typography>
+          <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={saving || !isValidDayjs(pickupAt)}
+              startIcon={
+                saving ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : undefined
+              }
+              sx={{
+                bgcolor: "primary.main",
+                "&:hover": { bgcolor: "primary.dark" },
+                fontWeight: 700,
+                minHeight: 48,
+              }}
+            >
+              {saving ? "Saving…" : "Confirm & Submit"}
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toasts */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
           onClose={() => setToast((t) => ({ ...t, open: false }))}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          severity={toast.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
         >
-          <Alert
-            onClose={() => setToast((t) => ({ ...t, open: false }))}
-            severity={toast.severity}
-            variant="filled"
-            sx={{ width: "100%" }}
-          >
-            {toast.msg}
-          </Alert>
-        </Snackbar>
+          {toast.msg}
+        </Alert>
+      </Snackbar>
 
-        <Snackbar
-          open={formToast.open}
-          autoHideDuration={4000}
-          onClose={() => setFormToast({ ...formToast, open: false })}
-        >
-          <Alert severity={formToast.severity} variant="filled">
-            {formToast.message}
-          </Alert>
-        </Snackbar>
-      </Box>
+      <Snackbar
+        open={formToast.open}
+        autoHideDuration={4000}
+        onClose={() => setFormToast({ ...formToast, open: false })}
+      >
+        <Alert severity={formToast.severity} variant="filled">
+          {formToast.message}
+        </Alert>
+      </Snackbar>
     </LocalizationProvider>
   );
 }
