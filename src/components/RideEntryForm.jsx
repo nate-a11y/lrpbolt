@@ -26,7 +26,7 @@ import {
   Tooltip,
   Fade,
 } from "@mui/material";
-import Grid from "@mui/material/Grid";
+import PigmentGrid from "@mui/material/PigmentGrid";
 import DownloadIcon from "@mui/icons-material/Download";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
@@ -144,14 +144,7 @@ function ChipSelect({
       >
         {label}
       </Typography>
-      <Stack
-        direction="row"
-        spacing={1}
-        useFlexGap
-        flexWrap="wrap"
-        alignItems="center"
-        sx={{ rowGap: 1 }}
-      >
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
         {normalized.map((opt) => {
           const selected = value === opt.value;
           return (
@@ -167,7 +160,7 @@ function ChipSelect({
             />
           );
         })}
-      </Stack>
+      </Box>
       {showError && (
         <FormHelperText error sx={{ mt: 0.5 }}>
           Required
@@ -183,21 +176,17 @@ function RideBuilderFields({
   rideTypeOptions,
   vehicleOptions,
   disableTripId = false,
+  layoutVariant = "single",
 }) {
   const [touched, setTouched] = useState({});
   const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
   const tripIdError = !!value.tripId && !isTripIdValid(value.tripId);
+  const isMulti = layoutVariant === "multi";
   return (
-    <Grid
-      container
-      rowSpacing={{ xs: 1.5, sm: 2, md: 3 }}
-      columnSpacing={{ xs: 1.5, sm: 2, md: 3 }}
-      alignItems="flex-start"
-    >
-      {/* Mobile row 1: Trip ID (12) */}
-      <Grid item xs={12} md={4}>
+    <>
+      <PigmentGrid xs={12} sm={isMulti ? 3 : 6} md={isMulti ? 3 : 6}>
         <TextField
           {...FIELD_PROPS}
           label="Trip ID"
@@ -220,10 +209,9 @@ function RideBuilderFields({
           }}
           sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
         />
-      </Grid>
+      </PigmentGrid>
 
-      {/* Mobile row 2: Date (12) */}
-      <Grid item xs={12} md={4}>
+      <PigmentGrid xs={12} sm={isMulti ? 3 : 6} md={isMulti ? 3 : 6}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -251,10 +239,9 @@ function RideBuilderFields({
             },
           }}
         />
-      </Grid>
+      </PigmentGrid>
 
-      {/* Mobile row 3: Hours (6) + Minutes (6) — short labels to avoid ellipsis */}
-      <Grid item xs={6} md={2}>
+      <PigmentGrid xs={6} sm={isMulti ? 2 : 3} md={isMulti ? 2 : 3}>
         <TextField
           {...FIELD_PROPS}
           type="number"
@@ -280,11 +267,10 @@ function RideBuilderFields({
             touched.hours &&
             (value.hours === "" || value.hours < 0 || value.hours > 24)
           }
-          sx={{ maxWidth: 220 }}
         />
-      </Grid>
+      </PigmentGrid>
 
-      <Grid item xs={6} md={2}>
+      <PigmentGrid xs={6} sm={isMulti ? 2 : 3} md={isMulti ? 2 : 3}>
         <TextField
           {...FIELD_PROPS}
           type="number"
@@ -312,12 +298,15 @@ function RideBuilderFields({
             touched.minutes &&
             (value.minutes === "" || value.minutes < 0 || value.minutes > 59)
           }
-          sx={{ maxWidth: 220 }}
         />
-      </Grid>
+      </PigmentGrid>
 
-      {/* Row 4: Ride Type (full width) */}
-      <Grid item xs={12}>
+      <PigmentGrid
+        xs={12}
+        sm={isMulti ? 6 : 6}
+        md={isMulti ? 6 : 6}
+        sx={{ minWidth: 0 }}
+      >
         <ChipSelect
           label="RIDE TYPE"
           options={rideTypeOptions}
@@ -326,10 +315,9 @@ function RideBuilderFields({
           required
           error={touched.rideType}
         />
-      </Grid>
+      </PigmentGrid>
 
-      {/* Row 5: Vehicle (full width) */}
-      <Grid item xs={12}>
+      <PigmentGrid xs={12} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="VEHICLE"
           options={vehicleOptions}
@@ -338,10 +326,9 @@ function RideBuilderFields({
           required
           error={touched.vehicle}
         />
-      </Grid>
+      </PigmentGrid>
 
-      {/* Row 6: Ride Notes — FULL WIDTH on all breakpoints */}
-      <Grid item xs={12}>
+      <PigmentGrid xs={12} sm={isMulti ? 8 : 6} md={isMulti ? 8 : 6}>
         <TextField
           {...FIELD_PROPS}
           multiline
@@ -351,8 +338,8 @@ function RideBuilderFields({
           onChange={set("notes")}
           placeholder="Optional notes"
         />
-      </Grid>
-    </Grid>
+      </PigmentGrid>
+    </>
   );
 }
 
@@ -1038,12 +1025,8 @@ export default function RideEntryForm() {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <Grid
-      container
-      spacing={{ xs: 1.5, sm: 2, md: 3 }}
-      sx={{ mb: { xs: 2, sm: 3 } }}
-    >
-      <Grid item xs={12} md={4}>
+    <>
+      <PigmentGrid xs={12} sm={4} sx={{ minWidth: 0 }}>
         <Button
           variant="outlined"
           fullWidth
@@ -1052,8 +1035,8 @@ export default function RideEntryForm() {
         >
           Download Template
         </Button>
-      </Grid>
-      <Grid item xs={12} md={8}>
+      </PigmentGrid>
+      <PigmentGrid xs={12} sm={8} sx={{ minWidth: 0 }}>
         <Paper
           variant="outlined"
           sx={{
@@ -1076,8 +1059,8 @@ export default function RideEntryForm() {
             </Typography>
           )}
         </Paper>
-      </Grid>
-    </Grid>
+      </PigmentGrid>
+    </>
   );
 
   // ---------- Render ----------
@@ -1113,51 +1096,53 @@ export default function RideEntryForm() {
 
           {rideTab === 0 && (
             <Paper elevation={3} sx={SECTION_PAPER_SX}>
-              <Stack spacing={{ xs: 2, sm: 2.5 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Single Ride
-                </Typography>
+              <PigmentGrid
+                container
+                columns={12}
+                rowSpacing={2}
+                columnSpacing={{ xs: 1.5, sm: 2 }}
+              >
+                <PigmentGrid xs={12}>
+                  <Typography variant="h6" fontWeight={700}>
+                    Single Ride
+                  </Typography>
+                </PigmentGrid>
 
                 <RideBuilderFields
                   value={singleRide}
                   onChange={setSingleRide}
                   rideTypeOptions={rideTypeOptions}
                   vehicleOptions={vehicleOptions}
+                  layoutVariant="single"
                 />
 
-                <Box
-                  sx={{
-                    position: { xs: "sticky", md: "static" },
-                    bottom: 0,
-                    zIndex: 2,
-                    bgcolor: { xs: "background.paper", md: "transparent" },
-                    borderTop: { xs: "1px solid", md: "none" },
-                    borderColor: "divider",
-                    pt: 2,
-                    mt: 2,
-                  }}
-                >
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={{ xs: 1.5, sm: 2 }}
-                    alignItems={{ xs: "stretch", sm: "center" }}
+                <PigmentGrid
+                  xs={12}
+                  sm={6}
+                  sx={{ display: { xs: "none", sm: "block" } }}
+                />
+
+                <PigmentGrid xs={6} sm={3}>
+                  <Button
+                    variant="outlined"
+                    onClick={onResetSingle}
+                    fullWidth
+                    sx={{ minHeight: 48 }}
                   >
-                    <Button
-                      variant="outlined"
-                      onClick={onResetSingle}
-                      sx={{
-                        minHeight: 48,
-                        width: { xs: "100%", sm: "auto" },
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Box
-                      sx={{
-                        flexGrow: 1,
-                        display: { xs: "none", sm: "block" },
-                      }}
-                    />
+                    Reset
+                  </Button>
+                </PigmentGrid>
+                <PigmentGrid
+                  xs={12}
+                  sm={6}
+                  sx={{ display: { xs: "none", sm: "block" } }}
+                />
+                <PigmentGrid xs={6} sm={3}>
+                  <Stack
+                    direction="row"
+                    justifyContent={{ xs: "flex-start", sm: "flex-end" }}
+                    sx={{ width: "100%" }}
+                  >
                     <Button
                       variant="contained"
                       startIcon={<RocketLaunchIcon />}
@@ -1166,7 +1151,7 @@ export default function RideEntryForm() {
                         "&:hover": { bgcolor: "primary.dark" },
                         fontWeight: 700,
                         minHeight: 48,
-                        width: { xs: "100%", sm: "auto" },
+                        width: "100%",
                       }}
                       onClick={onSubmitSingle}
                       disabled={singleSubmitting || !isSingleValid}
@@ -1174,86 +1159,96 @@ export default function RideEntryForm() {
                       Submit
                     </Button>
                   </Stack>
-                </Box>
-              </Stack>
+                </PigmentGrid>
+              </PigmentGrid>
             </Paper>
           )}
 
           {rideTab === 1 && (
             <>
               <Paper elevation={3} sx={SECTION_PAPER_SX}>
-                <Stack spacing={{ xs: 2, sm: 2.5 }}>
-                  <Typography variant="h6" fontWeight={700}>
-                    Multi Ride Upload
-                  </Typography>
+                <PigmentGrid
+                  container
+                  columns={12}
+                  rowSpacing={2}
+                  columnSpacing={{ xs: 1.5, sm: 2 }}
+                >
+                  <PigmentGrid xs={12}>
+                    <Typography variant="h6" fontWeight={700}>
+                      Multi Ride Upload
+                    </Typography>
+                  </PigmentGrid>
 
-                  <TextField
-                    {...FIELD_PROPS}
-                    multiline
-                    minRows={6}
-                    maxRows={16}
-                    label="Paste CSV Rides"
-                    placeholder="tripId, yyyy-mm-dd, hh:mm, hours, minutes, rideType, vehicle, notes"
-                    value={csvText}
-                    onChange={(event) => setCsvText(event.target.value)}
-                    sx={{
-                      "& textarea": {
-                        fontFamily:
-                          "ui-monospace, SFMono-Regular, Menlo, monospace",
-                      },
-                    }}
-                    helperText="Tip: paste multiple lines; we’ll validate before submit."
-                  />
+                  <PigmentGrid xs={12} sx={{ minWidth: 0 }}>
+                    <TextField
+                      {...FIELD_PROPS}
+                      multiline
+                      minRows={6}
+                      maxRows={16}
+                      label="Paste CSV Rides"
+                      placeholder="tripId, yyyy-mm-dd, hh:mm, hours, minutes, rideType, vehicle, notes"
+                      value={csvText}
+                      onChange={(event) => setCsvText(event.target.value)}
+                      sx={{
+                        "& textarea": {
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        },
+                      }}
+                      helperText="Tip: paste multiple lines; we’ll validate before submit."
+                    />
+                  </PigmentGrid>
 
                   {dropZone}
 
-                  <Divider />
+                  <PigmentGrid xs={12}>
+                    <Divider />
+                  </PigmentGrid>
 
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    Or Use Ride Builder
-                  </Typography>
+                  <PigmentGrid xs={12}>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Or Use Ride Builder
+                    </Typography>
+                  </PigmentGrid>
 
                   <RideBuilderFields
                     value={builder}
                     onChange={setBuilder}
                     rideTypeOptions={rideTypeOptions}
                     vehicleOptions={vehicleOptions}
+                    layoutVariant="multi"
                   />
 
-                  <Box
-                    sx={{
-                      position: { xs: "sticky", md: "static" },
-                      bottom: 0,
-                      zIndex: 2,
-                      bgcolor: { xs: "background.paper", md: "transparent" },
-                      borderTop: { xs: "1px solid", md: "none" },
-                      borderColor: "divider",
-                      pt: 2,
-                      mt: 2,
-                    }}
-                  >
+                  <PigmentGrid xs={12} sm={4}>
                     <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={{ xs: 1.5, sm: 2 }}
-                      alignItems={{ xs: "stretch", sm: "center" }}
+                      direction="row"
+                      justifyContent={{ xs: "flex-start", sm: "flex-end" }}
+                      sx={{ width: "100%" }}
                     >
                       <Button
                         variant="outlined"
                         onClick={onAddToList}
                         startIcon={<AddIcon />}
-                        sx={{
-                          minHeight: 48,
-                          width: { xs: "100%", sm: "auto" },
-                        }}
+                        fullWidth
+                        sx={{ minHeight: 48 }}
                       >
                         Add to List
                       </Button>
-                      <Box
-                        sx={{
-                          flexGrow: 1,
-                          display: { xs: "none", sm: "block" },
-                        }}
-                      />
+                    </Stack>
+                  </PigmentGrid>
+
+                  <PigmentGrid
+                    xs={12}
+                    sm={8}
+                    sx={{ display: { xs: "none", sm: "block" } }}
+                  />
+
+                  <PigmentGrid xs={12} sm={4}>
+                    <Stack
+                      direction="row"
+                      justifyContent="flex-end"
+                      sx={{ width: "100%" }}
+                    >
                       <Button
                         variant="contained"
                         startIcon={<RocketLaunchIcon />}
@@ -1262,7 +1257,7 @@ export default function RideEntryForm() {
                           "&:hover": { bgcolor: "primary.dark" },
                           fontWeight: 700,
                           minHeight: 48,
-                          width: { xs: "100%", sm: "auto" },
+                          width: "100%",
                         }}
                         onClick={onSubmitAll}
                         disabled={submitDisabled}
@@ -1270,8 +1265,8 @@ export default function RideEntryForm() {
                         Submit All Rides
                       </Button>
                     </Stack>
-                  </Box>
-                </Stack>
+                  </PigmentGrid>
+                </PigmentGrid>
               </Paper>
 
               {uploadedRows.length > 0 && (
