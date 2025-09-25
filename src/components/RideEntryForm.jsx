@@ -117,17 +117,16 @@ const TAB_INDICATOR_PROPS = {
   sx: { backgroundColor: "primary.main" },
 };
 
-// Ensures numeric and non-negative; minutes capped to 59
 function toInt(v, fallback = 0) {
   const n = Number.parseInt(String(v).replace(/[^0-9-]/g, ""), 10);
   return Number.isFinite(n) ? n : fallback;
 }
-function clampMinutes(v) {
-  const n = toInt(v, 0);
-  return Math.max(0, Math.min(59, n));
-}
 function clampHours(v) {
   return Math.max(0, toInt(v, 0));
+}
+function clampMinutes(v) {
+  const n = Math.max(0, toInt(v, 0));
+  return Math.min(59, n);
 }
 
 /* ------------------ Reusable builder (chips) ------------------ */
@@ -184,20 +183,18 @@ function ChipSelect({
   );
 }
 
-const DurationFields = memo(function DurationFields(props) {
-  const {
-    hours = 0,
-    minutes = 0,
-    onHoursChange,
-    onMinutesChange,
-    hoursLabel = "Hours",
-    minutesLabel = "Minutes",
-    disabled = false,
-  } = props || {};
-
+const DurationFields = memo(function DurationFields({
+  hours = 0,
+  minutes = 0,
+  onHoursChange,
+  onMinutesChange,
+  disabled = false,
+  hoursLabel = "Hours",
+  minutesLabel = "Minutes",
+}) {
   return (
-    <Grid container spacing={2} alignItems="flex-start">
-      <Grid item xs={6}>
+    <>
+      <Grid item xs={6} md={3}>
         <TextField
           fullWidth
           label={hoursLabel}
@@ -212,16 +209,12 @@ const DurationFields = memo(function DurationFields(props) {
             pattern: "[0-9]*",
           }}
           disabled={disabled}
-          helperText="Total hours"
-          size="medium"
-          slotProps={{
-            input: {
-              endAdornment: <InputAdornment position="end">h</InputAdornment>,
-            },
+          InputProps={{
+            endAdornment: <InputAdornment position="end">h</InputAdornment>,
           }}
         />
       </Grid>
-      <Grid item xs={6}>
+      <Grid item xs={6} md={3}>
         <TextField
           fullWidth
           label={minutesLabel}
@@ -237,16 +230,12 @@ const DurationFields = memo(function DurationFields(props) {
             pattern: "[0-9]*",
           }}
           disabled={disabled}
-          helperText="0–59"
-          size="medium"
-          slotProps={{
-            input: {
-              endAdornment: <InputAdornment position="end">m</InputAdornment>,
-            },
+          InputProps={{
+            endAdornment: <InputAdornment position="end">m</InputAdornment>,
           }}
         />
       </Grid>
-    </Grid>
+    </>
   );
 });
 
@@ -256,7 +245,6 @@ function RideBuilderFields({
   rideTypeOptions,
   vehicleOptions,
   disableTripId = false,
-  layoutVariant = "single",
   disabled = false,
 }) {
   const [touched, setTouched] = useState({});
@@ -264,55 +252,9 @@ function RideBuilderFields({
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
 
   const tripIdError = !!value.tripId && !isTripIdValid(value.tripId);
-  const isMulti = layoutVariant === "multi";
-  const sizes = useMemo(() => {
-    if (isMulti) {
-      return {
-        trip: { xs: 12, sm: 6, md: 3 },
-        pickupAt: { xs: 12, sm: 6, md: 3 },
-        duration: { xs: 12, sm: 6, md: 4 },
-        rideType: { xs: 12, sm: 6, md: 4 },
-        vehicle: { xs: 12, sm: 6, md: 4 },
-        notes: { xs: 12, sm: 12, md: 8 },
-      };
-    }
-    return {
-      trip: { xs: 12, sm: 6, md: 4 },
-      pickupAt: { xs: 12, sm: 6, md: 4 },
-      duration: { xs: 12, sm: 6, md: 4 },
-      rideType: { xs: 12, sm: 6, md: 6 },
-      vehicle: { xs: 12, sm: 6, md: 6 },
-      notes: { xs: 12, sm: 6, md: 8 },
-    };
-  }, [isMulti]);
   return (
     <>
-      <Grid {...sizes.trip}>
-        <TextField
-          {...FIELD_PROPS}
-          label="Trip ID"
-          value={value.tripId || ""}
-          onBlur={mark("tripId")}
-          onChange={(e) =>
-            onChange({ ...value, tripId: formatTripId(e.target.value) })
-          }
-          placeholder="e.g., 6K5G-RS"
-          disabled={disableTripId}
-          error={touched.tripId && (!!tripIdError || !value.tripId)}
-          helperText={
-            touched.tripId &&
-            (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
-          }
-          inputProps={{
-            maxLength: 7,
-            inputMode: "text",
-            "aria-label": "Trip ID format XXXX dash XX",
-          }}
-          sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
-        />
-      </Grid>
-
-      <Grid {...sizes.pickupAt}>
+      <Grid item xs={12} md={6}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -342,19 +284,42 @@ function RideBuilderFields({
         />
       </Grid>
 
-      <Grid {...sizes.duration}>
-        <DurationFields
-          hours={Number.isFinite(Number(value.hours)) ? Number(value.hours) : 0}
-          minutes={
-            Number.isFinite(Number(value.minutes)) ? Number(value.minutes) : 0
+      <DurationFields
+        hours={Number.isFinite(Number(value.hours)) ? Number(value.hours) : 0}
+        minutes={
+          Number.isFinite(Number(value.minutes)) ? Number(value.minutes) : 0
+        }
+        onHoursChange={(v) => onChange({ ...value, hours: v })}
+        onMinutesChange={(v) => onChange({ ...value, minutes: v })}
+        disabled={disabled}
+      />
+
+      <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          label="Trip ID"
+          value={value.tripId || ""}
+          onBlur={mark("tripId")}
+          onChange={(e) =>
+            onChange({ ...value, tripId: formatTripId(e.target.value) })
           }
-          onHoursChange={(v) => onChange({ ...value, hours: v })}
-          onMinutesChange={(v) => onChange({ ...value, minutes: v })}
-          disabled={disabled}
+          placeholder="e.g., 6K5G-RS"
+          disabled={disableTripId}
+          error={touched.tripId && (!!tripIdError || !value.tripId)}
+          helperText={
+            touched.tripId &&
+            (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
+          }
+          inputProps={{
+            maxLength: 7,
+            inputMode: "text",
+            "aria-label": "Trip ID format XXXX dash XX",
+          }}
+          sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
         />
       </Grid>
 
-      <Grid {...sizes.rideType} sx={{ minWidth: 0 }}>
+      <Grid item xs={12} md={6} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="RIDE TYPE"
           options={rideTypeOptions}
@@ -364,7 +329,7 @@ function RideBuilderFields({
           error={touched.rideType}
         />
       </Grid>
-      <Grid {...sizes.vehicle} sx={{ minWidth: 0 }}>
+      <Grid item xs={12} md={6} sx={{ minWidth: 0 }}>
         <ChipSelect
           label="VEHICLE"
           options={vehicleOptions}
@@ -374,7 +339,7 @@ function RideBuilderFields({
           error={touched.vehicle}
         />
       </Grid>
-      <Grid {...sizes.notes}>
+      <Grid item xs={12}>
         <TextField
           {...FIELD_PROPS}
           multiline
@@ -1071,51 +1036,46 @@ export default function RideEntryForm() {
   const submitDisabled = submitting;
 
   const dropZone = (
-    <Grid
-      xs={12}
-      container
-      columns={12}
-      rowSpacing={{ xs: 1.5, sm: 2, md: 3 }}
-      columnSpacing={{ xs: 1.5, sm: 2, md: 3 }}
-      sx={{ mb: { xs: 2, sm: 3 } }}
-    >
-      <Grid item xs={12} md={4} sx={{ minWidth: 0 }}>
-        <Button
-          variant="outlined"
-          fullWidth
-          startIcon={<DownloadIcon />}
-          onClick={handleDownloadTemplate}
-          sx={{
-            minHeight: 64,
-            fontWeight: 700,
-          }}
-        >
-          Download Template
-        </Button>
-      </Grid>
-      <Grid item xs={12} md={8} sx={{ minWidth: 0 }}>
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 2,
-            borderStyle: "dashed",
-            textAlign: "center",
-            cursor: "pointer",
-            borderRadius: 2,
-          }}
-          {...getRootProps()}
-        >
-          <input {...getInputProps()} />
-          <CloudUploadIcon fontSize="large" />
-          <Typography variant="body2" mt={1}>
-            Drag & drop CSV here or click to select
-          </Typography>
-          {fileError && (
-            <Typography color="error" variant="caption">
-              {fileError}
+    <Grid item xs={12}>
+      <Grid container spacing={2} sx={{ mb: { xs: 2, sm: 3 } }}>
+        <Grid item xs={12} md={4} sx={{ minWidth: 0 }}>
+          <Button
+            variant="outlined"
+            fullWidth
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadTemplate}
+            sx={{
+              minHeight: 64,
+              fontWeight: 700,
+            }}
+          >
+            Download Template
+          </Button>
+        </Grid>
+        <Grid item xs={12} md={8} sx={{ minWidth: 0 }}>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderStyle: "dashed",
+              textAlign: "center",
+              cursor: "pointer",
+              borderRadius: 2,
+            }}
+            {...getRootProps()}
+          >
+            <input {...getInputProps()} />
+            <CloudUploadIcon fontSize="large" />
+            <Typography variant="body2" mt={1}>
+              Drag & drop CSV here or click to select
             </Typography>
-          )}
-        </Paper>
+            {fileError && (
+              <Typography color="error" variant="caption">
+                {fileError}
+              </Typography>
+            )}
+          </Paper>
+        </Grid>
       </Grid>
     </Grid>
   );
@@ -1153,25 +1113,23 @@ export default function RideEntryForm() {
 
           {rideTab === 0 && (
             <Paper elevation={3} sx={SECTION_PAPER_SX}>
-              <Grid
-                container
-                columns={12}
-                rowSpacing={2}
-                columnSpacing={{ xs: 1.5, sm: 2 }}
-              >
+              <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="h6" fontWeight={700}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                     Single Ride
                   </Typography>
                 </Grid>
 
-                <RideBuilderFields
-                  value={singleRide}
-                  onChange={setSingleRide}
-                  rideTypeOptions={rideTypeOptions}
-                  vehicleOptions={vehicleOptions}
-                  layoutVariant="single"
-                />
+                <Grid item xs={12}>
+                  <Grid container spacing={2}>
+                    <RideBuilderFields
+                      value={singleRide}
+                      onChange={setSingleRide}
+                      rideTypeOptions={rideTypeOptions}
+                      vehicleOptions={vehicleOptions}
+                    />
+                  </Grid>
+                </Grid>
 
                 <Grid item xs={12}>
                   <Box
@@ -1232,14 +1190,9 @@ export default function RideEntryForm() {
           {rideTab === 1 && (
             <>
               <Paper elevation={3} sx={SECTION_PAPER_SX}>
-                <Grid
-                  container
-                  columns={12}
-                  rowSpacing={2}
-                  columnSpacing={{ xs: 1.5, sm: 2 }}
-                >
+                <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <Typography variant="h6" fontWeight={700}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                       Multi Ride Upload
                     </Typography>
                   </Grid>
@@ -1271,18 +1224,24 @@ export default function RideEntryForm() {
                   </Grid>
 
                   <Grid item xs={12}>
-                    <Typography variant="subtitle1" fontWeight={700}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: 600, mb: 1 }}
+                    >
                       Or Use Ride Builder
                     </Typography>
                   </Grid>
 
-                  <RideBuilderFields
-                    value={builder}
-                    onChange={setBuilder}
-                    rideTypeOptions={rideTypeOptions}
-                    vehicleOptions={vehicleOptions}
-                    layoutVariant="multi"
-                  />
+                  <Grid item xs={12}>
+                    <Grid container spacing={2}>
+                      <RideBuilderFields
+                        value={builder}
+                        onChange={setBuilder}
+                        rideTypeOptions={rideTypeOptions}
+                        vehicleOptions={vehicleOptions}
+                      />
+                    </Grid>
+                  </Grid>
 
                   <Grid item xs={12}>
                     <Box
