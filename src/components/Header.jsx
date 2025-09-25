@@ -42,10 +42,32 @@ export default function Header({ onRefresh, leftSlot = null }) {
         variant="dense"
         sx={{ px: { xs: 2, md: 3 }, minHeight: APP_BAR_HEIGHT }}
       >
-        {leftSlot}
-        <Typography variant="h6" sx={{ fontWeight: 800, mr: 2 }}>
-          LRP Driver Portal
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          {leftSlot}
+          <Box
+            component="a"
+            href="/"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.25,
+              textDecoration: "none",
+              color: "inherit",
+              mr: 2,
+            }}
+          >
+            <Box
+              component="img"
+              src="/Color%20logo%20with%20background.svg"
+              alt="LRP"
+              sx={{ width: 30, height: 30, borderRadius: 1 }}
+              draggable={false}
+            />
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              LRP Driver Portal
+            </Typography>
+          </Box>
+        </Box>
         <Box sx={{ flexGrow: 1 }} />
         <Tooltip title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}>
           <IconButton onClick={toggle}>

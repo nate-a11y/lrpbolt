@@ -4,19 +4,19 @@ import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
 import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
 
 const LRP_GREEN = "#4cbb17";
-const BG_DARK = "#060606";
+const LRP_BLACK = "#060606";
 
 export const brand = {
   green500: LRP_GREEN,
   green400: "#60e421",
   green700: "#3a8e11",
-  black: BG_DARK,
+  black: LRP_BLACK,
   white: "#ffffff",
   grey200: "#e6e6e6",
 };
 
 const base = {
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: 14 },
   typography: {
     button: { textTransform: "none", fontWeight: 700, letterSpacing: 0.2 },
     fontWeightBold: 800,
@@ -24,9 +24,11 @@ const base = {
 };
 
 const buildPalette = (mode) => {
-  const common = {
+  const isDark = mode === "dark";
+  const basePalette = {
+    mode,
     primary: {
-      main: brand.green500,
+      main: LRP_GREEN,
       dark: brand.green700,
       light: brand.green400,
       contrastText: brand.black,
@@ -40,26 +42,19 @@ const buildPalette = (mode) => {
     error: { main: "#ef5350" },
     info: { main: "#64b5f6" },
     brand,
+    background: {
+      default: isDark ? LRP_BLACK : "#f7f7f7",
+      paper: isDark ? "#0b0b0b" : "#ffffff",
+    },
+    text: {
+      primary: isDark ? "#ffffff" : "#111111",
+      secondary: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.68)",
+      disabled: alpha(isDark ? "#ffffff" : "#111111", 0.38),
+    },
+    divider: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)",
   };
-  if (mode === "dark") {
-    return {
-      mode,
-      ...common,
-      text: {
-        primary: "#e8eaed",
-        secondary: "#b0b7c3",
-        disabled: alpha("#e8eaed", 0.38),
-      },
-      background: { default: BG_DARK, paper: "#0d0d0d" },
-      divider: alpha("#ffffff", 0.12),
-    };
-  }
-  return {
-    mode,
-    ...common,
-    background: { default: "#fafafa", paper: "#ffffff" },
-    divider: "rgba(0,0,0,0.12)",
-  };
+
+  return basePalette;
 };
 
 export const getDesignTokens = (mode) => ({
@@ -208,25 +203,65 @@ export const getDesignTokens = (mode) => ({
       defaultProps: {
         slots: { toolbar: LrpGridToolbar },
         slotProps: {
-          toolbar: { quickFilterPlaceholder: "Search" },
+          toolbar: {
+            showQuickFilter: true,
+            quickFilterProps: { debounceMs: 300 },
+            quickFilterPlaceholder: "Search",
+          },
         },
+        density: "compact",
+        disableRowSelectionOnClick: true,
+        checkboxSelection: true,
       },
       styleOverrides: {
-        root: {
-          borderRadius: 12,
+        root: ({ theme }) => {
+          const isDark = theme.palette.mode === "dark";
+          return {
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: theme.shape.borderRadius,
+            backgroundColor: theme.palette.background.paper,
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: isDark ? theme.palette.grey[900] : "#fafafa",
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            },
+            "& .MuiDataGrid-toolbarContainer": {
+              display: "flex",
+              flexWrap: "wrap",
+              gap: theme.spacing(1),
+              backgroundColor: isDark
+                ? alpha("#ffffff", 0.04)
+                : alpha("#000000", 0.02),
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              padding: theme.spacing(1, 1.5),
+              "& .MuiSvgIcon-root, & .MuiButton-root, & .MuiIconButton-root": {
+                color: theme.palette.text.primary,
+              },
+              "& .MuiInputBase-root": {
+                minWidth: 0,
+                flexGrow: 1,
+                maxWidth: "100%",
+                [theme.breakpoints.up("sm")]: { maxWidth: 240 },
+                [theme.breakpoints.up("md")]: { maxWidth: 300 },
+              },
+            },
+            "& .MuiDataGrid-footerContainer": {
+              backgroundColor: isDark
+                ? alpha("#ffffff", 0.03)
+                : alpha("#000000", 0.015),
+              borderTop: `1px solid ${theme.palette.divider}`,
+            },
+            "& .MuiDataGrid-row:hover": {
+              backgroundColor: isDark
+                ? alpha("#ffffff", 0.04)
+                : alpha("#000000", 0.03),
+            },
+            "& .MuiCheckbox-root.Mui-checked": { color: LRP_GREEN },
+            "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+              outline: `1px solid ${LRP_GREEN}`,
+              outlineOffset: -1,
+            },
+          };
         },
-        toolbarContainer: ({ theme }) => ({
-          display: "flex",
-          flexWrap: "wrap",
-          gap: theme.spacing(1),
-          "& .MuiInputBase-root": {
-            minWidth: 0,
-            flexGrow: 1,
-            maxWidth: "100%",
-            [theme.breakpoints.up("sm")]: { maxWidth: 240 },
-            [theme.breakpoints.up("md")]: { maxWidth: 300 },
-          },
-        }),
       },
     },
   },

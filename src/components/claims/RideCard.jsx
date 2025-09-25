@@ -1,22 +1,23 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardActions,
-  Stack,
-  Typography,
-  Chip,
+  Box,
   Button,
-  IconButton,
-  Tooltip,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
   Collapse,
+  IconButton,
+  Stack,
+  Tooltip,
+  Typography,
 } from "@mui/material";
-import InfoOutlined from "@mui/icons-material/InfoOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DirectionsCar from "@mui/icons-material/DirectionsCar";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 
-import { durationHM, formatRange, tsToDayjs } from "@/utils/claimTime";
+import { tsToDayjs } from "@/utils/claimTime";
 
 export default function RideCard({
   ride,
@@ -26,36 +27,37 @@ export default function RideCard({
   claiming,
   highlight = false,
   claimDisabled = false,
+  notes = "",
+  notesOpen = false,
+  onToggleNotes,
 }) {
   const [open, setOpen] = useState(false);
-  const start = tsToDayjs(ride?.startTime || ride?.pickupTime);
+  const startSrc = ride?.startTime || ride?.pickupTime;
   const endSrc = ride?.endTime || ride?.dropoffTime;
   const meta = useMemo(
     () => ({
-      range: formatRange(
-        ride?.startTime || ride?.pickupTime,
-        endSrc,
-        ride?.rideDuration,
-      ),
-      duration: durationHM(
-        ride?.startTime || ride?.pickupTime,
-        endSrc,
-        ride?.rideDuration,
-      ),
-      date: start ? start.format("ddd, MMM D") : "N/A",
+      range: formatRange(startSrc, endSrc, ride?.rideDuration),
+      duration: formatDuration(startSrc, endSrc, ride?.rideDuration),
+      startLabel: formatStart(startSrc),
     }),
-    [ride, start, endSrc],
+    [endSrc, ride, startSrc],
   );
 
   const claimed = Boolean(ride?.claimedBy);
+  const unavailable =
+    claimed || (ride?.status && ride.status !== "unclaimed") || false;
 
   return (
     <Card
       sx={{
         overflow: "hidden",
         transition: "transform 120ms ease, box-shadow 200ms ease",
-        borderColor: selected ? "primary.main" : "rgba(255,255,255,0.06)",
-        boxShadow: selected ? "0 0 0 2px rgba(76,187,23,0.6)" : "none",
+        borderColor: selected ? "primary.main" : "divider",
+        borderWidth: 1,
+        borderStyle: "solid",
+        boxShadow: selected
+          ? "0 0 0 2px rgba(76,187,23,0.6)"
+          : "0 1px 3px rgba(0,0,0,0.18)",
         "&:hover": { transform: "translateY(-2px)" },
         ...(highlight
           ? {
@@ -91,7 +93,7 @@ export default function RideCard({
           variant="h6"
           sx={{ color: "primary.main", fontWeight: 900, mb: 0.5 }}
         >
-          {meta.date} • {meta.range}
+          {meta.startLabel} • {meta.range}
         </Typography>
 
         <Stack
@@ -109,6 +111,47 @@ export default function RideCard({
             />
           )}
         </Stack>
+
+        {notes && (
+          <Box sx={{ mt: 0.5 }}>
+            <Box
+              onClick={() => onToggleNotes?.()}
+              sx={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 1,
+                cursor: "pointer",
+                "&:hover": { opacity: 0.9 },
+              }}
+              aria-label="Show ride notes"
+            >
+              <InfoOutlinedIcon
+                fontSize="small"
+                sx={{ mt: "2px", color: "primary.main" }}
+              />
+              <Typography
+                variant="body2"
+                sx={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  color: "text.secondary",
+                }}
+              >
+                {notes}
+              </Typography>
+            </Box>
+            <Collapse in={notesOpen} unmountOnExit>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", mt: 0.5 }}
+              >
+                {notes}
+              </Typography>
+            </Collapse>
+          </Box>
+        )}
 
         <Collapse in={open} unmountOnExit>
           <Typography variant="body2" sx={{ mt: 1, opacity: 0.85 }}>
@@ -135,7 +178,7 @@ export default function RideCard({
               onClick={() => setOpen((v) => !v)}
               aria-label="Toggle details"
             >
-              <InfoOutlined />
+              <InfoOutlinedIcon />
             </IconButton>
           </Tooltip>
         </Stack>
@@ -144,13 +187,60 @@ export default function RideCard({
           variant="contained"
           color="primary"
           size="small"
-          disabled={claimDisabled || claimed || claiming}
+          disabled={claimDisabled || unavailable || claiming}
           onClick={onClaim}
           aria-label="Claim ride"
+          sx={{
+            backgroundColor: "primary.main",
+            color: "#000",
+            fontWeight: 700,
+            "&:hover": { filter: "brightness(1.05)" },
+          }}
         >
-          {claiming ? "Claiming…" : claimed ? "Claimed" : "Claim"}
+          {claiming ? "Claiming…" : unavailable ? "Claimed" : "Claim"}
         </Button>
       </CardActions>
     </Card>
   );
+}
+
+function formatStart(ts) {
+  const start = tsToDayjs(ts);
+  if (!start) return "N/A";
+  return start.format("ddd, MMM D • h:mm A");
+}
+
+function formatRange(startTs, endTs, durationMins) {
+  const start = tsToDayjs(startTs);
+  let end = tsToDayjs(endTs);
+  if (!end && start && Number.isFinite(durationMins)) {
+    end = start.add(durationMins, "minute");
+  }
+  if (!start || !end) return "N/A";
+  return `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
+}
+
+function formatDuration(startTs, endTs, durationMins) {
+  const start = tsToDayjs(startTs);
+  let end = tsToDayjs(endTs);
+  if (!start && !end) {
+    if (!Number.isFinite(durationMins)) return "N/A";
+    const mins = Math.max(0, Math.round(durationMins));
+    return humanizeMinutes(mins);
+  }
+  if (!end && start && Number.isFinite(durationMins)) {
+    end = start.add(durationMins, "minute");
+  }
+  if (!start || !end) return "N/A";
+  const diff = Math.max(0, end.diff(start, "minute"));
+  if (!Number.isFinite(diff)) return "N/A";
+  return humanizeMinutes(diff);
+}
+
+function humanizeMinutes(minutes) {
+  if (!Number.isFinite(minutes) || minutes < 0) return "N/A";
+  const total = Math.round(minutes);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return hours ? `${hours}h ${mins}m` : `${mins}m`;
 }

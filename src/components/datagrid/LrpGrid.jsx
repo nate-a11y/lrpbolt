@@ -6,7 +6,30 @@ const defaultSlotProps = {
   toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 300 } },
 };
 
-const LrpGrid = ({ rows, columns, getRowId, slots, slotProps, ...props }) => {
+const defaultGetRowId = (row) => {
+  const id =
+    row?.id ??
+    row?.uid ??
+    row?._id ??
+    row?.docId ??
+    row?.rideId ??
+    row?.ticketId ??
+    row?.slug ??
+    row?.key ??
+    row?.email ??
+    row?.name;
+  if (id == null) throw new Error("DataGrid row is missing a stable id");
+  return typeof id === "string" || typeof id === "number" ? id : String(id);
+};
+
+const LrpGrid = ({
+  rows,
+  columns,
+  getRowId = defaultGetRowId,
+  slots,
+  slotProps,
+  ...props
+}) => {
   return (
     <DataGridPro
       autoHeight
@@ -24,7 +47,7 @@ const LrpGrid = ({ rows, columns, getRowId, slots, slotProps, ...props }) => {
 LrpGrid.propTypes = {
   rows: PropTypes.array.isRequired,
   columns: PropTypes.array.isRequired,
-  getRowId: PropTypes.func.isRequired,
+  getRowId: PropTypes.func,
   slots: PropTypes.object,
   slotProps: PropTypes.object,
 };
