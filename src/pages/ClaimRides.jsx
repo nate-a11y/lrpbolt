@@ -279,7 +279,16 @@ export default function ClaimRides() {
         {/* Filters... */}
       </Stack>
 
-      <Stack spacing={2.5}>
+      <Stack
+        spacing={2.5}
+        sx={{
+          overflowY: "auto",
+          overflowX: "hidden",
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+          "& > section:last-of-type": { mb: 2 },
+        }}
+      >
         {ridesByVehicleDate?.map((g) => {
           const selectedCount =
             g.rides?.filter((r) => sel.isSelected(r)).length || 0;
