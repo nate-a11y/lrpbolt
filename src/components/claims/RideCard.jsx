@@ -16,8 +16,86 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DirectionsCar from "@mui/icons-material/DirectionsCar";
 import CheckCircle from "@mui/icons-material/CheckCircle";
+import dayjsLib from "dayjs";
+import utc from "dayjs/plugin/utc";
+import tz from "dayjs/plugin/timezone";
 
-import { tsToDayjs } from "@/utils/claimTime";
+dayjsLib.extend(utc);
+dayjsLib.extend(tz);
+
+const dayjs = dayjsLib;
+
+const USER_TZ = dayjs.tz.guess();
+
+function safeToDayjs(ts) {
+  try {
+    return ts?.toDate ? dayjs(ts.toDate()) : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatRange(startTs, endTs) {
+  const s = safeToDayjs(startTs);
+  const e = safeToDayjs(endTs);
+  if (!s) return "N/A";
+  if (!e || e.isBefore(s)) return s.tz(USER_TZ).format("ddd, MMM D • h:mm A");
+  const sameDay =
+    s.tz(USER_TZ).format("YYYY-MM-DD") === e.tz(USER_TZ).format("YYYY-MM-DD");
+  return sameDay
+    ? `${s.tz(USER_TZ).format("ddd, MMM D • h:mm A")} – ${e
+        .tz(USER_TZ)
+        .format("h:mm A")}`
+    : `${s.tz(USER_TZ).format("ddd, MMM D • h:mm A")} – ${e
+        .tz(USER_TZ)
+        .format("ddd, MMM D • h:mm A")}`;
+}
+
+function formatDuration(startTs, endTs) {
+  const s = safeToDayjs(startTs);
+  const e = safeToDayjs(endTs);
+  if (!s || !e) return "N/A";
+  const ms = e.diff(s);
+  if (!Number.isFinite(ms) || ms < 0) return "N/A";
+  const m = Math.round(ms / 60000);
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return h ? `${h}h ${mm}m` : `${mm}m`;
+}
+
+export function isClaimable(ride) {
+  const okStatus =
+    !ride?.status || ride.status === "unclaimed" || ride.status === "open";
+  return okStatus && !ride?.claimed && !ride?.claimedBy;
+}
+
+export function getRideNotes(src) {
+  if (!src) return "";
+  const {
+    notes,
+    note,
+    comments,
+    comment,
+    adminNotes,
+    rideNotes,
+    pickupNotes,
+    dropoffNotes,
+  } = src;
+  const parts = [
+    notes,
+    note,
+    comments,
+    comment,
+    adminNotes,
+    rideNotes,
+    pickupNotes,
+    dropoffNotes,
+  ]
+    .filter(Boolean)
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+  return Array.from(new Set(parts)).join(" • ");
+}
 
 export default function RideCard({
   ride,
@@ -26,26 +104,29 @@ export default function RideCard({
   onClaim,
   claiming,
   highlight = false,
-  claimDisabled = false,
   notes = "",
   notesOpen = false,
   onToggleNotes,
 }) {
   const [open, setOpen] = useState(false);
-  const startSrc = ride?.startTime || ride?.pickupTime;
-  const endSrc = ride?.endTime || ride?.dropoffTime;
-  const meta = useMemo(
-    () => ({
-      range: formatRange(startSrc, endSrc, ride?.rideDuration),
-      duration: formatDuration(startSrc, endSrc, ride?.rideDuration),
-      startLabel: formatStart(startSrc),
-    }),
-    [endSrc, ride, startSrc],
+  const startSrc = ride?.pickupTime || ride?.startTime;
+  const endSrc = ride?.dropoffTime || ride?.endTime;
+  const rangeLabel = useMemo(
+    () => formatRange(startSrc, endSrc),
+    [endSrc, startSrc],
+  );
+  const durationLabel = useMemo(
+    () => formatDuration(startSrc, endSrc),
+    [endSrc, startSrc],
   );
 
-  const claimed = Boolean(ride?.claimedBy);
-  const unavailable =
-    claimed || (ride?.status && ride.status !== "unclaimed") || false;
+  const claimed = Boolean(ride?.claimed || ride?.claimedBy);
+  const claimable = isClaimable(ride);
+  const claimButtonLabel = claiming
+    ? "Claiming…"
+    : claimable
+      ? "Claim"
+      : "Unavailable";
 
   return (
     <Card
@@ -91,9 +172,9 @@ export default function RideCard({
 
         <Typography
           variant="h6"
-          sx={{ color: "primary.main", fontWeight: 900, mb: 0.5 }}
+          sx={{ color: "primary.main", fontWeight: 900 }}
         >
-          {meta.startLabel} • {meta.range}
+          {rangeLabel}
         </Typography>
 
         <Stack
@@ -103,7 +184,7 @@ export default function RideCard({
           sx={{ flexWrap: "wrap" }}
         >
           <Chip label={`ID ${ride?.idShort || ride?.id || ""}`} />
-          <Chip label={meta.duration} />
+          <Chip label={durationLabel} />
           {ride?.scanStatus && (
             <Chip
               label={ride.scanStatus}
@@ -187,7 +268,7 @@ export default function RideCard({
           variant="contained"
           color="primary"
           size="small"
-          disabled={claimDisabled || unavailable || claiming}
+          disabled={claiming || !claimable}
           onClick={onClaim}
           aria-label="Claim ride"
           sx={{
@@ -197,50 +278,9 @@ export default function RideCard({
             "&:hover": { filter: "brightness(1.05)" },
           }}
         >
-          {claiming ? "Claiming…" : unavailable ? "Claimed" : "Claim"}
+          {claimButtonLabel}
         </Button>
       </CardActions>
     </Card>
   );
-}
-
-function formatStart(ts) {
-  const start = tsToDayjs(ts);
-  if (!start) return "N/A";
-  return start.format("ddd, MMM D • h:mm A");
-}
-
-function formatRange(startTs, endTs, durationMins) {
-  const start = tsToDayjs(startTs);
-  let end = tsToDayjs(endTs);
-  if (!end && start && Number.isFinite(durationMins)) {
-    end = start.add(durationMins, "minute");
-  }
-  if (!start || !end) return "N/A";
-  return `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
-}
-
-function formatDuration(startTs, endTs, durationMins) {
-  const start = tsToDayjs(startTs);
-  let end = tsToDayjs(endTs);
-  if (!start && !end) {
-    if (!Number.isFinite(durationMins)) return "N/A";
-    const mins = Math.max(0, Math.round(durationMins));
-    return humanizeMinutes(mins);
-  }
-  if (!end && start && Number.isFinite(durationMins)) {
-    end = start.add(durationMins, "minute");
-  }
-  if (!start || !end) return "N/A";
-  const diff = Math.max(0, end.diff(start, "minute"));
-  if (!Number.isFinite(diff)) return "N/A";
-  return humanizeMinutes(diff);
-}
-
-function humanizeMinutes(minutes) {
-  if (!Number.isFinite(minutes) || minutes < 0) return "N/A";
-  const total = Math.round(minutes);
-  const hours = Math.floor(total / 60);
-  const mins = total % 60;
-  return hours ? `${hours}h ${mins}m` : `${mins}m`;
 }

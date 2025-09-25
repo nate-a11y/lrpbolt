@@ -44,25 +44,20 @@ export default function Header({ onRefresh, leftSlot = null }) {
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           {leftSlot}
-          <Box
-            component="a"
-            href="/"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.25,
-              textDecoration: "none",
-              color: "inherit",
-              mr: 2,
-            }}
-          >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mr: 2 }}>
             <Box
-              component="img"
-              src="/Color%20logo%20with%20background.svg"
-              alt="LRP"
-              sx={{ width: 30, height: 30, borderRadius: 1 }}
-              draggable={false}
-            />
+              component="a"
+              href="/"
+              sx={{ display: "inline-flex", lineHeight: 0 }}
+            >
+              <Box
+                component="img"
+                src="/Color%20logo%20with%20background.svg"
+                alt="LRP"
+                sx={{ width: 30, height: 30, borderRadius: 1 }}
+                draggable={false}
+              />
+            </Box>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               LRP Driver Portal
             </Typography>
