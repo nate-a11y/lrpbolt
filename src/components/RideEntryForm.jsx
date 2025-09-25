@@ -255,6 +255,31 @@ function RideBuilderFields({
   return (
     <>
       <Grid item xs={12} md={6}>
+        <TextField
+          {...FIELD_PROPS}
+          label="Trip ID"
+          value={value.tripId || ""}
+          onBlur={mark("tripId")}
+          onChange={(e) =>
+            onChange({ ...value, tripId: formatTripId(e.target.value) })
+          }
+          placeholder="e.g., 6K5G-RS"
+          disabled={disableTripId}
+          error={touched.tripId && (!!tripIdError || !value.tripId)}
+          helperText={
+            touched.tripId &&
+            (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
+          }
+          inputProps={{
+            maxLength: 7,
+            inputMode: "text",
+            "aria-label": "Trip ID format XXXX dash XX",
+          }}
+          sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
+        />
+      </Grid>
+
+      <Grid item xs={12} md={6}>
         <DateTimePicker
           label="Pickup At"
           value={value.pickupAt}
@@ -293,31 +318,6 @@ function RideBuilderFields({
         onMinutesChange={(v) => onChange({ ...value, minutes: v })}
         disabled={disabled}
       />
-
-      <Grid item xs={12} md={6}>
-        <TextField
-          {...FIELD_PROPS}
-          label="Trip ID"
-          value={value.tripId || ""}
-          onBlur={mark("tripId")}
-          onChange={(e) =>
-            onChange({ ...value, tripId: formatTripId(e.target.value) })
-          }
-          placeholder="e.g., 6K5G-RS"
-          disabled={disableTripId}
-          error={touched.tripId && (!!tripIdError || !value.tripId)}
-          helperText={
-            touched.tripId &&
-            (!value.tripId ? "Required" : tripIdError ? "Format: ABCD-12" : " ")
-          }
-          inputProps={{
-            maxLength: 7,
-            inputMode: "text",
-            "aria-label": "Trip ID format XXXX dash XX",
-          }}
-          sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
-        />
-      </Grid>
 
       <Grid item xs={12} md={6} sx={{ minWidth: 0 }}>
         <ChipSelect
