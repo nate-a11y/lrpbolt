@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, Stack } from "@mui/material";
+import { Box, Button, CircularProgress, Stack } from "@mui/material";
 
 import BlackoutOverlay, {
   BLACKOUT_END_HOUR,
@@ -14,15 +14,58 @@ import { useToast } from "@/context/ToastProvider.jsx";
 import useAutoRefresh from "@/hooks/useAutoRefresh";
 import useClaimSelection from "@/hooks/useClaimSelection";
 import useRides from "@/hooks/useRides";
-import { claimRideOnce } from "@/services/claims";
+import { claimRideOnce, undoClaimRide } from "@/services/claims";
 import { TIMEZONE } from "@/constants.js";
 import { tsToDayjs } from "@/utils/claimTime";
 import { dayjs } from "@/utils/time";
 
+function getRideNotes(src) {
+  if (!src) return "";
+  const {
+    notes,
+    note,
+    comments,
+    comment,
+    adminNotes,
+    rideNotes,
+    pickupNotes,
+    dropoffNotes,
+  } = src;
+  const parts = [
+    notes,
+    note,
+    comments,
+    comment,
+    adminNotes,
+    rideNotes,
+    pickupNotes,
+    dropoffNotes,
+  ]
+    .filter(Boolean)
+    .map((v) => String(v).trim())
+    .filter((v) => v.length > 0);
+  return Array.from(new Set(parts)).join(" • ");
+}
+
 export default function ClaimRides() {
   const toast = useToast();
+  const { enqueue, show: legacyShow } = toast || {};
+  const showToast = useCallback(
+    (message, options = {}) => {
+      if (typeof enqueue === "function") {
+        return enqueue(message, options);
+      }
+      if (typeof legacyShow === "function") {
+        return legacyShow(message, options);
+      }
+      return undefined;
+    },
+    [enqueue, legacyShow],
+  );
   const sel = useClaimSelection((r) => r?.id);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [openNotes, setOpenNotes] = useState({});
+  const [isClaiming, setIsClaiming] = useState({});
   const { user, role } = useAuth();
   const { liveRides = [], fetchRides, loading } = useRides();
   const [isLocked, setIsLocked] = useState(false);
@@ -47,18 +90,46 @@ export default function ClaimRides() {
   );
 
   const ridesByVehicleDate = useMemo(() => {
+    if (!liveRides?.length) return [];
     const groups = new Map();
     liveRides.forEach((ride) => {
       const start = tsToDayjs(ride?.startTime || ride?.pickupTime);
+      const dateKey = start
+        ? start.startOf("day").format("YYYY-MM-DD")
+        : "unknown";
       const dateLabel = start ? start.format("ddd, MMM D") : "N/A";
-      const vehicle = ride?.vehicleLabel || ride?.vehicle || "Vehicle";
-      const key = `${vehicle}|${dateLabel}`;
+      const vehicle =
+        ride?.vehicleName || ride?.vehicleLabel || ride?.vehicle || "Vehicle";
+      const notes = getRideNotes(ride);
+      const key = `${dateKey}|${vehicle}`;
       if (!groups.has(key)) {
-        groups.set(key, { title: `${vehicle} • ${dateLabel}`, rides: [] });
+        groups.set(key, {
+          id: key,
+          dateLabel,
+          vehicle,
+          dateValue: start
+            ? start.startOf("day").valueOf()
+            : Number.MAX_SAFE_INTEGER,
+          rides: [],
+        });
       }
-      groups.get(key).rides.push(ride);
+      groups.get(key).rides.push({ ...ride, __notes: notes });
     });
-    return Array.from(groups.values());
+    const sorted = Array.from(groups.values()).sort((a, b) => {
+      if (a.dateValue !== b.dateValue) return a.dateValue - b.dateValue;
+      return a.vehicle.localeCompare(b.vehicle);
+    });
+    return sorted.map((group) => ({
+      ...group,
+      title: `${group.vehicle} • ${group.dateLabel}`,
+      rides: group.rides.slice().sort((a, b) => {
+        const aStart = tsToDayjs(a?.startTime || a?.pickupTime);
+        const bStart = tsToDayjs(b?.startTime || b?.pickupTime);
+        const aValue = aStart ? aStart.valueOf() : Number.MAX_SAFE_INTEGER;
+        const bValue = bStart ? bStart.valueOf() : Number.MAX_SAFE_INTEGER;
+        return aValue - bValue;
+      }),
+    }));
   }, [liveRides]);
 
   const refetch = useCallback(() => fetchRides && fetchRides(), [fetchRides]);
@@ -80,28 +151,71 @@ export default function ClaimRides() {
     return () => clearInterval(t);
   }, [liveRides.length, refetch, refreshIntervalSec]);
 
+  const handleToggleNotes = useCallback((rideId) => {
+    setOpenNotes((prev) => ({ ...prev, [rideId]: !prev[rideId] }));
+  }, []);
+
+  const onUndoClaim = useCallback(
+    async (claimedRide) => {
+      if (!claimedRide?.id) return;
+      try {
+        await undoClaimRide(claimedRide.id, user);
+        showToast("Ride restored to queue", { severity: "info" });
+        refetch?.();
+      } catch (e) {
+        showToast(e.message || "Unable to undo", { severity: "error" });
+      }
+    },
+    [refetch, showToast, user],
+  );
+
   const onClaim = useCallback(
     async (ride) => {
+      if (!ride?.id) return;
       if (lockedOut) {
-        toast.show?.("Ride claims locked until 8:00 PM (CT)", {
+        showToast("Ride claims locked until 8:00 PM (CT)", {
           severity: "warning",
         });
         return;
       }
+      if (ride?.claimedBy || (ride?.status && ride.status !== "unclaimed")) {
+        showToast("Ride is no longer available", { severity: "info" });
+        return;
+      }
+      setIsClaiming((prev) => ({ ...prev, [ride.id]: true }));
       try {
-        await claimRideOnce(ride.id, user);
-        toast.show?.("Ride claimed", { severity: "success" });
+        const claimed = await claimRideOnce(ride.id, user);
+        sel.deselectMany?.([ride]);
+        showToast("Ride claimed", {
+          severity: "success",
+          autoHideDuration: 6000,
+          action: (
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => onUndoClaim(claimed)}
+            >
+              Undo
+            </Button>
+          ),
+        });
         refetch?.();
       } catch (e) {
-        toast.show?.(e.message || "Failed to claim", { severity: "error" });
+        showToast(e.message || "Failed to claim", { severity: "error" });
+      } finally {
+        setIsClaiming((prev) => {
+          const next = { ...prev };
+          delete next[ride.id];
+          return next;
+        });
       }
     },
-    [toast, refetch, user, lockedOut],
+    [lockedOut, onUndoClaim, refetch, sel, showToast, user],
   );
 
   const onClaimAll = useCallback(async () => {
     if (lockedOut) {
-      toast.show?.("Ride claims locked until 8:00 PM (CT)", {
+      showToast("Ride claims locked until 8:00 PM (CT)", {
         severity: "warning",
       });
       return;
@@ -119,18 +233,16 @@ export default function ClaimRides() {
           console.error(e);
         }
       }
-      toast.show?.(`${ok} ${ok === 1 ? "ride" : "rides"} claimed`, {
+      showToast(`${ok} ${ok === 1 ? "ride" : "rides"} claimed`, {
         severity: "success",
-        autoHideDuration: 4000,
-        actionLabel: "Undo",
       });
       refetch?.();
     } catch {
-      toast.show?.("Failed to claim selected", { severity: "error" });
+      showToast("Failed to claim selected", { severity: "error" });
     } finally {
       setBulkLoading(false);
     }
-  }, [sel, toast, user, refetch, lockedOut]);
+  }, [lockedOut, refetch, sel, showToast, user]);
 
   if (loading)
     return (
@@ -171,29 +283,37 @@ export default function ClaimRides() {
       </Stack>
 
       <Stack spacing={2.5}>
-        {ridesByVehicleDate?.map((g, idx) => (
-          <RideGroup
-            key={g.groupId || g.title || idx}
-            title={g.title}
-            total={g.rides?.length || 0}
-            onSelectAll={() =>
-              g.rides?.forEach((r) => !sel.isSelected(r) && sel.toggle(r))
-            }
-          >
-            {g.rides?.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                selected={sel.isSelected(ride)}
-                onToggleSelect={() => sel.toggle(ride)}
-                onClaim={() => onClaim(ride)}
-                claimDisabled={lockedOut}
-                claiming={false}
-                highlight={Boolean(ride.__isNew)}
-              />
-            ))}
-          </RideGroup>
-        ))}
+        {ridesByVehicleDate?.map((g) => {
+          const selectedCount =
+            g.rides?.filter((r) => sel.isSelected(r)).length || 0;
+          const allSelected =
+            selectedCount > 0 && selectedCount === g.rides.length;
+          return (
+            <RideGroup
+              key={g.id || g.title}
+              title={g.title}
+              total={g.rides?.length || 0}
+              allSelected={allSelected}
+              onSelectAll={() => sel.toggleMany(g.rides)}
+            >
+              {g.rides?.map((ride) => (
+                <RideCard
+                  key={ride.id}
+                  ride={ride}
+                  selected={sel.isSelected(ride)}
+                  onToggleSelect={() => sel.toggle(ride)}
+                  onClaim={() => onClaim(ride)}
+                  claimDisabled={lockedOut}
+                  claiming={Boolean(isClaiming[ride.id])}
+                  notes={ride.__notes}
+                  notesOpen={Boolean(openNotes[ride.id])}
+                  onToggleNotes={() => handleToggleNotes(ride.id)}
+                  highlight={Boolean(ride.__isNew)}
+                />
+              ))}
+            </RideGroup>
+          );
+        })}
       </Stack>
 
       <BatchClaimBar
