@@ -15,16 +15,18 @@ export default function RideGroup({
         borderRadius: (t) => t.shape.borderRadius,
         border: (t) => `1px solid ${t.palette.divider}`,
         bgcolor: (t) => t.palette.background.paper,
-        overflowX: "hidden",
-        overflowY: "auto",
+        overflow: "visible",
         position: "relative",
       }}
     >
       <Box
         sx={{
           position: "sticky",
-          top: { xs: 56, sm: 64 },
-          zIndex: 2,
+          top: {
+            xs: "calc(56px + env(safe-area-inset-top, 0px))",
+            sm: "64px",
+          },
+          zIndex: (t) => t.zIndex.appBar + 1,
           backdropFilter: "blur(6px)",
           backgroundColor: (t) =>
             t.palette.mode === "dark"
@@ -32,13 +34,15 @@ export default function RideGroup({
               : t.palette.background.paper,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1,
+          rowGap: 0.75,
           py: 1,
           px: 1.5,
           borderBottom: (t) => `2px solid ${t.palette.primary.main}`,
         }}
       >
-        <Stack spacing={0.25} sx={{ pr: 2 }}>
+        <Stack spacing={0.25} sx={{ pr: 2, minWidth: 0 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
             {title}
           </Typography>
@@ -55,12 +59,14 @@ export default function RideGroup({
             fontWeight: 700,
             px: 1.75,
             whiteSpace: "nowrap",
+            ml: "auto",
+            flexShrink: 0,
           }}
         >
           {allSelected ? "Clear" : "Select All"}
         </Button>
       </Box>
-      <Stack spacing={1.5} sx={{ p: 1.5, overflowY: "auto" }}>
+      <Stack spacing={1.5} sx={{ py: 1.5 }}>
         {children}
       </Stack>
     </Box>

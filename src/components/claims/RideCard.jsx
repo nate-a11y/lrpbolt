@@ -131,7 +131,11 @@ export default function RideCard({
   return (
     <Card
       sx={{
-        overflow: "hidden",
+        mx: { xs: 1, sm: 1.5 },
+        my: 1,
+        p: { xs: 1.25, sm: 1.5 },
+        borderRadius: 3,
+        overflow: "visible",
         transition: "transform 120ms ease, box-shadow 200ms ease",
         borderColor: selected ? "primary.main" : "divider",
         borderWidth: 1,
@@ -153,15 +157,18 @@ export default function RideCard({
       }}
       aria-pressed={selected}
     >
-      <CardContent sx={{ pb: 1.25 }}>
+      <CardContent sx={{ p: 0, pb: 1.5 }}>
         <Stack
           direction="row"
           alignItems="center"
           spacing={1}
-          sx={{ mb: 0.5, flexWrap: "wrap" }}
+          sx={{ mb: 0.5, flexWrap: "wrap", rowGap: 0.75 }}
         >
           <DirectionsCar fontSize="small" />
-          <Typography fontWeight={800}>
+          <Typography
+            fontWeight={800}
+            sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+          >
             {ride?.vehicleLabel || ride?.vehicle || "Vehicle"}
           </Typography>
           <Chip label={ride?.type || "Ride"} variant="outlined" />
@@ -172,16 +179,27 @@ export default function RideCard({
 
         <Typography
           variant="h6"
-          sx={{ color: "primary.main", fontWeight: 900 }}
+          sx={{
+            fontWeight: 900,
+            color: "primary.main",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "100%",
+          }}
         >
           {rangeLabel}
         </Typography>
 
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          sx={{ flexWrap: "wrap" }}
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            columnGap: 1,
+            rowGap: 0.75,
+            minWidth: 0,
+            mt: 1,
+          }}
         >
           <Chip label={`ID ${ride?.idShort || ride?.id || ""}`} />
           <Chip label={durationLabel} />
@@ -191,10 +209,10 @@ export default function RideCard({
               color={ride.scanStatus === "Not Scanned" ? "warning" : "success"}
             />
           )}
-        </Stack>
+        </Box>
 
         {notes && (
-          <Box sx={{ mt: 0.5 }}>
+          <Box sx={{ mt: 0.75, minWidth: 0 }}>
             <Box
               onClick={() => onToggleNotes?.()}
               sx={{
@@ -202,6 +220,7 @@ export default function RideCard({
                 alignItems: "flex-start",
                 gap: 1,
                 cursor: "pointer",
+                minWidth: 0,
                 "&:hover": { opacity: 0.9 },
               }}
               aria-label="Show ride notes"
@@ -217,6 +236,8 @@ export default function RideCard({
                   WebkitLineClamp: 1,
                   WebkitBoxOrient: "vertical",
                   overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
                   color: "text.secondary",
                 }}
               >
@@ -243,9 +264,28 @@ export default function RideCard({
       </CardContent>
 
       <CardActions
-        sx={{ pt: 0.5, pb: 1.25, px: 2, justifyContent: "space-between" }}
+        sx={{
+          p: 0,
+          pt: 1.25,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+          flexWrap: "wrap",
+          rowGap: 1,
+          minWidth: 0,
+        }}
       >
-        <Stack direction="row" spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            flexWrap: "wrap",
+            minWidth: 0,
+            rowGap: 1,
+            alignItems: "center",
+          }}
+        >
           <Button
             variant={selected ? "contained" : "outlined"}
             size="small"
@@ -272,6 +312,13 @@ export default function RideCard({
           onClick={onClaim}
           aria-label="Claim ride"
           sx={{
+            borderRadius: 9999,
+            px: 2.25,
+            py: 0.75,
+            alignSelf: "center",
+            ml: 1,
+            flexShrink: 0,
+            boxShadow: "0 0 0 0 rgba(0,0,0,0)",
             backgroundColor: "primary.main",
             color: "#000",
             fontWeight: 700,
