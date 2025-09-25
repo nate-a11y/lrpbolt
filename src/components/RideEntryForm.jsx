@@ -273,7 +273,7 @@ function RideBuilderFields({
           inputProps={{
             maxLength: 7,
             inputMode: "text",
-            "aria-label": "Trip ID format XXXX dash XX",
+            "aria-label": "Trip ID (format XXXX-XX)",
           }}
           sx={{ "& input": { letterSpacing: "0.08em", fontWeight: 600 } }}
         />
@@ -304,6 +304,9 @@ function RideBuilderFields({
               helperText:
                 touched.pickupAt && !value.pickupAt ? "Required" : " ",
               placeholder: "MM/DD/YYYY hh:mm A",
+              inputProps: {
+                "aria-label": "Pickup At",
+              },
             },
           }}
         />
@@ -348,6 +351,7 @@ function RideBuilderFields({
           value={value.notes || ""}
           onChange={set("notes")}
           placeholder="Optional notes"
+          inputProps={{ "aria-label": "Ride Notes" }}
         />
       </Grid>
     </>
@@ -1132,56 +1136,38 @@ export default function RideEntryForm() {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Box
-                    sx={{
-                      position: { xs: "sticky", md: "static" },
-                      bottom: 0,
-                      zIndex: 2,
-                      bgcolor: { xs: "background.paper", md: "transparent" },
-                      borderTop: { xs: "1px solid", md: "none" },
-                      borderColor: "divider",
-                      pt: 2,
-                      mt: 2,
-                    }}
+                  <Divider sx={{ opacity: 0.12 }} />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    alignItems="center"
+                    sx={{ width: "100%" }}
                   >
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={{ xs: 1.5, sm: 2 }}
-                      alignItems={{ xs: "stretch", sm: "center" }}
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      onClick={onResetSingle}
+                      disabled={singleSubmitting}
+                      sx={{ flex: 1, minWidth: 0 }}
+                      aria-label="Reset form"
                     >
-                      <Button
-                        variant="outlined"
-                        onClick={onResetSingle}
-                        sx={{
-                          minHeight: 48,
-                          width: { xs: "100%", sm: "auto" },
-                        }}
-                      >
-                        Reset
-                      </Button>
-                      <Box
-                        sx={{
-                          flexGrow: 1,
-                          display: { xs: "none", sm: "block" },
-                        }}
-                      />
-                      <Button
-                        variant="contained"
-                        startIcon={<RocketLaunchIcon />}
-                        sx={{
-                          bgcolor: "primary.main",
-                          "&:hover": { bgcolor: "primary.dark" },
-                          fontWeight: 700,
-                          minHeight: 48,
-                          width: { xs: "100%", sm: "auto" },
-                        }}
-                        onClick={onSubmitSingle}
-                        disabled={singleSubmitting || !isSingleValid}
-                      >
-                        Submit
-                      </Button>
-                    </Stack>
-                  </Box>
+                      Reset
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={onSubmitSingle}
+                      disabled={singleSubmitting || !isSingleValid}
+                      sx={{ flex: 1, minWidth: 0, fontWeight: 700 }}
+                      startIcon={<RocketLaunchIcon />}
+                      aria-label="Submit ride"
+                    >
+                      Submit
+                    </Button>
+                  </Stack>
                 </Grid>
               </Grid>
             </Paper>
@@ -1244,57 +1230,39 @@ export default function RideEntryForm() {
                   </Grid>
 
                   <Grid item xs={12}>
-                    <Box
-                      sx={{
-                        position: { xs: "sticky", md: "static" },
-                        bottom: 0,
-                        zIndex: 2,
-                        bgcolor: { xs: "background.paper", md: "transparent" },
-                        borderTop: { xs: "1px solid", md: "none" },
-                        borderColor: "divider",
-                        pt: 2,
-                        mt: 2,
-                      }}
+                    <Divider sx={{ opacity: 0.12 }} />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      alignItems="center"
+                      sx={{ width: "100%" }}
                     >
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={{ xs: 1.5, sm: 2 }}
-                        alignItems={{ xs: "stretch", sm: "center" }}
+                      <Button
+                        variant="outlined"
+                        color="success"
+                        onClick={onAddToList}
+                        disabled={submitDisabled}
+                        sx={{ flex: 1, minWidth: 0 }}
+                        startIcon={<AddIcon />}
+                        aria-label="Add ride to list"
                       >
-                        <Button
-                          variant="outlined"
-                          onClick={onAddToList}
-                          startIcon={<AddIcon />}
-                          sx={{
-                            minHeight: 48,
-                            width: { xs: "100%", sm: "auto" },
-                          }}
-                        >
-                          Add to List
-                        </Button>
-                        <Box
-                          sx={{
-                            flexGrow: 1,
-                            display: { xs: "none", sm: "block" },
-                          }}
-                        />
-                        <Button
-                          variant="contained"
-                          startIcon={<RocketLaunchIcon />}
-                          sx={{
-                            bgcolor: "primary.main",
-                            "&:hover": { bgcolor: "primary.dark" },
-                            fontWeight: 700,
-                            minHeight: 48,
-                            width: { xs: "100%", sm: "auto" },
-                          }}
-                          onClick={onSubmitAll}
-                          disabled={submitDisabled}
-                        >
-                          Submit All Rides
-                        </Button>
-                      </Stack>
-                    </Box>
+                        Add to List
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={onSubmitAll}
+                        disabled={submitDisabled}
+                        sx={{ flex: 1, minWidth: 0, fontWeight: 700 }}
+                        startIcon={<RocketLaunchIcon />}
+                        aria-label="Submit all rides"
+                      >
+                        Submit All Rides
+                      </Button>
+                    </Stack>
                   </Grid>
                 </Grid>
               </Paper>
