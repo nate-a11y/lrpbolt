@@ -15,17 +15,21 @@ export default function RideGroup({
         borderRadius: (t) => t.shape.borderRadius,
         border: (t) => `1px solid ${t.palette.divider}`,
         bgcolor: (t) => t.palette.background.paper,
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
         position: "relative",
       }}
     >
       <Box
         sx={{
           position: "sticky",
-          top: 0,
+          top: { xs: 56, sm: 64 },
           zIndex: 2,
           backdropFilter: "blur(6px)",
-          backgroundColor: (t) => `${t.palette.background.default}cc`,
+          backgroundColor: (t) =>
+            t.palette.mode === "dark"
+              ? t.palette.background.default
+              : t.palette.background.paper,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -56,7 +60,7 @@ export default function RideGroup({
           {allSelected ? "Clear" : "Select All"}
         </Button>
       </Box>
-      <Stack spacing={1.5} sx={{ p: 1.5 }}>
+      <Stack spacing={1.5} sx={{ p: 1.5, overflowY: "auto" }}>
         {children}
       </Stack>
     </Box>
