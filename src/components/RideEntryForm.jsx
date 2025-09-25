@@ -1048,7 +1048,7 @@ export default function RideEntryForm() {
       columnSpacing={{ xs: 1.5, sm: 2, md: 3 }}
       sx={{ mb: { xs: 2, sm: 3 } }}
     >
-      <Grid xs={12} md={4} sx={{ minWidth: 0 }}>
+      <Grid item xs={12} md={4} sx={{ minWidth: 0 }}>
         <Button
           variant="outlined"
           fullWidth
@@ -1062,7 +1062,7 @@ export default function RideEntryForm() {
           Download Template
         </Button>
       </Grid>
-      <Grid xs={12} md={8} sx={{ minWidth: 0 }}>
+      <Grid item xs={12} md={8} sx={{ minWidth: 0 }}>
         <Paper
           variant="outlined"
           sx={{
@@ -1128,7 +1128,7 @@ export default function RideEntryForm() {
                 rowSpacing={2}
                 columnSpacing={{ xs: 1.5, sm: 2 }}
               >
-                <Grid xs={12}>
+                <Grid item xs={12}>
                   <Typography variant="h6" fontWeight={700}>
                     Single Ride
                   </Typography>
@@ -1142,7 +1142,7 @@ export default function RideEntryForm() {
                   layoutVariant="single"
                 />
 
-                <Grid xs={12}>
+                <Grid item xs={12}>
                   <Box
                     sx={{
                       position: { xs: "sticky", md: "static" },
@@ -1207,13 +1207,13 @@ export default function RideEntryForm() {
                   rowSpacing={2}
                   columnSpacing={{ xs: 1.5, sm: 2 }}
                 >
-                  <Grid xs={12}>
+                  <Grid item xs={12}>
                     <Typography variant="h6" fontWeight={700}>
                       Multi Ride Upload
                     </Typography>
                   </Grid>
 
-                  <Grid xs={12} sx={{ minWidth: 0 }}>
+                  <Grid item xs={12} sx={{ minWidth: 0 }}>
                     <TextField
                       {...FIELD_PROPS}
                       multiline
@@ -1235,11 +1235,11 @@ export default function RideEntryForm() {
 
                   {dropZone}
 
-                  <Grid xs={12}>
+                  <Grid item xs={12}>
                     <Divider />
                   </Grid>
 
-                  <Grid xs={12}>
+                  <Grid item xs={12}>
                     <Typography variant="subtitle1" fontWeight={700}>
                       Or Use Ride Builder
                     </Typography>
@@ -1253,7 +1253,7 @@ export default function RideEntryForm() {
                     layoutVariant="multi"
                   />
 
-                  <Grid xs={12}>
+                  <Grid item xs={12}>
                     <Box
                       sx={{
                         position: { xs: "sticky", md: "static" },
