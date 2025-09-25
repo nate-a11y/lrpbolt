@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideEntryForm.jsx
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import {
   Accordion,
   AccordionSummary,
@@ -25,6 +25,7 @@ import {
   Badge,
   Tooltip,
   Fade,
+  InputAdornment,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -116,6 +117,19 @@ const TAB_INDICATOR_PROPS = {
   sx: { backgroundColor: "primary.main" },
 };
 
+// Ensures numeric and non-negative; minutes capped to 59
+function toInt(v, fallback = 0) {
+  const n = Number.parseInt(String(v).replace(/[^0-9-]/g, ""), 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+function clampMinutes(v) {
+  const n = toInt(v, 0);
+  return Math.max(0, Math.min(59, n));
+}
+function clampHours(v) {
+  return Math.max(0, toInt(v, 0));
+}
+
 /* ------------------ Reusable builder (chips) ------------------ */
 function ChipSelect({
   label,
@@ -170,6 +184,72 @@ function ChipSelect({
   );
 }
 
+const DurationFields = memo(function DurationFields(props) {
+  const {
+    hours = 0,
+    minutes = 0,
+    onHoursChange,
+    onMinutesChange,
+    hoursLabel = "Hours",
+    minutesLabel = "Minutes",
+    disabled = false,
+  } = props || {};
+
+  return (
+    <Grid container spacing={2} alignItems="flex-start">
+      <Grid item xs={6}>
+        <TextField
+          fullWidth
+          label={hoursLabel}
+          value={Number.isFinite(hours) ? hours : 0}
+          onChange={(e) => onHoursChange?.(clampHours(e.target.value))}
+          type="number"
+          inputMode="numeric"
+          inputProps={{
+            min: 0,
+            step: 1,
+            "aria-label": "Ride duration hours",
+            pattern: "[0-9]*",
+          }}
+          disabled={disabled}
+          helperText="Total hours"
+          size="medium"
+          slotProps={{
+            input: {
+              endAdornment: <InputAdornment position="end">h</InputAdornment>,
+            },
+          }}
+        />
+      </Grid>
+      <Grid item xs={6}>
+        <TextField
+          fullWidth
+          label={minutesLabel}
+          value={Number.isFinite(minutes) ? minutes : 0}
+          onChange={(e) => onMinutesChange?.(clampMinutes(e.target.value))}
+          type="number"
+          inputMode="numeric"
+          inputProps={{
+            min: 0,
+            max: 59,
+            step: 1,
+            "aria-label": "Ride duration minutes",
+            pattern: "[0-9]*",
+          }}
+          disabled={disabled}
+          helperText="0–59"
+          size="medium"
+          slotProps={{
+            input: {
+              endAdornment: <InputAdornment position="end">m</InputAdornment>,
+            },
+          }}
+        />
+      </Grid>
+    </Grid>
+  );
+});
+
 function RideBuilderFields({
   value,
   onChange,
@@ -177,6 +257,7 @@ function RideBuilderFields({
   vehicleOptions,
   disableTripId = false,
   layoutVariant = "single",
+  disabled = false,
 }) {
   const [touched, setTouched] = useState({});
   const mark = (k) => () => setTouched((s) => ({ ...s, [k]: true }));
@@ -189,8 +270,7 @@ function RideBuilderFields({
       return {
         trip: { xs: 12, sm: 6, md: 3 },
         pickupAt: { xs: 12, sm: 6, md: 3 },
-        hours: { xs: 6, sm: 3, md: 2 },
-        minutes: { xs: 6, sm: 3, md: 2 },
+        duration: { xs: 12, sm: 6, md: 4 },
         rideType: { xs: 12, sm: 6, md: 4 },
         vehicle: { xs: 12, sm: 6, md: 4 },
         notes: { xs: 12, sm: 12, md: 8 },
@@ -199,8 +279,7 @@ function RideBuilderFields({
     return {
       trip: { xs: 12, sm: 6, md: 4 },
       pickupAt: { xs: 12, sm: 6, md: 4 },
-      hours: { xs: 6, sm: 3, md: 2 },
-      minutes: { xs: 6, sm: 3, md: 2 },
+      duration: { xs: 12, sm: 6, md: 4 },
       rideType: { xs: 12, sm: 6, md: 6 },
       vehicle: { xs: 12, sm: 6, md: 6 },
       notes: { xs: 12, sm: 6, md: 8 },
@@ -263,63 +342,15 @@ function RideBuilderFields({
         />
       </Grid>
 
-      <Grid {...sizes.hours}>
-        <TextField
-          {...FIELD_PROPS}
-          type="number"
-          label="Hours"
-          value={value.hours === "" ? "" : Number(value.hours)}
-          onBlur={mark("hours")}
-          onChange={(e) => {
-            const v =
-              e.target.value === ""
-                ? ""
-                : Math.min(24, Math.max(0, Number(e.target.value)));
-            onChange({ ...value, hours: v });
-          }}
-          inputProps={{
-            min: 0,
-            max: 24,
-            inputMode: "numeric",
-            pattern: "[0-9]*",
-            "aria-label": "Duration Hours",
-          }}
-          helperText={touched.hours && (value.hours === "" ? "Required" : " ")}
-          error={
-            touched.hours &&
-            (value.hours === "" || value.hours < 0 || value.hours > 24)
+      <Grid {...sizes.duration}>
+        <DurationFields
+          hours={Number.isFinite(Number(value.hours)) ? Number(value.hours) : 0}
+          minutes={
+            Number.isFinite(Number(value.minutes)) ? Number(value.minutes) : 0
           }
-        />
-      </Grid>
-
-      <Grid {...sizes.minutes}>
-        <TextField
-          {...FIELD_PROPS}
-          type="number"
-          label="Minutes"
-          value={value.minutes === "" ? "" : Number(value.minutes)}
-          onBlur={mark("minutes")}
-          onChange={(e) => {
-            const v =
-              e.target.value === ""
-                ? ""
-                : Math.min(59, Math.max(0, Number(e.target.value)));
-            onChange({ ...value, minutes: v });
-          }}
-          inputProps={{
-            min: 0,
-            max: 59,
-            inputMode: "numeric",
-            pattern: "[0-9]*",
-            "aria-label": "Duration Minutes",
-          }}
-          helperText={
-            touched.minutes && (value.minutes === "" ? "Required" : " ")
-          }
-          error={
-            touched.minutes &&
-            (value.minutes === "" || value.minutes < 0 || value.minutes > 59)
-          }
+          onHoursChange={(v) => onChange({ ...value, hours: v })}
+          onMinutesChange={(v) => onChange({ ...value, minutes: v })}
+          disabled={disabled}
         />
       </Grid>
 
