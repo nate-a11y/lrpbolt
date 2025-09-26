@@ -89,6 +89,18 @@ export default function DriverInfoTab() {
 
   const rows = useMemo(() => GATE_CODES, []);
 
+  const resolveRow = useCallback((maybeParams, fallbackRow) => {
+    if (
+      maybeParams &&
+      typeof maybeParams === "object" &&
+      !Array.isArray(maybeParams) &&
+      "row" in maybeParams
+    ) {
+      return maybeParams.row;
+    }
+    return fallbackRow;
+  }, []);
+
   const columns = useMemo(
     () => [
       {
@@ -96,17 +108,23 @@ export default function DriverInfoTab() {
         headerName: "Location",
         flex: 1,
         minWidth: 150,
-        valueGetter: (params) => params?.row?.name ?? "N/A",
+        valueGetter: (value, row) => {
+          const sourceRow = resolveRow(value, row);
+          return sourceRow?.name ?? "N/A";
+        },
       },
       {
         field: "codes",
         headerName: "Gate Codes",
         flex: 1,
         minWidth: 150,
-        valueGetter: (params) =>
-          Array.isArray(params?.row?.codes)
-            ? params.row.codes.join(", ")
-            : "N/A",
+        valueGetter: (value, row) => {
+          const sourceRow = resolveRow(value, row);
+          if (Array.isArray(sourceRow?.codes)) {
+            return sourceRow.codes.join(", ");
+          }
+          return "N/A";
+        },
         renderCell: (p) => (
           <Box
             sx={{
@@ -121,7 +139,7 @@ export default function DriverInfoTab() {
         ),
       },
     ],
-    [],
+    [resolveRow],
   );
 
   const getRowId = useCallback(
