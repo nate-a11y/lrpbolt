@@ -2,6 +2,7 @@
 import { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { DataGridPro, gridClasses } from "@mui/x-data-grid-pro";
+import { alpha } from "@mui/material/styles";
 
 import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
 import useIsMobile from "@/hooks/useIsMobile.js";
@@ -394,35 +395,51 @@ export default function SmartAutoGrid(props) {
     resolvedMinHeight,
   ]);
 
-  const mergedGridSx = useMemo(
-    () =>
-      mergeSx(
-        {
-          [`& .${gridClasses.cell}`]: { outline: "none" },
-          "& .MuiDataGrid-columnHeader:focus": { outline: "none" },
-          "& .MuiDataGrid-toolbarContainer": {
-            backgroundColor: "#060606",
-            color: "#ffffff",
-            padding: "4px 8px",
-            gap: 1,
-            position: "sticky",
-            top: 0,
-            zIndex: 2,
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-          },
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "#4cbb17",
-            color: "#ffffff",
-          },
-          width: "100%",
-          maxWidth: "100%",
-          minWidth: 0,
-          ...(computedAutoHeight ? {} : { height: "100%" }),
+  const mergedGridSx = useMemo(() => {
+    const base = (theme) => {
+      const isDark = theme.palette.mode === "dark";
+      const headerBg = isDark
+        ? theme.palette.primary.main
+        : alpha(theme.palette.primary.main, 0.12);
+      const headerColor = isDark
+        ? theme.palette.common.white
+        : theme.palette.text.primary;
+
+      return {
+        [`& .${gridClasses.cell}`]: { outline: "none" },
+        "& .MuiDataGrid-columnHeader:focus": { outline: "none" },
+        "& .MuiDataGrid-toolbarContainer": {
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          padding: "4px 8px",
+          gap: 1,
+          position: "sticky",
+          top: 0,
+          zIndex: 2,
+          borderBottom: `1px solid ${theme.palette.divider}`,
         },
-        gridSxProp,
-      ),
-    [computedAutoHeight, gridSxProp],
-  );
+        "& .MuiDataGrid-columnHeaders": {
+          backgroundColor: headerBg,
+          color: headerColor,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        },
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        backgroundColor: theme.palette.background.paper,
+        color: theme.palette.text.primary,
+        ...(computedAutoHeight ? {} : { height: "100%" }),
+      };
+    };
+
+    if (!gridSxProp) {
+      return base;
+    }
+    if (Array.isArray(gridSxProp)) {
+      return [base, ...gridSxProp];
+    }
+    return [base, gridSxProp];
+  }, [computedAutoHeight, gridSxProp]);
 
   const mergedContainerSx = useMemo(
     () => mergeSx(scrollBoxSx, containerSx),
