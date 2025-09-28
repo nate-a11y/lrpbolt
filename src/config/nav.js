@@ -77,13 +77,6 @@ export const NAV_ITEMS = [
     rolesVisible: ["admin", "driver"],
   },
   {
-    id: "settings",
-    to: "/settings",
-    label: "Settings",
-    icon: "Settings",
-    rolesVisible: ["admin", "driver"],
-  },
-  {
     id: "admin-time-log",
     to: "/admin-time-log",
     label: "Admin Logs",
