@@ -325,7 +325,7 @@ export default function TimeClock({ setIsTracking }) {
       <Box sx={{ width: "100%" }}>
         <DataGridPro
           autoHeight
-          rows={rows}
+          rows={Array.isArray(rows) ? rows : []}
           columns={columns}
           getRowId={getRowId}
           loading={loading}

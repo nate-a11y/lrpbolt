@@ -2,23 +2,29 @@ import { Chip } from "@mui/material";
 
 import { dayjs, toDayjs } from "@/utils/time";
 
-/** helpers */
-function pick(obj, keys) {
+// --- null-safe helpers ---
+const getRow = (p) => (p && (p.row ?? p)) || {};
+const val = (obj, keys) => {
+  const r = obj || {};
   for (const k of keys) {
-    const v = obj?.[k];
+    const v = r[k];
     if (v !== undefined && v !== null && v !== "") return v;
   }
   return null;
-}
+};
+// --------------------------
+
 function fmt(ts, fmtStr = "MMM D, YYYY h:mm A") {
   const d = toDayjs(ts);
   return d ? d.tz(dayjs.tz.guess()).format(fmtStr) : "N/A";
 }
+
 function fmtOut(ts) {
   if (!ts) return "—"; // em dash while active
   const d = toDayjs(ts);
   return d ? d.tz(dayjs.tz.guess()).format("MMM D, YYYY h:mm A") : "N/A";
 }
+
 function duration(startTs, endTs) {
   const start = toDayjs(startTs);
   const end = endTs ? toDayjs(endTs) : dayjs();
@@ -29,9 +35,11 @@ function duration(startTs, endTs) {
   const m = mins % 60;
   return h ? `${h}h ${m}m` : `${m}m`;
 }
+
 function isActive(row) {
-  const start = pick(row, ["startTime", "clockIn", "loggedAt"]);
-  const end = pick(row, ["endTime", "clockOut"]);
+  const r = row || {};
+  const start = val(r, ["startTime", "clockIn", "loggedAt"]);
+  const end = val(r, ["endTime", "clockOut"]);
   return !!start && !end;
 }
 
@@ -43,9 +51,9 @@ export function buildTimeLogColumns() {
       minWidth: 140,
       flex: 0.8,
       renderCell: (p) =>
-        pick(p.row, ["driverName", "driverId", "driver"]) || "N/A",
+        val(getRow(p), ["driverName", "driverId", "driver"]) ?? "N/A",
       valueGetter: (p) =>
-        pick(p.row, ["driverName", "driverId", "driver"]) || "N/A",
+        val(getRow(p), ["driverName", "driverId", "driver"]) ?? "N/A",
     },
     {
       field: "driverEmail",
@@ -53,16 +61,16 @@ export function buildTimeLogColumns() {
       minWidth: 200,
       flex: 1,
       renderCell: (p) =>
-        pick(p.row, ["driverEmail", "userEmail", "email"]) || "N/A",
+        val(getRow(p), ["driverEmail", "userEmail", "email"]) ?? "N/A",
       valueGetter: (p) =>
-        pick(p.row, ["driverEmail", "userEmail", "email"]) || "N/A",
+        val(getRow(p), ["driverEmail", "userEmail", "email"]) ?? "N/A",
     },
     {
       field: "rideId",
       headerName: "Ride ID",
       minWidth: 120,
-      renderCell: (p) => pick(p.row, ["rideId", "rideID", "ride"]) || "N/A",
-      valueGetter: (p) => pick(p.row, ["rideId", "rideID", "ride"]) || "N/A",
+      renderCell: (p) => val(getRow(p), ["rideId", "rideID", "ride"]) ?? "N/A",
+      valueGetter: (p) => val(getRow(p), ["rideId", "rideID", "ride"]) ?? "N/A",
     },
     {
       field: "status",
@@ -70,7 +78,7 @@ export function buildTimeLogColumns() {
       minWidth: 110,
       sortable: false,
       renderCell: (p) =>
-        isActive(p.row) ? (
+        isActive(getRow(p)) ? (
           <Chip
             size="small"
             label="Active"
@@ -87,36 +95,41 @@ export function buildTimeLogColumns() {
             sx={{ bgcolor: "action.selected", color: "text.primary" }}
           />
         ),
-      valueGetter: (p) => (isActive(p.row) ? "Active" : "Completed"),
+      valueGetter: (p) => (isActive(getRow(p)) ? "Active" : "Completed"),
     },
     {
       field: "clockIn",
       headerName: "Clock In",
       minWidth: 180,
-      renderCell: (p) => fmt(pick(p.row, ["startTime", "clockIn", "loggedAt"])),
+      renderCell: (p) =>
+        fmt(val(getRow(p), ["startTime", "clockIn", "loggedAt"])),
       valueGetter: (p) =>
-        fmt(pick(p.row, ["startTime", "clockIn", "loggedAt"])),
+        fmt(val(getRow(p), ["startTime", "clockIn", "loggedAt"])),
     },
     {
       field: "clockOut",
       headerName: "Clock Out",
       minWidth: 180,
-      renderCell: (p) => fmtOut(pick(p.row, ["endTime", "clockOut"])),
-      valueGetter: (p) => fmtOut(pick(p.row, ["endTime", "clockOut"])),
+      renderCell: (p) => fmtOut(val(getRow(p), ["endTime", "clockOut"])),
+      valueGetter: (p) => fmtOut(val(getRow(p), ["endTime", "clockOut"])),
     },
     {
       field: "duration",
       headerName: "Duration",
       minWidth: 120,
       renderCell: (p) => {
-        const start = pick(p.row, ["startTime", "clockIn", "loggedAt"]);
-        const end = pick(p.row, ["endTime", "clockOut"]);
-        return duration(start, end);
+        const r = getRow(p);
+        return duration(
+          val(r, ["startTime", "clockIn", "loggedAt"]),
+          val(r, ["endTime", "clockOut"]),
+        );
       },
       valueGetter: (p) => {
-        const start = pick(p.row, ["startTime", "clockIn", "loggedAt"]);
-        const end = pick(p.row, ["endTime", "clockOut"]);
-        return duration(start, end);
+        const r = getRow(p);
+        return duration(
+          val(r, ["startTime", "clockIn", "loggedAt"]),
+          val(r, ["endTime", "clockOut"]),
+        );
       },
     },
   ];
