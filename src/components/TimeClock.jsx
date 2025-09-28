@@ -287,7 +287,7 @@ export default function TimeClock({ setIsTracking }) {
 
   const handleProcessRowUpdate = useCallback(
     async (newRow, oldRow) => {
-      const id = resolveRowId(newRow);
+      const id = resolveRowId(newRow) || resolveRowId(oldRow);
       if (!id) return oldRow;
 
       const newStart = parseEditDate(
@@ -325,6 +325,10 @@ export default function TimeClock({ setIsTracking }) {
           endTime: endChanged ? newEnd : (oldRow.endTime ?? null),
           clockOut: endChanged ? newEnd : (oldRow.clockOut ?? null),
         };
+
+        nextRow.id = resolveRowId(oldRow) || id;
+        if (oldRow?.docId) nextRow.docId = oldRow.docId;
+        if (oldRow?.originalId) nextRow.originalId = oldRow.originalId;
 
         if (newStart && newEnd && newEnd.getTime() >= newStart.getTime()) {
           nextRow.duration = Math.floor(
