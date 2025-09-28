@@ -60,7 +60,6 @@ const RideVehicleCalendar = lazy(
   () => import("./components/RideVehicleCalendar"),
 );
 const ShootoutTab = lazy(() => import("./components/ShootoutTab"));
-const TicketGenerator = lazy(() => import("./components/TicketGenerator"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
 const TicketScanner = lazy(() => import("./components/TicketScanner"));
 const Tickets = lazy(() => import("./components/Tickets"));
@@ -259,7 +258,12 @@ function App() {
             <Route path="/tickets" element={<Tickets />} />
             <Route
               path="/generate-ticket"
-              element={isAdmin ? <TicketGenerator /> : <Navigate to="/" />}
+              element={
+                <Navigate
+                  to={isAdmin ? "/tickets?tab=generate" : "/tickets"}
+                  replace
+                />
+              }
             />
             <Route path="/ticket/:ticketId" element={<TicketViewer />} />
             <Route
