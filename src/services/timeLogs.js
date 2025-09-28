@@ -7,6 +7,7 @@ import {
   doc,
   limit as limitDocs,
   onSnapshot,
+  or,
   orderBy,
   query,
   serverTimestamp,
@@ -30,12 +31,24 @@ export function subscribeMyTimeLogs({ user, onData, onError }) {
   }
 
   const ref = collection(db, "timeLogs");
-  const clauses = [];
-  if (user?.displayName) {
-    clauses.push(where("driverId", "==", user.displayName));
-  } else if (user?.email) {
-    clauses.push(where("driverEmail", "==", user.email));
-  } else {
+  const seen = new Set();
+  const identityFilters = [];
+
+  const addFilter = (field, value) => {
+    if (!value) return;
+    const key = `${field}:${value}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    identityFilters.push(where(field, "==", value));
+  };
+
+  addFilter("driverId", user?.displayName);
+  addFilter("driverId", user?.uid);
+  addFilter("userId", user?.uid);
+  addFilter("driverEmail", user?.email);
+  addFilter("userEmail", user?.email);
+
+  if (identityFilters.length === 0) {
     const err = new Error("Missing user identity for subscribeMyTimeLogs");
     logError(err, {
       where: "timeLogs.subscribeMyTimeLogs",
@@ -45,10 +58,13 @@ export function subscribeMyTimeLogs({ user, onData, onError }) {
     return () => {};
   }
 
-  clauses.push(orderBy("startTime", "desc"));
+  const ordering = orderBy("startTime", "desc");
 
   try {
-    const q = query(ref, ...clauses);
+    const q =
+      identityFilters.length === 1
+        ? query(ref, identityFilters[0], ordering)
+        : query(ref, or(...identityFilters), ordering);
     return onSnapshot(
       q,
       (snap) => {
