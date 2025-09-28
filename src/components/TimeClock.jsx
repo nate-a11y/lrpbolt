@@ -22,10 +22,13 @@ import {
   subscribeMyTimeLogs,
   startTimeLog,
   endTimeLog,
+  patchTimeLog,
 } from "@/services/timeLogs";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
-import { isActiveRow, formatDateTime, safeDuration } from "@/utils/time";
+import { isActiveRow, formatDateTime, safeDuration, dayjs } from "@/utils/time";
 import { getRowId as pickId } from "@/utils/timeLogMap";
+import { tsToDate } from "@/utils/fsTime";
+import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 const pulse = keyframes`
   0% { opacity: 1; }
@@ -62,6 +65,7 @@ export default function TimeClock({ setIsTracking }) {
   const [endBusy, setEndBusy] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [savingIds, setSavingIds] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -133,7 +137,103 @@ export default function TimeClock({ setIsTracking }) {
     }
   }, [activeRow]);
 
-  const columns = useMemo(() => buildTimeLogColumns(), []);
+  const parseEditDate = useCallback((value) => {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? value : null;
+    }
+    if (dayjs.isDayjs?.(value)) {
+      const asDate = value.toDate();
+      return Number.isFinite(asDate?.getTime?.()) ? asDate : null;
+    }
+    const asDate = tsToDate(value);
+    return asDate && Number.isFinite(asDate.getTime()) ? asDate : null;
+  }, []);
+
+  const hasDateChanged = useCallback((next, prev) => {
+    if (!next && !prev) return false;
+    if (!next || !prev) return true;
+    return next.getTime() !== prev.getTime();
+  }, []);
+
+  const markSaving = useCallback((id, saving) => {
+    if (!id) return;
+    setSavingIds((prev) => {
+      const exists = prev.includes(id);
+      if (saving) {
+        return exists ? prev : [...prev, id];
+      }
+      return exists ? prev.filter((item) => item !== id) : prev;
+    });
+  }, []);
+
+  const columns = useMemo(() => {
+    const base = buildTimeLogColumns();
+    return base.map((col) => {
+      if (col.field === "clockIn") {
+        return {
+          ...col,
+          type: "dateTime",
+          editable: true,
+          valueGetter: (params) => {
+            const source =
+              params?.row?.startTime ??
+              params?.row?.clockIn ??
+              params?.row?.loggedAt ??
+              null;
+            return parseEditDate(source);
+          },
+          valueFormatter: (params) =>
+            params?.value ? formatDateTime(params.value) : "N/A",
+          valueSetter: (params) => {
+            const next = { ...params.row };
+            const parsed = parseEditDate(params.value);
+            next.startTime = parsed;
+            next.clockIn = parsed;
+            return next;
+          },
+          sortComparator: (v1, v2, cellParams1, cellParams2) =>
+            timestampSortComparator(
+              cellParams1?.row?.startTime ??
+                cellParams1?.row?.clockIn ??
+                cellParams1?.row?.loggedAt ??
+                null,
+              cellParams2?.row?.startTime ??
+                cellParams2?.row?.clockIn ??
+                cellParams2?.row?.loggedAt ??
+                null,
+            ),
+        };
+      }
+      if (col.field === "clockOut") {
+        return {
+          ...col,
+          type: "dateTime",
+          editable: true,
+          valueGetter: (params) => {
+            const source =
+              params?.row?.endTime ?? params?.row?.clockOut ?? null;
+            return parseEditDate(source);
+          },
+          valueFormatter: (params) =>
+            params?.value ? formatDateTime(params.value) : "—",
+          valueSetter: (params) => {
+            const next = { ...params.row };
+            const parsed = parseEditDate(params.value);
+            next.endTime = parsed;
+            next.clockOut = parsed;
+            return next;
+          },
+          sortComparator: (v1, v2, cellParams1, cellParams2) =>
+            timestampSortComparator(
+              cellParams1?.row?.endTime ?? cellParams1?.row?.clockOut ?? null,
+              cellParams2?.row?.endTime ?? cellParams2?.row?.clockOut ?? null,
+            ),
+        };
+      }
+      return col;
+    });
+  }, [parseEditDate]);
   const getRowId = useCallback(
     (row) => row?.id || row?.docId || row?._id || null,
     [],
@@ -148,6 +248,110 @@ export default function TimeClock({ setIsTracking }) {
       return `${email}-${startKey}`;
     },
     [getRowId],
+  );
+
+  const isCellEditable = useCallback(
+    (params) => {
+      if (!params?.row) return false;
+      if (loading) return false;
+      if (params.field !== "clockIn" && params.field !== "clockOut") {
+        return false;
+      }
+      const id = resolveRowId(params.row);
+      if (!id) return false;
+      return !savingIds.includes(id);
+    },
+    [loading, resolveRowId, savingIds],
+  );
+
+  const applyLocalUpdate = useCallback(
+    (id, updater) => {
+      setRows((prev) => {
+        if (!Array.isArray(prev) || prev.length === 0) return prev;
+        let changed = false;
+        const next = prev.map((row) => {
+          const rowId = resolveRowId(row);
+          if (rowId !== id) return row;
+          changed = true;
+          return typeof updater === "function" ? updater(row) : updater;
+        });
+        return changed ? next : prev;
+      });
+    },
+    [resolveRowId],
+  );
+
+  const handleProcessRowUpdate = useCallback(
+    async (newRow, oldRow) => {
+      const id = resolveRowId(newRow);
+      if (!id) return oldRow;
+
+      const newStart = parseEditDate(
+        newRow?.startTime ?? newRow?.clockIn ?? newRow?.loggedAt ?? null,
+      );
+      const prevStart = parseEditDate(
+        oldRow?.startTime ?? oldRow?.clockIn ?? oldRow?.loggedAt ?? null,
+      );
+      const newEnd = parseEditDate(newRow?.endTime ?? newRow?.clockOut ?? null);
+      const prevEnd = parseEditDate(
+        oldRow?.endTime ?? oldRow?.clockOut ?? null,
+      );
+
+      const startChanged = hasDateChanged(newStart, prevStart);
+      const endChanged = hasDateChanged(newEnd, prevEnd);
+
+      if (!startChanged && !endChanged) {
+        return oldRow;
+      }
+
+      markSaving(id, true);
+
+      const updates = {};
+      if (startChanged) updates.startTime = newStart;
+      if (endChanged) updates.endTime = newEnd;
+
+      try {
+        await patchTimeLog(id, updates);
+
+        const nextRow = {
+          ...oldRow,
+          ...newRow,
+          startTime: startChanged ? newStart : (oldRow.startTime ?? null),
+          clockIn: startChanged ? newStart : (oldRow.clockIn ?? null),
+          endTime: endChanged ? newEnd : (oldRow.endTime ?? null),
+          clockOut: endChanged ? newEnd : (oldRow.clockOut ?? null),
+        };
+
+        if (newStart && newEnd && newEnd.getTime() >= newStart.getTime()) {
+          nextRow.duration = Math.floor(
+            (newEnd.getTime() - newStart.getTime()) / 60000,
+          );
+        }
+
+        applyLocalUpdate(id, nextRow);
+
+        setSnackbarMessage("Time log updated.");
+        setSnackbarOpen(true);
+
+        return nextRow;
+      } catch (err) {
+        logError(err, { where: "TimeClock.processRowUpdate", id });
+        setSnackbarMessage("Failed to update time log.");
+        setSnackbarOpen(true);
+        return oldRow;
+      } finally {
+        markSaving(id, false);
+      }
+    },
+    [
+      applyLocalUpdate,
+      hasDateChanged,
+      markSaving,
+      parseEditDate,
+      resolveRowId,
+      setSnackbarMessage,
+      setSnackbarOpen,
+    ],
   );
 
   const active = activeRow || null;
@@ -331,6 +535,10 @@ export default function TimeClock({ setIsTracking }) {
           loading={loading}
           density="compact"
           disableRowSelectionOnClick
+          isCellEditable={isCellEditable}
+          processRowUpdate={handleProcessRowUpdate}
+          editMode="row"
+          experimentalFeatures={{ newEditingApi: true }}
           slots={{ toolbar: GridToolbar, noRowsOverlay: NoSessionsOverlay }}
           slotProps={{
             toolbar: {
