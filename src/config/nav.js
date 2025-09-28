@@ -37,8 +37,8 @@ export const NAV_ITEMS = [
   {
     id: "directory",
     to: "/directory",
-    label: "Driver Directory",
-    icon: "People",
+    label: "Directory & Escalations",
+    icon: "ContactEmergency",
     rolesVisible: ["admin", "driver", "shootout"],
   },
   {
@@ -47,13 +47,6 @@ export const NAV_ITEMS = [
     label: "Calendar / Moovs",
     icon: "CalendarMonth",
     rolesVisible: ["admin", "driver"],
-  },
-  {
-    id: "escalation",
-    to: "/escalation",
-    label: "Escalation Guide",
-    icon: "Warning",
-    rolesVisible: ["admin", "driver", "shootout"],
   },
   {
     id: "vehicle-calendar",

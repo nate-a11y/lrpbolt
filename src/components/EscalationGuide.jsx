@@ -80,7 +80,7 @@ function normalizeContacts(input = []) {
   });
 }
 
-export default function EscalationGuide(props) {
+export default function EscalationGuide(props = {}) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
 
@@ -115,19 +115,36 @@ export default function EscalationGuide(props) {
 
   const loading = Boolean(props?.loading);
   const error = props?.error ?? null;
+  const showHeading = props?.showHeading !== false;
+  const sxProp = props?.sx ?? null;
+
+  const baseSx = useMemo(
+    () => ({
+      px: { xs: 1.5, sm: 2, md: 3 },
+      py: { xs: 2, md: 3 },
+      maxWidth: 960,
+      mx: "auto",
+    }),
+    [],
+  );
+
+  const mergedSx = useMemo(() => {
+    if (Array.isArray(sxProp)) {
+      return [baseSx, ...sxProp];
+    }
+    if (sxProp) {
+      return [baseSx, sxProp];
+    }
+    return [baseSx];
+  }, [baseSx, sxProp]);
 
   return (
-    <Box
-      sx={{
-        px: { xs: 1.5, sm: 2, md: 3 },
-        py: { xs: 2, md: 3 },
-        maxWidth: 960,
-        mx: "auto",
-      }}
-    >
-      <Typography variant="h5" sx={{ mb: 2, color: "#4cbb17" }}>
-        Who to Contact & When
-      </Typography>
+    <Box sx={mergedSx}>
+      {showHeading ? (
+        <Typography variant="h5" sx={{ mb: 2, color: "#4cbb17" }}>
+          Who to Contact & When
+        </Typography>
+      ) : null}
 
       <TextField
         fullWidth
