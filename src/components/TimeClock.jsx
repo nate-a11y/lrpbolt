@@ -36,7 +36,8 @@ import {
   tsToDayjs,
 } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError";
-import { subscribeTimeLogs, logTime, endSession } from "@/services/timeLogs";
+import { subscribeTimeLogs } from "@/hooks/firestore";
+import { logTime, endSession } from "@/services/timeLogs";
 import { enrichDriverNames } from "@/services/normalizers";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useRole } from "@/hooks";
@@ -162,13 +163,11 @@ export default function TimeClock({ driver, setIsTracking }) {
     setLoading(true);
     setLoadError(null);
 
-    const criteria = { limit: 200 };
-
     const unsubscribe = subscribeTimeLogs(
-      criteria,
       async (rows) => {
         try {
-          const enriched = await enrichDriverNames(rows || []);
+          const limited = (rows || []).slice(0, 200);
+          const enriched = await enrichDriverNames(limited);
           if (!mountedRef.current) return;
           const normalized = (enriched || []).map((row) => {
             const email = row?.driverEmail || row?.userEmail || "";
@@ -205,10 +204,29 @@ export default function TimeClock({ driver, setIsTracking }) {
               durationMinutes: durationMins,
             };
           });
-          setSessions(projectSessionsForViewer(normalized));
+          const toMillis = (value) => {
+            if (!value) return 0;
+            if (typeof value?.toMillis === "function") return value.toMillis();
+            if (typeof value?.seconds === "number") {
+              const nanos = Number(value?.nanoseconds) || 0;
+              return value.seconds * 1000 + Math.floor(nanos / 1e6);
+            }
+            if (value instanceof Date) return value.getTime();
+            if (typeof value === "number") return value;
+            if (typeof value?.toDate === "function") {
+              const date = value.toDate();
+              return date instanceof Date ? date.getTime() : 0;
+            }
+            return 0;
+          };
+          const sorted = normalized.sort(
+            (a, b) => toMillis(b?.startTime) - toMillis(a?.startTime),
+          );
+          setSessions(projectSessionsForViewer(sorted));
+          setLoadError(null);
           setLoading(false);
         } catch (err) {
-          logError(err, { where: "TimeClock.subscribe.enrich", criteria });
+          logError(err, { where: "TimeClock.subscribe.enrich" });
           if (!mountedRef.current) return;
           setLoadError(err);
           setLoading(false);
@@ -216,7 +234,7 @@ export default function TimeClock({ driver, setIsTracking }) {
       },
       (err) => {
         if (!mountedRef.current) return;
-        logError(err, { where: "TimeClock.subscribe.listener", criteria });
+        logError(err, { where: "TimeClock.subscribe.listener" });
         setLoadError(err);
         setLoading(false);
       },
