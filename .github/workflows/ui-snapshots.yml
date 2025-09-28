@@ -1,0 +1,53 @@
+name: UI Screenshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "playwright.config.js"
+      - "tests/**"
+      - "package.json"
+      - "vite.config.*"
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright
+        run: npm run test:ui:install
+
+      - name: Build
+        run: npm run build
+
+      - name: Serve (background)
+        run: npx serve -s dist -l 4173 &
+      
+      - name: Run tests (use preview URL)
+        env:
+          PW_BASE_URL: ${{ secrets.PW_BASE_URL || 'http://localhost:4173' }}
+          CI_LOGIN_EMAIL: ${{ secrets.CI_LOGIN_EMAIL }}
+          CI_LOGIN_PASSWORD: ${{ secrets.CI_LOGIN_PASSWORD }}
+        run: npm run test:ui
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-screenshots
+          path: |
+            playwright/screenshots/**
+            playwright-report/**
+          retention-days: 7

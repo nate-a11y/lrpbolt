@@ -22,3 +22,8 @@ yarn-error.log*
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Playwright artifacts
+playwright/.auth/
+playwright/screenshots/
+playwright-report/
