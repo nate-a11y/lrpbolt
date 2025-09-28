@@ -14,13 +14,6 @@ export const NAV_ITEMS = [
     rolesVisible: ["admin", "driver"],
   },
   {
-    id: "shootout",
-    to: "/shootout",
-    label: "Shootout Ride & Time Tracker",
-    icon: "AirportShuttle",
-    rolesVisible: ["admin", "driver", "shootout"],
-  },
-  {
     id: "info",
     to: "/info",
     label: "Drop-Off Info",
