@@ -26,6 +26,7 @@ import { useColorMode } from "../context/ColorModeContext.jsx";
 import { canSeeNav } from "../utils/roleGuards";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
+const QUICK_LINK_IDS = new Set(["admin-user-manager", "admin-notifications"]);
 
 function MainNav({
   variant = "permanent",
@@ -42,6 +43,19 @@ function MainNav({
     () => NAV_ITEMS.filter((it) => canSeeNav(it.id, role)),
     [role],
   );
+
+  const { primaryItems, quickLinkItems } = useMemo(() => {
+    const primary = [];
+    const quick = [];
+    items.forEach((item) => {
+      if (QUICK_LINK_IDS.has(item.id)) {
+        quick.push(item);
+      } else {
+        primary.push(item);
+      }
+    });
+    return { primaryItems: primary, quickLinkItems: quick };
+  }, [items]);
 
   const drawerSx = {
     width: DRAWER_WIDTH,
@@ -70,15 +84,34 @@ function MainNav({
   const ExitIcon = iconMap.ExitToApp || iconMap.ChevronRight;
   const versionLabel = APP_VERSION ? `v${APP_VERSION}` : "vdev";
 
+  const handleNavigate = useCallback(
+    (to) => {
+      navigate(to);
+      if (variant === "temporary" && onClose) onClose();
+    },
+    [navigate, onClose, variant],
+  );
+
   const handleSettingsClick = useCallback(() => {
-    navigate("/settings");
+    handleNavigate("/settings");
+  }, [handleNavigate]);
+
+  const handleQuickLinkClick = useCallback(
+    (to) => {
+      handleNavigate(to);
+    },
+    [handleNavigate],
+  );
+
+  const handleSignOut = useCallback(() => {
     if (variant === "temporary" && onClose) onClose();
-  }, [navigate, onClose, variant]);
+    if (signOut) signOut();
+  }, [onClose, signOut, variant]);
 
   const drawerContent = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <List sx={{ py: 1 }}>
-        {items.map(({ id, to, label, icon }) => {
+        {primaryItems.map(({ id, to, label, icon }) => {
           const Icon = iconMap[icon] || iconMap.ChevronRight;
           const selected = location.pathname === to;
           return (
@@ -175,15 +208,40 @@ function MainNav({
               <SettingsIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <ListItemButton
-            onClick={signOut}
-            sx={{ flex: "1 1 160px", borderRadius: 1 }}
-          >
-            <ListItemIcon>
-              <ExitIcon />
-            </ListItemIcon>
-            <ListItemText primary="Sign Out" />
-          </ListItemButton>
+          {quickLinkItems.map(({ id, to, label, icon }) => {
+            const Icon = iconMap[icon] || iconMap.ChevronRight;
+            const active = location.pathname.startsWith(to);
+            return (
+              <Tooltip title={label} key={id}>
+                <IconButton
+                  size="small"
+                  color={active ? "primary" : "inherit"}
+                  onClick={() => handleQuickLinkClick(to)}
+                  aria-label={label}
+                  sx={{
+                    bgcolor: active
+                      ? (t) => t.palette.action.selected
+                      : undefined,
+                    "&:hover": {
+                      bgcolor: (t) => t.palette.action.hover,
+                    },
+                  }}
+                >
+                  <Icon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            );
+          })}
+          <Tooltip title="Sign Out">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={handleSignOut}
+              aria-label="Sign out"
+            >
+              <ExitIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Box>
     </Box>
