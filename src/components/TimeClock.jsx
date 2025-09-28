@@ -442,7 +442,11 @@ export default function TimeClock({ driver, setIsTracking }) {
         minWidth: 160,
         flex: 1,
         valueGetter: (params) => params?.row?.startTime ?? null,
-        valueFormatter: ({ value }) => formatClock(value).label,
+        valueFormatter: (params) => {
+          const safeValue = params?.value ?? null;
+          const { label } = formatClock(safeValue);
+          return label || "N/A";
+        },
         renderCell: (params) => {
           const { label, relative } = formatClock(params?.value);
           if (!label || label === "N/A") return "N/A";
@@ -460,7 +464,11 @@ export default function TimeClock({ driver, setIsTracking }) {
         minWidth: 160,
         flex: 1,
         valueGetter: (params) => params?.row?.endTime ?? null,
-        valueFormatter: ({ value }) => formatClock(value).label,
+        valueFormatter: (params) => {
+          const safeValue = params?.value ?? null;
+          const { label } = formatClock(safeValue);
+          return label || "N/A";
+        },
         renderCell: (params) => {
           const { label, relative } = formatClock(params?.value);
           if (!label || label === "N/A") return "N/A";
