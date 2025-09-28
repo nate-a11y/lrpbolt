@@ -102,12 +102,29 @@ export async function createTimeLog(data) {
   }
 }
 
-export function subscribeTimeLogs(onNext, onError, options = {}) {
+export function subscribeTimeLogs(arg1, arg2, arg3) {
+  let criteria = {};
+  let onNext = null;
+  let onError = null;
+
+  if (typeof arg1 === "function") {
+    onNext = arg1;
+    onError = typeof arg2 === "function" ? arg2 : null;
+    criteria = arg3 || {};
+  } else {
+    criteria = arg1 || {};
+    onNext = typeof arg2 === "function" ? arg2 : null;
+    onError = typeof arg3 === "function" ? arg3 : null;
+  }
+
   try {
-    const { driverEmail, limit = 200 } = options || {};
+    const { driverEmail = null, userId = null, limit = 200 } = criteria || {};
     const constraints = [];
-    if (driverEmail) {
-      constraints.push(where("userEmail", "==", driverEmail.toLowerCase()));
+    if (userId) {
+      constraints.push(where("userId", "==", userId));
+    } else if (driverEmail) {
+      const emailFilter = String(driverEmail).toLowerCase();
+      constraints.push(where("userEmail", "==", emailFilter));
     }
     constraints.push(orderBy("startTime", "desc"));
     if (Number.isFinite(limit) && limit > 0) {
@@ -116,14 +133,44 @@ export function subscribeTimeLogs(onNext, onError, options = {}) {
     const q = query(collection(db, "timeLogs"), ...constraints);
     return onSnapshot(
       q,
-      (snap) => onNext(mapSnapshotToRows("timeLogs", snap)),
+      (snap) => {
+        const rows = mapSnapshotToRows("timeLogs", snap).map((row) => {
+          const email = row?.driverEmail || row?.userEmail || "";
+          const derivedUserId =
+            row?.userId || row?.driverId || row?.uid || null;
+          const driverName =
+            row?.driverName ||
+            row?.driver ||
+            row?.displayName ||
+            row?.name ||
+            (typeof email === "string" && email.includes("@")
+              ? email.split("@")[0]
+              : email) ||
+            "";
+          return {
+            ...row,
+            id:
+              row?.id ||
+              row?.docId ||
+              row?._id ||
+              `${derivedUserId || email || "unknown"}-${
+                row?.startTime?.seconds ?? row?.startTime ?? "start"
+              }`,
+            userId: derivedUserId,
+            driverName: driverName || null,
+            startTime: row?.startTime ?? null,
+            endTime: row?.endTime ?? null,
+          };
+        });
+        onNext?.(rows);
+      },
       (err) => {
-        logError(err, { where: "timeLogs.subscribeTimeLogs" });
+        logError(err, { where: "timeLogs.subscribeTimeLogs", criteria });
         onError?.(err);
       },
     );
   } catch (err) {
-    logError(err, { where: "timeLogs.subscribeTimeLogs" });
+    logError(err, { where: "timeLogs.subscribeTimeLogs", criteria });
     onError?.(err);
     return () => {};
   }
@@ -135,6 +182,8 @@ export async function logTime(payload = {}) {
     driverId: payload.driverId ?? null,
     driverEmail,
     userEmail: driverEmail,
+    userId: payload.userId ?? payload.uid ?? null,
+    driverName: payload.driverName ?? null,
     rideId: payload.rideId ?? null,
     mode: payload.mode ?? "RIDE",
     startTime:

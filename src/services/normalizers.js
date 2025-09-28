@@ -84,6 +84,8 @@ const TIMELOG_ALIASES = { drivername: "driver" };
 const TIMELOG_COERCE = {
   driverEmail: id,
   driver: id,
+  driverName: id,
+  userId: id,
   rideId: id,
   startTime: coerceTimestamp,
   endTime: coerceTimestamp,

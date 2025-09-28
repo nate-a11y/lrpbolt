@@ -71,7 +71,7 @@ export default function TimeClock({ driver, setIsTracking }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarError, setSnackbarError] = useState(null);
   const [lastEndedSessionRef, setLastEndedSessionRef] = useState(null);
-  const [driverFilter, setDriverFilter] = useState(null);
+  const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
   const [, setLiveTick] = useState(0);
 
@@ -89,6 +89,12 @@ export default function TimeClock({ driver, setIsTracking }) {
     setColumnVisibilityModel(baseModel);
   }, [isMobile]);
 
+  useEffect(() => {
+    if (!isAdmin) {
+      setSelectedDriverId(null);
+    }
+  }, [isAdmin]);
+
   const timezoneGuess = useMemo(() => {
     try {
       return dayjs.tz?.guess?.() || "UTC";
@@ -99,7 +105,7 @@ export default function TimeClock({ driver, setIsTracking }) {
   }, []);
 
   const formatClock = useCallback(
-    (timestamp, fallback = "N/A") => {
+    (timestamp, fallback = "—") => {
       // Convert timestamps via toDayjs before formatting.
       const parsed = toDayjs(timestamp);
       if (!parsed) return { label: fallback, relative: "" };
@@ -121,24 +127,64 @@ export default function TimeClock({ driver, setIsTracking }) {
   );
 
   useEffect(() => {
-    if (!user?.email) {
+    if (!isAdmin && !user?.uid) {
       setSessions([]);
       setLoading(false);
+      setLoadError(null);
       return undefined;
     }
 
     setLoading(true);
     setLoadError(null);
 
+    const criteria = { limit: 200 };
+    if (isAdmin) {
+      if (selectedDriverId) criteria.userId = selectedDriverId;
+    } else if (user?.uid) {
+      criteria.userId = user.uid;
+    }
+
     const unsubscribe = subscribeTimeLogs(
+      criteria,
       async (rows) => {
         try {
           const enriched = await enrichDriverNames(rows || []);
           if (!mountedRef.current) return;
-          setSessions(enriched);
+          const normalized = (enriched || []).map((row) => {
+            const email = row?.driverEmail || row?.userEmail || "";
+            const rowUserId = row?.userId || row?.driverId || row?.uid || null;
+            const fallbackFromEmail =
+              typeof email === "string" && email.includes("@")
+                ? email.split("@")[0]
+                : email;
+            const resolvedName =
+              row?.driverName ||
+              row?.driver ||
+              (rowUserId && rowUserId === user?.uid && user?.displayName) ||
+              fallbackFromEmail ||
+              (!isAdmin && user?.displayName ? user.displayName : "") ||
+              "Unknown";
+
+            return {
+              ...row,
+              id:
+                row?.id ||
+                row?.docId ||
+                row?._id ||
+                `${rowUserId || email || "unknown"}-${
+                  row?.startTime?.seconds ?? row?.startTime ?? "start"
+                }`,
+              userId: rowUserId,
+              driverEmail: email,
+              driverName: resolvedName,
+              startTime: row?.startTime ?? null,
+              endTime: row?.endTime ?? null,
+            };
+          });
+          setSessions(normalized);
           setLoading(false);
         } catch (err) {
-          logError(err, { where: "TimeClock.subscribe.enrich" });
+          logError(err, { where: "TimeClock.subscribe.enrich", criteria });
           if (!mountedRef.current) return;
           setLoadError(err);
           setLoading(false);
@@ -146,94 +192,108 @@ export default function TimeClock({ driver, setIsTracking }) {
       },
       (err) => {
         if (!mountedRef.current) return;
+        logError(err, { where: "TimeClock.subscribe.listener", criteria });
         setLoadError(err);
         setLoading(false);
       },
-      !isAdmin && user?.email
-        ? { driverEmail: user.email, limit: 200 }
-        : { limit: 200 },
     );
 
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [isAdmin, user?.email]);
+  }, [isAdmin, selectedDriverId, user?.displayName, user?.uid]);
 
   const driverOptions = useMemo(() => {
     if (!isAdmin) return [];
     const map = new Map();
     (sessions || []).forEach((row) => {
-      const email =
-        row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
-      if (!email || map.has(email)) return;
-      const labelBase =
-        row?.driver ||
-        row?.driverName ||
-        (email.includes("@") ? email.split("@")[0] : email);
-      map.set(email, {
-        label: labelBase,
-        value: email,
-        helper: row?.driverEmail || row?.userEmail,
+      const uid = row?.userId;
+      if (!uid || map.has(uid)) return;
+      const email = row?.driverEmail || row?.userEmail || "";
+      const baseName =
+        row?.driverName && row.driverName !== "Unknown"
+          ? row.driverName
+          : row?.driver || null;
+      const fallbackName =
+        baseName ||
+        (typeof email === "string" && email.includes("@")
+          ? email.split("@")[0]
+          : email) ||
+        "Unknown";
+      map.set(uid, {
+        id: uid,
+        name: fallbackName,
+        email,
       });
     });
     return Array.from(map.values()).sort((a, b) =>
-      a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
   }, [isAdmin, sessions]);
 
+  const selectedDriverOption = useMemo(() => {
+    if (!selectedDriverId) return null;
+    return (
+      driverOptions.find((option) => option.id === selectedDriverId) || null
+    );
+  }, [driverOptions, selectedDriverId]);
+
   const filteredSessions = useMemo(() => {
     if (!isAdmin) return sessions;
-    if (!driverFilter?.value) return sessions;
-    return (sessions || []).filter((row) => {
-      const email =
-        row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
-      return email === driverFilter.value;
-    });
-  }, [driverFilter, isAdmin, sessions]);
+    if (!selectedDriverId) return sessions;
+    return (sessions || []).filter((row) => row?.userId === selectedDriverId);
+  }, [isAdmin, selectedDriverId, sessions]);
 
   const resolveRowId = useCallback((row) => {
     if (!row) return "missing-row";
-    return (
-      row.id ||
-      row.docId ||
-      row._id ||
-      `${row.driverEmail || row.userEmail || "unknown"}-${
-        row.startTime?.seconds ?? row.startTime ?? "start"
-      }`
-    );
+    if (row.id) return row.id;
+    const email = row?.driverEmail || row?.userEmail || "unknown";
+    const startKey = row?.startTime?.seconds ?? row?.startTime ?? "start";
+    return `${email}-${startKey}`;
   }, []);
 
   const gridRows = useMemo(() => {
     return (filteredSessions || []).map((row) => {
       const driverEmail = row?.driverEmail || row?.userEmail || "";
-      const driverName =
-        row?.driver ||
-        row?.driverName ||
-        (typeof driverEmail === "string" && driverEmail.includes("@")
+      const rowUserId = row?.userId || row?.driverId || row?.uid || null;
+      const fallbackFromEmail =
+        typeof driverEmail === "string" && driverEmail.includes("@")
           ? driverEmail.split("@")[0]
-          : driverEmail) ||
+          : driverEmail;
+      const resolvedName =
+        row?.driverName ||
+        row?.driver ||
+        (rowUserId && rowUserId === user?.uid && user?.displayName) ||
+        fallbackFromEmail ||
+        (!isAdmin && user?.displayName ? user.displayName : "") ||
         "Unknown";
       return {
         ...row,
         id: resolveRowId(row),
+        userId: rowUserId,
         driverEmail,
-        driverName,
+        driverName: resolvedName,
       };
     });
-  }, [filteredSessions, resolveRowId]);
+  }, [filteredSessions, isAdmin, resolveRowId, user?.displayName, user?.uid]);
 
   const activeSession = useMemo(() => {
-    if (!user?.email) return null;
-    const email = user.email.toLowerCase();
+    if (!user?.email && !user?.uid) return null;
+    const email = user?.email?.toLowerCase?.() || "";
+    const uid = user?.uid || null;
     return (
       (sessions || []).find((row) => {
         const rowEmail =
           row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
+        const rowUserId = row?.userId || row?.driverId || null;
         const sameDriverId = driver && row?.driverId && row.driverId === driver;
-        return !row?.endTime && (rowEmail === email || sameDriverId);
+        return (
+          !row?.endTime &&
+          ((uid && rowUserId === uid) || rowEmail === email || sameDriverId)
+        );
       }) || null
     );
-  }, [driver, sessions, user?.email]);
+  }, [driver, sessions, user?.email, user?.uid]);
 
   useEffect(() => {
     if (typeof setIsTracking === "function") {
@@ -286,7 +346,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         headerName: "Driver",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => params?.row?.driverName || "N/A",
+        valueGetter: (params) => params?.row?.driverName || "Unknown",
       },
       {
         field: "rideId",
@@ -298,7 +358,7 @@ export default function TimeClock({ driver, setIsTracking }) {
           const mode = params?.row?.mode;
           if (mode === "N/A") return "Non-Ride Task";
           if (mode === "MULTI") return "Multi Ride";
-          return "N/A";
+          return "—";
         },
       },
       {
@@ -309,7 +369,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         valueGetter: (params) => formatClock(params?.row?.startTime).label,
         renderCell: (params) => {
           const { label, relative } = formatClock(params?.row?.startTime);
-          if (label === "N/A") return label;
+          if (!label || label === "—") return "—";
           return (
             <Tooltip title={relative || ""} placement="top">
               <span>{label}</span>
@@ -329,7 +389,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         headerName: "Duration",
         minWidth: 120,
         valueGetter: (params) =>
-          formatDuration(params?.row?.startTime, params?.row?.endTime) || "N/A",
+          formatDuration(params?.row?.startTime, params?.row?.endTime),
       },
     ],
     [formatClock],
@@ -356,6 +416,8 @@ export default function TimeClock({ driver, setIsTracking }) {
       await logTime({
         driverId: driver ?? null,
         driverEmail: user.email,
+        userId: user?.uid ?? null,
+        driverName: user?.displayName ?? null,
         rideId: mode === "RIDE" ? normalizedRideId : null,
         mode,
       });
@@ -377,6 +439,7 @@ export default function TimeClock({ driver, setIsTracking }) {
     multiRide,
     nonRideTask,
     rideId,
+    user?.displayName,
     user?.email,
     user?.uid,
   ]);
@@ -568,7 +631,7 @@ export default function TimeClock({ driver, setIsTracking }) {
             {activeSession ? (
               <Stack spacing={0.5}>
                 <Typography variant="body2" color="text.secondary">
-                  Active since {activeStart || "N/A"}
+                  Active since {activeStart || "—"}
                 </Typography>
                 <Typography variant="body1" fontWeight={600}>
                   Duration: {activeDurationText}
@@ -697,12 +760,10 @@ export default function TimeClock({ driver, setIsTracking }) {
         <Autocomplete
           size="small"
           options={driverOptions}
-          value={driverFilter}
-          onChange={(_event, value) => setDriverFilter(value)}
-          getOptionLabel={(option) => option?.label || ""}
-          isOptionEqualToValue={(option, value) =>
-            option?.value === value?.value
-          }
+          value={selectedDriverOption}
+          onChange={(_event, option) => setSelectedDriverId(option?.id ?? null)}
+          getOptionLabel={(option) => option?.name || ""}
+          isOptionEqualToValue={(option, value) => option?.id === value?.id}
           clearOnEscape
           renderInput={(params) => (
             <TextField
@@ -724,7 +785,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         <LrpGrid
           rows={gridRows}
           columns={columns}
-          getRowId={resolveRowId}
+          getRowId={(row) => row.id}
           disableRowSelectionOnClick
           autoHeight={isMobile}
           loading={loading}
