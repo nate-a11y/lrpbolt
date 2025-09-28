@@ -10,10 +10,11 @@ import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import { tsToDate } from "@/utils/fsTime";
-import { formatDateTime } from "@/utils/time";
+import { formatDateTime, formatClockOutOrDash } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
-import { formatTz, durationHm } from "@/utils/timeSafe";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
+import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared";
+import { getRowId as pickId } from "@/utils/timeLogMap";
 
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -51,8 +52,13 @@ export default function EntriesTab() {
     if (!id) return oldRow;
 
     // Build update payload (let the service convert Dates->Timestamp)
+    const driverName =
+      typeof newRow.driverName === "string" && newRow.driverName.trim() !== ""
+        ? newRow.driverName
+        : (newRow.driver ?? null);
     const updates = {
-      driver: newRow.driver ?? null,
+      driver: driverName ?? null,
+      driverName: driverName ?? null,
       rideId: newRow.rideId ?? null,
       note: newRow.note ?? null,
     };
@@ -77,54 +83,16 @@ export default function EntriesTab() {
         duration = Math.max(0, minutesBetween(start, end) || 0);
       }
 
-      return { ...newRow, duration };
+      return {
+        ...newRow,
+        duration,
+        driverName: driverName ?? newRow.driverName,
+      };
     } catch (e) {
       logError(e, `EntriesTab.processRowUpdate:${id}`);
       return oldRow;
     }
   }, []);
-
-  const overrides = useMemo(
-    () => ({
-      driver: { editable: true },
-      rideId: { editable: true },
-      startTime: {
-        editable: true,
-        type: "dateTime",
-        valueGetter: (_, row) => tsToDate(row?.startTime),
-        valueFormatter: (value) =>
-          value instanceof Date ? formatTz(value) : "N/A",
-        valueParser: (v) => (v ? new Date(v) : null),
-        sortComparator: timestampSortComparator,
-      },
-      endTime: {
-        editable: true,
-        type: "dateTime",
-        valueGetter: (_, row) => tsToDate(row?.endTime),
-        valueFormatter: (value) =>
-          value instanceof Date ? formatTz(value) : "N/A",
-        valueParser: (v) => (v ? new Date(v) : null),
-        sortComparator: timestampSortComparator,
-      },
-      duration: {
-        editable: false,
-        type: "string",
-        valueGetter: (_, row) =>
-          durationHm(tsToDate(row?.startTime), tsToDate(row?.endTime)),
-      },
-      loggedAt: {
-        editable: true,
-        type: "dateTime",
-        valueGetter: (_, row) => tsToDate(row?.loggedAt),
-        valueFormatter: (value) =>
-          value instanceof Date ? formatDateTime(value) : "N/A",
-        valueParser: (v) => (v ? new Date(v) : null),
-        sortComparator: timestampSortComparator,
-      },
-      note: { editable: true },
-    }),
-    [],
-  );
 
   const actionsColumn = useMemo(
     () =>
@@ -136,6 +104,129 @@ export default function EntriesTab() {
       }),
     [apiRef, rowModesModel, handleDelete],
   );
+
+  const sharedColumns = useMemo(() => buildTimeLogColumns(), []);
+
+  const sharedAdminColumns = useMemo(() => {
+    return sharedColumns.map((col) => {
+      if (col.field === "driverName") {
+        return {
+          ...col,
+          editable: true,
+          valueGetter: (params) =>
+            params?.row?.driverName ?? params?.row?.driver ?? "N/A",
+          valueSetter: (params) => {
+            const next = { ...params.row };
+            next.driverName = params.value ?? "";
+            next.driver = params.value ?? null;
+            return next;
+          },
+        };
+      }
+      if (col.field === "rideId") {
+        return {
+          ...col,
+          editable: true,
+          valueGetter: (params) => params?.row?.rideId ?? "N/A",
+          valueSetter: (params) => {
+            const next = { ...params.row };
+            next.rideId = params.value ?? null;
+            return next;
+          },
+        };
+      }
+      if (col.field === "clockIn") {
+        return {
+          ...col,
+          type: "dateTime",
+          editable: true,
+          valueGetter: (params) =>
+            params?.row?.startTime instanceof Date
+              ? params.row.startTime
+              : tsToDate(params?.row?.startTime),
+          valueFormatter: (params) =>
+            params?.value ? formatDateTime(params.value) : "N/A",
+          valueSetter: (params) => {
+            const next = { ...params.row };
+            next.startTime = params.value ?? null;
+            return next;
+          },
+          sortComparator: (v1, v2, cellParams1, cellParams2) =>
+            timestampSortComparator(
+              cellParams1?.row?.startTime,
+              cellParams2?.row?.startTime,
+            ),
+        };
+      }
+      if (col.field === "clockOut") {
+        return {
+          ...col,
+          type: "dateTime",
+          editable: true,
+          valueGetter: (params) =>
+            params?.row?.endTime instanceof Date
+              ? params.row.endTime
+              : tsToDate(params?.row?.endTime),
+          valueFormatter: (params) =>
+            params?.value ? formatClockOutOrDash(params.value) : "—",
+          valueSetter: (params) => {
+            const next = { ...params.row };
+            next.endTime = params.value ?? null;
+            return next;
+          },
+          sortComparator: (v1, v2, cellParams1, cellParams2) =>
+            timestampSortComparator(
+              cellParams1?.row?.endTime,
+              cellParams2?.row?.endTime,
+            ),
+        };
+      }
+      return col;
+    });
+  }, [sharedColumns]);
+
+  const columns = useMemo(() => {
+    const extras = [
+      {
+        field: "loggedAt",
+        headerName: "Logged At",
+        minWidth: 180,
+        type: "dateTime",
+        editable: true,
+        valueGetter: (params) =>
+          params?.row?.loggedAt instanceof Date
+            ? params.row.loggedAt
+            : tsToDate(params?.row?.loggedAt),
+        valueFormatter: (params) =>
+          params?.value ? formatDateTime(params.value) : "N/A",
+        valueSetter: (params) => {
+          const next = { ...params.row };
+          next.loggedAt = params.value ?? null;
+          return next;
+        },
+        sortComparator: (v1, v2, cellParams1, cellParams2) =>
+          timestampSortComparator(
+            cellParams1?.row?.loggedAt,
+            cellParams2?.row?.loggedAt,
+          ),
+      },
+      {
+        field: "note",
+        headerName: "Note",
+        minWidth: 200,
+        flex: 1,
+        editable: true,
+        valueGetter: (params) => params?.row?.note ?? "",
+        valueFormatter: (params) => (params?.value ? params.value : "N/A"),
+        valueSetter: (params) => {
+          const next = { ...params.row };
+          next.note = params.value ?? "";
+          return next;
+        },
+      },
+    ];
+    return [...sharedAdminColumns, ...extras];
+  }, [sharedAdminColumns]);
 
   const handleRowEditStart = useCallback((params, event) => {
     event.defaultMuiPrevented = true;
@@ -182,7 +273,13 @@ export default function EntriesTab() {
     const endBound = endFilter?.toDate?.() ?? null;
 
     return (rows || []).filter((r) => {
-      const driverField = (r.driver ?? r.driverId ?? r.driverEmail ?? "")
+      const driverField = (
+        r.driverName ??
+        r.driver ??
+        r.driverId ??
+        r.driverEmail ??
+        ""
+      )
         .toString()
         .toLowerCase();
       const driverMatch = driverFilter
@@ -198,7 +295,7 @@ export default function EntriesTab() {
       const endMatch = endBound ? e && e.getTime() <= endBound.getTime() : true;
 
       const tokens = [
-        r.driver ?? r.driverId ?? r.driverEmail,
+        r.driverName ?? r.driver ?? r.driverId ?? r.driverEmail,
         r.rideId,
         formatDateTime(s),
         formatDateTime(e),
@@ -376,44 +473,16 @@ export default function EntriesTab() {
       >
         <SmartAutoGrid
           rows={safeRows}
-          headerMap={{
-            driver: "Driver",
-            driverEmail: "Driver Email",
-            rideId: "Ride ID",
-            startTime: "Clock In",
-            endTime: "Clock Out",
-            duration: "Duration (min)",
-            loggedAt: "Logged At",
-            note: "Note",
-            id: "id",
-            userEmail: "userEmail",
-            driverId: "driverId",
-            mode: "mode",
-          }}
-          order={[
-            "driver",
-            "driverEmail",
-            "rideId",
-            "startTime",
-            "endTime",
-            "duration",
-            "loggedAt",
-            "note",
-            "id",
-            "userEmail",
-            "driverId",
-            "mode",
-          ]}
-          // Hide only the truly internal fields
-          forceHide={["id", "userEmail", "driverId", "mode"]}
-          overrides={overrides}
+          columns={columns}
           actionsColumn={actionsColumn}
           loading={loading}
           editMode="row"
           rowModesModel={rowModesModel}
           onRowModesModelChange={(m) => setRowModesModel(m)}
           processRowUpdate={handleProcessRowUpdate}
-          onProcessRowUpdateError={(e) => console.error(e)}
+          onProcessRowUpdateError={(e) =>
+            logError(e, "EntriesTab.processRowUpdateError")
+          }
           onRowEditStart={handleRowEditStart}
           onRowEditStop={handleRowEditStop}
           apiRef={apiRef}
@@ -432,7 +501,12 @@ export default function EntriesTab() {
           }}
           pageSizeOptions={[15, 30, 60, 100]}
           getRowId={(r) =>
-            r?.id ?? r?.docId ?? r?._id ?? r?.uid ?? JSON.stringify(r)
+            pickId(r) ||
+            r?.id ||
+            r?.docId ||
+            r?._id ||
+            r?.uid ||
+            JSON.stringify(r)
           }
         />
         <ConfirmBulkDeleteDialog
