@@ -186,8 +186,10 @@ export default function TimeClock({ setIsTracking }) {
           valueFormatter: (params) =>
             params?.value ? formatDateTime(params.value) : "N/A",
           valueSetter: (params) => {
-            const next = { ...params.row };
-            const parsed = parseEditDate(params.value);
+            const baseRow =
+              params?.row && typeof params.row === "object" ? params.row : {};
+            const next = { ...baseRow };
+            const parsed = parseEditDate(params?.value ?? null);
             next.startTime = parsed;
             next.clockIn = parsed;
             return next;
@@ -218,8 +220,10 @@ export default function TimeClock({ setIsTracking }) {
           valueFormatter: (params) =>
             params?.value ? formatDateTime(params.value) : "—",
           valueSetter: (params) => {
-            const next = { ...params.row };
-            const parsed = parseEditDate(params.value);
+            const baseRow =
+              params?.row && typeof params.row === "object" ? params.row : {};
+            const next = { ...baseRow };
+            const parsed = parseEditDate(params?.value ?? null);
             next.endTime = parsed;
             next.clockOut = parsed;
             return next;
