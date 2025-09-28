@@ -104,11 +104,4 @@ export const NAV_ITEMS = [
     icon: "AddCircle",
     rolesVisible: ["admin"],
   },
-  {
-    id: "generate-ticket",
-    to: "/generate-ticket",
-    label: "Generate Ticket",
-    icon: "LocalActivity",
-    rolesVisible: ["admin"],
-  },
 ];

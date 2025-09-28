@@ -41,7 +41,6 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import WarningIcon from "@mui/icons-material/Warning";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
-import AppShortcutIcon from "@mui/icons-material/AppShortcut";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
@@ -126,12 +125,6 @@ const ALL_NAV_ITEMS = [
     label: "Add Ride",
     icon: <AddCircleOutlineIcon />,
     path: "/ride-entry",
-    admin: true,
-  },
-  {
-    label: "Generate Ticket",
-    icon: <AppShortcutIcon />,
-    path: "/generate-ticket",
     admin: true,
   },
 ];

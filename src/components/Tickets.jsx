@@ -1,6 +1,15 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Ticket grid with search, filters, preview, bulk ops
-import { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useCallback,
+  memo,
+  Suspense,
+  lazy,
+} from "react";
 import ReactDOM from "react-dom/client";
 import QRCode from "react-qr-code";
 import { toPng } from "html-to-image";
@@ -29,6 +38,7 @@ import {
   OutlinedInput,
   useTheme,
   useMediaQuery,
+  CircularProgress,
 } from "@mui/material";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -37,8 +47,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
 import EditIcon from "@mui/icons-material/Edit";
+import LocalActivityIcon from "@mui/icons-material/LocalActivity";
 import { motion } from "framer-motion";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { useSearchParams } from "react-router-dom";
 
 import { dayjs } from "@/utils/time";
 
@@ -60,6 +72,27 @@ import {
 } from "./grid/overlays.jsx";
 import PageContainer from "./PageContainer.jsx";
 import EditTicketDialog from "./EditTicketDialog.jsx";
+
+const TicketGenerator = lazy(() => import("./TicketGenerator.jsx"));
+
+function TabPanel({ children, value, tabKey }) {
+  return (
+    <Box
+      role="tabpanel"
+      hidden={value !== tabKey}
+      id={`tickets-tabpanel-${tabKey}`}
+      aria-labelledby={`tickets-tab-${tabKey}`}
+      sx={{ p: { xs: 1.5, sm: 2 } }}
+    >
+      {value === tabKey ? children : null}
+    </Box>
+  );
+}
+
+const getTabProps = (key) => ({
+  id: `tickets-tab-${key}`,
+  "aria-controls": `tickets-tabpanel-${key}`,
+});
 
 dayjs.extend(relativeTime);
 
@@ -186,7 +219,6 @@ function Tickets() {
     severity: "info",
     action: null,
   });
-  const [tab, setTab] = useState(0);
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const selectedIds = Array.isArray(rowSelectionModel) ? rowSelectionModel : [];
@@ -199,9 +231,51 @@ function Tickets() {
   const [emailSending, setEmailSending] = useState(false);
   const previewRef = useRef(null);
   const deleteTimerRef = useRef();
-  const { user, authLoading } = useAuth();
+  const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
+  const { user, authLoading, role } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
+  const canGenerate = role === "admin";
+
+  const tabParam = searchParams.get("tab");
+  const tabKeys = useMemo(
+    () => (canGenerate ? ["list", "summary", "generate"] : ["list", "summary"]),
+    [canGenerate],
+  );
+  const defaultTab = tabKeys[0];
+  const activeTab = tabKeys.includes(tabParam) ? tabParam : defaultTab;
+
+  useEffect(() => {
+    if (tabParam === "generate" && !canGenerate) {
+      setNoAccessAlertOpen(true);
+    }
+  }, [tabParam, canGenerate]);
+
+  useEffect(() => {
+    if (tabParam !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", activeTab);
+      setSearchParams(next, { replace: true });
+    }
+  }, [tabParam, activeTab, searchParams, setSearchParams]);
+
+  const handleTabChange = useCallback(
+    (_, value) => {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", value);
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const closeNoAccessAlert = useCallback(() => setNoAccessAlertOpen(false), []);
+
+  useEffect(() => {
+    if (canGenerate && noAccessAlertOpen) {
+      setNoAccessAlertOpen(false);
+    }
+  }, [canGenerate, noAccessAlertOpen]);
 
   const initialState = useMemo(
     () => ({
@@ -768,12 +842,42 @@ function Tickets() {
         </Button>
       </Box>
 
-      <Tabs value={tab} onChange={(_, val) => setTab(val)} sx={{ mb: 2 }}>
-        <Tab label="Tickets" />
-        <Tab label="Passenger Summary" />
+      {noAccessAlertOpen && (
+        <Alert severity="warning" onClose={closeNoAccessAlert} sx={{ mb: 2 }}>
+          You don’t have access to Generate Ticket.
+        </Alert>
+      )}
+
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        variant="scrollable"
+        allowScrollButtonsMobile
+        sx={{
+          mb: 2,
+          "& .MuiTabs-indicator": {
+            backgroundColor: "#4cbb17",
+          },
+        }}
+      >
+        <Tab label="Tickets" value="list" {...getTabProps("list")} />
+        <Tab
+          label="Passenger Summary"
+          value="summary"
+          {...getTabProps("summary")}
+        />
+        {canGenerate && (
+          <Tab
+            label={isSmall ? "Generate" : "Generate Ticket"}
+            value="generate"
+            icon={isSmall ? undefined : <LocalActivityIcon fontSize="small" />}
+            iconPosition="start"
+            {...getTabProps("generate")}
+          />
+        )}
       </Tabs>
 
-      {tab === 0 && (
+      <TabPanel value={activeTab} tabKey="list">
         <Paper sx={{ width: "100%" }}>
           <SmartAutoGrid
             rows={rows}
@@ -814,9 +918,9 @@ function Tickets() {
             error={error}
           />
         </Paper>
-      )}
+      </TabPanel>
 
-      {tab === 1 && (
+      <TabPanel value={activeTab} tabKey="summary">
         <Paper sx={{ p: 3 }} elevation={4}>
           <Typography variant="h6" gutterBottom>
             🧮 Passenger Summary by Date
@@ -832,7 +936,21 @@ function Tickets() {
               ))}
           </ul>
         </Paper>
-      )}
+      </TabPanel>
+
+      <TabPanel value={activeTab} tabKey="generate">
+        {canGenerate && (
+          <Suspense
+            fallback={
+              <Box p={2}>
+                <CircularProgress size={20} />
+              </Box>
+            }
+          >
+            <TicketGenerator />
+          </Suspense>
+        )}
+      </TabPanel>
 
       {editingTicket && (
         <EditTicketDialog
