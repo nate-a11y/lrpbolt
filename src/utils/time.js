@@ -32,6 +32,20 @@ export function toDayjs(input) {
       return null;
     }
   }
+  if (
+    input &&
+    typeof input === "object" &&
+    typeof input.seconds === "number" &&
+    typeof input.nanoseconds === "number"
+  ) {
+    try {
+      const millis = input.seconds * 1000 + Math.floor(input.nanoseconds / 1e6);
+      const converted = dayjs(millis);
+      return converted.isValid() ? converted : null;
+    } catch {
+      return null;
+    }
+  }
   if (typeof input?.seconds === "number") {
     const millis =
       input.seconds * 1000 + Math.floor((input.nanoseconds || 0) / 1e6);

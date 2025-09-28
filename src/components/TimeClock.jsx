@@ -62,7 +62,6 @@ export default function TimeClock({ setIsTracking }) {
   const [endBusy, setEndBusy] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -104,15 +103,18 @@ export default function TimeClock({ setIsTracking }) {
   }, [activeRow, setIsTracking]);
 
   useEffect(() => {
-    if (!activeRow) {
-      setTick(0);
+    if (
+      !rows?.some?.((row) => {
+        const start = row?.startTime ?? row?.clockIn ?? row?.loggedAt;
+        const end = row?.endTime ?? row?.clockOut;
+        return !!start && !end;
+      })
+    ) {
       return undefined;
     }
-    const timer = setInterval(() => {
-      setTick((prev) => prev + 1);
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [activeRow]);
+    const t = setInterval(() => setRows((prev) => [...prev]), 60000);
+    return () => clearInterval(t);
+  }, [rows]);
 
   useEffect(() => {
     if (!activeRow) {
@@ -131,23 +133,22 @@ export default function TimeClock({ setIsTracking }) {
     }
   }, [activeRow]);
 
-  const rowsWithTick = useMemo(() => {
-    if (!rows.length) return [];
-    if (!activeRow) return rows;
-    return rows.map((row) =>
-      isActiveRow(row) ? { ...row, __liveTick: tick } : row,
-    );
-  }, [rows, activeRow, tick]);
-
   const columns = useMemo(() => buildTimeLogColumns(), []);
+  const getRowId = useCallback(
+    (row) => row?.id || row?.docId || row?._id || null,
+    [],
+  );
 
-  const resolveRowId = useCallback((row) => {
-    const candidate = pickId(row);
-    if (candidate) return candidate;
-    const email = row?.driverEmail || row?.userEmail || "driver";
-    const startKey = row?.startTime?.seconds ?? row?.startTime ?? "start";
-    return `${email}-${startKey}`;
-  }, []);
+  const resolveRowId = useCallback(
+    (row) => {
+      const candidate = getRowId(row) || pickId(row);
+      if (candidate) return candidate;
+      const email = row?.driverEmail || row?.userEmail || "driver";
+      const startKey = row?.startTime?.seconds ?? row?.startTime ?? "start";
+      return `${email}-${startKey}`;
+    },
+    [getRowId],
+  );
 
   const active = activeRow || null;
   const activeSince = active
@@ -324,9 +325,9 @@ export default function TimeClock({ setIsTracking }) {
       <Box sx={{ width: "100%" }}>
         <DataGridPro
           autoHeight
-          rows={rowsWithTick}
+          rows={rows}
           columns={columns}
-          getRowId={resolveRowId}
+          getRowId={getRowId}
           loading={loading}
           density="compact"
           disableRowSelectionOnClick
