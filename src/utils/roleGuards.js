@@ -1,7 +1,12 @@
 import { NAV_ITEMS } from "../config/nav";
 
+const NAV_ALIASES = {
+  escalation: "directory",
+};
+
 export function canSeeNav(id, role = "driver") {
-  const item = NAV_ITEMS.find((i) => i.id === id);
+  const targetId = id ? NAV_ALIASES[id] || id : undefined;
+  const item = NAV_ITEMS.find((i) => i.id === targetId);
   if (!item) return false;
   const r = role || "driver";
   return item.rolesVisible.includes(r);
