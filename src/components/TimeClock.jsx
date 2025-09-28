@@ -1,714 +1,750 @@
 // src/components/TimeClock.jsx
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Card,
+  CardContent,
   Checkbox,
   CircularProgress,
+  Divider,
   FormControlLabel,
-  keyframes,
-  Paper,
+  IconButton,
   Snackbar,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   useMediaQuery,
-  useTheme,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
-  PlayArrow as PlayArrowIcon,
-  Stop as StopIcon,
+  InfoOutlined,
+  PlayArrow,
+  Stop,
   Undo as UndoIcon,
 } from "@mui/icons-material";
-import {
-  Timestamp,
-  addDoc,
-  collection,
-  doc,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
+import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
+import { Timestamp } from "firebase/firestore";
+import dayjs from "dayjs";
 
-import { dayjs } from "@/utils/time";
-import { db } from "src/utils/firebaseInit";
-import { friendlyTzLabel } from "@/utils/timeSafe";
+import { toDayjs, formatDuration } from "@/utils/time";
+import logError from "@/utils/logError";
+import { subscribeTimeLogs, logTime, endSession } from "@/services/timeLogs";
+import { enrichDriverNames } from "@/services/normalizers";
+import { useAuth } from "@/context/AuthContext.jsx";
 import { useRole } from "@/hooks";
-import RoleDebug from "@/components/RoleDebug";
 
-import { useAuth } from "../context/AuthContext.jsx";
-import { enrichDriverNames } from "../services/normalizers";
-import { getChannel, safePost, closeChannel } from "../utils/broadcast";
-import logError from "../utils/logError.js";
-import { tsToDate } from "../utils/safe";
-import { waitForAuth } from "../utils/waitForAuth";
-
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
-import {
-  LoadingOverlay,
-  NoRowsOverlay,
-  ErrorOverlay,
-} from "./grid/overlays.jsx";
-import ErrorBanner from "./ErrorBanner";
-import PageContainer from "./PageContainer.jsx";
-
-const bcName = "lrp-timeclock";
-const tzLabel = friendlyTzLabel();
-const TZ = "America/Chicago";
-
-const pulse = keyframes`
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.03); opacity: 0.9; }
-  100% { transform: scale(1); opacity: 1; }
-`;
-
-function toDayjsTz(ts) {
-  try {
-    if (!ts) return null;
-    if (typeof ts.toDate === "function") return dayjs(ts.toDate()).tz(TZ);
-    if (typeof ts?.seconds === "number")
-      return dayjs(new Date(ts.seconds * 1000)).tz(TZ);
-    return dayjs(ts).tz(TZ);
-  } catch {
-    return null;
-  }
-}
-
-function formatTimestamp(ts) {
-  const d = toDayjsTz(ts);
-  return d ? d.format("MMM D, h:mm A") : "N/A";
-}
-
-function formatDuration(startTs, endTs) {
-  const s = toDayjsTz(startTs);
-  const e = toDayjsTz(endTs || Timestamp.now());
-  if (!s || !e) return "N/A";
-  const mins = e.diff(s, "minute");
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h ? `${h}h ${m}m` : `${m}m`;
-}
-
-function normalizeRow(r) {
-  const id =
-    r?.id ??
-    r?.docId ??
-    r?._id ??
-    `${r?.userEmail || "unknown"}-${(r?.startTime && r.startTime.seconds) || r?.startTime || Math.random()}`;
-  const driverName =
-    r?.driver ??
-    r?.driverName ??
-    r?.name ??
-    (typeof r?.driverEmail === "string" ? r.driverEmail.split("@")[0] : null) ??
-    (typeof r?.userEmail === "string" ? r.userEmail.split("@")[0] : null);
-  const start = r?.startTime ?? r?.clockIn ?? r?.inTime ?? null;
-  const end = r?.endTime ?? r?.clockOut ?? r?.outTime ?? null;
-  const updatedAt = r?.updatedAt ?? r?.loggedAt ?? r?._updatedAt ?? null;
-  const durationMin =
-    start && end
-      ? Math.round((tsToMillis(end) - tsToMillis(start)) / 60000)
-      : null;
-  return {
-    ...r,
-    id,
-    driver: driverName || null,
-    rideId: r?.rideId ?? r?.ride ?? r?.mode ?? null,
-    startTime: start,
-    endTime: end,
-    updatedAt,
-    duration: durationMin,
-  };
-}
-
-async function logTimeCreate(payload) {
-  const user = await waitForAuth(true);
-  const userEmail = (user.email || "").toLowerCase();
-
-  return addDoc(collection(db, "timeLogs"), {
-    userEmail,
-    driverEmail: userEmail,
-    driverId: payload.driverId ?? null,
-    startTime:
-      payload.startTime instanceof Timestamp
-        ? payload.startTime
-        : serverTimestamp(),
-    endTime: payload.endTime ?? null,
-    rideId: payload.rideId ?? null,
-    mode: payload.mode ?? "N/A",
-    loggedAt: serverTimestamp(),
-  });
-}
-
-async function logTimeUpdate(id, patch) {
-  await waitForAuth(true);
-  return updateDoc(doc(db, "timeLogs", id), {
-    ...patch,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-function tsToMillis(v) {
-  const d = tsToDate(v);
-  return d ? d.getTime() : null;
+function buildCheckboxLabel(text, helper) {
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center" component="span">
+      <Typography component="span" variant="body2">
+        {text}
+      </Typography>
+      <Tooltip title={helper} placement="top">
+        <IconButton size="small" sx={{ p: 0.25, color: "inherit" }}>
+          <InfoOutlined fontSize="inherit" />
+        </IconButton>
+      </Tooltip>
+    </Stack>
+  );
 }
 
 export default function TimeClock({ driver, setIsTracking }) {
-  const [rideId, setRideId] = useState("");
-  const [startTime, setStartTime] = useState(null);
-  const [endTime, setEndTime] = useState(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isNA, setIsNA] = useState(false);
-  const [isMulti, setIsMulti] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [rows, setRows] = useState([]);
-  const [snack, setSnack] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-  const [logId, setLogId] = useState(null);
-  const [undo, setUndo] = useState(null); // { id, prevEnd }
-  const [error, setError] = useState(null);
-  const [ready, setReady] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [ending, setEnding] = useState(false);
-
-  const driverRef = useRef(driver);
-  const isRunningRef = useRef(isRunning);
-
-  const { role, authLoading: roleLoading } = useRole();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
+  const { role, authLoading: roleLoading } = useRole();
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
-  const theme = useTheme();
-  const isXs = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const headerMap = useMemo(
-    () => ({
-      driver: "Driver",
-      userEmail: "Driver Email",
-      rideId: "Ride ID",
-      startTime: "Clock In",
-      endTime: "Clock Out",
-      duration: "Duration",
-      loggedAt: "Logged At",
-      note: "Note",
-    }),
-    [],
-  );
+  const [rideId, setRideId] = useState("");
+  const [nonRideTask, setNonRideTask] = useState(false);
+  const [multiRide, setMultiRide] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarError, setSnackbarError] = useState(null);
+  const [lastEndedSessionRef, setLastEndedSessionRef] = useState(null);
+  const [driverFilter, setDriverFilter] = useState(null);
+  const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
+  const [, setLiveTick] = useState(0);
 
-  const order = useMemo(
-    () => [
-      "driver",
-      "userEmail",
-      "rideId",
-      "startTime",
-      "endTime",
-      "duration",
-      "loggedAt",
-      "note",
-    ],
-    [],
-  );
+  const mountedRef = useRef(true);
 
-  const forceHide = useMemo(() => ["id", "driverId", "mode"], []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-  const overrides = useMemo(
-    () => ({
-      startTime: { valueGetter: (v, row) => formatTimestamp(row.startTime) },
-      endTime: { valueGetter: (v, row) => formatTimestamp(row.endTime) },
-      duration: {
-        valueGetter: (v, row) => formatDuration(row.startTime, row.endTime),
-        sortComparator: (v1, v2, p1, p2) => {
-          const d1 = p1?.row?.duration ?? 0;
-          const d2 = p2?.row?.duration ?? 0;
-          return d1 - d2;
-        },
-      },
-    }),
-    [],
-  );
+  useEffect(() => {
+    const baseModel = isMobile ? { rideId: false, clockOut: false } : {};
+    setColumnVisibilityModel(baseModel);
+  }, [isMobile]);
 
-  const columnVisibilityModel = useMemo(
-    () => (isXs ? { userEmail: false, loggedAt: false, note: false } : {}),
-    [isXs],
+  const timezoneGuess = useMemo(() => {
+    try {
+      return dayjs.tz?.guess?.() || "UTC";
+    } catch (err) {
+      logError(err, { where: "TimeClock.tzGuess" });
+      return "UTC";
+    }
+  }, []);
+
+  const formatClock = useCallback(
+    (timestamp, fallback = "N/A") => {
+      // Convert timestamps via toDayjs before formatting.
+      const parsed = toDayjs(timestamp);
+      if (!parsed) return { label: fallback, relative: "" };
+      try {
+        const localized = parsed.tz?.(timezoneGuess) || parsed;
+        return {
+          label: localized.format("MMM D, h:mm A"),
+          relative: parsed.fromNow?.() || "",
+        };
+      } catch (err) {
+        logError(err, { where: "TimeClock.formatClock" });
+        return {
+          label: parsed.format("MMM D, h:mm A"),
+          relative: parsed.fromNow?.() || "",
+        };
+      }
+    },
+    [timezoneGuess],
   );
 
   useEffect(() => {
     if (!user?.email) {
-      setRows([]);
-      setReady(true);
-      return;
+      setSessions([]);
+      setLoading(false);
+      return undefined;
     }
-    setReady(false);
-    const q = query(
-      collection(db, "timeLogs"),
-      where("userEmail", "==", user.email.toLowerCase()),
-      orderBy("startTime", "desc"),
-      limit(200),
-    );
-    const unsub = onSnapshot(
-      q,
-      async (snap) => {
+
+    setLoading(true);
+    setLoadError(null);
+
+    const unsubscribe = subscribeTimeLogs(
+      async (rows) => {
         try {
-          const base = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          const withNames = await enrichDriverNames(base);
-          const normalized = withNames.map(normalizeRow);
-          setRows(normalized);
-          setReady(true);
+          const enriched = await enrichDriverNames(rows || []);
+          if (!mountedRef.current) return;
+          setSessions(enriched);
+          setLoading(false);
         } catch (err) {
-          logError(err, { area: "processTimeLogs", comp: "TimeClock" });
-          setError(err);
-          setReady(true);
+          logError(err, { where: "TimeClock.subscribe.enrich" });
+          if (!mountedRef.current) return;
+          setLoadError(err);
+          setLoading(false);
         }
       },
       (err) => {
-        logError(err, { area: "subscribeMyTimeLogs", comp: "TimeClock" });
-        setError(err);
-        setReady(true);
+        if (!mountedRef.current) return;
+        setLoadError(err);
+        setLoading(false);
       },
+      !isAdmin && user?.email
+        ? { driverEmail: user.email, limit: 200 }
+        : { limit: 200 },
     );
-    return () => unsub();
-  }, [user?.email]);
 
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("lrp_timeTrack") || "{}");
-    if (stored.driver === driver && stored.startTime) {
-      setRideId(stored.rideId || "");
-      setStartTime(Timestamp.fromMillis(stored.startTime));
-      setIsRunning(true);
-      setIsNA(stored.isNA || false);
-      setIsMulti(stored.isMulti || false);
-      setLogId(stored.logId || null);
-    }
-  }, [driver]);
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [isAdmin, user?.email]);
 
-  useEffect(() => {
-    const c = getChannel(bcName);
-    if (c) {
-      c.onmessage = (e) => {
-        if (
-          e?.data?.type === "timeclock:started" &&
-          e.data.driver === driverRef.current
-        ) {
-          if (!isRunningRef.current) {
-            const s = e.data.payload;
-            setRideId(s.rideId || "");
-            setStartTime(Timestamp.fromMillis(s.startTime));
-            setIsNA(s.isNA);
-            setIsMulti(s.isMulti);
-            setIsRunning(true);
-          }
-        }
-        if (
-          e?.data?.type === "timeclock:ended" &&
-          e.data.driver === driverRef.current
-        ) {
-          setIsRunning(false);
-          setEndTime(Timestamp.fromMillis(e.data.payload.endTime));
-          localStorage.removeItem("lrp_timeTrack");
-        }
+  const driverOptions = useMemo(() => {
+    if (!isAdmin) return [];
+    const map = new Map();
+    (sessions || []).forEach((row) => {
+      const email =
+        row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
+      if (!email || map.has(email)) return;
+      const labelBase =
+        row?.driver ||
+        row?.driverName ||
+        (email.includes("@") ? email.split("@")[0] : email);
+      map.set(email, {
+        label: labelBase,
+        value: email,
+        helper: row?.driverEmail || row?.userEmail,
+      });
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+    );
+  }, [isAdmin, sessions]);
+
+  const filteredSessions = useMemo(() => {
+    if (!isAdmin) return sessions;
+    if (!driverFilter?.value) return sessions;
+    return (sessions || []).filter((row) => {
+      const email =
+        row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
+      return email === driverFilter.value;
+    });
+  }, [driverFilter, isAdmin, sessions]);
+
+  const resolveRowId = useCallback((row) => {
+    if (!row) return "missing-row";
+    return (
+      row.id ||
+      row.docId ||
+      row._id ||
+      `${row.driverEmail || row.userEmail || "unknown"}-${
+        row.startTime?.seconds ?? row.startTime ?? "start"
+      }`
+    );
+  }, []);
+
+  const gridRows = useMemo(() => {
+    return (filteredSessions || []).map((row) => {
+      const driverEmail = row?.driverEmail || row?.userEmail || "";
+      const driverName =
+        row?.driver ||
+        row?.driverName ||
+        (typeof driverEmail === "string" && driverEmail.includes("@")
+          ? driverEmail.split("@")[0]
+          : driverEmail) ||
+        "Unknown";
+      return {
+        ...row,
+        id: resolveRowId(row),
+        driverEmail,
+        driverName,
       };
+    });
+  }, [filteredSessions, resolveRowId]);
+
+  const activeSession = useMemo(() => {
+    if (!user?.email) return null;
+    const email = user.email.toLowerCase();
+    return (
+      (sessions || []).find((row) => {
+        const rowEmail =
+          row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
+        const sameDriverId = driver && row?.driverId && row.driverId === driver;
+        return !row?.endTime && (rowEmail === email || sameDriverId);
+      }) || null
+    );
+  }, [driver, sessions, user?.email]);
+
+  useEffect(() => {
+    if (typeof setIsTracking === "function") {
+      setIsTracking(Boolean(activeSession));
     }
-    return () => closeChannel();
-  }, []);
+  }, [activeSession, setIsTracking]);
 
   useEffect(() => {
-    driverRef.current = driver;
-  }, [driver]);
+    setLiveTick(0);
+    if (!activeSession) {
+      if (!isStarting) {
+        setRideId("");
+        setNonRideTask(false);
+        setMultiRide(false);
+      }
+      return;
+    }
+
+    const mode = activeSession?.mode;
+    setNonRideTask(mode === "N/A");
+    setMultiRide(mode === "MULTI");
+    if (mode === "RIDE") {
+      setRideId(activeSession?.rideId || "");
+    } else {
+      setRideId("");
+    }
+  }, [activeSession, isStarting]);
 
   useEffect(() => {
-    isRunningRef.current = isRunning;
-  }, [isRunning]);
-
-  useEffect(() => {
-    setIsTracking(isRunning);
-  }, [isRunning, setIsTracking]);
-
-  useEffect(() => {
-    if (!isRunning || !startTime) return;
+    if (!activeSession) return undefined;
     const timer = setInterval(() => {
-      setElapsed(
-        Math.floor(
-          (tsToMillis(Timestamp.now()) - tsToMillis(startTime)) / 1000,
-        ),
-      );
-    }, 1000);
+      setLiveTick((prev) => prev + 1);
+    }, 60000);
     return () => clearInterval(timer);
-  }, [isRunning, startTime]);
+  }, [activeSession]);
 
-  const formatElapsed = useCallback((seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h ? `${h}h ${m}m` : `${m}m`;
-  }, []);
+  const activeStart = useMemo(() => {
+    return formatClock(activeSession?.startTime).label;
+  }, [activeSession?.startTime, formatClock]);
+
+  const activeDurationText = formatDuration(
+    activeSession?.startTime,
+    activeSession?.endTime,
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "driverName",
+        headerName: "Driver",
+        minWidth: 140,
+        flex: 1,
+        valueGetter: (params) => params?.row?.driverName || "Unknown",
+      },
+      {
+        field: "rideId",
+        headerName: "Ride ID",
+        minWidth: 120,
+        valueGetter: (params) => params?.row?.rideId || "Non-Ride Task",
+      },
+      {
+        field: "clockIn",
+        headerName: "Clock In",
+        minWidth: 160,
+        flex: 1,
+        valueGetter: (params) => formatClock(params?.row?.startTime).label,
+        renderCell: (params) => {
+          const { label, relative } = formatClock(params?.row?.startTime);
+          if (label === "N/A") return label;
+          return (
+            <Tooltip title={relative} placement="top">
+              <span>{label}</span>
+            </Tooltip>
+          );
+        },
+      },
+      {
+        field: "clockOut",
+        headerName: "Clock Out",
+        minWidth: 160,
+        flex: 1,
+        valueGetter: (params) => formatClock(params?.row?.endTime, "—").label,
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        minWidth: 120,
+        valueGetter: (params) =>
+          formatDuration(params?.row?.startTime, params?.row?.endTime),
+      },
+    ],
+    [formatClock],
+  );
 
   const handleStart = useCallback(async () => {
-    if (!driver || (!rideId && !isNA && !isMulti)) {
-      return setSnack({
-        open: true,
-        message: "Enter Ride ID or select a mode",
-        severity: "error",
-      });
+    if (!user?.email) {
+      setSnackbarError("You must be signed in to start a session.");
+      return;
     }
-    if (isRunning || starting || ending) return;
-
-    const now = Timestamp.now();
-    const idToTrack = isNA
-      ? "N/A"
-      : isMulti
-        ? "MULTI"
-        : rideId.trim().toUpperCase();
-    setStarting(true);
-    try {
-      const ref = await logTimeCreate({
-        driverId: driver,
-        rideId: idToTrack,
-        mode: isNA ? "N/A" : isMulti ? "MULTI" : "RIDE",
-      });
-      setLogId(ref.id);
-      setStartTime(now);
-      setEndTime(null);
-      setIsRunning(true);
-      localStorage.setItem(
-        "lrp_timeTrack",
-        JSON.stringify({
-          driver,
-          rideId: idToTrack,
-          isNA,
-          isMulti,
-          startTime: tsToMillis(now),
-          logId: ref.id,
-        }),
-      );
-      safePost(
-        {
-          type: "timeclock:started",
-          driver,
-          payload: {
-            rideId: idToTrack,
-            isNA,
-            isMulti,
-            startTime: tsToMillis(now),
-            logId: ref.id,
-          },
-        },
-        bcName,
-      );
-    } catch (e) {
-      logError(e, { area: "startSession", comp: "TimeClock" });
-      setSnack({
-        open: true,
-        message: `❌ Failed: ${e.message}`,
-        severity: "error",
-      });
-    } finally {
-      setStarting(false);
+    if (!nonRideTask && !multiRide && !rideId.trim()) {
+      setSnackbarError("Enter Ride ID or choose a task type.");
+      return;
     }
-  }, [driver, rideId, isNA, isMulti, isRunning, starting, ending]);
+    if (isStarting || isEnding || activeSession) return;
 
-  const handleEnd = useCallback(async () => {
-    if (!isRunning || !startTime || !logId || starting || ending) return;
+    const normalizedRideId = rideId.trim().toUpperCase();
+    const mode = nonRideTask ? "N/A" : multiRide ? "MULTI" : "RIDE";
 
-    const end = Timestamp.now();
-    setEndTime(end);
-    setIsRunning(false);
-    setEnding(true);
+    setIsStarting(true);
+    setSnackbarError(null);
 
-    const idToTrack = isNA
-      ? "N/A"
-      : isMulti
-        ? "MULTI"
-        : rideId.trim().toUpperCase();
     try {
-      const prevEnd = null;
-      await logTimeUpdate(logId, {
-        endTime: serverTimestamp(),
-        rideId: idToTrack,
-        mode: isNA ? "N/A" : isMulti ? "MULTI" : "RIDE",
+      await logTime({
+        driverId: driver ?? null,
+        driverEmail: user.email,
+        rideId: mode === "RIDE" ? normalizedRideId : null,
+        mode,
       });
-      setUndo({
-        id: logId,
-        prevEnd,
-        rideId: idToTrack,
-        isNA,
-        isMulti,
-        startTime,
-      });
-      setSnack({ open: true, message: "Session ended", severity: "info" });
-      localStorage.removeItem("lrp_timeTrack");
-      setRideId("");
-      setIsNA(false);
-      setIsMulti(false);
-      setElapsed(0);
-      setLogId(null);
-      safePost(
-        {
-          type: "timeclock:ended",
-          driver,
-          payload: { endTime: tsToMillis(end) },
-        },
-        bcName,
-      );
     } catch (err) {
-      setSnack({
-        open: true,
-        message: `❌ Failed: ${err.message}`,
-        severity: "error",
+      logError(err, {
+        where: "TimeClock.start",
+        userId: user?.uid,
+        rideId: normalizedRideId || mode,
       });
-      setIsRunning(true);
+      setSnackbarError("Failed to start session. Please try again.");
     } finally {
-      setEnding(false);
+      setIsStarting(false);
     }
   }, [
-    isRunning,
-    startTime,
-    logId,
-    isNA,
-    isMulti,
-    rideId,
+    activeSession,
     driver,
-    starting,
-    ending,
+    isEnding,
+    isStarting,
+    multiRide,
+    nonRideTask,
+    rideId,
+    user?.email,
+    user?.uid,
   ]);
 
-  if (roleLoading) return <CircularProgress sx={{ m: 3 }} />;
-  if (!(isAdmin || isDriver))
-    return (
-      <Alert severity="error">You don’t have permission to view this.</Alert>
+  const handleEnd = useCallback(async () => {
+    if (!activeSession || isEnding || isStarting) return;
+
+    const sessionId = resolveRowId(activeSession);
+    const previousEndTime = activeSession?.endTime ?? null;
+    const optimisticEnd = Timestamp.now();
+    const mode = nonRideTask ? "N/A" : multiRide ? "MULTI" : "RIDE";
+    const normalizedRideId =
+      mode === "RIDE"
+        ? (rideId || activeSession?.rideId || "").trim().toUpperCase()
+        : null;
+
+    setIsEnding(true);
+    setSnackbarError(null);
+
+    setSessions((prev) =>
+      prev.map((row) =>
+        resolveRowId(row) === sessionId
+          ? { ...row, endTime: optimisticEnd, rideId: normalizedRideId }
+          : row,
+      ),
     );
+    setLastEndedSessionRef({
+      id: sessionId,
+      previousEndTime,
+      rideId: activeSession?.rideId ?? null,
+      mode: activeSession?.mode ?? null,
+    });
+    setSnackbarOpen(true);
+
+    try {
+      await endSession(sessionId, {
+        endTime: optimisticEnd,
+        rideId: normalizedRideId,
+        mode,
+      });
+      setRideId("");
+      setNonRideTask(false);
+      setMultiRide(false);
+    } catch (err) {
+      logError(err, {
+        where: "TimeClock.end",
+        userId: user?.uid,
+        rideId: normalizedRideId || mode,
+      });
+      setSessions((prev) =>
+        prev.map((row) =>
+          resolveRowId(row) === sessionId
+            ? {
+                ...row,
+                endTime: previousEndTime,
+                rideId: activeSession?.rideId ?? row.rideId ?? null,
+              }
+            : row,
+        ),
+      );
+      setSnackbarOpen(false);
+      setLastEndedSessionRef(null);
+      setSnackbarError("Failed to end session. Please try again.");
+    } finally {
+      setIsEnding(false);
+    }
+  }, [
+    activeSession,
+    multiRide,
+    nonRideTask,
+    resolveRowId,
+    rideId,
+    isEnding,
+    isStarting,
+    user?.uid,
+  ]);
+
+  const handleUndo = useCallback(async () => {
+    if (!lastEndedSessionRef) return;
+    try {
+      await endSession(lastEndedSessionRef.id, {
+        endTime: lastEndedSessionRef.previousEndTime ?? null,
+        rideId: lastEndedSessionRef.rideId ?? null,
+        mode: lastEndedSessionRef.mode ?? undefined,
+      });
+      setSessions((prev) =>
+        prev.map((row) =>
+          resolveRowId(row) === lastEndedSessionRef.id
+            ? {
+                ...row,
+                endTime: lastEndedSessionRef.previousEndTime ?? null,
+                rideId: lastEndedSessionRef.rideId ?? row.rideId ?? null,
+              }
+            : row,
+        ),
+      );
+      setSnackbarOpen(false);
+      setLastEndedSessionRef(null);
+    } catch (err) {
+      logError(err, {
+        where: "TimeClock.undo",
+        userId: user?.uid,
+        rideId: lastEndedSessionRef?.rideId ?? null,
+      });
+      setSnackbarError("Undo failed. Session remains ended.");
+    }
+  }, [lastEndedSessionRef, resolveRowId, user?.uid]);
+
+  const handleSnackbarClose = useCallback(() => {
+    setSnackbarOpen(false);
+    setLastEndedSessionRef(null);
+  }, []);
+
+  const gridSlots = useMemo(
+    () => ({
+      toolbar: GridToolbarQuickFilter,
+      noRowsOverlay: () => (
+        <Stack sx={{ p: 3 }} alignItems="center" justifyContent="center">
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            No previous sessions found. Start your first one above 👆.
+          </Typography>
+        </Stack>
+      ),
+      errorOverlay: () => (
+        <Alert severity="error">Couldn’t load sessions. Try again.</Alert>
+      ),
+    }),
+    [],
+  );
+
+  const dataGridStyles = useMemo(
+    () => ({
+      borderRadius: 3,
+      backgroundColor: theme.palette.mode === "dark" ? "#0b0b0b" : "#ffffff",
+      "& .MuiDataGrid-columnHeaders": {
+        borderBottom: "1px solid #4cbb17",
+      },
+      "& .MuiDataGrid-row:hover": {
+        opacity: 0.95,
+      },
+    }),
+    [theme.palette.mode],
+  );
+
+  const quickFilterProps = useMemo(
+    () => ({ quickFilterProps: { debounceMs: 400, placeholder: "Search" } }),
+    [],
+  );
+
+  const tzLabel = useMemo(() => {
+    try {
+      const base = dayjs.tz?.(timezoneGuess) || dayjs();
+      return base.format("zz");
+    } catch (err) {
+      logError(err, { where: "TimeClock.tzLabel" });
+      return timezoneGuess;
+    }
+  }, [timezoneGuess]);
+
+  if (roleLoading) {
+    return (
+      <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
+
+  if (!(isAdmin || isDriver)) {
+    return (
+      <Stack spacing={2} sx={{ py: 3 }}>
+        <Alert severity="error">You don’t have permission to view this.</Alert>
+      </Stack>
+    );
+  }
 
   return (
-    <PageContainer maxWidth={600}>
-      {import.meta.env.DEV && <RoleDebug />}
-      <ErrorBanner error={error} />
-      <Paper elevation={3} sx={{ p: 3, mb: 3, width: "100%" }}>
-        <Typography variant="h6" gutterBottom>
-          Time Clock
-        </Typography>
-        <TextField
-          label="Ride ID"
-          fullWidth
-          disabled={isRunning || isNA || isMulti}
-          value={rideId}
-          onChange={(e) => setRideId(e.target.value.trimStart())}
-          helperText="Enter Ride ID or select a task type"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={isNA}
-              onChange={(e) => {
-                setIsNA(e.target.checked);
-                if (e.target.checked) setIsMulti(false);
+    <Stack spacing={2} sx={{ width: "100%" }}>
+      <Card sx={{ backgroundColor: theme.palette.background.paper }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack spacing={2}>
+            <Typography variant="h6">Time Clock</Typography>
+            {activeSession ? (
+              <Stack spacing={0.5}>
+                <Typography variant="body2" color="text.secondary">
+                  Active since {activeStart || "N/A"}
+                </Typography>
+                <Typography variant="body1" fontWeight={600}>
+                  Duration: {activeDurationText}
+                </Typography>
+              </Stack>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Start a session to begin tracking your time.
+              </Typography>
+            )}
+            <TextField
+              fullWidth
+              size="medium"
+              placeholder="Ride ID"
+              value={rideId}
+              disabled={Boolean(activeSession) || nonRideTask || multiRide}
+              onChange={(event) => setRideId(event.target.value)}
+              helperText="Enter Ride ID or choose a task type below"
+              FormHelperTextProps={{
+                sx: { color: theme.palette.text.secondary },
               }}
-              disabled={isRunning}
             />
-          }
-          label="N/A – Non-Ride Task"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={isMulti}
-              onChange={(e) => {
-                setIsMulti(e.target.checked);
-                if (e.target.checked) setIsNA(false);
-              }}
-              disabled={isRunning}
-            />
-          }
-          label="Multiple Back-to-Back Rides"
-        />
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={2}>
-          <Button
-            onClick={handleStart}
-            disabled={isRunning || starting || ending}
-            startIcon={<PlayArrowIcon />}
-            variant="contained"
-            color="success"
-            sx={{
-              flex: 1,
-              animation: starting ? `${pulse} 400ms ease-in-out` : "none",
-              transition: "transform 120ms ease",
-              "&:active": { transform: "scale(0.98)" },
-            }}
-          >
-            {starting ? "Starting…" : "Start"}
-          </Button>
-          <Button
-            onClick={handleEnd}
-            disabled={!isRunning || starting || ending}
-            startIcon={<StopIcon />}
-            variant="contained"
-            color="error"
-            sx={{
-              flex: 1,
-              animation: ending ? `${pulse} 400ms ease-in-out` : "none",
-              transition: "transform 120ms ease, background 120ms ease",
-              "&:active": { transform: "scale(0.98)" },
-            }}
-          >
-            {ending ? "Logging…" : "End"}
-          </Button>
-        </Stack>
-        {isRunning && (
-          <Typography mt={2} color="success.main">
-            🟢 Started — Elapsed: {formatElapsed(elapsed)}
-          </Typography>
-        )}
-        {!isRunning && endTime && (
-          <Typography mt={2} color="text.secondary">
-            Ended at {formatTimestamp(endTime)}
-          </Typography>
-        )}
-      </Paper>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={nonRideTask}
+                    onChange={(event) => {
+                      setNonRideTask(event.target.checked);
+                      if (event.target.checked) setMultiRide(false);
+                    }}
+                    disabled={Boolean(activeSession)}
+                  />
+                }
+                label={buildCheckboxLabel(
+                  "N/A — Non-Ride Task",
+                  "Use for administrative or support work that isn’t tied to a ride.",
+                )}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={multiRide}
+                    onChange={(event) => {
+                      setMultiRide(event.target.checked);
+                      if (event.target.checked) setNonRideTask(false);
+                    }}
+                    disabled={Boolean(activeSession)}
+                  />
+                }
+                label={buildCheckboxLabel(
+                  "Multiple Back-to-Back Rides",
+                  "Track consecutive rides without logging a specific ride ID.",
+                )}
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={
+                  isStarting ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <PlayArrow />
+                  )
+                }
+                disabled={Boolean(activeSession) || isStarting || isEnding}
+                onClick={handleStart}
+              >
+                {isStarting ? "Starting…" : "Start Session"}
+              </Button>
+              <Button
+                variant="outlined"
+                color="inherit"
+                startIcon={
+                  isEnding ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <Stop />
+                  )
+                }
+                disabled={!activeSession || isEnding || isStarting}
+                onClick={handleEnd}
+              >
+                {isEnding ? "Ending…" : "End Session"}
+              </Button>
+            </Stack>
+            {snackbarError && (
+              <Alert
+                severity="error"
+                onClose={() => setSnackbarError(null)}
+                sx={{ mt: 1 }}
+              >
+                {snackbarError}
+              </Alert>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
 
-      <Paper elevation={2} sx={{ p: 2, width: "100%" }}>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={1}
-          sx={{
-            position: "sticky",
-            top: 0,
-            zIndex: 1,
-            bgcolor: "background.paper",
-            py: 1,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Typography variant="subtitle1">Previous Sessions</Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ fontStyle: "italic" }}
-          >
-            {tzLabel}
-          </Typography>
-        </Box>
-        <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
-          <SmartAutoGrid
-            rows={rows || []}
-            headerMap={headerMap}
-            order={order}
-            forceHide={forceHide}
-            overrides={overrides}
-            autoHeight={false}
-            checkboxSelection
-            disableRowSelectionOnClick
-            columnVisibilityModel={columnVisibilityModel}
-            slots={{
-              loadingOverlay: LoadingOverlay,
-              noRowsOverlay: NoRowsOverlay,
-              errorOverlay: ErrorOverlay,
-            }}
-            loading={!ready}
-            error={error}
-            density={isXs ? "compact" : "standard"}
-          />
-        </Paper>
-      </Paper>
+      <Divider sx={{ my: 1 }} />
+
+      <Stack
+        direction="row"
+        alignItems="baseline"
+        justifyContent="space-between"
+        sx={{
+          position: "sticky",
+          top: 0,
+          zIndex: 2,
+          backdropFilter: "blur(4px)",
+          backgroundColor: "rgba(0,0,0,0.4)",
+          px: 1,
+          py: 0.5,
+          borderRadius: 1,
+        }}
+      >
+        <Typography variant="h6">Previous Sessions</Typography>
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+          {tzLabel} (Central Time if applicable)
+        </Typography>
+      </Stack>
+
+      {isAdmin && driverOptions.length > 0 && (
+        <Autocomplete
+          size="small"
+          options={driverOptions}
+          value={driverFilter}
+          onChange={(_event, value) => setDriverFilter(value)}
+          getOptionLabel={(option) => option?.label || ""}
+          isOptionEqualToValue={(option, value) =>
+            option?.value === value?.value
+          }
+          clearOnEscape
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Filter by driver"
+              placeholder="Search driver"
+            />
+          )}
+        />
+      )}
+
+      {loadError && (
+        <Alert severity="warning">
+          Failed to load some sessions. Showing cached data.
+        </Alert>
+      )}
+
+      <Box sx={{ width: "100%" }}>
+        <DataGridPro
+          rows={gridRows}
+          columns={columns}
+          getRowId={resolveRowId}
+          density="compact"
+          disableRowSelectionOnClick
+          autoHeight={isMobile}
+          loading={loading}
+          error={Boolean(loadError)}
+          columnVisibilityModel={columnVisibilityModel}
+          onColumnVisibilityModelChange={(model) =>
+            setColumnVisibilityModel(model)
+          }
+          slots={gridSlots}
+          slotProps={{ toolbar: quickFilterProps }}
+          sx={dataGridStyles}
+        />
+      </Box>
 
       <Snackbar
-        open={snack.open}
-        autoHideDuration={4000}
-        onClose={() => {
-          setSnack({ ...snack, open: false });
-          setUndo(null);
-        }}
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        message="Session ended — Undo?"
+        action={
+          lastEndedSessionRef ? (
+            <Button
+              color="inherit"
+              size="small"
+              startIcon={<UndoIcon />}
+              onClick={handleUndo}
+            >
+              Undo
+            </Button>
+          ) : null
+        }
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          severity={snack.severity}
-          variant="filled"
-          onClose={() => {
-            setSnack({ ...snack, open: false });
-            setUndo(null);
-          }}
-          action={
-            undo?.id ? (
-              <Button
-                size="small"
-                color="inherit"
-                startIcon={<UndoIcon fontSize="small" />}
-                onClick={async () => {
-                  try {
-                    await logTimeUpdate(undo.id, { endTime: null });
-                    setLogId(undo.id);
-                    setEndTime(null);
-                    setIsRunning(true);
-                    setRideId(
-                      undo.isNA || undo.isMulti ? "" : undo.rideId || "",
-                    );
-                    setIsNA(!!undo.isNA);
-                    setIsMulti(!!undo.isMulti);
-                    setStartTime(undo.startTime);
-                    setElapsed(
-                      Math.floor(
-                        (tsToMillis(Timestamp.now()) -
-                          tsToMillis(undo.startTime)) /
-                          1000,
-                      ),
-                    );
-                    localStorage.setItem(
-                      "lrp_timeTrack",
-                      JSON.stringify({
-                        driver,
-                        rideId: undo.rideId,
-                        isNA: undo.isNA,
-                        isMulti: undo.isMulti,
-                        startTime: tsToMillis(undo.startTime),
-                        logId: undo.id,
-                      }),
-                    );
-                    safePost(
-                      {
-                        type: "timeclock:started",
-                        driver,
-                        payload: {
-                          rideId: undo.rideId,
-                          isNA: undo.isNA,
-                          isMulti: undo.isMulti,
-                          startTime: tsToMillis(undo.startTime),
-                          logId: undo.id,
-                        },
-                      },
-                      bcName,
-                    );
-                    setSnack({
-                      open: true,
-                      message: "Clock-out undone",
-                      severity: "success",
-                    });
-                  } catch (e) {
-                    logError(e, { area: "timeclock-undo" });
-                    setSnack({
-                      open: true,
-                      message: "Undo failed",
-                      severity: "error",
-                    });
-                  } finally {
-                    setUndo(null);
-                  }
-                }}
-              >
-                Undo
-              </Button>
-            ) : null
-          }
-        >
-          {snack.message}
-        </Alert>
-      </Snackbar>
-    </PageContainer>
+      />
+    </Stack>
   );
 }
