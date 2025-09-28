@@ -21,6 +21,84 @@ import logError from "../utils/logError.js";
 
 import { mapSnapshotToRows } from "./normalizers";
 
+export function subscribeMyTimeLogs({ user, onData, onError }) {
+  if (!user) {
+    const err = new Error("Missing user for subscribeMyTimeLogs");
+    logError(err, { where: "timeLogs.subscribeMyTimeLogs", reason: "no-user" });
+    if (onError) onError(err);
+    return () => {};
+  }
+
+  const ref = collection(db, "timeLogs");
+  const clauses = [];
+  if (user?.displayName) {
+    clauses.push(where("driverId", "==", user.displayName));
+  } else if (user?.email) {
+    clauses.push(where("driverEmail", "==", user.email));
+  } else {
+    const err = new Error("Missing user identity for subscribeMyTimeLogs");
+    logError(err, {
+      where: "timeLogs.subscribeMyTimeLogs",
+      reason: "no-identity",
+    });
+    if (onError) onError(err);
+    return () => {};
+  }
+
+  clauses.push(orderBy("startTime", "desc"));
+
+  try {
+    const q = query(ref, ...clauses);
+    return onSnapshot(
+      q,
+      (snap) => {
+        const rows = [];
+        snap.forEach((docSnap) => {
+          rows.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        onData?.(rows);
+      },
+      (err) => {
+        logError(err, { where: "timeLogs.subscribeMyTimeLogs" });
+        onError?.(err);
+      },
+    );
+  } catch (err) {
+    logError(err, { where: "timeLogs.subscribeMyTimeLogs", stage: "query" });
+    onError?.(err);
+    return () => {};
+  }
+}
+
+export async function startTimeLog({ user, rideId = "N/A", mode = "N/A" }) {
+  if (!user) throw new Error("No user");
+
+  const payload = {
+    driverId: user.displayName || "Unknown",
+    driverName: user.displayName || "Unknown",
+    driverEmail: user.email || null,
+    rideId: rideId || "N/A",
+    mode: mode || "N/A",
+    startTime: serverTimestamp(),
+    endTime: null,
+    loggedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    userEmail: user.email || null,
+  };
+
+  const ref = await addDoc(collection(db, "timeLogs"), payload);
+  return ref.id;
+}
+
+export async function endTimeLog({ id }) {
+  if (!id) throw new Error("Missing timeLog id");
+
+  await updateDoc(doc(db, "timeLogs", id), {
+    endTime: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 function backoff(attempt) {
   return new Promise((res) => setTimeout(res, 2 ** attempt * 100));
 }
@@ -37,6 +115,7 @@ export async function patchTimeLog(id, updates = {}) {
 
   const data = {};
   if ("driver" in updates) data.driver = updates.driver;
+  if ("driverName" in updates) data.driverName = updates.driverName;
   if ("rideId" in updates) data.rideId = updates.rideId;
   if ("note" in updates) data.note = updates.note;
   if ("startTime" in updates) data.startTime = coerceTs(updates.startTime);
