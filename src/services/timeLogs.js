@@ -5,6 +5,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   limit as limitDocs,
   onSnapshot,
   or,
@@ -137,12 +138,41 @@ export async function patchTimeLog(id, updates = {}) {
   if ("startTime" in updates) data.startTime = coerceTs(updates.startTime);
   if ("endTime" in updates) data.endTime = coerceTs(updates.endTime);
   if ("loggedAt" in updates) data.loggedAt = coerceTs(updates.loggedAt);
-  if ("duration" in updates) data.duration = Number(updates.duration) || 0;
+  const hasStartUpdate = Object.prototype.hasOwnProperty.call(
+    data,
+    "startTime",
+  );
+  const hasEndUpdate = Object.prototype.hasOwnProperty.call(data, "endTime");
 
-  const s = data.startTime?.toMillis?.();
-  const e = data.endTime?.toMillis?.();
-  if (Number.isFinite(s) && Number.isFinite(e) && e >= s) {
-    data.duration = Math.floor((e - s) / 60000);
+  if ("duration" in updates) {
+    const numericDuration = Number(updates.duration);
+    data.duration = Number.isFinite(numericDuration) ? numericDuration : 0;
+  }
+
+  if (hasStartUpdate || hasEndUpdate) {
+    let startTs = hasStartUpdate ? data.startTime : undefined;
+    let endTs = hasEndUpdate ? data.endTime : undefined;
+
+    if (startTs === undefined || endTs === undefined) {
+      try {
+        const existingSnap = await getDoc(ref);
+        if (existingSnap.exists()) {
+          const existing = existingSnap.data();
+          if (startTs === undefined) startTs = existing?.startTime ?? null;
+          if (endTs === undefined) endTs = existing?.endTime ?? null;
+        }
+      } catch (err) {
+        logError(err, `patchTimeLog:getDoc:${id}`);
+      }
+    }
+
+    const s = startTs?.toMillis?.();
+    const e = endTs?.toMillis?.();
+    if (Number.isFinite(s) && Number.isFinite(e) && e >= s) {
+      data.duration = Math.floor((e - s) / 60000);
+    } else {
+      data.duration = null;
+    }
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
