@@ -29,7 +29,12 @@ import {
 import { Timestamp } from "firebase/firestore";
 import dayjs from "dayjs";
 
-import { toDayjs, formatDuration } from "@/utils/time";
+import {
+  durationHM,
+  durationMinutes,
+  timestampSortComparator,
+  tsToDayjs,
+} from "@/utils/timeUtils.js";
 import logError from "@/utils/logError";
 import { subscribeTimeLogs, logTime, endSession } from "@/services/timeLogs";
 import { enrichDriverNames } from "@/services/normalizers";
@@ -73,7 +78,7 @@ export default function TimeClock({ driver, setIsTracking }) {
   const [lastEndedSessionRef, setLastEndedSessionRef] = useState(null);
   const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
-  const [, setLiveTick] = useState(0);
+  const [liveTick, setLiveTick] = useState(0);
 
   const mountedRef = useRef(true);
 
@@ -104,27 +109,22 @@ export default function TimeClock({ driver, setIsTracking }) {
     }
   }, []);
 
-  const formatClock = useCallback(
-    (timestamp, fallback = "—") => {
-      // Convert timestamps via toDayjs before formatting.
-      const parsed = toDayjs(timestamp);
-      if (!parsed) return { label: fallback, relative: "" };
-      try {
-        const localized = parsed.tz?.(timezoneGuess) || parsed;
-        return {
-          label: localized.format("MMM D, h:mm A"),
-          relative: parsed.fromNow?.() || "",
-        };
-      } catch (err) {
-        logError(err, { where: "TimeClock.formatClock" });
-        return {
-          label: parsed.format("MMM D, h:mm A"),
-          relative: parsed.fromNow?.() || "",
-        };
-      }
-    },
-    [timezoneGuess],
-  );
+  const formatClock = useCallback((timestamp) => {
+    const parsed = tsToDayjs(timestamp);
+    if (!parsed) return { label: "N/A", relative: "" };
+    try {
+      return {
+        label: parsed.format("MMM D, h:mm A"),
+        relative: parsed.fromNow?.() || "",
+      };
+    } catch (err) {
+      logError(err, { where: "TimeClock.formatClock" });
+      return {
+        label: parsed.format("MMM D, h:mm A"),
+        relative: parsed.fromNow?.() || "",
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAdmin && !user?.uid) {
@@ -163,7 +163,10 @@ export default function TimeClock({ driver, setIsTracking }) {
               (rowUserId && rowUserId === user?.uid && user?.displayName) ||
               fallbackFromEmail ||
               (!isAdmin && user?.displayName ? user.displayName : "") ||
-              "Unknown";
+              "N/A";
+            const startTs = row?.startTime ?? null;
+            const endTs = row?.endTime ?? null;
+            const durationMins = durationMinutes(startTs, endTs);
 
             return {
               ...row,
@@ -177,8 +180,9 @@ export default function TimeClock({ driver, setIsTracking }) {
               userId: rowUserId,
               driverEmail: email,
               driverName: resolvedName,
-              startTime: row?.startTime ?? null,
-              endTime: row?.endTime ?? null,
+              startTime: startTs,
+              endTime: endTs,
+              durationMinutes: durationMins,
             };
           });
           setSessions(normalized);
@@ -211,7 +215,7 @@ export default function TimeClock({ driver, setIsTracking }) {
       if (!uid || map.has(uid)) return;
       const email = row?.driverEmail || row?.userEmail || "";
       const baseName =
-        row?.driverName && row.driverName !== "Unknown"
+        row?.driverName && row.driverName !== "N/A"
           ? row.driverName
           : row?.driver || null;
       const fallbackName =
@@ -219,7 +223,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         (typeof email === "string" && email.includes("@")
           ? email.split("@")[0]
           : email) ||
-        "Unknown";
+        "N/A";
       map.set(uid, {
         id: uid,
         name: fallbackName,
@@ -266,7 +270,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         (rowUserId && rowUserId === user?.uid && user?.displayName) ||
         fallbackFromEmail ||
         (!isAdmin && user?.displayName ? user.displayName : "") ||
-        "Unknown";
+        "N/A";
       return {
         ...row,
         id: resolveRowId(row),
@@ -334,10 +338,33 @@ export default function TimeClock({ driver, setIsTracking }) {
     return formatClock(activeSession?.startTime).label;
   }, [activeSession?.startTime, formatClock]);
 
-  const activeDurationText = formatDuration(
-    activeSession?.startTime,
+  const activeDurationText = useMemo(() => {
+    const start = tsToDayjs(activeSession?.startTime);
+    if (!start || !start.isValid()) return "N/A";
+    const fallbackNow = () => {
+      try {
+        const base = dayjs().tz ? dayjs().tz(timezoneGuess) : dayjs();
+        // Incorporate liveTick into the memo dependency without shifting the time.
+        return base.add(liveTick * 0, "minute");
+      } catch (err) {
+        logError(err, { where: "TimeClock.activeDuration.now" });
+        return dayjs();
+      }
+    };
+    const end = tsToDayjs(activeSession?.endTime) || fallbackNow();
+    if (!end || !end.isValid() || end.isBefore(start)) return "N/A";
+    const totalMinutes = Math.max(end.diff(start, "minute"), 0);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours && minutes) return `${hours}h ${minutes}m`;
+    if (hours) return `${hours}h`;
+    return `${minutes}m`;
+  }, [
     activeSession?.endTime,
-  );
+    activeSession?.startTime,
+    liveTick,
+    timezoneGuess,
+  ]);
 
   const columns = useMemo(
     () => [
@@ -346,7 +373,7 @@ export default function TimeClock({ driver, setIsTracking }) {
         headerName: "Driver",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => params?.row?.driverName || "Unknown",
+        valueGetter: (params) => params?.row?.driverName || "N/A",
       },
       {
         field: "rideId",
@@ -358,7 +385,7 @@ export default function TimeClock({ driver, setIsTracking }) {
           const mode = params?.row?.mode;
           if (mode === "N/A") return "Non-Ride Task";
           if (mode === "MULTI") return "Multi Ride";
-          return "—";
+          return "N/A";
         },
       },
       {
@@ -366,30 +393,57 @@ export default function TimeClock({ driver, setIsTracking }) {
         headerName: "Clock In",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => formatClock(params?.row?.startTime).label,
+        valueGetter: (params) => params?.row?.startTime ?? null,
+        valueFormatter: ({ value }) => formatClock(value).label,
         renderCell: (params) => {
-          const { label, relative } = formatClock(params?.row?.startTime);
-          if (!label || label === "—") return "—";
+          const { label, relative } = formatClock(params?.value);
+          if (!label || label === "N/A") return "N/A";
           return (
             <Tooltip title={relative || ""} placement="top">
               <span>{label}</span>
             </Tooltip>
           );
         },
+        sortComparator: timestampSortComparator,
       },
       {
         field: "clockOut",
         headerName: "Clock Out",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => formatClock(params?.row?.endTime).label,
+        valueGetter: (params) => params?.row?.endTime ?? null,
+        valueFormatter: ({ value }) => formatClock(value).label,
+        renderCell: (params) => {
+          const { label, relative } = formatClock(params?.value);
+          if (!label || label === "N/A") return "N/A";
+          return (
+            <Tooltip title={relative || ""} placement="top">
+              <span>{label}</span>
+            </Tooltip>
+          );
+        },
+        sortComparator: timestampSortComparator,
       },
       {
         field: "duration",
         headerName: "Duration",
         minWidth: 120,
         valueGetter: (params) =>
-          formatDuration(params?.row?.startTime, params?.row?.endTime),
+          durationHM(params?.row?.startTime, params?.row?.endTime),
+        sortComparator: (v1, v2, cellParams1, cellParams2) => {
+          const first = durationMinutes(
+            cellParams1?.row?.startTime,
+            cellParams1?.row?.endTime,
+          );
+          const second = durationMinutes(
+            cellParams2?.row?.startTime,
+            cellParams2?.row?.endTime,
+          );
+          if (first == null && second == null) return 0;
+          if (first == null) return -1;
+          if (second == null) return 1;
+          return first - second;
+        },
       },
     ],
     [formatClock],
@@ -631,7 +685,7 @@ export default function TimeClock({ driver, setIsTracking }) {
             {activeSession ? (
               <Stack spacing={0.5}>
                 <Typography variant="body2" color="text.secondary">
-                  Active since {activeStart || "—"}
+                  Active since {activeStart || "N/A"}
                 </Typography>
                 <Typography variant="body1" fontWeight={600}>
                   Duration: {activeDurationText}
