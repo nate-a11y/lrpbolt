@@ -18,6 +18,7 @@ import LocalActivity from "@mui/icons-material/LocalActivity"; // Generate Ticke
 import Settings from "@mui/icons-material/Settings";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import ChevronRight from "@mui/icons-material/ChevronRight";
+import Notifications from "@mui/icons-material/Notifications";
 
 export const iconMap = {
   AssignmentTurnedIn,
@@ -38,4 +39,5 @@ export const iconMap = {
   Settings,
   ExitToApp,
   ChevronRight,
+  Notifications,
 };
