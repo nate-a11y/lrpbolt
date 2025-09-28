@@ -32,7 +32,6 @@ import Brightness4Icon from "@mui/icons-material/Brightness4";
 import PersonIcon from "@mui/icons-material/Person";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import InfoIcon from "@mui/icons-material/Info";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -89,11 +88,6 @@ const makeActiveCollapsedSX = (theme) => {
 const ALL_NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
   { label: "Time Clock", icon: <AccessTimeIcon />, path: "/clock" },
-  {
-    label: "Shootout Ride & Time Tracker",
-    icon: <AirportShuttleIcon />,
-    path: "/shootout",
-  },
   { label: "Drop-Off Info", icon: <InfoIcon />, path: "/info" },
   { label: "Vehicle Tips", icon: <DirectionsCarIcon />, path: "/drop-guides" },
   {
