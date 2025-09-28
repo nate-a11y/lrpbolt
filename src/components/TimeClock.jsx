@@ -23,7 +23,7 @@ import {
   startTimeLog,
   endTimeLog,
 } from "@/services/timeLogs";
-import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared";
+import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
 import { isActiveRow, formatDateTime, safeDuration } from "@/utils/time";
 import { getRowId as pickId } from "@/utils/timeLogMap";
 

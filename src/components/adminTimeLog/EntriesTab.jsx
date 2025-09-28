@@ -13,7 +13,7 @@ import { tsToDate } from "@/utils/fsTime";
 import { formatDateTime, formatClockOutOrDash } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
-import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared";
+import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
 import { getRowId as pickId } from "@/utils/timeLogMap";
 
 import { db } from "../../utils/firebaseInit";
