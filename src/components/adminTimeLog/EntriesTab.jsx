@@ -14,7 +14,6 @@ import { formatDateTime, formatClockOutOrDash } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
-import { getRowId as pickId } from "@/utils/timeLogMap";
 
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -35,64 +34,76 @@ export default function EntriesTab() {
   const [rowModesModel, setRowModesModel] = useState({});
   const [selectionModel, setSelectionModel] = useState([]);
 
-  const handleDelete = useCallback(async (row) => {
-    if (!window.confirm("Delete this time log?")) return;
-    const id = row?.id || row?.docId || row?._id;
-    if (!id) return;
-    try {
-      await deleteTimeLog(id);
-    } catch (e) {
-      logError(e, `EntriesTab.delete:${id}`);
-      alert("Failed to delete time log");
-    }
-  }, []);
+  const getRowId = useCallback(
+    (row) => row?.id || row?.docId || row?._id || null,
+    [],
+  );
 
-  const handleProcessRowUpdate = useCallback(async (newRow, oldRow) => {
-    const id = newRow?.id || newRow?.docId || newRow?._id;
-    if (!id) return oldRow;
-
-    // Build update payload (let the service convert Dates->Timestamp)
-    const driverName =
-      typeof newRow.driverName === "string" && newRow.driverName.trim() !== ""
-        ? newRow.driverName
-        : (newRow.driver ?? null);
-    const updates = {
-      driver: driverName ?? null,
-      driverName: driverName ?? null,
-      rideId: newRow.rideId ?? null,
-      note: newRow.note ?? null,
-    };
-    if (newRow.startTime instanceof Date) updates.startTime = newRow.startTime;
-    if (newRow.endTime instanceof Date) updates.endTime = newRow.endTime;
-    if (newRow.loggedAt instanceof Date) updates.loggedAt = newRow.loggedAt;
-
-    try {
-      await patchTimeLog(id, updates);
-
-      // Recompute duration on the client for immediate UX
-      const start =
-        newRow.startTime instanceof Date
-          ? newRow.startTime
-          : tsToDate(newRow.startTime);
-      const end =
-        newRow.endTime instanceof Date
-          ? newRow.endTime
-          : tsToDate(newRow.endTime);
-      let duration = 0;
-      if (start && end) {
-        duration = Math.max(0, minutesBetween(start, end) || 0);
+  const handleDelete = useCallback(
+    async (row) => {
+      if (!window.confirm("Delete this time log?")) return;
+      const id = getRowId(row);
+      if (!id) return;
+      try {
+        await deleteTimeLog(id);
+      } catch (e) {
+        logError(e, `EntriesTab.delete:${id}`);
+        alert("Failed to delete time log");
       }
+    },
+    [getRowId],
+  );
 
-      return {
-        ...newRow,
-        duration,
-        driverName: driverName ?? newRow.driverName,
+  const handleProcessRowUpdate = useCallback(
+    async (newRow, oldRow) => {
+      const id = getRowId(newRow);
+      if (!id) return oldRow;
+
+      // Build update payload (let the service convert Dates->Timestamp)
+      const driverName =
+        typeof newRow.driverName === "string" && newRow.driverName.trim() !== ""
+          ? newRow.driverName
+          : (newRow.driver ?? null);
+      const updates = {
+        driver: driverName ?? null,
+        driverName: driverName ?? null,
+        rideId: newRow.rideId ?? null,
+        note: newRow.note ?? null,
       };
-    } catch (e) {
-      logError(e, `EntriesTab.processRowUpdate:${id}`);
-      return oldRow;
-    }
-  }, []);
+      if (newRow.startTime instanceof Date)
+        updates.startTime = newRow.startTime;
+      if (newRow.endTime instanceof Date) updates.endTime = newRow.endTime;
+      if (newRow.loggedAt instanceof Date) updates.loggedAt = newRow.loggedAt;
+
+      try {
+        await patchTimeLog(id, updates);
+
+        // Recompute duration on the client for immediate UX
+        const start =
+          newRow.startTime instanceof Date
+            ? newRow.startTime
+            : tsToDate(newRow.startTime);
+        const end =
+          newRow.endTime instanceof Date
+            ? newRow.endTime
+            : tsToDate(newRow.endTime);
+        let duration = 0;
+        if (start && end) {
+          duration = Math.max(0, minutesBetween(start, end) || 0);
+        }
+
+        return {
+          ...newRow,
+          duration,
+          driverName: driverName ?? newRow.driverName,
+        };
+      } catch (e) {
+        logError(e, `EntriesTab.processRowUpdate:${id}`);
+        return oldRow;
+      }
+    },
+    [getRowId],
+  );
 
   const actionsColumn = useMemo(
     () =>
@@ -500,14 +511,7 @@ export default function EntriesTab() {
             },
           }}
           pageSizeOptions={[15, 30, 60, 100]}
-          getRowId={(r) =>
-            pickId(r) ||
-            r?.id ||
-            r?.docId ||
-            r?._id ||
-            r?.uid ||
-            JSON.stringify(r)
-          }
+          getRowId={getRowId}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}
