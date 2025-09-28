@@ -5,6 +5,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getFirestore,
   limit as limitDocs,
   onSnapshot,
   orderBy,
@@ -16,13 +17,151 @@ import {
   where,
 } from "firebase/firestore";
 
-import { db } from "../utils/firebaseInit";
+import { dayjs } from "@/utils/time";
+
 import logError from "../utils/logError.js";
 
 import { mapSnapshotToRows } from "./normalizers";
 
+const db = getFirestore();
+
 function backoff(attempt) {
   return new Promise((res) => setTimeout(res, 2 ** attempt * 100));
+}
+
+function normalizeTimestampInput(value) {
+  if (value == null) return null;
+  if (value instanceof Timestamp) return value;
+  if (value instanceof Date) return Timestamp.fromDate(value);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Timestamp.fromMillis(value);
+  }
+  if (typeof value?.toDate === "function") {
+    try {
+      const date = value.toDate();
+      if (date instanceof Date) return Timestamp.fromDate(date);
+    } catch (error) {
+      logError(error, { where: "timeLogs.normalizeTimestampInput" });
+    }
+  }
+  return null;
+}
+
+export function subscribeMyTimeLogs({
+  user,
+  onData,
+  onError,
+  limitDays = 30,
+} = {}) {
+  if (!user?.uid && !user?.email) {
+    onData?.([]);
+    return () => {};
+  }
+
+  try {
+    const clauses = [];
+    if (user?.uid) {
+      clauses.push(where("driverId", "==", user.uid));
+    } else if (user?.email) {
+      const email =
+        typeof user.email === "string" ? user.email.toLowerCase() : user.email;
+      if (email) clauses.push(where("driverEmail", "==", email));
+    }
+
+    const constraints = [...clauses];
+    if (Number.isFinite(limitDays) && limitDays > 0) {
+      const bound = dayjs().subtract(limitDays, "day").startOf("day");
+      if (bound?.isValid?.()) {
+        constraints.push(
+          where("startTime", ">=", Timestamp.fromDate(bound.toDate())),
+        );
+      }
+    }
+
+    constraints.push(orderBy("startTime", "desc"));
+    constraints.push(limitDocs(200));
+
+    const q = query(collection(db, "timeLogs"), ...constraints);
+    return onSnapshot(
+      q,
+      (snap) => {
+        const rows = [];
+        snap.forEach((docSnap) => {
+          rows.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        onData?.(rows);
+      },
+      (error) => {
+        logError(error, { where: "timeLogs.subscribeMyTimeLogs" });
+        onError?.(error);
+      },
+    );
+  } catch (error) {
+    logError(error, { where: "timeLogs.subscribeMyTimeLogs" });
+    onError?.(error);
+    onData?.([]);
+    return () => {};
+  }
+}
+
+export async function startTimeLog({
+  user,
+  rideId = "N/A",
+  mode = "N/A",
+  startTime = null,
+} = {}) {
+  if (!user) throw new Error("No user");
+
+  const email =
+    typeof user.email === "string" ? user.email.toLowerCase() : user.email;
+  const displayName = user.displayName || user.email || "Unknown";
+  const normalizedMode =
+    typeof mode === "string" && mode.trim() ? mode.trim().toUpperCase() : "N/A";
+  const normalizedRideId =
+    normalizedMode === "RIDE" ? rideId || "N/A" : (rideId ?? null);
+
+  const startValue = normalizeTimestampInput(startTime) || serverTimestamp();
+  const now = serverTimestamp();
+
+  try {
+    const ref = await addDoc(collection(db, "timeLogs"), {
+      driverId: user.uid || null,
+      userId: user.uid || null,
+      driverEmail: email || null,
+      userEmail: email || null,
+      driverName: displayName || "Unknown",
+      rideId: normalizedRideId,
+      mode: normalizedMode,
+      startTime: startValue,
+      endTime: null,
+      createdAt: now,
+      updatedAt: now,
+      loggedAt: now,
+    });
+    return ref.id;
+  } catch (error) {
+    logError(error, { where: "timeLogs.startTimeLog" });
+    throw error;
+  }
+}
+
+export async function endTimeLog({ id, endTime = null, rideId, mode } = {}) {
+  if (!id) throw new Error("Missing timeLog id");
+
+  const updates = {
+    endTime: normalizeTimestampInput(endTime) || serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  if (rideId !== undefined) updates.rideId = rideId ?? null;
+  if (mode !== undefined) updates.mode = mode ?? null;
+
+  try {
+    await updateDoc(doc(db, "timeLogs", id), updates);
+  } catch (error) {
+    logError(error, { where: "timeLogs.endTimeLog", id });
+    throw error;
+  }
 }
 
 export async function patchTimeLog(id, updates = {}) {
@@ -177,27 +316,21 @@ export function subscribeTimeLogs(arg1, arg2, arg3) {
 }
 
 export async function logTime(payload = {}) {
-  const driverEmail = payload.driverEmail?.toLowerCase?.() || null;
-  const base = {
-    driverId: payload.driverId ?? null,
-    driverEmail,
-    userEmail: driverEmail,
-    userId: payload.userId ?? payload.uid ?? null,
-    driverName: payload.driverName ?? null,
-    rideId: payload.rideId ?? null,
-    mode: payload.mode ?? "RIDE",
-    startTime:
-      payload.startTime instanceof Timestamp
-        ? payload.startTime
-        : serverTimestamp(),
-    endTime: payload.endTime ?? null,
-    loggedAt: serverTimestamp(),
+  const user = {
+    uid: payload.userId ?? payload.uid ?? payload.driverId ?? null,
+    email: payload.driverEmail ?? payload.userEmail ?? null,
+    displayName: payload.driverName ?? null,
   };
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const ref = await addDoc(collection(db, "timeLogs"), base);
-      return { id: ref.id };
+      const id = await startTimeLog({
+        user,
+        rideId: payload.rideId ?? "N/A",
+        mode: payload.mode ?? "RIDE",
+        startTime: payload.startTime ?? null,
+      });
+      return { id };
     } catch (err) {
       if (attempt === 2) {
         logError(err, { where: "timeLogs.logTime", payload });
@@ -211,31 +344,10 @@ export async function logTime(payload = {}) {
 
 export async function endSession(id, options = {}) {
   if (!id) return;
-  const ref = doc(db, "timeLogs", id);
-  const { endTime, rideId, mode } = options || {};
-  let endValue = endTime;
-  if (endValue == null) {
-    endValue = null;
-  } else if (endValue instanceof Timestamp) {
-    // already Timestamp
-  } else if (typeof endValue?.toDate === "function") {
-    endValue = Timestamp.fromDate(endValue.toDate());
-  } else if (typeof endValue === "number") {
-    endValue = Timestamp.fromMillis(endValue);
-  } else {
-    endValue = Timestamp.fromDate(new Date(endValue));
-  }
-
-  const updates = {
-    endTime: endValue ?? null,
-    updatedAt: serverTimestamp(),
-  };
-  if (rideId !== undefined) updates.rideId = rideId ?? null;
-  if (mode !== undefined) updates.mode = mode ?? null;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      await updateDoc(ref, updates);
+      await endTimeLog({ id, ...options });
       return;
     } catch (err) {
       if (attempt === 2) {

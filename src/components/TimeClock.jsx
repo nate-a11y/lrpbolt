@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Card,
@@ -26,22 +25,18 @@ import {
   Stop,
   Undo as UndoIcon,
 } from "@mui/icons-material";
-import { Timestamp } from "firebase/firestore";
-import dayjs from "dayjs";
 
-import {
-  durationHM,
-  durationMinutes,
-  timestampSortComparator,
-  tsToDayjs,
-} from "@/utils/timeUtils.js";
+import { dayjs, formatDateTime, safeDuration } from "@/utils/time";
 import logError from "@/utils/logError";
-import { subscribeTimeLogs } from "@/hooks/firestore";
-import { logTime, endSession } from "@/services/timeLogs";
-import { enrichDriverNames } from "@/services/normalizers";
+import {
+  subscribeMyTimeLogs,
+  startTimeLog,
+  endTimeLog,
+  patchTimeLog,
+} from "@/services/timeLogs";
 import { useAuth } from "@/context/AuthContext.jsx";
-import { useRole } from "@/hooks";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
+import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.js";
 
 function buildCheckboxLabel(text, helper) {
   return (
@@ -58,18 +53,17 @@ function buildCheckboxLabel(text, helper) {
   );
 }
 
-export default function TimeClock({ driver, setIsTracking }) {
+export default function TimeClock({ setIsTracking }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { user } = useAuth();
-  const { role, authLoading: roleLoading } = useRole();
+  const { user, role, roleLoading } = useAuth();
   const isAdmin = role === "admin";
   const isDriver = role === "driver";
 
   const [rideId, setRideId] = useState("");
   const [nonRideTask, setNonRideTask] = useState(false);
   const [multiRide, setMultiRide] = useState(false);
-  const [sessions, setSessions] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -77,11 +71,11 @@ export default function TimeClock({ driver, setIsTracking }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarError, setSnackbarError] = useState(null);
   const [lastEndedSessionRef, setLastEndedSessionRef] = useState(null);
-  const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [columnVisibilityModel, setColumnVisibilityModel] = useState({});
-  const [liveTick, setLiveTick] = useState(0);
+  const [activeSession, setActiveSession] = useState(null);
+  const [, setDurationTick] = useState(0);
 
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -91,261 +85,83 @@ export default function TimeClock({ driver, setIsTracking }) {
   }, []);
 
   useEffect(() => {
-    const baseModel = isMobile ? { rideId: false, clockOut: false } : {};
+    const baseModel = isMobile
+      ? { driverEmail: false, rideId: false, endTime: false }
+      : {};
     setColumnVisibilityModel(baseModel);
   }, [isMobile]);
 
-  useEffect(() => {
-    if (!isAdmin) {
-      setSelectedDriverId(null);
-    }
-  }, [isAdmin]);
+  const normalizeRow = useCallback(
+    (row) => {
+      if (!row) return null;
+      const emailRaw = row.driverEmail || row.userEmail || "";
+      const email =
+        typeof emailRaw === "string" ? emailRaw.toLowerCase() : emailRaw;
+      const fallbackEmail = typeof emailRaw === "string" ? emailRaw : "";
+      const displayNameMatch =
+        user?.email && email ? email === user.email.toLowerCase() : false;
+      const fallbackName = fallbackEmail.includes("@")
+        ? fallbackEmail.split("@")[0]
+        : fallbackEmail;
 
-  const timezoneGuess = useMemo(() => {
-    try {
-      return dayjs.tz?.guess?.() || "UTC";
-    } catch (err) {
-      logError(err, { where: "TimeClock.tzGuess" });
-      return "UTC";
-    }
-  }, []);
-
-  const formatClock = useCallback((timestamp) => {
-    const parsed = tsToDayjs(timestamp);
-    if (!parsed) return { label: "N/A", relative: "" };
-    try {
       return {
-        label: parsed.format("MMM D, h:mm A"),
-        relative: parsed.fromNow?.() || "",
+        ...row,
+        id:
+          row.id ||
+          row.docId ||
+          row._id ||
+          `${fallbackEmail || "unknown"}-${
+            row?.startTime?.seconds ?? row?.startTime ?? "start"
+          }`,
+        driverEmail: fallbackEmail || "N/A",
+        driverName:
+          row.driverName ||
+          row.driver ||
+          (displayNameMatch ? user?.displayName : null) ||
+          fallbackName ||
+          "N/A",
       };
-    } catch (err) {
-      logError(err, { where: "TimeClock.formatClock" });
-      return {
-        label: parsed.format("MMM D, h:mm A"),
-        relative: parsed.fromNow?.() || "",
-      };
-    }
-  }, []);
-
-  const projectSessionsForViewer = useCallback(
-    (rows) => {
-      const incoming = rows || [];
-      if (isAdmin) return incoming;
-
-      const email = user?.email?.toLowerCase?.() || "";
-      const uid = user?.uid || null;
-
-      return incoming.filter((row) => {
-        const rowEmail =
-          row?.driverEmail?.toLowerCase?.() ||
-          row?.userEmail?.toLowerCase?.() ||
-          "";
-        const rowUserId = row?.userId || row?.driverId || null;
-        const sameDriverId = driver && row?.driverId && row.driverId === driver;
-        return (
-          (uid && rowUserId === uid) ||
-          (email && rowEmail === email) ||
-          sameDriverId
-        );
-      });
     },
-    [driver, isAdmin, user?.email, user?.uid],
+    [user?.displayName, user?.email],
   );
 
   useEffect(() => {
-    if (!(isAdmin || user?.uid || user?.email)) {
-      setSessions([]);
+    if (!user) {
+      setRows([]);
+      setActiveSession(null);
       setLoading(false);
-      setLoadError(null);
       return undefined;
     }
 
     setLoading(true);
     setLoadError(null);
 
-    const unsubscribe = subscribeTimeLogs(
-      async (rows) => {
-        try {
-          const limited = (rows || []).slice(0, 200);
-          const enriched = await enrichDriverNames(limited);
-          if (!mountedRef.current) return;
-          const normalized = (enriched || []).map((row) => {
-            const email = row?.driverEmail || row?.userEmail || "";
-            const rowUserId = row?.userId || row?.driverId || row?.uid || null;
-            const fallbackFromEmail =
-              typeof email === "string" && email.includes("@")
-                ? email.split("@")[0]
-                : email;
-            const resolvedName =
-              row?.driverName ||
-              row?.driver ||
-              (rowUserId && rowUserId === user?.uid && user?.displayName) ||
-              fallbackFromEmail ||
-              (!isAdmin && user?.displayName ? user.displayName : "") ||
-              "N/A";
-            const startTs = row?.startTime ?? null;
-            const endTs = row?.endTime ?? null;
-            const durationMins = durationMinutes(startTs, endTs);
-
-            return {
-              ...row,
-              id:
-                row?.id ||
-                row?.docId ||
-                row?._id ||
-                `${rowUserId || email || "unknown"}-${
-                  row?.startTime?.seconds ?? row?.startTime ?? "start"
-                }`,
-              userId: rowUserId,
-              driverEmail: email,
-              driverName: resolvedName,
-              startTime: startTs,
-              endTime: endTs,
-              durationMinutes: durationMins,
-            };
-          });
-          const toMillis = (value) => {
-            if (!value) return 0;
-            if (typeof value?.toMillis === "function") return value.toMillis();
-            if (typeof value?.seconds === "number") {
-              const nanos = Number(value?.nanoseconds) || 0;
-              return value.seconds * 1000 + Math.floor(nanos / 1e6);
-            }
-            if (value instanceof Date) return value.getTime();
-            if (typeof value === "number") return value;
-            if (typeof value?.toDate === "function") {
-              const date = value.toDate();
-              return date instanceof Date ? date.getTime() : 0;
-            }
-            return 0;
-          };
-          const sorted = normalized.sort(
-            (a, b) => toMillis(b?.startTime) - toMillis(a?.startTime),
-          );
-          setSessions(projectSessionsForViewer(sorted));
-          setLoadError(null);
-          setLoading(false);
-        } catch (err) {
-          logError(err, { where: "TimeClock.subscribe.enrich" });
-          if (!mountedRef.current) return;
-          setLoadError(err);
-          setLoading(false);
-        }
-      },
-      (err) => {
+    const unsubscribe = subscribeMyTimeLogs({
+      user,
+      onData: (data) => {
         if (!mountedRef.current) return;
-        logError(err, { where: "TimeClock.subscribe.listener" });
-        setLoadError(err);
+        const normalized = (data || [])
+          .map((row) => normalizeRow(row))
+          .filter(Boolean);
+        setRows(normalized);
+        const active =
+          normalized.find((row) => row && row.endTime == null) || null;
+        setActiveSession(active);
+        setLoadError(null);
         setLoading(false);
       },
-    );
+      onError: (error) => {
+        if (!mountedRef.current) return;
+        logError(error, { where: "TimeClock.subscribeMyTimeLogs" });
+        setLoadError(error);
+        setLoading(false);
+      },
+    });
 
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [
-    isAdmin,
-    projectSessionsForViewer,
-    user?.displayName,
-    user?.email,
-    user?.uid,
-  ]);
-
-  const driverOptions = useMemo(() => {
-    if (!isAdmin) return [];
-    const map = new Map();
-    (sessions || []).forEach((row) => {
-      const uid = row?.userId;
-      if (!uid || map.has(uid)) return;
-      const email = row?.driverEmail || row?.userEmail || "";
-      const baseName =
-        row?.driverName && row.driverName !== "N/A"
-          ? row.driverName
-          : row?.driver || null;
-      const fallbackName =
-        baseName ||
-        (typeof email === "string" && email.includes("@")
-          ? email.split("@")[0]
-          : email) ||
-        "N/A";
-      map.set(uid, {
-        id: uid,
-        name: fallbackName,
-        email,
-      });
-    });
-    return Array.from(map.values()).sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-    );
-  }, [isAdmin, sessions]);
-
-  const selectedDriverOption = useMemo(() => {
-    if (!selectedDriverId) return null;
-    return (
-      driverOptions.find((option) => option.id === selectedDriverId) || null
-    );
-  }, [driverOptions, selectedDriverId]);
-
-  const filteredSessions = useMemo(() => {
-    const allSessions = sessions || [];
-    if (!isAdmin) return allSessions;
-    if (!selectedDriverId) return allSessions;
-    return allSessions.filter((row) => {
-      const rowUserId = row?.userId || row?.driverId || null;
-      return rowUserId === selectedDriverId;
-    });
-  }, [isAdmin, selectedDriverId, sessions]);
-
-  const resolveRowId = useCallback((row) => {
-    if (!row) return "missing-row";
-    if (row.id) return row.id;
-    const email = row?.driverEmail || row?.userEmail || "unknown";
-    const startKey = row?.startTime?.seconds ?? row?.startTime ?? "start";
-    return `${email}-${startKey}`;
-  }, []);
-
-  const gridRows = useMemo(() => {
-    return (filteredSessions || []).map((row) => {
-      const driverEmail = row?.driverEmail || row?.userEmail || "";
-      const rowUserId = row?.userId || row?.driverId || row?.uid || null;
-      const fallbackFromEmail =
-        typeof driverEmail === "string" && driverEmail.includes("@")
-          ? driverEmail.split("@")[0]
-          : driverEmail;
-      const resolvedName =
-        row?.driverName ||
-        row?.driver ||
-        (rowUserId && rowUserId === user?.uid && user?.displayName) ||
-        fallbackFromEmail ||
-        (!isAdmin && user?.displayName ? user.displayName : "") ||
-        "N/A";
-      return {
-        ...row,
-        id: resolveRowId(row),
-        userId: rowUserId,
-        driverEmail,
-        driverName: resolvedName,
-      };
-    });
-  }, [filteredSessions, isAdmin, resolveRowId, user?.displayName, user?.uid]);
-
-  const activeSession = useMemo(() => {
-    if (!user?.email && !user?.uid) return null;
-    const email = user?.email?.toLowerCase?.() || "";
-    const uid = user?.uid || null;
-    return (
-      (sessions || []).find((row) => {
-        const rowEmail =
-          row?.driverEmail?.toLowerCase?.() || row?.userEmail?.toLowerCase?.();
-        const rowUserId = row?.userId || row?.driverId || null;
-        const sameDriverId = driver && row?.driverId && row.driverId === driver;
-        return (
-          !row?.endTime &&
-          ((uid && rowUserId === uid) || rowEmail === email || sameDriverId)
-        );
-      }) || null
-    );
-  }, [driver, sessions, user?.email, user?.uid]);
+  }, [normalizeRow, user]);
 
   useEffect(() => {
     if (typeof setIsTracking === "function") {
@@ -354,7 +170,7 @@ export default function TimeClock({ driver, setIsTracking }) {
   }, [activeSession, setIsTracking]);
 
   useEffect(() => {
-    setLiveTick(0);
+    setDurationTick(0);
     if (!activeSession) {
       if (!isStarting) {
         setRideId("");
@@ -364,149 +180,50 @@ export default function TimeClock({ driver, setIsTracking }) {
       return;
     }
 
-    const mode = activeSession?.mode;
-    setNonRideTask(mode === "N/A");
-    setMultiRide(mode === "MULTI");
-    if (mode === "RIDE") {
-      setRideId(activeSession?.rideId || "");
+    const modeValue = activeSession.mode || "RIDE";
+    setNonRideTask(modeValue === "N/A");
+    setMultiRide(modeValue === "MULTI");
+    if (modeValue === "RIDE") {
+      setRideId(activeSession.rideId || "");
     } else {
       setRideId("");
     }
   }, [activeSession, isStarting]);
 
   useEffect(() => {
-    if (!activeSession) return undefined;
+    if (!activeSession || activeSession.endTime) return undefined;
     const timer = setInterval(() => {
-      setLiveTick((prev) => prev + 1);
+      setDurationTick((tick) => tick + 1);
     }, 60000);
     return () => clearInterval(timer);
   }, [activeSession]);
 
+  const columns = useMemo(() => buildTimeLogColumns(), []);
+
+  const gridRows = useMemo(() => rows, [rows]);
+
   const activeStart = useMemo(() => {
-    return formatClock(activeSession?.startTime).label;
-  }, [activeSession?.startTime, formatClock]);
+    if (!activeSession?.startTime) return null;
+    return formatDateTime(activeSession.startTime, "MMM D, h:mm A");
+  }, [activeSession?.startTime]);
 
-  const activeDurationText = useMemo(() => {
-    const start = tsToDayjs(activeSession?.startTime);
-    if (!start || !start.isValid()) return "N/A";
-    const fallbackNow = () => {
-      try {
-        const base = dayjs().tz ? dayjs().tz(timezoneGuess) : dayjs();
-        // Incorporate liveTick into the memo dependency without shifting the time.
-        return base.add(liveTick * 0, "minute");
-      } catch (err) {
-        logError(err, { where: "TimeClock.activeDuration.now" });
-        return dayjs();
-      }
-    };
-    const end = tsToDayjs(activeSession?.endTime) || fallbackNow();
-    if (!end || !end.isValid() || end.isBefore(start)) return "N/A";
-    const totalMinutes = Math.max(end.diff(start, "minute"), 0);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours && minutes) return `${hours}h ${minutes}m`;
-    if (hours) return `${hours}h`;
-    return `${minutes}m`;
-  }, [
-    activeSession?.endTime,
-    activeSession?.startTime,
-    liveTick,
-    timezoneGuess,
-  ]);
+  const activeDurationText = activeSession?.startTime
+    ? safeDuration(activeSession.startTime, activeSession.endTime ?? null)
+    : "N/A";
 
-  const columns = useMemo(
-    () => [
-      {
-        field: "driverName",
-        headerName: "Driver",
-        minWidth: 140,
-        flex: 1,
-        valueGetter: (params) => params?.row?.driverName || "N/A",
-      },
-      {
-        field: "rideId",
-        headerName: "Ride ID",
-        minWidth: 120,
-        valueGetter: (params) => {
-          const rideId = params?.row?.rideId;
-          if (rideId) return rideId;
-          const mode = params?.row?.mode;
-          if (mode === "N/A") return "Non-Ride Task";
-          if (mode === "MULTI") return "Multi Ride";
-          return "N/A";
-        },
-      },
-      {
-        field: "clockIn",
-        headerName: "Clock In",
-        minWidth: 160,
-        flex: 1,
-        valueGetter: (params) => params?.row?.startTime ?? null,
-        valueFormatter: (params) => {
-          const safeValue = params?.value ?? null;
-          const { label } = formatClock(safeValue);
-          return label || "N/A";
-        },
-        renderCell: (params) => {
-          const { label, relative } = formatClock(params?.value);
-          if (!label || label === "N/A") return "N/A";
-          return (
-            <Tooltip title={relative || ""} placement="top">
-              <span>{label}</span>
-            </Tooltip>
-          );
-        },
-        sortComparator: timestampSortComparator,
-      },
-      {
-        field: "clockOut",
-        headerName: "Clock Out",
-        minWidth: 160,
-        flex: 1,
-        valueGetter: (params) => params?.row?.endTime ?? null,
-        valueFormatter: (params) => {
-          const safeValue = params?.value ?? null;
-          const { label } = formatClock(safeValue);
-          return label || "N/A";
-        },
-        renderCell: (params) => {
-          const { label, relative } = formatClock(params?.value);
-          if (!label || label === "N/A") return "N/A";
-          return (
-            <Tooltip title={relative || ""} placement="top">
-              <span>{label}</span>
-            </Tooltip>
-          );
-        },
-        sortComparator: timestampSortComparator,
-      },
-      {
-        field: "duration",
-        headerName: "Duration",
-        minWidth: 120,
-        valueGetter: (params) =>
-          durationHM(params?.row?.startTime, params?.row?.endTime),
-        sortComparator: (v1, v2, cellParams1, cellParams2) => {
-          const first = durationMinutes(
-            cellParams1?.row?.startTime,
-            cellParams1?.row?.endTime,
-          );
-          const second = durationMinutes(
-            cellParams2?.row?.startTime,
-            cellParams2?.row?.endTime,
-          );
-          if (first == null && second == null) return 0;
-          if (first == null) return -1;
-          if (second == null) return 1;
-          return first - second;
-        },
-      },
-    ],
-    [formatClock],
-  );
+  const tzLabel = useMemo(() => {
+    try {
+      const guess = dayjs.tz?.guess?.() || "UTC";
+      const base = dayjs().tz ? dayjs().tz(guess) : dayjs();
+      return base.format("zz");
+    } catch (error) {
+      logError(error, { where: "TimeClock.tzLabel" });
+      return dayjs.tz?.guess?.() || "UTC";
+    }
+  }, []);
 
   const handleStart = useCallback(async () => {
-    if (!user?.email) {
+    if (!user) {
       setSnackbarError("You must be signed in to start a session.");
       return;
     }
@@ -523,18 +240,14 @@ export default function TimeClock({ driver, setIsTracking }) {
     setSnackbarError(null);
 
     try {
-      await logTime({
-        driverId: driver ?? null,
-        driverEmail: user.email,
-        userId: user?.uid ?? null,
-        driverName: user?.displayName ?? null,
+      await startTimeLog({
+        user,
         rideId: mode === "RIDE" ? normalizedRideId : null,
         mode,
       });
-    } catch (err) {
-      logError(err, {
-        where: "TimeClock.start",
-        userId: user?.uid,
+    } catch (error) {
+      logError(error, {
+        where: "TimeClock.startTimeLog",
         rideId: normalizedRideId || mode,
       });
       setSnackbarError("Failed to start session. Please try again.");
@@ -543,120 +256,68 @@ export default function TimeClock({ driver, setIsTracking }) {
     }
   }, [
     activeSession,
-    driver,
     isEnding,
     isStarting,
     multiRide,
     nonRideTask,
     rideId,
-    user?.displayName,
-    user?.email,
-    user?.uid,
+    user,
   ]);
 
   const handleEnd = useCallback(async () => {
     if (!activeSession || isEnding || isStarting) return;
 
-    const sessionId = resolveRowId(activeSession);
-    const previousEndTime = activeSession?.endTime ?? null;
-    const optimisticEnd = Timestamp.now();
     const mode = nonRideTask ? "N/A" : multiRide ? "MULTI" : "RIDE";
     const normalizedRideId =
       mode === "RIDE"
-        ? (rideId || activeSession?.rideId || "").trim().toUpperCase()
+        ? (rideId || activeSession.rideId || "").trim().toUpperCase()
         : null;
 
     setIsEnding(true);
     setSnackbarError(null);
-
-    setSessions((prev) =>
-      prev.map((row) =>
-        resolveRowId(row) === sessionId
-          ? { ...row, endTime: optimisticEnd, rideId: normalizedRideId }
-          : row,
-      ),
-    );
     setLastEndedSessionRef({
-      id: sessionId,
-      previousEndTime,
-      rideId: activeSession?.rideId ?? null,
-      mode: activeSession?.mode ?? null,
+      id: activeSession.id,
+      previousEndTime: activeSession.endTime ?? null,
+      rideId: activeSession.rideId ?? null,
     });
     setSnackbarOpen(true);
 
     try {
-      await endSession(sessionId, {
-        endTime: optimisticEnd,
+      await endTimeLog({
+        id: activeSession.id,
         rideId: normalizedRideId,
         mode,
       });
       setRideId("");
       setNonRideTask(false);
       setMultiRide(false);
-    } catch (err) {
-      logError(err, {
-        where: "TimeClock.end",
-        userId: user?.uid,
-        rideId: normalizedRideId || mode,
-      });
-      setSessions((prev) =>
-        prev.map((row) =>
-          resolveRowId(row) === sessionId
-            ? {
-                ...row,
-                endTime: previousEndTime,
-                rideId: activeSession?.rideId ?? row.rideId ?? null,
-              }
-            : row,
-        ),
-      );
+    } catch (error) {
+      logError(error, { where: "TimeClock.endTimeLog", id: activeSession.id });
       setSnackbarOpen(false);
       setLastEndedSessionRef(null);
       setSnackbarError("Failed to end session. Please try again.");
     } finally {
       setIsEnding(false);
     }
-  }, [
-    activeSession,
-    multiRide,
-    nonRideTask,
-    resolveRowId,
-    rideId,
-    isEnding,
-    isStarting,
-    user?.uid,
-  ]);
+  }, [activeSession, isEnding, isStarting, multiRide, nonRideTask, rideId]);
 
   const handleUndo = useCallback(async () => {
     if (!lastEndedSessionRef) return;
     try {
-      await endSession(lastEndedSessionRef.id, {
+      await patchTimeLog(lastEndedSessionRef.id, {
         endTime: lastEndedSessionRef.previousEndTime ?? null,
         rideId: lastEndedSessionRef.rideId ?? null,
-        mode: lastEndedSessionRef.mode ?? undefined,
       });
-      setSessions((prev) =>
-        prev.map((row) =>
-          resolveRowId(row) === lastEndedSessionRef.id
-            ? {
-                ...row,
-                endTime: lastEndedSessionRef.previousEndTime ?? null,
-                rideId: lastEndedSessionRef.rideId ?? row.rideId ?? null,
-              }
-            : row,
-        ),
-      );
       setSnackbarOpen(false);
       setLastEndedSessionRef(null);
-    } catch (err) {
-      logError(err, {
+    } catch (error) {
+      logError(error, {
         where: "TimeClock.undo",
-        userId: user?.uid,
-        rideId: lastEndedSessionRef?.rideId ?? null,
+        id: lastEndedSessionRef.id,
       });
       setSnackbarError("Undo failed. Session remains ended.");
     }
-  }, [lastEndedSessionRef, resolveRowId, user?.uid]);
+  }, [lastEndedSessionRef]);
 
   const handleSnackbarClose = useCallback(() => {
     setSnackbarOpen(false);
@@ -705,16 +366,6 @@ export default function TimeClock({ driver, setIsTracking }) {
     }),
     [],
   );
-
-  const tzLabel = useMemo(() => {
-    try {
-      const base = dayjs().tz ? dayjs().tz(timezoneGuess) : dayjs();
-      return base.format("zz");
-    } catch (err) {
-      logError(err, { where: "TimeClock.tzLabel" });
-      return timezoneGuess;
-    }
-  }, [timezoneGuess]);
 
   if (roleLoading) {
     return (
@@ -865,25 +516,6 @@ export default function TimeClock({ driver, setIsTracking }) {
           {tzLabel} (Central Time if applicable)
         </Typography>
       </Stack>
-
-      {isAdmin && driverOptions.length > 0 && (
-        <Autocomplete
-          size="small"
-          options={driverOptions}
-          value={selectedDriverOption}
-          onChange={(_event, option) => setSelectedDriverId(option?.id ?? null)}
-          getOptionLabel={(option) => option?.name || ""}
-          isOptionEqualToValue={(option, value) => option?.id === value?.id}
-          clearOnEscape
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Filter by driver"
-              placeholder="Search driver"
-            />
-          )}
-        />
-      )}
 
       {loadError && (
         <Alert severity="warning">
