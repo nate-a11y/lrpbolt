@@ -71,7 +71,14 @@ export function subscribeMyTimeLogs({ user, onData, onError }) {
       (snap) => {
         const rows = [];
         snap.forEach((docSnap) => {
-          rows.push({ id: docSnap.id, ...docSnap.data() });
+          const data = docSnap.data();
+          const docId = docSnap.id;
+          rows.push({
+            ...data,
+            originalId: data?.id ?? null,
+            docId,
+            id: docId,
+          });
         });
         onData?.(rows);
       },
