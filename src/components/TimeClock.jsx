@@ -126,8 +126,33 @@ export default function TimeClock({ driver, setIsTracking }) {
     }
   }, []);
 
+  const projectSessionsForViewer = useCallback(
+    (rows) => {
+      const incoming = rows || [];
+      if (isAdmin) return incoming;
+
+      const email = user?.email?.toLowerCase?.() || "";
+      const uid = user?.uid || null;
+
+      return incoming.filter((row) => {
+        const rowEmail =
+          row?.driverEmail?.toLowerCase?.() ||
+          row?.userEmail?.toLowerCase?.() ||
+          "";
+        const rowUserId = row?.userId || row?.driverId || null;
+        const sameDriverId = driver && row?.driverId && row.driverId === driver;
+        return (
+          (uid && rowUserId === uid) ||
+          (email && rowEmail === email) ||
+          sameDriverId
+        );
+      });
+    },
+    [driver, isAdmin, user?.email, user?.uid],
+  );
+
   useEffect(() => {
-    if (!isAdmin && !user?.uid) {
+    if (!(isAdmin || user?.uid || user?.email)) {
       setSessions([]);
       setLoading(false);
       setLoadError(null);
@@ -138,11 +163,6 @@ export default function TimeClock({ driver, setIsTracking }) {
     setLoadError(null);
 
     const criteria = { limit: 200 };
-    if (isAdmin) {
-      if (selectedDriverId) criteria.userId = selectedDriverId;
-    } else if (user?.uid) {
-      criteria.userId = user.uid;
-    }
 
     const unsubscribe = subscribeTimeLogs(
       criteria,
@@ -185,7 +205,7 @@ export default function TimeClock({ driver, setIsTracking }) {
               durationMinutes: durationMins,
             };
           });
-          setSessions(normalized);
+          setSessions(projectSessionsForViewer(normalized));
           setLoading(false);
         } catch (err) {
           logError(err, { where: "TimeClock.subscribe.enrich", criteria });
@@ -205,7 +225,13 @@ export default function TimeClock({ driver, setIsTracking }) {
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [isAdmin, selectedDriverId, user?.displayName, user?.uid]);
+  }, [
+    isAdmin,
+    projectSessionsForViewer,
+    user?.displayName,
+    user?.email,
+    user?.uid,
+  ]);
 
   const driverOptions = useMemo(() => {
     if (!isAdmin) return [];
@@ -243,9 +269,13 @@ export default function TimeClock({ driver, setIsTracking }) {
   }, [driverOptions, selectedDriverId]);
 
   const filteredSessions = useMemo(() => {
-    if (!isAdmin) return sessions;
-    if (!selectedDriverId) return sessions;
-    return (sessions || []).filter((row) => row?.userId === selectedDriverId);
+    const allSessions = sessions || [];
+    if (!isAdmin) return allSessions;
+    if (!selectedDriverId) return allSessions;
+    return allSessions.filter((row) => {
+      const rowUserId = row?.userId || row?.driverId || null;
+      return rowUserId === selectedDriverId;
+    });
   }, [isAdmin, selectedDriverId, sessions]);
 
   const resolveRowId = useCallback((row) => {
