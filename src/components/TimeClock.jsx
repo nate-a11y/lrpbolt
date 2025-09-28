@@ -26,7 +26,6 @@ import {
   Stop,
   Undo as UndoIcon,
 } from "@mui/icons-material";
-import { DataGridPro, GridToolbarQuickFilter } from "@mui/x-data-grid-pro";
 import { Timestamp } from "firebase/firestore";
 import dayjs from "dayjs";
 
@@ -36,6 +35,7 @@ import { subscribeTimeLogs, logTime, endSession } from "@/services/timeLogs";
 import { enrichDriverNames } from "@/services/normalizers";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useRole } from "@/hooks";
+import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
 
 function buildCheckboxLabel(text, helper) {
   return (
@@ -286,13 +286,20 @@ export default function TimeClock({ driver, setIsTracking }) {
         headerName: "Driver",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => params?.row?.driverName || "Unknown",
+        valueGetter: (params) => params?.row?.driverName || "N/A",
       },
       {
         field: "rideId",
         headerName: "Ride ID",
         minWidth: 120,
-        valueGetter: (params) => params?.row?.rideId || "Non-Ride Task",
+        valueGetter: (params) => {
+          const rideId = params?.row?.rideId;
+          if (rideId) return rideId;
+          const mode = params?.row?.mode;
+          if (mode === "N/A") return "Non-Ride Task";
+          if (mode === "MULTI") return "Multi Ride";
+          return "N/A";
+        },
       },
       {
         field: "clockIn",
@@ -304,7 +311,7 @@ export default function TimeClock({ driver, setIsTracking }) {
           const { label, relative } = formatClock(params?.row?.startTime);
           if (label === "N/A") return label;
           return (
-            <Tooltip title={relative} placement="top">
+            <Tooltip title={relative || ""} placement="top">
               <span>{label}</span>
             </Tooltip>
           );
@@ -315,14 +322,14 @@ export default function TimeClock({ driver, setIsTracking }) {
         headerName: "Clock Out",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => formatClock(params?.row?.endTime, "—").label,
+        valueGetter: (params) => formatClock(params?.row?.endTime).label,
       },
       {
         field: "duration",
         headerName: "Duration",
         minWidth: 120,
         valueGetter: (params) =>
-          formatDuration(params?.row?.startTime, params?.row?.endTime),
+          formatDuration(params?.row?.startTime, params?.row?.endTime) || "N/A",
       },
     ],
     [formatClock],
@@ -485,7 +492,6 @@ export default function TimeClock({ driver, setIsTracking }) {
 
   const gridSlots = useMemo(
     () => ({
-      toolbar: GridToolbarQuickFilter,
       noRowsOverlay: () => (
         <Stack sx={{ p: 3 }} alignItems="center" justifyContent="center">
           <Typography variant="body2" color="text.secondary" textAlign="center">
@@ -514,14 +520,22 @@ export default function TimeClock({ driver, setIsTracking }) {
     [theme.palette.mode],
   );
 
-  const quickFilterProps = useMemo(
-    () => ({ quickFilterProps: { debounceMs: 400, placeholder: "Search" } }),
+  const gridSlotProps = useMemo(
+    () => ({
+      toolbar: {
+        showQuickFilter: true,
+        quickFilterProps: {
+          debounceMs: 300,
+          placeholder: "Search sessions",
+        },
+      },
+    }),
     [],
   );
 
   const tzLabel = useMemo(() => {
     try {
-      const base = dayjs.tz?.(timezoneGuess) || dayjs();
+      const base = dayjs().tz ? dayjs().tz(timezoneGuess) : dayjs();
       return base.format("zz");
     } catch (err) {
       logError(err, { where: "TimeClock.tzLabel" });
@@ -707,11 +721,10 @@ export default function TimeClock({ driver, setIsTracking }) {
       )}
 
       <Box sx={{ width: "100%" }}>
-        <DataGridPro
+        <LrpGrid
           rows={gridRows}
           columns={columns}
           getRowId={resolveRowId}
-          density="compact"
           disableRowSelectionOnClick
           autoHeight={isMobile}
           loading={loading}
@@ -721,7 +734,7 @@ export default function TimeClock({ driver, setIsTracking }) {
             setColumnVisibilityModel(model)
           }
           slots={gridSlots}
-          slotProps={{ toolbar: quickFilterProps }}
+          slotProps={gridSlotProps}
           sx={dataGridStyles}
         />
       </Box>
