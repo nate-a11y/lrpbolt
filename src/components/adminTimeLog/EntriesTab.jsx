@@ -10,10 +10,10 @@ import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import { tsToDate } from "@/utils/fsTime";
-import { formatDateTime, safeDuration } from "@/utils/time";
+import { formatDateTime } from "@/utils/time";
 import { minutesBetween } from "@/utils/dates.js";
+import { formatTz, durationHm } from "@/utils/timeSafe";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
-import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.js";
 
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
@@ -87,14 +87,13 @@ export default function EntriesTab() {
   const overrides = useMemo(
     () => ({
       driver: { editable: true },
-      driverName: { editable: true },
-      driverEmail: { editable: true },
       rideId: { editable: true },
       startTime: {
         editable: true,
         type: "dateTime",
         valueGetter: (_, row) => tsToDate(row?.startTime),
-        valueFormatter: (value) => formatDateTime(value),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
         sortComparator: timestampSortComparator,
       },
@@ -102,7 +101,8 @@ export default function EntriesTab() {
         editable: true,
         type: "dateTime",
         valueGetter: (_, row) => tsToDate(row?.endTime),
-        valueFormatter: (value) => formatDateTime(value),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatTz(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
         sortComparator: timestampSortComparator,
       },
@@ -110,47 +110,20 @@ export default function EntriesTab() {
         editable: false,
         type: "string",
         valueGetter: (_, row) =>
-          safeDuration(tsToDate(row?.startTime), tsToDate(row?.endTime)),
+          durationHm(tsToDate(row?.startTime), tsToDate(row?.endTime)),
       },
       loggedAt: {
         editable: true,
         type: "dateTime",
         valueGetter: (_, row) => tsToDate(row?.loggedAt),
-        valueFormatter: (value) => formatDateTime(value),
+        valueFormatter: (value) =>
+          value instanceof Date ? formatDateTime(value) : "N/A",
         valueParser: (v) => (v ? new Date(v) : null),
         sortComparator: timestampSortComparator,
       },
       note: { editable: true },
     }),
     [],
-  );
-
-  const baseColumns = useMemo(() => buildTimeLogColumns(), []);
-
-  const columns = useMemo(
-    () => [
-      ...baseColumns,
-      {
-        field: "loggedAt",
-        headerName: "Logged At",
-        minWidth: 180,
-        flex: 1,
-        valueFormatter: (params) => formatDateTime(params?.value),
-        sortComparator: (_v1, _v2, cellParams1, cellParams2) =>
-          timestampSortComparator(
-            cellParams1?.row?.loggedAt,
-            cellParams2?.row?.loggedAt,
-          ),
-      },
-      {
-        field: "note",
-        headerName: "Note",
-        minWidth: 220,
-        flex: 1.2,
-        valueGetter: (params) => params?.row?.note || "N/A",
-      },
-    ],
-    [baseColumns],
   );
 
   const actionsColumn = useMemo(
@@ -403,7 +376,36 @@ export default function EntriesTab() {
       >
         <SmartAutoGrid
           rows={safeRows}
-          columns={columns}
+          headerMap={{
+            driver: "Driver",
+            driverEmail: "Driver Email",
+            rideId: "Ride ID",
+            startTime: "Clock In",
+            endTime: "Clock Out",
+            duration: "Duration (min)",
+            loggedAt: "Logged At",
+            note: "Note",
+            id: "id",
+            userEmail: "userEmail",
+            driverId: "driverId",
+            mode: "mode",
+          }}
+          order={[
+            "driver",
+            "driverEmail",
+            "rideId",
+            "startTime",
+            "endTime",
+            "duration",
+            "loggedAt",
+            "note",
+            "id",
+            "userEmail",
+            "driverId",
+            "mode",
+          ]}
+          // Hide only the truly internal fields
+          forceHide={["id", "userEmail", "driverId", "mode"]}
           overrides={overrides}
           actionsColumn={actionsColumn}
           loading={loading}
