@@ -32,8 +32,7 @@ import { ensureFcmToken } from "./utils/fcm";
 import DriverInfoTab from "./components/DriverInfoTab";
 import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
-import DriverDirectory from "./components/DriverDirectory";
-import EscalationGuide from "./components/EscalationGuide.jsx";
+import DirectoryEscalations from "./components/DirectoryEscalations.jsx";
 import { logout } from "./services/auth";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
@@ -228,9 +227,12 @@ function App() {
             <Route path="/scan" element={<TicketScanner />} />
             <Route path="/info" element={<DriverInfoTab />} />
             <Route path="/drop-guides" element={<VehicleDropGuides />} />
-            <Route path="/directory" element={<DriverDirectory />} />
+            <Route path="/directory" element={<DirectoryEscalations />} />
             <Route path="/calendar" element={<CalendarUpdateTab />} />
-            <Route path="/escalation" element={<EscalationGuide />} />
+            <Route
+              path="/escalation"
+              element={<DirectoryEscalations initialTab="escalations" />}
+            />
             <Route path="/vehicle-calendar" element={<RideVehicleCalendar />} />
             <Route path="/settings" element={<ProfilePage />} />
             <Route

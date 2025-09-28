@@ -34,16 +34,15 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import InfoIcon from "@mui/icons-material/Info";
-import PeopleIcon from "@mui/icons-material/People";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import WarningIcon from "@mui/icons-material/Warning";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
+import ContactEmergencyIcon from "@mui/icons-material/ContactEmergency";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
@@ -97,9 +96,12 @@ const ALL_NAV_ITEMS = [
   },
   { label: "Drop-Off Info", icon: <InfoIcon />, path: "/info" },
   { label: "Vehicle Tips", icon: <DirectionsCarIcon />, path: "/drop-guides" },
-  { label: "Driver Directory", icon: <PeopleIcon />, path: "/directory" },
+  {
+    label: "Directory & Escalations",
+    icon: <ContactEmergencyIcon />,
+    path: "/directory",
+  },
   { label: "Calendar / Moovs", icon: <CalendarMonthIcon />, path: "/calendar" },
-  { label: "Escalation Guide", icon: <WarningIcon />, path: "/escalation" },
   {
     label: "Ride & Vehicle Calendar",
     icon: <EventAvailableIcon />,
