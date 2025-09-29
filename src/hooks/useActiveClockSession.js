@@ -25,17 +25,17 @@ const getTz = () => {
 
 /**
  * Subscribes to the current user's active time log (endTime == null).
- * Returns { active, startTs, start, elapsedMs } with 1s ticking.
+ * Returns { active, startTs, start, elapsedMs, timeLogId } with 1s ticking.
  */
 export default function useActiveClockSession() {
-  const [docData, setDocData] = useState(null);
+  const [docState, setDocState] = useState({ id: null, data: null });
   const [_tick, setTick] = useState(0);
   const tickRef = useRef(null);
 
   useEffect(() => {
     const uid = typeof getCurrentUserId === "function" ? getCurrentUserId() : null;
     if (!uid) {
-      setDocData(null);
+      setDocState({ id: null, data: null });
       return undefined;
     }
 
@@ -50,15 +50,20 @@ export default function useActiveClockSession() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const hit = snapshot?.docs?.[0]?.data?.() || null;
-        setDocData(hit);
+        const doc = snapshot?.docs?.[0] || null;
+        if (doc) {
+          const data = typeof doc.data === "function" ? doc.data() : null;
+          setDocState({ id: doc.id || null, data });
+        } else {
+          setDocState({ id: null, data: null });
+        }
       },
       (error) => {
         logError(error, {
           where: "useActiveClockSession",
           action: "onSnapshot",
         });
-        setDocData(null);
+        setDocState({ id: null, data: null });
       },
     );
 
@@ -71,7 +76,7 @@ export default function useActiveClockSession() {
     };
   }, []);
 
-  const startTs = docData?.startTime ?? null;
+  const startTs = docState.data?.startTime ?? null;
   const start = useMemo(() => {
     const asDayjs = toDayjs(startTs);
     if (!asDayjs) return null;
@@ -107,5 +112,11 @@ export default function useActiveClockSession() {
     }
   }
 
-  return { active: Boolean(start), startTs, start, elapsedMs };
+  return {
+    active: Boolean(start),
+    startTs,
+    start,
+    elapsedMs,
+    timeLogId: docState.id,
+  };
 }

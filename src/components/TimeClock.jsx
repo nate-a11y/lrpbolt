@@ -29,7 +29,6 @@ import { isActiveRow, formatDateTime, safeDuration, dayjs } from "@/utils/time";
 import { getRowId as pickId } from "@/utils/timeLogMap";
 import { tsToDate } from "@/utils/fsTime";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
-import { on } from "@/services/uiBus";
 
 const pulse = keyframes`
   0% { opacity: 1; }
@@ -415,21 +414,6 @@ export default function TimeClock({ setIsTracking }) {
       setEndBusy(false);
     }
   }, [activeRow, endBusy, resolveRowId]);
-
-  useEffect(() => {
-    const unsubscribe = on("CLOCK_OUT_REQUEST", () => {
-      try {
-        handleClockOutSafe();
-      } catch (error) {
-        logError(error, { where: "TimeClock", action: "clockOutRequest" });
-      }
-    });
-    return () => {
-      if (typeof unsubscribe === "function") {
-        unsubscribe();
-      }
-    };
-  }, [handleClockOutSafe]);
 
   const handleCloseSnackbar = useCallback(() => {
     setSnackbarOpen(false);

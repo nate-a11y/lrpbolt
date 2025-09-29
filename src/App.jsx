@@ -21,7 +21,10 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
 import TimeClockBubble from "@/components/TimeClockBubble.jsx";
+import useActiveClockSession from "@/hooks/useActiveClockSession";
+import { endTimeLog } from "@/services/timeLogs.js";
 import { on } from "@/services/uiBus";
+import logError from "@/utils/logError.js";
 
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
@@ -68,11 +71,36 @@ function App() {
   const { user, authLoading, role: authRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { enqueue } = useToast();
+  const { timeLogId: activeTimeLogId } = useActiveClockSession();
+  const clockOutInFlightRef = useRef(false);
+  const pendingClockOutRef = useRef(false);
+  const pendingClockOutTimerRef = useRef(null);
 
   useEffect(() => {
     // one-time init
     initAnalytics();
   }, []);
+
+  const performClockOut = useCallback(
+    async (id) => {
+      if (!id || clockOutInFlightRef.current) return false;
+
+      clockOutInFlightRef.current = true;
+      try {
+        await endTimeLog({ id });
+        enqueue("Clocked out successfully.", { severity: "success" });
+        return true;
+      } catch (error) {
+        logError(error, { where: "App", action: "clockOutRequest", id });
+        enqueue("Failed to end session.", { severity: "error" });
+        return false;
+      } finally {
+        clockOutInFlightRef.current = false;
+      }
+    },
+    [enqueue],
+  );
 
   useEffect(() => {
     // fire on route change only
@@ -91,12 +119,62 @@ function App() {
   }, [navigate]);
 
   useEffect(() => {
+    const unsubscribe = on("CLOCK_OUT_REQUEST", async () => {
+      if (clockOutInFlightRef.current) return;
+
+      if (activeTimeLogId) {
+        await performClockOut(activeTimeLogId);
+        return;
+      }
+
+      pendingClockOutRef.current = true;
+      if (!pendingClockOutTimerRef.current) {
+        pendingClockOutTimerRef.current = setTimeout(() => {
+          if (pendingClockOutRef.current) {
+            enqueue("No active session to clock out.", { severity: "warning" });
+            pendingClockOutRef.current = false;
+          }
+          pendingClockOutTimerRef.current = null;
+        }, 2000);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, [activeTimeLogId, enqueue, performClockOut]);
+
+  useEffect(() => {
+    if (!pendingClockOutRef.current) return;
+    if (!activeTimeLogId) return;
+    if (clockOutInFlightRef.current) return;
+
+    pendingClockOutRef.current = false;
+    if (pendingClockOutTimerRef.current) {
+      clearTimeout(pendingClockOutTimerRef.current);
+      pendingClockOutTimerRef.current = null;
+    }
+    performClockOut(activeTimeLogId);
+  }, [activeTimeLogId, performClockOut]);
+
+  useEffect(
+    () => () => {
+      if (pendingClockOutTimerRef.current) {
+        clearTimeout(pendingClockOutTimerRef.current);
+        pendingClockOutTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
     if (!user) return;
     ensureFcmToken(user).catch((e) =>
       console.warn("[LRP] ensureFcmToken:", e?.message || e),
     );
   }, [user]);
-  const { enqueue } = useToast();
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
   const [changeDriverOpen, setChangeDriverOpen] = useState(false);
