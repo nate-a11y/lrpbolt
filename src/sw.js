@@ -35,11 +35,29 @@ registerRoute(
  * IMPORTANT: Use the SAME Firebase config as in app code.
  * Inject these values at build time using Vite env variables.
  */
+function resolveEnv(primary, aliases = []) {
+  const keys = [primary, ...aliases];
+  for (const key of keys) {
+    const value = import.meta?.env?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return value;
+    }
+  }
+  return undefined;
+}
+
 try {
-  // Only load if config is provided at build time
-  // (Define these in vite config: VITE_FB_API_KEY, etc.)
-  const FB_API_KEY = import.meta.env.VITE_FB_API_KEY;
-  if (FB_API_KEY) {
+  const apiKey = resolveEnv("VITE_FB_API_KEY", ["VITE_FIREBASE_API_KEY"]);
+  const projectId = resolveEnv("VITE_FB_PROJECT_ID", [
+    "VITE_FIREBASE_PROJECT_ID",
+  ]);
+  const appId = resolveEnv("VITE_FB_APP_ID", ["VITE_FIREBASE_APP_ID"]);
+  const messagingSenderId = resolveEnv("VITE_FB_MESSAGING_SENDER_ID", [
+    "VITE_FIREBASE_MESSAGING_SENDER_ID",
+    "VITE_FIREBASE_SENDER_ID",
+  ]);
+
+  if (apiKey && projectId && appId && messagingSenderId) {
     importScripts(
       "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
     );
@@ -47,15 +65,27 @@ try {
       "https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js",
     );
 
-    self.firebase.initializeApp({
-      apiKey: import.meta.env.VITE_FB_API_KEY,
-      authDomain: import.meta.env.VITE_FB_AUTH_DOMAIN,
-      projectId: import.meta.env.VITE_FB_PROJECT_ID,
-      storageBucket: import.meta.env.VITE_FB_STORAGE_BUCKET,
-      messagingSenderId: import.meta.env.VITE_FB_MESSAGING_SENDER_ID,
-      appId: import.meta.env.VITE_FB_APP_ID,
-      measurementId: import.meta.env.VITE_FB_MEASUREMENT_ID,
-    });
+    const authDomain =
+      resolveEnv("VITE_FB_AUTH_DOMAIN", ["VITE_FIREBASE_AUTH_DOMAIN"]) ||
+      `${projectId}.firebaseapp.com`;
+    const storageBucket =
+      resolveEnv("VITE_FB_STORAGE_BUCKET", ["VITE_FIREBASE_STORAGE_BUCKET"]) ||
+      `${projectId}.appspot.com`;
+    const measurementId = resolveEnv("VITE_FB_MEASUREMENT_ID", [
+      "VITE_FIREBASE_MEASUREMENT_ID",
+    ]);
+
+    const firebaseConfig = {
+      apiKey,
+      projectId,
+      appId,
+      messagingSenderId,
+      authDomain,
+      storageBucket,
+      ...(measurementId ? { measurementId } : {}),
+    };
+
+    self.firebase.initializeApp(firebaseConfig);
 
     const messaging = self.firebase.messaging();
 
@@ -70,6 +100,10 @@ try {
         data: payload?.data || {},
       });
     });
+  } else {
+    console.warn(
+      "[SW] FCM init skipped: missing Firebase config (apiKey, projectId, appId, messagingSenderId)",
+    );
   }
 } catch (e) {
   // Do not crash SW if FCM not configured
