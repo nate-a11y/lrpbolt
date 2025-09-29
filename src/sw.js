@@ -7,6 +7,30 @@
  * - NO runtime route hijacking beyond static assets.
  * - Integrates Firebase Messaging background handler.
  */
+self.__LRP_BUILD_ID = (self.__LRP_BUILD_ID || 0) + 1;
+console.log("[LRP SW] build", self.__LRP_BUILD_ID);
+
+self.addEventListener("install", () => {
+  try {
+    self.skipWaiting();
+  } catch (error) {
+    console.warn("[LRP SW] skipWaiting failed", error);
+  }
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        if (self.clients) {
+          await self.clients.claim();
+        }
+      } catch (error) {
+        console.warn("[LRP SW] clients.claim failed", error);
+      }
+    })(),
+  );
+});
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";

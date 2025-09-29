@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Box,
   Fade,
@@ -13,7 +14,8 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
 import CloseIcon from "@mui/icons-material/Close";
 
-import useActiveClockSession from "@/hooks/useActiveClockSession";
+import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
+import useElapsedFromTs from "@/hooks/useElapsedFromTs.js";
 import { openTimeClockModal } from "@/services/uiBus";
 import {
   requestPersistentClockNotification,
@@ -28,17 +30,29 @@ import logError from "@/utils/logError.js";
 const BRAND = { green: "#4cbb17", black: "#060606" };
 
 export default function TimeClockBubble() {
-  const { active, start, elapsedMs } = useActiveClockSession();
+  useEffect(() => {
+    console.debug("[TimeClockBubble] mounted");
+  }, []);
+
+  const { hasActive, startTimeTs } = useContext(ActiveClockContext);
+  const { start, elapsedMs } = useElapsedFromTs(startTimeTs);
   const [collapsed, setCollapsed] = useState(false);
   const [pipOn, setPipOn] = useState(false);
   const elapsedLabel = useMemo(() => formatClockElapsed(elapsedMs), [elapsedMs]);
+  const labelRef = useRef(elapsedLabel);
+  const elapsedMinutesRef = useRef(Math.floor(elapsedMs / 60000));
+
+  useEffect(() => {
+    labelRef.current = elapsedLabel;
+    elapsedMinutesRef.current = Math.floor(elapsedMs / 60000);
+  }, [elapsedLabel, elapsedMs]);
 
   useEffect(() => {
     (async () => {
       try {
-        if (active) {
-          await requestPersistentClockNotification(elapsedLabel);
-          await trySetAppBadge(Math.floor(elapsedMs / 60000));
+        if (hasActive && start) {
+          await requestPersistentClockNotification(labelRef.current);
+          await trySetAppBadge(elapsedMinutesRef.current);
           await tryRequestWakeLock();
         } else {
           await clearClockNotification();
@@ -53,41 +67,53 @@ export default function TimeClockBubble() {
         logError(error, { where: "TimeClockBubble", action: "pwaLifecycle" });
       }
     })();
-  }, [active, elapsedLabel, elapsedMs, pipOn]);
+  }, [hasActive, start, pipOn]);
 
   useEffect(() => {
-    if (!active) return undefined;
+    if (!(hasActive && start)) return undefined;
     const interval = setInterval(async () => {
       try {
-        await requestPersistentClockNotification(elapsedLabel, { silent: true });
-        await trySetAppBadge(Math.floor(elapsedMs / 60000));
+        await requestPersistentClockNotification(labelRef.current, { silent: true });
+        await trySetAppBadge(elapsedMinutesRef.current);
         if (pipOn) {
-          await startClockPiP(elapsedLabel);
+          await startClockPiP(labelRef.current);
         }
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "ticker" });
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [active, elapsedLabel, elapsedMs, pipOn]);
+  }, [hasActive, start, pipOn]);
 
   useEffect(() => {
-    if (pipOn) {
-      startClockPiP(elapsedLabel).catch((error) =>
-        logError(error, { where: "TimeClockBubble", action: "pipInit" }),
-      );
-    }
-  }, [pipOn, elapsedLabel]);
-
-  useEffect(() => () => {
-    if (pipOn) {
+    if (!pipOn) return undefined;
+    startClockPiP(labelRef.current).catch((error) =>
+      logError(error, { where: "TimeClockBubble", action: "pipInit" }),
+    );
+    return () => {
       stopClockPiP();
-    }
+    };
   }, [pipOn]);
 
-  if (!active || !start) return null;
+  useEffect(
+    () => () => {
+      stopClockPiP();
+    },
+    [],
+  );
 
-  return (
+  if (!(hasActive && start)) {
+    console.debug(
+      "[TimeClockBubble] hidden (active:",
+      hasActive,
+      "start:",
+      Boolean(start),
+      ")",
+    );
+    return null;
+  }
+
+  const node = (
     <Fade in timeout={200}>
       <Paper
         elevation={6}
@@ -150,13 +176,12 @@ export default function TimeClockBubble() {
               <IconButton
                 size="small"
                 aria-label="Toggle floating mini ticker"
-                onClick={async () => {
+                onClick={() => {
                   try {
                     if (pipOn) {
                       stopClockPiP();
                       setPipOn(false);
                     } else {
-                      await startClockPiP(elapsedLabel);
                       setPipOn(true);
                     }
                   } catch (error) {
@@ -184,4 +209,7 @@ export default function TimeClockBubble() {
       </Paper>
     </Fade>
   );
+
+  const container = typeof document !== "undefined" ? document.body : null;
+  return container ? createPortal(node, container) : node;
 }

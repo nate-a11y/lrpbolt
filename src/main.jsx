@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
+import ActiveClockProvider from "@/context/ActiveClockContext.jsx";
 
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
@@ -24,21 +25,23 @@ const Root = () => {
     <BrowserRouter>
       <ColorModeProvider>
         <AuthProvider>
-          <DriverProvider>
-            <ToastProvider>
-              <NotificationsProvider>
-                <Suspense fallback={<LoadingScreen />}>
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/sms-consent" element={<SmsConsent />} />
-                    <Route element={<PrivateRoute />}>
-                      <Route path="/*" element={<AppRoot />} />
-                    </Route>
-                  </Routes>
-                </Suspense>
-              </NotificationsProvider>
-            </ToastProvider>
-          </DriverProvider>
+          <ActiveClockProvider>
+            <DriverProvider>
+              <ToastProvider>
+                <NotificationsProvider>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Routes>
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/sms-consent" element={<SmsConsent />} />
+                      <Route element={<PrivateRoute />}>
+                        <Route path="/*" element={<AppRoot />} />
+                      </Route>
+                    </Routes>
+                  </Suspense>
+                </NotificationsProvider>
+              </ToastProvider>
+            </DriverProvider>
+          </ActiveClockProvider>
         </AuthProvider>
       </ColorModeProvider>
     </BrowserRouter>
