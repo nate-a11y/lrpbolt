@@ -21,6 +21,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
 import TimeClockBubble from "@/components/TimeClockBubble.jsx";
+import TimeClockDebugPill from "@/components/TimeClockDebugPill.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
 import { endTimeLog } from "@/services/timeLogs.js";
 import { on } from "@/services/uiBus";
@@ -419,6 +420,7 @@ function App() {
         />
         <NotificationsOptInDialog user={user} />
         <TimeClockBubble />
+        <TimeClockDebugPill />
       </AppShell>
     </LocalizationProvider>
   );
