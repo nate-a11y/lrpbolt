@@ -238,20 +238,20 @@ export default function TimeClock({ setIsTracking }) {
       return col;
     });
   }, [parseEditDate]);
-  const getRowId = useCallback(
+  const baseRowId = useCallback(
     (row) => row?.id || row?.docId || row?._id || null,
     [],
   );
 
   const resolveRowId = useCallback(
     (row) => {
-      const candidate = getRowId(row) || pickId(row);
+      const candidate = baseRowId(row) || pickId(row);
       if (candidate) return candidate;
       const email = row?.driverEmail || row?.userEmail || "driver";
       const startKey = row?.startTime?.seconds ?? row?.startTime ?? "start";
       return `${email}-${startKey}`;
     },
-    [getRowId],
+    [baseRowId],
   );
 
   const isCellEditable = useCallback(
@@ -539,7 +539,7 @@ export default function TimeClock({ setIsTracking }) {
           autoHeight
           rows={Array.isArray(rows) ? rows : []}
           columns={columns}
-          getRowId={getRowId}
+          getRowId={resolveRowId}
           loading={loading}
           density="compact"
           disableRowSelectionOnClick

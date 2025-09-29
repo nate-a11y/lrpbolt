@@ -20,6 +20,7 @@ import {
 
 import { db } from "../utils/firebaseInit";
 import logError from "../utils/logError.js";
+import { tsToDate } from "../utils/fsTime.js";
 
 import { mapSnapshotToRows } from "./normalizers";
 
@@ -130,12 +131,22 @@ function backoff(attempt) {
 export async function patchTimeLog(id, updates = {}) {
   if (!id) return;
   const ref = doc(db, "timeLogs", id);
-  const coerceTs = (v) =>
-    v == null
-      ? null
-      : v instanceof Timestamp
-        ? v
-        : Timestamp.fromMillis(Number(v));
+  const coerceTs = (v) => {
+    if (v == null) return null;
+    if (v instanceof Timestamp) return v;
+
+    const asDate = tsToDate(v);
+    if (asDate instanceof Date && Number.isFinite(asDate.getTime())) {
+      return Timestamp.fromDate(asDate);
+    }
+
+    const numeric = Number(v);
+    if (Number.isFinite(numeric)) {
+      return Timestamp.fromMillis(numeric);
+    }
+
+    return null;
+  };
 
   const data = {};
   if ("driver" in updates) data.driver = updates.driver;
