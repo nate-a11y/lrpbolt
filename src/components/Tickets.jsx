@@ -58,13 +58,15 @@ import { useSearchParams } from "react-router-dom";
 import { formatDateTime, dayjs } from "@/utils/time";
 import {
   getId,
-  getLink,
+  getTicketId,
   getPassenger,
+  getPassengerCount,
   getPickup,
   getDropoff,
-  getPickupTime,
+  getPickupTimeText,
   getScanStatus,
   getScanMeta,
+  getLink,
 } from "@/utils/ticketMap";
 
 import logError from "../utils/logError.js";
@@ -263,20 +265,18 @@ function LinkCell(params) {
   const href = getLink(params?.row || {});
   if (!href) return "—";
   return (
-    <Box sx={{ display: "flex", gap: 0.5 }}>
+    <>
       <GridActionsCellItem
-        icon={<OpenInNewIcon fontSize="small" />}
+        icon={<OpenInNewIcon />}
         label="Open"
         onClick={(e) => {
           e.stopPropagation();
-          if (typeof window !== "undefined") {
-            window.open(href, "_blank", "noopener,noreferrer");
-          }
+          window.open(href, "_blank", "noopener,noreferrer");
         }}
         showInMenu={false}
       />
       <GridActionsCellItem
-        icon={<ContentCopyIcon fontSize="small" />}
+        icon={<ContentCopyIcon />}
         label="Copy link"
         onClick={(e) => {
           e.stopPropagation();
@@ -284,7 +284,7 @@ function LinkCell(params) {
         }}
         showInMenu={false}
       />
-    </Box>
+    </>
   );
 }
 
@@ -446,6 +446,8 @@ function Tickets() {
     [filteredTickets],
   );
 
+  const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
+
   const getRowId = useCallback((r) => getId(r) || r?.id || r?.ticketId, []);
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
@@ -510,36 +512,37 @@ function Tickets() {
           field: "ticketId",
           headerName: "Ticket ID",
           minWidth: 140,
-          valueGetter: (p) => getId(p?.row) || "N/A",
+          valueGetter: (p) => getTicketId(p?.row),
         },
         {
           field: "passenger",
           headerName: "Passenger",
-          flex: 1,
-          minWidth: 160,
+          minWidth: 180,
           valueGetter: (p) => getPassenger(p?.row),
-          renderCell: (p) => {
-            const passenger = getPassenger(p?.row);
-            return <Typography fontWeight="bold">{passenger}</Typography>;
-          },
         },
         {
           field: "pickup",
           headerName: "Pickup",
-          minWidth: 180,
+          minWidth: 220,
           valueGetter: (p) => getPickup(p?.row),
         },
         {
           field: "dropoff",
           headerName: "Dropoff",
-          minWidth: 180,
+          minWidth: 220,
           valueGetter: (p) => getDropoff(p?.row),
         },
         {
           field: "pickupTime",
           headerName: "Pickup Time",
           minWidth: 200,
-          valueGetter: (p) => getPickupTime(p?.row),
+          valueGetter: (p) => getPickupTimeText(p?.row),
+        },
+        {
+          field: "passengerCount",
+          headerName: "Count",
+          minWidth: 90,
+          valueGetter: (p) => getPassengerCount(p?.row),
         },
         {
           field: "scanStatus",
@@ -596,7 +599,7 @@ function Tickets() {
     [handleDeleteClick, handleEditClick],
   );
 
-  useGridDoctor({ name: "Tickets", rows, columns });
+  useGridDoctor({ name: "Tickets", rows: safeRows, columns });
 
   const downloadTicket = useCallback(async () => {
     const node = previewRef.current;
@@ -885,7 +888,7 @@ function Tickets() {
       <TabPanel value={activeTab} tabKey="list">
         <Paper sx={{ width: "100%" }}>
           <SmartAutoGrid
-            rows={rows}
+            rows={safeRows}
             columns={columns}
             getRowId={getRowId}
             checkboxSelection
