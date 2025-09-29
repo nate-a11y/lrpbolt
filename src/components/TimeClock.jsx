@@ -29,6 +29,7 @@ import { isActiveRow, formatDateTime, safeDuration, dayjs } from "@/utils/time";
 import { getRowId as pickId } from "@/utils/timeLogMap";
 import { tsToDate } from "@/utils/fsTime";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
+import { on } from "@/services/uiBus";
 
 const pulse = keyframes`
   0% { opacity: 1; }
@@ -400,7 +401,7 @@ export default function TimeClock({ setIsTracking }) {
     }
   }, [activeRow, endBusy, multiRide, nonRideTask, rideId, startBusy, user]);
 
-  const handleStop = useCallback(async () => {
+  const handleClockOutSafe = useCallback(async () => {
     if (!activeRow || endBusy) return;
     const id = resolveRowId(activeRow);
     setEndBusy(true);
@@ -414,6 +415,21 @@ export default function TimeClock({ setIsTracking }) {
       setEndBusy(false);
     }
   }, [activeRow, endBusy, resolveRowId]);
+
+  useEffect(() => {
+    const unsubscribe = on("CLOCK_OUT_REQUEST", () => {
+      try {
+        handleClockOutSafe();
+      } catch (error) {
+        logError(error, { where: "TimeClock", action: "clockOutRequest" });
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, [handleClockOutSafe]);
 
   const handleCloseSnackbar = useCallback(() => {
     setSnackbarOpen(false);
@@ -524,7 +540,7 @@ export default function TimeClock({ setIsTracking }) {
                 variant="outlined"
                 color="inherit"
                 startIcon={<Stop />}
-                onClick={handleStop}
+                onClick={handleClockOutSafe}
                 disabled={!activeRow || endBusy}
               >
                 Stop

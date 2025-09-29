@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
+
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import SmsConsent from "./pages/SmsConsent.jsx";
@@ -42,5 +44,7 @@ const Root = () => {
     </BrowserRouter>
   );
 };
+
+initServiceWorkerMessageBridge();
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Root />);

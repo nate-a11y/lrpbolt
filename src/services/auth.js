@@ -51,3 +51,7 @@ export function logout() {
 export function subscribeAuth(callback) {
   return onAuthStateChanged(auth, callback);
 }
+
+export function getCurrentUserId() {
+  return auth?.currentUser?.uid || null;
+}
