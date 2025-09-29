@@ -21,8 +21,8 @@ import FlashOffIcon from "@mui/icons-material/FlashOff";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import ImageIcon from "@mui/icons-material/Image";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
-import { BrowserMultiFormatReader } from "@zxing/browser"; // eslint-disable-line import/no-unresolved
-import { NotFoundException } from "@zxing/library"; // eslint-disable-line import/no-unresolved
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import { NotFoundException } from "@zxing/library";
 
 import logError from "@/utils/logError.js";
 import { playBeep } from "@/utils/sound.js";
