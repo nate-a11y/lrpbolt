@@ -39,6 +39,7 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -48,11 +49,23 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalActivityIcon from "@mui/icons-material/LocalActivity";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { motion } from "framer-motion";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useSearchParams } from "react-router-dom";
 
-import { dayjs } from "@/utils/time";
+import { formatDateTime, dayjs } from "@/utils/time";
+import {
+  getId,
+  getLink,
+  getPassenger,
+  getPickup,
+  getDropoff,
+  getPickupTime,
+  getScanStatus,
+  getScanMeta,
+} from "@/utils/ticketMap";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -113,10 +126,6 @@ function formatDate(dj) {
 function formatTime(dj) {
   return dj ? dj.format("h:mm A") : "N/A";
 }
-function rel(dj) {
-  return dj ? dj.fromNow() : "—";
-}
-
 function normalizeTicket(raw = {}, dayjsLib) {
   const pickupTime = toDayjsTs(
     raw.pickupTime ||
@@ -206,6 +215,77 @@ function download(filename, text, type = "text/plain") {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+const scanChipSx = {
+  Both: {
+    bgcolor: "rgba(76,187,23,0.18)",
+    color: "#4cbb17",
+    border: "1px solid rgba(76,187,23,0.35)",
+  },
+  Outbound: {
+    bgcolor: "rgba(76,187,23,0.12)",
+    color: "#4cbb17",
+    border: "1px solid rgba(76,187,23,0.25)",
+  },
+  Return: {
+    bgcolor: "action.selected",
+    color: "text.primary",
+  },
+  Unscanned: {
+    bgcolor: "rgba(255,255,255,0.08)",
+    color: "text.secondary",
+    border: "1px solid rgba(255,255,255,0.12)",
+  },
+};
+
+function ScanStatusCell(params) {
+  const row = params?.row || {};
+  const status = getScanStatus(row);
+  const { outAt, outBy, retAt, retBy } = getScanMeta(row);
+  const tip =
+    status === "Unscanned"
+      ? "Not scanned"
+      : status === "Outbound"
+        ? `Outbound by ${outBy || "N/A"} @ ${formatDateTime(outAt)}`
+        : status === "Return"
+          ? `Return by ${retBy || "N/A"} @ ${formatDateTime(retAt)}`
+          : `Outbound by ${outBy || "N/A"} @ ${formatDateTime(outAt)} • Return by ${retBy || "N/A"} @ ${formatDateTime(retAt)}`;
+
+  return (
+    <Tooltip title={tip}>
+      <Chip size="small" label={status} sx={scanChipSx[status]} />
+    </Tooltip>
+  );
+}
+
+function LinkCell(params) {
+  const href = getLink(params?.row || {});
+  if (!href) return "—";
+  return (
+    <Box sx={{ display: "flex", gap: 0.5 }}>
+      <GridActionsCellItem
+        icon={<OpenInNewIcon fontSize="small" />}
+        label="Open"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (typeof window !== "undefined") {
+            window.open(href, "_blank", "noopener,noreferrer");
+          }
+        }}
+        showInMenu={false}
+      />
+      <GridActionsCellItem
+        icon={<ContentCopyIcon fontSize="small" />}
+        label="Copy link"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigator.clipboard?.writeText(href).catch(() => {});
+        }}
+        showInMenu={false}
+      />
+    </Box>
+  );
 }
 
 function Tickets() {
@@ -361,9 +441,12 @@ function Tickets() {
     [filteredTickets],
   );
 
-  const rows = useMemo(() => filteredTickets, [filteredTickets]);
+  const rows = useMemo(
+    () => (Array.isArray(filteredTickets) ? filteredTickets : []),
+    [filteredTickets],
+  );
 
-  const getRowId = useCallback((r) => r.id || r.ticketId, []);
+  const getRowId = useCallback((r) => getId(r) || r?.id || r?.ticketId, []);
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
@@ -427,130 +510,52 @@ function Tickets() {
           field: "ticketId",
           headerName: "Ticket ID",
           minWidth: 140,
-          valueGetter: (p) => p?.row?.ticketId || "N/A",
+          valueGetter: (p) => getId(p?.row) || "N/A",
         },
         {
           field: "passenger",
           headerName: "Passenger",
           flex: 1,
           minWidth: 160,
-          renderCell: (p) => (
-            <Typography fontWeight="bold">
-              {p?.row?.passenger || "N/A"}
-            </Typography>
-          ),
-        },
-        {
-          field: "date",
-          headerName: "Date",
-          minWidth: 110,
-          valueGetter: (p) => formatDate(p?.row?.pickupTime),
-        },
-        {
-          field: "time",
-          headerName: "Time",
-          minWidth: 110,
-          valueGetter: (p) => formatTime(p?.row?.pickupTime),
+          valueGetter: (p) => getPassenger(p?.row),
+          renderCell: (p) => {
+            const passenger = getPassenger(p?.row);
+            return <Typography fontWeight="bold">{passenger}</Typography>;
+          },
         },
         {
           field: "pickup",
           headerName: "Pickup",
-          minWidth: 160,
-          valueGetter: (p) => p?.row?.pickup || "N/A",
+          minWidth: 180,
+          valueGetter: (p) => getPickup(p?.row),
         },
         {
           field: "dropoff",
           headerName: "Dropoff",
-          minWidth: 160,
-          valueGetter: (p) => p?.row?.dropoff || "N/A",
+          minWidth: 180,
+          valueGetter: (p) => getDropoff(p?.row),
+        },
+        {
+          field: "pickupTime",
+          headerName: "Pickup Time",
+          minWidth: 200,
+          valueGetter: (p) => getPickupTime(p?.row),
+        },
+        {
+          field: "scanStatus",
+          headerName: "Scan Status",
+          minWidth: 140,
+          sortable: false,
+          renderCell: ScanStatusCell,
+          valueGetter: (p) => getScanStatus(p?.row || {}),
         },
         {
           field: "link",
           headerName: "Link",
-          minWidth: 100,
+          minWidth: 120,
           sortable: false,
-          renderCell: (p) =>
-            p?.row?.linkUrl ? (
-              <a
-                href={p.row.linkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#0af" }}
-              >
-                View
-              </a>
-            ) : (
-              "N/A"
-            ),
-        },
-        {
-          field: "scanStatus",
-          headerName: "Scan",
-          minWidth: 160,
-          sortable: false,
-          renderCell: (p) => {
-            const r = p?.row || {};
-            if (r.scannedReturn) {
-              return (
-                <Tooltip
-                  title={`Return by ${r.scannedReturnBy || "Unknown"} • ${
-                    r.scannedReturnAt?.format("MMM D, h:mm A") || "—"
-                  }`}
-                >
-                  <Box
-                    sx={{
-                      px: 1,
-                      py: 0.5,
-                      bgcolor: "rgba(76,187,23,0.18)",
-                      border: "1px solid #4cbb17",
-                      borderRadius: 1,
-                      fontSize: 12,
-                      fontWeight: 700,
-                    }}
-                  >
-                    ✅ Return • {rel(r.scannedReturnAt, dayjs)}
-                  </Box>
-                </Tooltip>
-              );
-            }
-            if (r.scannedOutbound) {
-              return (
-                <Tooltip
-                  title={`Outbound by ${r.scannedOutboundBy || "Unknown"} • ${
-                    r.scannedOutboundAt?.format("MMM D, h:mm A") || "—"
-                  }`}
-                >
-                  <Box
-                    sx={{
-                      px: 1,
-                      py: 0.5,
-                      bgcolor: "rgba(76,187,23,0.12)",
-                      border: "1px dashed #4cbb17",
-                      borderRadius: 1,
-                      fontSize: 12,
-                      fontWeight: 700,
-                    }}
-                  >
-                    ↗️ Outbound • {rel(r.scannedOutboundAt, dayjs)}
-                  </Box>
-                </Tooltip>
-              );
-            }
-            return (
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.5,
-                  bgcolor: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  borderRadius: 1,
-                  fontSize: 12,
-                }}
-              >
-                ❌ Not Scanned
-              </Box>
-            );
-          },
+          renderCell: LinkCell,
+          valueGetter: (p) => getLink(p?.row || {}) || "—",
         },
         {
           field: "actions",

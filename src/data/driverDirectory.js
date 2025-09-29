@@ -89,7 +89,13 @@ const DRIVER_LIST = [
     lrp: "LRP13",
     phone: "573.280.6546",
     email: "Jeremy.imler19@gmail.com",
-    vehicles: ["CDL Trainer", "Limo Bus", "Rescue Squad", "Sprinter", "Shuttle"],
+    vehicles: [
+      "CDL Trainer",
+      "Limo Bus",
+      "Rescue Squad",
+      "Sprinter",
+      "Shuttle",
+    ],
   },
   {
     name: "Jacob Brentlinger",
