@@ -49,25 +49,12 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalActivityIcon from "@mui/icons-material/LocalActivity";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { motion } from "framer-motion";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useSearchParams } from "react-router-dom";
 
 import { formatDateTime, dayjs } from "@/utils/time";
-import {
-  getId,
-  getTicketId,
-  getPassenger,
-  getPassengerCount,
-  getPickup,
-  getDropoff,
-  getPickupTimeText,
-  getScanStatus,
-  getScanMeta,
-  getLink,
-} from "@/utils/ticketMap";
+import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -261,33 +248,6 @@ function ScanStatusCell(params) {
   );
 }
 
-function LinkCell(params) {
-  const href = getLink(params?.row || {});
-  if (!href) return "—";
-  return (
-    <>
-      <GridActionsCellItem
-        icon={<OpenInNewIcon />}
-        label="Open"
-        onClick={(e) => {
-          e.stopPropagation();
-          window.open(href, "_blank", "noopener,noreferrer");
-        }}
-        showInMenu={false}
-      />
-      <GridActionsCellItem
-        icon={<ContentCopyIcon />}
-        label="Copy link"
-        onClick={(e) => {
-          e.stopPropagation();
-          navigator.clipboard?.writeText(href).catch(() => {});
-        }}
-        showInMenu={false}
-      />
-    </>
-  );
-}
-
 function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [filteredDate, setFilteredDate] = useState("All Dates");
@@ -446,9 +406,60 @@ function Tickets() {
     [filteredTickets],
   );
 
-  const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
+  const safeRows = Array.isArray(rows) ? rows : [];
 
-  const getRowId = useCallback((r) => getId(r) || r?.id || r?.ticketId, []);
+  const dayjsGlobal = typeof window !== "undefined" ? window.dayjs : undefined;
+  const tzGuess = dayjsGlobal?.tz?.guess?.() || undefined;
+
+  const toDayjsLoose = useCallback(
+    (ts) => {
+      if (!dayjsGlobal) return null;
+      if (ts && typeof ts.toDate === "function") {
+        try {
+          return dayjsGlobal(ts.toDate());
+        } catch (e) {
+          logError(e);
+        }
+      }
+      if (ts && typeof ts === "object" && typeof ts.seconds === "number") {
+        try {
+          const ms =
+            ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+          return dayjsGlobal(ms);
+        } catch (e) {
+          logError(e);
+        }
+      }
+      const d = dayjsGlobal(ts);
+      return d?.isValid?.() ? d : null;
+    },
+    [dayjsGlobal],
+  );
+
+  const fmtPickup = useCallback(
+    (row) => {
+      const d = toDayjsLoose(row?.pickupTime);
+      if (d) {
+        return tzGuess
+          ? d.tz(tzGuess).format("MMM D, YYYY h:mm A")
+          : d.format("MMM D, YYYY h:mm A");
+      }
+      if (row?.pickupDateStr || row?.pickupTimeStr) {
+        return [row?.pickupDateStr, row?.pickupTimeStr]
+          .filter(Boolean)
+          .join(" ");
+      }
+      return "N/A";
+    },
+    [toDayjsLoose, tzGuess],
+  );
+
+  const getIdSafe = (r) => r?.id ?? r?.ticketId ?? null;
+
+  const getRowId = useCallback(
+    (r) => getIdSafe(r) || `${r?.ticketId || ""}-${r?.id || ""}`,
+    [],
+  );
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
@@ -512,37 +523,38 @@ function Tickets() {
           field: "ticketId",
           headerName: "Ticket ID",
           minWidth: 140,
-          valueGetter: (p) => getTicketId(p?.row),
+          valueGetter: (p) => p?.row?.ticketId ?? p?.row?.id ?? "N/A",
         },
         {
           field: "passenger",
           headerName: "Passenger",
           minWidth: 180,
-          valueGetter: (p) => getPassenger(p?.row),
+          valueGetter: (p) => p?.row?.passenger ?? "N/A",
         },
         {
           field: "pickup",
           headerName: "Pickup",
           minWidth: 220,
-          valueGetter: (p) => getPickup(p?.row),
+          valueGetter: (p) => p?.row?.pickup ?? "N/A",
         },
         {
           field: "dropoff",
           headerName: "Dropoff",
           minWidth: 220,
-          valueGetter: (p) => getDropoff(p?.row),
+          valueGetter: (p) => p?.row?.dropoff ?? "N/A",
         },
         {
           field: "pickupTime",
           headerName: "Pickup Time",
           minWidth: 200,
-          valueGetter: (p) => getPickupTimeText(p?.row),
+          valueGetter: (p) => fmtPickup(p?.row || {}),
         },
         {
           field: "passengerCount",
           headerName: "Count",
           minWidth: 90,
-          valueGetter: (p) => getPassengerCount(p?.row),
+          valueGetter: (p) =>
+            p?.row?.passengerCount ?? p?.row?.passengercount ?? "N/A",
         },
         {
           field: "scanStatus",
@@ -557,8 +569,31 @@ function Tickets() {
           headerName: "Link",
           minWidth: 120,
           sortable: false,
-          renderCell: LinkCell,
-          valueGetter: (p) => getLink(p?.row || {}) || "—",
+          valueGetter: (p) => (p?.row?.linkUrl ? "Open" : "—"),
+          renderCell: (p) => {
+            const href = p?.row?.linkUrl;
+            if (!href) return "—";
+            return (
+              <Box
+                component="span"
+                role="button"
+                tabIndex={0}
+                sx={{ textDecoration: "underline", cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(href, "_blank", "noopener,noreferrer");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.stopPropagation();
+                    window.open(href, "_blank", "noopener,noreferrer");
+                  }
+                }}
+              >
+                Open
+              </Box>
+            );
+          },
         },
         {
           field: "actions",
@@ -596,7 +631,7 @@ function Tickets() {
           ],
         },
       ]),
-    [handleDeleteClick, handleEditClick],
+    [fmtPickup, handleDeleteClick, handleEditClick],
   );
 
   useGridDoctor({ name: "Tickets", rows: safeRows, columns });
@@ -761,6 +796,11 @@ function Tickets() {
     theme.palette.text.primary,
   ]);
 
+  if (Array.isArray(safeRows) && safeRows.length) {
+    const k = Object.keys(safeRows[0] || {});
+    console.log("[Tickets:keys]", k);
+  }
+
   return (
     <PageContainer maxWidth={960}>
       <Typography variant="h4" fontWeight="bold" gutterBottom>
@@ -909,7 +949,12 @@ function Tickets() {
               noRowsOverlay: NoRowsOverlay,
               errorOverlay: ErrorOverlay,
             }}
-            slotProps={{ toolbar: { quickFilterProps: { debounceMs: 300 } } }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 300 },
+              },
+            }}
             density="compact"
             sx={{
               "& .MuiDataGrid-row:nth-of-type(odd)": {
