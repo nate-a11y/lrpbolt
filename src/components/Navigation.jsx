@@ -36,7 +36,6 @@ import InfoIcon from "@mui/icons-material/Info";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
@@ -95,11 +94,10 @@ const ALL_NAV_ITEMS = [
     icon: <ContactEmergencyIcon />,
     path: "/directory",
   },
-  { label: "Calendar / Moovs", icon: <CalendarMonthIcon />, path: "/calendar" },
   {
-    label: "Ride & Vehicle Calendar",
-    icon: <EventAvailableIcon />,
-    path: "/vehicle-calendar",
+    label: "Calendar & Availability",
+    icon: <CalendarMonthIcon />,
+    path: "/calendar",
   },
   { label: "Ticket Scanner", icon: <CropFreeIcon />, path: "/scan" },
   { label: "Tickets", icon: <ConfirmationNumberIcon />, path: "/tickets" },
