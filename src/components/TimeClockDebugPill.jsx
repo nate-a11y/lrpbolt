@@ -5,8 +5,8 @@ import { Box } from "@mui/material";
 import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 
 function TimeClockDebugPill() {
-  const { hasActive, docId } = useContext(ActiveClockContext);
-
+  const { hasActive, docId, debug } = useContext(ActiveClockContext);
+  const text = hasActive ? `active • ${docId || "—"}` : `no-active • ${debug?.reason || debug?.source || "—"}`;
   return (
     <Box
       sx={{
@@ -15,15 +15,14 @@ function TimeClockDebugPill() {
         bottom: 8,
         p: 0.5,
         borderRadius: 1,
-        bgcolor: hasActive ? "rgba(76,187,23,0.25)" : "rgba(255,255,255,0.08)",
+        bgcolor: "rgba(255,255,255,0.08)",
         color: "#fff",
         fontSize: 11,
         zIndex: 3000,
       }}
     >
-      {hasActive ? `active • doc:${String(docId || "—")}` : "no-active"}
+      {text}
     </Box>
   );
 }
-
 export default memo(TimeClockDebugPill);

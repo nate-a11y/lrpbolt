@@ -1,14 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  Box,
-  Fade,
-  IconButton,
-  Paper,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Fade, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
@@ -17,42 +10,30 @@ import CloseIcon from "@mui/icons-material/Close";
 import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 import useElapsedFromTs from "@/hooks/useElapsedFromTs.js";
 import { openTimeClockModal } from "@/services/uiBus";
-import {
-  requestPersistentClockNotification,
-  clearClockNotification,
-} from "@/pwa/clockNotifications";
+import { requestPersistentClockNotification, clearClockNotification } from "@/pwa/clockNotifications";
 import { trySetAppBadge, clearAppBadge } from "@/pwa/appBadge";
 import { tryRequestWakeLock, releaseWakeLock } from "@/pwa/wakeLock";
-import { startClockPiP, stopClockPiP, isPiPSupported } from "@/pwa/pipTicker";
+import { startClockPiP, stopClockPiP, isPiPSupported, isPiPActive, updateClockPiP } from "@/pwa/pipTicker";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
 
-const BRAND = { green: "#4cbb17", black: "#060606" };
+const LRP = { green: "#4cbb17", black: "#060606" };
 
 export default function TimeClockBubble() {
-  useEffect(() => {
-    console.debug("[TimeClockBubble] mounted");
-  }, []);
-
   const { hasActive, startTimeTs } = useContext(ActiveClockContext);
   const { start, elapsedMs } = useElapsedFromTs(startTimeTs);
   const [collapsed, setCollapsed] = useState(false);
   const [pipOn, setPipOn] = useState(false);
   const elapsedLabel = useMemo(() => formatClockElapsed(elapsedMs), [elapsedMs]);
-  const labelRef = useRef(elapsedLabel);
-  const elapsedMinutesRef = useRef(Math.floor(elapsedMs / 60000));
+  const elapsedMinutes = useMemo(() => Math.floor(elapsedMs / 60000), [elapsedMs]);
 
   useEffect(() => {
-    labelRef.current = elapsedLabel;
-    elapsedMinutesRef.current = Math.floor(elapsedMs / 60000);
-  }, [elapsedLabel, elapsedMs]);
-
-  useEffect(() => {
+    let isMounted = true;
     (async () => {
       try {
         if (hasActive && start) {
-          await requestPersistentClockNotification(labelRef.current);
-          await trySetAppBadge(elapsedMinutesRef.current);
+          await requestPersistentClockNotification(elapsedLabel);
+          await trySetAppBadge(elapsedMinutes);
           await tryRequestWakeLock();
         } else {
           await clearClockNotification();
@@ -60,58 +41,80 @@ export default function TimeClockBubble() {
           await releaseWakeLock();
           if (pipOn) {
             stopClockPiP();
-            setPipOn(false);
+            if (isMounted) setPipOn(false);
           }
         }
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "pwaLifecycle" });
       }
     })();
-  }, [hasActive, start, pipOn]);
+    return () => {
+      isMounted = false;
+    };
+  }, [hasActive, start, elapsedLabel, elapsedMinutes, pipOn]);
 
   useEffect(() => {
     if (!(hasActive && start)) return undefined;
     const interval = setInterval(async () => {
       try {
-        await requestPersistentClockNotification(labelRef.current, { silent: true });
-        await trySetAppBadge(elapsedMinutesRef.current);
-        if (pipOn) {
-          await startClockPiP(labelRef.current);
+        await requestPersistentClockNotification(elapsedLabel, { silent: true });
+        await trySetAppBadge(elapsedMinutes);
+        if (pipOn && isPiPActive()) {
+          await updateClockPiP(elapsedLabel);
         }
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "ticker" });
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [hasActive, start, pipOn]);
+  }, [hasActive, start, elapsedLabel, elapsedMinutes, pipOn]);
 
   useEffect(() => {
     if (!pipOn) return undefined;
-    startClockPiP(labelRef.current).catch((error) =>
-      logError(error, { where: "TimeClockBubble", action: "pipInit" }),
-    );
+    let cancelled = false;
+    (async () => {
+      try {
+        if (isPiPActive()) {
+          await updateClockPiP(elapsedLabel);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          logError(error, { where: "TimeClockBubble", action: "pipRefresh" });
+        }
+      }
+    })();
     return () => {
-      stopClockPiP();
+      cancelled = true;
     };
-  }, [pipOn]);
+  }, [pipOn, elapsedLabel]);
 
-  useEffect(
-    () => () => {
-      stopClockPiP();
-    },
-    [],
-  );
+  useEffect(() => () => {
+    stopClockPiP();
+  }, []);
 
   if (!(hasActive && start)) {
-    console.debug(
-      "[TimeClockBubble] hidden (active:",
-      hasActive,
-      "start:",
-      Boolean(start),
-      ")",
-    );
     return null;
   }
+
+  const handlePiPToggle = async () => {
+    try {
+      if (pipOn) {
+        stopClockPiP();
+        setPipOn(false);
+        return;
+      }
+      const ok = await startClockPiP(elapsedLabel);
+      if (ok) {
+        setPipOn(true);
+      } else {
+        setPipOn(false);
+        logError(new Error("pip-start-failed"), { where: "TimeClockBubble", action: "pipDenied" });
+      }
+    } catch (error) {
+      logError(error, { where: "TimeClockBubble", action: "pipToggle" });
+      setPipOn(false);
+    }
+  };
 
   const node = (
     <Fade in timeout={200}>
@@ -142,8 +145,8 @@ export default function TimeClockBubble() {
             borderRadius: "50%",
             display: "grid",
             placeItems: "center",
-            bgcolor: BRAND.green,
-            color: BRAND.black,
+            bgcolor: LRP.green,
+            color: LRP.black,
             flexShrink: 0,
           }}
         >
@@ -151,10 +154,7 @@ export default function TimeClockBubble() {
         </Box>
 
         {!collapsed && (
-          <Typography
-            variant="body2"
-            sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 600 }}
-          >
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
             On the clock • {elapsedLabel}
           </Typography>
         )}
@@ -176,18 +176,7 @@ export default function TimeClockBubble() {
               <IconButton
                 size="small"
                 aria-label="Toggle floating mini ticker"
-                onClick={() => {
-                  try {
-                    if (pipOn) {
-                      stopClockPiP();
-                      setPipOn(false);
-                    } else {
-                      setPipOn(true);
-                    }
-                  } catch (error) {
-                    logError(error, { where: "TimeClockBubble", action: "pipToggle" });
-                  }
-                }}
+                onClick={handlePiPToggle}
                 sx={{ color: "#fff" }}
               >
                 <PictureInPictureAltIcon fontSize="small" />
