@@ -821,596 +821,612 @@ function RideVehicleCalendar(props = {}) {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <PageContainer {...rest}>
-        {!hideHeader && (
-          <Typography variant="h5" gutterBottom>
-            🚖 Ride & Vehicle Calendar
-          </Typography>
-        )}
+        <Box sx={{ width: "100%" }}>
+          {!hideHeader && (
+            <Typography variant="h5" gutterBottom>
+              🚖 Ride & Vehicle Calendar
+            </Typography>
+          )}
 
-        <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-          <IconButton
-            size="small"
-            onClick={handlePrevDay}
-            aria-label="Previous day"
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-          <Typography variant="subtitle1">
-            {date.format("dddd, MMMM D")}
-          </Typography>
-          <IconButton
-            size="small"
-            onClick={handleNextDay}
-            aria-label="Next day"
-          >
-            <ChevronRightIcon fontSize="small" />
-          </IconButton>
-        </Stack>
+          <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+            <IconButton
+              size="small"
+              onClick={handlePrevDay}
+              aria-label="Previous day"
+            >
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="subtitle1">
+              {date.format("dddd, MMMM D")}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={handleNextDay}
+              aria-label="Next day"
+            >
+              <ChevronRightIcon fontSize="small" />
+            </IconButton>
+          </Stack>
 
-        <Stack
-          direction={isMobile ? "column" : "row"}
-          spacing={2}
-          alignItems="center"
-          mb={2}
-        >
-          <DatePicker
-            value={date}
-            onChange={(newDate) => newDate && setDate(dayjs(newDate))}
-            slotProps={{ textField: { size: "small" } }}
-          />
-          <Autocomplete
-            multiple
-            options={vehicleOptions}
-            value={vehicleFilter}
-            onChange={(e, val) => {
-              const list = Array.isArray(val) ? val : [];
-              let next = list;
-              if (next.includes("ALL") && next.length > 1) {
-                next = next.filter((v) => v !== "ALL");
-              }
-              updateFilters({
-                vehicles:
-                  next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
-              });
-            }}
-            filterSelectedOptions
-            disableCloseOnSelect
-            getOptionLabel={(option) =>
-              option === "ALL" ? "All Vehicles" : option
-            }
-            renderOption={(props, option) => {
-              const { key, ...rest } = props;
-              return (
-                <Box
-                  component="li"
-                  key={key}
-                  {...rest}
-                  sx={{
-                    backgroundColor:
-                      option === "ALL" ? undefined : vehicleColors[option],
-                    color: option === "ALL" ? undefined : vehicleText[option],
-                    fontWeight: 500,
-                    "&:hover": {
-                      backgroundColor:
-                        option === "ALL" ? undefined : vehicleColors[option],
-                      opacity: 0.9,
-                    },
-                  }}
-                >
-                  {option === "ALL" ? "All Vehicles" : option}
-                </Box>
-              );
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="Filter Vehicles" size="small" />
-            )}
-            sx={{ minWidth: 260 }}
-          />
-        </Stack>
-
-        {!hideQuickActions && (
-          <Box
-            sx={{
-              position: "sticky",
-              top: stickyTopOffset,
-              zIndex: 1,
-              backgroundColor: theme.palette.background.default,
-              borderBottom: 1,
-              borderColor: "divider",
-              py: 1,
-              mb: 2,
-            }}
-          >
+          <Box sx={{ width: "100%" }}>
             <Stack
               direction={isMobile ? "column" : "row"}
               spacing={2}
-              alignItems={isMobile ? "flex-start" : "center"}
-              justifyContent="space-between"
+              alignItems="center"
+              mb={2}
+              sx={{ width: "100%", flexWrap: "wrap", rowGap: 1 }}
             >
-              <Typography fontSize={14}>
-                {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
-                {summary.tight} Tight Gaps • {summary.overlap} Overlaps
+              <DatePicker
+                value={date}
+                onChange={(newDate) => newDate && setDate(dayjs(newDate))}
+                slotProps={{ textField: { size: "small" } }}
+              />
+              <Autocomplete
+                multiple
+                options={vehicleOptions}
+                value={vehicleFilter}
+                onChange={(e, val) => {
+                  const list = Array.isArray(val) ? val : [];
+                  let next = list;
+                  if (next.includes("ALL") && next.length > 1) {
+                    next = next.filter((v) => v !== "ALL");
+                  }
+                  updateFilters({
+                    vehicles:
+                      next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
+                  });
+                }}
+                filterSelectedOptions
+                disableCloseOnSelect
+                getOptionLabel={(option) =>
+                  option === "ALL" ? "All Vehicles" : option
+                }
+                renderOption={(props, option) => {
+                  const { key, ...rest } = props;
+                  return (
+                    <Box
+                      component="li"
+                      key={key}
+                      {...rest}
+                      sx={{
+                        backgroundColor:
+                          option === "ALL" ? undefined : vehicleColors[option],
+                        color:
+                          option === "ALL" ? undefined : vehicleText[option],
+                        fontWeight: 500,
+                        "&:hover": {
+                          backgroundColor:
+                            option === "ALL"
+                              ? undefined
+                              : vehicleColors[option],
+                          opacity: 0.9,
+                        },
+                      }}
+                    >
+                      {option === "ALL" ? "All Vehicles" : option}
+                    </Box>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Filter Vehicles" size="small" />
+                )}
+                sx={{ minWidth: 260, width: { xs: "100%", sm: "auto" } }}
+              />
+            </Stack>
+          </Box>
+
+          {!hideQuickActions && (
+            <Box
+              sx={{
+                position: "sticky",
+                top: stickyTopOffset,
+                zIndex: 1,
+                backgroundColor: theme.palette.background.default,
+                borderBottom: 1,
+                borderColor: "divider",
+                py: 1,
+                mb: 2,
+                width: "100%",
+              }}
+            >
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                spacing={2}
+                alignItems={isMobile ? "flex-start" : "center"}
+                justifyContent="space-between"
+              >
+                <Typography fontSize={14}>
+                  {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
+                  {summary.tight} Tight Gaps • {summary.overlap} Overlaps
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
+                    Today
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      scrollToNow();
+                      scrollRulerToNow();
+                    }}
+                  >
+                    Scroll to Now
+                  </Button>
+                  <Tooltip title="Keep the view centered on now when opening today">
+                    <Switch
+                      size="small"
+                      checked={scrollToNowPref}
+                      onChange={(event) =>
+                        updateFilters({ scrollToNow: event.target.checked })
+                      }
+                      inputProps={{ "aria-label": "Auto scroll to now" }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Toggle Compact Mode">
+                    <Switch
+                      size="small"
+                      checked={compactMode}
+                      onChange={() => setCompactMode((v) => !v)}
+                    />
+                  </Tooltip>
+                </Stack>
+              </Stack>
+            </Box>
+          )}
+          {/* ===== [RVTC:overview:start] ===== */}
+          <Box
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+              border: 1,
+              borderColor: "divider",
+              overflow: "hidden",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ px: 1, py: 0.75, bgcolor: theme.palette.action.hover }}
+            >
+              <Typography fontWeight={700} fontSize={13}>
+                Vehicle Availability Overview
               </Typography>
               <Stack direction="row" spacing={1} alignItems="center">
-                <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
-                  Today
+                <Button size="small" onClick={() => setShowOverview((v) => !v)}>
+                  {showOverview ? "Hide" : "Show"}
                 </Button>
                 <Button
                   size="small"
-                  onClick={() => {
-                    scrollToNow();
-                    scrollRulerToNow();
-                  }}
+                  onClick={scrollRulerToNow}
+                  disabled={!isToday}
+                  title="Center now on the overview"
                 >
-                  Scroll to Now
+                  Center Now
                 </Button>
-                <Tooltip title="Keep the view centered on now when opening today">
-                  <Switch
-                    size="small"
-                    checked={scrollToNowPref}
-                    onChange={(event) =>
-                      updateFilters({ scrollToNow: event.target.checked })
-                    }
-                    inputProps={{ "aria-label": "Auto scroll to now" }}
-                  />
-                </Tooltip>
-                <Tooltip title="Toggle Compact Mode">
-                  <Switch
-                    size="small"
-                    checked={compactMode}
-                    onChange={() => setCompactMode((v) => !v)}
-                  />
-                </Tooltip>
               </Stack>
             </Stack>
-          </Box>
-        )}
-        {/* ===== [RVTC:overview:start] ===== */}
-        <Box
-          sx={{
-            mb: 2,
-            borderRadius: 2,
-            border: 1,
-            borderColor: "divider",
-            overflow: "hidden",
-          }}
-        >
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ px: 1, py: 0.75, bgcolor: theme.palette.action.hover }}
-          >
-            <Typography fontWeight={700} fontSize={13}>
-              Vehicle Availability Overview
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Button size="small" onClick={() => setShowOverview((v) => !v)}>
-                {showOverview ? "Hide" : "Show"}
-              </Button>
-              <Button
-                size="small"
-                onClick={scrollRulerToNow}
-                disabled={!isToday}
-                title="Center now on the overview"
-              >
-                Center Now
-              </Button>
-            </Stack>
-          </Stack>
 
-          <Collapse in={showOverview} timeout="auto" unmountOnExit>
-            {/* Hour ruler + lanes */}
-            <Box
-              ref={rulerRef}
-              sx={{
-                overflowX: "auto",
-                overflowY: "hidden",
-                WebkitOverflowScrolling: "touch",
-                px: 1,
-                pb: 1,
-                bgcolor: theme.palette.background.paper,
-              }}
-            >
-              {/* Ruler */}
+            <Collapse in={showOverview} timeout="auto" unmountOnExit>
+              {/* Hour ruler + lanes */}
               <Box
+                ref={rulerRef}
                 sx={{
-                  position: "sticky",
-                  top: stickyTopOffset,
-                  zIndex: 1,
+                  overflowX: "auto",
+                  overflowY: "hidden",
+                  WebkitOverflowScrolling: "touch",
+                  px: 1,
+                  pb: 1,
                   bgcolor: theme.palette.background.paper,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
                 }}
               >
+                {/* Ruler */}
                 <Box
                   sx={{
-                    position: "relative",
-                    // reserve the same gutter the lanes use so labels + bars align
-                    pl: `${gutter}px`,
-                    minWidth: `${gutter + 24 * pxPerHour}px`,
+                    position: "sticky",
+                    top: stickyTopOffset,
+                    zIndex: 1,
+                    bgcolor: theme.palette.background.paper,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
                   }}
                 >
                   <Box
                     sx={{
-                      display: "grid",
-                      gridTemplateColumns: `repeat(24, ${pxPerHour}px)`,
+                      position: "relative",
+                      // reserve the same gutter the lanes use so labels + bars align
+                      pl: `${gutter}px`,
+                      minWidth: `${gutter + 24 * pxPerHour}px`,
                     }}
                   >
-                    {hours.slice(0, 24).map((h, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          height: 28,
-                          borderLeft: i === 0 ? "none" : "1px dashed",
-                          borderColor: "divider",
-                          display: "flex",
-                          alignItems: "center",
-                          fontSize: 12,
-                          color: "text.secondary",
-                          pl: 0.75,
-                        }}
-                      >
-                        {h.format("ha")}
-                      </Box>
-                    ))}
-                  </Box>
-                  {/* Now marker */}
-                  {isToday && (
                     <Box
                       sx={{
-                        position: "absolute",
-                        left: `${
-                          clamp01(
-                            minutesBetween(dayStart, now) /
-                              minutesBetween(dayStart, dayEnd),
-                          ) * 100
-                        }%`,
-                        top: 0,
-                        bottom: 0,
-                        width: 2,
-                        transform: "translateX(-1px)",
-                        bgcolor: theme.palette.primary.main,
+                        display: "grid",
+                        gridTemplateColumns: `repeat(24, ${pxPerHour}px)`,
                       }}
-                    />
-                  )}
-                </Box>
-              </Box>
-
-              {/* Lanes per vehicle */}
-              <Stack
-                ref={lanesWrapperRef}
-                sx={{ pt: 1, minWidth: `${gutter + 24 * pxPerHour}px` }}
-                spacing={1}
-              >
-                {groupedPacked.map(({ vehicle, lanes }) => {
-                  const rideCount = lanes.reduce((acc, l) => acc + l.length, 0);
-                  const setPillRef = (node) => {
-                    if (node) {
-                      pillRefs.current[vehicle] = node;
-                    } else {
-                      delete pillRefs.current[vehicle];
-                    }
-                  };
-                  const renderChip = () => (
-                    <Chip
-                      size="small"
-                      label={vehicle}
-                      sx={{
-                        bgcolor: vehicleColors[vehicle],
-                        color: vehicleText[vehicle],
-                        fontWeight: 600,
-                      }}
-                    />
-                  );
-                  const renderCount = () => (
-                    <Typography variant="caption" color="text.secondary">
-                      {rideCount} rides
-                    </Typography>
-                  );
-
-                  const anchoredPill =
-                    stickyAnchorEl &&
-                    createPortal(
-                      <VehiclePillWrapper
-                        width={labelW}
-                        anchored
-                        top={pillOffsets[vehicle] ?? 0}
-                        stickyTopOffset={stickyTopOffset}
-                      >
-                        {renderChip()}
-                        {renderCount()}
-                      </VehiclePillWrapper>,
-                      stickyAnchorEl,
-                    );
-
-                  return (
-                    <Box key={vehicle} sx={{ position: "relative" }}>
-                      <VehiclePillWrapper
-                        ref={setPillRef}
-                        width={labelW}
-                        hidden={Boolean(stickyAnchorEl)}
-                        stickyTopOffset={stickyTopOffset}
-                      >
-                        {renderChip()}
-                        {renderCount()}
-                      </VehiclePillWrapper>
-                      {anchoredPill}
-
-                      {/* Lanes shifted to clear the sticky label gutter */}
-                      <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
-                        {lanes.map((lane, li) => (
-                          <Box
-                            key={li}
-                            sx={{
-                              position: "relative",
-                              height: 22,
-                              minWidth: `${24 * pxPerHour}px`,
-                            }}
-                          >
-                            {lane.map((ev) => {
-                              const { left, width } = percentSpan(
-                                ev,
-                                dayStart,
-                                dayEnd,
-                              );
-                              return (
-                                <Tooltip
-                                  key={ev.id}
-                                  title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
-                                >
-                                  <Box
-                                    onClick={() => {
-                                      setSelectedEvent(ev);
-                                      setModalOpen(true);
-                                    }}
-                                    sx={{
-                                      position: "absolute",
-                                      left: `${left}%`,
-                                      width: `${width}%`,
-                                      top: 0,
-                                      bottom: 0,
-                                      borderRadius: 1,
-                                      bgcolor: `${vehicleColors[vehicle]}33`,
-                                      border: `1px solid ${vehicleColors[vehicle]}`,
-                                      transition: "transform 120ms ease",
-                                      "&:hover": {
-                                        transform: "translateY(-1px)",
-                                      },
-                                    }}
-                                  />
-                                </Tooltip>
-                              );
-                            })}
-                          </Box>
-                        ))}
-                      </Stack>
-                    </Box>
-                  );
-                })}
-              </Stack>
-            </Box>
-          </Collapse>
-        </Box>
-        {/* ===== [RVTC:overview:end] ===== */}
-
-        {!hideLowerActions && (
-          <Stack direction="row" spacing={1} mb={2}>
-            <Button
-              size="small"
-              onClick={() => downloadCsv(flatFiltered, overlapsMap, date)}
-              disabled={loading || !!error}
-            >
-              Export CSV
-            </Button>
-            <Button
-              size="small"
-              onClick={() => downloadIcs(flatFiltered, date)}
-              disabled={loading || !!error}
-            >
-              Add to Calendar
-            </Button>
-            <Button
-              size="small"
-              onClick={() => shareDay(flatFiltered, date)}
-              disabled={loading || !!error}
-              startIcon={<ShareIcon fontSize="small" />}
-            >
-              Share
-            </Button>
-          </Stack>
-        )}
-
-        {error && (
-          <Alert
-            severity="error"
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={() => setDate((d) => d.clone())}
-              >
-                Retry
-              </Button>
-            }
-            sx={{ mb: 2 }}
-          >
-            Failed to load rides.
-          </Alert>
-        )}
-
-        {loading ? (
-          <Stack spacing={compactMode ? 1 : 2}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Box
-                key={i}
-                sx={{
-                  p: compactMode ? 1.25 : 2,
-                  borderRadius: 2,
-                  bgcolor:
-                    theme.palette.mode === "dark" ? "#1e1e1e" : "#f8f8f8",
-                }}
-              >
-                <Skeleton variant="text" width="60%" />
-                <Skeleton variant="text" width="40%" />
-                <Skeleton variant="rectangular" height={4} />
-              </Box>
-            ))}
-          </Stack>
-        ) : filteredGroups.length === 0 ? (
-          <Typography>No rides scheduled for this date.</Typography>
-        ) : (
-          filteredGroups.map(({ vehicle, rides, total }) => {
-            const expanded = sectionState[vehicle] !== false;
-            return (
-              <Box key={vehicle} mb={2}>
-                <Chip
-                  label={`${vehicle} • ${rides.length} • ${formatHm(total)}`}
-                  onClick={() => handleToggleSection(vehicle)}
-                  onDelete={() => handleToggleSection(vehicle)}
-                  deleteIcon={
-                    expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />
-                  }
-                  sx={{
-                    backgroundColor: vehicleColors[vehicle],
-                    color: vehicleText[vehicle],
-                    fontWeight: 500,
-                    mb: 1,
-                  }}
-                />
-                <Collapse in={expanded} timeout="auto" unmountOnExit>
-                  <Stack spacing={compactMode ? 1 : 2}>
-                    {rides.map((event) => {
-                      const { left: startPct, width: widthPct } = percentSpan(
-                        event,
-                        dayStart,
-                        dayEnd,
-                      );
-                      const endPct = startPct + widthPct;
-                      return (
+                    >
+                      {hours.slice(0, 24).map((h, i) => (
                         <Box
-                          key={event.id}
-                          ref={(el) => (rideRefs.current[event.id] = el)}
-                          onClick={() => {
-                            setSelectedEvent(event);
-                            setModalOpen(true);
-                          }}
+                          key={i}
                           sx={{
-                            p: compactMode ? 1.25 : 2,
-                            borderRadius: 2,
-                            cursor: "pointer",
-                            borderLeft: `6px solid ${vehicleColors[event.vehicle]}`,
-                            backgroundColor:
-                              theme.palette.mode === "dark"
-                                ? "#1e1e1e"
-                                : "#f8f8f8",
-                            "&:hover": {
-                              backgroundColor:
-                                theme.palette.mode === "dark"
-                                  ? "#2a2a2a"
-                                  : "#f1f1f1",
-                            },
+                            height: 28,
+                            borderLeft: i === 0 ? "none" : "1px dashed",
+                            borderColor: "divider",
+                            display: "flex",
+                            alignItems: "center",
+                            fontSize: 12,
+                            color: "text.secondary",
+                            pl: 0.75,
                           }}
                         >
-                          <Typography
-                            fontWeight="bold"
-                            display="flex"
-                            alignItems="center"
-                          >
-                            <DirectionsCarIcon
-                              fontSize="small"
-                              sx={{ mr: 1 }}
-                            />
-                            {event.title}
-                          </Typography>
-                          <Typography fontSize={14}>
-                            {event.start.format("h:mm A")} –{" "}
-                            {event.end.format("h:mm A")}
-                          </Typography>
-                          <Chip
-                            label={event.vehicle}
-                            size="small"
-                            sx={{
-                              mt: 0.5,
-                              backgroundColor: vehicleColors[event.vehicle],
-                              color: vehicleText[event.vehicle],
-                              fontWeight: 500,
-                              fontSize: "0.75rem",
-                            }}
-                          />
-                          <Box
-                            sx={{
-                              position: "relative",
-                              height: 4,
-                              mt: 1,
-                              bgcolor:
-                                theme.palette.mode === "dark"
-                                  ? "grey.800"
-                                  : "grey.300",
-                            }}
-                          >
+                          {h.format("ha")}
+                        </Box>
+                      ))}
+                    </Box>
+                    {/* Now marker */}
+                    {isToday && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          left: `${
+                            clamp01(
+                              minutesBetween(dayStart, now) /
+                                minutesBetween(dayStart, dayEnd),
+                            ) * 100
+                          }%`,
+                          top: 0,
+                          bottom: 0,
+                          width: 2,
+                          transform: "translateX(-1px)",
+                          bgcolor: theme.palette.primary.main,
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Box>
+
+                {/* Lanes per vehicle */}
+                <Stack
+                  ref={lanesWrapperRef}
+                  sx={{ pt: 1, minWidth: `${gutter + 24 * pxPerHour}px` }}
+                  spacing={1}
+                >
+                  {groupedPacked.map(({ vehicle, lanes }) => {
+                    const rideCount = lanes.reduce(
+                      (acc, l) => acc + l.length,
+                      0,
+                    );
+                    const setPillRef = (node) => {
+                      if (node) {
+                        pillRefs.current[vehicle] = node;
+                      } else {
+                        delete pillRefs.current[vehicle];
+                      }
+                    };
+                    const renderChip = () => (
+                      <Chip
+                        size="small"
+                        label={vehicle}
+                        sx={{
+                          bgcolor: vehicleColors[vehicle],
+                          color: vehicleText[vehicle],
+                          fontWeight: 600,
+                        }}
+                      />
+                    );
+                    const renderCount = () => (
+                      <Typography variant="caption" color="text.secondary">
+                        {rideCount} rides
+                      </Typography>
+                    );
+
+                    const anchoredPill =
+                      stickyAnchorEl &&
+                      createPortal(
+                        <VehiclePillWrapper
+                          width={labelW}
+                          anchored
+                          top={pillOffsets[vehicle] ?? 0}
+                          stickyTopOffset={stickyTopOffset}
+                        >
+                          {renderChip()}
+                          {renderCount()}
+                        </VehiclePillWrapper>,
+                        stickyAnchorEl,
+                      );
+
+                    return (
+                      <Box key={vehicle} sx={{ position: "relative" }}>
+                        <VehiclePillWrapper
+                          ref={setPillRef}
+                          width={labelW}
+                          hidden={Boolean(stickyAnchorEl)}
+                          stickyTopOffset={stickyTopOffset}
+                        >
+                          {renderChip()}
+                          {renderCount()}
+                        </VehiclePillWrapper>
+                        {anchoredPill}
+
+                        {/* Lanes shifted to clear the sticky label gutter */}
+                        <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
+                          {lanes.map((lane, li) => (
                             <Box
+                              key={li}
                               sx={{
-                                position: "absolute",
-                                left: `${startPct}%`,
-                                width: `${endPct - startPct}%`,
-                                top: 0,
-                                bottom: 0,
-                                bgcolor: vehicleColors[event.vehicle],
+                                position: "relative",
+                                height: 22,
+                                minWidth: `${24 * pxPerHour}px`,
+                              }}
+                            >
+                              {lane.map((ev) => {
+                                const { left, width } = percentSpan(
+                                  ev,
+                                  dayStart,
+                                  dayEnd,
+                                );
+                                return (
+                                  <Tooltip
+                                    key={ev.id}
+                                    title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
+                                  >
+                                    <Box
+                                      onClick={() => {
+                                        setSelectedEvent(ev);
+                                        setModalOpen(true);
+                                      }}
+                                      sx={{
+                                        position: "absolute",
+                                        left: `${left}%`,
+                                        width: `${width}%`,
+                                        top: 0,
+                                        bottom: 0,
+                                        borderRadius: 1,
+                                        bgcolor: `${vehicleColors[vehicle]}33`,
+                                        border: `1px solid ${vehicleColors[vehicle]}`,
+                                        transition: "transform 120ms ease",
+                                        "&:hover": {
+                                          transform: "translateY(-1px)",
+                                        },
+                                      }}
+                                    />
+                                  </Tooltip>
+                                );
+                              })}
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            </Collapse>
+          </Box>
+          {/* ===== [RVTC:overview:end] ===== */}
+
+          {!hideLowerActions && (
+            <Stack direction="row" spacing={1} mb={2}>
+              <Button
+                size="small"
+                onClick={() => downloadCsv(flatFiltered, overlapsMap, date)}
+                disabled={loading || !!error}
+              >
+                Export CSV
+              </Button>
+              <Button
+                size="small"
+                onClick={() => downloadIcs(flatFiltered, date)}
+                disabled={loading || !!error}
+              >
+                Add to Calendar
+              </Button>
+              <Button
+                size="small"
+                onClick={() => shareDay(flatFiltered, date)}
+                disabled={loading || !!error}
+                startIcon={<ShareIcon fontSize="small" />}
+              >
+                Share
+              </Button>
+            </Stack>
+          )}
+
+          {error && (
+            <Alert
+              severity="error"
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => setDate((d) => d.clone())}
+                >
+                  Retry
+                </Button>
+              }
+              sx={{ mb: 2, width: "100%" }}
+            >
+              Failed to load rides.
+            </Alert>
+          )}
+
+          {loading ? (
+            <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    p: compactMode ? 1.25 : 2,
+                    borderRadius: 2,
+                    bgcolor:
+                      theme.palette.mode === "dark" ? "#1e1e1e" : "#f8f8f8",
+                    width: "100%",
+                  }}
+                >
+                  <Skeleton variant="text" width="60%" />
+                  <Skeleton variant="text" width="40%" />
+                  <Skeleton variant="rectangular" height={4} />
+                </Box>
+              ))}
+            </Stack>
+          ) : filteredGroups.length === 0 ? (
+            <Typography sx={{ width: "100%" }}>
+              No rides scheduled for this date.
+            </Typography>
+          ) : (
+            filteredGroups.map(({ vehicle, rides, total }) => {
+              const expanded = sectionState[vehicle] !== false;
+              return (
+                <Box key={vehicle} mb={2} sx={{ width: "100%" }}>
+                  <Chip
+                    label={`${vehicle} • ${rides.length} • ${formatHm(total)}`}
+                    onClick={() => handleToggleSection(vehicle)}
+                    onDelete={() => handleToggleSection(vehicle)}
+                    deleteIcon={
+                      expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                    }
+                    sx={{
+                      backgroundColor: vehicleColors[vehicle],
+                      color: vehicleText[vehicle],
+                      fontWeight: 500,
+                      mb: 1,
+                    }}
+                  />
+                  <Collapse in={expanded} timeout="auto" unmountOnExit>
+                    <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
+                      {rides.map((event) => {
+                        const { left: startPct, width: widthPct } = percentSpan(
+                          event,
+                          dayStart,
+                          dayEnd,
+                        );
+                        const endPct = startPct + widthPct;
+                        return (
+                          <Box
+                            key={event.id}
+                            ref={(el) => (rideRefs.current[event.id] = el)}
+                            onClick={() => {
+                              setSelectedEvent(event);
+                              setModalOpen(true);
+                            }}
+                            sx={{
+                              p: compactMode ? 1.25 : 2,
+                              borderRadius: 2,
+                              cursor: "pointer",
+                              borderLeft: `6px solid ${vehicleColors[event.vehicle]}`,
+                              backgroundColor:
+                                theme.palette.mode === "dark"
+                                  ? "#1e1e1e"
+                                  : "#f8f8f8",
+                              "&:hover": {
+                                backgroundColor:
+                                  theme.palette.mode === "dark"
+                                    ? "#2a2a2a"
+                                    : "#f1f1f1",
+                              },
+                              width: "100%",
+                            }}
+                          >
+                            <Typography
+                              fontWeight="bold"
+                              display="flex"
+                              alignItems="center"
+                            >
+                              <DirectionsCarIcon
+                                fontSize="small"
+                                sx={{ mr: 1 }}
+                              />
+                              {event.title}
+                            </Typography>
+                            <Typography fontSize={14}>
+                              {event.start.format("h:mm A")} –{" "}
+                              {event.end.format("h:mm A")}
+                            </Typography>
+                            <Chip
+                              label={event.vehicle}
+                              size="small"
+                              sx={{
+                                mt: 0.5,
+                                backgroundColor: vehicleColors[event.vehicle],
+                                color: vehicleText[event.vehicle],
+                                fontWeight: 500,
+                                fontSize: "0.75rem",
                               }}
                             />
-                            {isToday && nowPct >= 0 && nowPct <= 100 && (
+                            <Box
+                              sx={{
+                                position: "relative",
+                                height: 4,
+                                mt: 1,
+                                bgcolor:
+                                  theme.palette.mode === "dark"
+                                    ? "grey.800"
+                                    : "grey.300",
+                              }}
+                            >
                               <Box
                                 sx={{
                                   position: "absolute",
-                                  left: `${nowPct}%`,
-                                  top: -2,
-                                  bottom: -2,
-                                  width: 2,
-                                  bgcolor: theme.palette.primary.main,
+                                  left: `${startPct}%`,
+                                  width: `${endPct - startPct}%`,
+                                  top: 0,
+                                  bottom: 0,
+                                  bgcolor: vehicleColors[event.vehicle],
                                 }}
                               />
-                            )}
+                              {isToday && nowPct >= 0 && nowPct <= 100 && (
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    left: `${nowPct}%`,
+                                    top: -2,
+                                    bottom: -2,
+                                    width: 2,
+                                    bgcolor: theme.palette.primary.main,
+                                  }}
+                                />
+                              )}
+                            </Box>
+                            <Stack direction="row" spacing={1} mt={1}>
+                              {event.tightGap && (
+                                <Chip
+                                  label="Tight Gap"
+                                  color="warning"
+                                  size="small"
+                                />
+                              )}
+                              {overlapsMap.has(event.id) && (
+                                <Chip
+                                  label="Overlap"
+                                  color="error"
+                                  size="small"
+                                />
+                              )}
+                              {event.start.isBefore(dayStart) && (
+                                <Chip
+                                  label="From Prev Day"
+                                  color="info"
+                                  size="small"
+                                />
+                              )}
+                              {event.end.isAfter(dayEnd) && (
+                                <Chip
+                                  label="Into Next Day"
+                                  color="info"
+                                  size="small"
+                                />
+                              )}
+                            </Stack>
                           </Box>
-                          <Stack direction="row" spacing={1} mt={1}>
-                            {event.tightGap && (
-                              <Chip
-                                label="Tight Gap"
-                                color="warning"
-                                size="small"
-                              />
-                            )}
-                            {overlapsMap.has(event.id) && (
-                              <Chip
-                                label="Overlap"
-                                color="error"
-                                size="small"
-                              />
-                            )}
-                            {event.start.isBefore(dayStart) && (
-                              <Chip
-                                label="From Prev Day"
-                                color="info"
-                                size="small"
-                              />
-                            )}
-                            {event.end.isAfter(dayEnd) && (
-                              <Chip
-                                label="Into Next Day"
-                                color="info"
-                                size="small"
-                              />
-                            )}
-                          </Stack>
-                        </Box>
-                      );
-                    })}
-                  </Stack>
-                </Collapse>
-              </Box>
-            );
-          })
-        )}
+                        );
+                      })}
+                    </Stack>
+                  </Collapse>
+                </Box>
+              );
+            })
+          )}
+        </Box>
 
         <Dialog
           open={modalOpen}

@@ -13,15 +13,11 @@ import {
   Fab,
   Drawer,
 } from "@mui/material";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import ShareIcon from "@mui/icons-material/Share";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
-import TodayIcon from "@mui/icons-material/Today";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { styled, useTheme } from "@mui/material/styles";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import TodayIcon from "@mui/icons-material/Today";
+import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 
-import { dayjs } from "@/utils/time";
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
 const STORAGE_KEY = "lrp.calendar.filters";
@@ -101,6 +97,10 @@ export default function CalendarHub() {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
   const useDrawer = useMediaQuery(theme.breakpoints.down("lg"));
+  const APPBAR_MOBILE = 56;
+  const APPBAR_DESKTOP = 64;
+  const drawerTopXs = `calc(${APPBAR_MOBILE}px + env(safe-area-inset-top, 0px))`;
+  const drawerTopSm = `calc(${APPBAR_DESKTOP}px + env(safe-area-inset-top, 0px))`;
   const [filters, setFilters] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -129,11 +129,6 @@ export default function CalendarHub() {
       onToday: () => window.dispatchEvent(new CustomEvent("calendar:today")),
       onCenterNow: () =>
         window.dispatchEvent(new CustomEvent("calendar:center-now")),
-      onExportCsv: () =>
-        window.dispatchEvent(new CustomEvent("calendar:export-csv")),
-      onAddToCalendar: () =>
-        window.dispatchEvent(new CustomEvent("calendar:add-to-calendar")),
-      onShare: () => window.dispatchEvent(new CustomEvent("calendar:share")),
     }),
     [],
   );
@@ -146,9 +141,6 @@ export default function CalendarHub() {
     setHelpOpen(false);
   }, []);
 
-  const todayLabel = useMemo(() => dayjs().format("MMM D, YYYY"), []);
-  // Optional: expose callbacks for the Quick Actions row if RideVehicleCalendar doesn't already
-
   const toolbarHeight = { xs: 56, sm: 64 };
   const stickyTopXs = `calc(${toolbarHeight.xs}px + env(safe-area-inset-top, 0px))`;
   const stickyTopSm = `calc(${toolbarHeight.sm}px + env(safe-area-inset-top, 0px))`;
@@ -157,111 +149,91 @@ export default function CalendarHub() {
   return (
     <Box
       sx={{
-        pt: {
-          xs: stickyTop.xs,
-          sm: stickyTop.sm,
-        },
-        px: { xs: 1, sm: 2 },
+        pt: 0,
         pb: `env(safe-area-inset-bottom, 0px)`,
+        px: { xs: 1, sm: 2 },
       }}
     >
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mb: 1 }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            Ride & Vehicle Calendar
-          </Typography>
-        </Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
+      <Box sx={{ maxWidth: 1280, mx: "auto", width: "100%" }}>
+        <Box sx={{ mb: 1 }}>
           <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-              display: { xs: "none", sm: "inline-flex" },
-            }}
+            variant="h5"
+            sx={{ fontWeight: 700, lineHeight: 1.2, mb: 1 }}
           >
-            {todayLabel}
+            Ride &amp; Vehicle Calendar
           </Typography>
-          <Button
-            size="small"
-            startIcon={<TodayIcon />}
-            onClick={actions.onToday}
-          >
-            Today
-          </Button>
-          <Button
-            size="small"
-            startIcon={<CenterFocusStrongIcon />}
-            onClick={actions.onCenterNow}
-          >
-            Scroll to Now
-          </Button>
-          <Button
-            size="small"
-            startIcon={<FileDownloadIcon />}
-            onClick={actions.onExportCsv}
-          >
-            Export CSV
-          </Button>
-          <Button
-            size="small"
-            startIcon={<CalendarMonthIcon />}
-            onClick={actions.onAddToCalendar}
-          >
-            Add to Calendar
-          </Button>
-          <Button
-            size="small"
-            startIcon={<ShareIcon />}
-            onClick={actions.onShare}
-          >
-            Share
-          </Button>
-        </Stack>
-      </Stack>
 
-      {!isMdUp && <Divider sx={{ my: 2 }} />}
-
-      <Grid container spacing={2}>
-        {/* Left: Schedule */}
-        <Grid item xs={12} md={8}>
-          {/* Sticky vehicle pill wrapper: RideVehicleCalendar should render its pill inside this slot when possible */}
-          <StickyPill id="sticky-vehicle-pill-anchor" sx={{ top: stickyTop }} />
-          <Suspense
-            fallback={
-              <Box
-                sx={{
-                  py: 6,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <CircularProgress size={32} />
-              </Box>
-            }
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            rowGap={1}
           >
-            <RideVehicleCalendarLazy
-              persistedFilters={filters}
-              onFiltersChange={handleFiltersChange}
-              stickyPillAnchorId="sticky-vehicle-pill-anchor"
-              hideHeader
-              hideQuickActions
-              hideLowerActions
-              stickyTopOffset={stickyTop}
+            <Button
+              size="small"
+              startIcon={<TodayIcon />}
+              onClick={actions.onToday}
+            >
+              Today
+            </Button>
+            <Button
+              size="small"
+              startIcon={<CenterFocusStrongIcon />}
+              onClick={actions.onCenterNow}
+            >
+              Scroll to Now
+            </Button>
+          </Stack>
+        </Box>
+
+        {!isMdUp && <Divider sx={{ my: 2 }} />}
+
+        <Grid container spacing={2}>
+          {/* Left: Schedule */}
+          <Grid item xs={12} md={8}>
+            {/* Sticky vehicle pill wrapper: RideVehicleCalendar should render its pill inside this slot when possible */}
+            <StickyPill
+              id="sticky-vehicle-pill-anchor"
+              sx={{ top: stickyTop }}
             />
-          </Suspense>
-        </Grid>
+            <Suspense
+              fallback={
+                <Box
+                  sx={{
+                    py: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress size={32} />
+                </Box>
+              }
+            >
+              <RideVehicleCalendarLazy
+                persistedFilters={filters}
+                onFiltersChange={handleFiltersChange}
+                stickyPillAnchorId="sticky-vehicle-pill-anchor"
+                hideHeader
+                hideQuickActions
+                hideLowerActions
+                stickyTopOffset={stickyTop}
+              />
+            </Suspense>
+          </Grid>
 
-        {/* Right: Help */}
-        <Grid item xs={12} xl={4} sx={{ display: { xs: "none", xl: "block" } }}>
-          {!useDrawer && <CalendarUpdateTab compact />}
+          {/* Right: Help */}
+          <Grid
+            item
+            xs={12}
+            xl={4}
+            sx={{ display: { xs: "none", xl: "block" } }}
+          >
+            {!useDrawer && <CalendarUpdateTab compact />}
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
 
       <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
         <Fab
@@ -290,15 +262,21 @@ export default function CalendarHub() {
         anchor="right"
         open={helpOpen}
         onClose={handleHelpClose}
-        PaperProps={{ sx: { width: { xs: "94vw", sm: 420 } } }}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            mt: { xs: drawerTopXs, sm: drawerTopSm },
+            height: {
+              xs: `calc(100% - ${drawerTopXs})`,
+              sm: `calc(100% - ${drawerTopSm})`,
+            },
+            width: { xs: "94vw", sm: 420 },
+            overflow: "auto",
+            pt: 1,
+          },
+        }}
       >
-        <Box
-          sx={{
-            px: 2,
-            py: 2,
-            pt: `calc(8px + env(safe-area-inset-top, 0px))`,
-          }}
-        >
+        <Box sx={{ px: 2, pb: 2 }}>
           <CalendarUpdateTab compact />
         </Box>
       </Drawer>
