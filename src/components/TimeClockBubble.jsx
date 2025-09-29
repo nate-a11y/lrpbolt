@@ -12,7 +12,7 @@ import useElapsedFromTs from "@/hooks/useElapsedFromTs.js";
 import { openTimeClockModal } from "@/services/uiBus";
 import { requestPersistentClockNotification, clearClockNotification } from "@/pwa/clockNotifications";
 import { trySetAppBadge, clearAppBadge } from "@/pwa/appBadge";
-import { tryRequestWakeLock, releaseWakeLock } from "@/pwa/wakeLock";
+import useWakeLock from "@/hooks/useWakeLock.js";
 import { startClockPiP, stopClockPiP, isPiPSupported, isPiPActive, updateClockPiP } from "@/pwa/pipTicker";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
@@ -22,6 +22,8 @@ const LRP = { green: "#4cbb17", black: "#060606" };
 export default function TimeClockBubble() {
   const { hasActive, startTimeTs } = useContext(ActiveClockContext);
   const { start, elapsedMs } = useElapsedFromTs(startTimeTs);
+  // Keep screen awake only while actually on the clock
+  useWakeLock(hasActive && !!start);
   const [collapsed, setCollapsed] = useState(false);
   const [pipOn, setPipOn] = useState(false);
   const elapsedLabel = useMemo(() => formatClockElapsed(elapsedMs), [elapsedMs]);
@@ -34,11 +36,9 @@ export default function TimeClockBubble() {
         if (hasActive && start) {
           await requestPersistentClockNotification(elapsedLabel);
           await trySetAppBadge(elapsedMinutes);
-          await tryRequestWakeLock();
         } else {
           await clearClockNotification();
           await clearAppBadge();
-          await releaseWakeLock();
           if (pipOn) {
             stopClockPiP();
             if (isMounted) setPipOn(false);

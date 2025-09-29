@@ -1,4 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
+// DEPRECATED: use useWakeLock(enabled) instead. This file is kept for backward compatibility.
 import logError from "@/utils/logError.js";
 
 let wakeLockSentinel = null;
