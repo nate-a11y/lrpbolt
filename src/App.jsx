@@ -32,7 +32,6 @@ import NotificationsOptInDialog from "./components/NotificationsOptInDialog.jsx"
 import { getUserAccess } from "./hooks/api";
 import { ensureFcmToken } from "./utils/fcm";
 import DriverInfoTab from "./components/DriverInfoTab";
-import VehicleDropGuides from "./components/VehicleDropGuides";
 import DirectoryEscalations from "./components/DirectoryEscalations.jsx";
 import { logout } from "./services/auth";
 import useNetworkStatus from "./hooks/useNetworkStatus";
@@ -242,7 +241,14 @@ function App() {
               <Route path="/shootout" element={<ShootoutTab />} />
               <Route path="/scan" element={<TicketScanner />} />
               <Route path="/info" element={<DriverInfoTab />} />
-              <Route path="/drop-guides" element={<VehicleDropGuides />} />
+              <Route
+                path="/drop-guides"
+                element={<Navigate to="/info" replace />}
+              />
+              <Route
+                path="/vehicle-tips"
+                element={<Navigate to="/info" replace />}
+              />
               <Route path="/directory" element={<DirectoryEscalations />} />
               <Route path="/calendar" element={<CalendarHubLazy />} />
               <Route

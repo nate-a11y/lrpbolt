@@ -88,7 +88,12 @@ const ALL_NAV_ITEMS = [
   { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
   { label: "Time Clock", icon: <AccessTimeIcon />, path: "/clock" },
   { label: "Drop-Off Info", icon: <InfoIcon />, path: "/info" },
-  { label: "Vehicle Tips", icon: <DirectionsCarIcon />, path: "/drop-guides" },
+  {
+    label: "Vehicle Tips",
+    icon: <DirectionsCarIcon />,
+    path: "/drop-guides",
+    hidden: true,
+  },
   {
     label: "Directory & Escalations",
     icon: <ContactEmergencyIcon />,
@@ -184,7 +189,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   }, [isMobile]);
 
   const items = useMemo(
-    () => ALL_NAV_ITEMS.filter((it) => !it.admin || isAdmin),
+    () => ALL_NAV_ITEMS.filter((it) => (!it.admin || isAdmin) && !it.hidden),
     [isAdmin],
   );
 

@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import {
+  Box,
   Typography,
   Accordion,
   AccordionSummary,
@@ -52,15 +53,18 @@ Ensure your tablet is collected before leaving the vehicle unattended.`,
   },
 ];
 
-export default function VehicleDropGuides() {
+export default function VehicleDropGuides({ compact = false }) {
+  const Wrapper = compact ? Box : PageContainer;
   return (
-    <PageContainer pb={4}>
-      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
-        🚐 Vehicle Drop-off Instructions
-      </Typography>
+    <Wrapper pb={compact ? 0 : 4}>
+      {!compact && (
+        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+          🚐 Vehicle Drop-off Instructions
+        </Typography>
+      )}
 
-      {VEHICLE_GUIDES.map((item, idx) => (
-        <Accordion key={item.title} defaultExpanded={idx === 0}>
+      {VEHICLE_GUIDES.map((item) => (
+        <Accordion key={item.title} defaultExpanded={false}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography fontWeight="bold">{item.title}</Typography>
           </AccordionSummary>
@@ -78,6 +82,6 @@ export default function VehicleDropGuides() {
           </AccordionDetails>
         </Accordion>
       ))}
-    </PageContainer>
+    </Wrapper>
   );
 }

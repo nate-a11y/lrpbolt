@@ -61,6 +61,7 @@ export default function DropoffAccordion({ onSelectImage }) {
       {categorized.map(({ category, places }, idx) => (
         <Accordion
           key={idx}
+          defaultExpanded={false}
           expanded={acc.is(category)}
           onChange={acc.handleChange(category)}
         >
