@@ -87,13 +87,6 @@ export default function PermissionGate({ children }) {
     try {
       const res = await Notification.requestPermission();
       if (res === "granted") {
-        try {
-          if ("wakeLock" in navigator) {
-            await navigator.wakeLock.request("screen");
-          }
-        } catch (e) {
-          console.warn("[PermissionGate] wakeLock not available", e);
-        }
         setAllowed(true);
       } else {
         setAllowed(false);
