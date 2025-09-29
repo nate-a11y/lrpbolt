@@ -59,7 +59,12 @@ import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 
 import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
-import { subscribeTickets, deleteTicketsByIds } from "@/services/tickets";
+import {
+  subscribeTickets,
+  snapshotTicketsByIds,
+  deleteTicketsByIds,
+  restoreTickets,
+} from "@/services/tickets";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -265,8 +270,9 @@ function Tickets() {
   });
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
-  const [deleteUndoStack, setDeleteUndoStack] = useState(null);
-  const [deletePending, setDeletePending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [undoOpen, setUndoOpen] = useState(false);
+  const [lastDeleted, setLastDeleted] = useState([]);
   const selectedIds = useMemo(
     () =>
       Array.isArray(rowSelectionModel)
@@ -281,6 +287,7 @@ function Tickets() {
   const [error, setError] = useState(null);
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  const undoTimerRef = useRef(null);
   const previewRef = useRef(null);
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
@@ -403,6 +410,15 @@ function Tickets() {
     };
   }, [authLoading, user?.email]);
 
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) {
+        clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const dateOptions = useMemo(() => {
     const dates = Array.from(new Set(tickets.map((t) => t.pickupDateStr)))
       .filter(Boolean)
@@ -488,74 +504,103 @@ function Tickets() {
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
 
-  const handleUndoDelete = useCallback(() => {
-    if (!deleteUndoStack?.rowsSnapshot) return;
-    setTickets(deleteUndoStack.rowsSnapshot);
-    setRowSelectionModel(deleteUndoStack.ids || []);
-    setDeleteUndoStack(null);
-    setSnackbar({
-      open: true,
-      message: "Undo applied (local).",
-      severity: "info",
-      action: null,
-    });
-  }, [deleteUndoStack]);
+  const closeUndoSnackbar = useCallback((options = {}) => {
+    const { clearDocs = false } = options;
+    setUndoOpen(false);
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    if (clearDocs) {
+      setLastDeleted([]);
+    }
+  }, []);
 
   const handleDeleteRows = useCallback(
     async (idsInput) => {
       const ids = Array.isArray(idsInput)
         ? Array.from(new Set(idsInput.filter((id) => id != null).map(String)))
         : [];
-      if (!ids.length || deletePending) return;
+      if (!ids.length || deleting) return;
 
-      const prevTickets = [...tickets];
-      setDeleteUndoStack({ rowsSnapshot: prevTickets, ids });
-      setTickets((prev) =>
-        prev.filter((t) => !ids.includes(String(t?.id ?? ""))),
-      );
-
-      setDeletePending(true);
-      let restoreSelection = false;
+      setDeleting(true);
+      let deletionSucceeded = false;
       try {
+        const snapshot = await snapshotTicketsByIds(ids);
+        setLastDeleted(snapshot);
+
         await deleteTicketsByIds(ids);
-        setSnackbar({
-          open: true,
-          message: `Deleted ${ids.length} ticket${ids.length > 1 ? "s" : ""}`,
-          severity: "success",
-          action: (
-            <Button color="inherit" size="small" onClick={handleUndoDelete}>
-              Undo
-            </Button>
-          ),
+        deletionSucceeded = true;
+
+        setUndoOpen(true);
+        if (undoTimerRef.current) {
+          clearTimeout(undoTimerRef.current);
+        }
+        undoTimerRef.current = setTimeout(() => {
+          closeUndoSnackbar({ clearDocs: true });
+        }, 6000);
+      } catch (err) {
+        logError(err, {
+          area: "tickets",
+          action: "handleDeleteRows",
+          ids,
         });
-      } catch (e) {
-        logError(e);
-        setTickets(prevTickets);
+        setLastDeleted([]);
         setSnackbar({
           open: true,
           message:
-            e?.code === "permission-denied"
+            err?.code === "permission-denied"
               ? "You don't have permission to delete tickets."
-              : "Delete failed. Restored.",
+              : "Delete failed.",
           severity: "error",
           action: null,
         });
-        setDeleteUndoStack(null);
-        restoreSelection = true;
       } finally {
-        setDeletePending(false);
-        setRowSelectionModel((prev) => {
-          const base = Array.isArray(prev) ? prev.map(String) : [];
-          if (restoreSelection) {
-            const next = new Set([...base, ...ids]);
-            return Array.from(next);
-          }
-          return base.filter((id) => !ids.includes(id));
-        });
+        setDeleting(false);
+        if (deletionSucceeded) {
+          setRowSelectionModel((prev) => {
+            const base = Array.isArray(prev) ? prev.map(String) : [];
+            const deleteSet = new Set(ids.map(String));
+            return base.filter((id) => !deleteSet.has(id));
+          });
+        }
       }
     },
-    [deletePending, handleUndoDelete, tickets],
+    [deleting, closeUndoSnackbar],
   );
+
+  const handleUndoDelete = useCallback(async () => {
+    if (!lastDeleted?.length) {
+      closeUndoSnackbar();
+      return;
+    }
+
+    closeUndoSnackbar();
+    try {
+      await restoreTickets(lastDeleted);
+      const count = lastDeleted.length;
+      setSnackbar({
+        open: true,
+        message: `Restored ${count} ticket${count === 1 ? "" : "s"}.`,
+        severity: "success",
+        action: null,
+      });
+    } catch (err) {
+      logError(err, {
+        area: "tickets",
+        action: "handleUndoDelete",
+        count: lastDeleted.length,
+      });
+      setSnackbar({
+        open: true,
+        message: "Undo failed. Please refresh and try again.",
+        severity: "error",
+        action: null,
+      });
+    } finally {
+      setLastDeleted([]);
+    }
+  }, [closeUndoSnackbar, lastDeleted]);
 
   const handleDeleteClick = useCallback(
     (row) => {
@@ -682,12 +727,13 @@ function Tickets() {
               key="delete"
               icon={<DeleteIcon />}
               label="Delete"
+              disabled={deleting}
               onClick={() => handleDeleteClick(params.row)}
             />,
           ],
         },
       ]),
-    [fmtPickup, handleDeleteClick, handleEditClick, openLink],
+    [fmtPickup, handleDeleteClick, handleEditClick, openLink, deleting],
   );
 
   useGridDoctor({ name: "Tickets", rows: safeRows, columns });
@@ -943,7 +989,7 @@ function Tickets() {
               variant="contained"
               color="error"
               startIcon={<DeleteIcon />}
-              disabled={!selectedIds.length || deletePending}
+              disabled={!selectedIds.length || deleting}
               onClick={() => handleDeleteRows(selectedIds)}
             >
               Delete Selected
@@ -1314,6 +1360,29 @@ function Tickets() {
           </Fab>
         </Tooltip>
       )}
+
+      <Snackbar
+        open={undoOpen}
+        autoHideDuration={6000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          closeUndoSnackbar({ clearDocs: true });
+        }}
+        message={`Deleted ${lastDeleted?.length || 0} ticket${
+          (lastDeleted?.length || 0) === 1 ? "" : "s"
+        }.`}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        action={
+          <Button
+            onClick={handleUndoDelete}
+            size="small"
+            sx={{ color: "#4cbb17" }}
+            aria-label="Undo delete"
+          >
+            Undo
+          </Button>
+        }
+      />
 
       <Snackbar
         open={snackbar.open}
