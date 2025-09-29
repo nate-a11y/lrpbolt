@@ -47,7 +47,7 @@ const formatDate = (v) => formatDateTime(v, "MMM D, YYYY") || "—";
 
 const formatTime = (v) => formatDateTime(v, "h:mm A") || "—";
 
-function TicketScanner() {
+function TicketScanner({ embedded = false }) {
   const [ticket, setTicket] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -347,10 +347,18 @@ function TicketScanner() {
   };
 
   return (
-    <Box sx={{ maxWidth: 640, mx: "auto", mt: 4 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        🎯 Ticket Scanner
-      </Typography>
+    <Box
+      sx={{
+        maxWidth: embedded ? "100%" : 640,
+        mx: embedded ? 0 : "auto",
+        mt: embedded ? 0 : 4,
+      }}
+    >
+      {!embedded && (
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
+          🎯 Ticket Scanner
+        </Typography>
+      )}
 
       <ToggleButtonGroup
         value={scanType}
@@ -358,7 +366,7 @@ function TicketScanner() {
         onChange={(e, val) => val && setScanType(val)}
         fullWidth
         color="primary"
-        sx={{ mb: 2 }}
+        sx={{ mb: embedded ? 1.5 : 2 }}
       >
         <ToggleButton value="outbound">
           <ArrowForwardIcon fontSize="small" sx={{ mr: 1 }} /> Outbound
@@ -375,7 +383,12 @@ function TicketScanner() {
         </Alert>
       ) : (
         <Paper
-          sx={{ p: 2, mb: 2, display: "flex", justifyContent: "center" }}
+          sx={{
+            p: embedded ? 1.5 : 2,
+            mb: embedded ? 1.5 : 2,
+            display: "flex",
+            justifyContent: "center",
+          }}
           elevation={4}
         >
           <Box position="relative">
@@ -415,7 +428,12 @@ function TicketScanner() {
         </Paper>
       )}
 
-      <Box display="flex" justifyContent="center" gap={1} mb={2}>
+      <Box
+        display="flex"
+        justifyContent="center"
+        gap={1}
+        mb={embedded ? 1.5 : 2}
+      >
         {torchAvailable && (
           <Tooltip title={torchOn ? "Torch off" : "Torch on"}>
             <IconButton color="primary" onClick={toggleTorch}>

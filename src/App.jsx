@@ -281,6 +281,7 @@ function App() {
                 element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
               />
               <Route path="/tickets" element={<Tickets />} />
+              <Route path="/tickets/scan" element={<Tickets />} />
               <Route
                 path="/generate-ticket"
                 element={
