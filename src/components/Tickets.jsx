@@ -53,7 +53,7 @@ import { motion } from "framer-motion";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useSearchParams } from "react-router-dom";
 
-import { formatDateTime, dayjs } from "@/utils/time";
+import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
 
 import logError from "../utils/logError.js";
@@ -408,37 +408,18 @@ function Tickets() {
 
   const safeRows = Array.isArray(rows) ? rows : [];
 
-  const dayjsGlobal = typeof window !== "undefined" ? window.dayjs : undefined;
-  const tzGuess = dayjsGlobal?.tz?.guess?.() || undefined;
-
-  const toDayjsLoose = useCallback(
-    (ts) => {
-      if (!dayjsGlobal) return null;
-      if (ts && typeof ts.toDate === "function") {
-        try {
-          return dayjsGlobal(ts.toDate());
-        } catch (e) {
-          logError(e);
-        }
-      }
-      if (ts && typeof ts === "object" && typeof ts.seconds === "number") {
-        try {
-          const ms =
-            ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
-          return dayjsGlobal(ms);
-        } catch (e) {
-          logError(e);
-        }
-      }
-      const d = dayjsGlobal(ts);
-      return d?.isValid?.() ? d : null;
-    },
-    [dayjsGlobal],
-  );
+  const [tzGuess] = useState(() => {
+    try {
+      return dayjs?.tz?.guess?.() || undefined;
+    } catch (e) {
+      logError(e);
+      return undefined;
+    }
+  });
 
   const fmtPickup = useCallback(
     (row) => {
-      const d = toDayjsLoose(row?.pickupTime);
+      const d = toDayjs(row?.pickupTime);
       if (d) {
         return tzGuess
           ? d.tz(tzGuess).format("MMM D, YYYY h:mm A")
@@ -451,8 +432,17 @@ function Tickets() {
       }
       return "N/A";
     },
-    [toDayjsLoose, tzGuess],
+    [tzGuess],
   );
+
+  const openLink = useCallback((href) => {
+    if (!href) return;
+    try {
+      window.open(href, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      logError(e);
+    }
+  }, []);
 
   const getIdSafe = (r) => r?.id ?? r?.ticketId ?? null;
 
@@ -523,37 +513,37 @@ function Tickets() {
           field: "ticketId",
           headerName: "Ticket ID",
           minWidth: 140,
-          valueGetter: (p) => p?.row?.ticketId ?? p?.row?.id ?? "N/A",
+          renderCell: (p) => p?.row?.ticketId ?? p?.row?.id ?? "N/A",
         },
         {
           field: "passenger",
           headerName: "Passenger",
           minWidth: 180,
-          valueGetter: (p) => p?.row?.passenger ?? "N/A",
+          renderCell: (p) => p?.row?.passenger ?? "N/A",
         },
         {
           field: "pickup",
           headerName: "Pickup",
           minWidth: 220,
-          valueGetter: (p) => p?.row?.pickup ?? "N/A",
+          renderCell: (p) => p?.row?.pickup ?? "N/A",
         },
         {
           field: "dropoff",
           headerName: "Dropoff",
           minWidth: 220,
-          valueGetter: (p) => p?.row?.dropoff ?? "N/A",
+          renderCell: (p) => p?.row?.dropoff ?? "N/A",
         },
         {
           field: "pickupTime",
           headerName: "Pickup Time",
           minWidth: 200,
-          valueGetter: (p) => fmtPickup(p?.row || {}),
+          renderCell: (p) => fmtPickup(p?.row || {}),
         },
         {
           field: "passengerCount",
           headerName: "Count",
           minWidth: 90,
-          valueGetter: (p) =>
+          renderCell: (p) =>
             p?.row?.passengerCount ?? p?.row?.passengercount ?? "N/A",
         },
         {
@@ -562,14 +552,12 @@ function Tickets() {
           minWidth: 140,
           sortable: false,
           renderCell: ScanStatusCell,
-          valueGetter: (p) => getScanStatus(p?.row || {}),
         },
         {
           field: "link",
           headerName: "Link",
           minWidth: 120,
           sortable: false,
-          valueGetter: (p) => (p?.row?.linkUrl ? "Open" : "—"),
           renderCell: (p) => {
             const href = p?.row?.linkUrl;
             if (!href) return "—";
@@ -581,12 +569,12 @@ function Tickets() {
                 sx={{ textDecoration: "underline", cursor: "pointer" }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.open(href, "_blank", "noopener,noreferrer");
+                  openLink(href);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.stopPropagation();
-                    window.open(href, "_blank", "noopener,noreferrer");
+                    openLink(href);
                   }
                 }}
               >
@@ -631,7 +619,7 @@ function Tickets() {
           ],
         },
       ]),
-    [fmtPickup, handleDeleteClick, handleEditClick],
+    [fmtPickup, handleDeleteClick, handleEditClick, openLink],
   );
 
   useGridDoctor({ name: "Tickets", rows: safeRows, columns });
