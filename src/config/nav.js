@@ -37,15 +37,8 @@ export const NAV_ITEMS = [
   {
     id: "calendar",
     to: "/calendar",
-    label: "Calendar / Moovs",
+    label: "Calendar & Availability",
     icon: "CalendarMonth",
-    rolesVisible: ["admin", "driver"],
-  },
-  {
-    id: "vehicle-calendar",
-    to: "/vehicle-calendar",
-    label: "Ride & Vehicle Calendar",
-    icon: "Event",
     rolesVisible: ["admin", "driver"],
   },
   {
