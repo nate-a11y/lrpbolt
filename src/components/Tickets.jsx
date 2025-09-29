@@ -40,6 +40,8 @@ import {
   useMediaQuery,
   CircularProgress,
   Chip,
+  Fab,
+  IconButton,
 } from "@mui/material";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -49,9 +51,11 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
 import EditIcon from "@mui/icons-material/Edit";
 import LocalActivityIcon from "@mui/icons-material/LocalActivity";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
+import CloseIcon from "@mui/icons-material/Close";
 import { motion } from "framer-motion";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 
 import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
@@ -73,6 +77,7 @@ import PageContainer from "./PageContainer.jsx";
 import EditTicketDialog from "./EditTicketDialog.jsx";
 
 const TicketGenerator = lazy(() => import("./TicketGenerator.jsx"));
+const TicketScanner = lazy(() => import("./TicketScanner.jsx"));
 
 function TabPanel({ children, value, tabKey }) {
   return (
@@ -280,9 +285,33 @@ function Tickets() {
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
+  const scannerFullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const canGenerate = role === "admin";
+
+  const routeWantsScan = location.pathname === "/tickets/scan";
+  const [scanOpen, setScanOpen] = useState(routeWantsScan);
+
+  useEffect(() => {
+    setScanOpen(routeWantsScan);
+  }, [routeWantsScan]);
+
+  const openScan = useCallback(() => {
+    if (!routeWantsScan) {
+      navigate({ pathname: "/tickets/scan", search: location.search });
+    }
+    setScanOpen(true);
+  }, [navigate, location.search, routeWantsScan]);
+
+  const closeScan = useCallback(() => {
+    setScanOpen(false);
+    if (routeWantsScan) {
+      navigate({ pathname: "/tickets", search: location.search });
+    }
+  }, [navigate, location.search, routeWantsScan]);
 
   const tabParam = searchParams.get("tab");
   const tabKeys = useMemo(
@@ -1209,6 +1238,81 @@ function Tickets() {
             </Button>
           </DialogActions>
         </Dialog>
+      )}
+
+      <Dialog
+        open={scanOpen}
+        onClose={closeScan}
+        fullScreen={scannerFullScreen}
+        aria-labelledby="ticket-scanner-title"
+        PaperProps={{
+          sx: scannerFullScreen
+            ? { bgcolor: "#060606" }
+            : {
+                bgcolor: "#060606",
+                width: "min(720px, 96vw)",
+                maxWidth: "96vw",
+                borderRadius: 2,
+              },
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            pl: 2,
+            pr: 1,
+            py: 1,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <DialogTitle
+            id="ticket-scanner-title"
+            sx={{ m: 0, p: 0, flex: 1, fontWeight: 700 }}
+          >
+            Ticket Scanner
+          </DialogTitle>
+          <IconButton
+            aria-label="close scanner"
+            onClick={closeScan}
+            sx={{ color: "inherit" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <Box sx={{ p: 2 }}>
+          <Suspense
+            fallback={
+              <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
+                <CircularProgress size={20} />
+              </Box>
+            }
+          >
+            {scanOpen && <TicketScanner embedded />}
+          </Suspense>
+        </Box>
+      </Dialog>
+
+      {!routeWantsScan && (
+        <Tooltip title="Scan tickets">
+          <Fab
+            color="primary"
+            aria-label="scan tickets"
+            onClick={openScan}
+            sx={{
+              position: "fixed",
+              right: 16,
+              bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+              bgcolor: "#4cbb17",
+              color: "#060606",
+              "&:hover": { bgcolor: "#43a414" },
+              zIndex: (t) => t.zIndex.modal + 1,
+            }}
+          >
+            <QrCodeScannerIcon />
+          </Fab>
+        </Tooltip>
       )}
 
       <Snackbar
