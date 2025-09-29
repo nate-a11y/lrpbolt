@@ -55,16 +55,13 @@ import { useSearchParams } from "react-router-dom";
 
 import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
+import { subscribeTickets, deleteTicketsByIds } from "@/services/tickets";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
-import {
-  subscribeTickets,
-  deleteTicket as apiDeleteTicket,
-  emailTicket as apiEmailTicket,
-} from "../hooks/api";
+import { emailTicket as apiEmailTicket } from "../hooks/api";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
@@ -140,9 +137,11 @@ function normalizeTicket(raw = {}, dayjsLib) {
     raw.dropoffAddress ??
     raw.dropoff_address ??
     "N/A";
+  const docId = raw.id || raw.docId || raw._id || raw.ticketId || null;
+  const ticketId = raw.ticketId || docId || "N/A";
   return {
-    id: raw.ticketId || raw.id || raw.docId || raw._id || null,
-    ticketId: raw.ticketId || raw.id || raw.docId || raw._id || "N/A",
+    id: docId,
+    ticketId,
     passenger: raw.passenger || raw.passengerName || "N/A",
     passengerCount:
       Number(raw.passengercount ?? raw.passengers ?? raw.passengerCount ?? 0) ||
@@ -261,7 +260,15 @@ function Tickets() {
   });
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
-  const selectedIds = Array.isArray(rowSelectionModel) ? rowSelectionModel : [];
+  const [deleteUndoStack, setDeleteUndoStack] = useState(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const selectedIds = useMemo(
+    () =>
+      Array.isArray(rowSelectionModel)
+        ? rowSelectionModel.filter((id) => id != null).map((id) => String(id))
+        : [],
+    [rowSelectionModel],
+  );
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const [editingTicket, setEditingTicket] = useState(null);
@@ -270,7 +277,6 @@ function Tickets() {
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const previewRef = useRef(null);
-  const deleteTimerRef = useRef();
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -342,8 +348,8 @@ function Tickets() {
     if (authLoading || !user?.email) return;
     setLoading(true);
     setError(null);
-    const unsub = subscribeTickets(
-      (data) => {
+    const unsubscribe = subscribeTickets({
+      onData: (data) => {
         try {
           const rows = (data || []).map((d) => normalizeTicket(d, dayjs));
           setTickets(rows);
@@ -352,7 +358,7 @@ function Tickets() {
         }
         setLoading(false);
       },
-      (err) => {
+      onError: (err) => {
         setError(err);
         setSnackbar({
           open: true,
@@ -362,9 +368,9 @@ function Tickets() {
         });
         setLoading(false);
       },
-    );
+    });
     return () => {
-      if (typeof unsub === "function") unsub();
+      if (typeof unsubscribe === "function") unsubscribe();
     };
   }, [authLoading, user?.email]);
 
@@ -444,67 +450,100 @@ function Tickets() {
     }
   }, []);
 
-  const getIdSafe = (r) => r?.id ?? r?.ticketId ?? null;
-
-  const getRowId = useCallback(
-    (r) => getIdSafe(r) || `${r?.ticketId || ""}-${r?.id || ""}`,
-    [],
-  );
+  const getRowId = useCallback((r) => {
+    if (r?.id != null) return String(r.id);
+    if (r?.ticketId != null) return String(r.ticketId);
+    return null;
+  }, []);
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
 
-  const handleDeleteClick = useCallback((row) => {
-    const snapshot = row;
-    setTickets((prev) => prev.filter((t) => t.ticketId !== snapshot.ticketId));
-    const undo = () => {
-      clearTimeout(deleteTimerRef.current);
-      setTickets((prev) => [snapshot, ...prev]);
-      setSnackbar({
-        open: true,
-        message: "♻️ Delete undone",
-        severity: "success",
-        action: null,
-      });
-      if (apiDeleteTicket.length > 1) {
-        try {
-          apiDeleteTicket("undo", snapshot.ticketId, snapshot);
-        } catch (e) {
-          logError(e);
-        }
-      }
-    };
+  const handleUndoDelete = useCallback(() => {
+    if (!deleteUndoStack?.rowsSnapshot) return;
+    setTickets(deleteUndoStack.rowsSnapshot);
+    setRowSelectionModel(deleteUndoStack.ids || []);
+    setDeleteUndoStack(null);
     setSnackbar({
       open: true,
-      message: "🗑️ Ticket deleted — Undo",
+      message: "Undo applied (local).",
       severity: "info",
-      action: (
-        <Button color="inherit" size="small" onClick={undo}>
-          Undo
-        </Button>
-      ),
+      action: null,
     });
-    deleteTimerRef.current = setTimeout(async () => {
+  }, [deleteUndoStack]);
+
+  const handleDeleteRows = useCallback(
+    async (idsInput) => {
+      const ids = Array.isArray(idsInput)
+        ? Array.from(new Set(idsInput.filter((id) => id != null).map(String)))
+        : [];
+      if (!ids.length || deletePending) return;
+
+      const prevTickets = [...tickets];
+      setDeleteUndoStack({ rowsSnapshot: prevTickets, ids });
+      setTickets((prev) =>
+        prev.filter((t) => !ids.includes(String(t?.id ?? ""))),
+      );
+
+      setDeletePending(true);
+      let restoreSelection = false;
       try {
-        await apiDeleteTicket(snapshot.ticketId);
+        await deleteTicketsByIds(ids);
         setSnackbar({
           open: true,
-          message: "✅ Ticket deleted",
+          message: `Deleted ${ids.length} ticket${ids.length > 1 ? "s" : ""}`,
           severity: "success",
-          action: null,
+          action: (
+            <Button color="inherit" size="small" onClick={handleUndoDelete}>
+              Undo
+            </Button>
+          ),
         });
       } catch (e) {
         logError(e);
-        setTickets((prev) => [snapshot, ...prev]);
+        setTickets(prevTickets);
         setSnackbar({
           open: true,
-          message: "❌ Failed to delete ticket",
+          message:
+            e?.code === "permission-denied"
+              ? "You don't have permission to delete tickets."
+              : "Delete failed. Restored.",
           severity: "error",
           action: null,
         });
+        setDeleteUndoStack(null);
+        restoreSelection = true;
+      } finally {
+        setDeletePending(false);
+        setRowSelectionModel((prev) => {
+          const base = Array.isArray(prev) ? prev.map(String) : [];
+          if (restoreSelection) {
+            const next = new Set([...base, ...ids]);
+            return Array.from(next);
+          }
+          return base.filter((id) => !ids.includes(id));
+        });
       }
-    }, 6000);
-  }, []);
+    },
+    [deletePending, handleUndoDelete, tickets],
+  );
+
+  const handleDeleteClick = useCallback(
+    (row) => {
+      const docId = row?.id != null ? String(row.id) : null;
+      if (!docId) {
+        setSnackbar({
+          open: true,
+          message: "Missing document id for delete.",
+          severity: "warning",
+          action: null,
+        });
+        return;
+      }
+      handleDeleteRows([docId]);
+    },
+    [handleDeleteRows],
+  );
 
   const columns = useMemo(
     () =>
@@ -687,9 +726,8 @@ function Tickets() {
   }, [previewTicket, emailAddress, theme.palette.background.paper]);
 
   const bulkDownload = useCallback(async () => {
-    const selected = rows.filter((r) =>
-      rowSelectionModel.includes(r.id || r.ticketId),
-    );
+    const selectionSet = new Set(selectedIds);
+    const selected = rows.filter((r) => selectionSet.has(String(r?.id ?? "")));
     if (!selected.length) return;
     setBulkDownloading(true);
     try {
@@ -779,7 +817,7 @@ function Tickets() {
     }
   }, [
     rows,
-    rowSelectionModel,
+    selectedIds,
     theme.palette.background.paper,
     theme.palette.text.primary,
   ]);
@@ -860,6 +898,26 @@ function Tickets() {
               disabled={!selectedIds.length || bulkDownloading}
             >
               Bulk Download
+            </Button>
+          </span>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            selectedIds.length
+              ? "Delete selected tickets"
+              : "Select tickets to enable"
+          }
+        >
+          <span>
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              disabled={!selectedIds.length || deletePending}
+              onClick={() => handleDeleteRows(selectedIds)}
+            >
+              Delete Selected
             </Button>
           </span>
         </Tooltip>
