@@ -74,7 +74,7 @@ import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
-import { emailTicket as apiEmailTicket } from "../hooks/api";
+import { emailTicket as apiEmailTicket, updateTicketScan } from "../hooks/api";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
@@ -303,6 +303,9 @@ function Tickets() {
   const canScanTickets = role === "admin" || role === "driver";
   const [scannerOpen, setScannerOpen] = useState(false);
   const [sequentialScan, setSequentialScan] = useState(true);
+  const [pendingScanTicket, setPendingScanTicket] = useState(null);
+  const [savingScan, setSavingScan] = useState(false);
+  const [savingScanType, setSavingScanType] = useState(null);
 
   const openScanner = useCallback(() => {
     setScannerOpen(true);
@@ -310,6 +313,9 @@ function Tickets() {
 
   const closeScanner = useCallback(() => {
     setScannerOpen(false);
+    setPendingScanTicket(null);
+    setSavingScan(false);
+    setSavingScanType(null);
   }, []);
 
   const handleSequentialToggle = useCallback((event) => {
@@ -337,6 +343,7 @@ function Tickets() {
           severity: "error",
           action: null,
         });
+        setPendingScanTicket(null);
         return;
       }
       const localMatch = tickets.find(
@@ -344,9 +351,10 @@ function Tickets() {
       );
       if (localMatch) {
         setPreviewTicket(localMatch);
+        setPendingScanTicket(localMatch);
         setSnackbar({
           open: true,
-          message: `Ticket ${ticketId} ready`,
+          message: `Ticket ${ticketId} ready — choose scan type`,
           severity: "success",
           action: null,
         });
@@ -360,9 +368,10 @@ function Tickets() {
             dayjs,
           );
           setPreviewTicket(normalized);
+          setPendingScanTicket(normalized);
           setSnackbar({
             open: true,
-            message: `Ticket ${normalized.ticketId} ready`,
+            message: `Ticket ${normalized.ticketId} ready — choose scan type`,
             severity: "success",
             action: null,
           });
@@ -373,6 +382,7 @@ function Tickets() {
             severity: "warning",
             action: null,
           });
+          setPendingScanTicket(null);
         }
       } catch (err) {
         logError(err, {
@@ -386,9 +396,117 @@ function Tickets() {
           severity: "error",
           action: null,
         });
+        setPendingScanTicket(null);
       }
     },
-    [tickets, setPreviewTicket, setSnackbar],
+    [tickets, setPreviewTicket, setSnackbar, setPendingScanTicket],
+  );
+
+  const handleScanDialogClose = useCallback(() => {
+    if (savingScan) return;
+    setPendingScanTicket(null);
+    setSavingScanType(null);
+  }, [savingScan, setPendingScanTicket, setSavingScanType]);
+
+  const handleScanConfirm = useCallback(
+    async (scanType) => {
+      if (!pendingScanTicket || savingScan) return;
+      if (scanType !== "outbound" && scanType !== "return") return;
+      const docId = pendingScanTicket.id || pendingScanTicket.ticketId;
+      if (!docId) {
+        setSnackbar({
+          open: true,
+          message: "Ticket is missing an identifier",
+          severity: "error",
+          action: null,
+        });
+        return;
+      }
+      const label = pendingScanTicket.ticketId || String(docId);
+      const driver = user?.email || "Unknown";
+      setSavingScan(true);
+      setSavingScanType(scanType);
+      try {
+        const result = await updateTicketScan(docId, scanType, driver);
+        if (!result?.success) {
+          throw new Error("Scan update failed");
+        }
+        const now = dayjs();
+        const updates =
+          scanType === "outbound"
+            ? {
+                scannedOutbound: true,
+                scannedOutboundAt: now,
+                scannedOutboundBy: driver,
+              }
+            : {
+                scannedReturn: true,
+                scannedReturnAt: now,
+                scannedReturnBy: driver,
+              };
+        const key = String(docId);
+        setTickets((prev) =>
+          Array.isArray(prev)
+            ? prev.map((item) => {
+                const matchId = String(item?.id ?? item?.ticketId ?? "");
+                if (matchId !== key) return item;
+                return { ...item, ...updates };
+              })
+            : prev,
+        );
+        setPreviewTicket((prev) => {
+          if (!prev) return prev;
+          const matchId = String(prev?.id ?? prev?.ticketId ?? "");
+          if (matchId !== key) return prev;
+          return { ...prev, ...updates };
+        });
+        setSnackbar({
+          open: true,
+          message: `Ticket ${label} marked ${
+            scanType === "outbound" ? "Outbound" : "Return"
+          }`,
+          severity: "success",
+          action: null,
+        });
+        setPendingScanTicket(null);
+      } catch (err) {
+        logError(err, {
+          area: "Tickets",
+          action: "recordScan",
+          scanType,
+          ticketId: docId,
+        });
+        setSnackbar({
+          open: true,
+          message: "Failed to record scan",
+          severity: "error",
+          action: null,
+        });
+      } finally {
+        setSavingScan(false);
+        setSavingScanType(null);
+      }
+    },
+    [
+      pendingScanTicket,
+      savingScan,
+      setTickets,
+      setPreviewTicket,
+      setSnackbar,
+      setPendingScanTicket,
+      setSavingScanType,
+      user?.email,
+    ],
+  );
+
+  const pendingScanStatus = useMemo(
+    () => (pendingScanTicket ? getScanStatus(pendingScanTicket) : "Unscanned"),
+    [pendingScanTicket],
+  );
+
+  const pendingScanMeta = useMemo(
+    () => (pendingScanTicket ? getScanMeta(pendingScanTicket) : null),
+    [pendingScanTicket],
   );
 
   const tabParam = searchParams.get("tab");
@@ -1465,6 +1583,119 @@ function Tickets() {
           </Tooltip>
         </>
       )}
+
+      <Dialog
+        open={Boolean(pendingScanTicket)}
+        onClose={handleScanDialogClose}
+        aria-labelledby="tickets-scan-confirm"
+        PaperProps={{
+          sx: {
+            bgcolor: "#060606",
+            color: "#f5f5f5",
+            borderRadius: 2,
+            width: "min(420px, 90vw)",
+          },
+        }}
+      >
+        <DialogTitle
+          id="tickets-scan-confirm"
+          sx={{ fontWeight: 600, pb: 1, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          Record ticket scan
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: "#060606", pt: 3 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            Ticket {pendingScanTicket?.ticketId || "—"}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}>
+            Passenger: {pendingScanTicket?.passenger || "Unknown"}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}>
+            Current status: {pendingScanStatus}
+          </Typography>
+          {pendingScanMeta?.outAt && (
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}>
+              Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at {" "}
+              {formatDateTime(pendingScanMeta.outAt)}
+            </Typography>
+          )}
+          {pendingScanMeta?.retAt && (
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}>
+              Return recorded by {pendingScanMeta.retBy || "Unknown"} at {" "}
+              {formatDateTime(pendingScanMeta.retAt)}
+            </Typography>
+          )}
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mt: 2 }}>
+            Select a direction to log this scan.
+          </Typography>
+        </DialogContent>
+        <DialogActions
+          sx={{
+            bgcolor: "#060606",
+            px: 3,
+            pb: 3,
+            gap: 1,
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+          }}
+        >
+          <Button
+            onClick={handleScanDialogClose}
+            disabled={savingScan}
+            sx={{
+              color: "#f5f5f5",
+              "&.Mui-disabled": { color: "rgba(255,255,255,0.4)" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleScanConfirm("outbound")}
+            variant="outlined"
+            color="info"
+            disabled={savingScan}
+            startIcon={
+              savingScan && savingScanType === "outbound" ? (
+                <CircularProgress size={16} sx={{ color: "inherit" }} />
+              ) : null
+            }
+            sx={{
+              fontWeight: 600,
+              borderColor: "rgba(76,187,23,0.6)",
+              color: "#f5f5f5",
+              "&:hover": { borderColor: "#4cbb17" },
+              "&.Mui-disabled": {
+                borderColor: "rgba(255,255,255,0.24)",
+                color: "rgba(255,255,255,0.4)",
+              },
+            }}
+          >
+            {savingScan && savingScanType === "outbound" ? "Saving…" : "Mark Outbound"}
+          </Button>
+          <Button
+            onClick={() => handleScanConfirm("return")}
+            variant="contained"
+            color="success"
+            disabled={savingScan}
+            startIcon={
+              savingScan && savingScanType === "return" ? (
+                <CircularProgress size={16} sx={{ color: "inherit" }} />
+              ) : null
+            }
+            sx={{
+              fontWeight: 700,
+              boxShadow:
+                savingScan && savingScanType === "return"
+                  ? "0 0 6px #4cbb17"
+                  : "0 0 10px rgba(76,187,23,0.55)",
+              "&:hover": { boxShadow: "0 0 12px rgba(76,187,23,0.75)" },
+              "&.Mui-disabled": { boxShadow: "none", color: "rgba(255,255,255,0.4)" },
+            }}
+          >
+            {savingScan && savingScanType === "return" ? "Saving…" : "Mark Return"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={undoOpen}
