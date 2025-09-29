@@ -1,20 +1,26 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  Box,
-  Paper,
-  Typography,
-  Divider,
-  Button,
   Accordion,
-  AccordionSummary,
   AccordionDetails,
+  AccordionSummary,
   Alert,
-  Stack,
+  Box as MuiBox,
+  Button,
+  Divider,
+  Drawer,
+  Fab,
   Link as MUILink,
+  Paper,
+  Stack,
+  Tooltip,
+  Typography,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { GridToolbarExport as _GridToolbarExport } from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -29,6 +35,7 @@ import useIsMobile from "src/hooks/useIsMobile";
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";
 import PageContainer from "./PageContainer.jsx";
+import VehicleDropGuides from "./VehicleDropGuides.jsx";
 
 void _GridToolbarExport;
 
@@ -86,6 +93,14 @@ function NoResultsOverlay() {
 export default function DriverInfoTab() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [tipsOpen, setTipsOpen] = useState(false);
+
+  const theme = useTheme();
+  const isSmUp = useMediaQuery(theme.breakpoints.up("sm"));
+  const APPBAR_MOBILE = 56;
+  const APPBAR_DESKTOP = 64;
+  const drawerTopXs = `calc(${APPBAR_MOBILE}px + env(safe-area-inset-top, 0px))`;
+  const drawerTopSm = `calc(${APPBAR_DESKTOP}px + env(safe-area-inset-top, 0px))`;
 
   const rows = useMemo(() => GATE_CODES, []);
 
@@ -126,7 +141,7 @@ export default function DriverInfoTab() {
           return "N/A";
         },
         renderCell: (p) => (
-          <Box
+          <MuiBox
             sx={{
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -135,7 +150,7 @@ export default function DriverInfoTab() {
             }}
           >
             {p?.value ?? "N/A"}
-          </Box>
+          </MuiBox>
         ),
       },
     ],
@@ -211,7 +226,7 @@ export default function DriverInfoTab() {
       <Divider sx={{ mb: 3 }} />
 
       {/* Airport Pickup (Fort Leonard Wood / Waynesville–St. Robert) */}
-      <Accordion defaultExpanded sx={{ mt: 1 }}>
+      <Accordion defaultExpanded={false} sx={{ mt: 1 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography fontWeight="bold">
             ✈️ Airport Pickup: Waynesville–St. Robert (Fort Leonard Wood) —
@@ -231,7 +246,7 @@ export default function DriverInfoTab() {
             alignItems="flex-start"
           >
             {/* QR + actions */}
-            <Box
+            <MuiBox
               ref={qrRef}
               sx={{
                 p: 2,
@@ -279,14 +294,14 @@ export default function DriverInfoTab() {
                   pass.aie.army.mil/steps/installation_selection
                 </MUILink>
               </Typography>
-            </Box>
+            </MuiBox>
 
             {/* Instructions */}
-            <Box sx={{ flex: 1, minWidth: 280 }}>
+            <MuiBox sx={{ flex: 1, minWidth: 280 }}>
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 Step-by-step (Pre-Registration)
               </Typography>
-              <Box component="ol" sx={{ pl: 3, lineHeight: 1.7, m: 0 }}>
+              <MuiBox component="ol" sx={{ pl: 3, lineHeight: 1.7, m: 0 }}>
                 <li>
                   Scan the QR code above (or open the portal link) and follow
                   the prompts.
@@ -308,7 +323,7 @@ export default function DriverInfoTab() {
                 </li>
                 <li>
                   Choose your <strong>Reason for Visit</strong>:
-                  <Box component="ul" sx={{ pl: 3, mt: 0.5, mb: 0 }}>
+                  <MuiBox component="ul" sx={{ pl: 3, mt: 0.5, mb: 0 }}>
                     <li>
                       <strong>Visit service member</strong> — validated by guard
                       at the Visitor Center.
@@ -324,7 +339,7 @@ export default function DriverInfoTab() {
                       <strong>Museum</strong> — hours: Mon–Fri 8am–4pm; Sat
                       9am–3pm; Sun closed.
                     </li>
-                  </Box>
+                  </MuiBox>
                 </li>
                 <li>
                   Enter personal info:{" "}
@@ -344,12 +359,12 @@ export default function DriverInfoTab() {
                   at the main gate with your approval text and proof for your
                   selected reason.
                 </li>
-              </Box>
+              </MuiBox>
 
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>
                 What to bring (physical copies)
               </Typography>
-              <Box component="ul" sx={{ pl: 3, m: 0, lineHeight: 1.7 }}>
+              <MuiBox component="ul" sx={{ pl: 3, m: 0, lineHeight: 1.7 }}>
                 <li>
                   <strong>REAL ID or Passport</strong> (REAL ID will be scanned
                   at checkpoint).
@@ -362,22 +377,22 @@ export default function DriverInfoTab() {
                   <em>Digital copies are not accepted</em>; bring printed/paper
                   copies.
                 </li>
-              </Box>
-            </Box>
+              </MuiBox>
+            </MuiBox>
           </Stack>
         </AccordionDetails>
       </Accordion>
 
       {/* Dropoff Locations Section */}
-      <Box sx={{ mt: 2 }}>
+      <MuiBox sx={{ mt: 2 }}>
         <Typography variant="h6" gutterBottom>
           📍 Dropoff Locations
         </Typography>
         <DropoffAccordion onSelectImage={setSelectedImage} />
-      </Box>
+      </MuiBox>
 
       {/* Gate Codes Accordion with Search */}
-      <Accordion sx={{ mt: 4 }}>
+      <Accordion defaultExpanded={false} sx={{ mt: 4 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography fontWeight="bold">
             🔐 Gate Codes & Access Notes
@@ -410,14 +425,66 @@ export default function DriverInfoTab() {
       </Accordion>
 
       {/* Passenger App Walkthrough */}
-      <Box sx={{ mt: 4 }}>
+      <MuiBox sx={{ mt: 4 }}>
         <Typography variant="h6" gutterBottom>
           📲 Passenger App Overview
         </Typography>
         <Button variant="outlined" onClick={() => setModalOpen(true)}>
           Open Walkthrough
         </Button>
-      </Box>
+      </MuiBox>
+
+      <Tooltip title="Vehicle Tips (Sprinter, Shuttle, Rescue, Limo)">
+        <Fab
+          variant="extended"
+          color="primary"
+          aria-label="Open vehicle tips"
+          onClick={() => setTipsOpen(true)}
+          sx={{
+            position: "fixed",
+            right: 16,
+            bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
+            zIndex: (t) => t.zIndex.tooltip + 1,
+            backgroundColor: "#4cbb17",
+            "&:hover": { backgroundColor: "#3ea313" },
+            px: { xs: 2, sm: 3 },
+          }}
+        >
+          <HelpOutlineIcon sx={{ mr: { xs: 0, sm: 1 } }} />
+          <MuiBox
+            component="span"
+            sx={{ display: { xs: "none", sm: "inline" } }}
+          >
+            Vehicle Tips
+          </MuiBox>
+        </Fab>
+      </Tooltip>
+
+      <Drawer
+        anchor="right"
+        open={tipsOpen}
+        onClose={() => setTipsOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            mt: { xs: drawerTopXs, sm: drawerTopSm },
+            height: {
+              xs: `calc(100% - ${drawerTopXs})`,
+              sm: `calc(100% - ${drawerTopSm})`,
+            },
+            width: isSmUp ? 460 : "94vw",
+            overflow: "auto",
+            pt: 1,
+          },
+        }}
+      >
+        <MuiBox sx={{ px: 2, pb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+            🚐 Vehicle Tips
+          </Typography>
+          <VehicleDropGuides compact />
+        </MuiBox>
+      </Drawer>
 
       {/* Lightbox for Dropoff Maps */}
       <Lightbox
@@ -430,7 +497,7 @@ export default function DriverInfoTab() {
           buttonPrev: () => null,
           buttonNext: () => null,
           slide: ({ slide }) => (
-            <Box
+            <MuiBox
               sx={{
                 display: "flex",
                 flexDirection: "column",
@@ -440,7 +507,7 @@ export default function DriverInfoTab() {
               }}
             >
               {slide?.src ? (
-                <Box
+                <MuiBox
                   component="img"
                   src={slide.src}
                   alt={selectedImage?.name || "Dropoff map"}
@@ -467,7 +534,7 @@ export default function DriverInfoTab() {
                   </Typography>
                 </>
               )}
-            </Box>
+            </MuiBox>
           ),
         }}
       />

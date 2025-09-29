@@ -40,7 +40,7 @@ function MainNav({
   const location = useLocation();
   const navigate = useNavigate();
   const items = useMemo(
-    () => NAV_ITEMS.filter((it) => canSeeNav(it.id, role)),
+    () => NAV_ITEMS.filter((it) => !it.hidden && canSeeNav(it.id, role)),
     [role],
   );
 

@@ -26,6 +26,7 @@ export const NAV_ITEMS = [
     label: "Vehicle Tips",
     icon: "DirectionsCar",
     rolesVisible: ["admin", "driver"],
+    hidden: true,
   },
   {
     id: "directory",
