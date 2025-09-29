@@ -6,9 +6,10 @@ import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 
 function TimeClockDebugPill() {
   const { hasActive, docId, debug } = useContext(ActiveClockContext);
+  const rdy = debug?.allReady ? "✓" : "…";
   const line1 = hasActive
-    ? `active • ${docId || "—"}`
-    : `no-active • q${debug?.qIndex ?? "?"}`;
+    ? `active${rdy} • ${docId || "—"}`
+    : `no-active${rdy}`;
   const line2 = debug?.keys
     ? `${debug.keys.startKey || "-"} | ${debug.keys.endKey || "-"} | ${debug.keys.activeKey || "-"}`
     : typeof debug?.reason === "string"
