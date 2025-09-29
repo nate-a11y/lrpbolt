@@ -43,13 +43,6 @@ export const NAV_ITEMS = [
     rolesVisible: ["admin", "driver"],
   },
   {
-    id: "scan",
-    to: "/scan",
-    label: "Ticket Scanner",
-    icon: "QrCodeScanner",
-    rolesVisible: ["admin", "driver"],
-  },
-  {
     id: "tickets",
     to: "/tickets",
     label: "Tickets",

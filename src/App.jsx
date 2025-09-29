@@ -58,7 +58,6 @@ const NotificationsCenter = lazy(
 const ProfilePage = lazy(() => import("./pages/Profile/Settings.jsx"));
 const ShootoutTab = lazy(() => import("./components/ShootoutTab"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
-const TicketScanner = lazy(() => import("./components/TicketScanner"));
 const Tickets = lazy(() => import("./components/Tickets"));
 
 function App() {
@@ -239,7 +238,7 @@ function App() {
                 }
               />
               <Route path="/shootout" element={<ShootoutTab />} />
-              <Route path="/scan" element={<TicketScanner />} />
+              <Route path="/scan" element={<Navigate to="/tickets" replace />} />
               <Route path="/info" element={<DriverInfoTab />} />
               <Route
                 path="/drop-guides"
@@ -281,7 +280,10 @@ function App() {
                 element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
               />
               <Route path="/tickets" element={<Tickets />} />
-              <Route path="/tickets/scan" element={<Tickets />} />
+              <Route
+                path="/tickets/scan"
+                element={<Navigate to="/tickets" replace />}
+              />
               <Route
                 path="/generate-ticket"
                 element={

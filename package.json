@@ -56,6 +56,7 @@
     "@mui/x-date-pickers-pro": "^7.0.0",
     "@mui/x-license": "^7.0.0",
     "@sentry/browser": "^10.10.0",
+    "@zxing/browser": "^0.1.5",
     "axios": "^1.11.0",
     "cors": "^2.8.5",
     "dayjs": "1.11.18",

@@ -14,6 +14,7 @@ import ReactDOM from "react-dom/client";
 import QRCode from "react-qr-code";
 import { toPng } from "html-to-image";
 import {
+  AppBar,
   Box,
   Typography,
   Paper,
@@ -25,6 +26,8 @@ import {
   Select,
   InputLabel,
   FormControl,
+  FormControlLabel,
+  Switch,
   Snackbar,
   Alert,
   Tabs,
@@ -36,6 +39,7 @@ import {
   Tooltip,
   InputAdornment,
   OutlinedInput,
+  Toolbar,
   useTheme,
   useMediaQuery,
   CircularProgress,
@@ -55,7 +59,7 @@ import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import CloseIcon from "@mui/icons-material/Close";
 import { motion } from "framer-motion";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
@@ -292,33 +296,100 @@ function Tickets() {
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
   const scannerFullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const canGenerate = role === "admin";
+  const canScanTickets = role === "admin" || role === "driver";
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [sequentialScan, setSequentialScan] = useState(true);
 
-  const routeWantsScan = location.pathname === "/tickets/scan";
-  const [scanOpen, setScanOpen] = useState(routeWantsScan);
+  const openScanner = useCallback(() => {
+    setScannerOpen(true);
+  }, []);
+
+  const closeScanner = useCallback(() => {
+    setScannerOpen(false);
+  }, []);
+
+  const handleSequentialToggle = useCallback((event) => {
+    setSequentialScan(event.target.checked);
+  }, []);
 
   useEffect(() => {
-    setScanOpen(routeWantsScan);
-  }, [routeWantsScan]);
-
-  const openScan = useCallback(() => {
-    if (!routeWantsScan) {
-      navigate({ pathname: "/tickets/scan", search: location.search });
+    if (scannerOpen) {
+      setRowSelectionModel([]);
     }
-    setScanOpen(true);
-  }, [navigate, location.search, routeWantsScan]);
+  }, [scannerOpen]);
 
-  const closeScan = useCallback(() => {
-    setScanOpen(false);
-    if (routeWantsScan) {
-      navigate({ pathname: "/tickets", search: location.search });
-    }
-  }, [navigate, location.search, routeWantsScan]);
+  const handleScanResult = useCallback(
+    async ({ text }) => {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return;
+      const withoutQuery = trimmed.split("?")[0];
+      const segments = withoutQuery.split("/").filter(Boolean);
+      const candidate = segments.length ? segments[segments.length - 1] : trimmed;
+      const ticketId = String(candidate || "").trim();
+      if (!ticketId) {
+        setSnackbar({
+          open: true,
+          message: "Invalid ticket code",
+          severity: "error",
+          action: null,
+        });
+        return;
+      }
+      const localMatch = tickets.find(
+        (t) => String(t.ticketId) === ticketId || String(t.id) === ticketId,
+      );
+      if (localMatch) {
+        setPreviewTicket(localMatch);
+        setSnackbar({
+          open: true,
+          message: `Ticket ${ticketId} ready`,
+          severity: "success",
+          action: null,
+        });
+        return;
+      }
+      try {
+        const [match] = await snapshotTicketsByIds([ticketId]);
+        if (match?.data) {
+          const normalized = normalizeTicket(
+            { id: match.id, ...(match.data || {}) },
+            dayjs,
+          );
+          setPreviewTicket(normalized);
+          setSnackbar({
+            open: true,
+            message: `Ticket ${normalized.ticketId} ready`,
+            severity: "success",
+            action: null,
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            message: `Ticket ${ticketId} not found`,
+            severity: "warning",
+            action: null,
+          });
+        }
+      } catch (err) {
+        logError(err, {
+          area: "Tickets",
+          action: "scanLookup",
+          ticketId,
+        });
+        setSnackbar({
+          open: true,
+          message: "Failed to load ticket",
+          severity: "error",
+          action: null,
+        });
+      }
+    },
+    [tickets, setPreviewTicket, setSnackbar],
+  );
 
   const tabParam = searchParams.get("tab");
   const tabKeys = useMemo(
@@ -1286,79 +1357,113 @@ function Tickets() {
         </Dialog>
       )}
 
-      <Dialog
-        open={scanOpen}
-        onClose={closeScan}
-        fullScreen={scannerFullScreen}
-        aria-labelledby="ticket-scanner-title"
-        PaperProps={{
-          sx: scannerFullScreen
-            ? { bgcolor: "#060606" }
-            : {
+      {canScanTickets && (
+        <>
+          <Dialog
+            open={scannerOpen}
+            onClose={closeScanner}
+            fullScreen={scannerFullScreen}
+            maxWidth="md"
+            fullWidth
+            aria-labelledby="ticket-scanner-title"
+            PaperProps={{
+              sx: {
                 bgcolor: "#060606",
-                width: "min(720px, 96vw)",
-                maxWidth: "96vw",
-                borderRadius: 2,
+                color: "#f5f5f5",
+                ...(scannerFullScreen
+                  ? {}
+                  : {
+                      borderRadius: 2,
+                      maxWidth: "min(760px, 96vw)",
+                      width: "min(760px, 96vw)",
+                    }),
               },
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            pl: 2,
-            pr: 1,
-            py: 1,
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          <DialogTitle
-            id="ticket-scanner-title"
-            sx={{ m: 0, p: 0, flex: 1, fontWeight: 700 }}
-          >
-            Ticket Scanner
-          </DialogTitle>
-          <IconButton
-            aria-label="close scanner"
-            onClick={closeScan}
-            sx={{ color: "inherit" }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </Box>
-
-        <Box sx={{ p: 2 }}>
-          <Suspense
-            fallback={
-              <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
-                <CircularProgress size={20} />
-              </Box>
-            }
-          >
-            {scanOpen && <TicketScanner embedded />}
-          </Suspense>
-        </Box>
-      </Dialog>
-
-      {!routeWantsScan && (
-        <Tooltip title="Scan tickets">
-          <Fab
-            color="primary"
-            aria-label="scan tickets"
-            onClick={openScan}
-            sx={{
-              position: "fixed",
-              right: 16,
-              bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-              bgcolor: "#4cbb17",
-              color: "#060606",
-              "&:hover": { bgcolor: "#43a414" },
-              zIndex: (t) => t.zIndex.modal + 1,
             }}
           >
-            <QrCodeScannerIcon />
-          </Fab>
-        </Tooltip>
+            <AppBar
+              position="relative"
+              sx={{
+                bgcolor: "#060606",
+                color: "#fff",
+                boxShadow: "none",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              <Toolbar sx={{ gap: 2 }}>
+                <Typography
+                  id="ticket-scanner-title"
+                  variant="h6"
+                  component="div"
+                  sx={{ flexGrow: 1, fontWeight: 600 }}
+                >
+                  Scan Tickets
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={sequentialScan}
+                      onChange={handleSequentialToggle}
+                      color="success"
+                      inputProps={{ "aria-label": "Toggle sequential scanning" }}
+                    />
+                  }
+                  label="Sequential mode"
+                  sx={{
+                    color: "rgba(255,255,255,0.8)",
+                    "& .MuiFormControlLabel-label": {
+                      fontSize: 14,
+                    },
+                  }}
+                />
+                <IconButton
+                  edge="end"
+                  onClick={closeScanner}
+                  aria-label="Close ticket scanner"
+                  sx={{ color: "#f5f5f5" }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Toolbar>
+            </AppBar>
+            <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#060606" }}>
+              <Suspense
+                fallback={
+                  <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
+                    <CircularProgress size={24} sx={{ color: "#4cbb17" }} />
+                  </Box>
+                }
+              >
+                {scannerOpen && (
+                  <TicketScanner
+                    onScan={handleScanResult}
+                    onClose={closeScanner}
+                    sequential={sequentialScan}
+                  />
+                )}
+              </Suspense>
+            </Box>
+          </Dialog>
+
+          <Tooltip title="Scan tickets">
+            <Fab
+              color="primary"
+              aria-label="Open ticket scanner"
+              onClick={openScanner}
+              sx={{
+                position: "fixed",
+                right: 16,
+                bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+                bgcolor: "#4cbb17",
+                color: "#060606",
+                display: scannerOpen ? "none" : "inline-flex",
+                "&:hover": { bgcolor: "#43a414" },
+                zIndex: (t) => t.zIndex.modal + 1,
+              }}
+            >
+              <QrCodeScannerIcon />
+            </Fab>
+          </Tooltip>
+        </>
       )}
 
       <Snackbar

@@ -1,560 +1,609 @@
 /* Proprietary and confidential. See LICENSE. */
-// src/components/TicketScanner.jsx — BEYOND GOD MODE ⚡ DOM LOCK EDITION
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useCallback,
-  memo,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
+  Stack,
   Typography,
-  Paper,
-  Snackbar,
-  Alert,
-  Modal,
-  Divider,
   Button,
-  Fade,
-  CircularProgress,
-  ToggleButton,
-  ToggleButtonGroup,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
   Tooltip,
 } from "@mui/material";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import FlashOnIcon from "@mui/icons-material/FlashOn";
-import FlashOffIcon from "@mui/icons-material/FlashOff";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import { keyframes } from "@mui/system";
-import { Link } from "react-router-dom";
-import QRCode from "react-qr-code";
-import { Html5Qrcode } from "html5-qrcode";
+import ReplayIcon from "@mui/icons-material/Replay";
+import FlashOnIcon from "@mui/icons-material/FlashOn";
+import FlashOffIcon from "@mui/icons-material/FlashOff";
+import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import ImageIcon from "@mui/icons-material/Image";
+import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import { NotFoundException } from "@zxing/library";
 
-import { formatDateTime } from "@/utils/time";
+import logError from "@/utils/logError.js";
+import { playBeep } from "@/utils/sound.js";
+import useLatestRef from "@/hooks/useLatestRef.js";
 
-import { sanitize } from "../utils/sanitize";
-import { fetchTicket, updateTicketScan } from "../hooks/api";
-import useAuth from "../hooks/useAuth.js";
-import logError from "../utils/logError.js";
+const BASE_CONSTRAINTS = {
+  audio: false,
+  video: {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    focusMode: "continuous",
+    advanced: [{ torch: false }],
+  },
+};
 
-const formatDate = (v) => formatDateTime(v, "MMM D, YYYY") || "—";
+const successOverlaySx = {
+  position: "absolute",
+  inset: 0,
+  bgcolor: "rgba(76,187,23,0.12)",
+  color: "#4cbb17",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: 1.2,
+  transition: "opacity 200ms ease",
+};
 
-const formatTime = (v) => formatDateTime(v, "h:mm A") || "—";
+function TicketScanner({
+  onScan,
+  onClose,
+  sequential = true,
+  autoPauseMs = 1200,
+  beep = true,
+  vibrate = true,
+  showPreview = true,
+}) {
+  const [devices, setDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState("");
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [awaitingRestart, setAwaitingRestart] = useState(false);
+  const [loadingCamera, setLoadingCamera] = useState(true);
+  const [cameraDenied, setCameraDenied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [lastResult, setLastResult] = useState(null);
+  const [cooldown, setCooldown] = useState(false);
 
-function TicketScanner({ embedded = false }) {
-  const [ticket, setTicket] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info",
-  });
-  const [cameraError, setCameraError] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [currentCameraId, setCurrentCameraId] = useState(null);
-  const [torchOn, setTorchOn] = useState(false);
-  const [scanType, setScanType] = useState("outbound");
-  const [scanFeedback, setScanFeedback] = useState(null);
-  const [lastScan, setLastScan] = useState(null);
-  const [cameraPaused, setCameraPaused] = useState(false);
-  const [torchAvailable, setTorchAvailable] = useState(false);
-
-  const html5QrCodeRef = useRef(null);
-  const qrContainerRef = useRef(null);
-  const handleScanRef = useRef(null);
-  const isScanningRef = useRef(false);
+  const videoRef = useRef(null);
+  const controlsRef = useRef(null);
+  const readerRef = useRef(null);
   const cooldownRef = useRef(null);
-  const scannerReadyRef = useRef(false);
-  const [confirming, setConfirming] = useState(false);
+  const lastResultRef = useRef({ text: "", ts: 0 });
+  const fileInputRef = useRef(null);
+  const startPromiseRef = useRef(null);
 
-  const { user } = useAuth();
+  const onScanRef = useLatestRef(onScan);
+  const autoPauseRef = useLatestRef(autoPauseMs);
+  const sequentialRef = useLatestRef(sequential);
+  const vibrateRef = useLatestRef(vibrate);
+  const beepRef = useLatestRef(beep);
 
-  const shake = keyframes`
-    10%, 90% { transform: translateX(-1px); }
-    20%, 80% { transform: translateX(2px); }
-    30%, 50%, 70% { transform: translateX(-4px); }
-    40%, 60% { transform: translateX(4px); }
-  `;
+  const constraints = useMemo(() => {
+    const base = JSON.parse(JSON.stringify(BASE_CONSTRAINTS));
+    if (selectedDeviceId) {
+      base.video.deviceId = { exact: selectedDeviceId };
+    }
+    return base;
+  }, [selectedDeviceId]);
 
-  const flash = keyframes`
-    from { opacity: 0.7; }
-    to { opacity: 0; }
-  `;
-
-  const resetScanner = useCallback(() => {
-    setTicket(null);
-    setModalOpen(false);
-    setShowSuccess(false);
-    isScanningRef.current = false;
-    setTimeout(() => {
-      html5QrCodeRef.current
-        ?.resume?.()
-        .catch((err) => logError(err, "TicketScanner:resume"));
-    }, 800);
-    setCameraPaused(false);
+  const clearCooldown = useCallback(() => {
+    if (cooldownRef.current) {
+      clearTimeout(cooldownRef.current);
+      cooldownRef.current = null;
+    }
+    setCooldown(false);
   }, []);
 
-  const handleScan = useCallback(
-    async (text) => {
-      const ticketId = text?.split("/").pop()?.trim();
-      if (
-        !ticketId ||
-        isScanningRef.current ||
-        cooldownRef.current?.id === ticketId
-      )
-        return;
-      isScanningRef.current = true;
-      cooldownRef.current = {
-        id: ticketId,
-        timer: setTimeout(() => {
-          cooldownRef.current = null;
-        }, 3000),
-      };
-
-      html5QrCodeRef.current
-        ?.pause?.()
-        .catch((err) => logError(err, "TicketScanner:pause"));
-      setLoading(true);
-
-      fetchTicket(ticketId)
-        .then((data) => {
-          setLoading(false);
-          if (data?.ticketId) {
-            setTicket(data);
-            setModalOpen(true);
-            navigator.vibrate?.([100]);
-          } else {
-            setScanFeedback("error");
-            setTimeout(() => setScanFeedback(null), 600);
-            setSnackbar({
-              open: true,
-              message: "❌ Ticket not found",
-              severity: "error",
-            });
-            resetScanner();
-          }
-        })
-        .catch((err) => {
-          logError(err, "TicketScanner:fetchTicket");
-          setLoading(false);
-          setScanFeedback("error");
-          setTimeout(() => setScanFeedback(null), 600);
-          setSnackbar({
-            open: true,
-            message: "🚨 Failed to fetch ticket",
-            severity: "error",
-          });
-          resetScanner();
+  const stopDecoding = useCallback(() => {
+    clearCooldown();
+    const controls = controlsRef.current;
+    controlsRef.current = null;
+    if (controls) {
+      try {
+        controls.stop();
+      } catch (err) {
+        logError(err, {
+          area: "TicketScanner",
+          action: "stopControls",
         });
+      }
+    }
+    const videoEl = videoRef.current;
+    const stream = videoEl?.srcObject;
+    if (stream) {
+      stream.getTracks?.().forEach((track) => {
+        try {
+          track.stop();
+        } catch (err) {
+          logError(err, {
+            area: "TicketScanner",
+            action: "stopTrack",
+          });
+        }
+      });
+    }
+    if (videoEl) {
+      videoEl.srcObject = null;
+    }
+    setTorchEnabled(false);
+    setTorchSupported(false);
+    startPromiseRef.current = null;
+  }, [clearCooldown]);
+
+  const applyTorch = useCallback(
+    async (enable) => {
+      const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
+      if (!track) return;
+      try {
+        await track.applyConstraints({ advanced: [{ torch: enable }] });
+        setTorchEnabled(enable);
+      } catch (err) {
+        logError(err, {
+          area: "TicketScanner",
+          action: "toggleTorch",
+          extra: { enable },
+        });
+      }
     },
-    [resetScanner],
+    [],
   );
 
-  const safeGetState = () => {
+  const refreshDevices = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
     try {
-      return html5QrCodeRef.current?.getState?.();
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = all.filter((item) => item.kind === "videoinput");
+      setDevices(videoDevices);
+      if (!selectedDeviceId && videoDevices.length) {
+        setSelectedDeviceId(videoDevices[0].deviceId || "");
+      }
     } catch (err) {
-      logError(err, "TicketScanner:getState");
-      return null;
+      logError(err, {
+        area: "TicketScanner",
+        action: "enumerateDevices",
+      });
     }
-  };
+  }, [selectedDeviceId]);
 
-  // 🚀 Start scanner
-  const initScanner = useCallback(
-    async (cameraId = null) => {
-      if (scannerReadyRef.current || !qrContainerRef.current) return;
-      scannerReadyRef.current = true;
+  const handleDecode = useCallback(
+    async (result) => {
+      if (!result) return;
+      const text = result.getText?.() || result.text || "";
+      if (!text) return;
+      const now = Date.now();
+      const last = lastResultRef.current;
+      if (last.text === text && now - last.ts < autoPauseRef.current) {
+        return;
+      }
+      lastResultRef.current = { text, ts: now };
+      const payload = {
+        text,
+        rawBytes: result.getRawBytes?.() || undefined,
+      };
+      setLastResult(payload);
+      setCooldown(true);
+      clearCooldown();
+      cooldownRef.current = setTimeout(() => {
+        setCooldown(false);
+        cooldownRef.current = null;
+      }, autoPauseRef.current);
 
-      if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode("qr-reader");
+      if (beepRef.current) {
+        try {
+          playBeep();
+        } catch (err) {
+          logError(err, {
+            area: "TicketScanner",
+            action: "playBeep",
+          });
+        }
+      }
+      if (vibrateRef.current) {
+        try {
+          navigator.vibrate?.(30);
+        } catch (err) {
+          logError(err, {
+            area: "TicketScanner",
+            action: "vibrate",
+          });
+        }
       }
 
-      handleScanRef.current = handleScan;
-
       try {
-        if (safeGetState() !== 2) {
-          await html5QrCodeRef.current.start(
-            cameraId || { facingMode: "environment" },
-            { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.333 },
-            (text) => handleScanRef.current?.(text),
-          );
-          const capabilities =
-            html5QrCodeRef.current.getRunningTrackCapabilities?.();
-          setTorchAvailable(!!capabilities?.torch);
+        onScanRef.current?.(payload);
+      } catch (err) {
+        logError(err, {
+          area: "TicketScanner",
+          action: "onScan",
+        });
+      }
+
+      if (!sequentialRef.current) {
+        setAwaitingRestart(true);
+        setPaused(true);
+      }
+    },
+    [autoPauseRef, beepRef, clearCooldown, onScanRef, sequentialRef, vibrateRef],
+  );
+
+  const startDecoding = useCallback(
+    async (deviceId) => {
+      if (!readerRef.current) {
+        readerRef.current = new BrowserMultiFormatReader();
+      }
+      if (!videoRef.current || startPromiseRef.current) return;
+      setLoadingCamera(true);
+      setErrorMessage("");
+      setCameraDenied(false);
+      try {
+        const promise = readerRef.current.decodeFromConstraints(
+          deviceId
+            ? {
+                ...constraints,
+                video: {
+                  ...constraints.video,
+                  deviceId: { exact: deviceId },
+                },
+              }
+            : constraints,
+          videoRef.current,
+          (value, err, controls) => {
+            if (value) {
+              handleDecode(value);
+            } else if (err && !(err instanceof NotFoundException)) {
+              logError(err, {
+                area: "TicketScanner",
+                action: "decode",
+              });
+            }
+            if (controls && !controlsRef.current) {
+              controlsRef.current = controls;
+            }
+          },
+        );
+        startPromiseRef.current = promise;
+        const controls = await promise;
+        controlsRef.current = controls;
+        setPaused(false);
+        setAwaitingRestart(false);
+        const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
+        const capabilities = track?.getCapabilities?.();
+        setTorchSupported(!!capabilities?.torch);
+        if (torchEnabled && capabilities?.torch) {
+          await applyTorch(true);
         }
       } catch (err) {
-        logError(err, "Scanner start error");
-        setCameraError(true);
+        stopDecoding();
+        setCameraDenied(err?.name === "NotAllowedError");
+        setErrorMessage(err?.message || "Unable to start camera");
+        if (err?.name === "NotAllowedError") {
+          setPaused(true);
+        }
+        logError(err, {
+          area: "TicketScanner",
+          action: "start",
+          extra: { deviceId },
+        });
+      } finally {
+        setLoadingCamera(false);
+        startPromiseRef.current = null;
       }
     },
-    [handleScan],
+    [applyTorch, constraints, handleDecode, stopDecoding, torchEnabled],
   );
 
-  // 🎯 Fetch cameras first
   useEffect(() => {
-    let alive = true;
-    async function load() {
+    refreshDevices();
+  }, [refreshDevices]);
+
+  useEffect(() => {
+    if (sequential && awaitingRestart) {
+      setAwaitingRestart(false);
+      setPaused(false);
+    }
+  }, [awaitingRestart, sequential]);
+
+  useEffect(() => {
+    if (paused) {
+      stopDecoding();
+      return () => {};
+    }
+    let cancelled = false;
+    (async () => {
+      await startDecoding(selectedDeviceId);
+      if (cancelled) {
+        stopDecoding();
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopDecoding();
+    };
+  }, [paused, selectedDeviceId, startDecoding, stopDecoding]);
+
+  useEffect(
+    () => () => {
+      stopDecoding();
+    },
+    [stopDecoding],
+  );
+
+  const handlePauseToggle = useCallback(() => {
+    setAwaitingRestart(false);
+    setPaused((prev) => !prev);
+  }, []);
+
+  const handleResume = useCallback(() => {
+    setAwaitingRestart(false);
+    setPaused(false);
+  }, []);
+
+  const handleDeviceChange = useCallback((event) => {
+    setSelectedDeviceId(event.target.value);
+  }, []);
+
+  const handleTorchToggle = useCallback(() => {
+    const next = !torchEnabled;
+    setTorchEnabled(next);
+    applyTorch(next);
+  }, [applyTorch, torchEnabled]);
+
+  const handleImagePick = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
       try {
-        const devices = await Html5Qrcode.getCameras();
-        if (!alive) return;
-        const rearCamera =
-          devices.find((d) => d.label.toLowerCase().includes("back")) ||
-          devices[0];
-        setCurrentCameraId(rearCamera?.id || null);
+        if (!readerRef.current) {
+          readerRef.current = new BrowserMultiFormatReader();
+        }
+        const result = await readerRef.current.decodeFromImageUrl(url);
+        handleDecode(result);
       } catch (err) {
-        logError(err, "TicketScanner:getCameras");
-        if (alive) setCameraError(true);
+        logError(err, {
+          area: "TicketScanner",
+          action: "decodeImage",
+        });
+        setErrorMessage("Unable to read image. Try another file.");
+      } finally {
+        URL.revokeObjectURL(url);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
-    }
-    load();
-    return () => {
-      alive = false;
-    };
-  }, []);
+    },
+    [handleDecode],
+  );
 
-  // 🎬 Start scanner after DOM is painted
-  useLayoutEffect(() => {
-    if (currentCameraId) {
-      initScanner(currentCameraId);
-    }
-    return () => {
-      const scanner = html5QrCodeRef.current;
-      if (scanner && (safeGetState() === 2 || safeGetState() === 3)) {
-        scanner.stop().catch((err) => logError(err, "TicketScanner:stop"));
-      }
-    };
-  }, [currentCameraId, initScanner]);
-
-  const toggleTorch = async () => {
-    if (!torchAvailable) return;
-    try {
-      await html5QrCodeRef.current?.applyVideoConstraints({
-        advanced: [{ torch: !torchOn }],
-      });
-      setTorchOn((prev) => !prev);
-      setSnackbar({
-        open: true,
-        message: !torchOn ? "🔦 Torch on" : "🔦 Torch off",
-        severity: "info",
-      });
-    } catch (err) {
-      logError(err, "TicketScanner:toggleTorch");
-      setSnackbar({
-        open: true,
-        message: "❌ Torch not supported",
-        severity: "error",
-      });
-    }
-  };
-
-  const toggleCamera = () => {
-    const scanner = html5QrCodeRef.current;
-    if (!scanner) return;
-    if (cameraPaused) {
-      scanner
-        .resume()
-        .then(() => {
-          setCameraPaused(false);
-          setSnackbar({
-            open: true,
-            message: "▶️ Camera resumed",
-            severity: "info",
-          });
-        })
-        .catch((err) => logError(err, "TicketScanner:toggleCamera"));
-    } else {
-      scanner
-        .pause()
-        .then(() => {
-          setCameraPaused(true);
-          setSnackbar({
-            open: true,
-            message: "⏸️ Camera paused",
-            severity: "info",
-          });
-        })
-        .catch((err) => logError(err, "TicketScanner:toggleCamera"));
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (cooldownRef.current?.timer) clearTimeout(cooldownRef.current.timer);
-    };
-  }, []);
-
-  const confirmTicket = async () => {
-    if (!ticket || !scanType || confirming) return;
-    setConfirming(true);
-    const alreadyScanned =
-      scanType === "outbound" ? ticket.scannedOutbound : ticket.scannedReturn;
-
-    if (alreadyScanned) {
-      setSnackbar({
-        open: true,
-        message: `⚠️ Ticket already scanned for ${scanType}`,
-        severity: "warning",
-      });
-      resetScanner();
-      return;
-    }
-
-    const driver = user?.email || "Unknown";
-    const result = await updateTicketScan(ticket.ticketId, scanType, driver);
-    if (result.success) {
-      setTicket((prev) => ({
-        ...prev,
-        ...(scanType === "outbound"
-          ? {
-              scannedOutbound: true,
-              scannedOutboundBy: driver,
-            }
-          : {
-              scannedReturn: true,
-              scannedReturnBy: driver,
-            }),
-      }));
-      setShowSuccess(true);
-      setScanFeedback("success");
-      setTimeout(() => setScanFeedback(null), 600);
-      setLastScan({ ticketId: ticket.ticketId, passenger: ticket.passenger });
-      setSnackbar({
-        open: true,
-        message: `✅ ${scanType} scanned!`,
-        severity: "success",
-      });
-
-      setTimeout(() => {
-        setModalOpen(false);
-        resetScanner();
-      }, 300);
-    } else {
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to update scan",
-        severity: "error",
-      });
-      resetScanner();
-    }
-    setConfirming(false);
-  };
+  const closeScanner = useCallback(() => {
+    stopDecoding();
+    setPaused(true);
+    if (onClose) onClose();
+  }, [onClose, stopDecoding]);
 
   return (
-    <Box
-      sx={{
-        maxWidth: embedded ? "100%" : 640,
-        mx: embedded ? 0 : "auto",
-        mt: embedded ? 0 : 4,
-      }}
-    >
-      {!embedded && (
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          🎯 Ticket Scanner
+    <Stack spacing={3} sx={{ color: "#f5f5f5", py: 2 }}>
+      <Box>
+        <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mb: 1 }}>
+          Align the QR code within the frame. Tip: enable torch for low light.
         </Typography>
-      )}
-
-      <ToggleButtonGroup
-        value={scanType}
-        exclusive
-        onChange={(e, val) => val && setScanType(val)}
-        fullWidth
-        color="primary"
-        sx={{ mb: embedded ? 1.5 : 2 }}
-      >
-        <ToggleButton value="outbound">
-          <ArrowForwardIcon fontSize="small" sx={{ mr: 1 }} /> Outbound
-        </ToggleButton>
-        <ToggleButton value="return">
-          <ArrowBackIcon fontSize="small" sx={{ mr: 1 }} /> Return
-        </ToggleButton>
-      </ToggleButtonGroup>
-
-      {cameraError ? (
-        <Alert severity="error">
-          📵 Camera not ready.{" "}
-          <Button onClick={() => window.location.reload()}>Reload</Button>
-        </Alert>
-      ) : (
-        <Paper
-          sx={{
-            p: embedded ? 1.5 : 2,
-            mb: embedded ? 1.5 : 2,
-            display: "flex",
-            justifyContent: "center",
-          }}
-          elevation={4}
-        >
-          <Box position="relative">
-            <Box
-              ref={qrContainerRef}
-              id="qr-reader"
-              sx={{
-                width: 260,
-                height: 260,
-                borderRadius: 2,
-                overflow: "hidden",
-                border:
-                  scanFeedback === "error"
-                    ? "2px solid red"
-                    : "2px solid transparent",
-                animation:
-                  scanFeedback === "error" ? `${shake} 0.4s` : undefined,
-                "& > video": {
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                },
-              }}
-            />
-            {scanFeedback === "success" && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: 2,
-                  bgcolor: "rgba(76,187,23,0.4)",
-                  animation: `${flash} 0.6s ease-out`,
-                }}
-              />
-            )}
-          </Box>
-        </Paper>
-      )}
-
-      <Box
-        display="flex"
-        justifyContent="center"
-        gap={1}
-        mb={embedded ? 1.5 : 2}
-      >
-        {torchAvailable && (
-          <Tooltip title={torchOn ? "Torch off" : "Torch on"}>
-            <IconButton color="primary" onClick={toggleTorch}>
-              {torchOn ? <FlashOffIcon /> : <FlashOnIcon />}
-            </IconButton>
-          </Tooltip>
-        )}
-        <Tooltip title={cameraPaused ? "Resume camera" : "Pause camera"}>
-          <IconButton color="primary" onClick={toggleCamera}>
-            {cameraPaused ? <PlayArrowIcon /> : <PauseIcon />}
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Ticket Overview">
-          <IconButton color="primary" component={Link} to="/tickets">
-            <ListAltIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {lastScan && (
-        <Typography variant="body2" align="center" sx={{ mb: 2 }}>
-          Last scanned: {lastScan.ticketId} – {sanitize(lastScan.passenger)}
-        </Typography>
-      )}
-
-      {loading && (
-        <CircularProgress sx={{ display: "block", mx: "auto", mb: 2 }} />
-      )}
-
-      <Modal
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setTimeout(() => resetScanner(), 200);
-        }}
-      >
         <Box
           sx={{
-            backgroundColor: "background.paper",
+            position: "relative",
             borderRadius: 2,
-            p: 4,
-            width: 360,
+            overflow: "hidden",
+            border: "1px solid rgba(76,187,23,0.45)",
+            bgcolor: "rgba(0,0,0,0.6)",
+            aspectRatio: { xs: "3 / 4", sm: "16 / 9" },
+            maxWidth: 560,
             mx: "auto",
-            mt: "10vh",
           }}
         >
-          {ticket ? (
-            <>
-              <Box display="flex" justifyContent="center" mb={2}>
-                <QRCode
-                  value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
-                  size={120}
-                />
-              </Box>
-              <Typography variant="h6" align="center">
-                🎟️ {ticket.ticketId}
+          <Box
+            component="video"
+            ref={videoRef}
+            muted
+            playsInline
+            autoPlay
+            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+          {loadingCamera && (
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "rgba(6,6,6,0.72)",
+              }}
+            >
+              <CircularProgress size={28} sx={{ color: "#4cbb17" }} />
+            </Box>
+          )}
+          {cooldown && (
+            <Box sx={{ ...successOverlaySx }}>
+              <Typography variant="h6" component="span">
+                Scanned
               </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography>
-                <strong>Passenger:</strong> {sanitize(ticket.passenger)}
+            </Box>
+          )}
+          {(cameraDenied || errorMessage) && !loadingCamera && (
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                bgcolor: "rgba(6,6,6,0.88)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                alignItems: "center",
+                justifyContent: "center",
+                px: 3,
+                textAlign: "center",
+              }}
+            >
+              <CameraAltIcon sx={{ fontSize: 44, color: "#4cbb17" }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                {cameraDenied
+                  ? "Camera access was blocked. Allow access to scan tickets."
+                  : errorMessage || "Unable to start camera."}
               </Typography>
-              <Typography>
-                <strong>Passenger Count:</strong>{" "}
-                {sanitize(ticket.passengercount)}
+              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
+                You can upload an image of the QR code instead.
               </Typography>
-              <Typography>
-                <strong>Date:</strong> {formatDate(ticket.date)}
-              </Typography>
-              <Typography>
-                <strong>Time:</strong> {formatTime(ticket.time)}
-              </Typography>
-              <Typography>
-                <strong>Pickup:</strong> {sanitize(ticket.pickup)}
-              </Typography>
-              <Typography>
-                <strong>Dropoff:</strong> {sanitize(ticket.dropoff)}
-              </Typography>
-              <Button
-                fullWidth
-                onClick={confirmTicket}
-                sx={{ mt: 2 }}
-                variant="contained"
-              >
-                ✅ Confirm and Scan
-              </Button>
-            </>
-          ) : (
-            <Typography align="center">Loading ticket…</Typography>
+            </Box>
           )}
         </Box>
-      </Modal>
+      </Box>
 
-      <Fade in={showSuccess}>
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            width: "100vw",
-            height: "100vh",
-            bgcolor: "rgba(0,0,0,0.85)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+      <Stack spacing={2}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", sm: "center" }}
         >
-          <Typography variant="h2" color="success.main">
-            ✅ Scanned
-          </Typography>
-        </Box>
-      </Fade>
+          <Tooltip title={paused ? "Resume scanning" : "Pause scanning"}>
+            <IconButton
+              color="inherit"
+              onClick={handlePauseToggle}
+              sx={{
+                bgcolor: paused ? "rgba(76,187,23,0.18)" : "rgba(255,255,255,0.1)",
+                borderRadius: 2,
+                alignSelf: "flex-start",
+              }}
+              aria-label={paused ? "Resume scanner" : "Pause scanner"}
+            >
+              {paused ? <PlayArrowIcon sx={{ color: "#4cbb17" }} /> : <PauseIcon />}
+            </IconButton>
+          </Tooltip>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+          {torchSupported && (
+            <Tooltip title={torchEnabled ? "Turn torch off" : "Turn torch on"}>
+              <IconButton
+                color="inherit"
+                onClick={handleTorchToggle}
+                sx={{
+                  bgcolor: torchEnabled
+                    ? "rgba(76,187,23,0.18)"
+                    : "rgba(255,255,255,0.1)",
+                  borderRadius: 2,
+                }}
+                aria-label={torchEnabled ? "Disable torch" : "Enable torch"}
+              >
+                {torchEnabled ? (
+                  <FlashOffIcon sx={{ color: "#4cbb17" }} />
+                ) : (
+                  <FlashOnIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <FormControl
+            size="small"
+            sx={{ minWidth: { xs: "100%", sm: 200 }, flex: 1 }}
+            variant="outlined"
+          >
+            <InputLabel id="ticket-scanner-camera">Camera</InputLabel>
+            <Select
+              labelId="ticket-scanner-camera"
+              label="Camera"
+              value={selectedDeviceId}
+              onChange={handleDeviceChange}
+              MenuProps={{
+                PaperProps: {
+                  sx: { bgcolor: "#060606", color: "#fff" },
+                },
+              }}
+            >
+              {devices.length ? (
+                devices.map((device) => (
+                  <MenuItem key={device.deviceId} value={device.deviceId}>
+                    {device.label || `Camera ${device.deviceId.slice(-4)}`}
+                  </MenuItem>
+                ))
+              ) : (
+                <MenuItem value="" disabled>
+                  No cameras found
+                </MenuItem>
+              )}
+            </Select>
+          </FormControl>
+
+          <Button
+            variant="outlined"
+            startIcon={<ImageIcon />}
+            component="label"
+            sx={{
+              borderColor: "rgba(76,187,23,0.4)",
+              color: "#4cbb17",
+              fontWeight: 600,
+            }}
+          >
+            Upload QR
+            <input
+              ref={fileInputRef}
+              type="file"
+              hidden
+              accept="image/*"
+              onChange={handleImagePick}
+            />
+          </Button>
+        </Stack>
+
+        {awaitingRestart && (
+          <Button
+            onClick={handleResume}
+            startIcon={<ReplayIcon />}
+            variant="contained"
+            sx={{ alignSelf: "flex-start", bgcolor: "#4cbb17", color: "#060606" }}
+          >
+            Scan again
+          </Button>
+        )}
+
+        {showPreview && lastResult?.text && (
+          <Box
+            sx={{
+              borderRadius: 2,
+              px: 2,
+              py: 1.5,
+              bgcolor: "rgba(76,187,23,0.12)",
+              border: "1px solid rgba(76,187,23,0.35)",
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ color: "#4cbb17" }}>
+              Last scan
+            </Typography>
+            <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+              {lastResult.text}
+            </Typography>
+          </Box>
+        )}
+
+        {onClose && (
+          <Button
+            onClick={closeScanner}
+            startIcon={<CloseFullscreenIcon />}
+            sx={{ alignSelf: "flex-start", color: "#4cbb17" }}
+          >
+            Close scanner
+          </Button>
+        )}
+      </Stack>
+    </Stack>
   );
 }
 
-export default memo(TicketScanner);
+export default TicketScanner;
