@@ -11,41 +11,41 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 import { db } from "@/services/firebase";
 import { TIMECLOCK_SCHEMA, pickField } from "@/config/timeclockSchema";
+import logError from "@/utils/logError.js";
 
 /**
- * Aggregates results from multiple onSnapshot listeners (userId/uid/driverId).
- * - Stores each listener's rows in a ref.
- * - Recomputes a single "chosen" open session from the union.
- * - BEFORE all listeners have reported at least once, we NEVER flip to no-active.
- *   (prevents flicker/clobber when non-matching queries return empty)
- * - AFTER all are ready, we can flip to no-active if none are open.
+ * Aggregated listener across multiple user field queries.
+ * NOW UID-AWARE:
+ *  - Tracks uid in state (uidState) so we re-subscribe whenever auth changes.
+ *  - Cleans up old listeners when uid changes or on unmount.
+ *  - Prevents flicker/clobber by aggregating results before updating state.
  */
 export const ActiveClockContext = createContext({
   hasActive: false,
   docId: null,
-  startTimeTs: null,
+  startTimeTs: null, // Firestore Timestamp | null
   debug: null,
 });
 
 export default function ActiveClockProvider({ children }) {
+  const [uidState, setUidState] = useState(null);
   const [state, setState] = useState({
     hasActive: false,
     docId: null,
     startTimeTs: null,
     debug: null,
   });
-  const uidRef = useRef(null);
 
-  // per-listener cache: { [qIndex]: { ready: bool, rows: Array } }
-  const resultsRef = useRef(Object.create(null));
+  // Aggregation caches (reset every uid change)
+  const resultsRef = useRef(Object.create(null)); // { [qIndex]: { ready: bool, rows: [] } }
   const totalQueriesRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  // auth
   useEffect(() => {
+    mountedRef.current = true;
     const unsub = onAuthStateChanged(getAuth(), (u) => {
-      uidRef.current = u?.uid || null;
-      // reset caches on sign-out
-      resultsRef.current = Object.create(null);
+      setUidState(u?.uid || null); // <- triggers resubscription effect
+      // When signed out, clear visible state immediately
       if (!u?.uid) {
         setState({
           hasActive: false,
@@ -56,47 +56,46 @@ export default function ActiveClockProvider({ children }) {
       }
     });
     return () => {
+      mountedRef.current = false;
       try {
         unsub();
       } catch (e) {
-        console.error(e);
+        logError(e);
       }
     };
   }, []);
 
   useEffect(() => {
-    const uid = uidRef.current;
-    if (!uid) return undefined;
+    // Clean & reset caches on every uid change
+    resultsRef.current = Object.create(null);
+    totalQueriesRef.current = 0;
+
+    // If no uid, nothing to subscribe to
+    if (!uidState) return undefined;
 
     const colRef = collection(db, TIMECLOCK_SCHEMA.collection);
     const userFields = TIMECLOCK_SCHEMA.userFields;
     totalQueriesRef.current = userFields.length;
 
-    // helper to compute chosen from union (rowsByQuery = { idx: rows[] })
+    // recompute from union
     function recompute() {
+      const buckets = resultsRef.current;
       const allRows = [];
-      let readySeen = 0;
+      let readyCount = 0;
 
       for (let i = 0; i < totalQueriesRef.current; i += 1) {
-        const bucket = resultsRef.current[i];
-        if (bucket?.ready) readySeen += 1;
-        if (bucket?.rows?.length) allRows.push(...bucket.rows);
+        const b = buckets[i];
+        if (b?.ready) readyCount += 1;
+        if (b?.rows?.length) allRows.push(...b.rows);
       }
+      const allReady = readyCount === totalQueriesRef.current;
 
-      const allReady = readySeen === totalQueriesRef.current;
-
-      // Find open rows
       const openRows = allRows.filter((r) => r.open);
-
-      // If not all listeners have reported yet:
-      //  - If we already have active, keep it unless a *better* open replaces it.
-      //  - If we don't have active yet and current union has no open, DO NOT set no-active yet.
       if (!allReady && openRows.length === 0) {
-        // keep current state (prevents clobber flicker)
+        // don't flip to no-active until all listeners reported at least once
         return;
       }
 
-      // Choose best open by latest start timestamp
       const chosen =
         openRows.slice().sort((a, b) => {
           const as = a.startTs?.seconds ?? -1;
@@ -104,6 +103,7 @@ export default function ActiveClockProvider({ children }) {
           return bs - as;
         })[0] || null;
 
+      if (!mountedRef.current) return;
       setState((prev) => {
         if (chosen) {
           const same =
@@ -115,12 +115,18 @@ export default function ActiveClockProvider({ children }) {
               (chosen.startTs?.nanoseconds || null);
 
           if (same) {
-            // still update debug with latest provenance
-            if (prev.debug?.qIndex === chosen.qIndex) return prev;
+            // keep debug fresh
+            if (
+              prev.debug?.qIndex === chosen.qIndex &&
+              prev.debug?.uid === uidState &&
+              prev.debug?.allReady === allReady
+            )
+              return prev;
             return {
               ...prev,
               debug: {
                 ...(prev.debug || {}),
+                uid: uidState,
                 unionCount: allRows.length,
                 qIndex: chosen.qIndex,
                 keys: chosen.keys,
@@ -134,6 +140,7 @@ export default function ActiveClockProvider({ children }) {
             docId: chosen.id,
             startTimeTs: chosen.startTs || null,
             debug: {
+              uid: uidState,
               unionCount: allRows.length,
               qIndex: chosen.qIndex,
               keys: chosen.keys,
@@ -142,31 +149,29 @@ export default function ActiveClockProvider({ children }) {
           };
         }
 
-        // Only here if allReady and no open rows
-        if (!prev.hasActive) {
-          // keep debug fresh
-          return {
-            ...prev,
-            debug: { unionCount: allRows.length, reason: "no-open", allReady },
-          };
-        }
+        // allReady && no open
         return {
           hasActive: false,
           docId: null,
           startTimeTs: null,
-          debug: { unionCount: allRows.length, reason: "no-open", allReady },
+          debug: {
+            uid: uidState,
+            unionCount: allRows.length,
+            reason: "no-open",
+            allReady,
+          },
         };
       });
     }
 
-    // install listeners
+    // Install listeners for each candidate user field
     const unsubs = userFields.map((userKey, idx) => {
-      const q = query(colRef, where(userKey, "==", uid), limit(25));
-      // initialize slot
+      const qRef = query(colRef, where(userKey, "==", uidState), limit(25));
+      // init bucket
       resultsRef.current[idx] = { ready: false, rows: [] };
 
       return onSnapshot(
-        q,
+        qRef,
         (snap) => {
           const rows = [];
           snap.forEach((d) => {
@@ -175,13 +180,11 @@ export default function ActiveClockProvider({ children }) {
             const endPick = pickField(data, TIMECLOCK_SCHEMA.endFields);
             const activePick = pickField(data, TIMECLOCK_SCHEMA.activeFlags);
             const hasEndField = !!endPick.key;
-            const isActiveFlagTrue = activePick.key
+            const isActiveTrue = activePick.key
               ? Boolean(activePick.value)
               : null;
             const open =
-              isActiveFlagTrue === true ||
-              !hasEndField ||
-              endPick.value === null;
+              isActiveTrue === true || !hasEndField || endPick.value === null;
 
             rows.push({
               id: d.id,
@@ -197,14 +200,17 @@ export default function ActiveClockProvider({ children }) {
             });
           });
 
+          // store & mark ready
           resultsRef.current[idx] = { ready: true, rows };
-
-          // Recompute from union; do NOT write hasActive:false based on a single empty snap
+          // recompute from union
           recompute();
         },
         (err) => {
-          console.error("[ActiveClockProvider] snapshot error", err);
-          // mark as ready to avoid blocking forever
+          logError(err, {
+            source: "ActiveClockProvider.onSnapshot",
+            qIndex: idx,
+          });
+          // mark as ready (empty) to avoid blocking forever
           resultsRef.current[idx] = { ready: true, rows: [] };
           recompute();
         },
@@ -212,17 +218,18 @@ export default function ActiveClockProvider({ children }) {
     });
 
     return () => {
+      // cleanup when uid changes or unmounts
       unsubs.forEach((u) => {
         try {
           u();
         } catch (e) {
-          console.error(e);
+          logError(e, { source: "ActiveClockProvider.unsubscribe" });
         }
       });
-      // reset caches on unmount
       resultsRef.current = Object.create(null);
+      totalQueriesRef.current = 0;
     };
-  }, []);
+  }, [uidState]); // <-- resubscribe whenever auth UID changes
 
   const value = useMemo(() => state, [state]);
   return (

@@ -10,7 +10,8 @@ function TimeClockDebugPill() {
   const line1 = hasActive
     ? `active${rdy} • ${docId || "—"}`
     : `no-active${rdy}`;
-  const line2 = debug?.keys
+  const line2 = debug?.uid ? `uid:${debug.uid}` : "";
+  const line3 = debug?.keys
     ? `${debug.keys.startKey || "-"} | ${debug.keys.endKey || "-"} | ${debug.keys.activeKey || "-"}`
     : typeof debug?.reason === "string"
       ? debug.reason
@@ -34,6 +35,11 @@ function TimeClockDebugPill() {
       {line2 ? (
         <Box component="div" sx={{ opacity: 0.8 }}>
           {line2}
+        </Box>
+      ) : null}
+      {line3 ? (
+        <Box component="div" sx={{ opacity: 0.8 }}>
+          {line3}
         </Box>
       ) : null}
     </Box>
