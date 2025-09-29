@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState, useMemo, useRef, memo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Box,
   Typography,
@@ -249,8 +250,14 @@ function percentSpan(ev, dayStart, dayEnd) {
 const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
+const FILTERS_STORAGE_KEY = "lrp.calendar.filters";
+const DEFAULT_FILTERS = { vehicles: ["ALL"], scrollToNow: true };
 
-function RideVehicleCalendar() {
+function RideVehicleCalendar({
+  persistedFilters,
+  onFiltersChange,
+  stickyPillAnchorId,
+} = {}) {
   const [date, setDate] = useState(() => {
     const stored = localStorage.getItem("rvcal.date");
     return stored ? dayjs(stored).tz(CST) : dayjs().tz(CST);
@@ -258,9 +265,50 @@ function RideVehicleCalendar() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [vehicleFilter, setVehicleFilter] = useState(() =>
-    JSON.parse(localStorage.getItem("rvcal.vehicleFilter") || '["ALL"]'),
-  );
+  const [filtersState, setFiltersState] = useState(() => {
+    const base = { ...DEFAULT_FILTERS };
+    if (persistedFilters && typeof persistedFilters === "object") {
+      const { vehicles, scrollToNow } = persistedFilters;
+      return {
+        vehicles:
+          Array.isArray(vehicles) && vehicles.length > 0
+            ? vehicles
+            : base.vehicles,
+        scrollToNow:
+          typeof scrollToNow === "boolean" ? scrollToNow : base.scrollToNow,
+      };
+    }
+    try {
+      const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          vehicles:
+            Array.isArray(parsed?.vehicles) && parsed.vehicles.length > 0
+              ? parsed.vehicles
+              : base.vehicles,
+          scrollToNow:
+            typeof parsed?.scrollToNow === "boolean"
+              ? parsed.scrollToNow
+              : base.scrollToNow,
+        };
+      }
+    } catch (err) {
+      logError(err, { area: "CalendarHub", action: "hydrate-filters" });
+    }
+    try {
+      const legacyRaw = localStorage.getItem("rvcal.vehicleFilter");
+      if (legacyRaw) {
+        const legacyParsed = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyParsed) && legacyParsed.length > 0) {
+          return { ...base, vehicles: legacyParsed };
+        }
+      }
+    } catch (err) {
+      logError(err, { area: "CalendarHub", action: "hydrate-legacy-filters" });
+    }
+    return base;
+  });
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [compactMode, setCompactMode] = useState(
@@ -270,10 +318,90 @@ function RideVehicleCalendar() {
     JSON.parse(localStorage.getItem("rvcal.sectionState") || "{}"),
   );
   const [now, setNow] = useState(dayjs().tz(CST));
+  const { vehicles: vehicleFilter, scrollToNow: scrollToNowPref } =
+    filtersState;
+  const [stickyAnchorEl, setStickyAnchorEl] = useState(null);
+  const [pillOffsets, setPillOffsets] = useState({});
 
   const rideRefs = useRef({});
+  const pillRefs = useRef({});
+  const lanesWrapperRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const persistFilters = useCallback(
+    (next) => {
+      if (typeof onFiltersChange === "function") {
+        try {
+          onFiltersChange(next);
+        } catch (err) {
+          logError(err, { area: "CalendarHub", action: "onFiltersChange" });
+        }
+        return;
+      }
+      try {
+        localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(next));
+      } catch (err) {
+        logError(err, { area: "CalendarHub", action: "persistFilters" });
+      }
+    },
+    [onFiltersChange],
+  );
+
+  const updateFilters = useCallback(
+    (updates) => {
+      setFiltersState((prev) => {
+        const merged = {
+          vehicles: prev.vehicles,
+          scrollToNow: prev.scrollToNow,
+        };
+
+        if (Array.isArray(updates?.vehicles)) {
+          merged.vehicles =
+            updates.vehicles.length === 0
+              ? [...DEFAULT_FILTERS.vehicles]
+              : updates.vehicles;
+        }
+
+        if (typeof updates?.scrollToNow === "boolean") {
+          merged.scrollToNow = updates.scrollToNow;
+        }
+
+        const changed =
+          merged.scrollToNow !== prev.scrollToNow ||
+          merged.vehicles.join("|") !== prev.vehicles.join("|");
+
+        if (changed) {
+          persistFilters(merged);
+          return merged;
+        }
+
+        return prev;
+      });
+    },
+    [persistFilters],
+  );
+
+  useEffect(() => {
+    if (!persistedFilters) return;
+    setFiltersState((prev) => {
+      const merged = {
+        vehicles:
+          Array.isArray(persistedFilters.vehicles) &&
+          persistedFilters.vehicles.length > 0
+            ? persistedFilters.vehicles
+            : prev.vehicles,
+        scrollToNow:
+          typeof persistedFilters.scrollToNow === "boolean"
+            ? persistedFilters.scrollToNow
+            : prev.scrollToNow,
+      };
+      const changed =
+        merged.scrollToNow !== prev.scrollToNow ||
+        merged.vehicles.join("|") !== prev.vehicles.join("|");
+      return changed ? merged : prev;
+    });
+  }, [persistedFilters]);
 
   // ===== [RVTC:state:start] =====
   const [showOverview, setShowOverview] = useState(() => {
@@ -306,14 +434,56 @@ function RideVehicleCalendar() {
     localStorage.setItem("rvcal.date", date.format("YYYY-MM-DD"));
   }, [date]);
   useEffect(() => {
-    localStorage.setItem("rvcal.vehicleFilter", JSON.stringify(vehicleFilter));
-  }, [vehicleFilter]);
-  useEffect(() => {
     localStorage.setItem("rvcal.compact", compactMode);
   }, [compactMode]);
   useEffect(() => {
     localStorage.setItem("rvcal.sectionState", JSON.stringify(sectionState));
   }, [sectionState]);
+
+  useEffect(() => {
+    if (!stickyPillAnchorId) {
+      setStickyAnchorEl(null);
+      return;
+    }
+    if (typeof document === "undefined") return;
+    let frame = null;
+    const assign = () => {
+      const anchor = document.getElementById(stickyPillAnchorId);
+      if (anchor) {
+        setStickyAnchorEl(anchor);
+      } else {
+        frame = requestAnimationFrame(assign);
+      }
+    };
+    assign();
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [stickyPillAnchorId]);
+
+  useEffect(() => {
+    if (!stickyAnchorEl) {
+      setPillOffsets({});
+      return;
+    }
+    const anchor = stickyAnchorEl;
+    const nextOffsets = {};
+    Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
+      if (!node) return;
+      nextOffsets[vehicle] = node.offsetTop || 0;
+    });
+    setPillOffsets(nextOffsets);
+    const previousMinHeight = anchor.style.minHeight;
+    if (lanesWrapperRef.current) {
+      const height = lanesWrapperRef.current.offsetHeight;
+      if (height) {
+        anchor.style.minHeight = `${height}px`;
+      }
+    }
+    return () => {
+      anchor.style.minHeight = previousMinHeight;
+    };
+  }, [stickyAnchorEl, groupedPacked]);
 
   const vehicles = useMemo(
     () => [...new Set(events.map((e) => e.vehicle))],
@@ -488,7 +658,7 @@ function RideVehicleCalendar() {
     setSectionState((s) => ({ ...s, [v]: !s[v] }));
   };
 
-  const scrollToNow = () => {
+  const scrollToNow = useCallback(() => {
     const target = flatFiltered.find(
       (r) =>
         (now.isAfter(r.start) && now.isBefore(r.end)) || r.start.isAfter(now),
@@ -499,7 +669,7 @@ function RideVehicleCalendar() {
         block: "center",
       });
     }
-  };
+  }, [flatFiltered, now]);
 
   // ===== [RVTC:scrollH:start] =====
   const scrollRulerToNow = useCallback(() => {
@@ -525,6 +695,70 @@ function RideVehicleCalendar() {
 
   const selectedFromPrev = selectedEvent?.start?.isBefore(dayStart);
   const selectedIntoNext = selectedEvent?.end?.isAfter(dayEnd);
+
+  useEffect(() => {
+    if (!scrollToNowPref) return;
+    if (!isToday) return;
+    if (loading) return;
+    scrollToNow();
+    scrollRulerToNow();
+  }, [scrollToNowPref, isToday, loading, scrollToNow, scrollRulerToNow]);
+
+  useEffect(() => {
+    const handleToday = () => {
+      try {
+        setDate(dayjs().tz(CST));
+      } catch (err) {
+        logError(err, { area: "CalendarHub", action: "today" });
+      }
+    };
+    const handleCenterNow = () => {
+      try {
+        scrollToNow();
+        scrollRulerToNow();
+      } catch (err) {
+        logError(err, { area: "CalendarHub", action: "center-now" });
+      }
+    };
+    const handleExportCsv = () => {
+      try {
+        downloadCsv(flatFiltered, overlapsMap, date);
+      } catch (err) {
+        logError(err, { area: "CalendarHub", action: "export-csv" });
+      }
+    };
+    const handleAddToCalendar = () => {
+      try {
+        downloadIcs(flatFiltered, date);
+      } catch (err) {
+        logError(err, { area: "CalendarHub", action: "add-to-calendar" });
+      }
+    };
+    const handleShare = () => {
+      try {
+        shareDay(flatFiltered, date);
+      } catch (err) {
+        logError(err, { area: "CalendarHub", action: "share" });
+      }
+    };
+
+    window.addEventListener("calendar:today", handleToday);
+    window.addEventListener("calendar:center-now", handleCenterNow);
+    window.addEventListener("calendar:export-csv", handleExportCsv);
+    window.addEventListener("calendar:add-to-calendar", handleAddToCalendar);
+    window.addEventListener("calendar:share", handleShare);
+
+    return () => {
+      window.removeEventListener("calendar:today", handleToday);
+      window.removeEventListener("calendar:center-now", handleCenterNow);
+      window.removeEventListener("calendar:export-csv", handleExportCsv);
+      window.removeEventListener(
+        "calendar:add-to-calendar",
+        handleAddToCalendar,
+      );
+      window.removeEventListener("calendar:share", handleShare);
+    };
+  }, [scrollToNow, scrollRulerToNow, flatFiltered, overlapsMap, date]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -569,10 +803,15 @@ function RideVehicleCalendar() {
             options={vehicleOptions}
             value={vehicleFilter}
             onChange={(e, val) => {
-              if (val.includes("ALL") && val.length > 1) {
-                val = val.filter((v) => v !== "ALL");
+              const list = Array.isArray(val) ? val : [];
+              let next = list;
+              if (next.includes("ALL") && next.length > 1) {
+                next = next.filter((v) => v !== "ALL");
               }
-              setVehicleFilter(val.length === 0 ? ["ALL"] : val);
+              updateFilters({
+                vehicles:
+                  next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
+              });
             }}
             filterSelectedOptions
             disableCloseOnSelect
@@ -644,6 +883,16 @@ function RideVehicleCalendar() {
               >
                 Scroll to Now
               </Button>
+              <Tooltip title="Keep the view centered on now when opening today">
+                <Switch
+                  size="small"
+                  checked={scrollToNowPref}
+                  onChange={(event) =>
+                    updateFilters({ scrollToNow: event.target.checked })
+                  }
+                  inputProps={{ "aria-label": "Auto scroll to now" }}
+                />
+              </Tooltip>
               <Tooltip title="Toggle Compact Mode">
                 <Switch
                   size="small"
@@ -768,92 +1017,134 @@ function RideVehicleCalendar() {
 
               {/* Lanes per vehicle */}
               <Stack
+                ref={lanesWrapperRef}
                 sx={{ pt: 1, minWidth: `${gutter + 24 * pxPerHour}px` }}
                 spacing={1}
               >
-                {groupedPacked.map(({ vehicle, lanes }) => (
-                  <Box key={vehicle} sx={{ position: "relative" }}>
-                    {/* Sticky vehicle label */}
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      spacing={1}
+                {groupedPacked.map(({ vehicle, lanes }) => {
+                  const rideCount = lanes.reduce((acc, l) => acc + l.length, 0);
+                  const setPillRef = (node) => {
+                    if (node) {
+                      pillRefs.current[vehicle] = node;
+                    } else {
+                      delete pillRefs.current[vehicle];
+                    }
+                  };
+                  const pillBaseSx = {
+                    width: labelW,
+                    pr: 1,
+                    mb: 0.5,
+                    bgcolor: theme.palette.background.default,
+                    borderRight: "1px solid",
+                    borderColor: "divider",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    boxShadow: (t) => t.shadows[2],
+                  };
+                  const renderChip = () => (
+                    <Chip
+                      size="small"
+                      label={vehicle}
                       sx={{
-                        position: "sticky",
-                        left: 0,
-                        zIndex: 2,
-                        width: labelW,
-                        pr: 1,
-                        mb: 0.5,
-                        bgcolor: theme.palette.background.paper,
-                        borderRight: "1px solid",
-                        borderColor: "divider",
+                        bgcolor: vehicleColors[vehicle],
+                        color: vehicleText[vehicle],
+                        fontWeight: 600,
                       }}
-                    >
-                      <Chip
-                        size="small"
-                        label={vehicle}
-                        sx={{
-                          bgcolor: vehicleColors[vehicle],
-                          color: vehicleText[vehicle],
-                          fontWeight: 600,
-                        }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        {lanes.reduce((acc, l) => acc + l.length, 0)} rides
-                      </Typography>
-                    </Stack>
+                    />
+                  );
+                  const renderCount = () => (
+                    <Typography variant="caption" color="text.secondary">
+                      {rideCount} rides
+                    </Typography>
+                  );
 
-                    {/* Lanes shifted to clear the sticky label gutter */}
-                    <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
-                      {lanes.map((lane, li) => (
-                        <Box
-                          key={li}
-                          sx={{
-                            position: "relative",
-                            height: 22,
-                            minWidth: `${24 * pxPerHour}px`,
-                          }}
-                        >
-                          {lane.map((ev) => {
-                            const { left, width } = percentSpan(
-                              ev,
-                              dayStart,
-                              dayEnd,
-                            );
-                            return (
-                              <Tooltip
-                                key={ev.id}
-                                title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
-                              >
-                                <Box
-                                  onClick={() => {
-                                    setSelectedEvent(ev);
-                                    setModalOpen(true);
-                                  }}
-                                  sx={{
-                                    position: "absolute",
-                                    left: `${left}%`,
-                                    width: `${width}%`,
-                                    top: 0,
-                                    bottom: 0,
-                                    borderRadius: 1,
-                                    bgcolor: `${vehicleColors[vehicle]}33`,
-                                    border: `1px solid ${vehicleColors[vehicle]}`,
-                                    transition: "transform 120ms ease",
-                                    "&:hover": {
-                                      transform: "translateY(-1px)",
-                                    },
-                                  }}
-                                />
-                              </Tooltip>
-                            );
-                          })}
-                        </Box>
-                      ))}
-                    </Stack>
-                  </Box>
-                ))}
+                  const anchoredPill =
+                    stickyAnchorEl &&
+                    createPortal(
+                      <Box
+                        sx={{
+                          ...pillBaseSx,
+                          position: "absolute",
+                          left: 0,
+                          top: pillOffsets[vehicle] ?? 0,
+                          zIndex: (t) => t.zIndex.appBar,
+                        }}
+                      >
+                        {renderChip()}
+                        {renderCount()}
+                      </Box>,
+                      stickyAnchorEl,
+                    );
+
+                  return (
+                    <Box key={vehicle} sx={{ position: "relative" }}>
+                      <Box
+                        ref={setPillRef}
+                        sx={{
+                          ...pillBaseSx,
+                          position: "sticky",
+                          left: 0,
+                          zIndex: (t) => t.zIndex.appBar,
+                          visibility: stickyAnchorEl ? "hidden" : "visible",
+                        }}
+                      >
+                        {renderChip()}
+                        {renderCount()}
+                      </Box>
+                      {anchoredPill}
+
+                      {/* Lanes shifted to clear the sticky label gutter */}
+                      <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
+                        {lanes.map((lane, li) => (
+                          <Box
+                            key={li}
+                            sx={{
+                              position: "relative",
+                              height: 22,
+                              minWidth: `${24 * pxPerHour}px`,
+                            }}
+                          >
+                            {lane.map((ev) => {
+                              const { left, width } = percentSpan(
+                                ev,
+                                dayStart,
+                                dayEnd,
+                              );
+                              return (
+                                <Tooltip
+                                  key={ev.id}
+                                  title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
+                                >
+                                  <Box
+                                    onClick={() => {
+                                      setSelectedEvent(ev);
+                                      setModalOpen(true);
+                                    }}
+                                    sx={{
+                                      position: "absolute",
+                                      left: `${left}%`,
+                                      width: `${width}%`,
+                                      top: 0,
+                                      bottom: 0,
+                                      borderRadius: 1,
+                                      bgcolor: `${vehicleColors[vehicle]}33`,
+                                      border: `1px solid ${vehicleColors[vehicle]}`,
+                                      transition: "transform 120ms ease",
+                                      "&:hover": {
+                                        transform: "translateY(-1px)",
+                                      },
+                                    }}
+                                  />
+                                </Tooltip>
+                              );
+                            })}
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  );
+                })}
               </Stack>
             </Box>
           </Collapse>

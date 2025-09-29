@@ -30,7 +30,6 @@ import NotificationsOptInDialog from "./components/NotificationsOptInDialog.jsx"
 import { getUserAccess } from "./hooks/api";
 import { ensureFcmToken } from "./utils/fcm";
 import DriverInfoTab from "./components/DriverInfoTab";
-import CalendarUpdateTab from "./components/CalendarUpdateTab";
 import VehicleDropGuides from "./components/VehicleDropGuides";
 import DirectoryEscalations from "./components/DirectoryEscalations.jsx";
 import { logout } from "./services/auth";
@@ -41,6 +40,7 @@ import { initAnalytics, trackPageView } from "./utils/analytics";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
 import PhoneNumberPrompt from "./components/PhoneNumberPrompt.jsx";
+import CalendarHubLazy from "./pages/lazy/CalendarHub.lazy.jsx";
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 if (import.meta.env.PROD && typeof APP_VERSION !== "undefined") {
   console.info("LRP version:", APP_VERSION);
@@ -55,9 +55,6 @@ const NotificationsCenter = lazy(
   () => import("./pages/Admin/NotificationsCenter.jsx"),
 );
 const ProfilePage = lazy(() => import("./pages/Profile/Settings.jsx"));
-const RideVehicleCalendar = lazy(
-  () => import("./components/RideVehicleCalendar"),
-);
 const ShootoutTab = lazy(() => import("./components/ShootoutTab"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
 const TicketScanner = lazy(() => import("./components/TicketScanner"));
@@ -228,12 +225,11 @@ function App() {
             <Route path="/info" element={<DriverInfoTab />} />
             <Route path="/drop-guides" element={<VehicleDropGuides />} />
             <Route path="/directory" element={<DirectoryEscalations />} />
-            <Route path="/calendar" element={<CalendarUpdateTab />} />
+            <Route path="/calendar" element={<CalendarHubLazy />} />
             <Route
               path="/escalation"
               element={<DirectoryEscalations initialTab="escalations" />}
             />
-            <Route path="/vehicle-calendar" element={<RideVehicleCalendar />} />
             <Route path="/settings" element={<ProfilePage />} />
             <Route
               path="/admin-time-log"
