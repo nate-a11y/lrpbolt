@@ -1,5 +1,12 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Box,
   Grid,
@@ -14,6 +21,7 @@ import {
   Alert,
   Tooltip,
   useMediaQuery,
+  CircularProgress,
 } from "@mui/material";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -25,12 +33,72 @@ import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import TodayIcon from "@mui/icons-material/Today";
 import { styled, useTheme } from "@mui/material/styles";
 
-import RideVehicleCalendar from "@/components/RideVehicleCalendar.jsx";
 import { dayjs } from "@/utils/time";
 import logError from "@/utils/logError.js";
 
 const LRP = { green: "#4cbb17" };
 const STORAGE_KEY = "lrp.calendar.filters";
+
+let rideVehicleCalendarComponent = null;
+let rideVehicleCalendarPromise = null;
+
+const resolveRideVehicleCalendar = async () => {
+  if (rideVehicleCalendarComponent) {
+    return rideVehicleCalendarComponent;
+  }
+
+  if (!rideVehicleCalendarPromise) {
+    rideVehicleCalendarPromise = (async () => {
+      const attempts = [
+        {
+          label: "alias",
+          loader: () => import("@/components/RideVehicleCalendar.jsx"),
+        },
+        {
+          label: "relative",
+          loader: () => import("../components/RideVehicleCalendar.jsx"),
+        },
+      ];
+
+      for (const attempt of attempts) {
+        try {
+          const module = await attempt.loader();
+          const component =
+            module?.default || module?.RideVehicleCalendar || null;
+          if (component) {
+            rideVehicleCalendarComponent = component;
+            return component;
+          }
+          logError(new Error("RideVehicleCalendar export missing"), {
+            area: "CalendarHub",
+            action: "load-ride-vehicle-calendar",
+            attempt: attempt.label,
+          });
+        } catch (error) {
+          logError(error, {
+            area: "CalendarHub",
+            action: "load-ride-vehicle-calendar",
+            attempt: attempt.label,
+          });
+        }
+      }
+
+      return null;
+    })();
+  }
+
+  return rideVehicleCalendarPromise;
+};
+
+const RideVehicleCalendarLazy = lazy(async () => {
+  const component = await resolveRideVehicleCalendar();
+  if (!component) {
+    throw new Error(
+      "RideVehicleCalendar component not found. Ensure it exports default or { RideVehicleCalendar }.",
+    );
+  }
+  return { default: component };
+});
 
 const StickyPill = styled("div")(({ theme }) => ({
   position: "sticky",
@@ -186,11 +254,26 @@ export default function CalendarHub() {
         <Grid item xs={12} md={8}>
           {/* Sticky vehicle pill wrapper: RideVehicleCalendar should render its pill inside this slot when possible */}
           <StickyPill id="sticky-vehicle-pill-anchor" />
-          <RideVehicleCalendar
-            persistedFilters={filters}
-            onFiltersChange={handleFiltersChange}
-            stickyPillAnchorId="sticky-vehicle-pill-anchor"
-          />
+          <Suspense
+            fallback={
+              <Box
+                sx={{
+                  py: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CircularProgress size={32} />
+              </Box>
+            }
+          >
+            <RideVehicleCalendarLazy
+              persistedFilters={filters}
+              onFiltersChange={handleFiltersChange}
+              stickyPillAnchorId="sticky-vehicle-pill-anchor"
+            />
+          </Suspense>
         </Grid>
 
         {/* Right: Help */}

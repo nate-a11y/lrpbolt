@@ -19,6 +19,8 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
+import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
+
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
@@ -209,73 +211,93 @@ function App() {
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <InstallBanner />
       <AppShell onRefresh={handleRefresh} onChangeDriver={openChangeDriver}>
-        <Suspense fallback={<LinearProgress aria-label="Loading" />}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/rides" replace />} />
-            <Route path="/rides" element={<ClaimRides />} />
-            <Route path="/__/auth/iframe" element={<div />} />
-            <Route
-              path="/clock"
-              element={
-                <TimeClock driver={selectedDriver} setIsTracking={noop} />
-              }
-            />
-            <Route path="/shootout" element={<ShootoutTab />} />
-            <Route path="/scan" element={<TicketScanner />} />
-            <Route path="/info" element={<DriverInfoTab />} />
-            <Route path="/drop-guides" element={<VehicleDropGuides />} />
-            <Route path="/directory" element={<DirectoryEscalations />} />
-            <Route path="/calendar" element={<CalendarHubLazy />} />
-            <Route
-              path="/escalation"
-              element={<DirectoryEscalations initialTab="escalations" />}
-            />
-            <Route path="/settings" element={<ProfilePage />} />
-            <Route
-              path="/admin-time-log"
-              element={
-                isAdmin ? (
-                  <AdminTimeLog driver={selectedDriver} />
-                ) : (
-                  <Navigate to="/" />
-                )
-              }
-            />
-            <Route
-              path="/admin-user-manager"
-              element={isAdmin ? <AdminUserManager /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/admin/notifications"
-              element={isAdmin ? <NotificationsCenter /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/ride-entry"
-              element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
-            />
-            <Route path="/tickets" element={<Tickets />} />
-            <Route
-              path="/generate-ticket"
-              element={
-                <Navigate
-                  to={isAdmin ? "/tickets?tab=generate" : "/tickets"}
-                  replace
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  py: 4,
+                }}
+              >
+                <LinearProgress
+                  sx={{ width: { xs: "100%", sm: "60%" } }}
+                  aria-label="Loading routes"
                 />
-              }
-            />
-            <Route path="/ticket/:ticketId" element={<TicketViewer />} />
-            <Route
-              path="*"
-              element={
-                <Typography
-                  sx={{ mt: 6, textAlign: "center", color: "error.main" }}
-                >
-                  🚧 404 — Page Not Found
-                </Typography>
-              }
-            />
-          </Routes>
-        </Suspense>
+              </Box>
+            }
+          >
+            <Routes>
+              <Route path="/" element={<Navigate to="/rides" replace />} />
+              <Route path="/rides" element={<ClaimRides />} />
+              <Route path="/__/auth/iframe" element={<div />} />
+              <Route
+                path="/clock"
+                element={
+                  <TimeClock driver={selectedDriver} setIsTracking={noop} />
+                }
+              />
+              <Route path="/shootout" element={<ShootoutTab />} />
+              <Route path="/scan" element={<TicketScanner />} />
+              <Route path="/info" element={<DriverInfoTab />} />
+              <Route path="/drop-guides" element={<VehicleDropGuides />} />
+              <Route path="/directory" element={<DirectoryEscalations />} />
+              <Route path="/calendar" element={<CalendarHubLazy />} />
+              <Route
+                path="/escalation"
+                element={<DirectoryEscalations initialTab="escalations" />}
+              />
+              <Route path="/settings" element={<ProfilePage />} />
+              <Route
+                path="/admin-time-log"
+                element={
+                  isAdmin ? (
+                    <AdminTimeLog driver={selectedDriver} />
+                  ) : (
+                    <Navigate to="/" />
+                  )
+                }
+              />
+              <Route
+                path="/admin-user-manager"
+                element={isAdmin ? <AdminUserManager /> : <Navigate to="/" />}
+              />
+              <Route
+                path="/admin/notifications"
+                element={
+                  isAdmin ? <NotificationsCenter /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/ride-entry"
+                element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
+              />
+              <Route path="/tickets" element={<Tickets />} />
+              <Route
+                path="/generate-ticket"
+                element={
+                  <Navigate
+                    to={isAdmin ? "/tickets?tab=generate" : "/tickets"}
+                    replace
+                  />
+                }
+              />
+              <Route path="/ticket/:ticketId" element={<TicketViewer />} />
+              <Route
+                path="*"
+                element={
+                  <Typography
+                    sx={{ mt: 6, textAlign: "center", color: "error.main" }}
+                  >
+                    🚧 404 — Page Not Found
+                  </Typography>
+                }
+              />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
 
         {isAdmin && (
           <ChangeDriverModal

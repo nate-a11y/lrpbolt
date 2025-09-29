@@ -1,5 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useState, useMemo, useRef, memo, useCallback } from "react";
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  memo,
+  useCallback,
+  forwardRef,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Box,
@@ -37,6 +45,35 @@ import logError from "../utils/logError.js";
 import PageContainer from "./PageContainer.jsx";
 
 const cache = new Map();
+
+const VehiclePillWrapper = forwardRef(
+  ({ children, width, hidden = false, anchored = false, top = 0 }, ref) => (
+    <Box
+      ref={ref}
+      sx={{
+        width,
+        pr: 1,
+        mb: 0.5,
+        bgcolor: "background.default",
+        borderRight: "1px solid",
+        borderColor: "divider",
+        display: "flex",
+        alignItems: "center",
+        gap: 0.75,
+        boxShadow: (theme) => theme.shadows[2],
+        position: anchored ? "absolute" : "sticky",
+        left: 0,
+        top: anchored ? top : 0,
+        zIndex: (theme) => theme.zIndex.appBar,
+        visibility: hidden ? "hidden" : "visible",
+      }}
+    >
+      {children}
+    </Box>
+  ),
+);
+
+VehiclePillWrapper.displayName = "VehiclePillWrapper";
 
 const minutesBetween = (a, b) => Math.max(0, b.diff(a, "minute"));
 const formatHm = (mins) => {
@@ -1030,18 +1067,6 @@ function RideVehicleCalendar({
                       delete pillRefs.current[vehicle];
                     }
                   };
-                  const pillBaseSx = {
-                    width: labelW,
-                    pr: 1,
-                    mb: 0.5,
-                    bgcolor: theme.palette.background.default,
-                    borderRight: "1px solid",
-                    borderColor: "divider",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.75,
-                    boxShadow: (t) => t.shadows[2],
-                  };
                   const renderChip = () => (
                     <Chip
                       size="small"
@@ -1062,36 +1087,27 @@ function RideVehicleCalendar({
                   const anchoredPill =
                     stickyAnchorEl &&
                     createPortal(
-                      <Box
-                        sx={{
-                          ...pillBaseSx,
-                          position: "absolute",
-                          left: 0,
-                          top: pillOffsets[vehicle] ?? 0,
-                          zIndex: (t) => t.zIndex.appBar,
-                        }}
+                      <VehiclePillWrapper
+                        width={labelW}
+                        anchored
+                        top={pillOffsets[vehicle] ?? 0}
                       >
                         {renderChip()}
                         {renderCount()}
-                      </Box>,
+                      </VehiclePillWrapper>,
                       stickyAnchorEl,
                     );
 
                   return (
                     <Box key={vehicle} sx={{ position: "relative" }}>
-                      <Box
+                      <VehiclePillWrapper
                         ref={setPillRef}
-                        sx={{
-                          ...pillBaseSx,
-                          position: "sticky",
-                          left: 0,
-                          zIndex: (t) => t.zIndex.appBar,
-                          visibility: stickyAnchorEl ? "hidden" : "visible",
-                        }}
+                        width={labelW}
+                        hidden={Boolean(stickyAnchorEl)}
                       >
                         {renderChip()}
                         {renderCount()}
-                      </Box>
+                      </VehiclePillWrapper>
                       {anchoredPill}
 
                       {/* Lanes shifted to clear the sticky label gutter */}
