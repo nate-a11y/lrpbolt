@@ -18,11 +18,10 @@ export function useGridDoctor({ name, rows, columns, sample = 3 }) {
       console.warn(`${tag} rows is not an array`, rows);
       return;
     }
-    console.log(`${tag} rows length:`, rows.length);
     if (!rows.length) {
-      console.warn(`${tag} rows empty → grid will render fallbacks`);
       return;
     }
+    console.log(`${tag} rows length:`, rows.length);
     const first = rows[0] || {};
     console.log(`${tag} first row keys:`, Object.keys(first));
 
