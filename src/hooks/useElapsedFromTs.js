@@ -23,7 +23,9 @@ export default function useElapsedFromTs(ts) {
 
   const start = useMemo(() => {
     try {
-      return ts && typeof ts.toDate === "function" ? resolveDayjs(ts.toDate()) : null;
+      return ts && typeof ts.toDate === "function"
+        ? resolveDayjs(ts.toDate())
+        : null;
     } catch (error) {
       logError(error, { where: "useElapsedFromTs", action: "parse" });
       return null;

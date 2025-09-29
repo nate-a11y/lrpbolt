@@ -140,23 +140,20 @@ function TicketScanner({
     startPromiseRef.current = null;
   }, [clearCooldown]);
 
-  const applyTorch = useCallback(
-    async (enable) => {
-      const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
-      if (!track) return;
-      try {
-        await track.applyConstraints({ advanced: [{ torch: enable }] });
-        setTorchEnabled(enable);
-      } catch (err) {
-        logError(err, {
-          area: "TicketScanner",
-          action: "toggleTorch",
-          extra: { enable },
-        });
-      }
-    },
-    [],
-  );
+  const applyTorch = useCallback(async (enable) => {
+    const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: enable }] });
+      setTorchEnabled(enable);
+    } catch (err) {
+      logError(err, {
+        area: "TicketScanner",
+        action: "toggleTorch",
+        extra: { enable },
+      });
+    }
+  }, []);
 
   const refreshDevices = useCallback(async () => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -233,7 +230,14 @@ function TicketScanner({
         setPaused(true);
       }
     },
-    [autoPauseRef, beepRef, clearCooldown, onScanRef, sequentialRef, vibrateRef],
+    [
+      autoPauseRef,
+      beepRef,
+      clearCooldown,
+      onScanRef,
+      sequentialRef,
+      vibrateRef,
+    ],
   );
 
   const startDecoding = useCallback(
@@ -394,7 +398,10 @@ function TicketScanner({
   return (
     <Stack spacing={3} sx={{ color: "#f5f5f5", py: 2 }}>
       <Box>
-        <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mb: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{ color: "rgba(255,255,255,0.72)", mb: 1 }}
+        >
           Align the QR code within the frame. Tip: enable torch for low light.
         </Typography>
         <Box
@@ -459,7 +466,10 @@ function TicketScanner({
                   ? "Camera access was blocked. Allow access to scan tickets."
                   : errorMessage || "Unable to start camera."}
               </Typography>
-              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
+              <Typography
+                variant="body2"
+                sx={{ color: "rgba(255,255,255,0.7)" }}
+              >
                 You can upload an image of the QR code instead.
               </Typography>
             </Box>
@@ -478,13 +488,19 @@ function TicketScanner({
               color="inherit"
               onClick={handlePauseToggle}
               sx={{
-                bgcolor: paused ? "rgba(76,187,23,0.18)" : "rgba(255,255,255,0.1)",
+                bgcolor: paused
+                  ? "rgba(76,187,23,0.18)"
+                  : "rgba(255,255,255,0.1)",
                 borderRadius: 2,
                 alignSelf: "flex-start",
               }}
               aria-label={paused ? "Resume scanner" : "Pause scanner"}
             >
-              {paused ? <PlayArrowIcon sx={{ color: "#4cbb17" }} /> : <PauseIcon />}
+              {paused ? (
+                <PlayArrowIcon sx={{ color: "#4cbb17" }} />
+              ) : (
+                <PauseIcon />
+              )}
             </IconButton>
           </Tooltip>
 
@@ -567,7 +583,11 @@ function TicketScanner({
             onClick={handleResume}
             startIcon={<ReplayIcon />}
             variant="contained"
-            sx={{ alignSelf: "flex-start", bgcolor: "#4cbb17", color: "#060606" }}
+            sx={{
+              alignSelf: "flex-start",
+              bgcolor: "#4cbb17",
+              color: "#060606",
+            }}
           >
             Scan again
           </Button>

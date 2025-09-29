@@ -1,19 +1,23 @@
 /* Proprietary and confidential. See LICENSE. */
 import { createContext, useEffect, useMemo, useRef, useState } from "react";
-import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
-import { db } from "@/utils/firebaseInit.js";
-import logError from "@/utils/logError.js";
+import { db } from "@/services/firebase";
+import { TIMECLOCK_SCHEMA, pickField } from "@/config/timeclockSchema";
 
 /**
- * Detect an active time session even if schema varies:
- * - Collection: timeLogs (default)
- * - User field: userId | uid | driverId
- * - Start field: startTime | start | clockIn
- * - End field: endTime | end | clockOut (null or missing = open)
- *
+ * Detects an active time session across varied schemas.
  * Emits: { hasActive, docId, startTimeTs, debug }
+ * - Queries each possible user field in parallel.
+ * - No orderBy requirement (avoids missing-index errors).
+ * - Open = explicit boolean active flag OR (no end field) OR (end field === null).
  */
 export const ActiveClockContext = createContext({
   hasActive: false,
@@ -23,122 +27,157 @@ export const ActiveClockContext = createContext({
 });
 
 export default function ActiveClockProvider({ children }) {
-  const [state, setState] = useState({ hasActive: false, docId: null, startTimeTs: null, debug: null });
-  const [uid, setUid] = useState(null);
+  const [state, setState] = useState({
+    hasActive: false,
+    docId: null,
+    startTimeTs: null,
+    debug: null,
+  });
   const uidRef = useRef(null);
+  const lastChosenRef = useRef(null);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(
-      getAuth(),
-      (user) => {
-        const nextUid = user?.uid || null;
-        uidRef.current = nextUid;
-        setUid((prev) => {
-          if (prev === nextUid) return prev;
-          return nextUid;
+    const unsub = onAuthStateChanged(getAuth(), (u) => {
+      uidRef.current = u?.uid || null;
+      if (!u?.uid) {
+        setState({
+          hasActive: false,
+          docId: null,
+          startTimeTs: null,
+          debug: { reason: "signed-out" },
         });
-        if (!nextUid) {
-          setState({ hasActive: false, docId: null, startTimeTs: null, debug: { reason: "signed-out" } });
-        }
-      },
-      (error) => {
-        logError(error, { where: "ActiveClockProvider", action: "authState" });
-      },
-    );
+      }
+    });
     return () => {
       try {
         unsub();
-      } catch (error) {
-        logError(error, { where: "ActiveClockProvider", action: "authUnsub" });
+      } catch (e) {
+        console.error(e);
       }
     };
   }, []);
 
   useEffect(() => {
+    const uid = uidRef.current;
     if (!uid) return undefined;
 
-    const col = collection(db, "timeLogs");
-    const queries = [
-      query(col, where("userId", "==", uid), orderBy("startTime", "desc"), limit(10)),
-      query(col, where("uid", "==", uid), orderBy("startTime", "desc"), limit(10)),
-      query(col, where("driverId", "==", uid), orderBy("startTime", "desc"), limit(10)),
-    ];
-
-    const unsubs = queries.map((q, idx) =>
-      onSnapshot(
+    const colRef = collection(db, TIMECLOCK_SCHEMA.collection);
+    const unsubs = TIMECLOCK_SCHEMA.userFields.map((userKey, idx) => {
+      const q = query(colRef, where(userKey, "==", uid), limit(25));
+      return onSnapshot(
         q,
-        (snapshot) => {
-          const candidates = [];
-          snapshot.forEach((doc) => {
-            try {
-              const data = doc.data() || {};
-              const startTs = data.startTime ?? data.start ?? data.clockIn ?? null;
-              const endVal = data.endTime ?? data.end ?? data.clockOut;
-              const hasEndField =
-                Object.prototype.hasOwnProperty.call(data, "endTime") ||
-                Object.prototype.hasOwnProperty.call(data, "end") ||
-                Object.prototype.hasOwnProperty.call(data, "clockOut");
-              const open = !hasEndField || endVal === null;
+        (snap) => {
+          const rows = [];
+          snap.forEach((d) => {
+            const data = d.data() || {};
+            const start = pickField(data, TIMECLOCK_SCHEMA.startFields).value;
+            const endPick = pickField(data, TIMECLOCK_SCHEMA.endFields);
+            const activePick = pickField(data, TIMECLOCK_SCHEMA.activeFlags);
+            const hasEndField = !!endPick.key;
+            const isActiveFlagTrue = activePick.key
+              ? Boolean(activePick.value)
+              : null;
+            const open =
+              isActiveFlagTrue === true ||
+              !hasEndField ||
+              endPick.value === null;
 
-              candidates.push({
-                id: doc.id,
-                startTs,
-                open,
-                raw: { ...data },
-                qIndex: idx,
-              });
-            } catch (error) {
-              logError(error, { where: "ActiveClockProvider", action: "parseDoc", docId: doc?.id });
-            }
+            rows.push({
+              id: d.id,
+              startTs: start || null,
+              open,
+              keys: {
+                startKey: pickField(data, TIMECLOCK_SCHEMA.startFields).key,
+                endKey: endPick.key,
+                activeKey: activePick.key,
+              },
+              qIndex: idx,
+              _raw: data,
+            });
           });
 
-          const openOnes = candidates.filter((candidate) => candidate.open);
-          const chosen =
-            openOnes.sort((a, b) => {
-              const aSeconds = a.startTs?.seconds ?? -1;
-              const bSeconds = b.startTs?.seconds ?? -1;
-              return bSeconds - aSeconds;
-            })[0] || null;
+          // prefer rows with a start timestamp; then fallback to any "open"
+          const openRows = rows.filter((r) => r.open);
+          const sorted = openRows.sort((a, b) => {
+            const as = a.startTs?.seconds ?? -1;
+            const bs = b.startTs?.seconds ?? -1;
+            return bs - as;
+          });
+          const chosen = sorted[0] || null;
 
           setState((prev) => {
-            const next = chosen
+            // de-dupe: only update when the chosen doc actually changes
+            const prevId = prev.docId || null;
+            const nextId = chosen?.id || null;
+            const sameStart =
+              (prev.startTimeTs?.seconds || null) ===
+                (chosen?.startTs?.seconds || null) &&
+              (prev.startTimeTs?.nanoseconds || null) ===
+                (chosen?.startTs?.nanoseconds || null);
+
+            if (prev.hasActive === !!chosen && prevId === nextId && sameStart) {
+              // keep debug fresh though (which query produced the latest snapshot)
+              return prev.debug?.qIndex === idx
+                ? prev
+                : {
+                    ...prev,
+                    debug: {
+                      ...(prev.debug || {}),
+                      qIndex: idx,
+                      rowsCount: rows.length,
+                    },
+                  };
+            }
+
+            lastChosenRef.current = chosen;
+            return chosen
               ? {
                   hasActive: true,
                   docId: chosen.id,
                   startTimeTs: chosen.startTs || null,
-                  debug: { source: `q${idx}`, chosen },
+                  debug: {
+                    qIndex: idx,
+                    rowsCount: rows.length,
+                    keys: chosen.keys,
+                  },
                 }
-              : { hasActive: false, docId: null, startTimeTs: null, debug: { source: `q${idx}`, recentCount: candidates.length } };
-
-            if (
-              prev.hasActive === next.hasActive &&
-              prev.docId === next.docId &&
-              (prev.startTimeTs?.seconds || null) === (next.startTimeTs?.seconds || null) &&
-              (prev.startTimeTs?.nanoseconds || null) === (next.startTimeTs?.nanoseconds || null)
-            ) {
-              return prev.debug?.source === next.debug?.source ? prev : { ...prev, debug: next.debug };
-            }
-            return next;
+              : {
+                  hasActive: false,
+                  docId: null,
+                  startTimeTs: null,
+                  debug: {
+                    qIndex: idx,
+                    rowsCount: rows.length,
+                    reason: "no-open",
+                  },
+                };
           });
         },
-        (error) => {
-          logError(error, { where: "ActiveClockProvider", action: "snapshotError", queryIndex: idx });
+        (err) => {
+          console.error("[ActiveClockProvider] snapshot error", err);
+          setState((s) => ({
+            ...s,
+            debug: { ...(s.debug || {}), error: String(err?.message || err) },
+          }));
         },
-      ),
-    );
+      );
+    });
 
     return () => {
-      unsubs.forEach((unsubscribe, idx) => {
-        if (typeof unsubscribe !== "function") return;
+      unsubs.forEach((u) => {
         try {
-          unsubscribe();
-        } catch (error) {
-          logError(error, { where: "ActiveClockProvider", action: "snapshotUnsub", queryIndex: idx });
+          u();
+        } catch (e) {
+          console.error(e);
         }
       });
     };
-  }, [uid]);
+  }, []);
 
   const value = useMemo(() => state, [state]);
-  return <ActiveClockContext.Provider value={value}>{children}</ActiveClockContext.Provider>;
+  return (
+    <ActiveClockContext.Provider value={value}>
+      {children}
+    </ActiveClockContext.Provider>
+  );
 }

@@ -6,22 +6,35 @@ import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 
 function TimeClockDebugPill() {
   const { hasActive, docId, debug } = useContext(ActiveClockContext);
-  const text = hasActive ? `active • ${docId || "—"}` : `no-active • ${debug?.reason || debug?.source || "—"}`;
+  const line1 = hasActive
+    ? `active • ${docId || "—"}`
+    : `no-active • q${debug?.qIndex ?? "?"}`;
+  const line2 = debug?.keys
+    ? `${debug.keys.startKey || "-"} | ${debug.keys.endKey || "-"} | ${debug.keys.activeKey || "-"}`
+    : typeof debug?.reason === "string"
+      ? debug.reason
+      : "";
   return (
     <Box
       sx={{
         position: "fixed",
         left: 8,
         bottom: 8,
-        p: 0.5,
+        p: 0.75,
         borderRadius: 1,
-        bgcolor: "rgba(255,255,255,0.08)",
+        bgcolor: hasActive ? "rgba(76,187,23,0.25)" : "rgba(255,255,255,0.08)",
         color: "#fff",
         fontSize: 11,
         zIndex: 3000,
+        lineHeight: 1.2,
       }}
     >
-      {text}
+      <Box component="div">{line1}</Box>
+      {line2 ? (
+        <Box component="div" sx={{ opacity: 0.8 }}>
+          {line2}
+        </Box>
+      ) : null}
     </Box>
   );
 }

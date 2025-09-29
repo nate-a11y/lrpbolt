@@ -41,8 +41,9 @@ function PermissionOverlay({ onContinue }) {
           variant="body2"
           sx={{ mb: 2, color: "rgba(255,255,255,0.8)" }}
         >
-          To continue using Lake Ride Pros, please enable notifications and screen
-          wake permissions. This ensures you never forget you’re on the clock.
+          To continue using Lake Ride Pros, please enable notifications and
+          screen wake permissions. This ensures you never forget you’re on the
+          clock.
         </Typography>
         <Stack spacing={2}>
           <Button

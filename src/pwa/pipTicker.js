@@ -4,7 +4,9 @@ import logError from "@/utils/logError.js";
 let pipWindow = null;
 
 function hasDocumentPiP() {
-  return typeof window !== "undefined" && Boolean(window.documentPictureInPicture);
+  return (
+    typeof window !== "undefined" && Boolean(window.documentPictureInPicture)
+  );
 }
 
 function ensureDocument() {
@@ -103,7 +105,8 @@ function renderDocPiP(doc) {
     "width:14px;height:14px;border-radius:50%;background:#4cbb17;flex:0 0 auto;";
   const text = doc.createElement("div");
   text.id = "lrp-pip-text";
-  text.style.cssText = "color:#fff;font-weight:700;font-size:13px;white-space:nowrap;";
+  text.style.cssText =
+    "color:#fff;font-weight:700;font-size:13px;white-space:nowrap;";
   text.textContent = "On the clock…";
   wrapper.appendChild(dot);
   wrapper.appendChild(text);

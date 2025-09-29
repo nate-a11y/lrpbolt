@@ -3,7 +3,10 @@ import logError from "@/utils/logError.js";
 
 const TITLE = "LRP — On the clock";
 
-export async function requestPersistentClockNotification(body, { silent = false } = {}) {
+export async function requestPersistentClockNotification(
+  body,
+  { silent = false } = {},
+) {
   try {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "granted") {
@@ -28,15 +31,22 @@ export async function requestPersistentClockNotification(body, { silent = false 
       ],
     });
   } catch (error) {
-    logError(error, { where: "clockNotifications", action: "showNotification" });
+    logError(error, {
+      where: "clockNotifications",
+      action: "showNotification",
+    });
   }
 }
 
 export async function clearClockNotification() {
   try {
     const registration = await navigator.serviceWorker?.getRegistration();
-    const notifications = await registration?.getNotifications({ tag: "lrp-clock" });
-    await Promise.all((notifications || []).map((notification) => notification.close()));
+    const notifications = await registration?.getNotifications({
+      tag: "lrp-clock",
+    });
+    await Promise.all(
+      (notifications || []).map((notification) => notification.close()),
+    );
   } catch (error) {
     logError(error, { where: "clockNotifications", action: "clear" });
   }

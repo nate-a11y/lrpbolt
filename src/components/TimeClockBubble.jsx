@@ -1,7 +1,14 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useContext, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Box, Fade, IconButton, Paper, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Fade,
+  IconButton,
+  Paper,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
@@ -10,10 +17,19 @@ import CloseIcon from "@mui/icons-material/Close";
 import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 import useElapsedFromTs from "@/hooks/useElapsedFromTs.js";
 import { openTimeClockModal } from "@/services/uiBus";
-import { requestPersistentClockNotification, clearClockNotification } from "@/pwa/clockNotifications";
+import {
+  requestPersistentClockNotification,
+  clearClockNotification,
+} from "@/pwa/clockNotifications";
 import { trySetAppBadge, clearAppBadge } from "@/pwa/appBadge";
 import useWakeLock from "@/hooks/useWakeLock.js";
-import { startClockPiP, stopClockPiP, isPiPSupported, isPiPActive, updateClockPiP } from "@/pwa/pipTicker";
+import {
+  startClockPiP,
+  stopClockPiP,
+  isPiPSupported,
+  isPiPActive,
+  updateClockPiP,
+} from "@/pwa/pipTicker";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
 
@@ -26,8 +42,14 @@ export default function TimeClockBubble() {
   useWakeLock(hasActive && !!start);
   const [collapsed, setCollapsed] = useState(false);
   const [pipOn, setPipOn] = useState(false);
-  const elapsedLabel = useMemo(() => formatClockElapsed(elapsedMs), [elapsedMs]);
-  const elapsedMinutes = useMemo(() => Math.floor(elapsedMs / 60000), [elapsedMs]);
+  const elapsedLabel = useMemo(
+    () => formatClockElapsed(elapsedMs),
+    [elapsedMs],
+  );
+  const elapsedMinutes = useMemo(
+    () => Math.floor(elapsedMs / 60000),
+    [elapsedMs],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +79,9 @@ export default function TimeClockBubble() {
     if (!(hasActive && start)) return undefined;
     const interval = setInterval(async () => {
       try {
-        await requestPersistentClockNotification(elapsedLabel, { silent: true });
+        await requestPersistentClockNotification(elapsedLabel, {
+          silent: true,
+        });
         await trySetAppBadge(elapsedMinutes);
         if (pipOn && isPiPActive()) {
           await updateClockPiP(elapsedLabel);
@@ -88,9 +112,12 @@ export default function TimeClockBubble() {
     };
   }, [pipOn, elapsedLabel]);
 
-  useEffect(() => () => {
-    stopClockPiP();
-  }, []);
+  useEffect(
+    () => () => {
+      stopClockPiP();
+    },
+    [],
+  );
 
   if (!(hasActive && start)) {
     return null;
@@ -108,7 +135,10 @@ export default function TimeClockBubble() {
         setPipOn(true);
       } else {
         setPipOn(false);
-        logError(new Error("pip-start-failed"), { where: "TimeClockBubble", action: "pipDenied" });
+        logError(new Error("pip-start-failed"), {
+          where: "TimeClockBubble",
+          action: "pipDenied",
+        });
       }
     } catch (error) {
       logError(error, { where: "TimeClockBubble", action: "pipToggle" });
@@ -154,12 +184,21 @@ export default function TimeClockBubble() {
         </Box>
 
         {!collapsed && (
-          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 600 }}
+          >
             On the clock • {elapsedLabel}
           </Typography>
         )}
 
-        <Box sx={{ display: "flex", alignItems: "center", ml: collapsed ? 0.5 : 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            ml: collapsed ? 0.5 : 1,
+          }}
+        >
           <Tooltip title="Open Time Clock">
             <IconButton
               size="small"
@@ -191,7 +230,11 @@ export default function TimeClockBubble() {
               aria-label={collapsed ? "Expand bubble" : "Collapse bubble"}
               sx={{ color: "rgba(255,255,255,0.85)" }}
             >
-              {collapsed ? <OpenInNewIcon fontSize="small" /> : <CloseIcon fontSize="small" />}
+              {collapsed ? (
+                <OpenInNewIcon fontSize="small" />
+              ) : (
+                <CloseIcon fontSize="small" />
+              )}
             </IconButton>
           </Tooltip>
         </Box>
