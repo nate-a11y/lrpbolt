@@ -89,7 +89,7 @@ const DRIVER_LIST = [
     lrp: "LRP13",
     phone: "573.280.6546",
     email: "Jeremy.imler19@gmail.com",
-    vehicles: ["Limo Bus", "Rescue Squad", "Sprinter", "Shuttle"],
+    vehicles: ["CDL Trainer", "Limo Bus", "Rescue Squad", "Sprinter", "Shuttle"],
   },
   {
     name: "Jacob Brentlinger",
@@ -124,13 +124,13 @@ const DRIVER_LIST = [
     lrp: "LRP18",
     phone: "573.286.4983",
     email: "scrivdaddywoowoo@yahoo.com",
-    vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
+    vehicles: ["Limo Bus", "Rescue Squad", "Sprinter", "Shuttle"],
   },
   {
-    name: "Trenton Phillips",
+    name: "Open",
     lrp: "LRP19",
-    phone: "573.832.9342",
-    email: "phillipstrenton101@yahoo.com",
+    phone: "-",
+    email: "-",
     vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
