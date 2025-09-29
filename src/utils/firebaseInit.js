@@ -17,13 +17,24 @@ import getEnv from "./env.js";
 
 const env = getEnv();
 
+const projectId = env.VITE_FIREBASE_PROJECT_ID;
+const authDomain =
+  env.VITE_FIREBASE_AUTH_DOMAIN ||
+  (projectId ? `${projectId}.firebaseapp.com` : undefined);
+const storageBucket =
+  env.VITE_FIREBASE_STORAGE_BUCKET ||
+  (projectId ? `${projectId}.appspot.com` : undefined);
+
 export const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: `${env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  projectId,
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: env.VITE_FIREBASE_APP_ID,
+  ...(authDomain ? { authDomain } : {}),
+  ...(storageBucket ? { storageBucket } : {}),
+  ...(env.VITE_FIREBASE_MEASUREMENT_ID
+    ? { measurementId: env.VITE_FIREBASE_MEASUREMENT_ID }
+    : {}),
 };
 
 export const app = getApps().length
