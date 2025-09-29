@@ -25,9 +25,20 @@ export function isPiPSupported() {
   }
 }
 
+export function isPiPActive() {
+  try {
+    if (hasDocumentPiP() && pipWindow && !pipWindow.closed) return true;
+    const doc = ensureDocument();
+    return Boolean(doc.pictureInPictureElement);
+  } catch (error) {
+    logError(error, { where: "pipTicker", action: "isActive" });
+    return false;
+  }
+}
+
 export async function startClockPiP(text) {
   try {
-    if (!isPiPSupported()) return;
+    if (!isPiPSupported()) return false;
     if (hasDocumentPiP()) {
       if (!pipWindow || pipWindow.closed) {
         pipWindow = await window.documentPictureInPicture.requestWindow({
@@ -37,11 +48,28 @@ export async function startClockPiP(text) {
         renderDocPiP(pipWindow.document);
       }
       updateDocPiP(pipWindow.document, text);
-      return;
+      return true;
     }
     await ensureVideoPiP(text);
+    return isPiPActive();
   } catch (error) {
     logError(error, { where: "pipTicker", action: "start" });
+    return false;
+  }
+}
+
+export async function updateClockPiP(text) {
+  try {
+    if (!isPiPActive()) return false;
+    if (hasDocumentPiP() && pipWindow && !pipWindow.closed) {
+      updateDocPiP(pipWindow.document, text);
+      return true;
+    }
+    await ensureVideoPiP(text);
+    return isPiPActive();
+  } catch (error) {
+    logError(error, { where: "pipTicker", action: "update" });
+    return false;
   }
 }
 
@@ -54,7 +82,9 @@ export function stopClockPiP() {
     const doc = ensureDocument();
     const video = doc.getElementById("lrp-clock-pip-video");
     if (video && doc.pictureInPictureElement === video) {
-      doc.exitPictureInPicture().catch(() => {});
+      doc.exitPictureInPicture().catch((error) => {
+        logError(error, { where: "pipTicker", action: "exitPiP" });
+      });
     }
   } catch (error) {
     logError(error, { where: "pipTicker", action: "stop" });
