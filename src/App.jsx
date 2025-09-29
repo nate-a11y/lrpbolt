@@ -8,7 +8,13 @@ import {
   lazy,
   useCallback,
 } from "react";
-import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   Box,
   Button,
@@ -331,7 +337,10 @@ function App() {
                 }
               />
               <Route path="/shootout" element={<ShootoutTab />} />
-              <Route path="/scan" element={<Navigate to="/tickets" replace />} />
+              <Route
+                path="/scan"
+                element={<Navigate to="/tickets" replace />}
+              />
               <Route path="/info" element={<DriverInfoTab />} />
               <Route
                 path="/drop-guides"

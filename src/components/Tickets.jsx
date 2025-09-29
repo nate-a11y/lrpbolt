@@ -334,7 +334,9 @@ function Tickets() {
       if (!trimmed) return;
       const withoutQuery = trimmed.split("?")[0];
       const segments = withoutQuery.split("/").filter(Boolean);
-      const candidate = segments.length ? segments[segments.length - 1] : trimmed;
+      const candidate = segments.length
+        ? segments[segments.length - 1]
+        : trimmed;
       const ticketId = String(candidate || "").trim();
       if (!ticketId) {
         setSnackbar({
@@ -1522,7 +1524,9 @@ function Tickets() {
                       checked={sequentialScan}
                       onChange={handleSequentialToggle}
                       color="success"
-                      inputProps={{ "aria-label": "Toggle sequential scanning" }}
+                      inputProps={{
+                        "aria-label": "Toggle sequential scanning",
+                      }}
                     />
                   }
                   label="Sequential mode"
@@ -1546,7 +1550,9 @@ function Tickets() {
             <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#060606" }}>
               <Suspense
                 fallback={
-                  <Box sx={{ py: 6, display: "flex", justifyContent: "center" }}>
+                  <Box
+                    sx={{ py: 6, display: "flex", justifyContent: "center" }}
+                  >
                     <CircularProgress size={24} sx={{ color: "#4cbb17" }} />
                   </Box>
                 }
@@ -1599,7 +1605,11 @@ function Tickets() {
       >
         <DialogTitle
           id="tickets-scan-confirm"
-          sx={{ fontWeight: 600, pb: 1, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          sx={{
+            fontWeight: 600,
+            pb: 1,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}
         >
           Record ticket scan
         </DialogTitle>
@@ -1607,25 +1617,40 @@ function Tickets() {
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             Ticket {pendingScanTicket?.ticketId || "—"}
           </Typography>
-          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
+          >
             Passenger: {pendingScanTicket?.passenger || "Unknown"}
           </Typography>
-          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
+          >
             Current status: {pendingScanStatus}
           </Typography>
           {pendingScanMeta?.outAt && (
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}>
-              Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at {" "}
+            <Typography
+              variant="body2"
+              sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
+            >
+              Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at{" "}
               {formatDateTime(pendingScanMeta.outAt)}
             </Typography>
           )}
           {pendingScanMeta?.retAt && (
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}>
-              Return recorded by {pendingScanMeta.retBy || "Unknown"} at {" "}
+            <Typography
+              variant="body2"
+              sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
+            >
+              Return recorded by {pendingScanMeta.retBy || "Unknown"} at{" "}
               {formatDateTime(pendingScanMeta.retAt)}
             </Typography>
           )}
-          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.72)", mt: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: "rgba(255,255,255,0.72)", mt: 2 }}
+          >
             Select a direction to log this scan.
           </Typography>
         </DialogContent>
@@ -1670,7 +1695,9 @@ function Tickets() {
               },
             }}
           >
-            {savingScan && savingScanType === "outbound" ? "Saving…" : "Mark Outbound"}
+            {savingScan && savingScanType === "outbound"
+              ? "Saving…"
+              : "Mark Outbound"}
           </Button>
           <Button
             onClick={() => handleScanConfirm("return")}
@@ -1689,10 +1716,15 @@ function Tickets() {
                   ? "0 0 6px #4cbb17"
                   : "0 0 10px rgba(76,187,23,0.55)",
               "&:hover": { boxShadow: "0 0 12px rgba(76,187,23,0.75)" },
-              "&.Mui-disabled": { boxShadow: "none", color: "rgba(255,255,255,0.4)" },
+              "&.Mui-disabled": {
+                boxShadow: "none",
+                color: "rgba(255,255,255,0.4)",
+              },
             }}
           >
-            {savingScan && savingScanType === "return" ? "Saving…" : "Mark Return"}
+            {savingScan && savingScanType === "return"
+              ? "Saving…"
+              : "Mark Return"}
           </Button>
         </DialogActions>
       </Dialog>

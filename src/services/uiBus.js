@@ -10,7 +10,9 @@ export function on(event, fn) {
     listeners.set(event, current);
   }
   return () => {
-    const next = (listeners.get(event) || []).filter((listener) => listener !== fn);
+    const next = (listeners.get(event) || []).filter(
+      (listener) => listener !== fn,
+    );
     listeners.set(event, next);
   };
 }
