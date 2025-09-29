@@ -46,8 +46,23 @@ import PageContainer from "./PageContainer.jsx";
 
 const cache = new Map();
 
+const DEFAULT_STICKY_TOP = {
+  xs: `calc(56px + env(safe-area-inset-top, 0px))`,
+  sm: `calc(64px + env(safe-area-inset-top, 0px))`,
+};
+
 const VehiclePillWrapper = forwardRef(
-  ({ children, width, hidden = false, anchored = false, top = 0 }, ref) => (
+  (
+    {
+      children,
+      width,
+      hidden = false,
+      anchored = false,
+      top = 0,
+      stickyTopOffset = DEFAULT_STICKY_TOP,
+    },
+    ref,
+  ) => (
     <Box
       ref={ref}
       sx={{
@@ -63,7 +78,7 @@ const VehiclePillWrapper = forwardRef(
         boxShadow: (theme) => theme.shadows[2],
         position: anchored ? "absolute" : "sticky",
         left: 0,
-        top: anchored ? top : 0,
+        top: anchored ? top : stickyTopOffset,
         zIndex: (theme) => theme.zIndex.appBar,
         visibility: hidden ? "hidden" : "visible",
       }}
@@ -294,6 +309,8 @@ function RideVehicleCalendar({
   persistedFilters,
   onFiltersChange,
   stickyPillAnchorId,
+  hideHeader = false,
+  stickyTopOffset = DEFAULT_STICKY_TOP,
 } = {}) {
   const [date, setDate] = useState(() => {
     const stored = localStorage.getItem("rvcal.date");
@@ -800,9 +817,11 @@ function RideVehicleCalendar({
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <PageContainer>
-        <Typography variant="h5" gutterBottom>
-          🚖 Ride & Vehicle Calendar
-        </Typography>
+        {!hideHeader && (
+          <Typography variant="h5" gutterBottom>
+            🚖 Ride & Vehicle Calendar
+          </Typography>
+        )}
 
         <Stack direction="row" spacing={1} alignItems="center" mb={2}>
           <IconButton
@@ -888,7 +907,7 @@ function RideVehicleCalendar({
         <Box
           sx={{
             position: "sticky",
-            top: 0,
+            top: stickyTopOffset,
             zIndex: 1,
             backgroundColor: theme.palette.background.default,
             borderBottom: 1,
@@ -991,7 +1010,7 @@ function RideVehicleCalendar({
               <Box
                 sx={{
                   position: "sticky",
-                  top: 0,
+                  top: stickyTopOffset,
                   zIndex: 1,
                   bgcolor: theme.palette.background.paper,
                   borderBottom: "1px solid",
@@ -1091,6 +1110,7 @@ function RideVehicleCalendar({
                         width={labelW}
                         anchored
                         top={pillOffsets[vehicle] ?? 0}
+                        stickyTopOffset={stickyTopOffset}
                       >
                         {renderChip()}
                         {renderCount()}
@@ -1104,6 +1124,7 @@ function RideVehicleCalendar({
                         ref={setPillRef}
                         width={labelW}
                         hidden={Boolean(stickyAnchorEl)}
+                        stickyTopOffset={stickyTopOffset}
                       >
                         {renderChip()}
                         {renderCount()}
