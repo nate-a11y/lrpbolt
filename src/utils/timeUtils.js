@@ -57,3 +57,14 @@ export function formatHMFromMinutes(mins) {
 export function safeNumber(n, fallback = "N/A") {
   return typeof n === "number" && Number.isFinite(n) ? n : fallback;
 }
+
+export function formatClockElapsed(ms) {
+  const safeValue = Math.max(0, Number(ms) || 0);
+  const totalSeconds = Math.floor(safeValue / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}

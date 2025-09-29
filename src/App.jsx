@@ -8,7 +8,7 @@ import {
   lazy,
   useCallback,
 } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -20,6 +20,8 @@ import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
+import TimeClockBubble from "@/components/TimeClockBubble.jsx";
+import { on } from "@/services/uiBus";
 
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
@@ -65,6 +67,7 @@ function App() {
   const { fetchDrivers } = useDrivers();
   const { user, authLoading, role: authRole } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // one-time init
@@ -75,6 +78,17 @@ function App() {
     // fire on route change only
     trackPageView(location.pathname);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const unsubscribe = on("OPEN_TIME_CLOCK", () => {
+      navigate("/clock");
+    });
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, [navigate]);
 
   useEffect(() => {
     if (!user) return;
@@ -326,6 +340,7 @@ function App() {
           onClose={() => setPhonePromptOpen(false)}
         />
         <NotificationsOptInDialog user={user} />
+        <TimeClockBubble />
       </AppShell>
     </LocalizationProvider>
   );

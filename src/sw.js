@@ -109,3 +109,43 @@ try {
   // Do not crash SW if FCM not configured
   console.warn("[SW] FCM init skipped or failed:", e);
 }
+
+self.addEventListener("notificationclick", (event) => {
+  const action = event.action;
+  const notification = event.notification;
+  event.waitUntil(
+    (async () => {
+      try {
+        const allClients = await clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        });
+        const client =
+          allClients[0] ||
+          (typeof clients.openWindow === "function"
+            ? await clients.openWindow("/")
+            : null);
+        if (client && "focus" in client) {
+          try {
+            await client.focus();
+          } catch (focusError) {
+            console.warn("[SW] focus failed", focusError);
+          }
+        }
+        if (action === "clock_out") {
+          client?.postMessage?.({ type: "LRP_CLOCK_OUT_REQUEST" });
+        } else {
+          client?.postMessage?.({ type: "LRP_OPEN_CLOCK" });
+        }
+      } catch (error) {
+        console.error("[SW] notificationclick error", error);
+      } finally {
+        try {
+          notification.close();
+        } catch (closeError) {
+          console.warn("[SW] notification close failed", closeError);
+        }
+      }
+    })(),
+  );
+});
