@@ -498,30 +498,6 @@ function RideVehicleCalendar({
     };
   }, [stickyPillAnchorId]);
 
-  useEffect(() => {
-    if (!stickyAnchorEl) {
-      setPillOffsets({});
-      return;
-    }
-    const anchor = stickyAnchorEl;
-    const nextOffsets = {};
-    Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
-      if (!node) return;
-      nextOffsets[vehicle] = node.offsetTop || 0;
-    });
-    setPillOffsets(nextOffsets);
-    const previousMinHeight = anchor.style.minHeight;
-    if (lanesWrapperRef.current) {
-      const height = lanesWrapperRef.current.offsetHeight;
-      if (height) {
-        anchor.style.minHeight = `${height}px`;
-      }
-    }
-    return () => {
-      anchor.style.minHeight = previousMinHeight;
-    };
-  }, [stickyAnchorEl, groupedPacked]);
-
   const vehicles = useMemo(
     () => [...new Set(events.map((e) => e.vehicle))],
     [events],
@@ -665,6 +641,30 @@ function RideVehicleCalendar({
     });
   }, [filteredGroups]);
   // ===== [RVTC:lanes:end] =====
+
+  useEffect(() => {
+    if (!stickyAnchorEl) {
+      setPillOffsets({});
+      return;
+    }
+    const anchor = stickyAnchorEl;
+    const nextOffsets = {};
+    Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
+      if (!node) return;
+      nextOffsets[vehicle] = node.offsetTop || 0;
+    });
+    setPillOffsets(nextOffsets);
+    const previousMinHeight = anchor.style.minHeight;
+    if (lanesWrapperRef.current) {
+      const height = lanesWrapperRef.current.offsetHeight;
+      if (height) {
+        anchor.style.minHeight = `${height}px`;
+      }
+    }
+    return () => {
+      anchor.style.minHeight = previousMinHeight;
+    };
+  }, [stickyAnchorEl, groupedPacked]);
 
   const summary = useMemo(() => {
     const vehicles = new Set();
