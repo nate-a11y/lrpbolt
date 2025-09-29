@@ -22,15 +22,17 @@ import {
   Tooltip,
   useMediaQuery,
   CircularProgress,
+  Fab,
+  Drawer,
 } from "@mui/material";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import ShareIcon from "@mui/icons-material/Share";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import TodayIcon from "@mui/icons-material/Today";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { styled, useTheme } from "@mui/material/styles";
 
 import { dayjs } from "@/utils/time";
@@ -100,7 +102,7 @@ const RideVehicleCalendarLazy = lazy(async () => {
   return { default: component };
 });
 
-const StickyPill = styled("div")(({ theme }) => ({
+const StickyPill = styled(Box)(({ theme }) => ({
   position: "sticky",
   left: 0,
   zIndex: theme.zIndex.appBar,
@@ -122,13 +124,7 @@ export default function CalendarHub() {
       return { vehicles: [], scrollToNow: true };
     }
   });
-  const [helpOpen, setHelpOpen] = useState(isMdUp);
-
-  useEffect(() => {
-    if (isMdUp) {
-      setHelpOpen(true);
-    }
-  }, [isMdUp]);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleFiltersChange = useCallback((next) => {
     setFilters((prev) => {
@@ -156,15 +152,107 @@ export default function CalendarHub() {
     [],
   );
 
-  const handleToggleHelp = useCallback(() => {
-    setHelpOpen((prev) => !prev);
+  const handleHelpOpen = useCallback(() => {
+    setHelpOpen(true);
   }, []);
+
+  const handleHelpClose = useCallback(() => {
+    setHelpOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (isMdUp && helpOpen) {
+      setHelpOpen(false);
+    }
+  }, [isMdUp, helpOpen]);
 
   const todayLabel = useMemo(() => dayjs().format("MMM D, YYYY"), []);
   // Optional: expose callbacks for the Quick Actions row if RideVehicleCalendar doesn't already
 
+  const toolbarHeight = { xs: 56, sm: 64 };
+  const stickyTop = {
+    xs: `calc(${toolbarHeight.xs}px + env(safe-area-inset-top, 0px))`,
+    sm: `calc(${toolbarHeight.sm}px + env(safe-area-inset-top, 0px))`,
+  };
+
+  const renderHelpPanel = () => (
+    <Stack spacing={2} id="calendar-help-panel">
+      <Stack direction="row" spacing={1} alignItems="center">
+        <MenuBookIcon sx={{ color: LRP.green }} />
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          How to Mark Yourself Unavailable
+        </Typography>
+      </Stack>
+      <Alert severity="info">
+        Quick tip: Update <strong>both</strong> Google Calendar and Moovs so
+        dispatch knows when you’re out.
+      </Alert>
+
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Step 1: Google Calendar</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={1}>
+            <Typography>
+              Create an event titled: <strong>Your Name — Not Available</strong>
+            </Typography>
+            <Typography>
+              Select the date/time or mark <strong>All Day</strong>.
+            </Typography>
+            <Typography>
+              Use <strong>Repeat</strong> if this recurs.
+            </Typography>
+            <Typography>
+              Tap <strong>Save</strong>.
+            </Typography>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Step 2: Block Time in Moovs</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={1}>
+            <Typography>Open Moovs &gt; Availability.</Typography>
+            <Typography>
+              Block the same dates/times to prevent dispatch overlap.
+            </Typography>
+            <Typography>Confirm changes.</Typography>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Bonus: Duplicate Days Off</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={1}>
+            <Typography>
+              In Google Calendar, duplicate your “Not Available” event and set
+              the new dates.
+            </Typography>
+            <Typography>Mirror those in Moovs.</Typography>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+    </Stack>
+  );
+
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, py: 2 }}>
+    <Box
+      sx={{
+        pt: {
+          xs: stickyTop.xs,
+          sm: stickyTop.sm,
+        },
+        px: { xs: 1, sm: 2 },
+        pb: `env(safe-area-inset-bottom, 0px)`,
+      }}
+    >
       <Stack
         direction="row"
         alignItems="center"
@@ -180,16 +268,10 @@ export default function CalendarHub() {
               <HelpOutlineIcon sx={{ color: LRP.green }} />
             </Tooltip>
           ) : (
-            <Tooltip
-              title={
-                helpOpen
-                  ? "Hide Availability & Moovs help"
-                  : "Show Availability & Moovs help"
-              }
-            >
+            <Tooltip title="Show Availability & Moovs help">
               <IconButton
                 size="small"
-                onClick={handleToggleHelp}
+                onClick={handleHelpOpen}
                 aria-label="Toggle availability help"
                 aria-controls="calendar-help-panel"
                 aria-expanded={helpOpen}
@@ -253,7 +335,7 @@ export default function CalendarHub() {
         {/* Left: Schedule */}
         <Grid item xs={12} md={8}>
           {/* Sticky vehicle pill wrapper: RideVehicleCalendar should render its pill inside this slot when possible */}
-          <StickyPill id="sticky-vehicle-pill-anchor" />
+          <StickyPill id="sticky-vehicle-pill-anchor" sx={{ top: stickyTop }} />
           <Suspense
             fallback={
               <Box
@@ -272,81 +354,43 @@ export default function CalendarHub() {
               persistedFilters={filters}
               onFiltersChange={handleFiltersChange}
               stickyPillAnchorId="sticky-vehicle-pill-anchor"
+              hideHeader
+              stickyTopOffset={stickyTop}
             />
           </Suspense>
         </Grid>
 
         {/* Right: Help */}
-        {(isMdUp || helpOpen) && (
-          <Grid item xs={12} md={4}>
-            <Stack spacing={2} id="calendar-help-panel">
-              <Stack direction="row" spacing={1} alignItems="center">
-                <MenuBookIcon sx={{ color: LRP.green }} />
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  How to Mark Yourself Unavailable
-                </Typography>
-              </Stack>
-              <Alert severity="info">
-                Quick tip: Update <strong>both</strong> Google Calendar and
-                Moovs so dispatch knows when you’re out.
-              </Alert>
-
-              <Accordion defaultExpanded>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>Step 1: Google Calendar</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Stack spacing={1}>
-                    <Typography>
-                      Create an event titled:{" "}
-                      <strong>Your Name — Not Available</strong>
-                    </Typography>
-                    <Typography>
-                      Select the date/time or mark <strong>All Day</strong>.
-                    </Typography>
-                    <Typography>
-                      Use <strong>Repeat</strong> if this recurs.
-                    </Typography>
-                    <Typography>
-                      Tap <strong>Save</strong>.
-                    </Typography>
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
-
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>Step 2: Block Time in Moovs</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Stack spacing={1}>
-                    <Typography>Open Moovs &gt; Availability.</Typography>
-                    <Typography>
-                      Block the same dates/times to prevent dispatch overlap.
-                    </Typography>
-                    <Typography>Confirm changes.</Typography>
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
-
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>Bonus: Duplicate Days Off</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Stack spacing={1}>
-                    <Typography>
-                      In Google Calendar, duplicate your “Not Available” event
-                      and set the new dates.
-                    </Typography>
-                    <Typography>Mirror those in Moovs.</Typography>
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
-            </Stack>
-          </Grid>
-        )}
+        <Grid item xs={12} md={4} sx={{ display: { xs: "none", md: "block" } }}>
+          {renderHelpPanel()}
+        </Grid>
       </Grid>
+
+      <Fab
+        color="primary"
+        aria-label="Open availability help"
+        onClick={handleHelpOpen}
+        sx={{
+          position: "fixed",
+          right: 16,
+          bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
+          backgroundColor: LRP.green,
+          "&:hover": { backgroundColor: LRP.green },
+          zIndex: theme.zIndex.fab,
+          display: { xs: "flex", md: "none" },
+        }}
+      >
+        <HelpOutlineIcon />
+      </Fab>
+
+      <Drawer
+        anchor="right"
+        open={helpOpen}
+        onClose={handleHelpClose}
+        PaperProps={{ sx: { width: "92vw", maxWidth: 420 } }}
+      >
+        <Box sx={{ px: 2, py: 2 }}>{renderHelpPanel()}</Box>
+      </Drawer>
     </Box>
   );
 }
