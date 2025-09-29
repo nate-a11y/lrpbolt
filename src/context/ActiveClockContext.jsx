@@ -13,11 +13,12 @@ import { db } from "@/services/firebase";
 import { TIMECLOCK_SCHEMA, pickField } from "@/config/timeclockSchema";
 
 /**
- * Detects an active time session across varied schemas.
- * Emits: { hasActive, docId, startTimeTs, debug }
- * - Queries each possible user field in parallel.
- * - No orderBy requirement (avoids missing-index errors).
- * - Open = explicit boolean active flag OR (no end field) OR (end field === null).
+ * Aggregates results from multiple onSnapshot listeners (userId/uid/driverId).
+ * - Stores each listener's rows in a ref.
+ * - Recomputes a single "chosen" open session from the union.
+ * - BEFORE all listeners have reported at least once, we NEVER flip to no-active.
+ *   (prevents flicker/clobber when non-matching queries return empty)
+ * - AFTER all are ready, we can flip to no-active if none are open.
  */
 export const ActiveClockContext = createContext({
   hasActive: false,
@@ -34,11 +35,17 @@ export default function ActiveClockProvider({ children }) {
     debug: null,
   });
   const uidRef = useRef(null);
-  const lastChosenRef = useRef(null);
 
+  // per-listener cache: { [qIndex]: { ready: bool, rows: Array } }
+  const resultsRef = useRef(Object.create(null));
+  const totalQueriesRef = useRef(0);
+
+  // auth
   useEffect(() => {
     const unsub = onAuthStateChanged(getAuth(), (u) => {
       uidRef.current = u?.uid || null;
+      // reset caches on sign-out
+      resultsRef.current = Object.create(null);
       if (!u?.uid) {
         setState({
           hasActive: false,
@@ -62,15 +69,109 @@ export default function ActiveClockProvider({ children }) {
     if (!uid) return undefined;
 
     const colRef = collection(db, TIMECLOCK_SCHEMA.collection);
-    const unsubs = TIMECLOCK_SCHEMA.userFields.map((userKey, idx) => {
+    const userFields = TIMECLOCK_SCHEMA.userFields;
+    totalQueriesRef.current = userFields.length;
+
+    // helper to compute chosen from union (rowsByQuery = { idx: rows[] })
+    function recompute() {
+      const allRows = [];
+      let readySeen = 0;
+
+      for (let i = 0; i < totalQueriesRef.current; i += 1) {
+        const bucket = resultsRef.current[i];
+        if (bucket?.ready) readySeen += 1;
+        if (bucket?.rows?.length) allRows.push(...bucket.rows);
+      }
+
+      const allReady = readySeen === totalQueriesRef.current;
+
+      // Find open rows
+      const openRows = allRows.filter((r) => r.open);
+
+      // If not all listeners have reported yet:
+      //  - If we already have active, keep it unless a *better* open replaces it.
+      //  - If we don't have active yet and current union has no open, DO NOT set no-active yet.
+      if (!allReady && openRows.length === 0) {
+        // keep current state (prevents clobber flicker)
+        return;
+      }
+
+      // Choose best open by latest start timestamp
+      const chosen =
+        openRows.slice().sort((a, b) => {
+          const as = a.startTs?.seconds ?? -1;
+          const bs = b.startTs?.seconds ?? -1;
+          return bs - as;
+        })[0] || null;
+
+      setState((prev) => {
+        if (chosen) {
+          const same =
+            prev.hasActive === true &&
+            prev.docId === chosen.id &&
+            (prev.startTimeTs?.seconds || null) ===
+              (chosen.startTs?.seconds || null) &&
+            (prev.startTimeTs?.nanoseconds || null) ===
+              (chosen.startTs?.nanoseconds || null);
+
+          if (same) {
+            // still update debug with latest provenance
+            if (prev.debug?.qIndex === chosen.qIndex) return prev;
+            return {
+              ...prev,
+              debug: {
+                ...(prev.debug || {}),
+                unionCount: allRows.length,
+                qIndex: chosen.qIndex,
+                keys: chosen.keys,
+                allReady,
+              },
+            };
+          }
+
+          return {
+            hasActive: true,
+            docId: chosen.id,
+            startTimeTs: chosen.startTs || null,
+            debug: {
+              unionCount: allRows.length,
+              qIndex: chosen.qIndex,
+              keys: chosen.keys,
+              allReady,
+            },
+          };
+        }
+
+        // Only here if allReady and no open rows
+        if (!prev.hasActive) {
+          // keep debug fresh
+          return {
+            ...prev,
+            debug: { unionCount: allRows.length, reason: "no-open", allReady },
+          };
+        }
+        return {
+          hasActive: false,
+          docId: null,
+          startTimeTs: null,
+          debug: { unionCount: allRows.length, reason: "no-open", allReady },
+        };
+      });
+    }
+
+    // install listeners
+    const unsubs = userFields.map((userKey, idx) => {
       const q = query(colRef, where(userKey, "==", uid), limit(25));
+      // initialize slot
+      resultsRef.current[idx] = { ready: false, rows: [] };
+
       return onSnapshot(
         q,
         (snap) => {
           const rows = [];
           snap.forEach((d) => {
             const data = d.data() || {};
-            const start = pickField(data, TIMECLOCK_SCHEMA.startFields).value;
+            const startPick = pickField(data, TIMECLOCK_SCHEMA.startFields);
             const endPick = pickField(data, TIMECLOCK_SCHEMA.endFields);
             const activePick = pickField(data, TIMECLOCK_SCHEMA.activeFlags);
             const hasEndField = !!endPick.key;
@@ -84,81 +185,28 @@ export default function ActiveClockProvider({ children }) {
 
             rows.push({
               id: d.id,
-              startTs: start || null,
+              startTs: startPick.value || null,
               open,
+              qIndex: idx,
               keys: {
-                startKey: pickField(data, TIMECLOCK_SCHEMA.startFields).key,
+                startKey: startPick.key,
                 endKey: endPick.key,
                 activeKey: activePick.key,
               },
-              qIndex: idx,
               _raw: data,
             });
           });
 
-          // prefer rows with a start timestamp; then fallback to any "open"
-          const openRows = rows.filter((r) => r.open);
-          const sorted = openRows.sort((a, b) => {
-            const as = a.startTs?.seconds ?? -1;
-            const bs = b.startTs?.seconds ?? -1;
-            return bs - as;
-          });
-          const chosen = sorted[0] || null;
+          resultsRef.current[idx] = { ready: true, rows };
 
-          setState((prev) => {
-            // de-dupe: only update when the chosen doc actually changes
-            const prevId = prev.docId || null;
-            const nextId = chosen?.id || null;
-            const sameStart =
-              (prev.startTimeTs?.seconds || null) ===
-                (chosen?.startTs?.seconds || null) &&
-              (prev.startTimeTs?.nanoseconds || null) ===
-                (chosen?.startTs?.nanoseconds || null);
-
-            if (prev.hasActive === !!chosen && prevId === nextId && sameStart) {
-              // keep debug fresh though (which query produced the latest snapshot)
-              return prev.debug?.qIndex === idx
-                ? prev
-                : {
-                    ...prev,
-                    debug: {
-                      ...(prev.debug || {}),
-                      qIndex: idx,
-                      rowsCount: rows.length,
-                    },
-                  };
-            }
-
-            lastChosenRef.current = chosen;
-            return chosen
-              ? {
-                  hasActive: true,
-                  docId: chosen.id,
-                  startTimeTs: chosen.startTs || null,
-                  debug: {
-                    qIndex: idx,
-                    rowsCount: rows.length,
-                    keys: chosen.keys,
-                  },
-                }
-              : {
-                  hasActive: false,
-                  docId: null,
-                  startTimeTs: null,
-                  debug: {
-                    qIndex: idx,
-                    rowsCount: rows.length,
-                    reason: "no-open",
-                  },
-                };
-          });
+          // Recompute from union; do NOT write hasActive:false based on a single empty snap
+          recompute();
         },
         (err) => {
           console.error("[ActiveClockProvider] snapshot error", err);
-          setState((s) => ({
-            ...s,
-            debug: { ...(s.debug || {}), error: String(err?.message || err) },
-          }));
+          // mark as ready to avoid blocking forever
+          resultsRef.current[idx] = { ready: true, rows: [] };
+          recompute();
         },
       );
     });
@@ -171,6 +219,8 @@ export default function ActiveClockProvider({ children }) {
           console.error(e);
         }
       });
+      // reset caches on unmount
+      resultsRef.current = Object.create(null);
     };
   }, []);
 
