@@ -1,32 +1,18 @@
 /* Proprietary and confidential. See LICENSE. */
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-  lazy,
-  Suspense,
-} from "react";
+import { useMemo, useState, useCallback, lazy, Suspense } from "react";
 import {
   Box,
   Grid,
   Stack,
   Typography,
-  IconButton,
   Button,
   Divider,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Alert,
   Tooltip,
   useMediaQuery,
   CircularProgress,
   Fab,
   Drawer,
 } from "@mui/material";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import ShareIcon from "@mui/icons-material/Share";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -37,8 +23,7 @@ import { styled, useTheme } from "@mui/material/styles";
 
 import { dayjs } from "@/utils/time";
 import logError from "@/utils/logError.js";
-
-const LRP = { green: "#4cbb17" };
+import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
 const STORAGE_KEY = "lrp.calendar.filters";
 
 let rideVehicleCalendarComponent = null;
@@ -115,6 +100,7 @@ const StickyPill = styled(Box)(({ theme }) => ({
 export default function CalendarHub() {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const useDrawer = useMediaQuery(theme.breakpoints.down("lg"));
   const [filters, setFilters] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -160,87 +146,13 @@ export default function CalendarHub() {
     setHelpOpen(false);
   }, []);
 
-  useEffect(() => {
-    if (isMdUp && helpOpen) {
-      setHelpOpen(false);
-    }
-  }, [isMdUp, helpOpen]);
-
   const todayLabel = useMemo(() => dayjs().format("MMM D, YYYY"), []);
   // Optional: expose callbacks for the Quick Actions row if RideVehicleCalendar doesn't already
 
   const toolbarHeight = { xs: 56, sm: 64 };
-  const stickyTop = {
-    xs: `calc(${toolbarHeight.xs}px + env(safe-area-inset-top, 0px))`,
-    sm: `calc(${toolbarHeight.sm}px + env(safe-area-inset-top, 0px))`,
-  };
-
-  const renderHelpPanel = () => (
-    <Stack spacing={2} id="calendar-help-panel">
-      <Stack direction="row" spacing={1} alignItems="center">
-        <MenuBookIcon sx={{ color: LRP.green }} />
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          How to Mark Yourself Unavailable
-        </Typography>
-      </Stack>
-      <Alert severity="info">
-        Quick tip: Update <strong>both</strong> Google Calendar and Moovs so
-        dispatch knows when you’re out.
-      </Alert>
-
-      <Accordion defaultExpanded>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Step 1: Google Calendar</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={1}>
-            <Typography>
-              Create an event titled: <strong>Your Name — Not Available</strong>
-            </Typography>
-            <Typography>
-              Select the date/time or mark <strong>All Day</strong>.
-            </Typography>
-            <Typography>
-              Use <strong>Repeat</strong> if this recurs.
-            </Typography>
-            <Typography>
-              Tap <strong>Save</strong>.
-            </Typography>
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Step 2: Block Time in Moovs</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={1}>
-            <Typography>Open Moovs &gt; Availability.</Typography>
-            <Typography>
-              Block the same dates/times to prevent dispatch overlap.
-            </Typography>
-            <Typography>Confirm changes.</Typography>
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Bonus: Duplicate Days Off</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={1}>
-            <Typography>
-              In Google Calendar, duplicate your “Not Available” event and set
-              the new dates.
-            </Typography>
-            <Typography>Mirror those in Moovs.</Typography>
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-    </Stack>
-  );
+  const stickyTopXs = `calc(${toolbarHeight.xs}px + env(safe-area-inset-top, 0px))`;
+  const stickyTopSm = `calc(${toolbarHeight.sm}px + env(safe-area-inset-top, 0px))`;
+  const stickyTop = { xs: stickyTopXs, sm: stickyTopSm };
 
   return (
     <Box
@@ -263,23 +175,6 @@ export default function CalendarHub() {
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
             Ride & Vehicle Calendar
           </Typography>
-          {isMdUp ? (
-            <Tooltip title="Availability & Moovs help is on the right">
-              <HelpOutlineIcon sx={{ color: LRP.green }} />
-            </Tooltip>
-          ) : (
-            <Tooltip title="Show Availability & Moovs help">
-              <IconButton
-                size="small"
-                onClick={handleHelpOpen}
-                aria-label="Toggle availability help"
-                aria-controls="calendar-help-panel"
-                aria-expanded={helpOpen}
-              >
-                <HelpOutlineIcon sx={{ color: LRP.green }} />
-              </IconButton>
-            </Tooltip>
-          )}
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography
@@ -355,41 +250,57 @@ export default function CalendarHub() {
               onFiltersChange={handleFiltersChange}
               stickyPillAnchorId="sticky-vehicle-pill-anchor"
               hideHeader
+              hideQuickActions
+              hideLowerActions
               stickyTopOffset={stickyTop}
             />
           </Suspense>
         </Grid>
 
         {/* Right: Help */}
-        <Grid item xs={12} md={4} sx={{ display: { xs: "none", md: "block" } }}>
-          {renderHelpPanel()}
+        <Grid item xs={12} xl={4} sx={{ display: { xs: "none", xl: "block" } }}>
+          {!useDrawer && <CalendarUpdateTab compact />}
         </Grid>
       </Grid>
 
-      <Fab
-        color="primary"
-        aria-label="Open availability help"
-        onClick={handleHelpOpen}
-        sx={{
-          position: "fixed",
-          right: 16,
-          bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
-          backgroundColor: LRP.green,
-          "&:hover": { backgroundColor: LRP.green },
-          zIndex: theme.zIndex.fab,
-          display: { xs: "flex", md: "none" },
-        }}
-      >
-        <HelpOutlineIcon />
-      </Fab>
+      <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
+        <Fab
+          variant="extended"
+          color="primary"
+          aria-label="Open availability help"
+          onClick={handleHelpOpen}
+          sx={{
+            position: "fixed",
+            right: 16,
+            bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
+            zIndex: (t) => t.zIndex.tooltip + 1,
+            backgroundColor: "#4cbb17",
+            "&:hover": { backgroundColor: "#3ea313" },
+            px: { xs: 2, sm: 3 },
+          }}
+        >
+          <HelpOutlineIcon sx={{ mr: { xs: 0, sm: 1 } }} />
+          <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+            Availability Help
+          </Box>
+        </Fab>
+      </Tooltip>
 
       <Drawer
         anchor="right"
         open={helpOpen}
         onClose={handleHelpClose}
-        PaperProps={{ sx: { width: "92vw", maxWidth: 420 } }}
+        PaperProps={{ sx: { width: { xs: "94vw", sm: 420 } } }}
       >
-        <Box sx={{ px: 2, py: 2 }}>{renderHelpPanel()}</Box>
+        <Box
+          sx={{
+            px: 2,
+            py: 2,
+            pt: `calc(8px + env(safe-area-inset-top, 0px))`,
+          }}
+        >
+          <CalendarUpdateTab compact />
+        </Box>
       </Drawer>
     </Box>
   );

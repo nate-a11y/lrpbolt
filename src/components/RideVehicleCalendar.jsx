@@ -305,13 +305,17 @@ const CST = TIMEZONE;
 const FILTERS_STORAGE_KEY = "lrp.calendar.filters";
 const DEFAULT_FILTERS = { vehicles: ["ALL"], scrollToNow: true };
 
-function RideVehicleCalendar({
-  persistedFilters,
-  onFiltersChange,
-  stickyPillAnchorId,
-  hideHeader = false,
-  stickyTopOffset = DEFAULT_STICKY_TOP,
-} = {}) {
+function RideVehicleCalendar(props = {}) {
+  const {
+    persistedFilters,
+    onFiltersChange,
+    stickyPillAnchorId,
+    hideHeader = false,
+    hideQuickActions = false,
+    hideLowerActions = false,
+    stickyTopOffset = DEFAULT_STICKY_TOP,
+    ...rest
+  } = props;
   const [date, setDate] = useState(() => {
     const stored = localStorage.getItem("rvcal.date");
     return stored ? dayjs(stored).tz(CST) : dayjs().tz(CST);
@@ -816,7 +820,7 @@ function RideVehicleCalendar({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <PageContainer>
+      <PageContainer {...rest}>
         {!hideHeader && (
           <Typography variant="h5" gutterBottom>
             🚖 Ride & Vehicle Calendar
@@ -904,61 +908,63 @@ function RideVehicleCalendar({
           />
         </Stack>
 
-        <Box
-          sx={{
-            position: "sticky",
-            top: stickyTopOffset,
-            zIndex: 1,
-            backgroundColor: theme.palette.background.default,
-            borderBottom: 1,
-            borderColor: "divider",
-            py: 1,
-            mb: 2,
-          }}
-        >
-          <Stack
-            direction={isMobile ? "column" : "row"}
-            spacing={2}
-            alignItems={isMobile ? "flex-start" : "center"}
-            justifyContent="space-between"
+        {!hideQuickActions && (
+          <Box
+            sx={{
+              position: "sticky",
+              top: stickyTopOffset,
+              zIndex: 1,
+              backgroundColor: theme.palette.background.default,
+              borderBottom: 1,
+              borderColor: "divider",
+              py: 1,
+              mb: 2,
+            }}
           >
-            <Typography fontSize={14}>
-              {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
-              {summary.tight} Tight Gaps • {summary.overlap} Overlaps
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
-                Today
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  scrollToNow();
-                  scrollRulerToNow();
-                }}
-              >
-                Scroll to Now
-              </Button>
-              <Tooltip title="Keep the view centered on now when opening today">
-                <Switch
+            <Stack
+              direction={isMobile ? "column" : "row"}
+              spacing={2}
+              alignItems={isMobile ? "flex-start" : "center"}
+              justifyContent="space-between"
+            >
+              <Typography fontSize={14}>
+                {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
+                {summary.tight} Tight Gaps • {summary.overlap} Overlaps
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
+                  Today
+                </Button>
+                <Button
                   size="small"
-                  checked={scrollToNowPref}
-                  onChange={(event) =>
-                    updateFilters({ scrollToNow: event.target.checked })
-                  }
-                  inputProps={{ "aria-label": "Auto scroll to now" }}
-                />
-              </Tooltip>
-              <Tooltip title="Toggle Compact Mode">
-                <Switch
-                  size="small"
-                  checked={compactMode}
-                  onChange={() => setCompactMode((v) => !v)}
-                />
-              </Tooltip>
+                  onClick={() => {
+                    scrollToNow();
+                    scrollRulerToNow();
+                  }}
+                >
+                  Scroll to Now
+                </Button>
+                <Tooltip title="Keep the view centered on now when opening today">
+                  <Switch
+                    size="small"
+                    checked={scrollToNowPref}
+                    onChange={(event) =>
+                      updateFilters({ scrollToNow: event.target.checked })
+                    }
+                    inputProps={{ "aria-label": "Auto scroll to now" }}
+                  />
+                </Tooltip>
+                <Tooltip title="Toggle Compact Mode">
+                  <Switch
+                    size="small"
+                    checked={compactMode}
+                    onChange={() => setCompactMode((v) => !v)}
+                  />
+                </Tooltip>
+              </Stack>
             </Stack>
-          </Stack>
-        </Box>
+          </Box>
+        )}
         {/* ===== [RVTC:overview:start] ===== */}
         <Box
           sx={{
@@ -1188,30 +1194,32 @@ function RideVehicleCalendar({
         </Box>
         {/* ===== [RVTC:overview:end] ===== */}
 
-        <Stack direction="row" spacing={1} mb={2}>
-          <Button
-            size="small"
-            onClick={() => downloadCsv(flatFiltered, overlapsMap, date)}
-            disabled={loading || !!error}
-          >
-            Export CSV
-          </Button>
-          <Button
-            size="small"
-            onClick={() => downloadIcs(flatFiltered, date)}
-            disabled={loading || !!error}
-          >
-            Add to Calendar
-          </Button>
-          <Button
-            size="small"
-            onClick={() => shareDay(flatFiltered, date)}
-            disabled={loading || !!error}
-            startIcon={<ShareIcon fontSize="small" />}
-          >
-            Share
-          </Button>
-        </Stack>
+        {!hideLowerActions && (
+          <Stack direction="row" spacing={1} mb={2}>
+            <Button
+              size="small"
+              onClick={() => downloadCsv(flatFiltered, overlapsMap, date)}
+              disabled={loading || !!error}
+            >
+              Export CSV
+            </Button>
+            <Button
+              size="small"
+              onClick={() => downloadIcs(flatFiltered, date)}
+              disabled={loading || !!error}
+            >
+              Add to Calendar
+            </Button>
+            <Button
+              size="small"
+              onClick={() => shareDay(flatFiltered, date)}
+              disabled={loading || !!error}
+              startIcon={<ShareIcon fontSize="small" />}
+            >
+              Share
+            </Button>
+          </Stack>
+        )}
 
         {error && (
           <Alert
