@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Box,
@@ -14,15 +14,18 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
 import CloseIcon from "@mui/icons-material/Close";
 
-import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 import useElapsedFromTs from "@/hooks/useElapsedFromTs.js";
+import useActiveTimeSession from "@/hooks/useActiveTimeSession.js";
 import { openTimeClockModal } from "@/services/uiBus";
 import {
   requestPersistentClockNotification,
-  stopPersistentClockNotification,
-  clearClockNotification,
+  stopPersistentClockNotification as stopPersistentClockNotificationImport,
+  clearClockNotification as clearClockNotificationImport,
 } from "@/pwa/clockNotifications";
-import { trySetAppBadge, clearAppBadge } from "@/pwa/appBadge";
+import {
+  trySetAppBadge,
+  clearAppBadge as clearAppBadgeImport,
+} from "@/pwa/appBadge";
 import useWakeLock from "@/hooks/useWakeLock.js";
 import {
   startClockPiP,
@@ -34,16 +37,33 @@ import {
 import { initPiPBridge } from "@/pwa/pipBridge";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
-import { isValidTimestamp } from "@/utils/time.js";
+import { useAuth } from "@/context/AuthContext.jsx";
 
 const LRP = { green: "#4cbb17", black: "#060606" };
 
-function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
-  const { start, elapsedMs } = useElapsedFromTs(startTimeTs);
+function ActiveTimeClockBubble({
+  hasActive,
+  startTimeTs,
+  onInactiveCleanup,
+  stopPersistentClockNotification: stopPersistentClockNotificationOverride,
+  clearClockNotification: clearClockNotificationOverride,
+  clearAppBadge: clearAppBadgeOverride,
+}) {
+  const { start, startMs, elapsedMs } = useElapsedFromTs(startTimeTs, {
+    logOnNullOnce: false,
+  });
+  const hasValidStart = Boolean(hasActive && start);
   // Keep screen awake only while actually on the clock
-  useWakeLock(hasActive && !!start);
+  useWakeLock(hasValidStart);
   const [collapsed, setCollapsed] = useState(false);
   const [pipOn, setPipOn] = useState(false);
+  const wasActiveRef = useRef(false);
+  const stopPersistentClockNotificationFn =
+    stopPersistentClockNotificationOverride ??
+    stopPersistentClockNotificationImport;
+  const clearClockNotificationFn =
+    clearClockNotificationOverride ?? clearClockNotificationImport;
+  const clearAppBadgeFn = clearAppBadgeOverride ?? clearAppBadgeImport;
   useEffect(() => {
     initPiPBridge();
   }, []);
@@ -60,7 +80,8 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
     let isMounted = true;
     (async () => {
       try {
-        if (hasActive && start) {
+        if (hasValidStart && startMs) {
+          wasActiveRef.current = true;
           const canNotify =
             typeof Notification !== "undefined" &&
             Notification.permission === "granted";
@@ -68,13 +89,27 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
             await requestPersistentClockNotification(elapsedLabel);
           }
           await trySetAppBadge(elapsedMinutes);
-        } else {
-          await stopPersistentClockNotification();
-          await clearClockNotification();
-          await clearAppBadge();
+        } else if (wasActiveRef.current) {
+          if (typeof stopPersistentClockNotificationFn === "function") {
+            await stopPersistentClockNotificationFn();
+          }
+          if (typeof clearClockNotificationFn === "function") {
+            await clearClockNotificationFn();
+          }
+          if (typeof clearAppBadgeFn === "function") {
+            await clearAppBadgeFn();
+          }
           if (pipOn) {
             stopClockPiP();
             if (isMounted) setPipOn(false);
+          }
+          wasActiveRef.current = false;
+          if (
+            !hasActive &&
+            typeof onInactiveCleanup === "function" &&
+            isMounted
+          ) {
+            onInactiveCleanup();
           }
         }
       } catch (error) {
@@ -84,10 +119,21 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
     return () => {
       isMounted = false;
     };
-  }, [hasActive, start, elapsedLabel, elapsedMinutes, pipOn]);
+  }, [
+    clearAppBadgeFn,
+    clearClockNotificationFn,
+    elapsedLabel,
+    elapsedMinutes,
+    hasActive,
+    hasValidStart,
+    onInactiveCleanup,
+    pipOn,
+    startMs,
+    stopPersistentClockNotificationFn,
+  ]);
 
   useEffect(() => {
-    if (!(hasActive && start)) return undefined;
+    if (!hasValidStart) return undefined;
     const interval = setInterval(async () => {
       try {
         const canNotify =
@@ -100,17 +146,14 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
         }
         await trySetAppBadge(elapsedMinutes);
         if (pipOn && isPiPActive()) {
-          await updateClockPiP(
-            "On the clock",
-            start ? start.valueOf() : Date.now(),
-          );
+          await updateClockPiP("On the clock", startMs ?? Date.now());
         }
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "ticker" });
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [hasActive, start, elapsedLabel, elapsedMinutes, pipOn]);
+  }, [elapsedLabel, elapsedMinutes, hasValidStart, pipOn, startMs]);
 
   useEffect(() => {
     if (!pipOn) return undefined;
@@ -118,10 +161,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
     (async () => {
       try {
         if (isPiPActive()) {
-          await updateClockPiP(
-            "On the clock",
-            start ? start.valueOf() : Date.now(),
-          );
+          await updateClockPiP("On the clock", startMs ?? Date.now());
         }
       } catch (error) {
         if (!cancelled) {
@@ -132,7 +172,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
     return () => {
       cancelled = true;
     };
-  }, [pipOn, elapsedLabel, start]);
+  }, [elapsedLabel, pipOn, startMs]);
 
   useEffect(
     () => () => {
@@ -141,7 +181,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
     [],
   );
 
-  if (!(hasActive && start)) {
+  if (!hasValidStart) {
     return null;
   }
 
@@ -152,10 +192,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
         setPipOn(false);
         return;
       }
-      const ok = await startClockPiP(
-        "On the clock",
-        start ? start.valueOf() : Date.now(),
-      );
+      const ok = await startClockPiP("On the clock", startMs ?? Date.now());
       if (ok) {
         setPipOn(true);
       } else {
@@ -272,14 +309,32 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
 }
 
 export default function TimeClockBubble() {
-  const { hasActive, startTimeTs } = useContext(ActiveClockContext);
-  const hasValidStart = hasActive && isValidTimestamp(startTimeTs);
+  const { user } = useAuth?.() || { user: null };
+  const userId = user?.uid || user?.id || null;
+  const { session } = useActiveTimeSession(userId);
+  const startTimeTs = session?.startTime || null;
+  const hasActive = Boolean(session);
+  const [shouldRender, setShouldRender] = useState(false);
 
-  if (!hasValidStart) {
+  useEffect(() => {
+    if (hasActive) {
+      setShouldRender(true);
+    }
+  }, [hasActive]);
+
+  const handleInactiveCleanup = useCallback(() => {
+    setShouldRender(false);
+  }, []);
+
+  if (!shouldRender && !hasActive) {
     return null;
   }
 
   return (
-    <ActiveTimeClockBubble hasActive={hasActive} startTimeTs={startTimeTs} />
+    <ActiveTimeClockBubble
+      hasActive={hasActive}
+      startTimeTs={startTimeTs}
+      onInactiveCleanup={handleInactiveCleanup}
+    />
   );
 }

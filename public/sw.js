@@ -1,4 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
+/* global self */
 const SW_VERSION = "lrp-sw-v16";
 let CLOCK_STICKY = false;
 
@@ -8,10 +9,26 @@ function scopeUrl(path) {
 }
 
 self.addEventListener("install", (evt) => {
-  evt.waitUntil((async () => { try { self.skipWaiting(); } catch (e) { console.error("[sw] install", e); } })());
+  evt.waitUntil(
+    (async () => {
+      try {
+        self.skipWaiting();
+      } catch (e) {
+        console.error("[sw] install", e);
+      }
+    })(),
+  );
 });
 self.addEventListener("activate", (evt) => {
-  evt.waitUntil((async () => { try { await self.clients.claim(); } catch (e) { console.error("[sw] activate", e); } })());
+  evt.waitUntil(
+    (async () => {
+      try {
+        await self.clients.claim();
+      } catch (e) {
+        console.error("[sw] activate", e);
+      }
+    })(),
+  );
 });
 
 // ---- Messaging ----
@@ -53,25 +70,34 @@ self.addEventListener("message", (event) => {
       const ackPort = event.ports && event.ports[0];
       const initPromise = (async () => {
         try {
-          importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
-          importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
+          importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
+          importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
           if (cfg && (!self.firebase?.apps?.length)) self.firebase.initializeApp(cfg);
           if (self.firebase?.apps?.length) {
             const messaging = self.firebase.messaging();
             messaging.onBackgroundMessage((payload) => {
               try {
-                const title = (payload?.notification && (payload.notification.title || payload.notification.body)) || "LRP — Update";
-                const body = (payload?.notification && payload.notification.body) || "";
+                if (payload?.notification) return;
+                const title =
+                  payload?.data?.title ||
+                  payload?.data?.body ||
+                  "LRP — Update";
+                const body = payload?.data?.body || "";
                 self.registration.showNotification(title, {
                   body,
                   tag: "lrp-fcm",
                   renotify: true,
                   badge: scopeUrl("icons/icon-192.png"),
                   icon: scopeUrl("icons/icon-192.png"),
-                  actions: [{ action: "open", title: "Open" }, { action: "clockout", title: "Clock Out" }],
-                  data: { ts: Date.now(), fcm: true },
+                  actions: [
+                    { action: "open", title: "Open" },
+                    { action: "clockout", title: "Clock Out" },
+                  ],
+                  data: { ts: Date.now(), fcm: true, payload },
                 });
-              } catch (e) { console.error("[sw] onBackgroundMessage show failed", e); }
+              } catch (e) {
+                console.error("[sw] onBackgroundMessage show failed", e);
+              }
             });
           }
           if (ackPort) { try { ackPort.postMessage({ type: "FIREBASE_CONFIG_ACK", ok: true, v: SW_VERSION }); } catch (e) { console.error(e); } }
@@ -84,6 +110,39 @@ self.addEventListener("message", (event) => {
       return;
     }
   } catch (e) { console.error("[sw] message error", e); }
+});
+
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const raw = event.data ? (() => {
+          try { return event.data.json(); } catch (err) { return { body: event.data.text?.() }; }
+        })() : {};
+        const notification = raw?.notification || {};
+        const title =
+          notification.title ||
+          raw?.title ||
+          raw?.body ||
+          "LRP Driver Portal";
+        const body = notification.body || raw?.body || "";
+        const icon = notification.icon || scopeUrl("icons/icon-192.png");
+        const badge = notification.badge || scopeUrl("icons/icon-192.png");
+        const tag = notification.tag || raw?.tag || "lrp-fcm";
+        await self.registration.showNotification(title, {
+          body,
+          icon,
+          badge,
+          tag,
+          renotify: true,
+          vibrate: [100, 50, 100],
+          data: raw?.data || raw,
+        });
+      } catch (error) {
+        console.error("[sw] push handler error", error);
+      }
+    })(),
+  );
 });
 
 // Sticky on-the-clock

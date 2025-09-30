@@ -1,18 +1,20 @@
-import { onMessage } from "firebase/messaging";
+import { deleteToken, onMessage } from "firebase/messaging";
 
 import { ensureFcmSwReady } from "@/pwa/fcmBridge";
 import { purgeOtherServiceWorkers } from "@/pwa/purgeSW";
 import { registerSW } from "@/pwa/registerSW";
 
-import { firebaseConfig, getMessagingOrNull } from "../utils/firebaseInit";
+import {
+  app as firebaseApp,
+  firebaseConfig,
+  getMessagingOrNull,
+} from "../utils/firebaseInit";
 import logError from "../utils/logError.js";
 
-import {
-  getFcmTokenSafe as requestFcmToken,
-  clearFcmToken as clearFcmTokenInternal,
-} from "./pushTokens";
+import { getFcmTokenSafe as requestFcmToken } from "./pushTokens";
 
 const FCM_ENABLED = import.meta.env.VITE_ENABLE_FCM === "true";
+const LS_KEY = "lrp_fcm_token_v1";
 
 const firebaseMessagingConfig = {
   ...firebaseConfig,
@@ -66,11 +68,26 @@ export async function requestFcmPermission() {
   }
 }
 
-export async function getFcmTokenSafe(options = {}) {
+export async function getFcmTokenSafe() {
   if (!isSupportedBrowser()) return null;
   try {
     await ensureServiceWorkerRegistered();
-    return await requestFcmToken(firebaseMessagingConfig, options);
+    const result = await requestFcmToken(
+      firebaseApp,
+      import.meta.env.VITE_FIREBASE_VAPID_KEY,
+    );
+    if (result?.ok && result.token) {
+      try {
+        localStorage.setItem(LS_KEY, result.token);
+      } catch (error) {
+        logError(error, { where: "fcm", action: "cache-token" });
+      }
+      return result.token;
+    }
+    if (result?.reason) {
+      console.info("[fcm] token blocked", result.reason);
+    }
+    return null;
   } catch (error) {
     logError(error, { where: "fcm", action: "get-token" });
     return null;
@@ -99,8 +116,16 @@ export function onForegroundMessageSafe(cb) {
 
 export async function revokeFcmToken() {
   try {
-    await clearFcmTokenInternal(firebaseMessagingConfig);
+    const messaging = await getMessagingOrNull();
+    if (messaging) {
+      await deleteToken(messaging);
+    }
   } catch (error) {
     logError(error, { where: "fcm", action: "revoke-token" });
+  }
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch (error) {
+    logError(error, { where: "fcm", action: "clear-cache" });
   }
 }
