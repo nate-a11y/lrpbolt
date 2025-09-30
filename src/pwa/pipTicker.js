@@ -1,73 +1,42 @@
 /* Proprietary and confidential. See LICENSE. */
-import logError from "@/utils/logError.js";
-
 let pipWindow = null;
 
-const DEFAULT_LABEL = "On the clock";
-const TICK_INTERVAL_MS = 1000;
-
-function hasDocumentPiP() {
+export function isPiPSupported() {
   return (
-    typeof window !== "undefined" && Boolean(window.documentPictureInPicture)
+    !!window.documentPictureInPicture || !!document.pictureInPictureEnabled
   );
 }
-
-function ensureDocument() {
-  if (typeof document === "undefined") {
-    throw new Error("document is not available");
-  }
-  return document;
-}
-
-function resolveLabel(value) {
-  return typeof value === "string" && value.length ? value : DEFAULT_LABEL;
-}
-
-function resolveStart(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : Date.now();
-}
-
-export function isPiPSupported() {
-  try {
-    if (hasDocumentPiP()) return true;
-    const doc = ensureDocument();
-    return Boolean(doc.pictureInPictureEnabled);
-  } catch (error) {
-    logError(error, { where: "pipTicker", action: "isSupported" });
-    return false;
-  }
-}
-
 export function isPiPActive() {
   try {
-    if (hasDocumentPiP() && pipWindow && !pipWindow.closed) return true;
-    const doc = ensureDocument();
-    return Boolean(doc.pictureInPictureElement);
-  } catch (error) {
-    logError(error, { where: "pipTicker", action: "isActive" });
-    return false;
+    if (window.documentPictureInPicture && pipWindow && !pipWindow.closed)
+      return true;
+    if (document.pictureInPictureElement) return true;
+  } catch (e) {
+    console.error("[pipTicker] isPiPActive check failed", e);
   }
+  return false;
 }
 
+/**
+ * Start PiP with label and a start epoch (ms). The PiP window will self-tick at 1 Hz.
+ */
 export async function startClockPiP(labelText, startMs) {
   try {
-    if (!isPiPSupported()) return false;
-    if (hasDocumentPiP()) {
+    if (window.documentPictureInPicture) {
       if (!pipWindow || pipWindow.closed) {
         pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 260,
-          height: 68,
+          width: 300,
+          height: 100,
         });
         renderDocPiP(pipWindow.document, labelText, startMs);
       }
       updateDocPiP(pipWindow.document, labelText, startMs);
       return true;
     }
-    await ensureVideoPiP(labelText, startMs);
-    return isPiPActive();
-  } catch (error) {
-    logError(error, { where: "pipTicker", action: "start" });
+    await ensureVideoPiP(labelText, startMs); // canvas fallback
+    return !!document.pictureInPictureElement;
+  } catch (e) {
+    console.error("[pipTicker] start failed", e);
     return false;
   }
 }
@@ -75,14 +44,14 @@ export async function startClockPiP(labelText, startMs) {
 export async function updateClockPiP(labelText, startMs) {
   try {
     if (!isPiPActive()) return false;
-    if (hasDocumentPiP() && pipWindow && !pipWindow.closed) {
+    if (window.documentPictureInPicture && pipWindow && !pipWindow.closed) {
       updateDocPiP(pipWindow.document, labelText, startMs);
       return true;
     }
     await ensureVideoPiP(labelText, startMs);
-    return isPiPActive();
-  } catch (error) {
-    logError(error, { where: "pipTicker", action: "update" });
+    return !!document.pictureInPictureElement;
+  } catch (e) {
+    console.error("[pipTicker] update failed", e);
     return false;
   }
 }
@@ -91,208 +60,205 @@ export function stopClockPiP() {
   try {
     if (pipWindow && !pipWindow.closed) {
       try {
-        if (typeof pipWindow.__lrpStop === "function") {
-          pipWindow.__lrpStop();
-        }
-      } catch (error) {
-        logError(error, { where: "pipTicker", action: "docStop" });
+        pipWindow.__lrpStop && pipWindow.__lrpStop();
+      } catch (e) {
+        console.error(e);
       }
-    }
-    if (pipWindow && !pipWindow.closed) {
       pipWindow.close();
+      pipWindow = null;
     }
-    pipWindow = null;
-    const doc = ensureDocument();
-    const video = doc.getElementById("lrp-clock-pip-video");
-    if (video && video.__lrpTimer) {
-      clearInterval(video.__lrpTimer);
-      video.__lrpTimer = null;
+    const video = document.getElementById("lrp-clock-pip-video");
+    if (video && document.pictureInPictureElement === video) {
+      try {
+        if (video.__lrpTimer) clearInterval(video.__lrpTimer);
+      } catch (err) {
+        console.error("[pipTicker] clear video timer failed", err);
+      }
+      document.exitPictureInPicture().catch(() => {});
     }
-    if (video && doc.pictureInPictureElement === video) {
-      doc.exitPictureInPicture().catch((error) => {
-        logError(error, { where: "pipTicker", action: "exitPiP" });
-      });
-    }
-  } catch (error) {
-    logError(error, { where: "pipTicker", action: "stop" });
+  } catch (e) {
+    console.error("[pipTicker] stop failed", e);
   }
 }
 
+/* ---------- Document PiP (interactive) ---------- */
 function renderDocPiP(doc, labelText, startMs) {
-  if (!doc) return;
-  doc.body.style.margin = "0";
-  doc.body.style.background = "#0b0b0b";
-  const wrapper = doc.createElement("div");
-  wrapper.style.cssText =
-    "display:flex;align-items:center;gap:8px;padding:10px 12px;font-family:system-ui,Segoe UI,Roboto,Arial";
+  doc.body.style.cssText =
+    "margin:0;background:#0b0b0b;font-family:system-ui,Segoe UI,Roboto,Arial";
+
+  const wrap = doc.createElement("div");
+  wrap.style.cssText =
+    "display:flex;align-items:center;gap:10px;padding:10px 12px;";
+
   const dot = doc.createElement("div");
   dot.style.cssText =
-    "width:14px;height:14px;border-radius:50%;background:#4cbb17;flex:0 0 auto;";
-  const text = doc.createElement("div");
-  text.id = "lrp-pip-text";
-  text.style.cssText =
-    "color:#fff;font-weight:700;font-size:13px;white-space:nowrap;";
-  text.textContent = "On the clock…";
-  wrapper.appendChild(dot);
-  wrapper.appendChild(text);
-  doc.body.appendChild(wrapper);
+    "width:12px;height:12px;border-radius:50%;background:#4cbb17;flex:0 0 auto;";
 
-  const win = doc.defaultView;
-  if (!win) return;
-  win.__lrpLabel = resolveLabel(labelText);
-  win.__lrpStartAt = resolveStart(startMs);
+  const txt = doc.createElement("div");
+  txt.id = "lrp-pip-text";
+  txt.style.cssText =
+    "color:#fff;font-weight:700;font-size:13px;white-space:nowrap;letter-spacing:.2px";
 
-  const formatElapsed = (ms) => {
-    const seconds = Math.max(0, Math.floor(ms / 1000));
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) return `${minutes}m ${secs}s`;
-    return `${secs}s`;
+  const spacer = doc.createElement("div");
+  spacer.style.cssText = "flex:1 1 auto";
+
+  const btnWrap = doc.createElement("div");
+  btnWrap.style.cssText = "display:flex;gap:6px";
+
+  const btn = (label) => {
+    const b = doc.createElement("button");
+    b.textContent = label;
+    b.style.cssText =
+      "background:#1a1a1a;border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:4px 8px;font-weight:600;font-size:12px;cursor:pointer";
+    b.onmouseenter = () => (b.style.background = "#202020");
+    b.onmouseleave = () => (b.style.background = "#1a1a1a");
+    return b;
   };
 
-  const tick = () => {
+  const openBtn = btn("Open");
+  const stopBtn = btn("Clock Out");
+
+  // Broadcast actions back to the app
+  const send = (type) => {
     try {
-      const label = resolveLabel(win.__lrpLabel);
-      const startValue = resolveStart(win.__lrpStartAt);
-      const elapsed = Date.now() - startValue;
-      const el = doc.getElementById("lrp-pip-text");
-      if (el) {
-        el.textContent = `${label} • ${formatElapsed(elapsed)}`;
-      }
-    } catch (error) {
-      logError(error, { where: "pipTicker", action: "docTick" });
+      if (!("BroadcastChannel" in doc.defaultView)) return;
+      const ch = new doc.defaultView.BroadcastChannel("lrp-clock-actions");
+      ch.postMessage({ type });
+      // close channel after post (no listeners needed here)
+      setTimeout(() => {
+        try {
+          ch.close();
+        } catch (err) {
+          console.error("[pipTicker] PiP channel close failed", err);
+        }
+      }, 100);
+    } catch (err) {
+      console.error("[pipTicker] PiP channel send failed", err);
     }
   };
+  openBtn.onclick = () => send("open");
+  stopBtn.onclick = () => send("clockout");
 
-  if (typeof win.__lrpTimer === "number") {
-    if (typeof win.clearInterval === "function") {
-      win.clearInterval(win.__lrpTimer);
-    } else {
-      clearInterval(win.__lrpTimer);
-    }
+  btnWrap.appendChild(openBtn);
+  btnWrap.appendChild(stopBtn);
+
+  wrap.appendChild(dot);
+  wrap.appendChild(txt);
+  wrap.appendChild(spacer);
+  wrap.appendChild(btnWrap);
+  doc.body.appendChild(wrap);
+
+  // self-ticking timer
+  const win = doc.defaultView;
+  const startEpoch = Number(startMs) || Date.now();
+  function fmt(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const ss = s % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${ss}s`;
+    return `${ss}s`;
   }
-
+  function tick() {
+    const elapsed = Date.now() - (win.__lrpStartAt || startEpoch);
+    const base = String(win.__lrpLabel || labelText || "On the clock");
+    const el = doc.getElementById("lrp-pip-text");
+    if (el) el.textContent = `${base} • ${fmt(elapsed)}`;
+  }
   tick();
-  if (typeof win.setInterval === "function") {
-    win.__lrpTimer = win.setInterval(tick, TICK_INTERVAL_MS);
-  } else {
-    win.__lrpTimer = setInterval(tick, TICK_INTERVAL_MS);
-  }
-  win.__lrpTick = tick;
+  win.__lrpTimer && clearInterval(win.__lrpTimer);
+  win.__lrpTimer = win.setInterval(tick, 1000);
   win.__lrpStop = () => {
     try {
-      if (typeof win.__lrpTimer === "number") {
-        if (typeof win.clearInterval === "function") {
-          win.clearInterval(win.__lrpTimer);
-        } else {
-          clearInterval(win.__lrpTimer);
-        }
-      }
-    } catch (error) {
-      logError(error, { where: "pipTicker", action: "docTimerClear" });
-    } finally {
-      win.__lrpTimer = null;
+      win.__lrpTimer && clearInterval(win.__lrpTimer);
+    } catch (e) {
+      console.error(e);
     }
+    win.__lrpTimer = null;
   };
 }
 
 function updateDocPiP(doc, labelText, startMs) {
-  if (!doc) return;
   try {
     const win = doc.defaultView;
-    if (!win) return;
-    if (typeof labelText === "string" && labelText.length) {
+    if (typeof labelText === "string" && labelText.length)
       win.__lrpLabel = labelText;
-    }
-    if (startMs !== undefined && startMs !== null) {
-      const numeric = Number(startMs);
-      if (Number.isFinite(numeric)) {
-        win.__lrpStartAt = numeric;
-      }
-    }
-    if (typeof win.__lrpTick === "function") {
-      win.__lrpTick();
-    }
-  } catch (error) {
-    logError(error, { where: "pipTicker", action: "docUpdate" });
+    if (startMs) win.__lrpStartAt = Number(startMs);
+  } catch (err) {
+    console.error("[pipTicker] PiP update failed", err);
+  }
+  const el = doc.getElementById("lrp-pip-text");
+  if (el && typeof labelText === "string" && labelText.length) {
+    el.textContent = `${labelText} • …`;
   }
 }
 
+/* ---------- Canvas/video fallback (non-interactive) ---------- */
 async function ensureVideoPiP(labelText, startMs) {
-  const doc = ensureDocument();
-  let video = doc.getElementById("lrp-clock-pip-video");
+  let video = document.getElementById("lrp-clock-pip-video");
   if (!video) {
-    video = doc.createElement("video");
+    video = document.createElement("video");
     video.id = "lrp-clock-pip-video";
     video.muted = true;
     video.playsInline = true;
     video.style.display = "none";
-    doc.body.appendChild(video);
+    document.body.appendChild(video);
   }
+  if (!video.srcObject) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    // DPR-aware canvas for crisp text
+    const DPR = window.devicePixelRatio || 1;
+    const w = 300,
+      h = 100;
+    canvas.width = w * DPR;
+    canvas.height = h * DPR;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    ctx.scale(DPR, DPR);
 
-  video.__lrpLabel = resolveLabel(labelText);
-  video.__lrpStartAt = resolveStart(startMs);
+    function draw() {
+      const base = String(labelText || "On the clock");
+      const elapsed = Math.max(
+        0,
+        Math.floor((Date.now() - (Number(startMs) || Date.now())) / 1000),
+      );
+      const h_ = Math.floor(elapsed / 3600);
+      const m = Math.floor((elapsed % 3600) / 60);
+      const s = elapsed % 60;
+      const t = h_ > 0 ? `${h_}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
 
-  const draw = () => {
-    try {
-      const ctx = video.__lrpCtx;
-      if (!ctx) return;
-      const canvas = ctx.canvas;
-      const now = Date.now();
-      const elapsed = Math.max(0, now - resolveStart(video.__lrpStartAt));
-      const seconds = Math.floor(elapsed / 1000);
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      const formatted =
-        hours > 0
-          ? `${hours}h ${minutes}m`
-          : minutes > 0
-            ? `${minutes}m ${secs}s`
-            : `${secs}s`;
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#0b0b0b";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
+
+      // green dot
       ctx.fillStyle = "#4cbb17";
       ctx.beginPath();
-      ctx.arc(28, 50, 10, 0, Math.PI * 2);
+      ctx.arc(18, 50, 8, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "700 28px system-ui,Segoe UI,Roboto,Arial";
-      ctx.fillText(`${resolveLabel(video.__lrpLabel)} • ${formatted}`, 56, 58);
-    } catch (error) {
-      logError(error, { where: "pipTicker", action: "videoDraw" });
-    }
-  };
 
-  if (!video.srcObject) {
-    const canvas = doc.createElement("canvas");
-    canvas.width = 640;
-    canvas.height = 100;
-    const ctx = canvas.getContext("2d");
-    video.__lrpCtx = ctx;
-    draw();
-    if (video.__lrpTimer) {
-      clearInterval(video.__lrpTimer);
+      // crisp white text
+      ctx.fillStyle = "#fff";
+      ctx.font = "700 20px system-ui,Segoe UI,Roboto,Arial";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${base} • ${t}`, 36, 50);
     }
-    video.__lrpTimer = setInterval(draw, TICK_INTERVAL_MS);
+
+    draw();
+    const timer = setInterval(draw, 1000);
     const stream = canvas.captureStream();
     video.srcObject = stream;
     try {
       await video.play();
-    } catch (error) {
-      logError(error, { where: "pipTicker", action: "videoPlay" });
+    } catch (err) {
+      console.error("[pipTicker] video play failed", err);
     }
-  } else {
-    if (!video.__lrpTimer) {
-      video.__lrpTimer = setInterval(draw, TICK_INTERVAL_MS);
-    }
-    draw();
+    video.__lrpTimer = timer;
   }
-
-  if (doc.pictureInPictureEnabled && video.requestPictureInPicture) {
-    if (doc.pictureInPictureElement !== video) {
+  if (document.pictureInPictureEnabled && video.requestPictureInPicture) {
+    if (document.pictureInPictureElement !== video) {
       await video.requestPictureInPicture();
     }
   }
