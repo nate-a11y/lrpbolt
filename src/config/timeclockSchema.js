@@ -8,12 +8,17 @@ export const TIMECLOCK_SCHEMA_CANDIDATES = {
   activeFlags: ["active", "isActive", "open"],
 };
 
-const LS_KEY = "lrp_timeclock_schema_detected_v1";
+const LS_KEY = "lrp_timeclock_schema_detected_v2"; // bump version to invalidate old bad caches
+const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24; // 24h
 
 export function loadDetectedSchema() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Expire old
+    if (parsed?.ttl && Date.now() > parsed.ttl) return null;
+    return parsed;
   } catch (e) {
     console.error("[timeclockSchema] load failed", e);
     return null;
@@ -22,9 +27,20 @@ export function loadDetectedSchema() {
 
 export function saveDetectedSchema(schema) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(schema));
+    // Only persist high-confidence mappings
+    if (!schema || schema.confidence !== "high") return;
+    const ttl = Date.now() + (schema.ttlMs || DEFAULT_TTL_MS);
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...schema, ttl }));
   } catch (e) {
     console.error("[timeclockSchema] save failed", e);
+  }
+}
+
+export function clearDetectedSchema() {
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch (e) {
+    console.error("[timeclockSchema] clear failed", e);
   }
 }
 

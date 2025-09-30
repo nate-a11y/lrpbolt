@@ -6,16 +6,15 @@ import { ActiveClockContext } from "@/context/ActiveClockContext.jsx";
 
 function TimeClockDebugPill() {
   const { hasActive, docId, debug } = useContext(ActiveClockContext);
-  const rdy = debug?.allReady ? "✓" : "…";
-  const line1 = hasActive
-    ? `active${rdy} • ${docId || "—"}`
-    : `no-active${rdy}`;
-  const line2 = debug?.uid ? `uid:${debug.uid}` : "";
+  const schema = debug?.schema;
+  const path = debug?.path || (schema ? "locked" : "probe");
+  const line1 = hasActive ? `active • ${docId || "—"}` : "no-active";
+  const line2 = schema
+    ? `${schema.collection}.${schema.idField} (${schema.idValueKind}) ${schema.confidence || ""}`
+    : path;
   const line3 = debug?.keys
     ? `${debug.keys.startKey || "-"} | ${debug.keys.endKey || "-"} | ${debug.keys.activeKey || "-"}`
-    : typeof debug?.reason === "string"
-      ? debug.reason
-      : "";
+    : debug?.reason || "";
   return (
     <Box
       sx={{
@@ -32,11 +31,9 @@ function TimeClockDebugPill() {
       }}
     >
       <Box component="div">{line1}</Box>
-      {line2 ? (
-        <Box component="div" sx={{ opacity: 0.8 }}>
-          {line2}
-        </Box>
-      ) : null}
+      <Box component="div" sx={{ opacity: 0.8 }}>
+        {line2}
+      </Box>
       {line3 ? (
         <Box component="div" sx={{ opacity: 0.8 }}>
           {line3}
@@ -45,4 +42,5 @@ function TimeClockDebugPill() {
     </Box>
   );
 }
+
 export default memo(TimeClockDebugPill);

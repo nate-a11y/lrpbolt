@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import { createContext, useEffect, useMemo, useState } from "react";
+import { createContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   limit,
@@ -9,18 +9,23 @@ import {
 } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
+import { db } from "@/services/firebase";
 import {
   TIMECLOCK_SCHEMA_CANDIDATES,
-  pickField,
+  clearDetectedSchema,
   loadDetectedSchema,
+  pickField,
+  saveDetectedSchema,
 } from "@/config/timeclockSchema";
-import { detectTimeclockSchema } from "@/services/detectTimeclockSchema";
-import { db } from "@/services/firebase";
+import { detectTimeclockSchemaOnce } from "@/services/detectTimeclockSchema";
 
 /**
- * Uses a detected schema (cached) to subscribe to the correct collection/field.
- * Aggregation is no longer needed—we subscribe to ONE mapping (the detected one).
- * Resubscribes when auth UID/email changes or when detection yields a new mapping.
+ * Strategy:
+ *  - If we have a cached HIGH-confidence schema and it returns rows, use it.
+ *  - Else run MULTI-PROBE: subscribe to (collection x idField) for current uid/email.
+ *      * Aggregate rows across listeners (no flicker/clobber).
+ *      * On first non-empty snapshot, derive exact keys, mark confidence "high", SAVE, and unsubscribe others.
+ *  - If a cached schema ever returns 0 rows N times in a row -> clear cache and re-probe.
  */
 export const ActiveClockContext = createContext({
   hasActive: false,
@@ -29,9 +34,11 @@ export const ActiveClockContext = createContext({
   debug: null,
 });
 
+const MISS_LIMIT = 2; // consecutive empty snaps before we distrust cache
+
 export default function ActiveClockProvider({ children }) {
-  const [authSnapshot, setAuthSnapshot] = useState({ uid: null, email: null });
-  const [schema, setSchema] = useState(loadDetectedSchema());
+  const [authSnap, setAuthSnap] = useState({ uid: null, email: null });
+  const [lockedSchema, setLockedSchema] = useState(loadDetectedSchema()); // may be null or expired
   const [state, setState] = useState({
     hasActive: false,
     docId: null,
@@ -39,10 +46,16 @@ export default function ActiveClockProvider({ children }) {
     debug: null,
   });
 
-  // Track auth (uid/email) so we can choose identifier value
+  const missCountRef = useRef(0);
+  const multiActiveRef = useRef(false);
+  const unsubsRef = useRef([]);
+
+  // Auth tracking
   useEffect(() => {
     const unsub = onAuthStateChanged(getAuth(), (u) => {
-      setAuthSnapshot({ uid: u?.uid || null, email: u?.email || null });
+      setAuthSnap({ uid: u?.uid || null, email: u?.email || null });
+      // reset when user changes
+      missCountRef.current = 0;
       if (!u?.uid) {
         setState({
           hasActive: false,
@@ -61,114 +74,290 @@ export default function ActiveClockProvider({ children }) {
     };
   }, []);
 
-  // Detect schema once per session (or when auth changes and we had no mapping)
+  // Helper to compute chosen doc from rows
+  function pickOpenLatest(rows) {
+    const openRows = rows.filter((r) => r.open);
+    openRows.sort((a, b) => {
+      const as = a.startTs?.seconds ?? -1;
+      const bs = b.startTs?.seconds ?? -1;
+      return bs - as;
+    });
+    return openRows[0] || null;
+  }
+
+  // Subscribe using LOCKED schema (fast path). If it looks wrong, we’ll drop it and multi-probe.
   useEffect(() => {
-    if (!authSnapshot.uid && !authSnapshot.email) return;
-    if (schema?.collection && schema?.idField) return;
+    const { uid, email } = authSnap;
+    const s = lockedSchema;
+    if (!s?.collection || !s?.idField) return undefined;
 
-    let active = true;
-    (async () => {
-      try {
-        const detected = await detectTimeclockSchema();
-        if (active) setSchema(detected);
-      } catch (e) {
-        console.error("[ActiveClockProvider] detection failed", e);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [authSnapshot, schema]);
-
-  // Subscribe using the detected schema
-  useEffect(() => {
-    if (!schema?.collection || !schema?.idField) return undefined;
-
-    const idValue =
-      schema.idValueKind === "email" ? authSnapshot.email : authSnapshot.uid;
+    const idValue = s.idValueKind === "email" ? email : uid;
     if (!idValue) return undefined;
 
-    const colRef = collection(db, schema.collection);
-    const unsub = onSnapshot(
-      query(colRef, where(schema.idField, "==", idValue), limit(25)),
-      (snap) => {
-        const rows = [];
-        snap.forEach((d) => {
-          const data = d.data() || {};
-          const startPick = schema.startKey
-            ? { key: schema.startKey, value: data[schema.startKey] }
-            : pickField(data, TIMECLOCK_SCHEMA_CANDIDATES.startFields);
-          const endPick = schema.endKey
-            ? { key: schema.endKey, value: data[schema.endKey] }
-            : pickField(data, TIMECLOCK_SCHEMA_CANDIDATES.endFields);
-          const activePick = schema.activeKey
-            ? { key: schema.activeKey, value: data[schema.activeKey] }
-            : pickField(data, TIMECLOCK_SCHEMA_CANDIDATES.activeFlags);
+    let unsub = null;
+    try {
+      const qRef = query(
+        collection(db, s.collection),
+        where(s.idField, "==", idValue),
+        limit(25),
+      );
+      unsub = onSnapshot(
+        qRef,
+        (snap) => {
+          const rows = [];
+          snap.forEach((d) => {
+            const data = d.data() || {};
+            const startPick = s.startKey
+              ? { key: s.startKey, value: data[s.startKey] }
+              : pickField(data, TIMECLOCK_SCHEMA_CANDIDATES.startFields);
+            const endPick = s.endKey
+              ? { key: s.endKey, value: data[s.endKey] }
+              : pickField(data, TIMECLOCK_SCHEMA_CANDIDATES.endFields);
+            const activePick = s.activeKey
+              ? { key: s.activeKey, value: data[s.activeKey] }
+              : pickField(data, TIMECLOCK_SCHEMA_CANDIDATES.activeFlags);
+            const hasEndField = !!endPick.key;
+            const isActiveTrue = activePick.key
+              ? Boolean(activePick.value)
+              : null;
+            const open =
+              isActiveTrue === true || !hasEndField || endPick.value === null;
 
-          const hasEndField = !!endPick.key;
-          const isActiveTrue = activePick.key
-            ? Boolean(activePick.value)
-            : null;
-          const open =
-            isActiveTrue === true || !hasEndField || endPick.value === null;
-
-          rows.push({
-            id: d.id,
-            startTs: startPick.value || null,
-            open,
-            keys: {
-              startKey: startPick.key,
-              endKey: endPick.key,
-              activeKey: activePick.key,
-            },
-          });
-        });
-
-        // choose latest open
-        const openRows = rows.filter((r) => r.open);
-        const chosen =
-          openRows.slice().sort((a, b) => {
-            const as = a.startTs?.seconds ?? -1;
-            const bs = b.startTs?.seconds ?? -1;
-            return bs - as;
-          })[0] || null;
-
-        setState(
-          chosen
-            ? {
-                hasActive: true,
-                docId: chosen.id,
-                startTimeTs: chosen.startTs || null,
-                debug: { schema, keys: chosen.keys, count: rows.length },
-              }
-            : {
-                hasActive: false,
-                docId: null,
-                startTimeTs: null,
-                debug: { schema, reason: "no-open", count: rows.length },
+            rows.push({
+              id: d.id,
+              startTs: startPick.value || null,
+              open,
+              keys: {
+                startKey: startPick.key,
+                endKey: endPick.key,
+                activeKey: activePick.key,
               },
-        );
-      },
-      (err) => {
-        console.error("[ActiveClockProvider] snapshot error", err);
-        setState({
-          hasActive: false,
-          docId: null,
-          startTimeTs: null,
-          debug: { schema, error: String(err?.message || err) },
-        });
-      },
-    );
+            });
+          });
+
+          const chosen = pickOpenLatest(rows);
+
+          // If this cached mapping is high confidence but yields nothing repeatedly, distrust and re-probe
+          if (!rows.length) {
+            missCountRef.current += 1;
+          } else {
+            missCountRef.current = 0;
+          }
+          if (missCountRef.current >= MISS_LIMIT) {
+            clearDetectedSchema();
+            setLockedSchema(null);
+            return; // next effect run will multi-probe
+          }
+
+          setState(
+            chosen
+              ? {
+                  hasActive: true,
+                  docId: chosen.id,
+                  startTimeTs: chosen.startTs || null,
+                  debug: {
+                    schema: s,
+                    keys: chosen.keys,
+                    count: rows.length,
+                    path: "locked",
+                  },
+                }
+              : {
+                  hasActive: false,
+                  docId: null,
+                  startTimeTs: null,
+                  debug: {
+                    schema: s,
+                    reason: "no-open",
+                    count: rows.length,
+                    path: "locked",
+                  },
+                },
+          );
+        },
+        (err) => {
+          console.error("[ActiveClockProvider] locked subscription error", err);
+          clearDetectedSchema();
+          setLockedSchema(null);
+        },
+      );
+    } catch (e) {
+      console.error("[ActiveClockProvider] locked subscribe failed", e);
+      clearDetectedSchema();
+      setLockedSchema(null);
+    }
 
     return () => {
       try {
-        unsub();
+        unsub && unsub();
       } catch (e) {
         console.error(e);
       }
     };
-  }, [authSnapshot, schema]);
+  }, [lockedSchema, authSnap]);
+
+  // If we have no locked schema (or it was just cleared), run MULTI-PROBE and lock on first hit.
+  useEffect(() => {
+    const { uid, email } = authSnap;
+    if (lockedSchema) return undefined; // locked path active
+    if (!uid && !email) return undefined;
+    if (multiActiveRef.current) return undefined;
+    multiActiveRef.current = true;
+
+    setState((prev) => ({
+      ...prev,
+      debug: {
+        ...prev.debug,
+        path: "probe",
+      },
+    }));
+
+    const unsubs = [];
+    const idPairs = [];
+
+    if (uid)
+      TIMECLOCK_SCHEMA_CANDIDATES.userFields.forEach((f) =>
+        idPairs.push({ field: f, value: uid, kind: "uid" }),
+      );
+    if (email)
+      TIMECLOCK_SCHEMA_CANDIDATES.emailFields.forEach((f) =>
+        idPairs.push({ field: f, value: email, kind: "email" }),
+      );
+
+    const cols = TIMECLOCK_SCHEMA_CANDIDATES.collections;
+
+    // Install listeners across combos
+    cols.forEach((coll) => {
+      idPairs.forEach((id) => {
+        try {
+          const qRef = query(
+            collection(db, coll),
+            where(id.field, "==", id.value),
+            limit(25),
+          );
+          const unsub = onSnapshot(
+            qRef,
+            (snap) => {
+              const rows = [];
+              snap.forEach((d) => {
+                const data = d.data() || {};
+                const startPick = pickField(
+                  data,
+                  TIMECLOCK_SCHEMA_CANDIDATES.startFields,
+                );
+                const endPick = pickField(
+                  data,
+                  TIMECLOCK_SCHEMA_CANDIDATES.endFields,
+                );
+                const activePick = pickField(
+                  data,
+                  TIMECLOCK_SCHEMA_CANDIDATES.activeFlags,
+                );
+                const hasEndField = !!endPick.key;
+                const isActiveTrue = activePick.key
+                  ? Boolean(activePick.value)
+                  : null;
+                const open =
+                  isActiveTrue === true ||
+                  !hasEndField ||
+                  endPick.value === null;
+
+                rows.push({
+                  id: d.id,
+                  startTs: startPick.value || null,
+                  open,
+                  keys: {
+                    startKey: startPick.key,
+                    endKey: endPick.key,
+                    activeKey: activePick.key,
+                  },
+                });
+              });
+
+              // Lock on first non-empty snapshot
+              if (rows.length > 0) {
+                // choose latest open (may be null if all closed, but still a hit)
+                const chosen =
+                  rows
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        (b.startTs?.seconds ?? -1) - (a.startTs?.seconds ?? -1),
+                    )[0] || null;
+                const newSchema = {
+                  collection: coll,
+                  idField: id.field,
+                  idValueKind: id.kind,
+                  startKey: chosen?.keys?.startKey || null,
+                  endKey: chosen?.keys?.endKey || null,
+                  activeKey: chosen?.keys?.activeKey || null,
+                  confidence: "high",
+                };
+                saveDetectedSchema(newSchema);
+                setLockedSchema(newSchema);
+
+                // Tear down all probe listeners
+                unsubs.forEach((u) => {
+                  try {
+                    u && u();
+                  } catch (e) {
+                    console.error(e);
+                  }
+                });
+                multiActiveRef.current = false;
+              }
+
+              // If all listeners reported empty and none locked, we do nothing; UI remains no-active until user creates docs.
+            },
+            (err) => {
+              console.error(
+                "[ActiveClockProvider] probe error",
+                coll,
+                id.field,
+                err,
+              );
+            },
+          );
+          unsubs.push(unsub);
+        } catch (e) {
+          console.error(
+            "[ActiveClockProvider] probe subscribe failed",
+            coll,
+            id.field,
+            e,
+          );
+        }
+      });
+    });
+
+    // Fallback: also kick a one-shot heuristic (non-persistent, not saved)
+    (async () => {
+      try {
+        const guess = await detectTimeclockSchemaOnce();
+        if (guess?.confidence !== "fallback" && !lockedSchema) {
+          // Do not save yet; locked path will save once it sees rows
+          // If you want to pre-lock on a "low" guess, uncomment next line (not recommended)
+          // setLockedSchema(guess);
+        }
+      } catch (e) {
+        console.error("[ActiveClockProvider] detectOnce failed", e);
+      }
+    })();
+
+    unsubsRef.current = unsubs;
+
+    return () => {
+      unsubs.forEach((u) => {
+        try {
+          u && u();
+        } catch (e) {
+          console.error(e);
+        }
+      });
+      unsubsRef.current = [];
+      multiActiveRef.current = false;
+    };
+  }, [lockedSchema, authSnap]);
 
   const value = useMemo(() => state, [state]);
   return (
