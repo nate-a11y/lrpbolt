@@ -6,6 +6,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   limit as limitDocs,
   onSnapshot,
   or,
@@ -21,6 +22,14 @@ import {
 import { db } from "../utils/firebaseInit";
 import logError from "../utils/logError.js";
 import { tsToDate } from "../utils/fsTime.js";
+import { toDayjs } from "../utils/time.js";
+import {
+  pickFirst,
+  isActiveRow as isActiveRowGuard,
+  START_KEYS,
+  UID_KEYS,
+  EMAIL_KEYS,
+} from "../utils/timeGuards.js";
 
 import { mapSnapshotToRows } from "./normalizers";
 
@@ -92,6 +101,153 @@ export function subscribeMyTimeLogs({ user, onData, onError }) {
     logError(err, { where: "timeLogs.subscribeMyTimeLogs", stage: "query" });
     onError?.(err);
     return () => {};
+  }
+}
+
+export async function fetchActiveSessionForUser({ uid, email }) {
+  try {
+    const col = collection(db, "timeLogs");
+
+    async function tryUserQueries() {
+      const outs = [];
+      const pushRows = (snap) => {
+        snap.forEach((docSnap) => {
+          outs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      };
+
+      if (uid) {
+        for (const field of UID_KEYS) {
+          try {
+            const q1 = query(
+              col,
+              where(field, "==", uid),
+              orderBy("startTime", "desc"),
+              limitDocs(8),
+            );
+            const snap = await getDocs(q1);
+            pushRows(snap);
+          } catch (error) {
+            logError(error, {
+              where: "timeLogs.fetchActiveSessionForUser",
+              action: "user-query",
+              field,
+            });
+          }
+        }
+      }
+
+      if (email) {
+        for (const field of EMAIL_KEYS) {
+          try {
+            const q2 = query(
+              col,
+              where(field, "==", email),
+              orderBy("startTime", "desc"),
+              limitDocs(8),
+            );
+            const snap = await getDocs(q2);
+            pushRows(snap);
+          } catch (error) {
+            logError(error, {
+              where: "timeLogs.fetchActiveSessionForUser",
+              action: "email-query",
+              field,
+            });
+          }
+        }
+      }
+
+      return outs;
+    }
+
+    async function tryActiveFallback() {
+      const outs = [];
+      const pushRows = (snap) => {
+        snap.forEach((docSnap) => {
+          outs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      };
+
+      try {
+        const q3 = query(
+          col,
+          where("endTime", "==", null),
+          orderBy("startTime", "desc"),
+          limitDocs(12),
+        );
+        const snap = await getDocs(q3);
+        pushRows(snap);
+      } catch (error) {
+        logError(error, {
+          where: "timeLogs.fetchActiveSessionForUser",
+          action: "fallback-active",
+        });
+        try {
+          const q4 = query(col, orderBy("startTime", "desc"), limitDocs(20));
+          const snap = await getDocs(q4);
+          pushRows(snap);
+        } catch (innerError) {
+          logError(innerError, {
+            where: "timeLogs.fetchActiveSessionForUser",
+            action: "fallback-recent",
+          });
+        }
+      }
+
+      return outs;
+    }
+
+    const userScoped = await tryUserQueries();
+    const pool = userScoped.length ? userScoped : await tryActiveFallback();
+
+    if (!pool.length) return null;
+
+    const seenIds = new Set();
+    const deduped = pool.filter((row) => {
+      const id = row?.id || row?.docId || row?.originalId;
+      if (!id) return true;
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    const uidLc = uid ? String(uid).trim().toLowerCase() : null;
+    const emailLc = email ? String(email).trim().toLowerCase() : null;
+
+    const mine = deduped.filter((row) => {
+      const rowUid = pickFirst(row, UID_KEYS);
+      const rowEmail = pickFirst(row, EMAIL_KEYS);
+      const ru = rowUid ? String(rowUid).trim().toLowerCase() : null;
+      const re = rowEmail ? String(rowEmail).trim().toLowerCase() : null;
+      const belongs = (uidLc && ru === uidLc) || (emailLc && re === emailLc);
+      return belongs && isActiveRowGuard(row);
+    });
+
+    if (!mine.length) return null;
+
+    const match = mine.find((row) => {
+      const startRaw = pickFirst(row, START_KEYS);
+      const dj = toDayjs(startRaw);
+      return dj && dj.isValid();
+    });
+
+    if (!match) return null;
+
+    const startRaw = pickFirst(match, START_KEYS);
+    const dj = toDayjs(startRaw);
+    if (!dj || !dj.isValid()) return null;
+
+    return {
+      ...match,
+      __startField: START_KEYS.find((key) => match[key] != null) || "unknown",
+    };
+  } catch (error) {
+    logError(error, {
+      where: "timeLogs.fetchActiveSessionForUser",
+      action: "query",
+    });
+    return null;
   }
 }
 

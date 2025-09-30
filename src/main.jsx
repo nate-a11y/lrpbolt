@@ -7,7 +7,6 @@ import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
 import { registerSW } from "@/pwa/registerSW";
 import { purgeOtherServiceWorkers } from "@/pwa/purgeSW";
 import ActiveClockProvider from "@/context/ActiveClockContext.jsx";
-import PermissionGate from "@/context/PermissionGate.jsx";
 
 import AppRoot from "./App.jsx";
 import Login from "./pages/Login.jsx";
@@ -37,31 +36,29 @@ registerSW();
 
 const Root = () => {
   return (
-    <PermissionGate>
-      <BrowserRouter>
-        <ColorModeProvider>
-          <AuthProvider>
-            <ActiveClockProvider>
-              <DriverProvider>
-                <ToastProvider>
-                  <NotificationsProvider>
-                    <Suspense fallback={<LoadingScreen />}>
-                      <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/sms-consent" element={<SmsConsent />} />
-                        <Route element={<PrivateRoute />}>
-                          <Route path="/*" element={<AppRoot />} />
-                        </Route>
-                      </Routes>
-                    </Suspense>
-                  </NotificationsProvider>
-                </ToastProvider>
-              </DriverProvider>
-            </ActiveClockProvider>
-          </AuthProvider>
-        </ColorModeProvider>
-      </BrowserRouter>
-    </PermissionGate>
+    <BrowserRouter>
+      <ColorModeProvider>
+        <AuthProvider>
+          <ActiveClockProvider>
+            <DriverProvider>
+              <ToastProvider>
+                <NotificationsProvider>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Routes>
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/sms-consent" element={<SmsConsent />} />
+                      <Route element={<PrivateRoute />}>
+                        <Route path="/*" element={<AppRoot />} />
+                      </Route>
+                    </Routes>
+                  </Suspense>
+                </NotificationsProvider>
+              </ToastProvider>
+            </DriverProvider>
+          </ActiveClockProvider>
+        </AuthProvider>
+      </ColorModeProvider>
+    </BrowserRouter>
   );
 };
 

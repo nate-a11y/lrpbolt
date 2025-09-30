@@ -39,6 +39,7 @@ import { formatClockElapsed } from "@/utils/timeUtils.js";
 import { isValidTimestamp } from "@/utils/time.js";
 import logError from "@/utils/logError.js";
 import { useAuth } from "@/context/AuthContext.jsx";
+import { pickFirst, START_KEYS } from "@/utils/timeGuards.js";
 
 const LRP = { green: "#4cbb17", black: "#060606" };
 
@@ -307,11 +308,11 @@ function ActiveTimeClockBubble({
 
 export default function TimeClockBubble() {
   const { user } = useAuth?.() || { user: null };
-  const userId = user?.uid || user?.id || null;
-  const { session } = useActiveTimeSession(userId);
-  const startTimeTs = session?.startTime || null;
+  const { session } = useActiveTimeSession(user);
+  const startRaw = session ? pickFirst(session, START_KEYS) : null;
+  const startTimeTs = isValidTimestamp(startRaw) ? startRaw : null;
   const hasActive = Boolean(session);
-  const hasValidStart = isValidTimestamp(startTimeTs);
+  const hasValidStart = Boolean(startTimeTs);
   const didLogRef = useRef(false);
   const sessionId = session?.id || null;
 
@@ -324,15 +325,16 @@ export default function TimeClockBubble() {
 
   useEffect(() => {
     console.info("[LRP][TimeClockBubble] state:", {
-      userId,
       hasActive,
       hasValidStart,
       sessionId,
+      startField:
+        session?.__startField || (startTimeTs ? "(guessed)" : "(none)"),
       startTsType: startTimeTs?.toDate
         ? "FirestoreTimestamp"
         : typeof startTimeTs,
     });
-  }, [hasActive, hasValidStart, sessionId, startTimeTs, userId]);
+  }, [hasActive, hasValidStart, session?.__startField, sessionId, startTimeTs]);
 
   return (
     <ActiveTimeClockBubble hasActive={hasActive} startTimeTs={startTimeTs} />
