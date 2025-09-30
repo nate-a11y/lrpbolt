@@ -19,6 +19,7 @@ import useElapsedFromTs from "@/hooks/useElapsedFromTs.js";
 import { openTimeClockModal } from "@/services/uiBus";
 import {
   requestPersistentClockNotification,
+  stopPersistentClockNotification,
   clearClockNotification,
 } from "@/pwa/clockNotifications";
 import { trySetAppBadge, clearAppBadge } from "@/pwa/appBadge";
@@ -63,6 +64,7 @@ export default function TimeClockBubble() {
           await requestPersistentClockNotification(elapsedLabel);
           await trySetAppBadge(elapsedMinutes);
         } else {
+          await stopPersistentClockNotification();
           await clearClockNotification();
           await clearAppBadge();
           if (pipOn) {
