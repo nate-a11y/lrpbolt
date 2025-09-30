@@ -27,7 +27,7 @@ export async function requestPersistentClockNotification(
       data: { kind: "clock" },
       actions: [
         { action: "open", title: "Open" },
-        { action: "clock_out", title: "Clock Out" },
+        { action: "clockout", title: "Clock Out" },
       ],
     });
   } catch (error) {

@@ -135,40 +135,48 @@ try {
 }
 
 self.addEventListener("notificationclick", (event) => {
-  const action = event.action;
+  const action = event.action || "";
   const notification = event.notification;
+  notification?.close();
+
+  async function focusOrOpen() {
+    const allClients = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+    const scopeUrl = new URL(self.registration.scope);
+    const existing = allClients.find(
+      (client) => client.url.startsWith(scopeUrl.origin) && "focus" in client,
+    );
+    if (existing) {
+      try {
+        await existing.focus();
+      } catch (focusError) {
+        console.warn("[sw] focus failed", focusError);
+      }
+      return existing;
+    }
+    if (typeof self.clients.openWindow === "function") {
+      return self.clients.openWindow(scopeUrl.href);
+    }
+    return null;
+  }
+
   event.waitUntil(
     (async () => {
       try {
-        const allClients = await clients.matchAll({
-          type: "window",
-          includeUncontrolled: true,
-        });
-        const client =
-          allClients[0] ||
-          (typeof clients.openWindow === "function"
-            ? await clients.openWindow("/")
-            : null);
-        if (client && "focus" in client) {
-          try {
-            await client.focus();
-          } catch (focusError) {
-            console.warn("[SW] focus failed", focusError);
-          }
-        }
-        if (action === "clock_out") {
-          client?.postMessage?.({ type: "LRP_CLOCK_OUT_REQUEST" });
+        const client = await focusOrOpen();
+        if (!client) return;
+
+        if (action === "open") {
+          client.postMessage({ type: "SW_OPEN_TIME_CLOCK" });
+        } else if (action === "clockout") {
+          client.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
         } else {
-          client?.postMessage?.({ type: "LRP_OPEN_CLOCK" });
+          client.postMessage({ type: "SW_OPEN_TIME_CLOCK" });
         }
       } catch (error) {
-        console.error("[SW] notificationclick error", error);
-      } finally {
-        try {
-          notification.close();
-        } catch (closeError) {
-          console.warn("[SW] notification close failed", closeError);
-        }
+        console.error("[sw] notificationclick failed", error);
       }
     })(),
   );

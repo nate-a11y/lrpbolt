@@ -26,6 +26,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
+import ClockOutConfirm from "@/components/ClockOutConfirm.jsx";
 import TimeClockBubble from "@/components/TimeClockBubble.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
 import { endTimeLog } from "@/services/timeLogs.js";
@@ -428,6 +429,7 @@ function App() {
         />
         <NotificationsOptInDialog user={user} />
         <TimeClockBubble />
+        <ClockOutConfirm />
       </AppShell>
     </LocalizationProvider>
   );
