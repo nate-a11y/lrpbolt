@@ -14,6 +14,26 @@ import { ensureFcmSwReady } from "@/pwa/fcmBridge";
 const LS_KEY = "lrp_fcm_token_v1";
 const BIND_KEY = "lrp_fcm_first_bind_done_v1";
 
+/** Pick a non-empty VAPID key from args, firebaseConfig, or env. */
+function resolveVapidKey(firebaseConfig, vapidKey) {
+  try {
+    const fromArg = typeof vapidKey === "string" ? vapidKey.trim() : "";
+    const fromCfg =
+      typeof firebaseConfig?.vapidKey === "string"
+        ? firebaseConfig.vapidKey.trim()
+        : "";
+    const fromEnv =
+      typeof import.meta?.env?.VITE_FIREBASE_VAPID_KEY === "string"
+        ? import.meta.env.VITE_FIREBASE_VAPID_KEY.trim()
+        : "";
+    const key = fromArg || fromCfg || fromEnv;
+    return key || "";
+  } catch (error) {
+    console.error("[pushTokens] resolveVapidKey failed", error);
+    return "";
+  }
+}
+
 export async function getFcmTokenSafe(
   firebaseConfig,
   { vapidKey, forceRefresh = false } = {},
@@ -50,9 +70,17 @@ export async function getFcmTokenSafe(
       cached = null;
     }
 
+    const resolvedVapid = resolveVapidKey(firebaseConfig, vapidKey);
+    if (!resolvedVapid) {
+      console.error(
+        "[pushTokens] Missing public VAPID key. Set VITE_FIREBASE_VAPID_KEY or provide firebaseConfig.vapidKey.",
+      );
+      return null;
+    }
+
     const reg = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, {
-      vapidKey: vapidKey || firebaseConfig.vapidKey,
+      vapidKey: resolvedVapid,
       serviceWorkerRegistration: reg,
     });
 

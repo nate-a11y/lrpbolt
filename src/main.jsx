@@ -23,6 +23,13 @@ import ToastProvider from "./context/ToastProvider.jsx";
 import "./utils/firebaseInit.js";
 import "./muix-license.js";
 
+const hasVapidKey = Boolean(import.meta?.env?.VITE_FIREBASE_VAPID_KEY);
+if (!hasVapidKey) {
+  console.warn(
+    "[LRP] VITE_FIREBASE_VAPID_KEY is not set. Push token requests will fail unless firebaseConfig.vapidKey is provided.",
+  );
+}
+
 // attach immediately and clean/register before rendering
 initServiceWorkerMessageBridge();
 purgeOtherServiceWorkers();

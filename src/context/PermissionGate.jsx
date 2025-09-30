@@ -20,7 +20,14 @@ export default function PermissionGate({ children }) {
         } catch (error) {
           console.warn("[PermissionGate] first bind read failed", error);
         }
+        const vapidKey =
+          (typeof firebaseConfig?.vapidKey === "string" &&
+            firebaseConfig.vapidKey) ||
+          (typeof import.meta?.env?.VITE_FIREBASE_VAPID_KEY === "string" &&
+            import.meta.env.VITE_FIREBASE_VAPID_KEY) ||
+          "";
         const token = await getFcmTokenSafe(firebaseConfig, {
+          vapidKey,
           forceRefresh: !firstBindDone,
         });
         if (token && !firstBindDone) {
