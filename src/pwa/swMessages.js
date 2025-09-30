@@ -1,40 +1,36 @@
 /* Proprietary and confidential. See LICENSE. */
 
-// Single attachment guard
+// Attach-once guard
 let _attached = false;
 
-// Tiny in-memory FIFO for cold-start buffering
-const _pending = []; // { type: "SW_OPEN_TIME_CLOCK" | "SW_CLOCK_OUT_REQUEST", ts: number }
+// In-memory FIFO for cold-start buffering of SW events
+const _pending = []; // { type, ts }
 const _MAX = 8;
-
-/** Push into pending (bounded). */
 function _enqueue(type) {
   try {
     _pending.push({ type, ts: Date.now() });
     while (_pending.length > _MAX) _pending.shift();
-  } catch {
-    // ignore enqueue failure
+  } catch (error) {
+    console.error("[swMessages] enqueue failed", error);
   }
 }
 
-/**
- * Returns true if a pending event of this type existed and removes the oldest one.
- * Safe to call from React effects to drain any pre-mount events.
- */
+/** Drain a pending SW event (oldest of this type). */
 export function consumePendingSwEvent(type) {
   try {
-    const idx = _pending.findIndex((e) => e.type === type);
-    if (idx >= 0) {
-      _pending.splice(idx, 1);
+    const i = _pending.findIndex((e) => e.type === type);
+    if (i >= 0) {
+      _pending.splice(i, 1);
       return true;
     }
     return false;
-  } catch {
+  } catch (error) {
+    console.error("[swMessages] consume failed", error);
     return false;
   }
 }
 
-/** Attach SW message -> window events, *and* queue for cold start. Idempotent. */
+/** Attach SW->window message bridge immediately. Idempotent. */
 export function initServiceWorkerMessageBridge() {
   try {
     if (_attached) return;
@@ -45,14 +41,13 @@ export function initServiceWorkerMessageBridge() {
 
     navigator.serviceWorker.addEventListener("message", (e) => {
       const msg = e?.data || {};
-      const type = msg?.type;
+      const t = msg?.type;
       try {
-        if (type === "SW_OPEN_TIME_CLOCK") {
-          // Queue first so early consumers can drain, then dispatch window event.
-          _enqueue(type);
+        if (t === "SW_OPEN_TIME_CLOCK") {
+          _enqueue(t);
           window.dispatchEvent(new CustomEvent("lrp:open-timeclock"));
-        } else if (type === "SW_CLOCK_OUT_REQUEST") {
-          _enqueue(type);
+        } else if (t === "SW_CLOCK_OUT_REQUEST") {
+          _enqueue(t);
           window.dispatchEvent(new CustomEvent("lrp:clockout-request"));
         }
       } catch (err) {
