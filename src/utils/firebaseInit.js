@@ -30,6 +30,9 @@ export const firebaseConfig = {
   projectId,
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: env.VITE_FIREBASE_APP_ID,
+  ...(env.VITE_FIREBASE_VAPID_KEY
+    ? { vapidKey: env.VITE_FIREBASE_VAPID_KEY }
+    : {}),
   ...(authDomain ? { authDomain } : {}),
   ...(storageBucket ? { storageBucket } : {}),
   ...(env.VITE_FIREBASE_MEASUREMENT_ID
