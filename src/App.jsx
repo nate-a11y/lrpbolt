@@ -29,6 +29,7 @@ import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
 import ClockOutConfirm from "@/components/ClockOutConfirm.jsx";
 import NotifDiag from "@/components/NotifDiag.jsx";
 import GlobalChrome from "@/components/GlobalChrome.jsx";
+import PermissionGate from "@/components/PermissionGate.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
 import { endTimeLog } from "@/services/timeLogs.js";
 import { on } from "@/services/uiBus";
@@ -429,6 +430,7 @@ function App() {
           onClose={() => setPhonePromptOpen(false)}
         />
         <NotificationsOptInDialog user={user} />
+        {!authLoading && <PermissionGate user={user} />}
         <GlobalChrome />
         <ClockOutConfirm />
         <NotifDiag />
