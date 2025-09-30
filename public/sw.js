@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-const SW_VERSION = "lrp-sw-v8";
+const SW_VERSION = "lrp-sw-v9";
 let CLOCK_STICKY = false;
 let lastClockPayload = {
   title: "LRP — On the clock",

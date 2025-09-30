@@ -61,7 +61,12 @@ export default function TimeClockBubble() {
     (async () => {
       try {
         if (hasActive && start) {
-          await requestPersistentClockNotification(elapsedLabel);
+          const canNotify =
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted";
+          if (canNotify) {
+            await requestPersistentClockNotification(elapsedLabel);
+          }
           await trySetAppBadge(elapsedMinutes);
         } else {
           await stopPersistentClockNotification();
@@ -85,9 +90,14 @@ export default function TimeClockBubble() {
     if (!(hasActive && start)) return undefined;
     const interval = setInterval(async () => {
       try {
-        await requestPersistentClockNotification(elapsedLabel, {
-          silent: true,
-        });
+        const canNotify =
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted";
+        if (canNotify) {
+          await requestPersistentClockNotification(elapsedLabel, {
+            silent: true,
+          });
+        }
         await trySetAppBadge(elapsedMinutes);
         if (pipOn && isPiPActive()) {
           await updateClockPiP(
