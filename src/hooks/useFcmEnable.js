@@ -15,17 +15,28 @@ export default function useFcmEnable() {
   const [permission, setPermission] = useState(() =>
     typeof Notification !== "undefined" ? Notification.permission : "denied",
   );
-  const [token, setToken] = useState(() =>
-    localStorage.getItem("lrp_fcm_token"),
-  );
+  const readToken = useCallback(() => {
+    try {
+      return (
+        localStorage.getItem("lrp_fcm_token_v1") ||
+        localStorage.getItem("lrp_fcm_token") ||
+        null
+      );
+    } catch (error) {
+      logError(error, { where: "fcm", action: "read-token" });
+      return null;
+    }
+  }, []);
+
+  const [token, setToken] = useState(() => readToken());
 
   useEffect(() => {
     if (!FCM_ENABLED || !supported) return;
     setPermission(
       typeof Notification !== "undefined" ? Notification.permission : "denied",
     );
-    setToken(localStorage.getItem("lrp_fcm_token"));
-  }, [supported]);
+    setToken(readToken());
+  }, [readToken, supported]);
 
   const enableFcm = useCallback(async () => {
     if (!FCM_ENABLED || !supported) return null;

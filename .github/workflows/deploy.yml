@@ -149,9 +149,8 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: npm run build:prod
 
-      - name: Verify SW files exist
+      - name: Verify web manifest exists
         run: |
-          test -f dist/firebase-messaging-sw.js || { echo "::error::dist/firebase-messaging-sw.js missing"; exit 1; }
           test -f dist/manifest.webmanifest || true
 
       - name: Write Hostinger .htaccess

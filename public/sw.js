@@ -1,9 +1,57 @@
 /* Proprietary and confidential. See LICENSE. */
-const SW_VERSION = "lrp-sw-v11";
+
+const SW_VERSION = "lrp-sw-v12";
 let CLOCK_STICKY = false;
-let firebaseInitPromise = null;
-let firebaseMessagingReady = false;
-let cachedFirebaseConfig = null;
+
+/* ---------- FCM lazy init ---------- */
+let _fcmReady = false;
+let _fcmInitErr = null;
+
+async function initFirebaseMessagingInSw(config) {
+  if (_fcmReady) return true;
+  try {
+    importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
+    importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
+
+    if (!self.firebase?.apps?.length) {
+      self.firebase.initializeApp(config);
+    }
+
+    const messaging = self.firebase.messaging();
+
+    messaging.onBackgroundMessage((payload) => {
+      try {
+        const title =
+          (payload?.notification &&
+            (payload.notification.title || payload.notification.body)) ||
+          "LRP — Update";
+        const body = (payload?.notification && payload.notification.body) || "";
+        self.registration.showNotification(title, {
+          body,
+          tag: "lrp-fcm",
+          renotify: true,
+          badge: "/icons/badge-72.png",
+          icon: "/icons/icon-192.png",
+          actions: [
+            { action: "open", title: "Open" },
+            { action: "clockout", title: "Clock Out" },
+          ],
+          data: { ts: Date.now(), fcm: true },
+        });
+      } catch (error) {
+        console.error("[sw] onBackgroundMessage show failed", error);
+      }
+    });
+
+    _fcmReady = true;
+    _fcmInitErr = null;
+    return true;
+  } catch (error) {
+    _fcmInitErr = String(error?.message || error);
+    console.error("[sw] FCM init failed", error);
+    return false;
+  }
+}
 
 /* ---------- Minimal offline cache (no Workbox) ---------- */
 const CACHE_NAME = "lrp-offline-v1";
@@ -60,6 +108,30 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   const msg = event.data || {};
   try {
+    if (msg.type === "FIREBASE_CONFIG") {
+      const cfg = msg?.payload?.config || msg.config || null;
+      const ackPort = event.ports && event.ports[0];
+      (async () => {
+        let ok = false;
+        if (cfg) {
+          ok = await initFirebaseMessagingInSw(cfg);
+        } else {
+          _fcmInitErr = "Missing Firebase config";
+        }
+        if (ackPort) {
+          try {
+            ackPort.postMessage({
+              type: "FIREBASE_CONFIG_ACK",
+              ok,
+              err: _fcmInitErr,
+            });
+          } catch (error) {
+            console.error("[sw] FIREBASE_CONFIG ack failed", error);
+          }
+        }
+      })();
+      return;
+    }
     if (msg.type === "PING") return;
     if (msg.type === "SHOW_CLOCK_FROM_SW") {
       CLOCK_STICKY = true;
@@ -77,10 +149,6 @@ self.addEventListener("message", (event) => {
     if (msg.type === "CLEAR_CLOCK_FROM_SW") {
       event.waitUntil(closeClockNotifications());
       return;
-    }
-    if (msg.type === "FIREBASE_CONFIG" && msg.config) {
-      cachedFirebaseConfig = msg.config;
-      event.waitUntil(ensureFirebaseMessagingInitialized(msg.config));
     }
   } catch (error) {
     console.error("[sw] message error", error);
@@ -154,59 +222,6 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-async function ensureFirebaseMessagingInitialized(config) {
-  if (!config) return;
-  if (firebaseMessagingReady) return;
-  if (firebaseInitPromise) {
-    try {
-      await firebaseInitPromise;
-    } catch (error) {
-      console.error("[sw] firebase init retry failed", error);
-    }
-    return;
-  }
-  firebaseInitPromise = (async () => {
-    try {
-      importScripts(
-        "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
-      );
-      importScripts(
-        "https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js",
-      );
-
-      if (!self.firebase?.apps?.length) {
-        self.firebase.initializeApp(config);
-      }
-      const messaging = self.firebase.messaging();
-      messaging.onBackgroundMessage((payload) => {
-        const title = payload?.notification?.title || "Notification";
-        const body = payload?.notification?.body || "";
-        const icon = payload?.notification?.icon || "/favicon.ico";
-        self.registration.showNotification(title, {
-          body,
-          icon,
-          data: payload?.data || {},
-        });
-      });
-      firebaseMessagingReady = true;
-    } catch (error) {
-      firebaseMessagingReady = false;
-      console.error("[sw] FCM init failed", error);
-      throw error;
-    }
-  })();
-  try {
-    await firebaseInitPromise;
-  } catch (error) {
-    firebaseInitPromise = null;
-  }
-}
-
-self.addEventListener("push", (event) => {
-  if (!cachedFirebaseConfig) return;
-  // Ensure FCM is ready for background pushes triggered before message event.
-  event.waitUntil(ensureFirebaseMessagingInitialized(cachedFirebaseConfig));
-});
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
