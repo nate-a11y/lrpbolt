@@ -28,7 +28,7 @@ export default function NotificationSettingsCard({ user }) {
   const ensure = useCallback(async () => {
     setBusy(true);
     try {
-      await ensureFcmToken(user, { source: "ensure" });
+      await ensureFcmToken(user, { source: "ensure", forceRefresh: true });
     } finally {
       setBusy(false);
     }

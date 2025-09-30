@@ -19,10 +19,10 @@ export function getPermission() {
     : "denied";
 }
 
-export async function enableFcmForUser() {
+export async function enableFcmForUser(_, options = {}) {
   const perm = await requestFcmPermission();
   if (perm !== "granted") throw new Error("permission denied");
-  const token = await getFcmTokenSafe();
+  const token = await getFcmTokenSafe(options);
   if (!token) throw new Error("token unavailable");
   return token;
 }
@@ -35,9 +35,9 @@ export async function disableFcmForUser() {
   }
 }
 
-export async function ensureFcmToken() {
+export async function ensureFcmToken(_, options = {}) {
   try {
-    return await getFcmTokenSafe();
+    return await getFcmTokenSafe(options);
   } catch (err) {
     logError(err, { where: "fcm", action: "ensure-token" });
     return null;

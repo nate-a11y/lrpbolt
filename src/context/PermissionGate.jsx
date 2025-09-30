@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Box, Button, Typography, Paper, Stack } from "@mui/material";
 
+import { getFcmTokenSafe } from "@/services/fcm";
+
 const LRP = { green: "#4cbb17", black: "#060606" };
 
 function PermissionOverlay({ onContinue }) {
@@ -83,6 +85,35 @@ export default function PermissionGate({ children }) {
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window)) return;
+
+    (async () => {
+      try {
+        if (Notification.permission !== "granted") return;
+        const firstBindKey = "lrp_fcm_first_bind_done_v1";
+        let firstBindDone = false;
+        try {
+          firstBindDone = localStorage.getItem(firstBindKey) === "1";
+        } catch (error) {
+          console.error("[PermissionGate] firstBind read failed", error);
+        }
+        const token = await getFcmTokenSafe({ forceRefresh: !firstBindDone });
+        if (token && !firstBindDone) {
+          try {
+            localStorage.setItem(firstBindKey, "1");
+          } catch (error) {
+            console.error("[PermissionGate] firstBind write failed", error);
+          }
+        }
+      } catch (error) {
+        console.error("[PermissionGate] FCM init failed", error);
+      }
+    })();
+  }, [allowed]);
 
   const handleContinue = useCallback(async () => {
     try {
