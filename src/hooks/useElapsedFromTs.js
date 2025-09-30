@@ -1,60 +1,53 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import dayjsLib from "dayjs";
-import utc from "dayjs/plugin/utc";
-import tz from "dayjs/plugin/timezone";
 
+import { dayjs, formatDuration, toDayjs } from "@/utils/time";
 import logError from "@/utils/logError.js";
 
-dayjsLib.extend(utc);
-dayjsLib.extend(tz);
-const resolveDayjs = (...args) => {
-  try {
-    return dayjsLib.tz(...args, dayjsLib.tz.guess());
-  } catch (error) {
-    logError(error, { where: "useElapsedFromTs", action: "tzGuess" });
-    return dayjsLib(...args);
-  }
-};
-
-export default function useElapsedFromTs(ts) {
-  const [, setTick] = useState(0);
-  const timerRef = useRef(null);
-
-  const start = useMemo(() => {
-    try {
-      return ts && typeof ts.toDate === "function"
-        ? resolveDayjs(ts.toDate())
-        : null;
-    } catch (error) {
-      logError(error, { where: "useElapsedFromTs", action: "parse" });
-      return null;
-    }
-  }, [ts]);
+/**
+ * Computes a live-updating elapsed duration since a start timestamp.
+ */
+export default function useElapsedFromTs(startTs, { tickMs = 1000 } = {}) {
+  const startDj = useMemo(() => toDayjs(startTs), [startTs]);
+  const safeTickMs = useMemo(
+    () => (Number.isFinite(tickMs) && tickMs > 0 ? tickMs : 1000),
+    [tickMs],
+  );
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const timeoutRef = useRef();
 
   useEffect(() => {
-    if (!start) return undefined;
-    timerRef.current = setInterval(() => {
-      setTick((value) => (value + 1) % 1_000_000_000);
-    }, 1000);
+    if (!startDj) return undefined;
+
+    function tick() {
+      setNowMs(Date.now());
+      timeoutRef.current = setTimeout(tick, safeTickMs);
+    }
+
+    timeoutRef.current = setTimeout(tick, safeTickMs);
 
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = undefined;
       }
     };
-  }, [start]);
+  }, [safeTickMs, startDj]);
 
-  let elapsedMs = 0;
-  if (start) {
-    try {
-      const diff = resolveDayjs().diff(start);
-      elapsedMs = Number.isFinite(diff) && diff > 0 ? diff : 0;
-    } catch (error) {
-      logError(error, { where: "useElapsedFromTs", action: "elapsed" });
-    }
-  }
+  useEffect(() => {
+    if (startDj) return undefined;
+    logError(new Error("Invalid or missing startTs"), {
+      where: "useElapsedFromTs",
+      action: "parse",
+    });
+    return undefined;
+  }, [startDj]);
 
-  return { start, elapsedMs };
+  const diff = startDj ? dayjs(nowMs).diff(startDj) : 0;
+  const elapsedMs = Number.isFinite(diff) && diff > 0 ? diff : 0;
+
+  return {
+    elapsedMs,
+    formatted: formatDuration(elapsedMs),
+  };
 }
