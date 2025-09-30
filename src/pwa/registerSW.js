@@ -1,7 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 export async function registerSW() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return null;
+  }
   try {
     const reg = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
@@ -9,17 +10,17 @@ export async function registerSW() {
     try {
       await reg.update();
     } catch (error) {
-      console.error("[registerSW] update failed", error);
+      console.warn("[registerSW] update skipped", error);
     }
     try {
       await navigator.serviceWorker.ready;
     } catch (error) {
-      console.error("[registerSW] ready wait failed", error);
+      console.warn("[registerSW] ready wait failed", error);
     }
     try {
       reg.active?.postMessage?.({ type: "PING" });
     } catch (error) {
-      console.error("[registerSW] ping failed", error);
+      console.warn("[registerSW] ping failed", error);
     }
     return reg;
   } catch (error) {

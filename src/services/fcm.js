@@ -1,5 +1,7 @@
 import { getToken, onMessage, deleteToken } from "firebase/messaging";
 
+import { registerSW } from "@/pwa/registerSW";
+
 import { firebaseConfig, getMessagingOrNull } from "../utils/firebaseInit";
 import logError from "../utils/logError.js";
 
@@ -17,26 +19,43 @@ export function isSupportedBrowser() {
 }
 
 let swRegPromise;
+function sendFirebaseConfigMessage(registration) {
+  if (!registration) return;
+  try {
+    registration.active?.postMessage({
+      type: "FIREBASE_CONFIG",
+      config: firebaseConfig,
+    });
+  } catch (err) {
+    logError(err, { where: "fcm", action: "send-config" });
+  }
+}
+
+function broadcastConfigToController() {
+  try {
+    navigator.serviceWorker.controller?.postMessage({
+      type: "FIREBASE_CONFIG",
+      config: firebaseConfig,
+    });
+  } catch (err) {
+    logError(err, { where: "fcm", action: "controller-config" });
+  }
+}
+
 export async function ensureServiceWorkerRegistered() {
   if (!isSupportedBrowser()) return null;
   try {
     if (swRegPromise) return swRegPromise;
-    swRegPromise = navigator.serviceWorker
-      .getRegistration("/firebase-messaging-sw.js")
-      .then(async (reg) => {
-        if (!reg) {
-          reg = await navigator.serviceWorker.register(
-            "/firebase-messaging-sw.js",
-          );
-        }
-        const sendConfig = (r) =>
-          r.active?.postMessage({
-            type: "FIREBASE_CONFIG",
-            config: firebaseConfig,
-          });
-        sendConfig(reg);
+    swRegPromise = registerSW()
+      .then((reg) => {
+        if (!reg) return null;
+        sendFirebaseConfigMessage(reg);
+        broadcastConfigToController();
         navigator.serviceWorker.ready
-          .then(sendConfig)
+          .then((readyReg) => {
+            sendFirebaseConfigMessage(readyReg);
+            broadcastConfigToController();
+          })
           .catch((err) => logError(err, { where: "fcm", action: "sw-ready" }));
         return reg;
       })

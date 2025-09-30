@@ -1,10 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
-
-// Attach-once guard
 let _attached = false;
-
-// In-memory FIFO for cold-start buffering of SW events
-const _pending = []; // { type, ts }
+const _pending = [];
 const _MAX = 8;
 function _enqueue(type) {
   try {
@@ -14,13 +10,11 @@ function _enqueue(type) {
     console.error("[swMessages] enqueue failed", error);
   }
 }
-
-/** Drain a pending SW event (oldest of this type). */
 export function consumePendingSwEvent(type) {
   try {
-    const i = _pending.findIndex((e) => e.type === type);
-    if (i >= 0) {
-      _pending.splice(i, 1);
+    const index = _pending.findIndex((entry) => entry.type === type);
+    if (index >= 0) {
+      _pending.splice(index, 1);
       return true;
     }
     return false;
@@ -29,35 +23,30 @@ export function consumePendingSwEvent(type) {
     return false;
   }
 }
-
-/** Attach SW->window message bridge immediately. Idempotent. */
 export function initServiceWorkerMessageBridge() {
   try {
     if (_attached) return;
-    if (!("serviceWorker" in navigator)) {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
       _attached = true;
       return;
     }
-
-    navigator.serviceWorker.addEventListener("message", (e) => {
-      const msg = e?.data || {};
-      const t = msg?.type;
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      const type = event?.data?.type;
       try {
-        if (t === "SW_OPEN_TIME_CLOCK") {
-          _enqueue(t);
+        if (type === "SW_OPEN_TIME_CLOCK") {
+          _enqueue(type);
           window.dispatchEvent(new CustomEvent("lrp:open-timeclock"));
-        } else if (t === "SW_CLOCK_OUT_REQUEST") {
-          _enqueue(t);
+        } else if (type === "SW_CLOCK_OUT_REQUEST") {
+          _enqueue(type);
           window.dispatchEvent(new CustomEvent("lrp:clockout-request"));
         }
-      } catch (err) {
-        console.error("[swMessages] dispatch failed", err);
+      } catch (error) {
+        console.error("[swMessages] dispatch failed", error);
       }
     });
-
     _attached = true;
-  } catch (e) {
-    console.error("[swMessages] init failed", e);
+  } catch (error) {
+    console.error("[swMessages] init failed", error);
     _attached = true;
   }
 }
