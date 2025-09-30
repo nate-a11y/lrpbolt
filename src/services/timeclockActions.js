@@ -12,6 +12,11 @@ import { getAuth } from "firebase/auth";
 
 import { db } from "@/services/firebase";
 import { loadDetectedSchema } from "@/config/timeclockSchema";
+import {
+  stopPersistentClockNotification,
+  clearClockNotification,
+} from "@/pwa/clockNotifications";
+import logError from "@/utils/logError.js";
 
 /** Finds the open session for the current user (using detected schema) and clocks it out. */
 export async function clockOutActiveSession() {
@@ -49,6 +54,16 @@ export async function clockOutActiveSession() {
         [endKey]: serverTimestamp(),
         [activeKey]: false,
       });
+      try {
+        await stopPersistentClockNotification();
+      } catch (error) {
+        logError(error, { where: "timeclockActions", action: "stopSticky" });
+      }
+      try {
+        await clearClockNotification();
+      } catch (error) {
+        logError(error, { where: "timeclockActions", action: "clearClock" });
+      }
       return;
     }
   }

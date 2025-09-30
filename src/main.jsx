@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
+import { registerSW } from "@/pwa/registerSW";
 import ActiveClockProvider from "@/context/ActiveClockContext.jsx";
 import PermissionGate from "@/context/PermissionGate.jsx";
 
@@ -51,6 +52,10 @@ const Root = () => {
   );
 };
 
-initServiceWorkerMessageBridge();
+registerSW()
+  .catch(() => null)
+  .finally(() => {
+    initServiceWorkerMessageBridge();
+  });
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
