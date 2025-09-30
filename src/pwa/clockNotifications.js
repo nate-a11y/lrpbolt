@@ -1,17 +1,25 @@
 /* Proprietary and confidential. See LICENSE. */
+function postTo(activeOrController, type, payload) {
+  try {
+    activeOrController.postMessage({ type, payload });
+    return true;
+  } catch (error) {
+    console.error("[clockNotifications] post fail", error);
+    return false;
+  }
+}
+
 async function postToSW(type, payload) {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return false;
   }
   try {
     if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type, payload });
-      return true;
+      return postTo(navigator.serviceWorker.controller, type, payload);
     }
     const registration = await navigator.serviceWorker.ready.catch(() => null);
     if (registration?.active) {
-      registration.active.postMessage({ type, payload });
-      return true;
+      return postTo(registration.active, type, payload);
     }
     return false;
   } catch (error) {
@@ -59,5 +67,13 @@ export async function clearClockNotification() {
     await postToSWWithRetry("CLEAR_CLOCK_FROM_SW");
   } catch (error) {
     console.error("[clockNotifications] clear failed", error);
+  }
+}
+
+export async function diagShowSwNotification(body = "Hello from SW") {
+  try {
+    await postToSWWithRetry("DIAG_NOTIFY", { body });
+  } catch (error) {
+    console.error("[clockNotifications] diag failed", error);
   }
 }
