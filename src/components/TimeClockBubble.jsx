@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Box,
@@ -36,6 +36,7 @@ import {
 } from "@/pwa/pipTicker";
 import { initPiPBridge } from "@/pwa/pipBridge";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
+import { isValidTimestamp } from "@/utils/time.js";
 import logError from "@/utils/logError.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 
@@ -44,7 +45,6 @@ const LRP = { green: "#4cbb17", black: "#060606" };
 function ActiveTimeClockBubble({
   hasActive,
   startTimeTs,
-  onInactiveCleanup,
   stopPersistentClockNotification: stopPersistentClockNotificationOverride,
   clearClockNotification: clearClockNotificationOverride,
   clearAppBadge: clearAppBadgeOverride,
@@ -104,13 +104,6 @@ function ActiveTimeClockBubble({
             if (isMounted) setPipOn(false);
           }
           wasActiveRef.current = false;
-          if (
-            !hasActive &&
-            typeof onInactiveCleanup === "function" &&
-            isMounted
-          ) {
-            onInactiveCleanup();
-          }
         }
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "pwaLifecycle" });
@@ -124,9 +117,7 @@ function ActiveTimeClockBubble({
     clearClockNotificationFn,
     elapsedLabel,
     elapsedMinutes,
-    hasActive,
     hasValidStart,
-    onInactiveCleanup,
     pipOn,
     startMs,
     stopPersistentClockNotificationFn,
@@ -181,9 +172,7 @@ function ActiveTimeClockBubble({
     [],
   );
 
-  if (!hasValidStart) {
-    return null;
-  }
+  const isVisible = hasValidStart;
 
   const handlePiPToggle = async () => {
     try {
@@ -209,14 +198,20 @@ function ActiveTimeClockBubble({
   };
 
   const node = (
-    <Fade in timeout={200}>
+    <Fade in={isVisible} timeout={200}>
       <Paper
         elevation={6}
         sx={{
           position: "fixed",
           right: 16,
           bottom: 16,
-          zIndex: (theme) => (theme.zIndex?.modal ?? 1300) + 10,
+          zIndex: (theme) => {
+            const modal = theme.zIndex?.modal ?? 1300;
+            const drawer = theme.zIndex?.drawer ?? 1200;
+            const snackbar = theme.zIndex?.snackbar ?? 1400;
+            const tooltip = theme.zIndex?.tooltip ?? 1500;
+            return Math.max(modal, drawer, snackbar, tooltip) + 4;
+          },
           bgcolor: "#0b0b0b",
           border: "1px solid rgba(255,255,255,0.12)",
           borderRadius: "999px",
@@ -226,8 +221,10 @@ function ActiveTimeClockBubble({
           px: collapsed ? 1 : 1.5,
           py: 1,
           boxShadow: "0 6px 30px rgba(0,0,0,0.45)",
+          pointerEvents: isVisible ? "auto" : "none",
         }}
         aria-label="On the clock bubble"
+        aria-hidden={!isVisible}
         role="status"
       >
         <Box
@@ -314,27 +311,30 @@ export default function TimeClockBubble() {
   const { session } = useActiveTimeSession(userId);
   const startTimeTs = session?.startTime || null;
   const hasActive = Boolean(session);
-  const [shouldRender, setShouldRender] = useState(false);
+  const hasValidStart = isValidTimestamp(startTimeTs);
+  const didLogRef = useRef(false);
+  const sessionId = session?.id || null;
 
   useEffect(() => {
-    if (hasActive) {
-      setShouldRender(true);
+    if (!didLogRef.current) {
+      didLogRef.current = true;
+      console.info("[LRP][TimeClockBubble] mounted");
     }
-  }, [hasActive]);
-
-  const handleInactiveCleanup = useCallback(() => {
-    setShouldRender(false);
   }, []);
 
-  if (!shouldRender && !hasActive) {
-    return null;
-  }
+  useEffect(() => {
+    console.info("[LRP][TimeClockBubble] state:", {
+      userId,
+      hasActive,
+      hasValidStart,
+      sessionId,
+      startTsType: startTimeTs?.toDate
+        ? "FirestoreTimestamp"
+        : typeof startTimeTs,
+    });
+  }, [hasActive, hasValidStart, sessionId, startTimeTs, userId]);
 
   return (
-    <ActiveTimeClockBubble
-      hasActive={hasActive}
-      startTimeTs={startTimeTs}
-      onInactiveCleanup={handleInactiveCleanup}
-    />
+    <ActiveTimeClockBubble hasActive={hasActive} startTimeTs={startTimeTs} />
   );
 }

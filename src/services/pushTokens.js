@@ -1,5 +1,10 @@
 /* Proprietary and confidential. See LICENSE. */
-import { getMessaging, getToken, isSupported } from "firebase/messaging";
+import {
+  getMessaging,
+  getToken,
+  isSupported,
+  onMessage,
+} from "firebase/messaging";
 
 import logError from "@/utils/logError.js";
 
@@ -13,7 +18,11 @@ function resolveVapidKey(explicitKey) {
   return envKey;
 }
 
-export async function getFcmTokenSafe(firebaseApp, vapidKeyFromEnv) {
+export async function getFcmTokenSafe(
+  firebaseApp,
+  vapidKeyFromEnv,
+  swRegistration,
+) {
   try {
     const supported = await isSupported();
     if (!supported) {
@@ -46,14 +55,16 @@ export async function getFcmTokenSafe(firebaseApp, vapidKeyFromEnv) {
       return { ok: false, reason: "missing_vapid_key" };
     }
 
-    let registration = null;
-    try {
-      registration = await navigator.serviceWorker.ready;
-    } catch (error) {
-      logError(error, {
-        where: "pushTokens",
-        action: "sw-ready",
-      });
+    let registration = swRegistration || null;
+    if (!registration) {
+      try {
+        registration = await navigator.serviceWorker.ready;
+      } catch (error) {
+        logError(error, {
+          where: "pushTokens",
+          action: "sw-ready",
+        });
+      }
     }
 
     const options = registration
@@ -68,5 +79,39 @@ export async function getFcmTokenSafe(firebaseApp, vapidKeyFromEnv) {
   } catch (error) {
     logError(error, { where: "pushTokens", action: "get-token" });
     return { ok: false, reason: "exception" };
+  }
+}
+
+export function attachForegroundMessagingHandler(firebaseApp, onPayload) {
+  try {
+    const messaging = getMessaging(firebaseApp);
+    return onMessage(messaging, (payload) => {
+      try {
+        console.info("[LRP][FCM][foreground]", payload);
+        if (
+          typeof window !== "undefined" &&
+          typeof window.dispatchEvent === "function"
+        ) {
+          const EventCtor =
+            typeof window.CustomEvent === "function"
+              ? window.CustomEvent
+              : CustomEvent;
+          window.dispatchEvent(
+            new EventCtor("LRP_FCM_MESSAGE", { detail: payload }),
+          );
+        }
+        if (typeof onPayload === "function") {
+          onPayload(payload);
+        }
+      } catch (innerError) {
+        logError(innerError, {
+          where: "pushTokens",
+          action: "foreground-handler",
+        });
+      }
+    });
+  } catch (error) {
+    logError(error, { where: "pushTokens", action: "attach-foreground" });
+    return () => {};
   }
 }

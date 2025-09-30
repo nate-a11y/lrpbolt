@@ -28,7 +28,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
 import ClockOutConfirm from "@/components/ClockOutConfirm.jsx";
 import NotifDiag from "@/components/NotifDiag.jsx";
-import TimeClockBubble from "@/components/TimeClockBubble.jsx";
+import GlobalChrome from "@/components/GlobalChrome.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
 import { endTimeLog } from "@/services/timeLogs.js";
 import { on } from "@/services/uiBus";
@@ -429,7 +429,7 @@ function App() {
           onClose={() => setPhonePromptOpen(false)}
         />
         <NotificationsOptInDialog user={user} />
-        <TimeClockBubble />
+        <GlobalChrome />
         <ClockOutConfirm />
         <NotifDiag />
       </AppShell>
