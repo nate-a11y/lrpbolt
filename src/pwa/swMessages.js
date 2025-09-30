@@ -1,46 +1,45 @@
 /* Proprietary and confidential. See LICENSE. */
-import logError from "@/utils/logError.js";
 
-let initialized = false;
-const pending = {
-  clockOut: false,
-  openClock: false,
-};
+// Single attachment guard
+let _attached = false;
 
-function markAndDispatch(name, key) {
-  pending[key] = true;
-  window.dispatchEvent(new CustomEvent(name));
-}
-
-export function consumePendingSwEvent(key) {
-  if (!pending[key]) return false;
-  pending[key] = false;
-  return true;
-}
-
+/**
+ * Attaches a window-level listener for Service Worker messages immediately.
+ * Safe to call multiple times. Does NOT wait for registration/ready.
+ * Dispatches:
+ *  - "lrp:open-timeclock"
+ *  - "lrp:clockout-request"
+ */
 export function initServiceWorkerMessageBridge() {
-  if (initialized) return;
   try {
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator)) return;
+    if (_attached) return;
+    if (!("serviceWorker" in navigator)) {
+      _attached = true; // prevent retry loops in non-SW envs
+      return;
+    }
 
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      const message = event?.data || {};
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      const msg = e?.data || {};
       try {
-        const type = message?.type;
-        if (!type) return;
-        if (type === "SW_OPEN_TIME_CLOCK") {
-          markAndDispatch("lrp:open-timeclock", "openClock");
-        } else if (type === "SW_CLOCK_OUT_REQUEST") {
-          markAndDispatch("lrp:clockout-request", "clockOut");
+        if (msg?.type === "SW_OPEN_TIME_CLOCK") {
+          window.dispatchEvent(new CustomEvent("lrp:open-timeclock"));
+        } else if (msg?.type === "SW_CLOCK_OUT_REQUEST") {
+          window.dispatchEvent(new CustomEvent("lrp:clockout-request"));
         }
       } catch (err) {
-        logError(err, { where: "swMessages", action: "dispatch" });
+        console.error("[swMessages] dispatch failed", err);
       }
     });
 
-    initialized = true;
-  } catch (error) {
-    logError(error, { where: "swMessages", action: "init" });
+    // Also handle late controller handover on first load
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      // no-op: the 'message' listener is global and already attached
+      // but we keep this hook in case we want to log or re-warm later
+    });
+
+    _attached = true;
+  } catch (e) {
+    console.error("[swMessages] init failed", e);
+    _attached = true;
   }
 }

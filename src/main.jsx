@@ -52,10 +52,9 @@ const Root = () => {
   );
 };
 
-registerSW()
-  .catch(() => null)
-  .finally(() => {
-    initServiceWorkerMessageBridge();
-  });
+// NEW: attach message bridge immediately to catch cold-start clicks
+initServiceWorkerMessageBridge();
+// Kick off SW registration in parallel; do not await for UI to render
+registerSW();
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
