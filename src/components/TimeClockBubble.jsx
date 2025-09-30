@@ -34,11 +34,11 @@ import {
 import { initPiPBridge } from "@/pwa/pipBridge";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
+import { isValidTimestamp } from "@/utils/time.js";
 
 const LRP = { green: "#4cbb17", black: "#060606" };
 
-export default function TimeClockBubble() {
-  const { hasActive, startTimeTs } = useContext(ActiveClockContext);
+function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
   const { start, elapsedMs } = useElapsedFromTs(startTimeTs);
   // Keep screen awake only while actually on the clock
   useWakeLock(hasActive && !!start);
@@ -269,4 +269,17 @@ export default function TimeClockBubble() {
 
   const container = typeof document !== "undefined" ? document.body : null;
   return container ? createPortal(node, container) : node;
+}
+
+export default function TimeClockBubble() {
+  const { hasActive, startTimeTs } = useContext(ActiveClockContext);
+  const hasValidStart = hasActive && isValidTimestamp(startTimeTs);
+
+  if (!hasValidStart) {
+    return null;
+  }
+
+  return (
+    <ActiveTimeClockBubble hasActive={hasActive} startTimeTs={startTimeTs} />
+  );
 }
