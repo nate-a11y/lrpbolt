@@ -1,12 +1,21 @@
 /* Proprietary and confidential. See LICENSE. */
+function joinBase(pathA, pathB) {
+  const a = String(pathA || "/");
+  const b = String(pathB || "");
+  const normA = a.endsWith("/") ? a : `${a}/`;
+  const normB = b.startsWith("/") ? b.slice(1) : b;
+  return normA + normB;
+}
+
 export async function registerSW() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
     return null;
-  }
   try {
-    const reg = await navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
-    });
+    const base =
+      (import.meta && import.meta.env && import.meta.env.BASE_URL) || "/";
+    const swUrl = joinBase(base, "sw.js");
+    const scope = base;
+    const reg = await navigator.serviceWorker.register(swUrl, { scope });
     try {
       await reg.update();
     } catch (error) {

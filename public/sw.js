@@ -1,7 +1,18 @@
 /* Proprietary and confidential. See LICENSE. */
 
-const SW_VERSION = "lrp-sw-v12";
+const SW_VERSION = "lrp-sw-v14";
 let CLOCK_STICKY = false;
+
+function scopeUrl(path) {
+  try {
+    const base = self.registration.scope;
+    const clean = String(path || "").replace(/^\//, "");
+    return new URL(clean, base).href;
+  } catch (error) {
+    console.error("[sw] scopeUrl failed", error);
+    return path;
+  }
+}
 
 /* ---------- FCM lazy init ---------- */
 let _fcmReady = false;
@@ -30,8 +41,8 @@ async function initFirebaseMessagingInSw(config) {
           body,
           tag: "lrp-fcm",
           renotify: true,
-          badge: "/icons/badge-72.png",
-          icon: "/icons/icon-192.png",
+          badge: scopeUrl("icons/badge-72.png"),
+          icon: scopeUrl("icons/icon-192.png"),
           actions: [
             { action: "open", title: "Open" },
             { action: "clockout", title: "Clock Out" },
@@ -75,7 +86,8 @@ self.addEventListener("install", (event) => {
       }
       try {
         const cache = await caches.open(CACHE_NAME);
-        await cache.addAll(PRECACHE_URLS);
+        const scoped = PRECACHE_URLS.map((url) => scopeUrl(url));
+        await cache.addAll(scoped);
       } catch (error) {
         console.error("[sw] precache failed", error);
       }
@@ -90,6 +102,25 @@ self.addEventListener("activate", (event) => {
         await self.clients.claim();
       } catch (error) {
         console.error("[sw] activate", error);
+      }
+      try {
+        const clients = await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        });
+        clients.forEach((client) => {
+          try {
+            client.postMessage({
+              type: "SW_READY",
+              v: SW_VERSION,
+              scope: self.registration.scope,
+            });
+          } catch (err) {
+            console.error("[sw] SW_READY notify failed", err);
+          }
+        });
+      } catch (error) {
+        console.error("[sw] SW_READY broadcast failed", error);
       }
       try {
         const names = await caches.keys();
@@ -111,7 +142,7 @@ self.addEventListener("message", (event) => {
     if (msg.type === "FIREBASE_CONFIG") {
       const cfg = msg?.payload?.config || msg.config || null;
       const ackPort = event.ports && event.ports[0];
-      (async () => {
+      const initPromise = (async () => {
         let ok = false;
         if (cfg) {
           ok = await initFirebaseMessagingInSw(cfg);
@@ -124,15 +155,54 @@ self.addEventListener("message", (event) => {
               type: "FIREBASE_CONFIG_ACK",
               ok,
               err: _fcmInitErr,
+              v: SW_VERSION,
             });
           } catch (error) {
             console.error("[sw] FIREBASE_CONFIG ack failed", error);
           }
         }
       })();
+      event.waitUntil(initPromise);
       return;
     }
-    if (msg.type === "PING") return;
+    if (msg.type === "PING") {
+      const response = { type: "PONG", v: SW_VERSION, scope: self.registration.scope };
+      if (event.ports && event.ports[0]) {
+        try {
+          event.ports[0].postMessage(response);
+        } catch (error) {
+          console.error("[sw] PONG port reply failed", error);
+        }
+      }
+      try {
+        event.source?.postMessage?.(response);
+      } catch (error) {
+        console.error("[sw] PONG source reply failed", error);
+      }
+      return;
+    }
+    if (msg.type === "DIAG_NOTIFY") {
+      const body = (msg && msg.payload && msg.payload.body) || "SW diagnostic";
+      event.waitUntil(
+        (async () => {
+          try {
+            await self.registration.showNotification("LRP — SW Diagnostic", {
+              body,
+              tag: "lrp-diag",
+              renotify: true,
+              requireInteraction: true,
+              badge: scopeUrl("icons/badge-72.png"),
+              icon: scopeUrl("icons/icon-192.png"),
+              actions: [{ action: "open", title: "Open" }],
+              data: { ts: Date.now(), diag: true },
+            });
+          } catch (error) {
+            console.error("[sw] diag notify failed", error);
+          }
+        })(),
+      );
+      return;
+    }
     if (msg.type === "SHOW_CLOCK_FROM_SW") {
       CLOCK_STICKY = true;
       const { title, body } = msg.payload || {};
@@ -162,8 +232,8 @@ async function showClockNotificationFromSW(title, body) {
       tag: "lrp-clock",
       renotify: true,
       requireInteraction: true,
-      badge: "/icons/badge-72.png",
-      icon: "/icons/icon-192.png",
+      badge: scopeUrl("icons/badge-72.png"),
+      icon: scopeUrl("icons/icon-192.png"),
       actions: [
         { action: "open", title: "Open" },
         { action: "clockout", title: "Clock Out" },
@@ -202,10 +272,10 @@ self.addEventListener("notificationclick", (event) => {
           type: "window",
           includeUncontrolled: true,
         });
-        const scopeUrl = new URL(self.registration.scope);
+        const scopeHref = self.registration.scope;
         const client =
-          all.find((c) => c.url.startsWith(scopeUrl.origin)) ||
-          (await self.clients.openWindow(scopeUrl.href));
+          all.find((c) => c.url.startsWith(scopeHref)) ||
+          (await self.clients.openWindow(scopeHref));
         if (!client) return;
 
         if (action === "clockout") {
@@ -247,7 +317,8 @@ self.addEventListener("fetch", (event) => {
           try {
             const cache = await caches.open(CACHE_NAME);
             const cachedResponse =
-              (await cache.match(request)) || (await cache.match("/index.html"));
+              (await cache.match(request)) ||
+              (await cache.match(scopeUrl("index.html")));
             if (cachedResponse) return cachedResponse;
           } catch (cacheError) {
             console.error("[sw] html cache fallback failed", cacheError);
