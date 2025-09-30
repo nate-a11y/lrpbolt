@@ -1,66 +1,29 @@
 /* Proprietary and confidential. See LICENSE. */
-import logError from "@/utils/logError.js";
-
-const RELOAD_DELAY_MS = 50;
-const RELOAD_FLAG_KEY = "lrp-sw-reloaded";
-
 export async function registerSW() {
-  if (typeof window === "undefined") return null;
-  if (!("serviceWorker" in navigator)) return null;
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+    return null;
   try {
-    const registration = await navigator.serviceWorker.register("/sw.js", {
+    const reg = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
     });
     try {
-      await registration.update();
+      await reg.update();
     } catch (error) {
-      logError(error, { where: "registerSW", action: "update" });
+      console.error("[registerSW] update failed", error);
     }
-
-    await navigator.serviceWorker.ready;
-
-    const channel = new MessageChannel();
-    const ack = new Promise((resolve) => {
-      const timeout = window.setTimeout(() => {
-        resolve(null);
-      }, 250);
-      channel.port1.onmessage = (event) => {
-        window.clearTimeout(timeout);
-        resolve(event?.data || null);
-      };
-    });
-
-    navigator.serviceWorker.controller?.postMessage({ type: "PING" }, [
-      channel.port2,
-    ]);
-
-    const response = await ack.catch((error) => {
-      logError(error, { where: "registerSW", action: "ping-ack" });
-      return null;
-    });
-
-    if (response?.type === "PONG") {
-      sessionStorage.removeItem(RELOAD_FLAG_KEY);
+    try {
+      await navigator.serviceWorker.ready;
+    } catch (error) {
+      console.error("[registerSW] ready wait failed", error);
     }
-
-    if (!response || response.type !== "PONG") {
-      setTimeout(() => {
-        try {
-          const hasController = Boolean(navigator.serviceWorker.controller);
-          const alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG_KEY);
-          if (!hasController && !alreadyReloaded) {
-            sessionStorage.setItem(RELOAD_FLAG_KEY, "1");
-            window.location.reload();
-          }
-        } catch (error) {
-          logError(error, { where: "registerSW", action: "reload" });
-        }
-      }, RELOAD_DELAY_MS);
+    try {
+      reg.active?.postMessage?.({ type: "PING" });
+    } catch (error) {
+      console.error("[registerSW] ping failed", error);
     }
-
-    return registration;
+    return reg;
   } catch (error) {
-    logError(error, { where: "registerSW", action: "register" });
+    console.error("[registerSW] failed", error);
     return null;
   }
 }

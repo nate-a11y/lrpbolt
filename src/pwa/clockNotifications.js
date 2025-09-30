@@ -14,57 +14,49 @@ async function postToSW(type, payload) {
       return true;
     }
     return false;
-  } catch (e) {
-    console.error("[clockNotifications] postToSW failed", e);
+  } catch (error) {
+    console.error("[clockNotifications] postToSW failed", error);
     return false;
   }
 }
 
-async function postToSWWithRetry(type, payload, attempts = 3) {
+async function postToSWWithRetry(type, payload, attempts = 4) {
   for (let i = 0; i < attempts; i += 1) {
     const ok = await postToSW(type, payload);
     if (ok) return true;
-    await new Promise((r) => setTimeout(r, 150 * (i + 1)));
+    await new Promise((resolve) => setTimeout(resolve, 150 * (i + 1)));
   }
   return false;
 }
 
-export async function requestPersistentClockNotification(text, options = {}) {
+export async function requestPersistentClockNotification(text) {
   try {
     if (
       typeof Notification !== "undefined" &&
       Notification.permission !== "granted"
-    ) {
+    )
       return;
-    }
     await postToSWWithRetry("SHOW_CLOCK_FROM_SW", {
       title: "LRP — On the clock",
       body: text || "",
-      options: options && typeof options === "object" ? options : {},
     });
-  } catch (e) {
-    console.error(
-      "[clockNotifications] requestPersistentClockNotification failed",
-      e,
-    );
+  } catch (error) {
+    console.error("[clockNotifications] request failed", error);
   }
 }
 
 export async function stopPersistentClockNotification() {
   try {
     await postToSWWithRetry("STOP_CLOCK_STICKY");
-  } catch (e) {
-    console.error(
-      "[clockNotifications] stopPersistentClockNotification failed",
-      e,
-    );
+  } catch (error) {
+    console.error("[clockNotifications] stop failed", error);
   }
 }
 
 export async function clearClockNotification() {
   try {
     await postToSWWithRetry("CLEAR_CLOCK_FROM_SW");
-  } catch (e) {
-    console.error("[clockNotifications] clearClockNotification failed", e);
+  } catch (error) {
+    console.error("[clockNotifications] clear failed", error);
   }
 }
