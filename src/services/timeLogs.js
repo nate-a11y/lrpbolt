@@ -6,7 +6,6 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
   limit as limitDocs,
   onSnapshot,
   or,
@@ -24,59 +23,84 @@ import logError from "../utils/logError.js";
 import { tsToDate } from "../utils/fsTime.js";
 import { toDayjs } from "../utils/time.js";
 import {
-  pickFirst,
-  isActiveRow as isActiveRowGuard,
   START_KEYS,
-  UID_KEYS,
-  EMAIL_KEYS,
+  belongsToUser,
+  isRowActive,
+  pickFirst,
 } from "../utils/timeGuards.js";
 
 import { mapSnapshotToRows } from "./normalizers";
 
-function resolveActiveSession(rows, { uid, email }) {
-  if (!rows || rows.length === 0) return null;
+export function subscribeActiveSessionForUser({
+  uid,
+  email,
+  onNext,
+  onError,
+  limitRows = 40,
+}) {
+  const col = collection(db, "timeLogs");
+  const safeLimit =
+    Number.isFinite(limitRows) && limitRows > 0 ? limitRows : 40;
+  const uidLc = uid ? String(uid).trim().toLowerCase() : null;
+  const emailLc = email ? String(email).trim().toLowerCase() : null;
 
-  const seenIds = new Set();
-  const deduped = rows.filter((row) => {
-    const id = row?.id || row?.docId || row?.originalId;
-    if (!id) return true;
-    if (seenIds.has(id)) return false;
-    seenIds.add(id);
-    return true;
-  });
+  let unsubscribe = () => {};
 
-  const normalize = (value) =>
-    value == null ? null : String(value).trim().toLowerCase();
+  try {
+    const q = query(col, orderBy("startTime", "desc"), limitDocs(safeLimit));
+    unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        let best = null;
+        let bestStartMs = -1;
 
-  const uidLc = normalize(uid);
-  const emailLc = normalize(email);
+        snap.forEach((docSnap) => {
+          const row = { id: docSnap.id, ...docSnap.data() };
+          if (!belongsToUser(row, { uidLc, emailLc })) return;
+          if (!isRowActive(row)) return;
 
-  const mine = deduped.filter((row) => {
-    const rowUid = pickFirst(row, UID_KEYS);
-    const rowEmail = pickFirst(row, EMAIL_KEYS);
-    const ru = normalize(rowUid);
-    const re = normalize(rowEmail);
-    const belongs = (uidLc && ru === uidLc) || (emailLc && re === emailLc);
-    return belongs && isActiveRowGuard(row);
-  });
+          const startRaw = pickFirst(row, START_KEYS);
+          const dj = toDayjs(startRaw);
+          if (!dj || !dj.isValid()) return;
 
-  if (!mine.length) return null;
+          const ms = dj.valueOf();
+          if (ms > bestStartMs) {
+            best = {
+              ...row,
+              __startField:
+                START_KEYS.find((key) => row[key] != null) || "unknown",
+            };
+            bestStartMs = ms;
+          }
+        });
 
-  const match = mine.find((row) => {
-    const startRaw = pickFirst(row, START_KEYS);
-    const dj = toDayjs(startRaw);
-    return dj && dj.isValid();
-  });
+        onNext?.(best || null);
+      },
+      (error) => {
+        logError(error, {
+          where: "timeLogs.subscribeActiveSessionForUser",
+          stage: "onSnapshot",
+        });
+        onError?.(error);
+      },
+    );
+  } catch (error) {
+    logError(error, {
+      where: "timeLogs.subscribeActiveSessionForUser",
+      stage: "build-query",
+    });
+    onError?.(error);
+  }
 
-  if (!match) return null;
-
-  const startRaw = pickFirst(match, START_KEYS);
-  const dj = toDayjs(startRaw);
-  if (!dj || !dj.isValid()) return null;
-
-  return {
-    ...match,
-    __startField: START_KEYS.find((key) => match[key] != null) || "unknown",
+  return () => {
+    try {
+      unsubscribe();
+    } catch (error) {
+      logError(error, {
+        where: "timeLogs.subscribeActiveSessionForUser",
+        stage: "cleanup",
+      });
+    }
   };
 }
 
@@ -147,188 +171,6 @@ export function subscribeMyTimeLogs({ user, onData, onError }) {
   } catch (err) {
     logError(err, { where: "timeLogs.subscribeMyTimeLogs", stage: "query" });
     onError?.(err);
-    return () => {};
-  }
-}
-
-export async function fetchActiveSessionForUser({ uid, email }) {
-  try {
-    const col = collection(db, "timeLogs");
-
-    async function tryUserQueries() {
-      const outs = [];
-      const pushRows = (snap) => {
-        snap.forEach((docSnap) => {
-          outs.push({ id: docSnap.id, ...docSnap.data() });
-        });
-      };
-
-      if (uid) {
-        for (const field of UID_KEYS) {
-          try {
-            const q1 = query(
-              col,
-              where(field, "==", uid),
-              orderBy("startTime", "desc"),
-              limitDocs(8),
-            );
-            const snap = await getDocs(q1);
-            pushRows(snap);
-          } catch (error) {
-            logError(error, {
-              where: "timeLogs.fetchActiveSessionForUser",
-              action: "user-query",
-              field,
-            });
-          }
-        }
-      }
-
-      if (email) {
-        for (const field of EMAIL_KEYS) {
-          try {
-            const q2 = query(
-              col,
-              where(field, "==", email),
-              orderBy("startTime", "desc"),
-              limitDocs(8),
-            );
-            const snap = await getDocs(q2);
-            pushRows(snap);
-          } catch (error) {
-            logError(error, {
-              where: "timeLogs.fetchActiveSessionForUser",
-              action: "email-query",
-              field,
-            });
-          }
-        }
-      }
-
-      return outs;
-    }
-
-    async function tryActiveFallback() {
-      const outs = [];
-      const pushRows = (snap) => {
-        snap.forEach((docSnap) => {
-          outs.push({ id: docSnap.id, ...docSnap.data() });
-        });
-      };
-
-      try {
-        const q3 = query(
-          col,
-          where("endTime", "==", null),
-          orderBy("startTime", "desc"),
-          limitDocs(12),
-        );
-        const snap = await getDocs(q3);
-        pushRows(snap);
-      } catch (error) {
-        logError(error, {
-          where: "timeLogs.fetchActiveSessionForUser",
-          action: "fallback-active",
-        });
-        try {
-          const q4 = query(col, orderBy("startTime", "desc"), limitDocs(20));
-          const snap = await getDocs(q4);
-          pushRows(snap);
-        } catch (innerError) {
-          logError(innerError, {
-            where: "timeLogs.fetchActiveSessionForUser",
-            action: "fallback-recent",
-          });
-        }
-      }
-
-      return outs;
-    }
-
-    const userScoped = await tryUserQueries();
-    const pool = userScoped.length ? userScoped : await tryActiveFallback();
-
-    return resolveActiveSession(pool, { uid, email });
-  } catch (error) {
-    logError(error, {
-      where: "timeLogs.fetchActiveSessionForUser",
-      action: "query",
-    });
-    return null;
-  }
-}
-
-export function subscribeActiveSessionForUser({ uid, email, onData, onError }) {
-  const col = collection(db, "timeLogs");
-  const seen = new Set();
-  const identityFilters = [];
-
-  const addFilter = (field, value) => {
-    if (!value) return;
-    const key = `${field}:${value}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    identityFilters.push(where(field, "==", value));
-  };
-
-  UID_KEYS.forEach((field) => addFilter(field, uid));
-  EMAIL_KEYS.forEach((field) => addFilter(field, email));
-
-  if (identityFilters.length === 0) {
-    onData?.(null);
-    return () => {};
-  }
-
-  const activeFilter = where("endTime", "==", null);
-  const ordering = orderBy("startTime", "desc");
-
-  let q;
-  try {
-    q =
-      identityFilters.length === 1
-        ? query(col, identityFilters[0], activeFilter, ordering, limitDocs(8))
-        : query(
-            col,
-            or(...identityFilters),
-            activeFilter,
-            ordering,
-            limitDocs(8),
-          );
-  } catch (error) {
-    logError(error, {
-      where: "timeLogs.subscribeActiveSessionForUser",
-      stage: "build-query",
-    });
-    onError?.(error);
-    onData?.(null);
-    return () => {};
-  }
-
-  try {
-    return onSnapshot(
-      q,
-      (snap) => {
-        const rows = [];
-        snap.forEach((docSnap) => {
-          rows.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        const active = resolveActiveSession(rows, { uid, email });
-        onData?.(active);
-      },
-      (error) => {
-        logError(error, {
-          where: "timeLogs.subscribeActiveSessionForUser",
-        });
-        onError?.(error);
-      },
-    );
-  } catch (error) {
-    logError(error, {
-      where: "timeLogs.subscribeActiveSessionForUser",
-      stage: "subscribe",
-    });
-    onError?.(error);
-    onData?.(null);
     return () => {};
   }
 }
