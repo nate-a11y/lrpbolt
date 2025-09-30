@@ -9,7 +9,6 @@ import {
 } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
-import { db } from "@/services/firebase";
 import {
   TIMECLOCK_SCHEMA_CANDIDATES,
   clearDetectedSchema,
@@ -17,7 +16,9 @@ import {
   pickField,
   saveDetectedSchema,
 } from "@/config/timeclockSchema";
+import { DEBUG_TIMECLOCK } from "@/constants/debugFlags";
 import { detectTimeclockSchemaOnce } from "@/services/detectTimeclockSchema";
+import { db } from "@/services/firebase";
 import logError from "@/utils/logError.js";
 
 /**
@@ -148,6 +149,15 @@ export default function ActiveClockProvider({ children }) {
             clearDetectedSchema();
             setLockedSchema(null);
             return; // next effect run will multi-probe
+          }
+
+          if (DEBUG_TIMECLOCK) {
+            console.info("[ActiveClock] locked snapshot", {
+              schema: s,
+              rows: rows.length,
+              chosenId: chosen?.id || null,
+              keys: chosen?.keys || null,
+            });
           }
 
           setState(
@@ -305,6 +315,10 @@ export default function ActiveClockProvider({ children }) {
                 };
                 saveDetectedSchema(newSchema);
                 setLockedSchema(newSchema);
+
+                if (DEBUG_TIMECLOCK) {
+                  console.info("[ActiveClock] probe locked schema", newSchema);
+                }
 
                 // Tear down all probe listeners
                 unsubs.forEach((u) => {
