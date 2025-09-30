@@ -61,3 +61,31 @@ export async function getMessagingOrNull() {
   }
   return null;
 }
+
+/**
+ * Returns the active ServiceWorkerRegistration controlling this page.
+ * Falls back to navigator.serviceWorker.ready.
+ */
+export async function getControllingServiceWorkerRegistration() {
+  try {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return null;
+    }
+
+    if (navigator.serviceWorker.controller) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      const byScope = registrations.find(
+        (registration) =>
+          registration?.scope &&
+          window.location.href.startsWith(registration.scope),
+      );
+      if (byScope) return byScope;
+    }
+
+    const readyRegistration = await navigator.serviceWorker.ready;
+    return readyRegistration || null;
+  } catch (error) {
+    logError(error, { where: "firebaseInit", action: "getControllingSW" });
+    return null;
+  }
+}
