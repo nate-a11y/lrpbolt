@@ -50,10 +50,11 @@ function ActiveTimeClockBubble({
   clearClockNotification: clearClockNotificationOverride,
   clearAppBadge: clearAppBadgeOverride,
 }) {
-  const { start, startMs, elapsedMs } = useElapsedFromTs(startTimeTs, {
+  const startForTimer = hasActive && startTimeTs ? startTimeTs : null;
+  const { start, startMs, elapsedMs } = useElapsedFromTs(startForTimer, {
     logOnNullOnce: false,
   });
-  const hasValidStart = Boolean(hasActive && start);
+  const hasValidStart = Boolean(start);
   // Keep screen awake only while actually on the clock
   useWakeLock(hasValidStart);
   const [collapsed, setCollapsed] = useState(false);
