@@ -30,6 +30,7 @@ import {
   isPiPActive,
   updateClockPiP,
 } from "@/pwa/pipTicker";
+import { initPiPBridge } from "@/pwa/pipBridge";
 import { formatClockElapsed } from "@/utils/timeUtils.js";
 import logError from "@/utils/logError.js";
 
@@ -42,6 +43,9 @@ export default function TimeClockBubble() {
   useWakeLock(hasActive && !!start);
   const [collapsed, setCollapsed] = useState(false);
   const [pipOn, setPipOn] = useState(false);
+  useEffect(() => {
+    initPiPBridge();
+  }, []);
   const elapsedLabel = useMemo(
     () => formatClockElapsed(elapsedMs),
     [elapsedMs],
