@@ -21,27 +21,36 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   const { action } = event;
   event.notification.close();
-  if (action === "clockout") {
-    event.waitUntil(
-      (async () => {
-        const allClients = await self.clients.matchAll({ includeUncontrolled: true });
-        for (const client of allClients) {
-          client.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
-        }
-      })(),
-    );
-    return;
-  }
-
   event.waitUntil(
     (async () => {
       const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      if (allClients.length) {
+      const hasClients = allClients.length > 0;
+
+      if (action === "clockout") {
+        if (hasClients) {
+          const [primary, ...others] = allClients;
+          await primary.focus();
+          primary.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
+          for (const client of others) {
+            client.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
+          }
+        } else {
+          const newClient = await self.clients.openWindow("/clock");
+          if (newClient) {
+            newClient.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
+          }
+        }
+        return;
+      }
+
+      if (hasClients) {
         const [client] = allClients;
         await client.focus();
         client.postMessage({ type: "SW_OPEN_TIME_CLOCK" });
         return;
       }
+
+      await self.clients.openWindow("/clock");
     })(),
   );
 });

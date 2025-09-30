@@ -5,7 +5,8 @@ import logError from "@/utils/logError.js";
  * Show/update a persistent notification while the user is clocked in.
  * Uses the Notifications API (foreground) and the service worker (background).
  */
-export async function showPersistentClockNotification({ formatted, startTs }) {
+// Safe to call periodically (e.g. every 60s) — replaces existing notification silently
+export async function showPersistentClockNotification({ elapsedLabel } = {}) {
   try {
     if (!("serviceWorker" in navigator)) return;
     if (!("Notification" in window)) return;
@@ -14,12 +15,13 @@ export async function showPersistentClockNotification({ formatted, startTs }) {
     const reg = await navigator.serviceWorker.getRegistration();
     if (!reg) return;
 
-    const title = "On the clock ⏱";
-    const body = `Active since ${startTs?.toDate ? startTs.toDate().toLocaleTimeString() : ""}\nElapsed: ${formatted}`;
-    await reg.showNotification(title, {
-      body,
+    await reg.showNotification("On the clock ⏱", {
+      body: elapsedLabel
+        ? `Elapsed: ${elapsedLabel}`
+        : "Tap to view or Clock Out",
       tag: "lrp-timeclock",
-      renotify: true,
+      renotify: false,
+      silent: true,
       requireInteraction: true,
       badge: "/icons/icon-192.png",
       icon: "/icons/icon-192.png",

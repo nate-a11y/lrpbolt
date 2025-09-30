@@ -69,8 +69,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
         if (hasValidStart && startMs) {
           wasActiveRef.current = true;
           await showPersistentClockNotification({
-            formatted: elapsedLabel,
-            startTs: startTimeTs,
+            elapsedLabel,
           });
           await trySetAppBadge(elapsedMinutes);
         } else if (wasActiveRef.current) {
@@ -92,22 +91,14 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
     return () => {
       isMounted = false;
     };
-  }, [
-    elapsedLabel,
-    elapsedMinutes,
-    hasValidStart,
-    pipOn,
-    startMs,
-    startTimeTs,
-  ]);
+  }, [elapsedLabel, elapsedMinutes, hasValidStart, pipOn, startMs]);
 
   useEffect(() => {
     if (!hasValidStart) return undefined;
     const interval = setInterval(async () => {
       try {
         await showPersistentClockNotification({
-          formatted: elapsedLabel,
-          startTs: startTimeTs,
+          elapsedLabel,
         });
         await trySetAppBadge(elapsedMinutes);
         if (pipOn && isPiPActive()) {
@@ -116,16 +107,9 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "ticker" });
       }
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
-  }, [
-    elapsedLabel,
-    elapsedMinutes,
-    hasValidStart,
-    pipOn,
-    startMs,
-    startTimeTs,
-  ]);
+  }, [elapsedLabel, elapsedMinutes, hasValidStart, pipOn, startMs]);
 
   useEffect(
     () => () => {
