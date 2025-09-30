@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Snackbar } from "@mui/material";
 
-import { consumePendingSwEvent } from "@/pwa/swMessages";
 import { clockOutActiveSession } from "@/services/timeclockActions";
 import { openTimeClockModal } from "@/services/uiBus";
 import logError from "@/utils/logError.js";
@@ -14,23 +13,15 @@ export default function ClockOutConfirm() {
 
   useEffect(() => {
     function handleClockOutRequest() {
-      consumePendingSwEvent("clockOut");
       setResult(null);
       setBusy(false);
       setOpen(true);
     }
     function handleOpenClock() {
-      consumePendingSwEvent("openClock");
       openTimeClockModal();
     }
     window.addEventListener("lrp:clockout-request", handleClockOutRequest);
     window.addEventListener("lrp:open-timeclock", handleOpenClock);
-    if (consumePendingSwEvent("clockOut")) {
-      handleClockOutRequest();
-    }
-    if (consumePendingSwEvent("openClock")) {
-      handleOpenClock();
-    }
     return () => {
       window.removeEventListener("lrp:clockout-request", handleClockOutRequest);
       window.removeEventListener("lrp:open-timeclock", handleOpenClock);
