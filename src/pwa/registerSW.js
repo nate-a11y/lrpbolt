@@ -1,39 +1,33 @@
 /* Proprietary and confidential. See LICENSE. */
-function joinBase(pathA, pathB) {
-  const a = String(pathA || "/");
-  const b = String(pathB || "");
-  const normA = a.endsWith("/") ? a : `${a}/`;
-  const normB = b.startsWith("/") ? b.slice(1) : b;
-  return normA + normB;
+function joinBase(a, b) {
+  const base = String(a || "/");
+  const path = String(b || "");
+  const normBase = base.endsWith("/") ? base : base + "/";
+  const normPath = path.startsWith("/") ? path.slice(1) : path;
+  return normBase + normPath;
 }
 
+/** Registers the SW under BASE_URL scope and forces control within one navigation. */
 export async function registerSW() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
-    return null;
+  if (!("serviceWorker" in navigator)) return null;
   try {
-    const base =
-      (import.meta && import.meta.env && import.meta.env.BASE_URL) || "/";
+    const base = import.meta?.env?.BASE_URL || "/";
     const swUrl = joinBase(base, "sw.js");
     const scope = base;
     const reg = await navigator.serviceWorker.register(swUrl, { scope });
     try {
       await reg.update();
     } catch (error) {
-      console.warn("[registerSW] update skipped", error);
+      console.debug("[registerSW] update skipped", error);
     }
-    try {
-      await navigator.serviceWorker.ready;
-    } catch (error) {
-      console.warn("[registerSW] ready wait failed", error);
-    }
-    try {
-      reg.active?.postMessage?.({ type: "PING" });
-    } catch (error) {
-      console.warn("[registerSW] ping failed", error);
+    if (!navigator.serviceWorker.controller) {
+      setTimeout(() => {
+        if (!navigator.serviceWorker.controller) location.reload();
+      }, 150);
     }
     return reg;
-  } catch (error) {
-    console.error("[registerSW] failed", error);
+  } catch (e) {
+    console.error("[registerSW] failed", e);
     return null;
   }
 }

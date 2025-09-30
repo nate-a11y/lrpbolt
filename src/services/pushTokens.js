@@ -7,57 +7,12 @@ import {
   isSupported,
 } from "firebase/messaging";
 
+import { purgeOtherServiceWorkers } from "@/pwa/purgeSW";
 import { registerSW } from "@/pwa/registerSW";
 import { ensureFcmSwReady } from "@/pwa/fcmBridge";
-import { purgeOtherServiceWorkers } from "@/pwa/purgeSW";
-import logError from "@/utils/logError.js";
 
 const LS_KEY = "lrp_fcm_token_v1";
-const LEGACY_KEYS = [LS_KEY, "lrp_fcm_token"];
-
-function getOrInitApp(config) {
-  const existing = getApps();
-  if (existing.length) return existing[0];
-  return initializeApp(config);
-}
-
-function readCachedToken() {
-  try {
-    for (const key of LEGACY_KEYS) {
-      const value = localStorage.getItem(key);
-      if (value) {
-        if (key !== LS_KEY) {
-          writeCachedToken(value);
-        }
-        return value;
-      }
-    }
-    return null;
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "readCache" });
-    return null;
-  }
-}
-
-function writeCachedToken(token) {
-  try {
-    if (token) {
-      localStorage.setItem(LS_KEY, token);
-    }
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "writeCache" });
-  }
-}
-
-function clearCachedToken() {
-  try {
-    LEGACY_KEYS.forEach((key) => {
-      localStorage.removeItem(key);
-    });
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "clearCache" });
-  }
-}
+const BIND_KEY = "lrp_fcm_first_bind_done_v1";
 
 export async function getFcmTokenSafe(
   firebaseConfig,
@@ -65,85 +20,75 @@ export async function getFcmTokenSafe(
 ) {
   try {
     if (!(await isSupported())) return null;
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-      return null;
-    }
-
     await purgeOtherServiceWorkers();
     await registerSW();
+    await ensureFcmSwReady(firebaseConfig);
 
-    const ready = await ensureFcmSwReady(firebaseConfig);
-    if (!ready) {
-      console.warn("[pushTokens] ensureFcmSwReady did not ACK");
-    }
-
-    const app = getOrInitApp(firebaseConfig);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const messaging = getMessaging(app);
 
-    let cached = readCachedToken();
-    if (forceRefresh && cached) {
-      try {
-        await deleteToken(messaging);
-      } catch (error) {
-        logError(error, { where: "pushTokens", action: "deleteCachedToken" });
+    let cached = null;
+    try {
+      cached = localStorage.getItem(LS_KEY) || null;
+    } catch (error) {
+      console.warn("[pushTokens] cache read failed", error);
+    }
+    let firstBindDone = false;
+    try {
+      firstBindDone = localStorage.getItem(BIND_KEY) === "1";
+    } catch (error) {
+      console.warn("[pushTokens] bind flag read failed", error);
+    }
+    if (forceRefresh || !firstBindDone) {
+      if (cached) {
+        try {
+          await deleteToken(messaging);
+        } catch (error) {
+          console.error("[pushTokens] deleteToken failed", error);
+        }
       }
       cached = null;
     }
 
-    let registration;
-    try {
-      registration = await navigator.serviceWorker.ready;
-    } catch (error) {
-      logError(error, { where: "pushTokens", action: "swReady" });
-      return cached;
-    }
-    if (!registration) return cached;
-    const resolvedVapid =
-      vapidKey ||
-      firebaseConfig?.vapidKey ||
-      import.meta.env.VITE_FIREBASE_VAPID_KEY;
-
-    if (!resolvedVapid) {
-      logError(new Error("Missing VAPID key"), {
-        where: "pushTokens",
-        action: "resolveVapid",
-      });
-      return cached;
-    }
-
+    const reg = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, {
-      vapidKey: resolvedVapid,
-      serviceWorkerRegistration: registration,
+      vapidKey: vapidKey || firebaseConfig.vapidKey,
+      serviceWorkerRegistration: reg,
     });
 
     if (token && token !== cached) {
-      writeCachedToken(token);
-      return token;
+      try {
+        localStorage.setItem(LS_KEY, token);
+      } catch (error) {
+        console.warn("[pushTokens] cache write failed", error);
+      }
     }
-
-    if (!token && cached) {
-      return cached;
+    if (!firstBindDone) {
+      try {
+        localStorage.setItem(BIND_KEY, "1");
+      } catch (error) {
+        console.warn("[pushTokens] bind flag write failed", error);
+      }
     }
-
-    return token || null;
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "getToken" });
+    return token || cached || null;
+  } catch (e) {
+    console.error("[getFcmTokenSafe] failed", e);
     return null;
   }
 }
 
 export async function clearFcmToken(firebaseConfig) {
   try {
-    if (!(await isSupported())) {
-      clearCachedToken();
-      return;
-    }
-    const app = getOrInitApp(firebaseConfig);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const messaging = getMessaging(app);
     await deleteToken(messaging);
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "clearToken" });
-  } finally {
-    clearCachedToken();
+    try {
+      localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(BIND_KEY);
+    } catch (error) {
+      console.warn("[pushTokens] cache clear failed", error);
+    }
+  } catch (e) {
+    console.error("[clearFcmToken] failed", e);
   }
 }
