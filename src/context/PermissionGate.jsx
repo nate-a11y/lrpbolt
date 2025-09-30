@@ -2,45 +2,40 @@
 import { useEffect } from "react";
 
 import { getFcmTokenSafe } from "@/services/pushTokens";
-import { firebaseConfig } from "@/utils/firebaseInit";
+import { app as firebaseApp } from "@/utils/firebaseInit";
+import { diagPushSupport } from "@/utils/pushDiag.js";
 
 export default function PermissionGate({ children }) {
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    console.info("[LRP][PushSupport]", diagPushSupport());
+
+    let cancelled = false;
     (async () => {
       try {
-        if (!("Notification" in window)) return;
-        if (Notification.permission === "default") {
-          const perm = await Notification.requestPermission();
-          if (perm !== "granted") return;
-        }
-        const firstBindKey = "lrp_fcm_first_bind_done_v1";
-        let firstBindDone = false;
-        try {
-          firstBindDone = localStorage.getItem(firstBindKey) === "1";
-        } catch (error) {
-          console.warn("[PermissionGate] first bind read failed", error);
-        }
-        const vapidKey =
-          (typeof firebaseConfig?.vapidKey === "string" &&
-            firebaseConfig.vapidKey) ||
-          (typeof import.meta?.env?.VITE_FIREBASE_VAPID_KEY === "string" &&
-            import.meta.env.VITE_FIREBASE_VAPID_KEY) ||
-          "";
-        const token = await getFcmTokenSafe(firebaseConfig, {
-          vapidKey,
-          forceRefresh: !firstBindDone,
-        });
-        if (token && !firstBindDone) {
+        const result = await getFcmTokenSafe(
+          firebaseApp,
+          import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        );
+        if (cancelled) return;
+        if (result?.ok && result.token) {
           try {
-            localStorage.setItem(firstBindKey, "1");
+            localStorage.setItem("lrp_fcm_token_v1", result.token);
           } catch (error) {
-            console.warn("[PermissionGate] first bind write failed", error);
+            console.warn("[PermissionGate] token cache failed", error);
           }
+        } else if (result?.reason) {
+          console.info("[PermissionGate] push blocked", result.reason);
         }
-      } catch (e) {
-        console.error("[PermissionGate] FCM init failed", e);
+      } catch (error) {
+        console.error("[PermissionGate] FCM init failed", error);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
   return children ?? null;
 }
