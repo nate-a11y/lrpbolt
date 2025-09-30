@@ -127,4 +127,8 @@ export function formatClockOutOrDash(ts) {
   return ts ? formatDateTime(ts) : "—";
 }
 
+export function isValidTimestamp(input) {
+  return !!toDayjs(input);
+}
+
 export { dayjsBase as default };
