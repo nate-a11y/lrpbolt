@@ -84,7 +84,10 @@ export default function TimeClockBubble() {
         });
         await trySetAppBadge(elapsedMinutes);
         if (pipOn && isPiPActive()) {
-          await updateClockPiP(elapsedLabel);
+          await updateClockPiP(
+            "On the clock",
+            start ? start.valueOf() : Date.now(),
+          );
         }
       } catch (error) {
         logError(error, { where: "TimeClockBubble", action: "ticker" });
@@ -99,7 +102,10 @@ export default function TimeClockBubble() {
     (async () => {
       try {
         if (isPiPActive()) {
-          await updateClockPiP(elapsedLabel);
+          await updateClockPiP(
+            "On the clock",
+            start ? start.valueOf() : Date.now(),
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -110,7 +116,7 @@ export default function TimeClockBubble() {
     return () => {
       cancelled = true;
     };
-  }, [pipOn, elapsedLabel]);
+  }, [pipOn, elapsedLabel, start]);
 
   useEffect(
     () => () => {
@@ -130,7 +136,10 @@ export default function TimeClockBubble() {
         setPipOn(false);
         return;
       }
-      const ok = await startClockPiP(elapsedLabel);
+      const ok = await startClockPiP(
+        "On the clock",
+        start ? start.valueOf() : Date.now(),
+      );
       if (ok) {
         setPipOn(true);
       } else {

@@ -3,6 +3,9 @@ import logError from "@/utils/logError.js";
 
 let pipWindow = null;
 
+const DEFAULT_LABEL = "On the clock";
+const TICK_INTERVAL_MS = 1000;
+
 function hasDocumentPiP() {
   return (
     typeof window !== "undefined" && Boolean(window.documentPictureInPicture)
@@ -14,6 +17,15 @@ function ensureDocument() {
     throw new Error("document is not available");
   }
   return document;
+}
+
+function resolveLabel(value) {
+  return typeof value === "string" && value.length ? value : DEFAULT_LABEL;
+}
+
+function resolveStart(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : Date.now();
 }
 
 export function isPiPSupported() {
@@ -38,7 +50,7 @@ export function isPiPActive() {
   }
 }
 
-export async function startClockPiP(text) {
+export async function startClockPiP(labelText, startMs) {
   try {
     if (!isPiPSupported()) return false;
     if (hasDocumentPiP()) {
@@ -47,12 +59,12 @@ export async function startClockPiP(text) {
           width: 260,
           height: 68,
         });
-        renderDocPiP(pipWindow.document);
+        renderDocPiP(pipWindow.document, labelText, startMs);
       }
-      updateDocPiP(pipWindow.document, text);
+      updateDocPiP(pipWindow.document, labelText, startMs);
       return true;
     }
-    await ensureVideoPiP(text);
+    await ensureVideoPiP(labelText, startMs);
     return isPiPActive();
   } catch (error) {
     logError(error, { where: "pipTicker", action: "start" });
@@ -60,14 +72,14 @@ export async function startClockPiP(text) {
   }
 }
 
-export async function updateClockPiP(text) {
+export async function updateClockPiP(labelText, startMs) {
   try {
     if (!isPiPActive()) return false;
     if (hasDocumentPiP() && pipWindow && !pipWindow.closed) {
-      updateDocPiP(pipWindow.document, text);
+      updateDocPiP(pipWindow.document, labelText, startMs);
       return true;
     }
-    await ensureVideoPiP(text);
+    await ensureVideoPiP(labelText, startMs);
     return isPiPActive();
   } catch (error) {
     logError(error, { where: "pipTicker", action: "update" });
@@ -78,11 +90,24 @@ export async function updateClockPiP(text) {
 export function stopClockPiP() {
   try {
     if (pipWindow && !pipWindow.closed) {
-      pipWindow.close();
-      pipWindow = null;
+      try {
+        if (typeof pipWindow.__lrpStop === "function") {
+          pipWindow.__lrpStop();
+        }
+      } catch (error) {
+        logError(error, { where: "pipTicker", action: "docStop" });
+      }
     }
+    if (pipWindow && !pipWindow.closed) {
+      pipWindow.close();
+    }
+    pipWindow = null;
     const doc = ensureDocument();
     const video = doc.getElementById("lrp-clock-pip-video");
+    if (video && video.__lrpTimer) {
+      clearInterval(video.__lrpTimer);
+      video.__lrpTimer = null;
+    }
     if (video && doc.pictureInPictureElement === video) {
       doc.exitPictureInPicture().catch((error) => {
         logError(error, { where: "pipTicker", action: "exitPiP" });
@@ -93,7 +118,7 @@ export function stopClockPiP() {
   }
 }
 
-function renderDocPiP(doc) {
+function renderDocPiP(doc, labelText, startMs) {
   if (!doc) return;
   doc.body.style.margin = "0";
   doc.body.style.background = "#0b0b0b";
@@ -111,17 +136,91 @@ function renderDocPiP(doc) {
   wrapper.appendChild(dot);
   wrapper.appendChild(text);
   doc.body.appendChild(wrapper);
+
+  const win = doc.defaultView;
+  if (!win) return;
+  win.__lrpLabel = resolveLabel(labelText);
+  win.__lrpStartAt = resolveStart(startMs);
+
+  const formatElapsed = (ms) => {
+    const seconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
+  };
+
+  const tick = () => {
+    try {
+      const label = resolveLabel(win.__lrpLabel);
+      const startValue = resolveStart(win.__lrpStartAt);
+      const elapsed = Date.now() - startValue;
+      const el = doc.getElementById("lrp-pip-text");
+      if (el) {
+        el.textContent = `${label} • ${formatElapsed(elapsed)}`;
+      }
+    } catch (error) {
+      logError(error, { where: "pipTicker", action: "docTick" });
+    }
+  };
+
+  if (typeof win.__lrpTimer === "number") {
+    if (typeof win.clearInterval === "function") {
+      win.clearInterval(win.__lrpTimer);
+    } else {
+      clearInterval(win.__lrpTimer);
+    }
+  }
+
+  tick();
+  if (typeof win.setInterval === "function") {
+    win.__lrpTimer = win.setInterval(tick, TICK_INTERVAL_MS);
+  } else {
+    win.__lrpTimer = setInterval(tick, TICK_INTERVAL_MS);
+  }
+  win.__lrpTick = tick;
+  win.__lrpStop = () => {
+    try {
+      if (typeof win.__lrpTimer === "number") {
+        if (typeof win.clearInterval === "function") {
+          win.clearInterval(win.__lrpTimer);
+        } else {
+          clearInterval(win.__lrpTimer);
+        }
+      }
+    } catch (error) {
+      logError(error, { where: "pipTicker", action: "docTimerClear" });
+    } finally {
+      win.__lrpTimer = null;
+    }
+  };
 }
 
-function updateDocPiP(doc, text) {
+function updateDocPiP(doc, labelText, startMs) {
   if (!doc) return;
-  const el = doc.getElementById("lrp-pip-text");
-  if (el) {
-    el.textContent = `On the clock • ${String(text || "")}`;
+  try {
+    const win = doc.defaultView;
+    if (!win) return;
+    if (typeof labelText === "string" && labelText.length) {
+      win.__lrpLabel = labelText;
+    }
+    if (startMs !== undefined && startMs !== null) {
+      const numeric = Number(startMs);
+      if (Number.isFinite(numeric)) {
+        win.__lrpStartAt = numeric;
+      }
+    }
+    if (typeof win.__lrpTick === "function") {
+      win.__lrpTick();
+    }
+  } catch (error) {
+    logError(error, { where: "pipTicker", action: "docUpdate" });
   }
 }
 
-async function ensureVideoPiP(text) {
+async function ensureVideoPiP(labelText, startMs) {
   const doc = ensureDocument();
   let video = doc.getElementById("lrp-clock-pip-video");
   if (!video) {
@@ -132,12 +231,27 @@ async function ensureVideoPiP(text) {
     video.style.display = "none";
     doc.body.appendChild(video);
   }
-  if (!video.srcObject) {
-    const canvas = doc.createElement("canvas");
-    canvas.width = 640;
-    canvas.height = 100;
-    const ctx = canvas.getContext("2d");
-    const draw = () => {
+
+  video.__lrpLabel = resolveLabel(labelText);
+  video.__lrpStartAt = resolveStart(startMs);
+
+  const draw = () => {
+    try {
+      const ctx = video.__lrpCtx;
+      if (!ctx) return;
+      const canvas = ctx.canvas;
+      const now = Date.now();
+      const elapsed = Math.max(0, now - resolveStart(video.__lrpStartAt));
+      const seconds = Math.floor(elapsed / 1000);
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      const formatted =
+        hours > 0
+          ? `${hours}h ${minutes}m`
+          : minutes > 0
+            ? `${minutes}m ${secs}s`
+            : `${secs}s`;
       ctx.fillStyle = "#0b0b0b";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#4cbb17";
@@ -146,9 +260,23 @@ async function ensureVideoPiP(text) {
       ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.font = "700 28px system-ui,Segoe UI,Roboto,Arial";
-      ctx.fillText(`On the clock • ${String(text || "")}`, 56, 58);
-    };
+      ctx.fillText(`${resolveLabel(video.__lrpLabel)} • ${formatted}`, 56, 58);
+    } catch (error) {
+      logError(error, { where: "pipTicker", action: "videoDraw" });
+    }
+  };
+
+  if (!video.srcObject) {
+    const canvas = doc.createElement("canvas");
+    canvas.width = 640;
+    canvas.height = 100;
+    const ctx = canvas.getContext("2d");
+    video.__lrpCtx = ctx;
     draw();
+    if (video.__lrpTimer) {
+      clearInterval(video.__lrpTimer);
+    }
+    video.__lrpTimer = setInterval(draw, TICK_INTERVAL_MS);
     const stream = canvas.captureStream();
     video.srcObject = stream;
     try {
@@ -156,7 +284,13 @@ async function ensureVideoPiP(text) {
     } catch (error) {
       logError(error, { where: "pipTicker", action: "videoPlay" });
     }
+  } else {
+    if (!video.__lrpTimer) {
+      video.__lrpTimer = setInterval(draw, TICK_INTERVAL_MS);
+    }
+    draw();
   }
+
   if (doc.pictureInPictureEnabled && video.requestPictureInPicture) {
     if (doc.pictureInPictureElement !== video) {
       await video.requestPictureInPicture();
