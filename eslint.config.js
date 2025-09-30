@@ -104,7 +104,7 @@ export default [
 
   // Service Worker
   {
-    files: ["src/sw.js"],
+    files: ["public/sw.js"],
     languageOptions: {
       globals: {
         ...globals.serviceworker,

@@ -1,16 +1,16 @@
 /* Proprietary and confidential. See LICENSE. */
-
 async function postToSW(type, payload) {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator))
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return false;
+  }
   try {
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({ type, payload });
       return true;
     }
-    const reg = await navigator.serviceWorker.ready.catch(() => null);
-    if (reg?.active) {
-      reg.active.postMessage({ type, payload });
+    const registration = await navigator.serviceWorker.ready.catch(() => null);
+    if (registration?.active) {
+      registration.active.postMessage({ type, payload });
       return true;
     }
     return false;
@@ -34,8 +34,9 @@ export async function requestPersistentClockNotification(text) {
     if (
       typeof Notification !== "undefined" &&
       Notification.permission !== "granted"
-    )
+    ) {
       return;
+    }
     await postToSWWithRetry("SHOW_CLOCK_FROM_SW", {
       title: "LRP — On the clock",
       body: text || "",
