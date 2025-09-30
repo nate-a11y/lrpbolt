@@ -24,6 +24,12 @@ export async function showPersistentClockNotification({ formatted, startTs }) {
       badge: "/icons/icon-192.png",
       icon: "/icons/icon-192.png",
       data: { type: "timeclock" },
+      actions: [
+        {
+          action: "clockout",
+          title: "Clock Out",
+        },
+      ],
     });
   } catch (error) {
     logError(error, {
