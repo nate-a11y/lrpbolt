@@ -18,6 +18,7 @@ import {
   saveDetectedSchema,
 } from "@/config/timeclockSchema";
 import { detectTimeclockSchemaOnce } from "@/services/detectTimeclockSchema";
+import logError from "@/utils/logError.js";
 
 /**
  * Strategy:
@@ -68,8 +69,8 @@ export default function ActiveClockProvider({ children }) {
     return () => {
       try {
         unsub();
-      } catch (e) {
-        console.error(e);
+      } catch (error) {
+        logError(error, { where: "ActiveClockProvider", action: "authUnsub" });
       }
     };
   }, []);
@@ -176,13 +177,19 @@ export default function ActiveClockProvider({ children }) {
           );
         },
         (err) => {
-          console.error("[ActiveClockProvider] locked subscription error", err);
+          logError(err, {
+            where: "ActiveClockProvider",
+            action: "lockedSnapshot",
+          });
           clearDetectedSchema();
           setLockedSchema(null);
         },
       );
     } catch (e) {
-      console.error("[ActiveClockProvider] locked subscribe failed", e);
+      logError(e, {
+        where: "ActiveClockProvider",
+        action: "lockedSubscribe",
+      });
       clearDetectedSchema();
       setLockedSchema(null);
     }
@@ -190,8 +197,11 @@ export default function ActiveClockProvider({ children }) {
     return () => {
       try {
         unsub && unsub();
-      } catch (e) {
-        console.error(e);
+      } catch (error) {
+        logError(error, {
+          where: "ActiveClockProvider",
+          action: "lockedUnsub",
+        });
       }
     };
   }, [lockedSchema, authSnap]);
@@ -300,8 +310,11 @@ export default function ActiveClockProvider({ children }) {
                 unsubs.forEach((u) => {
                   try {
                     u && u();
-                  } catch (e) {
-                    console.error(e);
+                  } catch (error) {
+                    logError(error, {
+                      where: "ActiveClockProvider",
+                      action: "probeUnsub",
+                    });
                   }
                 });
                 multiActiveRef.current = false;
@@ -310,22 +323,20 @@ export default function ActiveClockProvider({ children }) {
               // If all listeners reported empty and none locked, we do nothing; UI remains no-active until user creates docs.
             },
             (err) => {
-              console.error(
-                "[ActiveClockProvider] probe error",
-                coll,
-                id.field,
-                err,
-              );
+              logError(err, {
+                where: "ActiveClockProvider",
+                action: "probeSnapshot",
+                details: { collection: coll, field: id.field },
+              });
             },
           );
           unsubs.push(unsub);
         } catch (e) {
-          console.error(
-            "[ActiveClockProvider] probe subscribe failed",
-            coll,
-            id.field,
-            e,
-          );
+          logError(e, {
+            where: "ActiveClockProvider",
+            action: "probeSubscribe",
+            details: { collection: coll, field: id.field },
+          });
         }
       });
     });
@@ -340,7 +351,10 @@ export default function ActiveClockProvider({ children }) {
           // setLockedSchema(guess);
         }
       } catch (e) {
-        console.error("[ActiveClockProvider] detectOnce failed", e);
+        logError(e, {
+          where: "ActiveClockProvider",
+          action: "detectOnce",
+        });
       }
     })();
 
@@ -350,8 +364,11 @@ export default function ActiveClockProvider({ children }) {
       unsubs.forEach((u) => {
         try {
           u && u();
-        } catch (e) {
-          console.error(e);
+        } catch (error) {
+          logError(error, {
+            where: "ActiveClockProvider",
+            action: "probeCleanup",
+          });
         }
       });
       unsubsRef.current = [];
