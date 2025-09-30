@@ -4,6 +4,7 @@ import { Button, Snackbar } from "@mui/material";
 
 import { clockOutActiveSession } from "@/services/timeclockActions";
 import { openTimeClockModal } from "@/services/uiBus";
+import { consumePendingSwEvent } from "@/pwa/swMessages";
 import logError from "@/utils/logError.js";
 
 export default function ClockOutConfirm() {
@@ -19,6 +20,19 @@ export default function ClockOutConfirm() {
     }
     function handleOpenClock() {
       openTimeClockModal();
+    }
+    try {
+      if (consumePendingSwEvent("SW_CLOCK_OUT_REQUEST")) {
+        handleClockOutRequest();
+      }
+      if (consumePendingSwEvent("SW_OPEN_TIME_CLOCK")) {
+        handleOpenClock();
+      }
+    } catch (pendingError) {
+      logError(pendingError, {
+        where: "ClockOutConfirm",
+        action: "drainPendingSwEvents",
+      });
     }
     window.addEventListener("lrp:clockout-request", handleClockOutRequest);
     window.addEventListener("lrp:open-timeclock", handleOpenClock);
