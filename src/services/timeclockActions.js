@@ -16,6 +16,7 @@ import {
   stopPersistentClockNotification,
   clearClockNotification,
 } from "@/pwa/clockNotifications";
+import { clearPersistentClockNotification } from "@/services/clockNotifications.js";
 import logError from "@/utils/logError.js";
 
 /** Finds the open session for the current user (using detected schema) and clocks it out. */
@@ -63,6 +64,14 @@ export async function clockOutActiveSession() {
         await clearClockNotification();
       } catch (error) {
         logError(error, { where: "timeclockActions", action: "clearClock" });
+      }
+      try {
+        await clearPersistentClockNotification();
+      } catch (error) {
+        logError(error, {
+          where: "timeclockActions",
+          action: "clearPersistent",
+        });
       }
       return;
     }
