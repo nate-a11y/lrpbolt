@@ -17,3 +17,31 @@ self.addEventListener("push", (event) => {
     })(),
   );
 });
+
+self.addEventListener("notificationclick", (event) => {
+  const { action } = event;
+  event.notification.close();
+  if (action === "clockout") {
+    event.waitUntil(
+      (async () => {
+        const allClients = await self.clients.matchAll({ includeUncontrolled: true });
+        for (const client of allClients) {
+          client.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
+        }
+      })(),
+    );
+    return;
+  }
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      if (allClients.length) {
+        const [client] = allClients;
+        await client.focus();
+        client.postMessage({ type: "SW_OPEN_TIME_CLOCK" });
+        return;
+      }
+    })(),
+  );
+});
