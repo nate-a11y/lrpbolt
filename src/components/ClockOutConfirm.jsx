@@ -13,56 +13,42 @@ export default function ClockOutConfirm() {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    function handleClockOutRequest() {
+    function onReq() {
       setResult(null);
-      setBusy(false);
       setOpen(true);
     }
-    function handleOpenClock() {
+    function onOpen() {
       openTimeClockModal();
     }
-    try {
-      if (consumePendingSwEvent("SW_CLOCK_OUT_REQUEST")) {
-        handleClockOutRequest();
-      }
-      if (consumePendingSwEvent("SW_OPEN_TIME_CLOCK")) {
-        handleOpenClock();
-      }
-    } catch (pendingError) {
-      logError(pendingError, {
-        where: "ClockOutConfirm",
-        action: "drainPendingSwEvents",
-      });
-    }
-    window.addEventListener("lrp:clockout-request", handleClockOutRequest);
-    window.addEventListener("lrp:open-timeclock", handleOpenClock);
-    return () => {
-      window.removeEventListener("lrp:clockout-request", handleClockOutRequest);
-      window.removeEventListener("lrp:open-timeclock", handleOpenClock);
-    };
-  }, []);
 
-  const handleClose = useCallback((_, reason) => {
-    if (reason === "clickaway") return;
-    setOpen(false);
+    try {
+      if (consumePendingSwEvent("SW_CLOCK_OUT_REQUEST")) onReq();
+      if (consumePendingSwEvent("SW_OPEN_TIME_CLOCK")) onOpen();
+    } catch (e) {
+      logError(e, { where: "ClockOutConfirm", action: "drainPending" });
+    }
+
+    window.addEventListener("lrp:clockout-request", onReq);
+    window.addEventListener("lrp:open-timeclock", onOpen);
+    return () => {
+      window.removeEventListener("lrp:clockout-request", onReq);
+      window.removeEventListener("lrp:open-timeclock", onOpen);
+    };
   }, []);
 
   const handleConfirm = useCallback(async () => {
     try {
       setBusy(true);
       await clockOutActiveSession();
-      setResult("ok");
-    } catch (error) {
-      logError(error, { where: "ClockOutConfirm", action: "clockOut" });
-      setResult("err");
-    } finally {
       setBusy(false);
+      setResult("ok");
+      setOpen(false);
+    } catch (e) {
+      logError(e, { where: "ClockOutConfirm", action: "clockOut" });
+      setBusy(false);
+      setResult("err");
       setOpen(false);
     }
-  }, []);
-
-  const handleResultClose = useCallback(() => {
-    setResult(null);
   }, []);
 
   return (
@@ -94,20 +80,22 @@ export default function ClockOutConfirm() {
             </Button>
           </>
         }
-        onClose={handleClose}
+        onClose={(_, r) => {
+          if (r !== "clickaway") setOpen(false);
+        }}
       />
       <Snackbar
         open={result === "ok"}
         autoHideDuration={2500}
         message="Clocked out"
-        onClose={handleResultClose}
+        onClose={() => setResult(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
       <Snackbar
         open={result === "err"}
         autoHideDuration={3500}
         message="Clock out failed"
-        onClose={handleResultClose}
+        onClose={() => setResult(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
     </>

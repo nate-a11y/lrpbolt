@@ -23,6 +23,11 @@ import ToastProvider from "./context/ToastProvider.jsx";
 import "./utils/firebaseInit.js";
 import "./muix-license.js";
 
+// attach immediately and clean/register before rendering
+initServiceWorkerMessageBridge();
+purgeOtherServiceWorkers();
+registerSW();
+
 const Root = () => {
   return (
     <PermissionGate>
@@ -52,11 +57,5 @@ const Root = () => {
     </PermissionGate>
   );
 };
-
-// NEW: attach message bridge immediately to catch cold-start clicks
-initServiceWorkerMessageBridge();
-// Kick off purge + SW registration in parallel; do not await rendering
-purgeOtherServiceWorkers();
-registerSW();
 
 ReactDOM.createRoot(document.getElementById("root")).render(<Root />);

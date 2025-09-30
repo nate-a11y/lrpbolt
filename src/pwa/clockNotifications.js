@@ -1,38 +1,31 @@
 /* Proprietary and confidential. See LICENSE. */
-function postTo(activeOrController, type, payload) {
+function _post(target, type, payload) {
   try {
-    activeOrController.postMessage({ type, payload });
+    target.postMessage({ type, payload });
     return true;
-  } catch (error) {
-    console.error("[clockNotifications] post fail", error);
+  } catch (e) {
+    console.error("[clockNotifications] post fail", e);
     return false;
   }
 }
-
 async function postToSW(type, payload) {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-    return false;
-  }
+  if (!("serviceWorker" in navigator)) return false;
   try {
-    if (navigator.serviceWorker.controller) {
-      return postTo(navigator.serviceWorker.controller, type, payload);
-    }
-    const registration = await navigator.serviceWorker.ready.catch(() => null);
-    if (registration?.active) {
-      return postTo(registration.active, type, payload);
-    }
+    if (navigator.serviceWorker.controller)
+      return _post(navigator.serviceWorker.controller, type, payload);
+    const reg = await navigator.serviceWorker.ready.catch(() => null);
+    if (reg?.active) return _post(reg.active, type, payload);
     return false;
-  } catch (error) {
-    console.error("[clockNotifications] postToSW failed", error);
+  } catch (e) {
+    console.error("[clockNotifications] postToSW failed", e);
     return false;
   }
 }
-
-async function postToSWWithRetry(type, payload, attempts = 4) {
+async function postWithRetry(type, payload, attempts = 4) {
   for (let i = 0; i < attempts; i += 1) {
     const ok = await postToSW(type, payload);
     if (ok) return true;
-    await new Promise((resolve) => setTimeout(resolve, 150 * (i + 1)));
+    await new Promise((r) => setTimeout(r, 200 * (i + 1)));
   }
   return false;
 }
@@ -40,40 +33,40 @@ async function postToSWWithRetry(type, payload, attempts = 4) {
 export async function requestPersistentClockNotification(text) {
   try {
     if (
-      typeof Notification !== "undefined" &&
+      typeof Notification === "undefined" ||
       Notification.permission !== "granted"
-    ) {
+    )
       return;
-    }
-    await postToSWWithRetry("SHOW_CLOCK_FROM_SW", {
+    const ok = await postWithRetry("SHOW_CLOCK_FROM_SW", {
       title: "LRP — On the clock",
       body: text || "",
     });
-  } catch (error) {
-    console.error("[clockNotifications] request failed", error);
+    if (!ok) {
+      try {
+        new Notification("LRP — On the clock", { body: text || "" });
+      } catch (error) {
+        console.warn("[clockNotifications] direct notification failed", error);
+      }
+    }
+  } catch (e) {
+    console.error("[clockNotifications] request failed", e);
   }
 }
-
 export async function stopPersistentClockNotification() {
   try {
-    await postToSWWithRetry("STOP_CLOCK_STICKY");
-  } catch (error) {
-    console.error("[clockNotifications] stop failed", error);
+    await postWithRetry("STOP_CLOCK_STICKY");
+  } catch (e) {
+    console.error(e);
   }
 }
-
 export async function clearClockNotification() {
   try {
-    await postToSWWithRetry("CLEAR_CLOCK_FROM_SW");
-  } catch (error) {
-    console.error("[clockNotifications] clear failed", error);
+    await postWithRetry("CLEAR_CLOCK_FROM_SW");
+  } catch (e) {
+    console.error(e);
   }
 }
 
-export async function diagShowSwNotification(body = "Hello from SW") {
-  try {
-    await postToSWWithRetry("DIAG_NOTIFY", { body });
-  } catch (error) {
-    console.error("[clockNotifications] diag failed", error);
-  }
+export async function diagShowSwNotification(body = "SW diagnostic") {
+  await postWithRetry("DIAG_NOTIFY", { body });
 }

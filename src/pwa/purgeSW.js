@@ -1,27 +1,20 @@
 /* Proprietary and confidential. See LICENSE. */
-/**
- * Unregister any service workers that are not our canonical /sw.js.
- * Also closes any leftover "lrp-clock" notifications from old workers.
- */
+/** Unregister any SWs not ending with /sw.js */
 export async function purgeOtherServiceWorkers() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-    return;
-  }
+  if (!("serviceWorker" in navigator)) return;
   try {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    const keepEndsWith = "/sw.js";
-    for (const registration of registrations) {
-      const scriptUrl =
-        registration.active?.scriptURL ||
-        registration.installing?.scriptURL ||
-        registration.waiting?.scriptURL ||
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) {
+      const url =
+        reg.active?.scriptURL ||
+        reg.waiting?.scriptURL ||
+        reg.installing?.scriptURL ||
         "";
-      const isCanonical = scriptUrl.endsWith(keepEndsWith);
-      if (!isCanonical) {
+      if (!url.endsWith("/sw.js")) {
         try {
-          await registration.unregister();
-        } catch (error) {
-          console.error("[purgeSW] unregister failed", error);
+          await reg.unregister();
+        } catch (e) {
+          console.error("[purgeSW] unregister failed", e);
         }
       }
     }
@@ -32,26 +25,7 @@ export async function purgeOtherServiceWorkers() {
     } catch (error) {
       console.warn("[purgeSW] clear message failed", error);
     }
-  } catch (error) {
-    console.error("[purgeSW] failed", error);
+  } catch (e) {
+    console.error("[purgeSW] failed", e);
   }
-}
-
-/** Small diagnostic helper for console use */
-export async function logSWStatus() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-    console.info("No SW support");
-    return;
-  }
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  console.table(
-    registrations.map((registration) => ({
-      scope: registration.scope,
-      script:
-        registration.active?.scriptURL ||
-        registration.installing?.scriptURL ||
-        registration.waiting?.scriptURL ||
-        "—",
-    })),
-  );
 }
