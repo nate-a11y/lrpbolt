@@ -1,8 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
 
-import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
-
 const LRP_GREEN = "#4cbb17";
 const LRP_BLACK = "#060606";
 
@@ -201,66 +199,40 @@ export const getDesignTokens = (mode) => ({
     },
     MuiDataGrid: {
       defaultProps: {
-        slots: { toolbar: LrpGridToolbar },
-        slotProps: {
-          toolbar: {
-            showQuickFilter: true,
-            quickFilterProps: { debounceMs: 300 },
-            quickFilterPlaceholder: "Search",
-          },
-        },
         density: "compact",
-        disableRowSelectionOnClick: true,
-        checkboxSelection: true,
       },
       styleOverrides: {
-        root: ({ theme }) => {
-          const isDark = theme.palette.mode === "dark";
-          return {
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: theme.shape.borderRadius,
-            backgroundColor: theme.palette.background.paper,
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: isDark ? theme.palette.grey[900] : "#fafafa",
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            },
-            "& .MuiDataGrid-toolbarContainer": {
-              display: "flex",
-              flexWrap: "wrap",
-              gap: theme.spacing(1),
-              backgroundColor: isDark
-                ? alpha("#ffffff", 0.04)
-                : alpha("#000000", 0.02),
-              borderBottom: `1px solid ${theme.palette.divider}`,
-              padding: theme.spacing(1, 1.5),
-              "& .MuiSvgIcon-root, & .MuiButton-root, & .MuiIconButton-root": {
-                color: theme.palette.text.primary,
-              },
-              "& .MuiInputBase-root": {
-                minWidth: 0,
-                flexGrow: 1,
-                maxWidth: "100%",
-                [theme.breakpoints.up("sm")]: { maxWidth: 240 },
-                [theme.breakpoints.up("md")]: { maxWidth: 300 },
-              },
-            },
-            "& .MuiDataGrid-footerContainer": {
-              backgroundColor: isDark
-                ? alpha("#ffffff", 0.03)
-                : alpha("#000000", 0.015),
-              borderTop: `1px solid ${theme.palette.divider}`,
-            },
-            "& .MuiDataGrid-row:hover": {
-              backgroundColor: isDark
-                ? alpha("#ffffff", 0.04)
-                : alpha("#000000", 0.03),
-            },
-            "& .MuiCheckbox-root.Mui-checked": { color: LRP_GREEN },
-            "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-              outline: `1px solid ${LRP_GREEN}`,
-              outlineOffset: -1,
-            },
-          };
+        root: ({ theme }) => ({
+          border: 0,
+          borderRadius: theme.shape.borderRadius,
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          "--DataGrid-rowBorderColor": "rgba(255,255,255,0.08)",
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+            borderBottom: "1px solid rgba(255,255,255,0.12)",
+          },
+          "& .MuiDataGrid-footerContainer": {
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            backgroundColor: alpha(theme.palette.primary.main, 0.04),
+          },
+          "& .MuiDataGrid-row:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.12),
+          },
+          "& .MuiCheckbox-root.Mui-checked": {
+            color: theme.palette.primary.main,
+          },
+          "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
+            outline: `1px solid ${theme.palette.primary.main}`,
+            outlineOffset: -1,
+          },
+          "& .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
+        }),
+        cell: {
+          outline: "none !important",
+        },
+        columnHeaders: {
+          borderBottom: "1px solid rgba(255,255,255,0.12)",
         },
       },
     },

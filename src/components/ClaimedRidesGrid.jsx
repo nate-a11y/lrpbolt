@@ -7,13 +7,14 @@ import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
+import { formatDateTime } from "@/utils/time";
+import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import { deleteRide } from "../services/firestoreService";
 import { mapSnapshotToRows } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function ClaimedRidesGrid() {
@@ -104,52 +105,145 @@ export default function ClaimedRidesGrid() {
     return selectionModel.map((id) => sel.get(id)).filter(Boolean);
   }, [apiRef, selectionModel]);
 
+  const getRowId = useCallback((row) => {
+    if (row?.id != null) return String(row.id);
+    if (row?.rideId != null) return String(row.rideId);
+    return null;
+  }, []);
+
+  const formatMinutes = useCallback((raw) => {
+    const minutes = Number(raw);
+    if (!Number.isFinite(minutes) || minutes <= 0) return "N/A";
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    if (hours > 0) {
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h 0m`;
+    }
+    return `${mins}m`;
+  }, []);
+
+  const initialState = useMemo(
+    () => ({
+      pagination: { paginationModel: { pageSize: 15, page: 0 } },
+      columns: {
+        columnVisibilityModel: {
+          claimedAt: false,
+          status: false,
+        },
+      },
+    }),
+    [],
+  );
+
+  const columns = useMemo(() => {
+    const baseColumns = [
+      {
+        field: "tripId",
+        headerName: "Trip ID",
+        minWidth: 140,
+        flex: 0.8,
+        valueGetter: (params) => {
+          const value = params?.row?.tripId ?? params?.row?.id;
+          return value ? String(value) : "N/A";
+        },
+      },
+      {
+        field: "claimedBy",
+        headerName: "Claimed By",
+        minWidth: 160,
+        flex: 1,
+        valueGetter: (params) => params?.row?.claimedBy || "N/A",
+      },
+      {
+        field: "pickupTime",
+        headerName: "Pickup",
+        minWidth: 180,
+        flex: 1,
+        valueGetter: (params) => formatDateTime(params?.row?.pickupTime),
+      },
+      {
+        field: "rideDuration",
+        headerName: "Duration",
+        minWidth: 120,
+        flex: 0.7,
+        valueGetter: (params) => formatMinutes(params?.row?.rideDuration),
+      },
+      {
+        field: "rideType",
+        headerName: "Type",
+        minWidth: 140,
+        flex: 1,
+        valueGetter: (params) => params?.row?.rideType || "N/A",
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        minWidth: 140,
+        flex: 1,
+        valueGetter: (params) => params?.row?.vehicle || "N/A",
+      },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        minWidth: 180,
+        flex: 1.4,
+        valueGetter: (params) => params?.row?.rideNotes || "N/A",
+      },
+      {
+        field: "createdAt",
+        headerName: "Created",
+        minWidth: 180,
+        flex: 1,
+        valueGetter: (params) => formatDateTime(params?.row?.createdAt),
+      },
+      {
+        field: "claimedAt",
+        headerName: "Claimed At",
+        minWidth: 180,
+        flex: 1,
+        valueGetter: (params) => formatDateTime(params?.row?.claimedAt),
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        minWidth: 140,
+        flex: 0.8,
+        valueGetter: (params) => params?.row?.status || "N/A",
+      },
+    ];
+
+    const actionsColumn = buildNativeActionsColumn({
+      onEdit: (_id, row) => handleEditRide(row),
+      onDelete: async (id) => await deleteRide("claimedRides", id),
+    });
+
+    return [...baseColumns, actionsColumn];
+  }, [formatMinutes, handleEditRide]);
+
   return (
     <>
       <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
-        <SmartAutoGrid
+        <LrpDataGridPro
+          id="claimed-grid"
           rows={rows}
-          headerMap={{
-            tripId: "Trip ID",
-            claimedBy: "Claimed By",
-            pickupTime: "Pickup",
-            rideDuration: "Duration",
-            rideType: "Type",
-            vehicle: "Vehicle",
-            rideNotes: "Notes",
-            createdAt: "Created",
-            claimedAt: "Claimed At",
-            status: "Status",
-          }}
-          order={[
-            "tripId",
-            "claimedBy",
-            "pickupTime",
-            "rideDuration",
-            "rideType",
-            "vehicle",
-            "rideNotes",
-            "createdAt",
-            "claimedAt",
-            "status",
-          ]}
-          hide={["claimedAt", "status"]}
-          forceHide={[]}
-          actionsColumn={buildNativeActionsColumn({
-            onEdit: (id, row) => handleEditRide(row),
-            onDelete: async (id) => await deleteRide("claimedRides", id),
-          })}
+          columns={columns}
+          getRowId={getRowId}
           checkboxSelection
           disableRowSelectionOnClick
           apiRef={apiRef}
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={(m) => setSelectionModel(m)}
+          initialState={initialState}
+          pageSizeOptions={[15, 30, 60]}
           slotProps={{
             toolbar: {
               onDeleteSelected: handleBulkDelete,
-              quickFilterPlaceholder: "Search",
+              quickFilterPlaceholder: "Search rides",
             },
           }}
+          density="compact"
+          autoHeight={false}
+          sx={{ minHeight: 420 }}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}

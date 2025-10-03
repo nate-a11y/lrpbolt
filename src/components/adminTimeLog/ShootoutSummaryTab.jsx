@@ -3,17 +3,98 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Paper } from "@mui/material";
 
 import { formatTz } from "@/utils/timeSafe";
+import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 
-import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
 
 export default function ShootoutSummaryTab() {
   const [rows, setRows] = useState([]);
-  const overrides = useMemo(
+  const columns = useMemo(() => {
+    return [
+      {
+        field: "driver",
+        headerName: "Driver",
+        minWidth: 160,
+        flex: 1,
+        valueGetter: (params) => params?.row?.driver || "N/A",
+      },
+      {
+        field: "driverEmail",
+        headerName: "Driver Email",
+        minWidth: 220,
+        flex: 1.2,
+        valueGetter: (params) => params?.row?.driverEmail || "N/A",
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        minWidth: 140,
+        flex: 1,
+        valueGetter: (params) => params?.row?.vehicle || "N/A",
+      },
+      {
+        field: "sessions",
+        headerName: "Sessions",
+        minWidth: 120,
+        valueGetter: (params) => params?.row?.sessions ?? null,
+      },
+      {
+        field: "trips",
+        headerName: "Trips",
+        minWidth: 120,
+        valueGetter: (params) => params?.row?.trips ?? null,
+      },
+      {
+        field: "passengers",
+        headerName: "PAX",
+        minWidth: 120,
+        valueGetter: (params) => params?.row?.passengers ?? null,
+      },
+      {
+        field: "totalMinutes",
+        headerName: "Minutes",
+        minWidth: 140,
+        valueGetter: (params) => params?.row?.totalMinutes ?? null,
+      },
+      {
+        field: "hours",
+        headerName: "Hours",
+        minWidth: 140,
+        valueGetter: (params) => {
+          const value = params?.row?.hours;
+          return Number.isFinite(value)
+            ? Number(value.toFixed?.(2) ?? value)
+            : "N/A";
+        },
+      },
+      {
+        field: "firstStart",
+        headerName: "First Start",
+        minWidth: 180,
+        flex: 1,
+        valueGetter: (params) => formatTz(params?.row?.firstStart) || "N/A",
+      },
+      {
+        field: "lastEnd",
+        headerName: "Last End",
+        minWidth: 180,
+        flex: 1,
+        valueGetter: (params) => formatTz(params?.row?.lastEnd) || "N/A",
+      },
+      {
+        field: "id",
+        headerName: "id",
+        minWidth: 120,
+        valueGetter: (params) => params?.row?.id || "N/A",
+      },
+    ];
+  }, []);
+
+  const initialState = useMemo(
     () => ({
-      firstStart: { valueGetter: (_, row) => formatTz(row?.firstStart) },
-      lastEnd: { valueGetter: (_, row) => formatTz(row?.lastEnd) },
+      pagination: { paginationModel: { pageSize: 15, page: 0 } },
+      columns: { columnVisibilityModel: { id: false } },
     }),
     [],
   );
@@ -85,40 +166,17 @@ export default function ShootoutSummaryTab() {
         minHeight: 0,
       }}
     >
-      <SmartAutoGrid
+      <LrpDataGridPro
+        id="admin-timelog-shootout-summary-grid"
         rows={rows || []}
-        headerMap={{
-          driver: "Driver",
-          driverEmail: "Driver Email",
-          vehicle: "Vehicle",
-          sessions: "Sessions",
-          trips: "Trips",
-          passengers: "PAX",
-          totalMinutes: "Minutes",
-          hours: "Hours",
-          firstStart: "First Start",
-          lastEnd: "Last End",
-          id: "id",
-        }}
-        order={[
-          "driver",
-          "driverEmail",
-          "vehicle",
-          "sessions",
-          "trips",
-          "passengers",
-          "totalMinutes",
-          "hours",
-          "firstStart",
-          "lastEnd",
-          "id",
-        ]}
-        forceHide={["id"]}
-        overrides={overrides}
+        columns={columns}
         checkboxSelection
         disableRowSelectionOnClick
-        gridHeight="100%"
-        containerSx={{ flex: 1, minHeight: 0 }}
+        density="compact"
+        initialState={initialState}
+        pageSizeOptions={[15, 30, 60]}
+        autoHeight={false}
+        sx={{ flex: 1, minHeight: 0 }}
       />
     </Paper>
   );

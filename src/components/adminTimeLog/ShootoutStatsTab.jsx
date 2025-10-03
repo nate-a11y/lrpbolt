@@ -7,8 +7,8 @@ import { Paper } from "@mui/material";
 import { tsToDate } from "@/utils/fsTime";
 import { formatTz, durationHm } from "@/utils/timeSafe";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
+import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 
-import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { patchShootoutStat } from "../../hooks/api";
@@ -64,44 +64,141 @@ export default function ShootoutStatsTab() {
     }
   }, []);
 
-  const overrides = useMemo(
+  const columns = useMemo(() => {
+    return [
+      {
+        field: "driver",
+        headerName: "Driver",
+        minWidth: 160,
+        flex: 1,
+        valueGetter: (params) => params?.row?.driver || "N/A",
+      },
+      {
+        field: "driverEmail",
+        headerName: "Driver Email",
+        minWidth: 220,
+        flex: 1.2,
+        editable: true,
+        valueGetter: (params) => params?.row?.driverEmail || "N/A",
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        minWidth: 140,
+        flex: 1,
+        editable: true,
+        valueGetter: (params) => params?.row?.vehicle || "N/A",
+      },
+      {
+        field: "startTime",
+        headerName: "Start",
+        minWidth: 200,
+        flex: 1,
+        type: "dateTime",
+        editable: true,
+        valueGetter: (params) => tsToDate(params?.row?.startTime),
+        valueFormatter: (params) =>
+          params?.value instanceof Date
+            ? formatTz(params.value)
+            : formatTz(tsToDate(params?.row?.startTime)) || "N/A",
+        valueSetter: (params) => ({
+          ...params.row,
+          startTime: params.value ? new Date(params.value) : null,
+        }),
+        sortComparator: (v1, v2, cellParams1, cellParams2) =>
+          timestampSortComparator(
+            cellParams1?.row?.startTime,
+            cellParams2?.row?.startTime,
+          ),
+      },
+      {
+        field: "endTime",
+        headerName: "End",
+        minWidth: 200,
+        flex: 1,
+        type: "dateTime",
+        editable: true,
+        valueGetter: (params) => tsToDate(params?.row?.endTime),
+        valueFormatter: (params) =>
+          params?.value instanceof Date
+            ? formatTz(params.value)
+            : formatTz(tsToDate(params?.row?.endTime)) || "N/A",
+        valueSetter: (params) => ({
+          ...params.row,
+          endTime: params.value ? new Date(params.value) : null,
+        }),
+        sortComparator: (v1, v2, cellParams1, cellParams2) =>
+          timestampSortComparator(
+            cellParams1?.row?.endTime,
+            cellParams2?.row?.endTime,
+          ),
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        minWidth: 140,
+        valueGetter: (params) =>
+          durationHm(
+            tsToDate(params?.row?.startTime),
+            tsToDate(params?.row?.endTime),
+          ) || "N/A",
+      },
+      {
+        field: "trips",
+        headerName: "Trips",
+        minWidth: 120,
+        type: "number",
+        editable: true,
+        valueGetter: (params) => params?.row?.trips ?? null,
+      },
+      {
+        field: "passengers",
+        headerName: "PAX",
+        minWidth: 120,
+        type: "number",
+        editable: true,
+        valueGetter: (params) => params?.row?.passengers ?? null,
+      },
+      {
+        field: "createdAt",
+        headerName: "Created",
+        minWidth: 200,
+        flex: 1,
+        type: "dateTime",
+        editable: true,
+        valueGetter: (params) => tsToDate(params?.row?.createdAt),
+        valueFormatter: (params) =>
+          params?.value instanceof Date
+            ? formatTz(params.value)
+            : formatTz(tsToDate(params?.row?.createdAt)) || "N/A",
+        valueSetter: (params) => ({
+          ...params.row,
+          createdAt: params.value ? new Date(params.value) : null,
+        }),
+        sortComparator: (v1, v2, cellParams1, cellParams2) =>
+          timestampSortComparator(
+            cellParams1?.row?.createdAt,
+            cellParams2?.row?.createdAt,
+          ),
+      },
+      {
+        field: "id",
+        headerName: "id",
+        minWidth: 120,
+        valueGetter: (params) => params?.row?.id || "N/A",
+      },
+    ];
+  }, []);
+
+  const gridColumns = useMemo(
+    () => [...columns, actionsColumn],
+    [actionsColumn, columns],
+  );
+
+  const initialState = useMemo(
     () => ({
-      driverEmail: { editable: true },
-      vehicle: { editable: true },
-      startTime: {
-        editable: true,
-        type: "dateTime",
-        valueGetter: (_, row) => tsToDate(row?.startTime),
-        valueFormatter: (value) =>
-          value instanceof Date ? formatTz(value) : "N/A",
-        valueParser: (v) => (v ? new Date(v) : null),
-        sortComparator: timestampSortComparator,
-      },
-      endTime: {
-        editable: true,
-        type: "dateTime",
-        valueGetter: (_, row) => tsToDate(row?.endTime),
-        valueFormatter: (value) =>
-          value instanceof Date ? formatTz(value) : "N/A",
-        valueParser: (v) => (v ? new Date(v) : null),
-        sortComparator: timestampSortComparator,
-      },
-      duration: {
-        editable: false,
-        valueGetter: (_, row) =>
-          durationHm(tsToDate(row?.startTime), tsToDate(row?.endTime)),
-      },
-      trips: { editable: true, type: "number" },
-      passengers: { editable: true, type: "number" },
-      createdAt: {
-        editable: true,
-        type: "dateTime",
-        valueGetter: (_, row) => tsToDate(row?.createdAt),
-        valueFormatter: (value) =>
-          value instanceof Date ? formatTz(value) : "N/A",
-        valueParser: (v) => (v ? new Date(v) : null),
-        sortComparator: timestampSortComparator,
-      },
+      pagination: { paginationModel: { pageSize: 15, page: 0 } },
+      columns: { columnVisibilityModel: { id: false } },
     }),
     [],
   );
@@ -134,35 +231,10 @@ export default function ShootoutStatsTab() {
         minHeight: 0,
       }}
     >
-      <SmartAutoGrid
+      <LrpDataGridPro
+        id="admin-timelog-shootout-grid"
         rows={rows || []}
-        headerMap={{
-          driverEmail: "Driver Email",
-          driver: "Driver",
-          vehicle: "Vehicle",
-          startTime: "Start",
-          endTime: "End",
-          duration: "Duration",
-          trips: "Trips",
-          passengers: "PAX",
-          createdAt: "Created",
-          id: "id",
-        }}
-        order={[
-          "driver",
-          "driverEmail",
-          "vehicle",
-          "startTime",
-          "endTime",
-          "duration",
-          "trips",
-          "passengers",
-          "createdAt",
-          "id",
-        ]}
-        forceHide={["id"]}
-        overrides={overrides}
-        actionsColumn={actionsColumn}
+        columns={gridColumns}
         editMode="row"
         rowModesModel={rowModesModel}
         onRowModesModelChange={(m) => setRowModesModel(m)}
@@ -173,8 +245,11 @@ export default function ShootoutStatsTab() {
         experimentalFeatures={{ newEditingApi: true }}
         checkboxSelection
         disableRowSelectionOnClick
-        gridHeight="100%"
-        containerSx={{ flex: 1, minHeight: 0 }}
+        density="compact"
+        initialState={initialState}
+        pageSizeOptions={[15, 30, 60]}
+        autoHeight={false}
+        sx={{ flex: 1, minHeight: 0 }}
       />
     </Paper>
   );

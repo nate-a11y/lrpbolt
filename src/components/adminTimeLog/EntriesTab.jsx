@@ -18,11 +18,11 @@ import {
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
 import { deleteTimeLog, updateTimeLog } from "@/services/fs";
+import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
-import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 
 export default function EntriesTab() {
@@ -246,6 +246,11 @@ export default function EntriesTab() {
     return [...sharedAdminColumns, ...extras];
   }, [sharedAdminColumns, toDateSafe]);
 
+  const gridColumns = useMemo(
+    () => [...columns, actionsColumn],
+    [actionsColumn, columns],
+  );
+
   const handleRowEditStart = useCallback((params, event) => {
     event.defaultMuiPrevented = true;
   }, []);
@@ -349,6 +354,11 @@ export default function EntriesTab() {
         return { ...r, duration };
       }),
     [filteredRows, toDateSafe],
+  );
+
+  const gridInitialState = useMemo(
+    () => ({ pagination: { paginationModel: { pageSize: 15, page: 0 } } }),
+    [],
   );
 
   const performDelete = useCallback(async (ids) => {
@@ -493,10 +503,10 @@ export default function EntriesTab() {
           minHeight: 0,
         }}
       >
-        <SmartAutoGrid
+        <LrpDataGridPro
+          id="admin-timelog-grid"
           rows={safeRows}
-          columns={columns}
-          actionsColumn={actionsColumn}
+          columns={gridColumns}
           loading={loading}
           editMode="row"
           rowModesModel={rowModesModel}
@@ -513,15 +523,17 @@ export default function EntriesTab() {
           disableRowSelectionOnClick
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          gridHeight="100%"
-          containerSx={{ flex: 1, minHeight: 0 }}
+          initialState={gridInitialState}
+          pageSizeOptions={[15, 30, 60, 100]}
           slotProps={{
             toolbar: {
               onDeleteSelected: handleBulkDelete,
-              quickFilterPlaceholder: "Search",
+              quickFilterPlaceholder: "Search logs",
             },
           }}
-          pageSizeOptions={[15, 30, 60, 100]}
+          density="compact"
+          autoHeight={false}
+          sx={{ flex: 1, minHeight: 0 }}
           getRowId={getRowId}
         />
         <ConfirmBulkDeleteDialog
