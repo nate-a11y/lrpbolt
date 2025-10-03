@@ -3,18 +3,21 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { doc, deleteDoc } from "firebase/firestore";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
-import { Paper } from "@mui/material";
+import { Paper, CircularProgress } from "@mui/material";
 
 import { tsToDate } from "@/utils/fsTime";
 import { formatTz, durationHm } from "@/utils/timeSafe";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { patchShootoutStat } from "../../hooks/api";
 import { db } from "../../utils/firebaseInit";
 import { enrichDriverNames } from "../../services/normalizers";
+import logError from "../../utils/logError.js";
 
 function getShootoutRowId(row) {
   return (
@@ -170,50 +173,77 @@ export default function ShootoutStatsTab() {
   const [rows, setRows] = useState([]);
   const apiRef = useGridApiRef();
   const [rowModesModel, setRowModesModel] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { show: showSnack } = useSnack();
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     const unsub = subscribeShootoutStats(
       async (stats) => {
-        const mapped = (stats || []).map((s) => ({
-          id: s.id ?? s.docId ?? s._id ?? Math.random().toString(36).slice(2),
-          ...s,
-        }));
-        const withNames = await enrichDriverNames(mapped);
-        const withDates = withNames.map((r) => ({
-          ...r,
-          startTime: tsToDate(r.startTime),
-          endTime: tsToDate(r.endTime),
-          createdAt: tsToDate(r.createdAt),
-        }));
-        setRows(withDates);
+        try {
+          const mapped = (stats || []).map((s) => ({
+            id: s.id ?? s.docId ?? s._id ?? Math.random().toString(36).slice(2),
+            ...s,
+          }));
+          const withNames = await enrichDriverNames(mapped);
+          const withDates = withNames.map((r) => ({
+            ...r,
+            startTime: tsToDate(r.startTime),
+            endTime: tsToDate(r.endTime),
+            createdAt: tsToDate(r.createdAt),
+          }));
+          setRows(withDates);
+          setError(null);
+        } catch (err) {
+          logError(err, { where: "ShootoutStatsTab", action: "process" });
+          setError("Failed to prepare shootout stats.");
+        } finally {
+          setLoading(false);
+        }
       },
-      (e) => console.error(e),
+      (e) => {
+        logError(e, { where: "ShootoutStatsTab", action: "subscribe" });
+        setError(e?.message || "Failed to load shootout stats.");
+        setLoading(false);
+      },
     );
-    return () => typeof unsub === "function" && unsub();
-  }, []);
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [refreshKey]);
 
   const deleteShootoutStatById = useCallback(async (id) => {
     await deleteDoc(doc(db, "shootoutStats", id));
   }, []);
 
-  const handleProcessRowUpdate = useCallback(async (newRow, oldRow) => {
-    try {
-      await patchShootoutStat(newRow.id, {
-        driverEmail: newRow.driverEmail,
-        vehicle: newRow.vehicle,
-        trips: newRow.trips,
-        passengers: newRow.passengers,
-        startTime: newRow.startTime,
-        endTime: newRow.endTime,
-        createdAt: newRow.createdAt,
-      });
-      return newRow;
-    } catch (e) {
-      console.error(e);
-      alert("Update failed");
-      return oldRow;
-    }
-  }, []);
+  const handleProcessRowUpdate = useCallback(
+    async (newRow, oldRow) => {
+      try {
+        await patchShootoutStat(newRow.id, {
+          driverEmail: newRow.driverEmail,
+          vehicle: newRow.vehicle,
+          trips: newRow.trips,
+          passengers: newRow.passengers,
+          startTime: newRow.startTime,
+          endTime: newRow.endTime,
+          createdAt: newRow.createdAt,
+        });
+        return newRow;
+      } catch (e) {
+        logError(e, {
+          where: "ShootoutStatsTab",
+          action: "update",
+          id: newRow?.id,
+        });
+        showSnack("Failed to update session", "error");
+        return oldRow;
+      }
+    },
+    [showSnack],
+  );
 
   const columns = useMemo(
     () =>
@@ -241,6 +271,43 @@ export default function ShootoutStatsTab() {
     event.defaultMuiPrevented = true;
   };
 
+  if (loading) {
+    return (
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
+        <CircularProgress size={24} />
+      </Paper>
+    );
+  }
+
+  if (error) {
+    return (
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
+        <ErrorState
+          description={error}
+          onAction={() => setRefreshKey((key) => key + 1)}
+        />
+      </Paper>
+    );
+  }
+
   return (
     <Paper
       sx={{
@@ -251,27 +318,36 @@ export default function ShootoutStatsTab() {
         minHeight: 0,
       }}
     >
-      <LrpDataGridPro
-        id="admin-timelog-shootout-grid"
-        rows={rows || []}
-        columns={columns}
-        editMode="row"
-        rowModesModel={rowModesModel}
-        onRowModesModelChange={(m) => setRowModesModel(m)}
-        processRowUpdate={handleProcessRowUpdate}
-        onRowEditStart={handleRowEditStart}
-        onRowEditStop={handleRowEditStop}
-        apiRef={apiRef}
-        getRowId={getShootoutRowId}
-        experimentalFeatures={{ newEditingApi: true }}
-        checkboxSelection
-        disableRowSelectionOnClick
-        density="compact"
-        initialState={initialState}
-        pageSizeOptions={[15, 30, 60]}
-        autoHeight={false}
-        sx={{ flex: 1, minHeight: 0 }}
-      />
+      {rows?.length ? (
+        <LrpDataGridPro
+          id="admin-timelog-shootout-grid"
+          rows={rows}
+          columns={columns}
+          editMode="row"
+          rowModesModel={rowModesModel}
+          onRowModesModelChange={(m) => setRowModesModel(m)}
+          processRowUpdate={handleProcessRowUpdate}
+          onRowEditStart={handleRowEditStart}
+          onRowEditStop={handleRowEditStop}
+          apiRef={apiRef}
+          getRowId={getShootoutRowId}
+          experimentalFeatures={{ newEditingApi: true }}
+          checkboxSelection
+          disableRowSelectionOnClick
+          density="compact"
+          initialState={initialState}
+          pageSizeOptions={[15, 30, 60]}
+          autoHeight={false}
+          sx={{ flex: 1, minHeight: 0 }}
+        />
+      ) : (
+        <EmptyState
+          title="No shootout stats"
+          description="Completed shootout sessions will appear here once recorded."
+          actionLabel="Refresh"
+          onAction={() => setRefreshKey((key) => key + 1)}
+        />
+      )}
     </Paper>
   );
 }

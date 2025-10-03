@@ -27,6 +27,8 @@ import { NotFoundException } from "@zxing/library";
 import logError from "@/utils/logError.js";
 import { playBeep } from "@/utils/sound.js";
 import useLatestRef from "@/hooks/useLatestRef.js";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
+import { vibrateOk, vibrateWarn } from "@/utils/haptics.js";
 
 const BASE_CONSTRAINTS = {
   audio: false,
@@ -86,6 +88,21 @@ function TicketScanner({
   const autoPauseRef = useLatestRef(autoPauseMs);
   const vibrateRef = useLatestRef(vibrate);
   const beepRef = useLatestRef(beep);
+  const { show: showSnack } = useSnack();
+
+  const announce = useCallback((message) => {
+    if (typeof window === "undefined") return;
+    window.__LRP_LIVE_MSG__ = message || "";
+    try {
+      window.dispatchEvent(
+        new CustomEvent("lrp:live-region", { detail: message || "" }),
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("[TicketScanner] live region dispatch failed", error);
+      }
+    }
+  }, []);
 
   const constraints = useMemo(() => {
     const base = JSON.parse(JSON.stringify(BASE_CONSTRAINTS));
@@ -179,6 +196,12 @@ function TicketScanner({
       const now = Date.now();
       const last = lastResultRef.current;
       if (last.text === text && now - last.ts < autoPauseRef.current) {
+        if (vibrateRef.current) {
+          vibrateWarn();
+        }
+        const duplicateMessage = "Duplicate scan ignored";
+        announce(duplicateMessage);
+        showSnack(duplicateMessage, "warning");
         return;
       }
       lastResultRef.current = { text, ts: now };
@@ -205,15 +228,10 @@ function TicketScanner({
         }
       }
       if (vibrateRef.current) {
-        try {
-          navigator.vibrate?.(30);
-        } catch (err) {
-          logError(err, {
-            area: "TicketScanner",
-            action: "vibrate",
-          });
-        }
+        vibrateOk();
       }
+
+      announce("Ticket scanned");
 
       try {
         onScanRef.current?.(payload);
@@ -228,7 +246,16 @@ function TicketScanner({
       setAwaitingRestart(true);
       setPaused(true);
     },
-    [autoPauseRef, beepRef, clearCooldown, onScanRef, stopDecoding, vibrateRef],
+    [
+      announce,
+      autoPauseRef,
+      beepRef,
+      clearCooldown,
+      onScanRef,
+      showSnack,
+      stopDecoding,
+      vibrateRef,
+    ],
   );
 
   const startDecoding = useCallback(

@@ -47,7 +47,9 @@
         "Surface clock-out failures to user; open /timeclock for recovery.",
         "Use SnackbarProvider for toasts; no ad-hoc snackbars.",
         "Focus-visible outlines; respect reduced motion.",
-        "Use LoadingButtonLite for pending actions."
+        "Adopt LoadingButtonLite for pending submits.",
+        "Announce success via aria live + toast; haptics on confirm.",
+        "Use ErrorBoundary around major pages."
       ]
     }
   ]

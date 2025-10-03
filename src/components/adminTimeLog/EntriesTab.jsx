@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Box, Paper, CircularProgress, Alert, TextField } from "@mui/material";
+import { Box, Paper, CircularProgress, TextField } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 import { writeBatch, doc } from "firebase/firestore";
@@ -9,6 +9,8 @@ import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
+import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import {
   formatDateTime,
   formatClockOutOrDash,
@@ -36,6 +38,8 @@ export default function EntriesTab() {
   const apiRef = useGridApiRef();
   const [rowModesModel, setRowModesModel] = useState({});
   const [selectionModel, setSelectionModel] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { show: showSnack } = useSnack();
 
   const getRowId = useCallback(
     (row) => row?.id || row?.docId || row?._id || null,
@@ -60,12 +64,13 @@ export default function EntriesTab() {
       if (!id) return;
       try {
         await deleteTimeLog(id);
+        showSnack("Time log deleted", "success");
       } catch (e) {
         logError(e, `EntriesTab.delete:${id}`);
-        alert("Failed to delete time log");
+        showSnack("Failed to delete time log", "error");
       }
     },
-    [getRowId],
+    [getRowId, showSnack],
   );
 
   const handleProcessRowUpdate = useCallback(
@@ -112,10 +117,11 @@ export default function EntriesTab() {
         };
       } catch (e) {
         logError(e, `EntriesTab.processRowUpdate:${id}`);
+        showSnack("Failed to update time log", "error");
         return oldRow;
       }
     },
-    [getRowId, toDateSafe],
+    [getRowId, showSnack, toDateSafe],
   );
 
   const actionsColumn = useMemo(
@@ -259,6 +265,8 @@ export default function EntriesTab() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     const unsub = subscribeTimeLogs(
       async (logs) => {
         try {
@@ -274,6 +282,7 @@ export default function EntriesTab() {
             loggedAt: toDateSafe(r.loggedAt),
           }));
           setRows(withDates);
+          setError(null);
         } catch (e) {
           logError(e, "EntriesTab.subscribeTimeLogs.enrich");
           setError("Failed to enrich driver names.");
@@ -289,7 +298,7 @@ export default function EntriesTab() {
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [toDateSafe]);
+  }, [refreshKey, toDateSafe]);
 
   const filteredRows = useMemo(() => {
     const startBound = startFilter?.toDate?.() ?? null;
@@ -451,7 +460,14 @@ export default function EntriesTab() {
           p: 2,
         }}
       >
-        <Alert severity="error">{error}</Alert>
+        <ErrorState
+          description={error}
+          onAction={() => {
+            setError(null);
+            setLoading(true);
+            setRefreshKey((key) => key + 1);
+          }}
+        />
       </Paper>
     );
   }
@@ -503,39 +519,46 @@ export default function EntriesTab() {
           minHeight: 0,
         }}
       >
-        <LrpDataGridPro
-          id="admin-timelog-grid"
-          rows={safeRows}
-          columns={gridColumns}
-          loading={loading}
-          editMode="row"
-          rowModesModel={rowModesModel}
-          onRowModesModelChange={(m) => setRowModesModel(m)}
-          processRowUpdate={handleProcessRowUpdate}
-          onProcessRowUpdateError={(e) =>
-            logError(e, "EntriesTab.processRowUpdateError")
-          }
-          onRowEditStart={handleRowEditStart}
-          onRowEditStop={handleRowEditStop}
-          apiRef={apiRef}
-          experimentalFeatures={{ newEditingApi: true }}
-          checkboxSelection
-          disableRowSelectionOnClick
-          rowSelectionModel={selectionModel}
-          onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          initialState={gridInitialState}
-          pageSizeOptions={[15, 30, 60, 100]}
-          slotProps={{
-            toolbar: {
-              onDeleteSelected: handleBulkDelete,
-              quickFilterPlaceholder: "Search logs",
-            },
-          }}
-          density="compact"
-          autoHeight={false}
-          sx={{ flex: 1, minHeight: 0 }}
-          getRowId={getRowId}
-        />
+        {safeRows.length === 0 ? (
+          <EmptyState
+            title="No time logs"
+            description="Time logs will appear here after drivers clock in."
+          />
+        ) : (
+          <LrpDataGridPro
+            id="admin-timelog-grid"
+            rows={safeRows}
+            columns={gridColumns}
+            loading={loading}
+            editMode="row"
+            rowModesModel={rowModesModel}
+            onRowModesModelChange={(m) => setRowModesModel(m)}
+            processRowUpdate={handleProcessRowUpdate}
+            onProcessRowUpdateError={(e) =>
+              logError(e, "EntriesTab.processRowUpdateError")
+            }
+            onRowEditStart={handleRowEditStart}
+            onRowEditStop={handleRowEditStop}
+            apiRef={apiRef}
+            experimentalFeatures={{ newEditingApi: true }}
+            checkboxSelection
+            disableRowSelectionOnClick
+            rowSelectionModel={selectionModel}
+            onRowSelectionModelChange={(m) => setSelectionModel(m)}
+            initialState={gridInitialState}
+            pageSizeOptions={[15, 30, 60, 100]}
+            slotProps={{
+              toolbar: {
+                onDeleteSelected: handleBulkDelete,
+                quickFilterPlaceholder: "Search logs",
+              },
+            }}
+            density="compact"
+            autoHeight={false}
+            sx={{ flex: 1, minHeight: 0 }}
+            getRowId={getRowId}
+          />
+        )}
         <ConfirmBulkDeleteDialog
           open={dialogOpen}
           total={selectionModel.length}

@@ -2,6 +2,7 @@
 import React, { useState, memo } from "react";
 import { Tabs, Tab, Box } from "@mui/material";
 
+import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
 import useIsMobile from "@/hooks/useIsMobile.js";
 
 import PageContainer from "./PageContainer.jsx";
@@ -15,33 +16,35 @@ function AdminTimeLog() {
   const { isMdDown } = useIsMobile();
 
   return (
-    <PageContainer pt={2} pb={2} sx={{ gap: 1 }}>
-      <Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v)}
-        textColor="inherit"
-        indicatorColor="primary"
-        aria-label="Admin Time Log Tabs"
-        variant={isMdDown ? "scrollable" : "standard"}
-        scrollButtons={isMdDown ? "auto" : false}
-        allowScrollButtonsMobile
-        sx={{
-          "& .MuiTab-root": { textTransform: "none", minHeight: 40 },
-          mb: 1,
-        }}
-      >
-        <Tab label="Logs" />
-        <Tab label="Weekly Summary" />
-        <Tab label="Shootout Sessions" />
-        <Tab label="Shootout Summary" />
-      </Tabs>
-      <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
-        {tab === 0 && <EntriesTab />}
-        {tab === 1 && <WeeklySummaryTab />}
-        {tab === 2 && <ShootoutStatsTab />}
-        {tab === 3 && <ShootoutSummaryTab />}
-      </Box>
-    </PageContainer>
+    <ErrorBoundary>
+      <PageContainer pt={2} pb={2} sx={{ gap: 1 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          textColor="inherit"
+          indicatorColor="primary"
+          aria-label="Admin Time Log Tabs"
+          variant={isMdDown ? "scrollable" : "standard"}
+          scrollButtons={isMdDown ? "auto" : false}
+          allowScrollButtonsMobile
+          sx={{
+            "& .MuiTab-root": { textTransform: "none", minHeight: 40 },
+            mb: 1,
+          }}
+        >
+          <Tab label="Logs" />
+          <Tab label="Weekly Summary" />
+          <Tab label="Shootout Sessions" />
+          <Tab label="Shootout Summary" />
+        </Tabs>
+        <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
+          {tab === 0 && <EntriesTab />}
+          {tab === 1 && <WeeklySummaryTab />}
+          {tab === 2 && <ShootoutStatsTab />}
+          {tab === 3 && <ShootoutSummaryTab />}
+        </Box>
+      </PageContainer>
+    </ErrorBoundary>
   );
 }
 

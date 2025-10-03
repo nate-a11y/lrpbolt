@@ -3,20 +3,18 @@ import { serverTimestamp } from "firebase/firestore";
 import {
   Alert,
   Box,
-  Button,
   Card,
   CardContent,
   Checkbox,
   CircularProgress,
-  Snackbar,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
-import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
 import { PlayArrow, Stop } from "@mui/icons-material";
 
+import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
 import { logTime, subscribeTimeLogs, updateTimeLog } from "@/services/fs";
@@ -31,6 +29,10 @@ import {
 } from "@/utils/time";
 import { getRowId as pickId } from "@/utils/timeLogMap";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
+import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
+import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
+import { vibrateOk, vibrateWarn } from "@/utils/haptics.js";
 
 const pulse = keyframes`
   0% { opacity: 1; }
@@ -65,9 +67,51 @@ export default function TimeClock({ setIsTracking }) {
   const [multiRide, setMultiRide] = useState(false);
   const [startBusy, setStartBusy] = useState(false);
   const [endBusy, setEndBusy] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [savingIds, setSavingIds] = useState([]);
+  const { show: showSnack } = useSnack();
+
+  const announce = useCallback((message) => {
+    if (typeof window === "undefined") return;
+    window.__LRP_LIVE_MSG__ = message || "";
+    try {
+      window.dispatchEvent(
+        new CustomEvent("lrp:live-region", { detail: message || "" }),
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("[TimeClock] live region dispatch failed", error);
+      }
+    }
+  }, []);
+
+  const showSuccessSnack = useCallback(
+    (message, options = {}) => {
+      if (!message) return;
+      vibrateOk();
+      announce(message);
+      showSnack(message, "success", options);
+    },
+    [announce, showSnack],
+  );
+
+  const showWarnOrErrorSnack = useCallback(
+    (message, severity = "warning", options = {}) => {
+      if (!message) return;
+      vibrateWarn();
+      announce(message);
+      showSnack(message, severity, options);
+    },
+    [announce, showSnack],
+  );
+
+  const showInfoSnack = useCallback(
+    (message, options = {}) => {
+      if (!message) return;
+      announce(message);
+      showSnack(message, "info", options);
+    },
+    [announce, showSnack],
+  );
 
   const driverQueryValues = useMemo(() => {
     if (!user) return [];
@@ -388,14 +432,12 @@ export default function TimeClock({ setIsTracking }) {
 
         applyLocalUpdate(id, nextRow);
 
-        setSnackbarMessage("Time log updated.");
-        setSnackbarOpen(true);
+        showInfoSnack("Time log updated.");
 
         return nextRow;
       } catch (err) {
         logError(err, { where: "TimeClock.processRowUpdate", id });
-        setSnackbarMessage("Failed to update time log.");
-        setSnackbarOpen(true);
+        showWarnOrErrorSnack("Failed to update time log.", "error");
         return oldRow;
       } finally {
         markSaving(id, false);
@@ -407,8 +449,8 @@ export default function TimeClock({ setIsTracking }) {
       markSaving,
       parseEditDate,
       resolveRowId,
-      setSnackbarMessage,
-      setSnackbarOpen,
+      showInfoSnack,
+      showWarnOrErrorSnack,
     ],
   );
 
@@ -426,13 +468,14 @@ export default function TimeClock({ setIsTracking }) {
 
   const handleStart = useCallback(async () => {
     if (!user) {
-      setSnackbarMessage("You must be signed in to start a session.");
-      setSnackbarOpen(true);
+      showWarnOrErrorSnack(
+        "You must be signed in to start a session.",
+        "warning",
+      );
       return;
     }
     if (!nonRideTask && !multiRide && !rideId.trim()) {
-      setSnackbarMessage("Enter a Ride ID or choose a task type.");
-      setSnackbarOpen(true);
+      showWarnOrErrorSnack("Enter a Ride ID or choose a task type.", "warning");
       return;
     }
     if (startBusy || endBusy || activeRow) return;
@@ -471,36 +514,84 @@ export default function TimeClock({ setIsTracking }) {
         status: "open",
       });
       setRideId("");
-      setSnackbarMessage("Clocked in.");
-      setSnackbarOpen(true);
+      showSuccessSnack("Clocked in");
     } catch (err) {
       logError(err, { where: "TimeClock.startTimeLog" });
-      setSnackbarMessage("Failed to start session.");
-      setSnackbarOpen(true);
+      showWarnOrErrorSnack("Failed to start session.", "error");
     } finally {
       setStartBusy(false);
     }
-  }, [activeRow, endBusy, multiRide, nonRideTask, rideId, startBusy, user]);
+  }, [
+    activeRow,
+    endBusy,
+    multiRide,
+    nonRideTask,
+    rideId,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
+    startBusy,
+    user,
+  ]);
 
   const handleClockOutSafe = useCallback(async () => {
     if (!activeRow || endBusy) return;
     const id = resolveRowId(activeRow);
+    if (!id) {
+      showWarnOrErrorSnack("Missing time log identifier.", "error");
+      return;
+    }
     setEndBusy(true);
     try {
-      await updateTimeLog(id, { endTime: "server" });
+      const startReference =
+        activeRow.startTs ||
+        activeRow.startTime ||
+        activeRow.clockIn ||
+        activeRow.loggedAt ||
+        null;
+      const driverKey =
+        (activeRow.driverKey && String(activeRow.driverKey).trim()) ||
+        (activeRow.driverId && String(activeRow.driverId).trim()) ||
+        (activeRow.userId && String(activeRow.userId).trim()) ||
+        (user?.uid && String(user.uid).trim()) ||
+        (user?.email && String(user.email).trim().toLowerCase()) ||
+        null;
+      await logTime({
+        id,
+        driverKey: driverKey || undefined,
+        driverId: activeRow.driverId ?? activeRow.userId ?? user?.uid ?? null,
+        userId: activeRow.userId ?? activeRow.driverId ?? user?.uid ?? null,
+        driverName: activeRow.driverName ?? user?.displayName ?? null,
+        driverEmail:
+          activeRow.driverEmail ??
+          activeRow.userEmail ??
+          (typeof user?.email === "string" ? user.email.toLowerCase() : null),
+        userEmail:
+          activeRow.userEmail ??
+          activeRow.driverEmail ??
+          (typeof user?.email === "string" ? user.email.toLowerCase() : null),
+        rideId: activeRow.rideId ?? "N/A",
+        mode: activeRow.mode ?? (activeRow.rideId ? "RIDE" : "N/A"),
+        startTs: startReference ?? serverTimestamp(),
+        endTs: serverTimestamp(),
+        status: "closed",
+      });
+      showSuccessSnack("Clocked out");
     } catch (err) {
       logError(err, { where: "TimeClock.endTimeLog", id });
-      setSnackbarMessage("Failed to end session.");
-      setSnackbarOpen(true);
+      showWarnOrErrorSnack("Failed to end session.", "error");
     } finally {
       setEndBusy(false);
     }
-  }, [activeRow, endBusy, resolveRowId]);
-
-  const handleCloseSnackbar = useCallback(() => {
-    setSnackbarOpen(false);
-    setSnackbarMessage("");
-  }, []);
+  }, [
+    activeRow,
+    endBusy,
+    resolveRowId,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
+    user?.displayName,
+    user?.email,
+    user?.uid,
+  ]);
 
   if (roleLoading) {
     return (
@@ -511,147 +602,147 @@ export default function TimeClock({ setIsTracking }) {
   }
 
   return (
-    <Stack spacing={2} sx={{ width: "100%" }}>
-      <Card>
-        <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Stack spacing={0.5}>
-            <Typography variant="h6">Time Clock</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Start a session to begin tracking your time.
-            </Typography>
-          </Stack>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              bgcolor: "rgba(76,187,23,0.08)",
-              border: "1px solid rgba(76,187,23,0.3)",
-              borderRadius: 2,
-              px: 2,
-              py: 1,
-              mb: 2,
-              animation: active ? `${pulse} 2s infinite` : "none",
-            }}
+    <ErrorBoundary>
+      <Stack spacing={2} sx={{ width: "100%" }}>
+        <Card>
+          <CardContent
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
-            {active ? (
-              <Typography
-                variant="body1"
-                sx={{ color: "#4cbb17", fontWeight: 600 }}
-              >
-                Active since {formatDateTime(activeSince)} — Duration:{" "}
-                {activeDurationLabel}
+            <Stack spacing={0.5}>
+              <Typography variant="h6">Time Clock</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Start a session to begin tracking your time.
               </Typography>
-            ) : (
-              <Typography variant="body1" sx={{ color: "text.secondary" }}>
-                No active session
-              </Typography>
-            )}
-          </Box>
-
-          {error ? <Alert severity="error">{error}</Alert> : null}
-
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <TextField
-              label="Ride ID"
-              value={rideId}
-              onChange={(event) => setRideId(event.target.value)}
-              disabled={Boolean(activeRow) || nonRideTask || multiRide}
-              size="small"
-            />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Checkbox
-                  checked={nonRideTask}
-                  onChange={(event) => {
-                    setNonRideTask(event.target.checked);
-                    if (event.target.checked) {
-                      setMultiRide(false);
-                      setRideId("");
-                    }
-                  }}
-                  disabled={Boolean(activeRow)}
-                  size="small"
-                />
-                <Typography variant="body2">Non-Ride Task</Typography>
-              </Stack>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Checkbox
-                  checked={multiRide}
-                  onChange={(event) => {
-                    setMultiRide(event.target.checked);
-                    if (event.target.checked) {
-                      setNonRideTask(false);
-                      setRideId("");
-                    }
-                  }}
-                  disabled={Boolean(activeRow)}
-                  size="small"
-                />
-                <Typography variant="body2">Multiple Rides</Typography>
-              </Stack>
             </Stack>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<PlayArrow />}
-                onClick={handleStart}
-                disabled={startBusy || endBusy || Boolean(activeRow)}
-              >
-                Start
-              </Button>
-              <Button
-                variant="outlined"
-                color="inherit"
-                startIcon={<Stop />}
-                onClick={handleClockOutSafe}
-                disabled={!activeRow || endBusy}
-              >
-                Stop
-              </Button>
-            </Stack>
-          </Box>
-        </CardContent>
-      </Card>
 
-      <Box sx={{ width: "100%" }}>
-        <DataGridPro
-          autoHeight
-          rows={Array.isArray(rows) ? rows : []}
-          columns={columns}
-          getRowId={resolveRowId}
-          loading={loading}
-          density="compact"
-          disableRowSelectionOnClick
-          isCellEditable={isCellEditable}
-          processRowUpdate={handleProcessRowUpdate}
-          editMode="row"
-          experimentalFeatures={{ newEditingApi: true }}
-          slots={{ toolbar: GridToolbar, noRowsOverlay: NoSessionsOverlay }}
-          slotProps={{
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 300 },
-            },
-          }}
-          sx={{
-            borderRadius: 2,
-            backgroundColor: (theme) => theme.palette.background.paper,
-            "& .MuiDataGrid-columnHeaders": {
-              borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-            },
-          }}
-        />
-      </Box>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                bgcolor: "rgba(76,187,23,0.08)",
+                border: "1px solid rgba(76,187,23,0.3)",
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                mb: 2,
+                animation: active ? `${pulse} 2s infinite` : "none",
+              }}
+            >
+              {active ? (
+                <Typography
+                  variant="body1"
+                  sx={{ color: "#4cbb17", fontWeight: 600 }}
+                >
+                  Active since {formatDateTime(activeSince)} — Duration:{" "}
+                  {activeDurationLabel}
+                </Typography>
+              ) : (
+                <Typography variant="body1" sx={{ color: "text.secondary" }}>
+                  No active session
+                </Typography>
+              )}
+            </Box>
 
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        message={snackbarMessage}
-      />
-    </Stack>
+            {error ? <Alert severity="error">{error}</Alert> : null}
+
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <TextField
+                label="Ride ID"
+                value={rideId}
+                onChange={(event) => setRideId(event.target.value)}
+                disabled={Boolean(activeRow) || nonRideTask || multiRide}
+                size="small"
+              />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Checkbox
+                    checked={nonRideTask}
+                    onChange={(event) => {
+                      setNonRideTask(event.target.checked);
+                      if (event.target.checked) {
+                        setMultiRide(false);
+                        setRideId("");
+                      }
+                    }}
+                    disabled={Boolean(activeRow)}
+                    size="small"
+                  />
+                  <Typography variant="body2">Non-Ride Task</Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Checkbox
+                    checked={multiRide}
+                    onChange={(event) => {
+                      setMultiRide(event.target.checked);
+                      if (event.target.checked) {
+                        setNonRideTask(false);
+                        setRideId("");
+                      }
+                    }}
+                    disabled={Boolean(activeRow)}
+                    size="small"
+                  />
+                  <Typography variant="body2">Multiple Rides</Typography>
+                </Stack>
+              </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <LoadingButtonLite
+                  variant="contained"
+                  color="primary"
+                  startIcon={<PlayArrow />}
+                  onClick={handleStart}
+                  disabled={Boolean(activeRow)}
+                  loading={startBusy}
+                  loadingText="Starting…"
+                >
+                  Start
+                </LoadingButtonLite>
+                <LoadingButtonLite
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<Stop />}
+                  onClick={handleClockOutSafe}
+                  disabled={!activeRow}
+                  loading={endBusy}
+                  loadingText="Stopping…"
+                >
+                  Stop
+                </LoadingButtonLite>
+              </Stack>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Box sx={{ width: "100%" }}>
+          <LrpDataGridPro
+            id="time-clock-grid"
+            autoHeight
+            rows={Array.isArray(rows) ? rows : []}
+            columns={columns}
+            getRowId={resolveRowId}
+            loading={loading}
+            density="compact"
+            disableRowSelectionOnClick
+            isCellEditable={isCellEditable}
+            processRowUpdate={handleProcessRowUpdate}
+            editMode="row"
+            slots={{ noRowsOverlay: NoSessionsOverlay }}
+            slotProps={{
+              toolbar: {
+                quickFilterPlaceholder: "Search sessions",
+              },
+            }}
+            sx={{
+              borderRadius: 2,
+              backgroundColor: (theme) => theme.palette.background.paper,
+              "& .MuiDataGrid-columnHeaders": {
+                borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+              },
+            }}
+          />
+        </Box>
+      </Stack>
+    </ErrorBoundary>
   );
 }
