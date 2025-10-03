@@ -20,7 +20,6 @@ import {
   Tab,
   Tabs,
   TextField,
-  MenuItem,
   Tooltip,
   Typography,
   useMediaQuery,
@@ -48,6 +47,8 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
+
+import LrpSelectField from "@/components/inputs/LrpSelectField";
 
 import { dayjs, toDayjs, formatDateTime, durationSafe } from "../utils/time.js";
 import { formatTripId, isTripIdValid } from "../utils/formatters";
@@ -110,6 +111,52 @@ const SECTION_PAPER_SX = {
 };
 
 const GRID_SPACING = 2;
+
+function DailyDrop({ isAdmin, expanded, onToggle, dropRunning, onDrop }) {
+  if (!isAdmin) {
+    return null;
+  }
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={(_, nextExpanded) => onToggle?.(nextExpanded)}
+      sx={{
+        bgcolor: "transparent",
+        borderRadius: 3,
+        overflow: "hidden",
+      }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        Daily Drop
+      </AccordionSummary>
+      <AccordionDetails>
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            Admin-only: run the Drop Daily process to pull rides from the
+            scheduling sheet.
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onDrop}
+            disabled={dropRunning}
+            startIcon={
+              dropRunning ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                <RocketLaunchIcon />
+              )
+            }
+          >
+            {dropRunning ? "Running…" : "Drop Daily Rides Now"}
+          </Button>
+          <DropDailyWidget />
+        </Stack>
+      </AccordionDetails>
+    </Accordion>
+  );
+}
 
 function readStoredDraft() {
   if (typeof window === "undefined") return null;
@@ -407,15 +454,6 @@ export default function RideEntryForm() {
       { label: <TabLabel label="Claimed" count={claimedCount} /> },
     ],
     [claimedCount, liveCount, queueCount],
-  );
-
-  const rideTypeOptions = useMemo(
-    () => RIDE_TYPES.map((type) => ({ value: type, label: type })),
-    [],
-  );
-  const vehicleOptions = useMemo(
-    () => VEHICLES.map((vehicle) => ({ value: vehicle, label: vehicle })),
-    [],
   );
 
   const builderColumns = useMemo(
@@ -1096,65 +1134,57 @@ export default function RideEntryForm() {
           </Grid>
 
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              SelectProps={{ displayEmpty: true }}
+            <LrpSelectField
               label="Ride Type"
-              value={singleRide.rideType || ""}
+              name="rideType"
+              value={singleRide.rideType ?? ""}
               onChange={(event) =>
                 updateSingleRide({ rideType: event.target.value })
               }
-              error={Boolean(singleErrors.rideType) && showSingleValidation}
+              placeholder="Choose type…"
+              options={RIDE_TYPES.map((type) => ({
+                value: type,
+                label: type,
+              }))}
               helperText={
                 showSingleValidation && singleErrors.rideType
                   ? singleErrors.rideType
                   : " "
               }
-              fullWidth
-              sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.rideType),
-              )}
-            >
-              <MenuItem value="">
-                <em>Select type</em>
-              </MenuItem>
-              {rideTypeOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
+              FormControlProps={{
+                error: Boolean(singleErrors.rideType) && showSingleValidation,
+                sx: singleShakeSx(
+                  showSingleValidation && Boolean(singleErrors.rideType),
+                ),
+              }}
+            />
           </Grid>
 
           <Grid item xs={12} md={3}>
-            <TextField
-              select
-              SelectProps={{ displayEmpty: true }}
+            <LrpSelectField
               label="Vehicle"
-              value={singleRide.vehicle || ""}
+              name="vehicle"
+              value={singleRide.vehicle ?? ""}
               onChange={(event) =>
                 updateSingleRide({ vehicle: event.target.value })
               }
-              error={Boolean(singleErrors.vehicle) && showSingleValidation}
+              placeholder="Choose vehicle…"
+              options={VEHICLES.map((vehicle) => ({
+                value: vehicle.id || vehicle.name || vehicle,
+                label: vehicle.name || vehicle.label || String(vehicle),
+              }))}
               helperText={
                 showSingleValidation && singleErrors.vehicle
                   ? singleErrors.vehicle
                   : " "
               }
-              fullWidth
-              sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.vehicle),
-              )}
-            >
-              <MenuItem value="">
-                <em>Select vehicle</em>
-              </MenuItem>
-              {vehicleOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
+              FormControlProps={{
+                error: Boolean(singleErrors.vehicle) && showSingleValidation,
+                sx: singleShakeSx(
+                  showSingleValidation && Boolean(singleErrors.vehicle),
+                ),
+              }}
+            />
           </Grid>
 
           <Grid item xs={12}>
@@ -1318,49 +1348,37 @@ export default function RideEntryForm() {
             </Grid>
 
             <Grid item xs={12} md={3}>
-              <TextField
-                select
-                SelectProps={{ displayEmpty: true }}
+              <LrpSelectField
                 label="Ride Type"
-                value={builderRide.rideType || ""}
+                name="builderRideType"
+                value={builderRide.rideType ?? ""}
                 onChange={(event) =>
                   handleBuilderChange({ rideType: event.target.value })
                 }
+                placeholder="Choose type…"
+                options={RIDE_TYPES.map((type) => ({
+                  value: type,
+                  label: type,
+                }))}
                 helperText=" "
-                fullWidth
-              >
-                <MenuItem value="">
-                  <em>Select type</em>
-                </MenuItem>
-                {rideTypeOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             </Grid>
 
             <Grid item xs={12} md={3}>
-              <TextField
-                select
-                SelectProps={{ displayEmpty: true }}
+              <LrpSelectField
                 label="Vehicle"
-                value={builderRide.vehicle || ""}
+                name="builderVehicle"
+                value={builderRide.vehicle ?? ""}
                 onChange={(event) =>
                   handleBuilderChange({ vehicle: event.target.value })
                 }
+                placeholder="Choose vehicle…"
+                options={VEHICLES.map((vehicle) => ({
+                  value: vehicle.id || vehicle.name || vehicle,
+                  label: vehicle.name || vehicle.label || String(vehicle),
+                }))}
                 helperText=" "
-                fullWidth
-              >
-                <MenuItem value="">
-                  <em>Select vehicle</em>
-                </MenuItem>
-                {vehicleOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             </Grid>
 
             <Grid item xs={12}>
@@ -1554,43 +1572,15 @@ export default function RideEntryForm() {
           {renderTabContent()}
 
           {isAdmin && (
-            <Accordion
-              expanded={dropExpanded}
-              onChange={(_, expanded) => setDropExpanded(expanded)}
-              sx={{
-                bgcolor: "transparent",
-                borderRadius: 3,
-                overflow: "hidden",
-              }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                Daily Drop
-              </AccordionSummary>
-              <AccordionDetails>
-                <Stack spacing={2}>
-                  <Typography variant="body2" color="text.secondary">
-                    Admin-only: run the Drop Daily process to pull rides from
-                    the scheduling sheet.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleDropDaily}
-                    disabled={dropRunning}
-                    startIcon={
-                      dropRunning ? (
-                        <CircularProgress size={18} color="inherit" />
-                      ) : (
-                        <RocketLaunchIcon />
-                      )
-                    }
-                  >
-                    {dropRunning ? "Running…" : "Drop Daily Rides Now"}
-                  </Button>
-                  <DropDailyWidget />
-                </Stack>
-              </AccordionDetails>
-            </Accordion>
+            <Box sx={{ mt: 2 }}>
+              <DailyDrop
+                isAdmin={isAdmin}
+                expanded={dropExpanded}
+                onToggle={setDropExpanded}
+                dropRunning={dropRunning}
+                onDrop={handleDropDaily}
+              />
+            </Box>
           )}
         </Stack>
       </ResponsiveContainer>
