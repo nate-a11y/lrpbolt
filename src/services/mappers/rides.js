@@ -1,3 +1,5 @@
+import { tsToDayjs } from "@/utils/timeUtils.js";
+
 const firstDefined = (...values) => {
   for (const value of values) {
     if (value !== undefined && value !== null) {
@@ -112,23 +114,21 @@ const toNumberSafe = (value) => {
   return null;
 };
 
-const toMillis = (ts) => {
-  if (ts === null || ts === undefined) return null;
-  if (typeof ts === "number" && Number.isFinite(ts)) return ts;
-  if (ts instanceof Date) return ts.getTime();
-  if (typeof ts === "object") {
-    if (typeof ts.toMillis === "function") {
-      const result = Number(ts.toMillis());
-      return Number.isFinite(result) ? result : null;
-    }
-    if (typeof ts.seconds === "number" || typeof ts.nanoseconds === "number") {
-      const seconds = Number(ts.seconds || 0);
-      const nanos = Number(ts.nanoseconds || 0);
-      const ms = seconds * 1000 + Math.floor(nanos / 1e6);
-      return Number.isFinite(ms) ? ms : null;
-    }
+const toDayjsOrNull = (value) => {
+  try {
+    const dj = tsToDayjs(value);
+    return dj && dj.isValid() ? dj : null;
+  } catch (error) {
+    void error;
+    return null;
   }
-  return null;
+};
+
+const toMillis = (ts) => {
+  const dj = toDayjsOrNull(ts);
+  if (!dj) return null;
+  const ms = dj.valueOf();
+  return Number.isFinite(ms) ? ms : null;
 };
 
 export function normalizeRide(docSnap) {
@@ -178,7 +178,7 @@ export function normalizeRide(docSnap) {
     ),
   );
 
-  const pickupTime = firstDefined(
+  const pickupCandidate = firstDefined(
     raw.pickupTime,
     raw.pickup_time,
     raw.pickupAt,
@@ -194,8 +194,9 @@ export function normalizeRide(docSnap) {
     raw.startTime,
     raw.StartTime,
   );
+  const pickupTime = toDayjsOrNull(pickupCandidate);
 
-  const createdAt = firstDefined(
+  const createdCandidate = firstDefined(
     raw.createdAt,
     raw.created_at,
     raw.created,
@@ -205,8 +206,9 @@ export function normalizeRide(docSnap) {
     raw.timestamp,
     raw.Timestamp,
   );
+  const createdAt = toDayjsOrNull(createdCandidate);
 
-  const updatedAt = firstDefined(
+  const updatedCandidate = firstDefined(
     raw.updatedAt,
     raw.updated_at,
     raw.updated,
@@ -216,8 +218,9 @@ export function normalizeRide(docSnap) {
     raw.lastUpdated,
     raw.LastUpdated,
   );
+  const updatedAt = toDayjsOrNull(updatedCandidate);
 
-  const claimedAt = firstDefined(
+  const claimedCandidate = firstDefined(
     raw.claimedAt,
     raw.claimed_at,
     raw.claimedTime,
@@ -227,6 +230,14 @@ export function normalizeRide(docSnap) {
     raw.ClaimedTime,
     raw.Claimed,
   );
+  const claimedAt = toDayjsOrNull(claimedCandidate);
+
+  const importedCandidate = firstDefined(
+    raw.importedFromQueueAt,
+    raw.imported_from_queue_at,
+    raw.importedFromQueue_at,
+  );
+  const importedFromQueueAt = toDayjsOrNull(importedCandidate);
 
   const claimedBy = toTrimmedString(
     firstDefined(
@@ -234,9 +245,36 @@ export function normalizeRide(docSnap) {
       raw.claimer,
       raw.claimed_user,
       raw.assignedTo,
+      raw.assigned_to,
       raw.ClaimedBy,
       raw.CLAIMED_BY,
-      raw.assigned_to,
+    ),
+  );
+
+  const createdBy = toTrimmedString(
+    firstDefined(
+      raw.createdBy,
+      raw.created_by,
+      raw.CreatedBy,
+      raw.Created_by,
+      raw.createdUser,
+      raw.CreatedUser,
+      raw.createdByEmail,
+      raw.creator,
+      raw.Creator,
+    ),
+  );
+
+  const lastModifiedBy = toTrimmedString(
+    firstDefined(
+      raw.lastModifiedBy,
+      raw.last_modified_by,
+      raw.LastModifiedBy,
+      raw.Last_modified_by,
+      raw.updatedBy,
+      raw.UpdatedBy,
+      raw.modifiedBy,
+      raw.ModifiedBy,
     ),
   );
 
@@ -320,12 +358,13 @@ export function normalizeRide(docSnap) {
   const createdAtMs = toMillis(createdAt);
   const updatedAtMs = toMillis(updatedAt);
   const claimedAtMs = toMillis(claimedAt);
+  const importedFromQueueAtMs = toMillis(importedFromQueueAt);
 
   return {
-    ...raw,
     id: id ?? null,
     tripId: tripId ?? null,
     pickupTime,
+    pickupAt: pickupTime,
     pickupTimeMs,
     rideType,
     vehicle,
@@ -334,11 +373,16 @@ export function normalizeRide(docSnap) {
     rideNotes,
     createdAt,
     createdAtMs,
+    createdBy,
     updatedAt,
     updatedAtMs,
+    lastModifiedBy,
     claimedAt,
     claimedAtMs,
     claimedBy,
+    importedFromQueueAt,
+    importedFromQueueAtMs,
+    _raw: raw,
   };
 }
 
