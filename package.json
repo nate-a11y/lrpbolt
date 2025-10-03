@@ -61,6 +61,7 @@
     "cors": "^2.8.5",
     "dayjs": "1.11.18",
     "dompurify": "^3.2.6",
+    "eruda": "^3.4.3",
     "file-saver": "^2.0.5",
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",

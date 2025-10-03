@@ -21,7 +21,9 @@ import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import ToastProvider from "./context/ToastProvider.jsx";
 import "./utils/firebaseInit.js";
 import "./muix-license.js";
+import initEruda from "./utils/initEruda.js";
 initServiceWorkerMessageBridge();
+initEruda();
 
 if (typeof window !== "undefined") {
   if (!window.__LRP_OBS__) {

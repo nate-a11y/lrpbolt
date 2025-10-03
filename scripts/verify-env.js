@@ -12,6 +12,7 @@ const optional = [
   "VITE_ENABLE_FCM",
   "VITE_SHOW_DEBUG_PANELS",
   "VITE_SENTRY_DSN",
+  "VITE_ENABLE_ERUDA",
   "SENTRY_ORG",
   "SENTRY_PROJECT",
 ];
