@@ -19,11 +19,10 @@ import {
 } from "@/utils/time";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
-import { deleteTimeLog, updateTimeLog } from "@/services/fs";
+import { deleteTimeLog, subscribeTimeLogs, updateTimeLog } from "@/services/fs";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 
 import { db } from "../../utils/firebaseInit";
-import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 
@@ -267,8 +266,9 @@ export default function EntriesTab() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const unsub = subscribeTimeLogs(
-      async (logs) => {
+    const unsub = subscribeTimeLogs({
+      limit: 500,
+      onData: async (logs) => {
         try {
           const mapped = (logs || []).map((d) => ({
             id: d.id ?? d.docId ?? d._id ?? Math.random().toString(36).slice(2),
@@ -290,11 +290,11 @@ export default function EntriesTab() {
           setLoading(false);
         }
       },
-      (err) => {
+      onError: (err) => {
         setError(err?.message || "Failed to load time logs.");
         setLoading(false);
       },
-    );
+    });
     return () => {
       if (typeof unsub === "function") unsub();
     };
@@ -305,17 +305,20 @@ export default function EntriesTab() {
     const endBound = endFilter?.toDate?.() ?? null;
 
     return (rows || []).filter((r) => {
-      const driverField = (
-        r.driverName ??
-        r.driver ??
-        r.driverId ??
-        r.driverEmail ??
-        ""
-      )
-        .toString()
-        .toLowerCase();
-      const driverMatch = driverFilter
-        ? driverField.includes(driverFilter.toLowerCase())
+      const driverNeedle = driverFilter
+        ? driverFilter.toLowerCase().trim()
+        : "";
+
+      const driverHaystack = [];
+      if (typeof r?._searchText === "string" && r._searchText) {
+        driverHaystack.push(r._searchText.toLowerCase());
+      }
+      [r.driverName, r.driver, r.driverId, r.driverEmail, r.userEmail, r.rideId]
+        .filter((value) => value != null && value !== "")
+        .forEach((value) => driverHaystack.push(String(value).toLowerCase()));
+
+      const driverMatch = driverNeedle
+        ? driverHaystack.some((segment) => segment.includes(driverNeedle))
         : true;
 
       const s = toDateSafe(r.startTime);
@@ -327,6 +330,7 @@ export default function EntriesTab() {
       const endMatch = endBound ? e && e.getTime() <= endBound.getTime() : true;
 
       const tokens = [
+        r._searchText,
         r.driverName ?? r.driver ?? r.driverId ?? r.driverEmail,
         r.rideId,
         formatDateTime(s),

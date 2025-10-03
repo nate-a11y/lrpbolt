@@ -117,17 +117,44 @@ export function normalizeTimeLog(docSnap) {
     data?.clockOut ||
     data?.end ||
     null;
-  const driverKey =
-    data?.driverKey ||
-    data?.userId ||
-    data?.driverId ||
-    data?.driverEmail ||
-    data?.userEmail ||
-    null;
+
+  const driverEmailRaw =
+    data?.driverEmail ?? data?.userEmail ?? data?.email ?? data?.driver ?? null;
+  const driverEmail =
+    typeof driverEmailRaw === "string"
+      ? driverEmailRaw.trim().toLowerCase()
+      : (driverEmailRaw ?? null);
+
+  const userEmailRaw = data?.userEmail ?? driverEmailRaw ?? null;
+  const userEmail =
+    typeof userEmailRaw === "string"
+      ? userEmailRaw.trim().toLowerCase()
+      : (userEmailRaw ?? null);
+
   const driverName =
-    data?.driverName || data?.displayName || data?.name || data?.driver || null;
-  const status =
-    data?.status || data?.state || (endTs ? "closed" : startTs ? "open" : null);
+    (typeof data?.driverName === "string" && data.driverName.trim()) ||
+    (typeof data?.displayName === "string" && data.displayName.trim()) ||
+    (typeof data?.name === "string" && data.name.trim()) ||
+    (typeof data?.driver === "string" && data.driver.trim()) ||
+    null;
+
+  const driverIdRaw =
+    data?.driverId ??
+    data?.userId ??
+    data?.uid ??
+    driverEmail ??
+    driverName ??
+    null;
+  const driverId =
+    driverIdRaw != null && driverIdRaw !== undefined
+      ? (() => {
+          const str = String(driverIdRaw).trim();
+          return str || null;
+        })()
+      : null;
+
+  const driverKey =
+    data?.driverKey || driverId || driverEmail || data?.userEmail || null;
   const legacyId = data?.id ?? null;
   const normalizedDriverKey =
     driverKey != null && driverKey !== undefined
@@ -137,6 +164,35 @@ export function normalizeTimeLog(docSnap) {
         })()
       : null;
 
+  const rideIdRaw =
+    data?.rideId ?? data?.ride ?? data?.tripId ?? data?.TripID ?? null;
+  const rideId =
+    rideIdRaw != null && rideIdRaw !== undefined
+      ? (() => {
+          const str = String(rideIdRaw).trim();
+          return str || "N/A";
+        })()
+      : "N/A";
+
+  const startTime = data?.startTime ?? startTs ?? null;
+  const endTime = data?.endTime ?? endTs ?? null;
+
+  const status =
+    data?.status ||
+    data?.state ||
+    (endTime ? "closed" : startTime ? "open" : null);
+
+  const explicitDuration =
+    data?.duration ?? data?.durationMin ?? data?.minutes ?? null;
+  const parsedDuration = Number(explicitDuration);
+  const normalizedDuration = Number.isFinite(parsedDuration)
+    ? Math.max(0, Math.floor(parsedDuration))
+    : (computeDurationMinutes(startTime, endTime) ?? null);
+
+  const searchParts = [driverName, driverEmail, userEmail, driverId, rideId]
+    .filter((value) => value != null && value !== "")
+    .map((value) => String(value).toLowerCase());
+
   return {
     ...data,
     id,
@@ -145,9 +201,20 @@ export function normalizeTimeLog(docSnap) {
     originalId: legacyId,
     startTs: startTs ?? null,
     endTs: endTs ?? null,
+    startTime: startTime ?? null,
+    endTime: endTime ?? null,
+    clockIn: data?.clockIn ?? startTime ?? null,
+    clockOut: data?.clockOut ?? endTime ?? null,
     driverKey: normalizedDriverKey,
+    driverId,
     driverName,
+    driverEmail,
+    userEmail,
+    rideId,
+    duration: normalizedDuration ?? null,
+    durationMin: normalizedDuration ?? null,
     status: status || "open",
+    _searchText: searchParts.join(" "),
   };
 }
 
@@ -166,6 +233,12 @@ function toMillis(value) {
     }
     if (typeof value === "number") {
       return Number.isFinite(value) ? value : -Infinity;
+    }
+    if (typeof value === "string") {
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
     }
     if (typeof value === "object" && Number.isFinite(value?.seconds)) {
       const seconds = Number(value.seconds) * 1000;
