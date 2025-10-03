@@ -1,16 +1,20 @@
-// Proprietary and confidential.
-import dayjsBase from "dayjs";
+/* LRP Portal enhancement: time utils shim, 2025-10-03. Rationale: single dayjs w/ utc,tz; null-safe formatters. */
+import dayjsLib from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
-dayjsBase.extend(utc);
-dayjsBase.extend(timezone);
-dayjsBase.extend(durationPlugin);
-dayjsBase.extend(relativeTime);
+if (!dayjsLib.prototype.$lrpUtcPatched) {
+  dayjsLib.extend(utc);
+  dayjsLib.extend(timezone);
+  dayjsLib.extend(durationPlugin);
+  dayjsLib.extend(relativeTime);
+  // mark once to avoid double-extend in HMR
+  dayjsLib.prototype.$lrpUtcPatched = true;
+}
 
-export const dayjs = dayjsBase;
+export const dayjs = dayjsLib;
 
 let defaultTz = "UTC";
 try {
@@ -22,9 +26,6 @@ try {
   defaultTz = "UTC";
 }
 
-/**
- * Safely convert many timestamp shapes to a dayjs() or return null.
- */
 export function toDayjs(input) {
   try {
     if (input === null || input === undefined) return null;
@@ -32,20 +33,19 @@ export function toDayjs(input) {
 
     if (typeof input === "object" && typeof input.toDate === "function") {
       const dateValue = input.toDate();
-      const time = dateValue?.getTime?.();
-      if (!Number.isFinite(time)) return null;
-      const parsed = dayjs(time);
+      const parsed = dayjs(dateValue);
       return parsed.isValid() ? parsed : null;
     }
 
     if (input instanceof Date) {
-      const time = input.getTime();
-      if (!Number.isFinite(time)) return null;
-      const parsed = dayjs(time);
+      const parsed = dayjs(input);
       return parsed.isValid() ? parsed : null;
     }
 
-    if (typeof input === "object" && "seconds" in input) {
+    if (
+      typeof input === "object" &&
+      ("seconds" in input || "nanoseconds" in input)
+    ) {
       const seconds = Number(input.seconds);
       const nanos = Number(input.nanoseconds);
       const hasSeconds = Number.isFinite(seconds);
@@ -54,7 +54,6 @@ export function toDayjs(input) {
       const ms =
         (hasSeconds ? seconds * 1000 : 0) +
         (hasNanos ? Math.floor(nanos / 1e6) : 0);
-      if (!Number.isFinite(ms)) return null;
       const parsed = dayjs(ms);
       return parsed.isValid() ? parsed : null;
     }
@@ -77,6 +76,41 @@ export function toDayjs(input) {
   }
 }
 
+/** Null-safe datetime string; returns "N/A" when invalid */
+export function formatDateTime(ts, fmt = "MMM D, YYYY h:mm A") {
+  const d = toDayjs(ts);
+  if (!d) return "N/A";
+  try {
+    const tz = dayjs.tz?.guess?.() || defaultTz;
+    return d.tz(tz).format(fmt);
+  } catch (error) {
+    void error;
+    return d.format(fmt);
+  }
+}
+
+/** Null-safe date string; returns "N/A" when invalid */
+export function formatDate(ts, fmt = "MMM D, YYYY") {
+  const d = toDayjs(ts);
+  if (!d) return "N/A";
+  try {
+    const tz = dayjs.tz?.guess?.() || defaultTz;
+    return d.tz(tz).format(fmt);
+  } catch (error) {
+    void error;
+    return d.format(fmt);
+  }
+}
+
+/** Duration in ms; guards both ends, never negative; null -> 0 */
+export function durationSafe(startTs, endTs) {
+  const s = toDayjs(startTs);
+  const e = toDayjs(endTs);
+  if (!s || !e) return 0;
+  const diff = e.diff(s);
+  return diff > 0 ? diff : 0;
+}
+
 export function formatDuration(ms) {
   let safeMs = Number(ms);
   if (!Number.isFinite(safeMs) || safeMs < 0) safeMs = 0;
@@ -93,16 +127,8 @@ export function formatDuration(ms) {
   return `${hh}${mm}:${ss}`;
 }
 
-export function formatDateTime(input, fmt = "MMM D, YYYY h:mm A") {
-  const d = toDayjs(input);
-  if (!d) return "N/A";
-  try {
-    const tz = dayjs.tz?.guess?.() || defaultTz;
-    return d.tz(tz).format(fmt);
-  } catch (error) {
-    void error;
-    return d.format(fmt);
-  }
+export function formatDateTimeLegacy(input, fmt = "MMM D, YYYY h:mm A") {
+  return formatDateTime(input, fmt);
 }
 
 export function safeDuration(startTs, endTs) {
@@ -131,4 +157,4 @@ export function isValidTimestamp(input) {
   return !!toDayjs(input);
 }
 
-export { dayjsBase as default };
+export { dayjsLib as default };

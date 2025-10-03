@@ -84,7 +84,6 @@ function TicketScanner({
 
   const onScanRef = useLatestRef(onScan);
   const autoPauseRef = useLatestRef(autoPauseMs);
-  const sequentialRef = useLatestRef(sequential);
   const vibrateRef = useLatestRef(vibrate);
   const beepRef = useLatestRef(beep);
 
@@ -225,19 +224,11 @@ function TicketScanner({
         });
       }
 
-      if (!sequentialRef.current) {
-        setAwaitingRestart(true);
-        setPaused(true);
-      }
+      stopDecoding();
+      setAwaitingRestart(true);
+      setPaused(true);
     },
-    [
-      autoPauseRef,
-      beepRef,
-      clearCooldown,
-      onScanRef,
-      sequentialRef,
-      vibrateRef,
-    ],
+    [autoPauseRef, beepRef, clearCooldown, onScanRef, stopDecoding, vibrateRef],
   );
 
   const startDecoding = useCallback(
@@ -309,13 +300,6 @@ function TicketScanner({
   useEffect(() => {
     refreshDevices();
   }, [refreshDevices]);
-
-  useEffect(() => {
-    if (sequential && awaitingRestart) {
-      setAwaitingRestart(false);
-      setPaused(false);
-    }
-  }, [awaitingRestart, sequential]);
 
   useEffect(() => {
     if (paused) {
@@ -578,7 +562,7 @@ function TicketScanner({
           </Button>
         </Stack>
 
-        {awaitingRestart && (
+        {!sequential && awaitingRestart && (
           <Button
             onClick={handleResume}
             startIcon={<ReplayIcon />}
