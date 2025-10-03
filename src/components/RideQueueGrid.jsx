@@ -2,9 +2,6 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
 import { Paper } from "@mui/material";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import tz from "dayjs/plugin/timezone";
 
 import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
@@ -12,26 +9,25 @@ import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBul
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { normalizeRideArray } from "@/services/mappers/rides.js";
+import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
+import {
+  resolveClaimedAt,
+  resolveClaimedBy,
+  resolveCreatedAt,
+  resolvePickupTime,
+  resolveRideDuration,
+  resolveRideNotes,
+  resolveRideType,
+  resolveStatus,
+  resolveTripId,
+  resolveVehicle,
+} from "../columns/rideColumns.jsx";
 import { deleteRide } from "../services/firestoreService";
 import { db } from "../utils/firebaseInit";
 
 import EditRideDialog from "./EditRideDialog.jsx";
-
-dayjs.extend(utc);
-dayjs.extend(tz);
-
-const fmtTs = (ts) => {
-  try {
-    const d =
-      ts && typeof ts?.toDate === "function" ? dayjs(ts.toDate()) : dayjs(ts);
-    return d.isValid() ? d.tz(dayjs.tz.guess()).format("MMM D, h:mm A") : "—";
-  } catch (error) {
-    logError(error, { where: "RideGrids", action: "fmtTs" });
-    return "—";
-  }
-};
 
 export default function RideQueueGrid() {
   const [rows, setRows] = useState([]);
@@ -129,9 +125,8 @@ export default function RideQueueGrid() {
 
   const getRowId = useCallback((row) => {
     if (row?.id != null) return String(row.id);
-    if (row?.rideId != null) return String(row.rideId);
-    if (row?.tripId != null) return String(row.tripId);
-    if (row?.trip != null) return String(row.trip);
+    const fallbackId = resolveTripId(row);
+    if (fallbackId != null) return String(fallbackId);
     return null;
   }, []);
 
@@ -174,83 +169,80 @@ export default function RideQueueGrid() {
         headerName: "Trip ID",
         minWidth: 140,
         flex: 1,
-        valueGetter: (p) =>
-          p?.row?.tripId ?? p?.row?.rideId ?? p?.row?.trip ?? null,
-        valueFormatter: (p) => (p?.value ? String(p.value) : "—"),
+        valueGetter: ({ row }) => resolveTripId(row),
+        valueFormatter: vfText,
       },
       {
         field: "pickupTime",
         headerName: "Pickup",
         minWidth: 160,
         flex: 1,
-        valueGetter: (p) =>
-          p?.row?.pickupTime ?? p?.row?.pickupAt ?? p?.row?.pickup ?? null,
-        valueFormatter: (p) => fmtTs(p?.value),
+        valueGetter: ({ row }) => resolvePickupTime(row),
+        valueFormatter: vfTime,
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         minWidth: 120,
         flex: 0.6,
-        valueGetter: (p) => p?.row?.rideDuration ?? p?.row?.duration ?? null,
-        valueFormatter: (p) => (p?.value != null ? `${p.value} min` : "—"),
+        valueGetter: ({ row }) => resolveRideDuration(row),
+        valueFormatter: vfDurationHM,
       },
       {
         field: "rideType",
         headerName: "Type",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: (p) => p?.row?.rideType ?? p?.row?.type ?? null,
-        valueFormatter: (p) => p?.value || "—",
+        valueGetter: ({ row }) => resolveRideType(row),
+        valueFormatter: vfText,
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: (p) =>
-          p?.row?.vehicle ?? p?.row?.vehicleId ?? p?.row?.car ?? null,
-        valueFormatter: (p) => p?.value || "—",
+        valueGetter: ({ row }) => resolveVehicle(row),
+        valueFormatter: vfText,
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         minWidth: 180,
         flex: 1,
-        valueGetter: (p) => p?.row?.rideNotes ?? p?.row?.notes ?? null,
-        valueFormatter: (p) => p?.value || "—",
+        valueGetter: ({ row }) => resolveRideNotes(row),
+        valueFormatter: vfText,
       },
       {
         field: "createdAt",
         headerName: "Created",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: (p) => p?.row?.createdAt ?? null,
-        valueFormatter: (p) => fmtTs(p?.value),
+        valueGetter: ({ row }) => resolveCreatedAt(row),
+        valueFormatter: vfTime,
       },
       {
         field: "claimedBy",
         headerName: "Claimed By",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (p) => p?.row?.claimedBy ?? null,
-        valueFormatter: (p) => p?.value || "—",
+        valueGetter: ({ row }) => resolveClaimedBy(row),
+        valueFormatter: vfText,
       },
       {
         field: "claimedAt",
         headerName: "Claimed At",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: (p) => p?.row?.claimedAt ?? null,
-        valueFormatter: (p) => fmtTs(p?.value),
+        valueGetter: ({ row }) => resolveClaimedAt(row),
+        valueFormatter: vfTime,
       },
       {
         field: "status",
         headerName: "Status",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: (p) => p?.row?.status ?? null,
-        valueFormatter: (p) => p?.value || "—",
+        valueGetter: ({ row }) => resolveStatus(row),
+        valueFormatter: vfText,
       },
       {
         field: "__actions",
