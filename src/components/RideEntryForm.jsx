@@ -20,6 +20,7 @@ import {
   Tab,
   Tabs,
   TextField,
+  MenuItem,
   Tooltip,
   Typography,
   useMediaQuery,
@@ -1097,9 +1098,9 @@ export default function RideEntryForm() {
           <Grid item xs={12} md={3}>
             <TextField
               select
-              SelectProps={{ native: true }}
+              SelectProps={{ displayEmpty: true }}
               label="Ride Type"
-              value={singleRide.rideType}
+              value={singleRide.rideType || ""}
               onChange={(event) =>
                 updateSingleRide({ rideType: event.target.value })
               }
@@ -1107,20 +1108,20 @@ export default function RideEntryForm() {
               helperText={
                 showSingleValidation && singleErrors.rideType
                   ? singleErrors.rideType
-                  : ""
+                  : " "
               }
               fullWidth
               sx={singleShakeSx(
                 showSingleValidation && Boolean(singleErrors.rideType),
               )}
             >
-              <option value="" disabled>
-                Select type
-              </option>
+              <MenuItem value="">
+                <em>Select type</em>
+              </MenuItem>
               {rideTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
+                <MenuItem key={option.value} value={option.value}>
                   {option.label}
-                </option>
+                </MenuItem>
               ))}
             </TextField>
           </Grid>
@@ -1128,9 +1129,9 @@ export default function RideEntryForm() {
           <Grid item xs={12} md={3}>
             <TextField
               select
-              SelectProps={{ native: true }}
+              SelectProps={{ displayEmpty: true }}
               label="Vehicle"
-              value={singleRide.vehicle}
+              value={singleRide.vehicle || ""}
               onChange={(event) =>
                 updateSingleRide({ vehicle: event.target.value })
               }
@@ -1138,20 +1139,20 @@ export default function RideEntryForm() {
               helperText={
                 showSingleValidation && singleErrors.vehicle
                   ? singleErrors.vehicle
-                  : ""
+                  : " "
               }
               fullWidth
               sx={singleShakeSx(
                 showSingleValidation && Boolean(singleErrors.vehicle),
               )}
             >
-              <option value="" disabled>
-                Select vehicle
-              </option>
+              <MenuItem value="">
+                <em>Select vehicle</em>
+              </MenuItem>
               {vehicleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
+                <MenuItem key={option.value} value={option.value}>
                   {option.label}
-                </option>
+                </MenuItem>
               ))}
             </TextField>
           </Grid>
@@ -1319,21 +1320,22 @@ export default function RideEntryForm() {
             <Grid item xs={12} md={3}>
               <TextField
                 select
-                SelectProps={{ native: true }}
+                SelectProps={{ displayEmpty: true }}
                 label="Ride Type"
-                value={builderRide.rideType}
+                value={builderRide.rideType || ""}
                 onChange={(event) =>
                   handleBuilderChange({ rideType: event.target.value })
                 }
+                helperText=" "
                 fullWidth
               >
-                <option value="" disabled>
-                  Select type
-                </option>
+                <MenuItem value="">
+                  <em>Select type</em>
+                </MenuItem>
                 {rideTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <MenuItem key={option.value} value={option.value}>
                     {option.label}
-                  </option>
+                  </MenuItem>
                 ))}
               </TextField>
             </Grid>
@@ -1341,21 +1343,22 @@ export default function RideEntryForm() {
             <Grid item xs={12} md={3}>
               <TextField
                 select
-                SelectProps={{ native: true }}
+                SelectProps={{ displayEmpty: true }}
                 label="Vehicle"
-                value={builderRide.vehicle}
+                value={builderRide.vehicle || ""}
                 onChange={(event) =>
                   handleBuilderChange({ vehicle: event.target.value })
                 }
+                helperText=" "
                 fullWidth
               >
-                <option value="" disabled>
-                  Select vehicle
-                </option>
+                <MenuItem value="">
+                  <em>Select vehicle</em>
+                </MenuItem>
                 {vehicleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <MenuItem key={option.value} value={option.value}>
                     {option.label}
-                  </option>
+                  </MenuItem>
                 ))}
               </TextField>
             </Grid>
@@ -1475,42 +1478,6 @@ export default function RideEntryForm() {
             </Stack>
           </Paper>
         )}
-
-        {isAdmin && (
-          <Accordion
-            expanded={dropExpanded}
-            onChange={(_, expanded) => setDropExpanded(expanded)}
-            sx={{ bgcolor: "transparent", borderRadius: 3, overflow: "hidden" }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              Daily Drop
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={2}>
-                <Typography variant="body2" color="text.secondary">
-                  Admin-only: run the Drop Daily process to pull rides from the
-                  scheduling sheet.
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleDropDaily}
-                  disabled={dropRunning}
-                  startIcon={
-                    dropRunning ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <RocketLaunchIcon />
-                    )
-                  }
-                >
-                  {dropRunning ? "Running…" : "Drop Daily Rides Now"}
-                </Button>
-                <DropDailyWidget />
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-        )}
       </>
     );
   };
@@ -1585,6 +1552,46 @@ export default function RideEntryForm() {
           )}
 
           {renderTabContent()}
+
+          {isAdmin && (
+            <Accordion
+              expanded={dropExpanded}
+              onChange={(_, expanded) => setDropExpanded(expanded)}
+              sx={{
+                bgcolor: "transparent",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                Daily Drop
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={2}>
+                  <Typography variant="body2" color="text.secondary">
+                    Admin-only: run the Drop Daily process to pull rides from
+                    the scheduling sheet.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleDropDaily}
+                    disabled={dropRunning}
+                    startIcon={
+                      dropRunning ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <RocketLaunchIcon />
+                      )
+                    }
+                  >
+                    {dropRunning ? "Running…" : "Drop Daily Rides Now"}
+                  </Button>
+                  <DropDailyWidget />
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          )}
         </Stack>
       </ResponsiveContainer>
 
