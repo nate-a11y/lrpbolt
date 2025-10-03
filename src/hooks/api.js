@@ -28,6 +28,7 @@ import { durationMinutes } from "../utils/timeUtils";
 import { normalizeTimeLog } from "../utils/normalizeTimeLog.js";
 import { nullifyMissing } from "../utils/formatters.js";
 import { mapSnapshotToRows } from "../services/normalizers";
+import { normalizeRideArray } from "../services/mappers/rides.js";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
@@ -621,30 +622,27 @@ export async function fetchLiveRides(fromTime = Timestamp.now()) {
     orderBy("pickupTime", "asc"),
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => {
-    const d = doc.data() || {};
-    return { id: doc.id, ...nullifyMissing(d) };
-  });
+  return normalizeRideArray(snapshot);
 }
 
 export const subscribeLiveRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "liveRides"),
-    (snap) => onNext(mapSnapshotToRows("liveRides", snap)),
+    (snap) => onNext(normalizeRideArray(snap)),
     (err) => onError?.(err),
   );
 
 export const subscribeQueueRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "rideQueue"),
-    (snap) => onNext(mapSnapshotToRows("rideQueue", snap)),
+    (snap) => onNext(normalizeRideArray(snap)),
     (err) => onError?.(err),
   );
 
 export const subscribeClaimedRides = (onNext, onError) =>
   onSnapshot(
     collection(db, "claimedRides"),
-    (snap) => onNext(mapSnapshotToRows("claimedRides", snap)),
+    (snap) => onNext(normalizeRideArray(snap)),
     (err) => onError?.(err),
   );
 

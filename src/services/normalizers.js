@@ -200,9 +200,10 @@ export function mapSnapshotToRows(collectionKey, snapshot) {
   return snapshot.docs.map((d) => {
     try {
       const data = d?.data ? d.data() || {} : {};
-      const id = d?.id || Math.random().toString(36).slice(2);
+      const { id: dataId, ...restData } = data;
+      const id = d?.id || dataId || Math.random().toString(36).slice(2);
       const normalized = normalizeRowFor(collectionKey, data);
-      const baseRow = { id, ...data, ...normalized };
+      const baseRow = { ...restData, ...normalized, id };
 
       if (["liveRides", "rideQueue", "claimedRides"].includes(collectionKey)) {
         const tripId =
