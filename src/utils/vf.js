@@ -16,7 +16,7 @@ export function extractVal(paramsOrValue) {
 export function vfText(paramsOrValue, fallback = "N/A") {
   const v = extractVal(paramsOrValue);
   if (v === null || v === undefined) return fallback;
-  if (typeof v === "object") return ""; // no [object Object] on the grids
+  if (typeof v === "object") return fallback; // guard against objects/arrays
   const s = String(v);
   return s.trim() === "" ? fallback : s;
 }
