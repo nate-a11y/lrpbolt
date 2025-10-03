@@ -17,10 +17,21 @@ import { db } from "../../utils/firebaseInit";
 import { enrichDriverNames } from "../../services/normalizers";
 
 function getShootoutRowId(row) {
-  return row?.id ?? row?.docId ?? row?._id ?? row?.uid ?? `${row?.driverEmail ?? "row"}-${row?.startTime ?? ""}`;
+  return (
+    row?.id ??
+    row?.docId ??
+    row?._id ??
+    row?.uid ??
+    `${row?.driverEmail ?? "row"}-${row?.startTime ?? ""}`
+  );
 }
 
-function createShootoutColumns({ apiRef, rowModesModel, setRowModesModel, onDelete }) {
+function createShootoutColumns({
+  apiRef,
+  rowModesModel,
+  setRowModesModel,
+  onDelete,
+}) {
   const baseColumns = [
     {
       field: "driver",

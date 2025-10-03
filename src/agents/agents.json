@@ -44,7 +44,10 @@
         "Use LrpDataGridPro for all grids; persist visibility and debounce quick filter.",
         "Use shared LrpDataGridPro if present",
         "Include DiagnosticsPanel for admin/settings.",
-        "Surface clock-out failures to user; open /timeclock for recovery."
+        "Surface clock-out failures to user; open /timeclock for recovery.",
+        "Use SnackbarProvider for toasts; no ad-hoc snackbars.",
+        "Focus-visible outlines; respect reduced motion.",
+        "Use LoadingButtonLite for pending actions."
       ]
     }
   ]

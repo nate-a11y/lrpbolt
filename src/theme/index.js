@@ -21,8 +21,9 @@ const base = {
   },
 };
 
-const buildPalette = (mode) => {
-  const isDark = mode === "dark";
+const buildPalette = () => {
+  const mode = "dark";
+  const isDark = true;
   const basePalette = {
     mode,
     primary: {
@@ -41,8 +42,8 @@ const buildPalette = (mode) => {
     info: { main: "#64b5f6" },
     brand,
     background: {
-      default: isDark ? LRP_BLACK : "#f7f7f7",
-      paper: isDark ? "#0b0b0b" : "#ffffff",
+      default: LRP_BLACK,
+      paper: "#0b0b0b",
     },
     text: {
       primary: isDark ? "#ffffff" : "#111111",
@@ -55,8 +56,8 @@ const buildPalette = (mode) => {
   return basePalette;
 };
 
-export const getDesignTokens = (mode) => ({
-  palette: buildPalette(mode),
+export const getDesignTokens = () => ({
+  palette: buildPalette(),
   ...base,
   typography: {
     ...base.typography,
@@ -65,6 +66,17 @@ export const getDesignTokens = (mode) => ({
     h3: { fontSize: "clamp(1.2rem, 2vw, 1.6rem)" },
     body1: { fontSize: "clamp(0.95rem, 1.2vw, 1rem)" },
     body2: { fontSize: "clamp(0.85rem, 1vw, 0.95rem)" },
+  },
+  transitions: {
+    duration: {
+      shortest: 120,
+      shorter: 160,
+      short: 200,
+      standard: 200,
+      complex: 250,
+      enteringScreen: 220,
+      leavingScreen: 180,
+    },
   },
   components: {
     MuiCssBaseline: {
@@ -75,7 +87,16 @@ export const getDesignTokens = (mode) => ({
           color: theme.palette.text.primary,
         }),
         a: ({ theme }) => ({ color: theme.palette.primary.main }),
-        "*:focus-visible": { outline: "none" },
+        "@media (prefers-reduced-motion: reduce)": {
+          "*, *::before, *::after": {
+            animationDuration: "0.001ms !important",
+            animationIterationCount: "1 !important",
+            transitionDuration: "0.001ms !important",
+          },
+          html: {
+            scrollBehavior: "auto !important",
+          },
+        },
       },
     },
     MuiPaper: {
@@ -94,6 +115,16 @@ export const getDesignTokens = (mode) => ({
           backgroundColor: theme.palette.background.paper,
           borderBottom: `1px solid ${theme.palette.divider}`,
         }),
+      },
+    },
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          "&.Mui-focusVisible": {
+            outline: `2px solid ${LRP_GREEN}`,
+            outlineOffset: 2,
+          },
+        },
       },
     },
     MuiButton: {
@@ -239,5 +270,5 @@ export const getDesignTokens = (mode) => ({
   },
 });
 
-export const buildTheme = (mode) =>
-  responsiveFontSizes(createTheme(getDesignTokens(mode)));
+export const buildTheme = (_mode) =>
+  responsiveFontSizes(createTheme(getDesignTokens()));
