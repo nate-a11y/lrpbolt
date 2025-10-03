@@ -51,6 +51,7 @@
         "Adopt LoadingButtonLite for pending submits.",
         "Announce success via aria live + toast; haptics on confirm.",
         "Prefer WebP with PNG fallback in Drop-Off images (picture/srcSet or image-set).",
+        "Prefer native <picture>/<source> and CSS image-set for WebP; no runtime probes.",
         "Use ErrorBoundary around major pages."
       ]
     }
