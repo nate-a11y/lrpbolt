@@ -170,7 +170,7 @@ export default function RideQueueGrid() {
         minWidth: 140,
         flex: 1,
         valueGetter: (params) => resolveTripId(params),
-        valueFormatter: vfText,
+        valueFormatter: (params) => vfText(params, "—"),
       },
       {
         field: "pickupTime",
@@ -194,7 +194,7 @@ export default function RideQueueGrid() {
         minWidth: 120,
         flex: 0.7,
         valueGetter: (params) => resolveRideType(params),
-        valueFormatter: vfText,
+        valueFormatter: (params) => vfText(params, "—"),
       },
       {
         field: "vehicle",
@@ -202,7 +202,7 @@ export default function RideQueueGrid() {
         minWidth: 160,
         flex: 0.9,
         valueGetter: (params) => resolveVehicle(params),
-        valueFormatter: vfText,
+        valueFormatter: (params) => vfText(params, "—"),
       },
       {
         field: "rideNotes",
@@ -210,7 +210,7 @@ export default function RideQueueGrid() {
         minWidth: 180,
         flex: 1,
         valueGetter: (params) => resolveRideNotes(params),
-        valueFormatter: vfText,
+        valueFormatter: (params) => vfText(params, "—"),
       },
       {
         field: "createdAt",
@@ -226,7 +226,7 @@ export default function RideQueueGrid() {
         minWidth: 140,
         flex: 0.8,
         valueGetter: (params) => resolveClaimedBy(params),
-        valueFormatter: vfText,
+        valueFormatter: (params) => vfText(params, "—"),
       },
       {
         field: "claimedAt",
@@ -242,7 +242,7 @@ export default function RideQueueGrid() {
         minWidth: 120,
         flex: 0.7,
         valueGetter: (params) => resolveStatus(params),
-        valueFormatter: vfText,
+        valueFormatter: (params) => vfText(params, "—"),
       },
       {
         field: "__actions",

@@ -20,9 +20,145 @@ const asRow = (params) => {
   return params;
 };
 
+const textFromValue = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (typeof value === "number" || typeof value === "bigint") {
+    return Number.isFinite(Number(value)) ? String(value) : null;
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => textFromValue(item))
+      .filter(Boolean)
+      .join(", ");
+    return joined.length > 0 ? joined : null;
+  }
+  if (typeof value === "object") {
+    if ("seconds" in value && "nanoseconds" in value) {
+      return null; // Firestore Timestamp — let time formatters handle it.
+    }
+
+    if (value.make || value.model) {
+      const makeModel = [textFromValue(value.make), textFromValue(value.model)]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      if (makeModel.length > 0) {
+        const trimName = textFromValue(value.trim);
+        return [makeModel, trimName].filter(Boolean).join(" ");
+      }
+    }
+
+    const candidateKeys = [
+      "label",
+      "name",
+      "displayName",
+      "title",
+      "text",
+      "description",
+      "summary",
+      "note",
+      "message",
+      "body",
+      "value",
+      "code",
+      "plate",
+      "licensePlate",
+      "unit",
+      "number",
+      "id",
+    ];
+
+    for (const key of candidateKeys) {
+      if (value[key] !== undefined) {
+        const text = textFromValue(value[key]);
+        if (text) return text;
+      }
+    }
+
+    if (
+      typeof value.toString === "function" &&
+      value.toString !== Object.prototype.toString
+    ) {
+      const custom = String(value).trim();
+      if (custom && custom !== "[object Object]") return custom;
+    }
+
+    return null;
+  }
+
+  return null;
+};
+
+const notesToText = (value) => {
+  if (Array.isArray(value)) {
+    const items = value.map((item) => notesToText(item)).filter(Boolean);
+    return items.length > 0 ? items.join(", ") : null;
+  }
+  if (value && typeof value === "object") {
+    const text = textFromValue(
+      value.text ?? value.note ?? value.message ?? value.body,
+    );
+    if (text) return text;
+  }
+  return textFromValue(value);
+};
+
+const vehicleToText = (value) => {
+  if (!value) return textFromValue(value);
+  if (Array.isArray(value)) {
+    const items = value.map((item) => vehicleToText(item)).filter(Boolean);
+    return items.length > 0 ? items.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    const displayName = textFromValue(
+      value.name ?? value.label ?? value.displayName,
+    );
+    const makeModel = [textFromValue(value.make), textFromValue(value.model)]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const descriptor = textFromValue(
+      value.description ?? value.type ?? value.trim,
+    );
+    const identifier = textFromValue(
+      value.plate ??
+        value.licensePlate ??
+        value.number ??
+        value.unit ??
+        value.id ??
+        value.vehicleId,
+    );
+
+    const parts = [displayName, makeModel, descriptor, identifier]
+      .filter(Boolean)
+      .map((part) => part.trim())
+      .filter((part, index, arr) => part && arr.indexOf(part) === index);
+
+    if (parts.length > 0) {
+      return parts.join(" • ");
+    }
+  }
+  return textFromValue(value);
+};
+
+const pickText = (...values) => {
+  for (const value of values) {
+    const text = textFromValue(value);
+    if (text) return text;
+  }
+  return null;
+};
+
 const resolveTripId = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.tripId, row?.tripID, row?.rideId, row?.trip);
+  return pickText(row?.tripId, row?.tripID, row?.rideId, row?.trip);
 };
 
 const resolvePickupTime = (rowOrParams) => {
@@ -43,27 +179,40 @@ const resolveRideDuration = (rowOrParams) => {
 
 const resolveRideType = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.rideType, row?.type);
+  return pickText(row?.rideType, row?.type, row?.serviceType);
 };
 
 const resolveVehicle = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(
-    row?.vehicle,
-    row?.vehicleName,
-    row?.vehicleId,
-    row?.vehicle_id,
+  return (
+    vehicleToText(row?.vehicle) ||
+    pickText(
+      row?.vehicleName,
+      row?.vehicleId,
+      row?.vehicle_id,
+      row?.car,
+      row?.unit,
+      row?.vehicleLabel,
+      row?.vehicleDescription,
+    )
   );
 };
 
 const resolveRideNotes = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.rideNotes, row?.notes);
+  return notesToText(
+    firstDefined(row?.rideNotes, row?.notes, row?.note, row?.messages),
+  );
 };
 
 const resolveClaimedBy = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.claimedBy, row?.claimer, row?.claimed_user);
+  return pickText(
+    row?.claimedBy,
+    row?.claimer,
+    row?.claimed_user,
+    row?.assignedTo,
+  );
 };
 
 const resolveClaimedAt = (rowOrParams) => {
@@ -83,7 +232,7 @@ const resolveUpdatedAt = (rowOrParams) => {
 
 const resolveStatus = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.status, row?.state);
+  return pickText(row?.status, row?.state, row?.queueStatus);
 };
 
 export {
@@ -116,7 +265,7 @@ export function rideColumns(opts = {}) {
       minWidth: 120,
       flex: 0.6,
       valueGetter: (params) => resolveTripId(params),
-      valueFormatter: vfText,
+      valueFormatter: (params) => vfText(params, "—"),
     },
     {
       field: "pickupTime",
@@ -143,7 +292,7 @@ export function rideColumns(opts = {}) {
       minWidth: 120,
       flex: 0.6,
       valueGetter: (params) => resolveRideType(params),
-      valueFormatter: vfText,
+      valueFormatter: (params) => vfText(params, "—"),
     },
     {
       field: "vehicle",
@@ -151,7 +300,7 @@ export function rideColumns(opts = {}) {
       minWidth: 160,
       flex: 0.8,
       valueGetter: (params) => resolveVehicle(params),
-      valueFormatter: vfText,
+      valueFormatter: (params) => vfText(params, "—"),
     },
     {
       field: "claimedBy",
@@ -159,7 +308,7 @@ export function rideColumns(opts = {}) {
       minWidth: 160,
       flex: 0.7,
       valueGetter: (params) => resolveClaimedBy(params),
-      valueFormatter: vfText,
+      valueFormatter: (params) => vfText(params, "—"),
     },
     {
       field: "claimedAt",
@@ -177,7 +326,7 @@ export function rideColumns(opts = {}) {
       minWidth: 120,
       flex: 0.6,
       valueGetter: (params) => resolveStatus(params),
-      valueFormatter: vfText,
+      valueFormatter: (params) => vfText(params, "—"),
     },
     {
       field: "rideNotes",
@@ -185,7 +334,7 @@ export function rideColumns(opts = {}) {
       minWidth: 220,
       flex: 1.2,
       valueGetter: (params) => resolveRideNotes(params),
-      valueFormatter: vfText,
+      valueFormatter: (params) => vfText(params, "—"),
     },
     {
       field: "createdAt",
