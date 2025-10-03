@@ -31,7 +31,7 @@ import QRCode from "react-qr-code";
 
 import SmartAutoGrid from "src/components/datagrid/SmartAutoGrid.jsx";
 import useIsMobile from "src/hooks/useIsMobile";
-import { PictureWebp } from "@/utils/assetVariant";
+import PictureWebp from "@/components/media/PictureWebp";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";

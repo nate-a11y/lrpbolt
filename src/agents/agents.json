@@ -23,7 +23,8 @@
         "Persist DataGrid density as a string; allow toolbar density changes.",
         "Service Worker clock-out: credentials include + check response.ok.",
         "TimeLogs filters OR across driverId/userId/driverEmail/userEmail.",
-        "Emit row.id from Firestore doc id; keep logicalId separately."
+        "Emit row.id from Firestore doc id; keep logicalId separately.",
+        "Keep utils pure (no JSX in utils); place components under src/components/."
       ]
     },
     {
