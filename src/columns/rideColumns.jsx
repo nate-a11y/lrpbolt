@@ -48,6 +48,20 @@ const resolveUpdatedAt = (row) =>
 
 const resolveStatus = (row) => firstDefined(row?.status, row?.state);
 
+export {
+  resolveTripId,
+  resolvePickupTime,
+  resolveRideDuration,
+  resolveRideType,
+  resolveVehicle,
+  resolveRideNotes,
+  resolveClaimedBy,
+  resolveClaimedAt,
+  resolveCreatedAt,
+  resolveUpdatedAt,
+  resolveStatus,
+};
+
 /**
  * Options:
  *  - withActions?: boolean
