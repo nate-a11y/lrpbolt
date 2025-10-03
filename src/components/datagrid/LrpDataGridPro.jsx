@@ -291,15 +291,6 @@ ErrorOverlay.propTypes = {
   message: PropTypes.string,
 };
 
-function safeGetRowId(row) {
-  if (!row || typeof row !== "object") return undefined;
-  if (row.id != null) return row.id;
-  if (row.uid != null) return row.uid;
-  if (row.ticketId != null) return row.ticketId;
-  if (row.docId != null) return row.docId;
-  return undefined; // caller should provide getRowId if this returns undefined
-}
-
 /** LrpDataGridPro: unified defaults; pass through everything else */
 function LrpDataGridPro({
   id,
@@ -344,11 +335,7 @@ function LrpDataGridPro({
       if (typeof getRowId === "function") {
         return getRowId(row);
       }
-      const inferred = safeGetRowId(row);
-      if (inferred != null) {
-        return inferred;
-      }
-      const fallbackId = row?.id ?? undefined;
+      const fallbackId = row?.id ?? row?.docId ?? row?.uid ?? undefined;
       if (
         fallbackId == null &&
         typeof import.meta !== "undefined" &&
@@ -374,12 +361,10 @@ function LrpDataGridPro({
         return col;
       }
       if (col.naFallback) {
-        const field = col.field;
         return {
           ...col,
           valueFormatter: (params) => {
-            const value =
-              params?.value ?? (field ? params?.row?.[field] : undefined);
+            const value = params?.value;
             return value == null || value === "" ? "N/A" : value;
           },
         };

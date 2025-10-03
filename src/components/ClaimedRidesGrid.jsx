@@ -136,79 +136,98 @@ export default function ClaimedRidesGrid() {
   );
 
   const columns = useMemo(() => {
+    const toStringFormatter = (params) => {
+      const value = params?.value;
+      if (value == null || value === "") return "N/A";
+      return String(value);
+    };
+
     const baseColumns = [
       {
         field: "tripId",
         headerName: "Trip ID",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => {
-          const value = params?.row?.tripId ?? params?.row?.id;
-          return value ? String(value) : "N/A";
-        },
+        valueGetter: (params) =>
+          params?.row?.tripId ?? params?.row?.rideId ?? params?.row?.id ?? null,
+        valueFormatter: toStringFormatter,
       },
       {
         field: "claimedBy",
         headerName: "Claimed By",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => params?.row?.claimedBy || "N/A",
+        valueGetter: (params) => params?.row?.claimedBy ?? null,
+        valueFormatter: toStringFormatter,
       },
       {
-        field: "pickupTime",
+        field: "pickupAt",
         headerName: "Pickup",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatDateTime(params?.row?.pickupTime),
+        valueGetter: (params) =>
+          params?.row?.pickupAt ?? params?.row?.pickupTime ?? null,
+        valueFormatter: (params) =>
+          params?.value ? formatDateTime(params.value) : "N/A",
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: (params) => formatMinutes(params?.row?.rideDuration),
+        valueGetter: (params) =>
+          params?.row?.rideDuration ?? params?.row?.duration ?? null,
+        valueFormatter: (params) => formatMinutes(params?.value),
       },
       {
         field: "rideType",
         headerName: "Type",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => params?.row?.rideType || "N/A",
+        valueGetter: (params) => params?.row?.rideType ?? null,
+        valueFormatter: toStringFormatter,
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => params?.row?.vehicle || "N/A",
+        valueGetter: (params) => params?.row?.vehicle ?? null,
+        valueFormatter: toStringFormatter,
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         minWidth: 180,
         flex: 1.4,
-        valueGetter: (params) => params?.row?.rideNotes || "N/A",
+        valueGetter: (params) => params?.row?.rideNotes ?? null,
+        valueFormatter: toStringFormatter,
       },
       {
         field: "createdAt",
         headerName: "Created",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatDateTime(params?.row?.createdAt),
+        valueGetter: (params) => params?.row?.createdAt ?? null,
+        valueFormatter: (params) =>
+          params?.value ? formatDateTime(params.value) : "N/A",
       },
       {
         field: "claimedAt",
         headerName: "Claimed At",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatDateTime(params?.row?.claimedAt),
+        valueGetter: (params) => params?.row?.claimedAt ?? null,
+        valueFormatter: (params) =>
+          params?.value ? formatDateTime(params.value) : "N/A",
       },
       {
         field: "status",
         headerName: "Status",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => params?.row?.status || "N/A",
+        valueGetter: (params) => params?.row?.status ?? null,
+        valueFormatter: toStringFormatter,
       },
     ];
 

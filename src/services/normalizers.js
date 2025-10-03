@@ -201,7 +201,45 @@ export function mapSnapshotToRows(collectionKey, snapshot) {
     try {
       const data = d?.data ? d.data() || {} : {};
       const id = d?.id || Math.random().toString(36).slice(2);
-      return { id, ...normalizeRowFor(collectionKey, data) };
+      const normalized = normalizeRowFor(collectionKey, data);
+      const baseRow = { id, ...data, ...normalized };
+
+      if (["liveRides", "rideQueue", "claimedRides"].includes(collectionKey)) {
+        const tripId =
+          normalized?.tripId ??
+          data?.tripId ??
+          data?.tripID ??
+          data?.trip ??
+          baseRow.tripId ??
+          baseRow.rideId ??
+          null;
+        const pickupAt =
+          normalized?.pickupAt ??
+          normalized?.pickupTime ??
+          data?.pickupAt ??
+          data?.pickupTime ??
+          data?.pickup ??
+          baseRow.pickupAt ??
+          baseRow.pickupTime ??
+          null;
+        const rideDuration =
+          normalized?.rideDuration ??
+          normalized?.duration ??
+          data?.rideDuration ??
+          data?.duration ??
+          baseRow.rideDuration ??
+          null;
+
+        return {
+          ...baseRow,
+          tripId,
+          pickupAt,
+          pickupTime: baseRow.pickupTime ?? pickupAt ?? null,
+          rideDuration,
+        };
+      }
+
+      return baseRow;
     } catch (err) {
       console.warn("mapSnapshotToRows error", err);
       return { id: Math.random().toString(36).slice(2) };
