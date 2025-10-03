@@ -12,41 +12,79 @@ const firstDefined = (...values) => {
   return null;
 };
 
-const resolveTripId = (row) =>
-  firstDefined(row?.tripId, row?.tripID, row?.rideId, row?.trip);
+const asRow = (params) => {
+  if (!params) return {};
+  if (typeof params === "object" && "row" in params) {
+    return params.row ?? {};
+  }
+  return params;
+};
 
-const resolvePickupTime = (row) =>
-  firstDefined(row?.pickupTime, row?.pickupAt, row?.pickup);
+const resolveTripId = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.tripId, row?.tripID, row?.rideId, row?.trip);
+};
 
-const resolveRideDuration = (row) =>
-  firstDefined(
+const resolvePickupTime = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.pickupTime, row?.pickupAt, row?.pickup);
+};
+
+const resolveRideDuration = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(
     row?.rideDuration,
     row?.duration,
     row?.minutes,
     row?.durationMinutes,
     row?.duration?.minutes,
   );
+};
 
-const resolveRideType = (row) => firstDefined(row?.rideType, row?.type);
+const resolveRideType = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.rideType, row?.type);
+};
 
-const resolveVehicle = (row) =>
-  firstDefined(row?.vehicle, row?.vehicleName, row?.vehicleId, row?.vehicle_id);
+const resolveVehicle = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(
+    row?.vehicle,
+    row?.vehicleName,
+    row?.vehicleId,
+    row?.vehicle_id,
+  );
+};
 
-const resolveRideNotes = (row) => firstDefined(row?.rideNotes, row?.notes);
+const resolveRideNotes = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.rideNotes, row?.notes);
+};
 
-const resolveClaimedBy = (row) =>
-  firstDefined(row?.claimedBy, row?.claimer, row?.claimed_user);
+const resolveClaimedBy = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.claimedBy, row?.claimer, row?.claimed_user);
+};
 
-const resolveClaimedAt = (row) =>
-  firstDefined(row?.claimedAt, row?.claimedTime, row?.claimed);
+const resolveClaimedAt = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.claimedAt, row?.claimedTime, row?.claimed);
+};
 
-const resolveCreatedAt = (row) =>
-  firstDefined(row?.createdAt, row?.created, row?.timestamp);
+const resolveCreatedAt = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.createdAt, row?.created, row?.timestamp);
+};
 
-const resolveUpdatedAt = (row) =>
-  firstDefined(row?.updatedAt, row?.updated, row?.lastUpdated);
+const resolveUpdatedAt = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.updatedAt, row?.updated, row?.lastUpdated);
+};
 
-const resolveStatus = (row) => firstDefined(row?.status, row?.state);
+const resolveStatus = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  return firstDefined(row?.status, row?.state);
+};
 
 export {
   resolveTripId,
@@ -77,7 +115,7 @@ export function rideColumns(opts = {}) {
       headerName: "Trip ID",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: ({ row }) => resolveTripId(row),
+      valueGetter: (params) => resolveTripId(params),
       valueFormatter: vfText,
     },
     {
@@ -85,13 +123,10 @@ export function rideColumns(opts = {}) {
       headerName: "Pickup",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: ({ row }) => resolvePickupTime(row),
+      valueGetter: (params) => resolvePickupTime(params),
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        timestampSortComparator(
-          resolvePickupTime(p1?.row),
-          resolvePickupTime(p2?.row),
-        ),
+        timestampSortComparator(resolvePickupTime(p1), resolvePickupTime(p2)),
     },
     {
       field: "rideDuration",
@@ -99,7 +134,7 @@ export function rideColumns(opts = {}) {
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueGetter: ({ row }) => resolveRideDuration(row),
+      valueGetter: (params) => resolveRideDuration(params),
       valueFormatter: vfDurationHM,
     },
     {
@@ -107,7 +142,7 @@ export function rideColumns(opts = {}) {
       headerName: "Type",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: ({ row }) => resolveRideType(row),
+      valueGetter: (params) => resolveRideType(params),
       valueFormatter: vfText,
     },
     {
@@ -115,7 +150,7 @@ export function rideColumns(opts = {}) {
       headerName: "Vehicle",
       minWidth: 160,
       flex: 0.8,
-      valueGetter: ({ row }) => resolveVehicle(row),
+      valueGetter: (params) => resolveVehicle(params),
       valueFormatter: vfText,
     },
     {
@@ -123,7 +158,7 @@ export function rideColumns(opts = {}) {
       headerName: "Claimed By",
       minWidth: 160,
       flex: 0.7,
-      valueGetter: ({ row }) => resolveClaimedBy(row),
+      valueGetter: (params) => resolveClaimedBy(params),
       valueFormatter: vfText,
     },
     {
@@ -131,20 +166,17 @@ export function rideColumns(opts = {}) {
       headerName: "Claimed At",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: ({ row }) => resolveClaimedAt(row),
+      valueGetter: (params) => resolveClaimedAt(params),
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        timestampSortComparator(
-          resolveClaimedAt(p1?.row),
-          resolveClaimedAt(p2?.row),
-        ),
+        timestampSortComparator(resolveClaimedAt(p1), resolveClaimedAt(p2)),
     },
     {
       field: "status",
       headerName: "Status",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: ({ row }) => resolveStatus(row),
+      valueGetter: (params) => resolveStatus(params),
       valueFormatter: vfText,
     },
     {
@@ -152,7 +184,7 @@ export function rideColumns(opts = {}) {
       headerName: "Notes",
       minWidth: 220,
       flex: 1.2,
-      valueGetter: ({ row }) => resolveRideNotes(row),
+      valueGetter: (params) => resolveRideNotes(params),
       valueFormatter: vfText,
     },
     {
@@ -160,7 +192,7 @@ export function rideColumns(opts = {}) {
       headerName: "Created",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: ({ row }) => resolveCreatedAt(row),
+      valueGetter: (params) => resolveCreatedAt(params),
       valueFormatter: vfTime,
     },
     {
@@ -168,7 +200,7 @@ export function rideColumns(opts = {}) {
       headerName: "Updated",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: ({ row }) => resolveUpdatedAt(row),
+      valueGetter: (params) => resolveUpdatedAt(params),
       valueFormatter: vfTime,
     },
   ];
