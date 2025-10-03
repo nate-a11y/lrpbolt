@@ -7,14 +7,20 @@ import { AppError, logError } from "@/services/errors";
  */
 export async function sendTicketsEmail(payload) {
   const url = import.meta.env.VITE_TICKETS_EMAIL_ENDPOINT;
-  if (!url) throw new AppError("Email endpoint not configured", { code: "email_endpoint_missing" });
+  if (!url)
+    throw new AppError("Email endpoint not configured", {
+      code: "email_endpoint_missing",
+    });
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new AppError(`Email request failed ${res.status}`, { code: "email_failed" });
+    if (!res.ok)
+      throw new AppError(`Email request failed ${res.status}`, {
+        code: "email_failed",
+      });
     return true;
   } catch (err) {
     logError(err, { where: "sendTicketsEmail" });
