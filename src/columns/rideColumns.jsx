@@ -158,12 +158,28 @@ const pickText = (...values) => {
 
 const resolveTripId = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return pickText(row?.tripId, row?.tripID, row?.rideId, row?.trip);
+  return pickText(
+    row?.tripId,
+    row?.tripID,
+    row?.rideId,
+    row?.trip,
+    row?.ticketId,
+    row?.tripCode,
+  );
 };
 
 const resolvePickupTime = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.pickupTime, row?.pickupAt, row?.pickup);
+  return firstDefined(
+    row?.pickupTime,
+    row?.pickupAt,
+    row?.pickup_at,
+    row?.pickup,
+    row?.pickupTimeMs,
+    row?.startAt,
+    row?.startTime,
+    row?.PickupTime,
+  );
 };
 
 const resolveRideDuration = (rowOrParams) => {
@@ -179,7 +195,7 @@ const resolveRideDuration = (rowOrParams) => {
 
 const resolveRideType = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return pickText(row?.rideType, row?.type, row?.serviceType);
+  return pickText(row?.rideType, row?.type, row?.serviceType, row?.category);
 };
 
 const resolveVehicle = (rowOrParams) => {
@@ -194,6 +210,8 @@ const resolveVehicle = (rowOrParams) => {
       row?.unit,
       row?.vehicleLabel,
       row?.vehicleDescription,
+      row?.vehicleCode,
+      row?.vehicleDisplay,
     )
   );
 };
@@ -201,7 +219,13 @@ const resolveVehicle = (rowOrParams) => {
 const resolveRideNotes = (rowOrParams) => {
   const row = asRow(rowOrParams);
   return notesToText(
-    firstDefined(row?.rideNotes, row?.notes, row?.note, row?.messages),
+    firstDefined(
+      row?.rideNotes,
+      row?.notes,
+      row?.note,
+      row?.messages,
+      row?.description,
+    ),
   );
 };
 
@@ -212,27 +236,46 @@ const resolveClaimedBy = (rowOrParams) => {
     row?.claimer,
     row?.claimed_user,
     row?.assignedTo,
+    row?.ClaimedBy,
   );
 };
 
 const resolveClaimedAt = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.claimedAt, row?.claimedTime, row?.claimed);
+  return firstDefined(
+    row?.claimedAt,
+    row?.claimedTime,
+    row?.claimed,
+    row?.claimedAtMs,
+    row?.ClaimedAt,
+  );
 };
 
 const resolveCreatedAt = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.createdAt, row?.created, row?.timestamp);
+  return firstDefined(
+    row?.createdAt,
+    row?.created,
+    row?.timestamp,
+    row?.createdAtMs,
+    row?.CreatedAt,
+  );
 };
 
 const resolveUpdatedAt = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(row?.updatedAt, row?.updated, row?.lastUpdated);
+  return firstDefined(
+    row?.updatedAt,
+    row?.updated,
+    row?.lastUpdated,
+    row?.updatedAtMs,
+    row?.UpdatedAt,
+  );
 };
 
 const resolveStatus = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return pickText(row?.status, row?.state, row?.queueStatus);
+  return pickText(row?.status, row?.state, row?.queueStatus) || "queued";
 };
 
 export {
