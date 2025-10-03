@@ -70,6 +70,7 @@ import {
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { exportTicketNodesAsZip } from "@/utils/exportTickets";
 import { sendTicketsEmail } from "@/services/emailTickets";
+import { getFlag } from "@/services/observability";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -762,6 +763,14 @@ function Tickets() {
 
   const safeRows = Array.isArray(rows) ? rows : [];
 
+  useEffect(() => {
+    if (!getFlag || !getFlag("grid.debug")) {
+      return;
+    }
+    const sample = Array.isArray(rows) ? rows[0] : null;
+    console.log("[GridDebug:Tickets] row0", sample);
+  }, [rows]);
+
   const [tzGuess] = useState(() => {
     try {
       return dayjs?.tz?.guess?.() || undefined;
@@ -1018,6 +1027,7 @@ function Tickets() {
           headerName: "Scan Status",
           minWidth: 140,
           sortable: false,
+          naFallback: true,
           valueGetter: (params) => getScanStatus(params?.row || {}) || "N/A",
           renderCell: ScanStatusCell,
         },
