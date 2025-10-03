@@ -1,17 +1,26 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState } from "react";
-import { Paper, Box } from "@mui/material";
+import { Paper, Box, CircularProgress } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 
 import { dayjs } from "@/utils/time";
 import { formatTz } from "@/utils/timeSafe";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 
 import useWeeklySummary from "../../hooks/useWeeklySummary";
 
 export default function WeeklySummaryTab() {
   const [weekStart, setWeekStart] = useState(dayjs().startOf("week"));
-  const weeklyRows = useWeeklySummary({ weekStart: weekStart.toDate() });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const {
+    rows: weeklyRows,
+    loading,
+    error,
+  } = useWeeklySummary({
+    weekStart: weekStart.toDate(),
+    refreshKey,
+  });
   const columns = useMemo(() => {
     return [
       {
@@ -77,6 +86,43 @@ export default function WeeklySummaryTab() {
     [],
   );
 
+  if (loading) {
+    return (
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
+        <CircularProgress size={24} />
+      </Paper>
+    );
+  }
+
+  if (error) {
+    return (
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
+        <ErrorState
+          description={error}
+          onAction={() => setRefreshKey((key) => key + 1)}
+        />
+      </Paper>
+    );
+  }
+
   return (
     <Paper
       sx={{
@@ -97,18 +143,25 @@ export default function WeeklySummaryTab() {
           slotProps={{ textField: { size: "small" } }}
         />
       </Box>
-      <LrpDataGridPro
-        id="admin-timelog-weekly-grid"
-        rows={weeklyRows || []}
-        columns={columns}
-        checkboxSelection
-        disableRowSelectionOnClick
-        density="compact"
-        initialState={initialState}
-        pageSizeOptions={[15, 30, 60]}
-        autoHeight={false}
-        sx={{ flex: 1, minHeight: 0 }}
-      />
+      {weeklyRows?.length ? (
+        <LrpDataGridPro
+          id="admin-timelog-weekly-grid"
+          rows={weeklyRows}
+          columns={columns}
+          checkboxSelection
+          disableRowSelectionOnClick
+          density="compact"
+          initialState={initialState}
+          pageSizeOptions={[15, 30, 60]}
+          autoHeight={false}
+          sx={{ flex: 1, minHeight: 0 }}
+        />
+      ) : (
+        <EmptyState
+          title="No weekly summary"
+          description="Clock-in data will roll into this summary once sessions are logged."
+        />
+      )}
     </Paper>
   );
 }

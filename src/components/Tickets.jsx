@@ -28,14 +28,13 @@ import {
   FormControl,
   FormControlLabel,
   Switch,
-  Snackbar,
-  Alert,
   Tabs,
   Tab,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
   Tooltip,
   InputAdornment,
   OutlinedInput,
@@ -71,6 +70,10 @@ import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { exportTicketNodesAsZip } from "@/utils/exportTickets";
 import { sendTicketsEmail } from "@/services/emailTickets";
 import { getFlag } from "@/services/observability";
+import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
+import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
+import { vibrateOk, vibrateWarn } from "@/utils/haptics.js";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -355,17 +358,9 @@ function Tickets() {
   const [filteredDate, setFilteredDate] = useState("All Dates");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info",
-    action: null,
-  });
   const [previewTicket, setPreviewTicket] = useState(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const [deleting, setDeleting] = useState(false);
-  const [undoOpen, setUndoOpen] = useState(false);
-  const [lastDeletedCount, setLastDeletedCount] = useState(0);
   const selectedIds = useMemo(
     () =>
       Array.isArray(rowSelectionModel)
@@ -407,6 +402,50 @@ function Tickets() {
   const [savingScanType, setSavingScanType] = useState(null);
   const [subscriptionKey, setSubscriptionKey] = useState(0);
   const [scannerInstanceKey, setScannerInstanceKey] = useState(0);
+  const { show: showSnack } = useSnack();
+
+  const announce = useCallback((message) => {
+    if (typeof window === "undefined") return;
+    window.__LRP_LIVE_MSG__ = message || "";
+    try {
+      window.dispatchEvent(
+        new CustomEvent("lrp:live-region", { detail: message || "" }),
+      );
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("[Tickets] live region dispatch failed", error);
+      }
+    }
+  }, []);
+
+  const showSuccessSnack = useCallback(
+    (message, options = {}) => {
+      if (!message) return;
+      vibrateOk();
+      announce(message);
+      showSnack(message, "success", options);
+    },
+    [announce, showSnack],
+  );
+
+  const showWarnOrErrorSnack = useCallback(
+    (message, severity = "warning", options = {}) => {
+      if (!message) return;
+      vibrateWarn();
+      announce(message);
+      showSnack(message, severity, options);
+    },
+    [announce, showSnack],
+  );
+
+  const showInfoSnack = useCallback(
+    (message, options = {}) => {
+      if (!message) return;
+      announce(message);
+      showSnack(message, "info", options);
+    },
+    [announce, showSnack],
+  );
 
   const openScanner = useCallback(() => {
     setScannerOpen(true);
@@ -448,12 +487,7 @@ function Tickets() {
         : trimmed;
       const ticketId = String(candidate || "").trim();
       if (!ticketId) {
-        setSnackbar({
-          open: true,
-          message: "Invalid ticket code",
-          severity: "error",
-          action: null,
-        });
+        showWarnOrErrorSnack("Invalid ticket code", "error");
         setPendingScanTicket(null);
         return;
       }
@@ -463,12 +497,7 @@ function Tickets() {
       if (localMatch) {
         setPreviewTicket(localMatch);
         setPendingScanTicket(localMatch);
-        setSnackbar({
-          open: true,
-          message: `Ticket ${ticketId} ready — choose scan type`,
-          severity: "success",
-          action: null,
-        });
+        showSuccessSnack(`Ticket ${ticketId} ready — choose scan type`);
         return;
       }
       try {
@@ -477,19 +506,11 @@ function Tickets() {
           const normalized = normalizeTicket(match, dayjs);
           setPreviewTicket(normalized);
           setPendingScanTicket(normalized);
-          setSnackbar({
-            open: true,
-            message: `Ticket ${normalized.ticketId} ready — choose scan type`,
-            severity: "success",
-            action: null,
-          });
+          showSuccessSnack(
+            `Ticket ${normalized.ticketId} ready — choose scan type`,
+          );
         } else {
-          setSnackbar({
-            open: true,
-            message: `Ticket ${ticketId} not found`,
-            severity: "warning",
-            action: null,
-          });
+          showWarnOrErrorSnack(`Ticket ${ticketId} not found`, "warning");
           setPendingScanTicket(null);
         }
       } catch (err) {
@@ -498,16 +519,17 @@ function Tickets() {
           action: "scanLookup",
           ticketId,
         });
-        setSnackbar({
-          open: true,
-          message: "Failed to load ticket",
-          severity: "error",
-          action: null,
-        });
+        showWarnOrErrorSnack("Failed to load ticket", "error");
         setPendingScanTicket(null);
       }
     },
-    [tickets, setPreviewTicket, setSnackbar, setPendingScanTicket],
+    [
+      tickets,
+      setPreviewTicket,
+      setPendingScanTicket,
+      showSuccessSnack,
+      showWarnOrErrorSnack,
+    ],
   );
 
   const handleScanDialogClose = useCallback(() => {
@@ -522,31 +544,16 @@ function Tickets() {
       if (scanType !== "outbound" && scanType !== "return") return;
       const docId = pendingScanTicket.id || pendingScanTicket.ticketId;
       if (!docId) {
-        setSnackbar({
-          open: true,
-          message: "Ticket is missing an identifier",
-          severity: "error",
-          action: null,
-        });
+        showWarnOrErrorSnack("Ticket is missing an identifier", "error");
         return;
       }
       const label = pendingScanTicket.ticketId || String(docId);
       if (scanType === "outbound" && pendingScanTicket.scannedOutbound) {
-        setSnackbar({
-          open: true,
-          message: `Ticket ${label} already marked Outbound`,
-          severity: "info",
-          action: null,
-        });
+        showInfoSnack(`Ticket ${label} already marked Outbound`);
         return;
       }
       if (scanType === "return" && pendingScanTicket.scannedReturn) {
-        setSnackbar({
-          open: true,
-          message: `Ticket ${label} already marked Return`,
-          severity: "info",
-          action: null,
-        });
+        showInfoSnack(`Ticket ${label} already marked Return`);
         return;
       }
       const driver = user?.displayName || user?.email || user?.uid || "N/A";
@@ -586,14 +593,10 @@ function Tickets() {
           if (matchId !== key) return prev;
           return { ...prev, ...updates };
         });
-        setSnackbar({
-          open: true,
-          message: `Ticket ${label} marked ${
-            scanType === "outbound" ? "Outbound" : "Return"
-          }`,
-          severity: "success",
-          action: null,
-        });
+        const successMessage = `Ticket ${label} marked ${
+          scanType === "outbound" ? "Outbound" : "Return"
+        }`;
+        showSuccessSnack(successMessage);
         setPendingScanTicket(null);
         setScannerInstanceKey((k) => k + 1);
       } catch (err) {
@@ -603,12 +606,7 @@ function Tickets() {
           scanType,
           ticketId: docId,
         });
-        setSnackbar({
-          open: true,
-          message: "Failed to record scan",
-          severity: "error",
-          action: null,
-        });
+        showWarnOrErrorSnack("Failed to record scan", "error");
       } finally {
         setSavingScan(false);
         setSavingScanType(null);
@@ -619,9 +617,11 @@ function Tickets() {
       savingScan,
       setTickets,
       setPreviewTicket,
-      setSnackbar,
       setPendingScanTicket,
       setSavingScanType,
+      showInfoSnack,
+      showSuccessSnack,
+      showWarnOrErrorSnack,
       user?.displayName,
       user?.email,
       user?.uid,
@@ -710,19 +710,14 @@ function Tickets() {
       },
       onError: (err) => {
         setError(err);
-        setSnackbar({
-          open: true,
-          message: "Permissions issue loading tickets",
-          severity: "error",
-          action: null,
-        });
+        showWarnOrErrorSnack("Permissions issue loading tickets", "error");
         setLoading(false);
       },
     });
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [authLoading, user?.email, subscriptionKey]);
+  }, [authLoading, user?.email, subscriptionKey, showWarnOrErrorSnack]);
 
   useEffect(() => {
     return () => {
@@ -840,21 +835,50 @@ function Tickets() {
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
 
-  const closeUndoSnackbar = useCallback(
-    (options = {}) => {
-      const { clearDocs = false } = options;
-      setUndoOpen(false);
-      if (undoTimerRef.current) {
-        clearTimeout(undoTimerRef.current);
-        undoTimerRef.current = null;
-      }
-      if (clearDocs) {
-        deletedRowsRef.current = [];
-        setLastDeletedCount(0);
-      }
-    },
-    [setLastDeletedCount],
-  );
+  const closeUndoSnackbar = useCallback((options = {}) => {
+    const { clearDocs = false } = options;
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    if (clearDocs) {
+      deletedRowsRef.current = [];
+    }
+  }, []);
+
+  const handleUndoDelete = useCallback(async () => {
+    const cached = deletedRowsRef.current;
+    if (!cached?.length) {
+      closeUndoSnackbar({ clearDocs: true });
+      return;
+    }
+
+    closeUndoSnackbar();
+    try {
+      await restoreTicketsBatch(cached);
+      const count = cached.length;
+      const successMessage = `Restored ${count} ticket${count === 1 ? "" : "s"}.`;
+      showSuccessSnack(successMessage);
+    } catch (err) {
+      logError(err, {
+        area: "tickets",
+        action: "handleUndoDelete",
+        count: cached.length,
+      });
+      showWarnOrErrorSnack(
+        "Undo failed. Please refresh and try again.",
+        "error",
+      );
+      setSubscriptionKey((key) => key + 1);
+    } finally {
+      deletedRowsRef.current = [];
+    }
+  }, [
+    closeUndoSnackbar,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
+    setSubscriptionKey,
+  ]);
 
   const handleDeleteRows = useCallback(
     async (idsInput) => {
@@ -876,7 +900,6 @@ function Tickets() {
           })
           .filter(Boolean);
         deletedRowsRef.current = captured;
-        setLastDeletedCount(captured.length);
         if (captured.length < ids.length) {
           logError(new Error("Incomplete ticket snapshot before delete"), {
             area: "tickets",
@@ -890,10 +913,24 @@ function Tickets() {
         deletionSucceeded = true;
 
         if (deletedRowsRef.current.length) {
-          setUndoOpen(true);
+          const count = deletedRowsRef.current.length;
           if (undoTimerRef.current) {
             clearTimeout(undoTimerRef.current);
           }
+          const undoMessage = `Deleted ${count} ticket${count === 1 ? "" : "s"}.`;
+          showInfoSnack(undoMessage, {
+            autoHideDuration: 6000,
+            action: (
+              <Button
+                onClick={handleUndoDelete}
+                size="small"
+                sx={{ color: "#4cbb17" }}
+                aria-label="Undo delete"
+              >
+                Undo
+              </Button>
+            ),
+          });
           undoTimerRef.current = setTimeout(() => {
             closeUndoSnackbar({ clearDocs: true });
           }, 6000);
@@ -905,16 +942,12 @@ function Tickets() {
           ids,
         });
         deletedRowsRef.current = [];
-        setLastDeletedCount(0);
-        setSnackbar({
-          open: true,
-          message:
-            err?.code === "permission-denied"
-              ? "You don't have permission to delete tickets."
-              : "Delete failed.",
-          severity: "error",
-          action: null,
-        });
+        showWarnOrErrorSnack(
+          err?.code === "permission-denied"
+            ? "You don't have permission to delete tickets."
+            : "Delete failed.",
+          "error",
+        );
       } finally {
         setDeleting(false);
         if (deletionSucceeded) {
@@ -926,60 +959,25 @@ function Tickets() {
         }
       }
     },
-    [deleting, closeUndoSnackbar, setSnackbar, setLastDeletedCount],
+    [
+      deleting,
+      closeUndoSnackbar,
+      handleUndoDelete,
+      showInfoSnack,
+      showWarnOrErrorSnack,
+    ],
   );
-
-  const handleUndoDelete = useCallback(async () => {
-    const cached = deletedRowsRef.current;
-    if (!cached?.length) {
-      closeUndoSnackbar({ clearDocs: true });
-      return;
-    }
-
-    closeUndoSnackbar();
-    try {
-      await restoreTicketsBatch(cached);
-      const count = cached.length;
-      setSnackbar({
-        open: true,
-        message: `Restored ${count} ticket${count === 1 ? "" : "s"}.`,
-        severity: "success",
-        action: null,
-      });
-    } catch (err) {
-      logError(err, {
-        area: "tickets",
-        action: "handleUndoDelete",
-        count: cached.length,
-      });
-      setSnackbar({
-        open: true,
-        message: "Undo failed. Please refresh and try again.",
-        severity: "error",
-        action: null,
-      });
-      setSubscriptionKey((key) => key + 1);
-    } finally {
-      deletedRowsRef.current = [];
-      setLastDeletedCount(0);
-    }
-  }, [closeUndoSnackbar, setSnackbar, setSubscriptionKey]);
 
   const handleDeleteClick = useCallback(
     (row) => {
       const docId = row?.id != null ? String(row.id) : null;
       if (!docId) {
-        setSnackbar({
-          open: true,
-          message: "Missing document id for delete.",
-          severity: "warning",
-          action: null,
-        });
+        showWarnOrErrorSnack("Missing document id for delete.", "warning");
         return;
       }
       handleDeleteRows([docId]);
     },
-    [handleDeleteRows],
+    [handleDeleteRows, showWarnOrErrorSnack],
   );
 
   const columns = useMemo(
@@ -1136,32 +1134,22 @@ function Tickets() {
       link.download = `${t.ticketId}.png`;
       link.href = dataUrl;
       link.click();
-      setSnackbar({
-        open: true,
-        message: "📸 Ticket saved as image",
-        severity: "success",
-        action: null,
-      });
+      showSuccessSnack("Ticket saved as image");
     } catch (err) {
       logError(err, { area: "tickets", action: "downloadTicket" });
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to generate image",
-        severity: "error",
-        action: null,
-      });
+      showWarnOrErrorSnack("Failed to generate image", "error");
     }
-  }, [previewTicket, theme.palette.background.paper]);
+  }, [
+    previewTicket,
+    theme.palette.background.paper,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
+  ]);
 
   const handleEmailSelected = useCallback(async () => {
     if (!selectedRows.length) return;
     if (!emailTo) {
-      setSnackbar({
-        open: true,
-        message: "Email address required",
-        severity: "warning",
-        action: null,
-      });
+      showWarnOrErrorSnack("Email address required", "warning");
       return;
     }
     if (!ticketPreviewContainerRef.current) return;
@@ -1189,12 +1177,7 @@ function Tickets() {
           message: emailMessage,
           attachments: files,
         });
-        setSnackbar({
-          open: true,
-          message: "📧 Tickets emailed",
-          severity: "success",
-          action: null,
-        });
+        showSuccessSnack("Tickets emailed");
       } catch (err) {
         logError(err, { area: "tickets", action: "emailSelected" });
         const zipFiles = files.map((file) => ({
@@ -1203,21 +1186,11 @@ function Tickets() {
         }));
         const { downloadZipFromPngs } = await import("@/utils/exportTickets");
         await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
-        setSnackbar({
-          open: true,
-          message: "Endpoint unavailable — ZIP downloaded",
-          severity: "info",
-          action: null,
-        });
+        showInfoSnack("Endpoint unavailable — ZIP downloaded");
       }
     } catch (err) {
       logError(err, { area: "tickets", action: "emailSelected:generate" });
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to prepare tickets",
-        severity: "error",
-        action: null,
-      });
+      showWarnOrErrorSnack("Failed to prepare tickets", "error");
     } finally {
       nodes.forEach((node) => {
         if (node?.__lrpRoot) {
@@ -1240,7 +1213,9 @@ function Tickets() {
     emailTo,
     renderTicketPreviewNode,
     selectedRows,
-    setSnackbar,
+    showInfoSnack,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
   ]);
 
   const handleExportSelected = useCallback(async () => {
@@ -1260,20 +1235,10 @@ function Tickets() {
       await exportTicketNodesAsZip(nodes, {
         zipName: `tickets-${Date.now()}.zip`,
       });
-      setSnackbar({
-        open: true,
-        message: "📦 Tickets exported",
-        severity: "success",
-        action: null,
-      });
+      showSuccessSnack("Tickets exported");
     } catch (err) {
       logError(err, { area: "tickets", action: "exportSelected" });
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to export tickets",
-        severity: "error",
-        action: null,
-      });
+      showWarnOrErrorSnack("Failed to export tickets", "error");
     } finally {
       nodes.forEach((node) => {
         if (node?.__lrpRoot) {
@@ -1289,633 +1254,615 @@ function Tickets() {
       }
       setExporting(false);
     }
-  }, [renderTicketPreviewNode, selectedRows, setSnackbar]);
+  }, [
+    renderTicketPreviewNode,
+    selectedRows,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
+  ]);
 
   return (
-    <PageContainer maxWidth={960}>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        🎟️ Shuttle Ticket Overview
-      </Typography>
+    <ErrorBoundary>
+      <PageContainer maxWidth={960}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          🎟️ Shuttle Ticket Overview
+        </Typography>
 
-      <Box
-        display="flex"
-        gap={2}
-        mb={2}
-        flexDirection={{ xs: "column", sm: "row" }}
-        alignItems={{ xs: "stretch", sm: "center" }}
-      >
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Date Filter</InputLabel>
-          <Select
-            label="Date Filter"
-            value={filteredDate}
-            onChange={(e) => setFilteredDate(e.target.value)}
-            input={
-              <OutlinedInput
-                label="Date Filter"
-                startAdornment={
-                  <InputAdornment position="start">
-                    <CalendarMonthIcon fontSize="small" />
-                  </InputAdornment>
-                }
-              />
-            }
-          >
-            <MenuItem value="All Dates">All Dates</MenuItem>
-            {dateOptions.map((date) => (
-              <MenuItem key={date} value={date}>
-                {date}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          placeholder="Search tickets"
-          variant="outlined"
-          size="small"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ flexGrow: 1, minWidth: 200 }}
-        />
-      </Box>
-
-      {noAccessAlertOpen && (
-        <Alert severity="warning" onClose={closeNoAccessAlert} sx={{ mb: 2 }}>
-          You don’t have access to Generate Ticket.
-        </Alert>
-      )}
-
-      <Tabs
-        value={tab}
-        onChange={handleTabChange}
-        sx={{
-          mb: 2,
-          "& .MuiTabs-indicator": {
-            backgroundColor: "#4cbb17",
-          },
-        }}
-      >
-        <Tab label="Manage" {...getTabProps(0)} />
-        <Tab label="Generate" disabled={!canGenerate} {...getTabProps(1)} />
-      </Tabs>
-
-      <TabPanel value={tab} tabKey={0}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ mb: 2, flexWrap: "wrap", alignItems: "center" }}
-        >
-          <Tooltip
-            title={
-              selectedRows.length
-                ? "Export selected as PNG (ZIP)"
-                : "Select tickets to enable"
-            }
-          >
-            <span>
-              <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                onClick={handleExportSelected}
-                disabled={!selectedRows.length || exporting}
-              >
-                Export
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip
-            title={
-              selectedRows.length
-                ? "Email selected tickets"
-                : "Select tickets to enable"
-            }
-          >
-            <span>
-              <Button
-                variant="outlined"
-                startIcon={<EmailIcon />}
-                onClick={() => setEmailOpen(true)}
-                disabled={!selectedRows.length || emailSending}
-              >
-                Email
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip
-            title={
-              selectedIds.length
-                ? "Delete selected tickets"
-                : "Select tickets to enable"
-            }
-          >
-            <span>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<DeleteIcon />}
-                disabled={!selectedIds.length || deleting}
-                onClick={() => handleDeleteRows(selectedIds)}
-              >
-                Delete
-              </Button>
-            </span>
-          </Tooltip>
-          <Button
-            variant="outlined"
-            onClick={() =>
-              download(
-                `tickets-${dayjs().format("YYYYMMDD-HHmmss")}.csv`,
-                buildCsv(rows),
-                "text/csv",
-              )
-            }
-          >
-            Export CSV
-          </Button>
-        </Stack>
-        <Paper sx={{ width: "100%" }}>
-          <LrpDataGridPro
-            id="tickets-grid"
-            rows={safeRows}
-            columns={columns}
-            getRowId={(row) =>
-              getRowId(row) || (row?.ticketId ? String(row.ticketId) : null)
-            }
-            checkboxSelection
-            disableRowSelectionOnClick
-            rowSelectionModel={rowSelectionModel}
-            onRowSelectionModelChange={(model) =>
-              setRowSelectionModel(Array.isArray(model) ? model : [])
-            }
-            initialState={initialState}
-            pageSizeOptions={[5, 10, 25, 100]}
-            columnVisibilityModel={
-              isSmall
-                ? { link: false, scanStatus: false, pickup: false }
-                : undefined
-            }
-            slots={{
-              loadingOverlay: LoadingOverlay,
-              noRowsOverlay: NoRowsOverlay,
-              errorOverlay: ErrorOverlay,
-            }}
-            slotProps={{
-              toolbar: {
-                quickFilterPlaceholder: "Search tickets",
-              },
-            }}
-            density="compact"
-            autoHeight={false}
-            sx={{
-              "& .MuiDataGrid-row:nth-of-type(odd)": {
-                backgroundColor: "rgba(255,255,255,0.04)",
-              },
-              "& .MuiDataGrid-row:hover": {
-                backgroundColor: "rgba(76,187,23,0.1)",
-              },
-              "& .MuiDataGrid-row.Mui-selected": {
-                backgroundColor: "rgba(76,187,23,0.2)",
-              },
-            }}
-            loading={loading}
-            error={error}
-          />
-        </Paper>
-      </TabPanel>
-
-      <TabPanel value={tab} tabKey={1}>
-        {canGenerate ? (
-          <Suspense
-            fallback={
-              <Box p={2}>
-                <CircularProgress size={20} />
-              </Box>
-            }
-          >
-            <TicketGenerator />
-          </Suspense>
-        ) : (
-          <Alert severity="info">Ticket generation restricted.</Alert>
-        )}
-      </TabPanel>
-
-      <Box
-        ref={ticketPreviewContainerRef}
-        sx={{ position: "fixed", left: -9999, top: -9999, width: 0, height: 0 }}
-      />
-
-      {editingTicket && (
-        <EditTicketDialog
-          open={Boolean(editingTicket)}
-          ticket={editingTicket}
-          onClose={handleEditClose}
-        />
-      )}
-
-      <Modal open={!!previewTicket} onClose={() => setPreviewTicket(null)}>
         <Box
-          component={motion.div}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.3 }}
+          display="flex"
+          gap={2}
+          mb={2}
+          flexDirection={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Date Filter</InputLabel>
+            <Select
+              label="Date Filter"
+              value={filteredDate}
+              onChange={(e) => setFilteredDate(e.target.value)}
+              input={
+                <OutlinedInput
+                  label="Date Filter"
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <CalendarMonthIcon fontSize="small" />
+                    </InputAdornment>
+                  }
+                />
+              }
+            >
+              <MenuItem value="All Dates">All Dates</MenuItem>
+              {dateOptions.map((date) => (
+                <MenuItem key={date} value={date}>
+                  {date}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            placeholder="Search tickets"
+            variant="outlined"
+            size="small"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ flexGrow: 1, minWidth: 200 }}
+          />
+        </Box>
+
+        {noAccessAlertOpen && (
+          <Alert severity="warning" onClose={closeNoAccessAlert} sx={{ mb: 2 }}>
+            You don’t have access to Generate Ticket.
+          </Alert>
+        )}
+
+        <Tabs
+          value={tab}
+          onChange={handleTabChange}
           sx={{
-            backgroundColor: "background.paper",
-            borderRadius: 2,
-            p: 4,
-            width: 360,
-            mx: "auto",
-            mt: 8,
-            outline: "none",
+            mb: 2,
+            "& .MuiTabs-indicator": {
+              backgroundColor: "#4cbb17",
+            },
           }}
         >
-          {previewTicket && (
-            <>
-              <Box ref={previewRef}>
-                <TicketPreviewCard ticket={previewTicket} />
-              </Box>
+          <Tab label="Manage" {...getTabProps(0)} />
+          <Tab label="Generate" disabled={!canGenerate} {...getTabProps(1)} />
+        </Tabs>
 
-              <Box mt={3} display="flex" justifyContent="space-between">
-                <Button
+        <TabPanel value={tab} tabKey={0}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ mb: 2, flexWrap: "wrap", alignItems: "center" }}
+          >
+            <Tooltip
+              title={
+                selectedRows.length
+                  ? "Export selected as PNG (ZIP)"
+                  : "Select tickets to enable"
+              }
+            >
+              <span>
+                <LoadingButtonLite
                   variant="outlined"
-                  color="info"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExportSelected}
+                  disabled={!selectedRows.length}
+                  loading={exporting}
+                  loadingText="Exporting…"
+                >
+                  Export
+                </LoadingButtonLite>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                selectedRows.length
+                  ? "Email selected tickets"
+                  : "Select tickets to enable"
+              }
+            >
+              <span>
+                <LoadingButtonLite
+                  variant="outlined"
                   startIcon={<EmailIcon />}
-                  onClick={() => {
-                    const candidateId =
-                      getRowId(previewTicket) ||
-                      (previewTicket?.ticketId != null
-                        ? String(previewTicket.ticketId)
-                        : null);
-                    if (candidateId) {
-                      setRowSelectionModel([String(candidateId)]);
-                    }
-                    setEmailOpen(true);
-                    setEmailTo(previewTicket?.email || emailTo);
-                  }}
+                  onClick={() => setEmailOpen(true)}
+                  disabled={!selectedRows.length || emailSending}
+                  loading={emailSending}
+                  loadingText="Sending…"
                 >
                   Email
-                </Button>
-                <Button
+                </LoadingButtonLite>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                selectedIds.length
+                  ? "Delete selected tickets"
+                  : "Select tickets to enable"
+              }
+            >
+              <span>
+                <LoadingButtonLite
                   variant="contained"
-                  color="success"
-                  onClick={downloadTicket}
-                  sx={{
-                    boxShadow: "0 0 8px 2px #4cbb17",
-                    fontWeight: 700,
-                  }}
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  disabled={!selectedIds.length}
+                  loading={deleting}
+                  loadingText="Deleting…"
+                  onClick={() => handleDeleteRows(selectedIds)}
                 >
-                  Download
-                </Button>
-                <Button variant="text" onClick={() => setPreviewTicket(null)}>
-                  Close
-                </Button>
-              </Box>
-            </>
-          )}
-        </Box>
-      </Modal>
-
-      <Dialog
-        open={emailOpen}
-        onClose={() => setEmailOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Email Selected Tickets</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <TextField
-              label="To"
-              value={emailTo}
-              onChange={(e) => setEmailTo(e.target.value)}
-              placeholder="customer@example.com"
-            />
-            <TextField
-              label="Subject"
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-            />
-            <TextField
-              label="Message"
-              multiline
-              minRows={3}
-              value={emailMessage}
-              onChange={(e) => setEmailMessage(e.target.value)}
-            />
+                  Delete
+                </LoadingButtonLite>
+              </span>
+            </Tooltip>
+            <Button
+              variant="outlined"
+              onClick={() =>
+                download(
+                  `tickets-${dayjs().format("YYYYMMDD-HHmmss")}.csv`,
+                  buildCsv(rows),
+                  "text/csv",
+                )
+              }
+            >
+              Export CSV
+            </Button>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEmailOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleEmailSelected}
-            disabled={emailSending || !selectedRows.length}
-          >
-            {emailSending ? "Sending…" : "Send"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {canScanTickets && (
-        <>
-          <Dialog
-            open={scannerOpen}
-            onClose={closeScanner}
-            fullScreen={scannerFullScreen}
-            maxWidth="md"
-            fullWidth
-            aria-labelledby="ticket-scanner-title"
-            PaperProps={{
-              sx: {
-                bgcolor: "#060606",
-                color: "#f5f5f5",
-                ...(scannerFullScreen
-                  ? {}
-                  : {
-                      borderRadius: 2,
-                      maxWidth: "min(760px, 96vw)",
-                      width: "min(760px, 96vw)",
-                    }),
-              },
-            }}
-          >
-            <AppBar
-              position="relative"
-              sx={{
-                bgcolor: "#060606",
-                color: "#fff",
-                boxShadow: "none",
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
+          <Paper sx={{ width: "100%" }}>
+            <LrpDataGridPro
+              id="tickets-grid"
+              rows={safeRows}
+              columns={columns}
+              getRowId={(row) =>
+                getRowId(row) || (row?.ticketId ? String(row.ticketId) : null)
+              }
+              checkboxSelection
+              disableRowSelectionOnClick
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={(model) =>
+                setRowSelectionModel(Array.isArray(model) ? model : [])
+              }
+              initialState={initialState}
+              pageSizeOptions={[5, 10, 25, 100]}
+              columnVisibilityModel={
+                isSmall
+                  ? { link: false, scanStatus: false, pickup: false }
+                  : undefined
+              }
+              slots={{
+                loadingOverlay: LoadingOverlay,
+                noRowsOverlay: NoRowsOverlay,
+                errorOverlay: ErrorOverlay,
               }}
-            >
-              <Toolbar sx={{ gap: 2 }}>
-                <Typography
-                  id="ticket-scanner-title"
-                  variant="h6"
-                  component="div"
-                  sx={{ flexGrow: 1, fontWeight: 600 }}
-                >
-                  Scan Tickets
-                </Typography>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={sequentialScan}
-                      onChange={handleSequentialToggle}
-                      color="success"
-                      inputProps={{
-                        "aria-label": "Toggle sequential scanning",
-                      }}
-                    />
-                  }
-                  label="Sequential mode"
-                  sx={{
-                    color: "rgba(255,255,255,0.8)",
-                    "& .MuiFormControlLabel-label": {
-                      fontSize: 14,
-                    },
-                  }}
-                />
-                <IconButton
-                  edge="end"
-                  onClick={closeScanner}
-                  aria-label="Close ticket scanner"
-                  sx={{ color: "#f5f5f5" }}
-                >
-                  <CloseIcon />
-                </IconButton>
-              </Toolbar>
-            </AppBar>
-            <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#060606" }}>
-              <Suspense
-                fallback={
-                  <Box
-                    sx={{ py: 6, display: "flex", justifyContent: "center" }}
-                  >
-                    <CircularProgress size={24} sx={{ color: "#4cbb17" }} />
-                  </Box>
-                }
-              >
-                {scannerOpen && (
-                  <TicketScanner
-                    key={scannerInstanceKey}
-                    onScan={handleScanResult}
-                    onClose={closeScanner}
-                    sequential={sequentialScan}
-                  />
-                )}
-              </Suspense>
-            </Box>
-          </Dialog>
-
-          <Tooltip title="Scan tickets">
-            <Fab
-              color="primary"
-              aria-label="Open ticket scanner"
-              onClick={openScanner}
-              sx={{
-                position: "fixed",
-                right: 16,
-                bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-                bgcolor: "#4cbb17",
-                color: "#060606",
-                display: scannerOpen ? "none" : "inline-flex",
-                "&:hover": { bgcolor: "#43a414" },
-                zIndex: (t) => t.zIndex.modal + 1,
+              slotProps={{
+                toolbar: {
+                  quickFilterPlaceholder: "Search tickets",
+                },
               }}
-            >
-              <QrCodeScannerIcon />
-            </Fab>
-          </Tooltip>
-        </>
-      )}
+              density="compact"
+              autoHeight={false}
+              sx={{
+                "& .MuiDataGrid-row:nth-of-type(odd)": {
+                  backgroundColor: "rgba(255,255,255,0.04)",
+                },
+                "& .MuiDataGrid-row:hover": {
+                  backgroundColor: "rgba(76,187,23,0.1)",
+                },
+                "& .MuiDataGrid-row.Mui-selected": {
+                  backgroundColor: "rgba(76,187,23,0.2)",
+                },
+              }}
+              loading={loading}
+              error={error}
+            />
+          </Paper>
+        </TabPanel>
 
-      <Dialog
-        open={Boolean(pendingScanTicket)}
-        onClose={handleScanDialogClose}
-        aria-labelledby="tickets-scan-confirm"
-        PaperProps={{
-          sx: {
-            bgcolor: "#060606",
-            color: "#f5f5f5",
-            borderRadius: 2,
-            width: "min(420px, 90vw)",
-          },
-        }}
-      >
-        <DialogTitle
-          id="tickets-scan-confirm"
-          sx={{
-            fontWeight: 600,
-            pb: 1,
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          Record ticket scan
-        </DialogTitle>
-        <DialogContent sx={{ bgcolor: "#060606", pt: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            Ticket {pendingScanTicket?.ticketId || "—"}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
-          >
-            Passenger: {pendingScanTicket?.passenger || "Unknown"}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
-          >
-            Current status: {pendingScanStatus}
-          </Typography>
-          {pendingScanMeta?.outAt && (
-            <Typography
-              variant="body2"
-              sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
+        <TabPanel value={tab} tabKey={1}>
+          {canGenerate ? (
+            <Suspense
+              fallback={
+                <Box p={2}>
+                  <CircularProgress size={20} />
+                </Box>
+              }
             >
-              Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at{" "}
-              {formatDateTime(pendingScanMeta.outAt)}
-            </Typography>
+              <TicketGenerator />
+            </Suspense>
+          ) : (
+            <Alert severity="info">Ticket generation restricted.</Alert>
           )}
-          {pendingScanMeta?.retAt && (
-            <Typography
-              variant="body2"
-              sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
-            >
-              Return recorded by {pendingScanMeta.retBy || "Unknown"} at{" "}
-              {formatDateTime(pendingScanMeta.retAt)}
-            </Typography>
-          )}
-          <Typography
-            variant="body2"
-            sx={{ color: "rgba(255,255,255,0.72)", mt: 2 }}
-          >
-            Select a direction to log this scan.
-          </Typography>
-        </DialogContent>
-        <DialogActions
+        </TabPanel>
+
+        <Box
+          ref={ticketPreviewContainerRef}
           sx={{
-            bgcolor: "#060606",
-            px: 3,
-            pb: 3,
-            gap: 1,
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
+            position: "fixed",
+            left: -9999,
+            top: -9999,
+            width: 0,
+            height: 0,
           }}
-        >
-          <Button
-            onClick={handleScanDialogClose}
-            disabled={savingScan}
+        />
+
+        {editingTicket && (
+          <EditTicketDialog
+            open={Boolean(editingTicket)}
+            ticket={editingTicket}
+            onClose={handleEditClose}
+          />
+        )}
+
+        <Modal open={!!previewTicket} onClose={() => setPreviewTicket(null)}>
+          <Box
+            component={motion.div}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
             sx={{
-              color: "#f5f5f5",
-              "&.Mui-disabled": { color: "rgba(255,255,255,0.4)" },
+              backgroundColor: "background.paper",
+              borderRadius: 2,
+              p: 4,
+              width: 360,
+              mx: "auto",
+              mt: 8,
+              outline: "none",
             }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleScanConfirm("outbound")}
-            variant="outlined"
-            color="info"
-            disabled={savingScan}
-            startIcon={
-              savingScan && savingScanType === "outbound" ? (
-                <CircularProgress size={16} sx={{ color: "inherit" }} />
-              ) : null
-            }
+            {previewTicket && (
+              <>
+                <Box ref={previewRef}>
+                  <TicketPreviewCard ticket={previewTicket} />
+                </Box>
+
+                <Box mt={3} display="flex" justifyContent="space-between">
+                  <Button
+                    variant="outlined"
+                    color="info"
+                    startIcon={<EmailIcon />}
+                    onClick={() => {
+                      const candidateId =
+                        getRowId(previewTicket) ||
+                        (previewTicket?.ticketId != null
+                          ? String(previewTicket.ticketId)
+                          : null);
+                      if (candidateId) {
+                        setRowSelectionModel([String(candidateId)]);
+                      }
+                      setEmailOpen(true);
+                      setEmailTo(previewTicket?.email || emailTo);
+                    }}
+                  >
+                    Email
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={downloadTicket}
+                    sx={{
+                      boxShadow: "0 0 8px 2px #4cbb17",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Download
+                  </Button>
+                  <Button variant="text" onClick={() => setPreviewTicket(null)}>
+                    Close
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Box>
+        </Modal>
+
+        <Dialog
+          open={emailOpen}
+          onClose={() => setEmailOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Email Selected Tickets</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2}>
+              <TextField
+                label="To"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="customer@example.com"
+              />
+              <TextField
+                label="Subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+              />
+              <TextField
+                label="Message"
+                multiline
+                minRows={3}
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEmailOpen(false)}>Cancel</Button>
+            <LoadingButtonLite
+              variant="contained"
+              onClick={handleEmailSelected}
+              disabled={!selectedRows.length}
+              loading={emailSending}
+              loadingText="Sending…"
+            >
+              Send
+            </LoadingButtonLite>
+          </DialogActions>
+        </Dialog>
+
+        {canScanTickets && (
+          <>
+            <Dialog
+              open={scannerOpen}
+              onClose={closeScanner}
+              fullScreen={scannerFullScreen}
+              maxWidth="md"
+              fullWidth
+              aria-labelledby="ticket-scanner-title"
+              PaperProps={{
+                sx: {
+                  bgcolor: "#060606",
+                  color: "#f5f5f5",
+                  ...(scannerFullScreen
+                    ? {}
+                    : {
+                        borderRadius: 2,
+                        maxWidth: "min(760px, 96vw)",
+                        width: "min(760px, 96vw)",
+                      }),
+                },
+              }}
+            >
+              <AppBar
+                position="relative"
+                sx={{
+                  bgcolor: "#060606",
+                  color: "#fff",
+                  boxShadow: "none",
+                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <Toolbar sx={{ gap: 2 }}>
+                  <Typography
+                    id="ticket-scanner-title"
+                    variant="h6"
+                    component="div"
+                    sx={{ flexGrow: 1, fontWeight: 600 }}
+                  >
+                    Scan Tickets
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={sequentialScan}
+                        onChange={handleSequentialToggle}
+                        color="success"
+                        inputProps={{
+                          "aria-label": "Toggle sequential scanning",
+                        }}
+                      />
+                    }
+                    label="Sequential mode"
+                    sx={{
+                      color: "rgba(255,255,255,0.8)",
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: 14,
+                      },
+                    }}
+                  />
+                  <IconButton
+                    edge="end"
+                    onClick={closeScanner}
+                    aria-label="Close ticket scanner"
+                    sx={{ color: "#f5f5f5" }}
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Toolbar>
+              </AppBar>
+              <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#060606" }}>
+                <Suspense
+                  fallback={
+                    <Box
+                      sx={{ py: 6, display: "flex", justifyContent: "center" }}
+                    >
+                      <CircularProgress size={24} sx={{ color: "#4cbb17" }} />
+                    </Box>
+                  }
+                >
+                  {scannerOpen && (
+                    <TicketScanner
+                      key={scannerInstanceKey}
+                      onScan={handleScanResult}
+                      onClose={closeScanner}
+                      sequential={sequentialScan}
+                    />
+                  )}
+                </Suspense>
+              </Box>
+            </Dialog>
+
+            <Tooltip title="Scan tickets">
+              <Fab
+                color="primary"
+                aria-label="Scan tickets"
+                onClick={openScanner}
+                sx={{
+                  position: "fixed",
+                  right: 16,
+                  bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+                  bgcolor: "#4cbb17",
+                  color: "#060606",
+                  display: scannerOpen ? "none" : "inline-flex",
+                  "&:hover": { bgcolor: "#43a414" },
+                  zIndex: (t) => t.zIndex.modal + 1,
+                }}
+              >
+                <QrCodeScannerIcon />
+              </Fab>
+            </Tooltip>
+          </>
+        )}
+
+        <Dialog
+          open={Boolean(pendingScanTicket)}
+          onClose={handleScanDialogClose}
+          aria-labelledby="tickets-scan-confirm"
+          PaperProps={{
+            sx: {
+              bgcolor: "#060606",
+              color: "#f5f5f5",
+              borderRadius: 2,
+              width: "min(420px, 90vw)",
+            },
+          }}
+        >
+          <DialogTitle
+            id="tickets-scan-confirm"
             sx={{
               fontWeight: 600,
-              borderColor: "rgba(76,187,23,0.6)",
-              color: "#f5f5f5",
-              "&:hover": { borderColor: "#4cbb17" },
-              "&.Mui-disabled": {
-                borderColor: "rgba(255,255,255,0.24)",
-                color: "rgba(255,255,255,0.4)",
-              },
+              pb: 1,
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            {savingScan && savingScanType === "outbound"
-              ? "Saving…"
-              : "Mark Outbound"}
-          </Button>
-          <Button
-            onClick={() => handleScanConfirm("return")}
-            variant="contained"
-            color="success"
-            disabled={savingScan}
-            startIcon={
-              savingScan && savingScanType === "return" ? (
-                <CircularProgress size={16} sx={{ color: "inherit" }} />
-              ) : null
-            }
+            Record ticket scan
+          </DialogTitle>
+          <DialogContent sx={{ bgcolor: "#060606", pt: 3 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              Ticket {pendingScanTicket?.ticketId || "—"}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
+            >
+              Passenger: {pendingScanTicket?.passenger || "Unknown"}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
+            >
+              Current status: {pendingScanStatus}
+            </Typography>
+            {pendingScanMeta?.outAt && (
+              <Typography
+                variant="body2"
+                sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
+              >
+                Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at{" "}
+                {formatDateTime(pendingScanMeta.outAt)}
+              </Typography>
+            )}
+            {pendingScanMeta?.retAt && (
+              <Typography
+                variant="body2"
+                sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
+              >
+                Return recorded by {pendingScanMeta.retBy || "Unknown"} at{" "}
+                {formatDateTime(pendingScanMeta.retAt)}
+              </Typography>
+            )}
+            <Typography
+              variant="body2"
+              sx={{ color: "rgba(255,255,255,0.72)", mt: 2 }}
+            >
+              Select a direction to log this scan.
+            </Typography>
+          </DialogContent>
+          <DialogActions
             sx={{
-              fontWeight: 700,
-              boxShadow:
-                savingScan && savingScanType === "return"
-                  ? "0 0 6px #4cbb17"
-                  : "0 0 10px rgba(76,187,23,0.55)",
-              "&:hover": { boxShadow: "0 0 12px rgba(76,187,23,0.75)" },
-              "&.Mui-disabled": {
-                boxShadow: "none",
-                color: "rgba(255,255,255,0.4)",
-              },
+              bgcolor: "#060606",
+              px: 3,
+              pb: 3,
+              gap: 1,
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
             }}
           >
-            {savingScan && savingScanType === "return"
-              ? "Saving…"
-              : "Mark Return"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={undoOpen}
-        autoHideDuration={6000}
-        onClose={(_, reason) => {
-          if (reason === "clickaway") return;
-          closeUndoSnackbar({ clearDocs: true });
-        }}
-        message={`Deleted ${lastDeletedCount || 0} ticket${
-          (lastDeletedCount || 0) === 1 ? "" : "s"
-        }.`}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        action={
-          <Button
-            onClick={handleUndoDelete}
-            size="small"
-            sx={{ color: "#4cbb17" }}
-            aria-label="Undo delete"
-          >
-            Undo
-          </Button>
-        }
-      />
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={snackbar.action ? 6000 : 4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          severity={snackbar.severity}
-          variant="filled"
-          action={snackbar.action}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </PageContainer>
+            <Button
+              onClick={handleScanDialogClose}
+              disabled={savingScan}
+              sx={{
+                color: "#f5f5f5",
+                "&.Mui-disabled": { color: "rgba(255,255,255,0.4)" },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleScanConfirm("outbound")}
+              variant="outlined"
+              color="info"
+              disabled={savingScan}
+              startIcon={
+                savingScan && savingScanType === "outbound" ? (
+                  <CircularProgress size={16} sx={{ color: "inherit" }} />
+                ) : null
+              }
+              sx={{
+                fontWeight: 600,
+                borderColor: "rgba(76,187,23,0.6)",
+                color: "#f5f5f5",
+                "&:hover": { borderColor: "#4cbb17" },
+                "&.Mui-disabled": {
+                  borderColor: "rgba(255,255,255,0.24)",
+                  color: "rgba(255,255,255,0.4)",
+                },
+              }}
+            >
+              {savingScan && savingScanType === "outbound"
+                ? "Saving…"
+                : "Mark Outbound"}
+            </Button>
+            <Button
+              onClick={() => handleScanConfirm("return")}
+              variant="contained"
+              color="success"
+              disabled={savingScan}
+              startIcon={
+                savingScan && savingScanType === "return" ? (
+                  <CircularProgress size={16} sx={{ color: "inherit" }} />
+                ) : null
+              }
+              sx={{
+                fontWeight: 700,
+                boxShadow:
+                  savingScan && savingScanType === "return"
+                    ? "0 0 6px #4cbb17"
+                    : "0 0 10px rgba(76,187,23,0.55)",
+                "&:hover": { boxShadow: "0 0 12px rgba(76,187,23,0.75)" },
+                "&.Mui-disabled": {
+                  boxShadow: "none",
+                  color: "rgba(255,255,255,0.4)",
+                },
+              }}
+            >
+              {savingScan && savingScanType === "return"
+                ? "Saving…"
+                : "Mark Return"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </PageContainer>
+    </ErrorBoundary>
   );
 }
 

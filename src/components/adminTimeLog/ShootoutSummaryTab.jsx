@@ -1,15 +1,20 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useEffect, useState, useMemo } from "react";
-import { Paper } from "@mui/material";
+import { Paper, CircularProgress } from "@mui/material";
 
 import { formatTz } from "@/utils/timeSafe";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 
 import { subscribeShootoutStats } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
+import logError from "../../utils/logError.js";
 
 export default function ShootoutSummaryTab() {
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const columns = useMemo(() => {
     return [
       {
@@ -100,61 +105,114 @@ export default function ShootoutSummaryTab() {
   );
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     const unsub = subscribeShootoutStats(
       async (stats) => {
-        const map = new Map();
-        (stats || []).forEach((s) => {
-          const key = `${s.driverEmail || ""}|${s.vehicle || ""}`;
-          const start = s.startTime;
-          const end = s.endTime;
-          const mins =
-            start && end
-              ? Math.round((end.toDate() - start.toDate()) / 60000)
-              : 0;
-          const prev = map.get(key) || {
-            id: key,
-            driverEmail: s.driverEmail || "",
-            driver: s.driverEmail || "",
-            vehicle: s.vehicle || "",
-            sessions: 0,
-            trips: 0,
-            passengers: 0,
-            totalMinutes: 0,
-            firstStart: null,
-            lastEnd: null,
-          };
-          const firstStart =
-            !prev.firstStart ||
-            (start && start.seconds < prev.firstStart.seconds)
-              ? start
-              : prev.firstStart;
-          const lastEnd =
-            !prev.lastEnd || (end && end.seconds > prev.lastEnd.seconds)
-              ? end
-              : prev.lastEnd;
-          const totalMinutes = prev.totalMinutes + mins;
-          map.set(key, {
-            id: key,
-            driverEmail: s.driverEmail || "",
-            driver: s.driverEmail || "",
-            vehicle: s.vehicle || "",
-            sessions: prev.sessions + 1,
-            trips: prev.trips + (s.trips || 0),
-            passengers: prev.passengers + (s.passengers || 0),
-            totalMinutes,
-            hours: totalMinutes / 60,
-            firstStart,
-            lastEnd,
+        try {
+          const map = new Map();
+          (stats || []).forEach((s) => {
+            const key = `${s.driverEmail || ""}|${s.vehicle || ""}`;
+            const start = s.startTime;
+            const end = s.endTime;
+            const mins =
+              start && end
+                ? Math.round((end.toDate() - start.toDate()) / 60000)
+                : 0;
+            const prev = map.get(key) || {
+              id: key,
+              driverEmail: s.driverEmail || "",
+              driver: s.driverEmail || "",
+              vehicle: s.vehicle || "",
+              sessions: 0,
+              trips: 0,
+              passengers: 0,
+              totalMinutes: 0,
+              firstStart: null,
+              lastEnd: null,
+            };
+            const firstStart =
+              !prev.firstStart ||
+              (start && start.seconds < prev.firstStart?.seconds)
+                ? start
+                : prev.firstStart;
+            const lastEnd =
+              !prev.lastEnd || (end && end.seconds > prev.lastEnd?.seconds)
+                ? end
+                : prev.lastEnd;
+            const totalMinutes = prev.totalMinutes + mins;
+            map.set(key, {
+              id: key,
+              driverEmail: s.driverEmail || "",
+              driver: s.driverEmail || "",
+              vehicle: s.vehicle || "",
+              sessions: prev.sessions + 1,
+              trips: prev.trips + (s.trips || 0),
+              passengers: prev.passengers + (s.passengers || 0),
+              totalMinutes,
+              hours: totalMinutes / 60,
+              firstStart,
+              lastEnd,
+            });
           });
-        });
-        const arr = Array.from(map.values());
-        const withNames = await enrichDriverNames(arr);
-        setRows(withNames);
+          const arr = Array.from(map.values());
+          const withNames = await enrichDriverNames(arr);
+          setRows(withNames);
+          setError(null);
+        } catch (err) {
+          logError(err, { where: "ShootoutSummaryTab", action: "process" });
+          setError("Failed to build shootout summary.");
+        } finally {
+          setLoading(false);
+        }
       },
-      (e) => console.error(e),
+      (e) => {
+        logError(e, { where: "ShootoutSummaryTab", action: "subscribe" });
+        setError(e?.message || "Failed to load shootout summary.");
+        setLoading(false);
+      },
     );
-    return () => typeof unsub === "function" && unsub();
-  }, []);
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [refreshKey]);
+
+  if (loading) {
+    return (
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
+        <CircularProgress size={24} />
+      </Paper>
+    );
+  }
+
+  if (error) {
+    return (
+      <Paper
+        sx={{
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
+        }}
+      >
+        <ErrorState
+          description={error}
+          onAction={() => setRefreshKey((key) => key + 1)}
+        />
+      </Paper>
+    );
+  }
 
   return (
     <Paper
@@ -166,18 +224,27 @@ export default function ShootoutSummaryTab() {
         minHeight: 0,
       }}
     >
-      <LrpDataGridPro
-        id="admin-timelog-shootout-summary-grid"
-        rows={rows || []}
-        columns={columns}
-        checkboxSelection
-        disableRowSelectionOnClick
-        density="compact"
-        initialState={initialState}
-        pageSizeOptions={[15, 30, 60]}
-        autoHeight={false}
-        sx={{ flex: 1, minHeight: 0 }}
-      />
+      {rows?.length ? (
+        <LrpDataGridPro
+          id="admin-timelog-shootout-summary-grid"
+          rows={rows}
+          columns={columns}
+          checkboxSelection
+          disableRowSelectionOnClick
+          density="compact"
+          initialState={initialState}
+          pageSizeOptions={[15, 30, 60]}
+          autoHeight={false}
+          sx={{ flex: 1, minHeight: 0 }}
+        />
+      ) : (
+        <EmptyState
+          title="No shootout summary"
+          description="Once sessions are recorded, you’ll see combined stats here."
+          actionLabel="Refresh"
+          onAction={() => setRefreshKey((key) => key + 1)}
+        />
+      )}
     </Paper>
   );
 }
