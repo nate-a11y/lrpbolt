@@ -124,10 +124,24 @@ const toDayjsOrNull = (value) => {
   }
 };
 
-const toMillis = (ts) => {
-  const dj = toDayjsOrNull(ts);
+const toDateSafe = (value) => {
+  const dj = toDayjsOrNull(value);
   if (!dj) return null;
-  const ms = dj.valueOf();
+  try {
+    const date = dj.toDate();
+    if (!(date instanceof Date)) return null;
+    const time = date.getTime?.();
+    return Number.isFinite(time) ? date : null;
+  } catch (error) {
+    void error;
+    return null;
+  }
+};
+
+const toMillis = (ts) => {
+  const date = toDateSafe(ts);
+  if (!date) return null;
+  const ms = date.getTime();
   return Number.isFinite(ms) ? ms : null;
 };
 
@@ -194,7 +208,7 @@ export function normalizeRide(docSnap) {
     raw.startTime,
     raw.StartTime,
   );
-  const pickupTime = toDayjsOrNull(pickupCandidate);
+  const pickupTime = toDateSafe(pickupCandidate);
 
   const createdCandidate = firstDefined(
     raw.createdAt,
@@ -206,7 +220,7 @@ export function normalizeRide(docSnap) {
     raw.timestamp,
     raw.Timestamp,
   );
-  const createdAt = toDayjsOrNull(createdCandidate);
+  const createdAt = toDateSafe(createdCandidate);
 
   const updatedCandidate = firstDefined(
     raw.updatedAt,
@@ -218,7 +232,7 @@ export function normalizeRide(docSnap) {
     raw.lastUpdated,
     raw.LastUpdated,
   );
-  const updatedAt = toDayjsOrNull(updatedCandidate);
+  const updatedAt = toDateSafe(updatedCandidate);
 
   const claimedCandidate = firstDefined(
     raw.claimedAt,
@@ -230,14 +244,14 @@ export function normalizeRide(docSnap) {
     raw.ClaimedTime,
     raw.Claimed,
   );
-  const claimedAt = toDayjsOrNull(claimedCandidate);
+  const claimedAt = toDateSafe(claimedCandidate);
 
   const importedCandidate = firstDefined(
     raw.importedFromQueueAt,
     raw.imported_from_queue_at,
     raw.importedFromQueue_at,
   );
-  const importedFromQueueAt = toDayjsOrNull(importedCandidate);
+  const importedFromQueueAt = toDateSafe(importedCandidate);
 
   const claimedBy = toTrimmedString(
     firstDefined(
