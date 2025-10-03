@@ -4,11 +4,8 @@ import { ensureFcmSwReady } from "@/pwa/fcmBridge";
 import { purgeOtherServiceWorkers } from "@/pwa/purgeSW";
 import { registerSW } from "@/pwa/registerSW";
 
-import {
-  app as firebaseApp,
-  firebaseConfig,
-  getMessagingOrNull,
-} from "../utils/firebaseInit";
+import AppError from "../utils/AppError.js";
+import { firebaseConfig, getMessagingOrNull } from "../utils/firebaseInit";
 import logError from "../utils/logError.js";
 
 import { getFcmTokenSafe as requestFcmToken } from "./pushTokens";
@@ -39,6 +36,27 @@ export async function ensureServiceWorkerRegistered() {
   try {
     if (swRegPromise) return swRegPromise;
     swRegPromise = (async () => {
+      try {
+        if (navigator.serviceWorker?.getRegistration) {
+          const scope = import.meta?.env?.BASE_URL || "/";
+          const existing = await navigator.serviceWorker.getRegistration(scope);
+          const scriptUrl =
+            existing?.active?.scriptURL ||
+            existing?.waiting?.scriptURL ||
+            existing?.installing?.scriptURL ||
+            "";
+          if (scriptUrl.endsWith("/sw.js")) {
+            const ackExisting = await ensureFcmSwReady(firebaseMessagingConfig);
+            if (!ackExisting) {
+              console.warn("[fcm] ensureFcmSwReady did not ACK (existing)");
+            }
+            return existing;
+          }
+        }
+      } catch (lookupError) {
+        logError(lookupError, { where: "fcm", action: "lookup-sw" });
+      }
+
       await purgeOtherServiceWorkers();
       const registration = await registerSW();
       if (!registration) return null;
@@ -68,27 +86,44 @@ export async function requestFcmPermission() {
   }
 }
 
-export async function getFcmTokenSafe() {
+export async function getFcmTokenSafe({ serviceWorkerRegistration } = {}) {
   if (!isSupportedBrowser()) return null;
   try {
-    await ensureServiceWorkerRegistered();
-    const result = await requestFcmToken(
-      firebaseApp,
-      import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    );
-    if (result?.ok && result.token) {
+    const messaging = await getMessagingOrNull();
+    if (!messaging) {
+      console.info("[fcm] messaging unsupported or unavailable");
+      return null;
+    }
+
+    const registration =
+      serviceWorkerRegistration || (await ensureServiceWorkerRegistered());
+    if (!registration) {
+      console.warn("[fcm] service worker registration unavailable");
+      return null;
+    }
+
+    const token = await requestFcmToken({
+      messaging,
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (token) {
       try {
-        localStorage.setItem(LS_KEY, result.token);
+        localStorage.setItem(LS_KEY, token);
       } catch (error) {
         logError(error, { where: "fcm", action: "cache-token" });
       }
-      return result.token;
+      console.info("[fcm] token ready");
+      return token;
     }
-    if (result?.reason) {
-      console.info("[fcm] token blocked", result.reason);
-    }
+
+    console.info("[fcm] token not issued (permission or support)");
     return null;
   } catch (error) {
+    if (error instanceof AppError && error.code === "missing_vapid_key") {
+      throw error;
+    }
     logError(error, { where: "fcm", action: "get-token" });
     return null;
   }

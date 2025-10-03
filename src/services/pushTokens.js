@@ -6,79 +6,72 @@ import {
   onMessage,
 } from "firebase/messaging";
 
+import AppError from "@/utils/AppError.js";
 import logError from "@/utils/logError.js";
 
-function resolveVapidKey(explicitKey) {
-  const direct = typeof explicitKey === "string" ? explicitKey.trim() : "";
-  if (direct) return direct;
-  const envKey =
-    typeof import.meta?.env?.VITE_FIREBASE_VAPID_KEY === "string"
-      ? import.meta.env.VITE_FIREBASE_VAPID_KEY.trim()
-      : "";
-  return envKey;
+function normalizeVapidKey(input) {
+  return typeof input === "string" ? input.trim() : "";
 }
 
-export async function getFcmTokenSafe(
-  firebaseApp,
-  vapidKeyFromEnv,
-  swRegistration,
-) {
+async function ensureNotificationPermission() {
+  if (typeof Notification === "undefined") return "denied";
+  const current = Notification.permission;
+  if (current === "granted" || current === "denied") {
+    return current;
+  }
+  try {
+    return await Notification.requestPermission();
+  } catch (error) {
+    logError(error, { where: "pushTokens", action: "request-permission" });
+    return "denied";
+  }
+}
+
+export async function getFcmTokenSafe({
+  messaging,
+  vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY,
+  serviceWorkerRegistration,
+} = {}) {
+  const resolvedVapidKey = normalizeVapidKey(vapidKey);
+  if (!resolvedVapidKey) {
+    throw new AppError("missing_vapid_key", "missing_vapid_key");
+  }
+
   try {
     const supported = await isSupported();
-    if (!supported) {
-      return { ok: false, reason: "messaging_not_supported" };
-    }
-    if (typeof window === "undefined") {
-      return { ok: false, reason: "no_window" };
-    }
-    if (!("Notification" in window)) {
-      return { ok: false, reason: "notifications_api_missing" };
-    }
-    if (!("serviceWorker" in navigator)) {
-      return { ok: false, reason: "service_worker_missing" };
-    }
-    if (!("PushManager" in window)) {
-      return { ok: false, reason: "push_manager_missing" };
-    }
+    if (!supported) return null;
+    if (typeof window === "undefined") return null;
+    if (!messaging) return null;
+    if (!("Notification" in window)) return null;
+    if (!("serviceWorker" in navigator)) return null;
+    if (!("PushManager" in window)) return null;
 
-    const permission =
-      Notification.permission === "granted"
-        ? "granted"
-        : await Notification.requestPermission();
+    const permission = await ensureNotificationPermission();
     if (permission !== "granted") {
-      return { ok: false, reason: `permission_${permission}` };
+      return null;
     }
 
-    const messaging = getMessaging(firebaseApp);
-    const vapidKey = resolveVapidKey(vapidKeyFromEnv);
-    if (!vapidKey) {
-      return { ok: false, reason: "missing_vapid_key" };
-    }
-
-    let registration = swRegistration || null;
+    let registration = serviceWorkerRegistration || null;
     if (!registration) {
       try {
         registration = await navigator.serviceWorker.ready;
       } catch (error) {
-        logError(error, {
-          where: "pushTokens",
-          action: "sw-ready",
-        });
+        logError(error, { where: "pushTokens", action: "sw-ready" });
       }
     }
 
     const options = registration
-      ? { vapidKey, serviceWorkerRegistration: registration }
-      : { vapidKey };
-    const token = await getToken(messaging, options);
-    if (!token) {
-      return { ok: false, reason: "no_token" };
-    }
+      ? {
+          vapidKey: resolvedVapidKey,
+          serviceWorkerRegistration: registration,
+        }
+      : { vapidKey: resolvedVapidKey };
 
-    return { ok: true, token };
+    const token = await getToken(messaging, options);
+    return token || null;
   } catch (error) {
     logError(error, { where: "pushTokens", action: "get-token" });
-    return { ok: false, reason: "exception" };
+    return null;
   }
 }
 

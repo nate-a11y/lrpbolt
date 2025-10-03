@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 /* global self */
-const SW_VERSION = "lrp-sw-v16";
+const SW_VERSION = "lrp-sw-v17";
 let CLOCK_STICKY = false;
 
 // Scope-relative URL builder
@@ -75,7 +75,7 @@ self.addEventListener("message", (event) => {
           if (cfg && (!self.firebase?.apps?.length)) self.firebase.initializeApp(cfg);
           if (self.firebase?.apps?.length) {
             const messaging = self.firebase.messaging();
-            messaging.onBackgroundMessage((payload) => {
+            messaging.onBackgroundMessage(async (payload) => {
               try {
                 if (payload?.notification) return;
                 const title =
@@ -83,7 +83,7 @@ self.addEventListener("message", (event) => {
                   payload?.data?.body ||
                   "LRP — Update";
                 const body = payload?.data?.body || "";
-                self.registration.showNotification(title, {
+                await self.registration.showNotification(title, {
                   body,
                   tag: "lrp-fcm",
                   renotify: true,
@@ -172,17 +172,113 @@ self.addEventListener("notificationclose", (event) => {
     event.waitUntil(showClockNotificationFromSW("LRP — On the clock", ""));
   }
 });
+async function postClockoutRequest() {
+  try {
+    const response = await fetch("/api/clockout", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      let detail = "";
+      try {
+        detail = await response.text();
+      } catch (readError) {
+        console.warn("[sw] clockout response read failed", readError);
+      }
+      const suffix = detail ? ` — ${detail}` : "";
+      throw new Error(
+        `Clock out failed: ${response.status} ${response.statusText}${suffix}`,
+      );
+    }
+    return true;
+  } catch (error) {
+    console.error("[sw] clockout request failed", error);
+    return false;
+  }
+}
+
+async function broadcastToClients(message) {
+  try {
+    const all = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+    for (const client of all) {
+      try {
+        client.postMessage(message);
+      } catch (error) {
+        console.warn("[sw] postMessage failed", error);
+      }
+    }
+  } catch (error) {
+    console.error("[sw] broadcast failed", error);
+  }
+}
+
+async function focusExistingClientOrOpen(path) {
+  const normalizedPath = typeof path === "string" ? path : "/";
+  const all = await self.clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+  const targetHref = new URL(normalizedPath, self.registration.scope).href;
+  const existing = all.find((client) => {
+    try {
+      const url = client.url || "";
+      return (
+        url === targetHref ||
+        url.startsWith(`${targetHref}?`) ||
+        url.startsWith(`${targetHref}#`)
+      );
+    } catch (error) {
+      console.warn("[sw] client url compare failed", error);
+      return false;
+    }
+  });
+  if (!existing && all.length && normalizedPath === "/") {
+    const [first] = all;
+    if (first && typeof first.focus === "function") {
+      await first.focus();
+    }
+    return first || null;
+  }
+  if (existing) {
+    if (typeof existing.focus === "function") await existing.focus();
+    return existing;
+  }
+  const created = await self.clients.openWindow(normalizedPath);
+  if (created && typeof created.focus === "function") await created.focus();
+  return created;
+}
+
 self.addEventListener("notificationclick", (event) => {
   const action = event.action || "";
   event.notification?.close();
-  event.waitUntil((async () => {
-    try {
-      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      const scopeURL = self.registration.scope;
-      const client = all.find((c) => c.url.startsWith(scopeURL)) || (await self.clients.openWindow(scopeURL));
-      if (!client) return;
-      client.postMessage({ type: action === "clockout" ? "SW_CLOCK_OUT_REQUEST" : "SW_OPEN_TIME_CLOCK" });
-      if ("focus" in client) await client.focus();
-    } catch (e) { console.error("[sw] notificationclick error", e); }
-  })());
+  event.waitUntil(
+    (async () => {
+      try {
+        if (action === "clockout") {
+          const success = await postClockoutRequest();
+          if (!success) {
+            await self.registration.showNotification("Clock Out Failed ❌", {
+              body: "We couldn't confirm your clock out. Please retry from the clock page.",
+              tag: "lrp-timeclock-error",
+              icon: scopeUrl("icons/icon-192.png"),
+              badge: scopeUrl("icons/icon-192.png"),
+            });
+          }
+          await broadcastToClients({ type: "SW_CLOCK_OUT_REQUEST" });
+          await focusExistingClientOrOpen("/timeclock");
+          return;
+        }
+
+        const focused = await focusExistingClientOrOpen("/");
+        if (!focused) {
+          await self.clients.openWindow("/");
+        }
+      } catch (e) {
+        console.error("[sw] notificationclick error", e);
+      }
+    })(),
+  );
 });
