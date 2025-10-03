@@ -2,21 +2,37 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
 import { Paper } from "@mui/material";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import tz from "dayjs/plugin/timezone";
 
 import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
-import { formatDateTime } from "@/utils/time";
+import { normalizeRideArray } from "@/services/mappers/rides.js";
 import { getFlag } from "@/services/observability";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import { deleteRide } from "../services/firestoreService";
-import { mapSnapshotToRows } from "../services/normalizers";
 import { db } from "../utils/firebaseInit";
 
 import EditRideDialog from "./EditRideDialog.jsx";
+
+dayjs.extend(utc);
+dayjs.extend(tz);
+
+function formatTs(ts) {
+  try {
+    const d =
+      ts && typeof ts?.toDate === "function" ? dayjs(ts.toDate()) : dayjs(ts);
+    return d.isValid() ? d.tz(dayjs.tz.guess()).format("MMM D, h:mm A") : "—";
+  } catch (error) {
+    logError(error, { where: "LiveRidesGrid", action: "formatTs" });
+    return "—";
+  }
+}
 
 export default function LiveRidesGrid() {
   const [rows, setRows] = useState([]);
@@ -28,7 +44,7 @@ export default function LiveRidesGrid() {
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "liveRides"),
-      (snap) => setRows(mapSnapshotToRows("liveRides", snap)),
+      (snap) => setRows(normalizeRideArray(snap)),
       console.error,
     );
     return () => unsub();
@@ -122,7 +138,7 @@ export default function LiveRidesGrid() {
 
   const formatMinutes = useCallback((raw) => {
     const minutes = Number(raw);
-    if (!Number.isFinite(minutes) || minutes <= 0) return "N/A";
+    if (!Number.isFinite(minutes) || minutes <= 0) return "—";
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
     if (hours > 0) {
@@ -146,98 +162,94 @@ export default function LiveRidesGrid() {
   );
 
   const columns = useMemo(() => {
-    const toStringFormatter = (params) => {
-      const value = params?.value;
-      if (value == null || value === "") return "N/A";
-      return String(value);
-    };
-
     const baseColumns = [
       {
         field: "tripId",
         headerName: "Trip ID",
         minWidth: 140,
-        flex: 0.8,
-        valueGetter: (params) =>
-          params?.row?.tripId ?? params?.row?.rideId ?? params?.row?.id ?? null,
-        valueFormatter: toStringFormatter,
+        flex: 1,
+        valueFormatter: (params) => {
+          const value = params?.value;
+          return value == null || value === "" ? "—" : String(value);
+        },
       },
       {
-        field: "pickupAt",
+        field: "pickupTime",
         headerName: "Pickup",
-        minWidth: 180,
+        minWidth: 160,
         flex: 1,
-        valueGetter: (params) =>
-          params?.row?.pickupAt ?? params?.row?.pickupTime ?? null,
-        valueFormatter: (params) =>
-          params?.value ? formatDateTime(params.value) : "N/A",
+        valueFormatter: (params) => formatTs(params?.value),
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: (params) =>
-          params?.row?.rideDuration ?? params?.row?.duration ?? null,
         valueFormatter: (params) => formatMinutes(params?.value),
       },
       {
         field: "rideType",
         headerName: "Type",
-        minWidth: 140,
-        flex: 1,
-        valueGetter: (params) => params?.row?.rideType ?? null,
-        valueFormatter: toStringFormatter,
+        minWidth: 120,
+        flex: 0.7,
+        valueFormatter: (params) => {
+          const value = params?.value;
+          return value == null || value === "" ? "—" : String(value);
+        },
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         minWidth: 140,
-        flex: 1,
-        valueGetter: (params) => params?.row?.vehicle ?? null,
-        valueFormatter: toStringFormatter,
+        flex: 0.9,
+        valueFormatter: (params) => {
+          const value = params?.value;
+          return value == null || value === "" ? "—" : String(value);
+        },
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         minWidth: 180,
         flex: 1.4,
-        valueGetter: (params) => params?.row?.rideNotes ?? null,
-        valueFormatter: toStringFormatter,
+        valueFormatter: (params) => {
+          const value = params?.value;
+          return value == null || value === "" ? "—" : String(value);
+        },
       },
       {
         field: "createdAt",
         headerName: "Created",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => params?.row?.createdAt ?? null,
-        valueFormatter: (params) =>
-          params?.value ? formatDateTime(params.value) : "N/A",
+        valueFormatter: (params) => formatTs(params?.value),
       },
       {
         field: "claimedBy",
         headerName: "Claimed By",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => params?.row?.claimedBy ?? null,
-        valueFormatter: toStringFormatter,
+        valueFormatter: (params) => {
+          const value = params?.value;
+          return value == null || value === "" ? "—" : String(value);
+        },
       },
       {
         field: "claimedAt",
         headerName: "Claimed At",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => params?.row?.claimedAt ?? null,
-        valueFormatter: (params) =>
-          params?.value ? formatDateTime(params.value) : "N/A",
+        valueFormatter: (params) => formatTs(params?.value),
       },
       {
         field: "status",
         headerName: "Status",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => params?.row?.status ?? null,
-        valueFormatter: toStringFormatter,
+        valueFormatter: (params) => {
+          const value = params?.value;
+          return value == null || value === "" ? "—" : String(value);
+        },
       },
     ];
 

@@ -18,6 +18,9 @@ import logError from "../utils/logError.js";
 import retry from "../utils/retry.js";
 
 import { mapSnapshotToRows } from "./normalizers";
+import { normalizeRideArray } from "./mappers/rides.js";
+
+const RIDE_COLLECTIONS = new Set(["rideQueue", "liveRides", "claimedRides"]);
 
 export async function getRides(collectionName) {
   try {
@@ -28,7 +31,9 @@ export async function getRides(collectionName) {
           orderBy("pickupTime", "asc"),
         );
         const snap = await getDocs(q);
-        return mapSnapshotToRows(collectionName, snap);
+        return RIDE_COLLECTIONS.has(collectionName)
+          ? normalizeRideArray(snap)
+          : mapSnapshotToRows(collectionName, snap);
       },
       {
         onError: (err, attempt) =>
@@ -59,7 +64,12 @@ export function subscribeRides(collectionName, callback, onError) {
     );
     return onSnapshot(
       q,
-      (snap) => callback(mapSnapshotToRows(collectionName, snap)),
+      (snap) =>
+        callback(
+          RIDE_COLLECTIONS.has(collectionName)
+            ? normalizeRideArray(snap)
+            : mapSnapshotToRows(collectionName, snap),
+        ),
       (err) => {
         const appErr =
           err instanceof AppError
