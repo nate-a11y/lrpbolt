@@ -4,11 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
-import {
-  ensureServiceWorkerRegistered,
-  getFcmTokenSafe,
-  isSupportedBrowser,
-} from "@/services/fcm";
+import { initMessagingAndToken } from "@/services/fcm";
 import ActiveClockProvider from "@/context/ActiveClockContext.jsx";
 
 import AppRoot from "./App.jsx";
@@ -24,52 +20,14 @@ import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import ToastProvider from "./context/ToastProvider.jsx";
 import "./utils/firebaseInit.js";
 import "./muix-license.js";
-import AppError from "./utils/AppError.js";
-import logError from "./utils/logError.js";
-
-const hasVapidKey = Boolean(import.meta?.env?.VITE_FIREBASE_VAPID_KEY);
-if (!hasVapidKey) {
-  console.warn(
-    "[LRP] VITE_FIREBASE_VAPID_KEY is not set. Push token requests will fail unless firebaseConfig.vapidKey is provided.",
-  );
-}
-
 initServiceWorkerMessageBridge();
 
-const bootstrapPushMessaging = () => {
-  if (typeof window === "undefined") return;
-  if (!isSupportedBrowser()) {
-    console.info("[LRP][FCM] push messaging not supported in this context");
-    return;
+if (typeof window !== "undefined") {
+  if (!window.__LRP_FCM_BOOT__) {
+    window.__LRP_FCM_BOOT__ = true;
+    initMessagingAndToken();
   }
-
-  (async () => {
-    try {
-      const registration = await ensureServiceWorkerRegistered();
-      if (!registration) {
-        console.warn("[LRP][FCM] service worker registration failed");
-        return;
-      }
-
-      const token = await getFcmTokenSafe({
-        serviceWorkerRegistration: registration,
-      });
-      if (token) {
-        console.info("[LRP][FCM] FCM token acquired");
-      } else {
-        console.info("[LRP][FCM] FCM token unavailable (permission pending)");
-      }
-    } catch (error) {
-      if (error instanceof AppError && error.code === "missing_vapid_key") {
-        console.warn("[LRP][FCM] missing VAPID key; cannot request token");
-        return;
-      }
-      logError(error, { where: "main", action: "bootstrap-fcm" });
-    }
-  })();
-};
-
-bootstrapPushMessaging();
+}
 
 const Root = () => {
   return (

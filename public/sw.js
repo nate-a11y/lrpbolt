@@ -12,7 +12,9 @@ self.addEventListener("install", (evt) => {
   evt.waitUntil(
     (async () => {
       try {
-        self.skipWaiting();
+        if (typeof self.skipWaiting === "function") {
+          await self.skipWaiting();
+        }
       } catch (e) {
         console.error("[sw] install", e);
       }
@@ -23,7 +25,9 @@ self.addEventListener("activate", (evt) => {
   evt.waitUntil(
     (async () => {
       try {
-        await self.clients.claim();
+        if (self.clients?.claim) {
+          await self.clients.claim();
+        }
       } catch (e) {
         console.error("[sw] activate", e);
       }
@@ -215,40 +219,73 @@ async function broadcastToClients(message) {
   }
 }
 
-async function focusExistingClientOrOpen(path) {
-  const normalizedPath = typeof path === "string" ? path : "/";
-  const all = await self.clients.matchAll({
-    type: "window",
-    includeUncontrolled: true,
-  });
-  const targetHref = new URL(normalizedPath, self.registration.scope).href;
-  const existing = all.find((client) => {
-    try {
-      const url = client.url || "";
-      return (
-        url === targetHref ||
-        url.startsWith(`${targetHref}?`) ||
-        url.startsWith(`${targetHref}#`)
-      );
-    } catch (error) {
-      console.warn("[sw] client url compare failed", error);
-      return false;
+async function focusOrOpen(path = "/") {
+  const normalizedPath = typeof path === "string" && path ? path : "/";
+  try {
+    const all = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+    const targetHref = new URL(normalizedPath, self.registration.scope).href;
+    const existing = all.find((client) => {
+      try {
+        const url = client.url || "";
+        return (
+          url === targetHref ||
+          url.startsWith(`${targetHref}?`) ||
+          url.startsWith(`${targetHref}#`)
+        );
+      } catch (error) {
+        console.warn("[sw] client url compare failed", error);
+        return false;
+      }
+    });
+
+    if (!existing && all.length && normalizedPath === "/") {
+      const [first] = all;
+      if (first && typeof first.focus === "function") {
+        try {
+          await first.focus();
+        } catch (focusError) {
+          console.warn("[sw] focus failed", focusError);
+        }
+      }
+      return first || null;
     }
-  });
-  if (!existing && all.length && normalizedPath === "/") {
-    const [first] = all;
-    if (first && typeof first.focus === "function") {
-      await first.focus();
+
+    if (existing) {
+      if (typeof existing.focus === "function") {
+        try {
+          await existing.focus();
+        } catch (focusExistingError) {
+          console.warn("[sw] focus existing failed", focusExistingError);
+        }
+      }
+      if (typeof existing.navigate === "function") {
+        try {
+          await existing.navigate(normalizedPath);
+        } catch (navigateError) {
+          console.warn("[sw] navigate existing failed", navigateError);
+        }
+      }
+      return existing;
     }
-    return first || null;
+
+    if (self.clients?.openWindow) {
+      const created = await self.clients.openWindow(normalizedPath);
+      if (created && typeof created.focus === "function") {
+        try {
+          await created.focus();
+        } catch (createdFocusError) {
+          console.warn("[sw] focus new window failed", createdFocusError);
+        }
+      }
+      return created;
+    }
+  } catch (error) {
+    console.error("[sw] focusOrOpen failed", error);
   }
-  if (existing) {
-    if (typeof existing.focus === "function") await existing.focus();
-    return existing;
-  }
-  const created = await self.clients.openWindow(normalizedPath);
-  if (created && typeof created.focus === "function") await created.focus();
-  return created;
+  return null;
 }
 
 self.addEventListener("notificationclick", (event) => {
@@ -268,16 +305,15 @@ self.addEventListener("notificationclick", (event) => {
             });
           }
           await broadcastToClients({ type: "SW_CLOCK_OUT_REQUEST" });
-          await focusExistingClientOrOpen("/timeclock");
+          await focusOrOpen("/timeclock");
           return;
         }
 
-        const focused = await focusExistingClientOrOpen("/");
-        if (!focused) {
-          await self.clients.openWindow("/");
-        }
+        const target = event.notification?.data?.url || "/";
+        await focusOrOpen(target);
       } catch (e) {
         console.error("[sw] notificationclick error", e);
+        await focusOrOpen("/");
       }
     })(),
   );
