@@ -1,0 +1,27 @@
+{
+  "agents": [
+    {
+      "id": "repo-doctor",
+      "name": "Repo Doctor",
+      "description": "Scans code for DataGrid, Firestore, and SW/push issues; suggests and applies safe patches.",
+      "scopes": ["src/**", "public/**"],
+      "rules": [
+        "Prefer services/fs wrappers",
+        "Use withExponentialBackoff for writes",
+        "Never empty catch",
+        "Respect LRP theme"
+      ]
+    },
+    {
+      "id": "ui-polish",
+      "name": "UI Polish",
+      "description": "Applies LRP theme, DataGrid defaults, accessibility and contrast fixes, consistent spacing.",
+      "scopes": ["src/components/**"],
+      "rules": [
+        "Use shared LrpDataGridPro if present",
+        "Add focus outlines",
+        "No ad-hoc CSS; use sx"
+      ]
+    }
+  ]
+}

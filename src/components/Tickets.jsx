@@ -58,17 +58,16 @@ import LocalActivityIcon from "@mui/icons-material/LocalActivity";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import CloseIcon from "@mui/icons-material/Close";
 import { motion } from "framer-motion";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { useSearchParams } from "react-router-dom";
 
 import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
 import {
   subscribeTickets,
-  snapshotTicketsByIds,
-  deleteTicketsByIds,
-  restoreTickets,
-} from "@/services/tickets";
+  deleteTicketsBatch,
+  restoreTicketsBatch,
+  getTicketById,
+} from "@/services/fs";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -106,8 +105,6 @@ const getTabProps = (key) => ({
   id: `tickets-tab-${key}`,
   "aria-controls": `tickets-tabpanel-${key}`,
 });
-
-dayjs.extend(relativeTime);
 
 // null-safe Timestamp → dayjs
 function toDayjsTs(v, dayjsLib) {
@@ -276,7 +273,7 @@ function Tickets() {
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
   const [deleting, setDeleting] = useState(false);
   const [undoOpen, setUndoOpen] = useState(false);
-  const [lastDeleted, setLastDeleted] = useState([]);
+  const [lastDeletedCount, setLastDeletedCount] = useState(0);
   const selectedIds = useMemo(
     () =>
       Array.isArray(rowSelectionModel)
@@ -293,6 +290,9 @@ function Tickets() {
   const [emailSending, setEmailSending] = useState(false);
   const undoTimerRef = useRef(null);
   const previewRef = useRef(null);
+  const rawTicketsRef = useRef(new Map());
+  const deletedRowsRef = useRef([]);
+  const lastPendingRef = useRef(null);
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -306,6 +306,8 @@ function Tickets() {
   const [pendingScanTicket, setPendingScanTicket] = useState(null);
   const [savingScan, setSavingScan] = useState(false);
   const [savingScanType, setSavingScanType] = useState(null);
+  const [subscriptionKey, setSubscriptionKey] = useState(0);
+  const [scannerInstanceKey, setScannerInstanceKey] = useState(0);
 
   const openScanner = useCallback(() => {
     setScannerOpen(true);
@@ -316,6 +318,7 @@ function Tickets() {
     setPendingScanTicket(null);
     setSavingScan(false);
     setSavingScanType(null);
+    setScannerInstanceKey((k) => k + 1);
   }, []);
 
   const handleSequentialToggle = useCallback((event) => {
@@ -327,6 +330,13 @@ function Tickets() {
       setRowSelectionModel([]);
     }
   }, [scannerOpen]);
+
+  useEffect(() => {
+    if (lastPendingRef.current && !pendingScanTicket) {
+      setScannerInstanceKey((k) => k + 1);
+    }
+    lastPendingRef.current = pendingScanTicket;
+  }, [pendingScanTicket]);
 
   const handleScanResult = useCallback(
     async ({ text }) => {
@@ -363,12 +373,9 @@ function Tickets() {
         return;
       }
       try {
-        const [match] = await snapshotTicketsByIds([ticketId]);
-        if (match?.data) {
-          const normalized = normalizeTicket(
-            { id: match.id, ...(match.data || {}) },
-            dayjs,
-          );
+        const match = await getTicketById(ticketId);
+        if (match) {
+          const normalized = normalizeTicket(match, dayjs);
           setPreviewTicket(normalized);
           setPendingScanTicket(normalized);
           setSnackbar({
@@ -425,7 +432,25 @@ function Tickets() {
         return;
       }
       const label = pendingScanTicket.ticketId || String(docId);
-      const driver = user?.email || "Unknown";
+      if (scanType === "outbound" && pendingScanTicket.scannedOutbound) {
+        setSnackbar({
+          open: true,
+          message: `Ticket ${label} already marked Outbound`,
+          severity: "info",
+          action: null,
+        });
+        return;
+      }
+      if (scanType === "return" && pendingScanTicket.scannedReturn) {
+        setSnackbar({
+          open: true,
+          message: `Ticket ${label} already marked Return`,
+          severity: "info",
+          action: null,
+        });
+        return;
+      }
+      const driver = user?.displayName || user?.email || user?.uid || "N/A";
       setSavingScan(true);
       setSavingScanType(scanType);
       try {
@@ -471,6 +496,7 @@ function Tickets() {
           action: null,
         });
         setPendingScanTicket(null);
+        setScannerInstanceKey((k) => k + 1);
       } catch (err) {
         logError(err, {
           area: "Tickets",
@@ -497,7 +523,9 @@ function Tickets() {
       setSnackbar,
       setPendingScanTicket,
       setSavingScanType,
+      user?.displayName,
       user?.email,
+      user?.uid,
     ],
   );
 
@@ -578,7 +606,16 @@ function Tickets() {
     const unsubscribe = subscribeTickets({
       onData: (data) => {
         try {
-          const rows = (data || []).map((d) => normalizeTicket(d, dayjs));
+          const incoming = Array.isArray(data) ? data : [];
+          const map = new Map();
+          incoming.forEach((item) => {
+            if (!item) return;
+            const id = item.id != null ? String(item.id) : null;
+            if (!id) return;
+            map.set(id, { ...item });
+          });
+          rawTicketsRef.current = map;
+          const rows = incoming.map((d) => normalizeTicket(d, dayjs));
           setTickets(rows);
         } catch (e) {
           logError(e);
@@ -599,7 +636,7 @@ function Tickets() {
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [authLoading, user?.email]);
+  }, [authLoading, user?.email, subscriptionKey]);
 
   useEffect(() => {
     return () => {
@@ -695,17 +732,21 @@ function Tickets() {
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
 
-  const closeUndoSnackbar = useCallback((options = {}) => {
-    const { clearDocs = false } = options;
-    setUndoOpen(false);
-    if (undoTimerRef.current) {
-      clearTimeout(undoTimerRef.current);
-      undoTimerRef.current = null;
-    }
-    if (clearDocs) {
-      setLastDeleted([]);
-    }
-  }, []);
+  const closeUndoSnackbar = useCallback(
+    (options = {}) => {
+      const { clearDocs = false } = options;
+      setUndoOpen(false);
+      if (undoTimerRef.current) {
+        clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = null;
+      }
+      if (clearDocs) {
+        deletedRowsRef.current = [];
+        setLastDeletedCount(0);
+      }
+    },
+    [setLastDeletedCount],
+  );
 
   const handleDeleteRows = useCallback(
     async (idsInput) => {
@@ -714,29 +755,49 @@ function Tickets() {
         : [];
       if (!ids.length || deleting) return;
 
+      closeUndoSnackbar({ clearDocs: true });
       setDeleting(true);
       let deletionSucceeded = false;
       try {
-        const snapshot = await snapshotTicketsByIds(ids);
-        setLastDeleted(snapshot);
+        const captured = ids
+          .map((id) => {
+            const raw = rawTicketsRef.current.get(id);
+            if (!raw) return null;
+            const { id: rawId, ...data } = raw;
+            return { id: rawId || id, ...data };
+          })
+          .filter(Boolean);
+        deletedRowsRef.current = captured;
+        setLastDeletedCount(captured.length);
+        if (captured.length < ids.length) {
+          logError(new Error("Incomplete ticket snapshot before delete"), {
+            area: "tickets",
+            action: "captureDelete",
+            ids,
+            captured: captured.length,
+          });
+        }
 
-        await deleteTicketsByIds(ids);
+        await deleteTicketsBatch(ids);
         deletionSucceeded = true;
 
-        setUndoOpen(true);
-        if (undoTimerRef.current) {
-          clearTimeout(undoTimerRef.current);
+        if (deletedRowsRef.current.length) {
+          setUndoOpen(true);
+          if (undoTimerRef.current) {
+            clearTimeout(undoTimerRef.current);
+          }
+          undoTimerRef.current = setTimeout(() => {
+            closeUndoSnackbar({ clearDocs: true });
+          }, 6000);
         }
-        undoTimerRef.current = setTimeout(() => {
-          closeUndoSnackbar({ clearDocs: true });
-        }, 6000);
       } catch (err) {
         logError(err, {
           area: "tickets",
           action: "handleDeleteRows",
           ids,
         });
-        setLastDeleted([]);
+        deletedRowsRef.current = [];
+        setLastDeletedCount(0);
         setSnackbar({
           open: true,
           message:
@@ -757,19 +818,20 @@ function Tickets() {
         }
       }
     },
-    [deleting, closeUndoSnackbar],
+    [deleting, closeUndoSnackbar, setSnackbar, setLastDeletedCount],
   );
 
   const handleUndoDelete = useCallback(async () => {
-    if (!lastDeleted?.length) {
-      closeUndoSnackbar();
+    const cached = deletedRowsRef.current;
+    if (!cached?.length) {
+      closeUndoSnackbar({ clearDocs: true });
       return;
     }
 
     closeUndoSnackbar();
     try {
-      await restoreTickets(lastDeleted);
-      const count = lastDeleted.length;
+      await restoreTicketsBatch(cached);
+      const count = cached.length;
       setSnackbar({
         open: true,
         message: `Restored ${count} ticket${count === 1 ? "" : "s"}.`,
@@ -780,7 +842,7 @@ function Tickets() {
       logError(err, {
         area: "tickets",
         action: "handleUndoDelete",
-        count: lastDeleted.length,
+        count: cached.length,
       });
       setSnackbar({
         open: true,
@@ -788,10 +850,12 @@ function Tickets() {
         severity: "error",
         action: null,
       });
+      setSubscriptionKey((key) => key + 1);
     } finally {
-      setLastDeleted([]);
+      deletedRowsRef.current = [];
+      setLastDeletedCount(0);
     }
-  }, [closeUndoSnackbar, lastDeleted]);
+  }, [closeUndoSnackbar, setSnackbar, setSubscriptionKey]);
 
   const handleDeleteClick = useCallback(
     (row) => {
@@ -855,6 +919,7 @@ function Tickets() {
           headerName: "Scan Status",
           minWidth: 140,
           sortable: false,
+          valueGetter: (params) => getScanStatus(params?.row || {}) || "N/A",
           renderCell: ScanStatusCell,
         },
         {
@@ -862,9 +927,10 @@ function Tickets() {
           headerName: "Link",
           minWidth: 120,
           sortable: false,
+          valueGetter: (params) => params?.row?.linkUrl || "N/A",
           renderCell: (p) => {
             const href = p?.row?.linkUrl;
-            if (!href) return "—";
+            if (!href) return "N/A";
             return (
               <Box
                 component="span"
@@ -1087,11 +1153,6 @@ function Tickets() {
     theme.palette.background.paper,
     theme.palette.text.primary,
   ]);
-
-  if (Array.isArray(safeRows) && safeRows.length) {
-    const k = Object.keys(safeRows[0] || {});
-    console.log("[Tickets:keys]", k);
-  }
 
   return (
     <PageContainer maxWidth={960}>
@@ -1559,6 +1620,7 @@ function Tickets() {
               >
                 {scannerOpen && (
                   <TicketScanner
+                    key={scannerInstanceKey}
                     onScan={handleScanResult}
                     onClose={closeScanner}
                     sequential={sequentialScan}
@@ -1736,8 +1798,8 @@ function Tickets() {
           if (reason === "clickaway") return;
           closeUndoSnackbar({ clearDocs: true });
         }}
-        message={`Deleted ${lastDeleted?.length || 0} ticket${
-          (lastDeleted?.length || 0) === 1 ? "" : "s"
+        message={`Deleted ${lastDeletedCount || 0} ticket${
+          (lastDeletedCount || 0) === 1 ? "" : "s"
         }.`}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         action={
