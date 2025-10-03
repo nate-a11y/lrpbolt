@@ -133,6 +133,39 @@ function useSelectedRowIds(apiRef) {
   }, [apiRef]);
 }
 
+const FALLBACK_DISPLAY = "—";
+
+function ensureDisplayValue(value, fallback = FALLBACK_DISPLAY) {
+  if (value === null || value === undefined) return fallback;
+  if (value === "") return fallback;
+  return value;
+}
+
+function createSafeRenderCell(field, renderCell) {
+  if (renderCell?.$lrpSafeWrapped) {
+    return renderCell;
+  }
+
+  const safe = (params) => {
+    try {
+      if (typeof renderCell === "function") {
+        return renderCell(params);
+      }
+      const fallbackValue = params?.formattedValue ?? params?.value;
+      return ensureDisplayValue(fallbackValue);
+    } catch (error) {
+      logError(error, {
+        where: "LrpDataGridPro.renderCell",
+        field,
+      });
+      const fallbackValue = params?.formattedValue ?? params?.value;
+      return ensureDisplayValue(fallbackValue);
+    }
+  };
+  safe.$lrpSafeWrapped = true;
+  return safe;
+}
+
 function DefaultToolbar({
   quickFilterPlaceholder,
   onDeleteSelected,
@@ -353,23 +386,32 @@ function LrpDataGridPro({
   const safeColumns = useMemo(() => {
     return (columns || []).map((col) => {
       if (!col) return col;
+
+      let next = col;
+
+      if (typeof col.renderCell === "function") {
+        const wrapped = createSafeRenderCell(col.field, col.renderCell);
+        if (wrapped !== col.renderCell) {
+          next = { ...next, renderCell: wrapped };
+        }
+      }
+
       if (
-        typeof col.valueGetter === "function" ||
-        typeof col.renderCell === "function" ||
-        typeof col.valueFormatter === "function"
+        typeof next.valueGetter === "function" ||
+        typeof next.valueFormatter === "function"
       ) {
-        return col;
+        return next;
       }
-      if (col.naFallback) {
-        return {
-          ...col,
-          valueFormatter: (params) => {
-            const value = params?.value;
-            return value == null || value === "" ? "N/A" : value;
-          },
+
+      if (next.naFallback) {
+        const formatter = (params) => {
+          const value = params?.value;
+          return ensureDisplayValue(value, "N/A");
         };
+        return { ...next, valueFormatter: formatter };
       }
-      return col;
+
+      return next;
     });
   }, [columns]);
 
