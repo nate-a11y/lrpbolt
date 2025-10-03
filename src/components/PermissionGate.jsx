@@ -10,6 +10,7 @@ import { claimAnonymousToken, saveUserPushToken } from "@/services/fcmTokens";
 import {
   app as firebaseApp,
   getControllingServiceWorkerRegistration,
+  getMessagingOrNull,
 } from "@/utils/firebaseInit";
 import { diagPushSupport } from "@/utils/pushDiag.js";
 import { useAuth } from "@/context/AuthContext.jsx";
@@ -58,20 +59,22 @@ export default function PermissionGate({ user: userProp, children = null }) {
     try {
       const swReg = await getControllingServiceWorkerRegistration();
       console.info("[LRP][FCM] registration scope", swReg?.scope || "(none)");
-      const result = await getFcmTokenSafe(
-        firebaseApp,
-        import.meta.env.VITE_FIREBASE_VAPID_KEY,
-        swReg,
-      );
-
-      if (!result?.ok || !result.token) {
-        if (result?.reason) {
-          console.warn("[LRP][FCM] registration failed:", result.reason);
-        }
+      const messaging = await getMessagingOrNull();
+      if (!messaging) {
+        console.warn("[LRP][FCM] messaging unavailable in PermissionGate");
         return;
       }
 
-      const token = result.token;
+      const token = await getFcmTokenSafe({
+        messaging,
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: swReg || undefined,
+      });
+
+      if (!token) {
+        console.warn("[LRP][FCM] registration did not issue a token");
+        return;
+      }
       const resolvedUserId = targetUserId ?? "anonymous";
       const { userId: lastUserId, token: lastToken } =
         lastPersistedRef.current || {};

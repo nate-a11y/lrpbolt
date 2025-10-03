@@ -10,7 +10,8 @@
         "Use withExponentialBackoff for writes",
         "Never empty catch",
         "Respect LRP theme",
-        "Migrate legacy TimeLogs to fs"
+        "Migrate legacy TimeLogs to fs",
+        "Harden SW: waitUntil + notificationclick when closed; ensure VAPID key used."
       ]
     },
     {
