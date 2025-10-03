@@ -1,6 +1,4 @@
-/* Proprietary and confidential. See LICENSE. */
-
-/* Prefer WebP with PNG fallback. Public-path safe; keeps original query/hash. */
+/* Prefer WebP filename beside PNG; no detection here. */
 export function asWebpIfPresent(pngPath) {
   try {
     if (typeof pngPath !== "string") return { webp: null, png: pngPath };

@@ -1,0 +1,3 @@
+- Removed all WebP HEAD probes and gating state.
+- PictureWebp now renders <picture><source webp/><img png/></picture>.
+- CSS backgrounds use image-set.

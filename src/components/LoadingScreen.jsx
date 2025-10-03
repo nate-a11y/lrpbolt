@@ -4,6 +4,8 @@ import { Box, Typography, LinearProgress, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { motion, useReducedMotion } from "framer-motion";
 
+import { imageSetFor } from "@/utils/assetVariant";
+
 /**
  * Props:
  * - progress?: number | null   // 0..100 (if provided shows determinate bar), else indeterminate
@@ -62,7 +64,7 @@ export default function LoadingScreen({ progress = null }) {
           width: upMd ? 220 : 160,
           height: upMd ? 220 : 160,
           opacity: theme.palette.mode === "dark" ? 0.04 : 0.06,
-          backgroundImage: 'url("/android-chrome-192x192.png")',
+          backgroundImage: imageSetFor("/android-chrome-192x192.png"),
           backgroundSize: "contain",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
