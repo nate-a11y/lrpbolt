@@ -341,19 +341,69 @@ export function subscribeTimeLogs(arg1, arg2, arg3) {
   }
 
   try {
-    const { driverEmail = null, userId = null, limit = 200 } = criteria || {};
-    const constraints = [];
-    if (userId) {
-      constraints.push(where("userId", "==", userId));
-    } else if (driverEmail) {
-      const emailFilter = String(driverEmail).toLowerCase();
-      constraints.push(where("userEmail", "==", emailFilter));
+    const {
+      driverId = null,
+      driverEmail = null,
+      userEmail = null,
+      userId = null,
+      limit = 200,
+    } = criteria || {};
+
+    const colRef = collection(db, "timeLogs");
+    const filters = [];
+    const seen = new Set();
+
+    const pushFilter = (field, rawValue) => {
+      if (rawValue == null) return;
+      let value = rawValue;
+      if (typeof value === "string") {
+        value = value.trim();
+        if (value === "") return;
+      }
+      if (value === "" || value == null) return;
+      const key = `${field}:${value}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      filters.push(where(field, "==", value));
+    };
+
+    const normalizedDriverId =
+      driverId != null && typeof driverId !== "string"
+        ? String(driverId)
+        : driverId;
+
+    pushFilter("driverId", normalizedDriverId);
+    pushFilter("userId", userId);
+
+    const driverEmailLc =
+      typeof driverEmail === "string"
+        ? driverEmail.trim().toLowerCase()
+        : driverEmail;
+    const userEmailLc =
+      typeof userEmail === "string"
+        ? userEmail.trim().toLowerCase()
+        : userEmail;
+
+    pushFilter("driverEmail", driverEmailLc);
+    pushFilter("userEmail", driverEmailLc);
+    if (userEmailLc && userEmailLc !== driverEmailLc) {
+      pushFilter("userEmail", userEmailLc);
+      pushFilter("driverEmail", userEmailLc);
     }
+
+    const constraints = [];
+    if (filters.length === 1) {
+      constraints.push(filters[0]);
+    } else if (filters.length > 1) {
+      constraints.push(or(...filters));
+    }
+
     constraints.push(orderBy("startTime", "desc"));
     if (Number.isFinite(limit) && limit > 0) {
       constraints.push(limitDocs(limit));
     }
-    const q = query(collection(db, "timeLogs"), ...constraints);
+
+    const q = query(colRef, ...constraints);
     return onSnapshot(
       q,
       (snap) => {
