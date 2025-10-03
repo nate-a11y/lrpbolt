@@ -143,9 +143,17 @@ export function normalizeRide(docSnap) {
       docSnap?.id,
       raw.id,
       raw.docId,
+      raw.documentId,
       raw.rideId,
+      raw.rideID,
+      raw.RideId,
+      raw.RideID,
       raw.tripId,
+      raw.tripID,
+      raw.TripId,
+      raw.TripID,
       raw.trip,
+      raw.Trip,
     ),
   );
 
@@ -153,37 +161,60 @@ export function normalizeRide(docSnap) {
     firstDefined(
       raw.tripId,
       raw.tripID,
+      raw.TripId,
+      raw.TripID,
       raw.trip,
+      raw.Trip,
       raw.rideId,
+      raw.rideID,
+      raw.RideId,
+      raw.RideID,
       raw.ticketId,
+      raw.ticketID,
+      raw.TicketId,
+      raw.TicketID,
       raw.tripCode,
+      raw.TripCode,
     ),
   );
 
   const pickupTime = firstDefined(
     raw.pickupTime,
+    raw.pickup_time,
     raw.pickupAt,
     raw.pickup_at,
     raw.pickup,
-    raw.startAt,
-    raw.startTime,
     raw.PickupTime,
+    raw.Pickup_time,
+    raw.PickupAt,
+    raw.Pickup_at,
+    raw.Pickup,
+    raw.startAt,
+    raw.StartAt,
+    raw.startTime,
+    raw.StartTime,
   );
 
   const createdAt = firstDefined(
     raw.createdAt,
     raw.created_at,
     raw.created,
-    raw.timestamp,
     raw.CreatedAt,
+    raw.Created_at,
+    raw.Created,
+    raw.timestamp,
+    raw.Timestamp,
   );
 
   const updatedAt = firstDefined(
     raw.updatedAt,
     raw.updated_at,
     raw.updated,
-    raw.lastUpdated,
     raw.UpdatedAt,
+    raw.Updated_at,
+    raw.Updated,
+    raw.lastUpdated,
+    raw.LastUpdated,
   );
 
   const claimedAt = firstDefined(
@@ -192,6 +223,9 @@ export function normalizeRide(docSnap) {
     raw.claimedTime,
     raw.claimed,
     raw.ClaimedAt,
+    raw.Claimed_at,
+    raw.ClaimedTime,
+    raw.Claimed,
   );
 
   const claimedBy = toTrimmedString(
@@ -201,49 +235,86 @@ export function normalizeRide(docSnap) {
       raw.claimed_user,
       raw.assignedTo,
       raw.ClaimedBy,
+      raw.CLAIMED_BY,
+      raw.assigned_to,
     ),
   );
 
   const rideDuration = toNumberSafe(
     firstDefined(
       raw.rideDuration,
+      raw.RideDuration,
       raw.duration,
+      raw.Duration,
       raw.minutes,
+      raw.minutesDuration,
       raw.durationMinutes,
+      raw.DurationMinutes,
       raw.duration?.minutes,
     ),
   );
 
   const rideType = toTrimmedString(
-    firstDefined(raw.rideType, raw.type, raw.serviceType, raw.category),
+    firstDefined(
+      raw.rideType,
+      raw.RideType,
+      raw.type,
+      raw.Type,
+      raw.serviceType,
+      raw.ServiceType,
+      raw.category,
+      raw.Category,
+    ),
   );
 
   const vehicle = toTrimmedString(
     firstDefined(
       raw.vehicle,
+      raw.Vehicle,
       raw.vehicleName,
+      raw.VehicleName,
       raw.vehicleId,
+      raw.vehicleID,
+      raw.VehicleId,
+      raw.VehicleID,
       raw.vehicle_id,
       raw.vehicleLabel,
       raw.vehicleDescription,
+      raw.vehicleDisplay,
+      raw.vehicleCode,
       raw.car,
+      raw.Car,
       raw.unit,
+      raw.Unit,
     ),
   );
 
   const rideNotes = toNotesString(
     firstDefined(
       raw.rideNotes,
+      raw.RideNotes,
       raw.notes,
+      raw.Notes,
       raw.note,
+      raw.Note,
       raw.messages,
+      raw.Messages,
       raw.description,
+      raw.Description,
     ),
   );
 
   const status =
-    toTrimmedString(firstDefined(raw.status, raw.state, raw.queueStatus)) ||
-    "queued";
+    toTrimmedString(
+      firstDefined(
+        raw.status,
+        raw.Status,
+        raw.state,
+        raw.State,
+        raw.queueStatus,
+        raw.QueueStatus,
+      ),
+    ) || "queued";
 
   const pickupTimeMs = toMillis(pickupTime);
   const createdAtMs = toMillis(createdAt);
