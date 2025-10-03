@@ -367,13 +367,19 @@ export function subscribeTimeLogs(arg1, arg2, arg3) {
       filters.push(where(field, "==", value));
     };
 
-    const normalizedDriverId =
-      driverId != null && typeof driverId !== "string"
-        ? String(driverId)
-        : driverId;
+    const normalizeId = (value) =>
+      value != null && typeof value !== "string" ? String(value) : value;
 
-    pushFilter("driverId", normalizedDriverId);
-    pushFilter("userId", userId);
+    const normalizedDriverId = normalizeId(driverId);
+    const normalizedUserId = normalizeId(userId);
+
+    const pushIdFilters = (value) => {
+      pushFilter("driverId", value);
+      pushFilter("userId", value);
+    };
+
+    pushIdFilters(normalizedDriverId);
+    pushIdFilters(normalizedUserId);
 
     const driverEmailLc =
       typeof driverEmail === "string"
