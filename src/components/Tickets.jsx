@@ -12,7 +12,7 @@ import {
 } from "react";
 import ReactDOM from "react-dom/client";
 import QRCode from "react-qr-code";
-import { toPng } from "html-to-image";
+import * as htmlToImage from "html-to-image";
 import {
   AppBar,
   Box,
@@ -46,6 +46,7 @@ import {
   Chip,
   Fab,
   IconButton,
+  Stack,
 } from "@mui/material";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -54,11 +55,9 @@ import SearchIcon from "@mui/icons-material/Search";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EmailIcon from "@mui/icons-material/Email";
 import EditIcon from "@mui/icons-material/Edit";
-import LocalActivityIcon from "@mui/icons-material/LocalActivity";
 import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 import CloseIcon from "@mui/icons-material/Close";
 import { motion } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
 
 import { formatDateTime, dayjs, toDayjs } from "@/utils/time";
 import { getScanStatus, getScanMeta } from "@/utils/ticketMap";
@@ -69,12 +68,14 @@ import {
   getTicketById,
 } from "@/services/fs";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import { exportTicketNodesAsZip } from "@/utils/exportTickets";
+import { sendTicketsEmail } from "@/services/emailTickets";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
-import { emailTicket as apiEmailTicket, updateTicketScan } from "../hooks/api";
+import { updateTicketScan } from "../hooks/api";
 
 import {
   LoadingOverlay,
@@ -258,6 +259,96 @@ function ScanStatusCell(params) {
   );
 }
 
+function TicketPreviewCard({ ticket }) {
+  if (!ticket) return null;
+  const status = getScanStatus(ticket);
+  const meta = getScanMeta(ticket);
+  return (
+    <Box
+      sx={{
+        p: 2,
+        width: 360,
+        bgcolor: (theme) => theme.palette.background.paper,
+        borderRadius: 2,
+        color: (theme) => theme.palette.text.primary,
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.5,
+        boxShadow: "0 0 0 1px rgba(76,187,23,0.28)",
+      }}
+    >
+      <Box sx={{ display: "flex", justifyContent: "center" }}>
+        <Box
+          component="img"
+          src="/android-chrome-512x512.png"
+          alt="Lake Ride Pros"
+          sx={{ height: 48, width: 48, objectFit: "contain" }}
+        />
+      </Box>
+      <Typography variant="h6" align="center" fontWeight={600}>
+        🎟️ Shuttle Ticket
+      </Typography>
+      <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
+      <Stack spacing={0.5}>
+        <Typography>
+          <strong>Passenger:</strong> {ticket.passenger || "N/A"}
+        </Typography>
+        <Typography>
+          <strong>Passenger Count:</strong> {ticket.passengerCount ?? "N/A"}
+        </Typography>
+        <Typography>
+          <strong>Date:</strong> {formatDate(ticket.pickupTime)}
+        </Typography>
+        <Typography>
+          <strong>Time:</strong> {formatTime(ticket.pickupTime)}
+        </Typography>
+        <Typography>
+          <strong>Pickup:</strong> {ticket.pickup || "N/A"}
+        </Typography>
+        <Typography>
+          <strong>Dropoff:</strong> {ticket.dropoff || "N/A"}
+        </Typography>
+        {ticket.notes ? (
+          <Typography>
+            <strong>Notes:</strong> {ticket.notes}
+          </Typography>
+        ) : null}
+        <Typography>
+          <strong>Ticket ID:</strong> {ticket.ticketId || ticket.id || "N/A"}
+        </Typography>
+      </Stack>
+      <Stack spacing={0.5}>
+        <Typography display="flex" alignItems="center" gap={1}>
+          <strong>Status:</strong>
+          <ScanStatusCell row={ticket} />
+        </Typography>
+        {status !== "Unscanned" && meta ? (
+          <>
+            {meta.outAt ? (
+              <Typography>
+                <strong>Outbound:</strong> {formatDateTime(meta.outAt) || "N/A"}
+                {meta.outBy ? ` by ${meta.outBy}` : ""}
+              </Typography>
+            ) : null}
+            {meta.retAt ? (
+              <Typography>
+                <strong>Return:</strong> {formatDateTime(meta.retAt) || "N/A"}
+                {meta.retBy ? ` by ${meta.retBy}` : ""}
+              </Typography>
+            ) : null}
+          </>
+        ) : null}
+      </Stack>
+      <Box sx={{ mt: 1.5, display: "flex", justifyContent: "center" }}>
+        <QRCode
+          value={`https://lakeridepros.xyz/ticket/${ticket.ticketId || ""}`}
+          size={160}
+        />
+      </Box>
+    </Box>
+  );
+}
+
 function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [filteredDate, setFilteredDate] = useState("All Dates");
@@ -281,21 +372,28 @@ function Tickets() {
         : [],
     [rowSelectionModel],
   );
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState("");
+  const [tab, setTab] = useState(0);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState(
+    "Your Tickets from Lake Ride Pros",
+  );
+  const [emailMessage, setEmailMessage] = useState(
+    "Attached are your tickets. It’s more than a ride, it’s memories made.",
+  );
   const [editingTicket, setEditingTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const undoTimerRef = useRef(null);
   const previewRef = useRef(null);
+  const ticketPreviewContainerRef = useRef(null);
   const rawTicketsRef = useRef(new Map());
   const deletedRowsRef = useRef([]);
   const lastPendingRef = useRef(null);
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
   const scannerFullScreen = useMediaQuery(theme.breakpoints.down("md"));
@@ -539,35 +637,22 @@ function Tickets() {
     [pendingScanTicket],
   );
 
-  const tabParam = searchParams.get("tab");
-  const tabKeys = useMemo(
-    () => (canGenerate ? ["list", "summary", "generate"] : ["list", "summary"]),
-    [canGenerate],
-  );
-  const defaultTab = tabKeys[0];
-  const activeTab = tabKeys.includes(tabParam) ? tabParam : defaultTab;
-
   useEffect(() => {
-    if (tabParam === "generate" && !canGenerate) {
+    if (tab === 1 && !canGenerate) {
+      setTab(0);
       setNoAccessAlertOpen(true);
     }
-  }, [tabParam, canGenerate]);
-
-  useEffect(() => {
-    if (tabParam !== activeTab) {
-      const next = new URLSearchParams(searchParams);
-      next.set("tab", activeTab);
-      setSearchParams(next, { replace: true });
-    }
-  }, [tabParam, activeTab, searchParams, setSearchParams]);
+  }, [tab, canGenerate]);
 
   const handleTabChange = useCallback(
     (_, value) => {
-      const next = new URLSearchParams(searchParams);
-      next.set("tab", value);
-      setSearchParams(next);
+      if (value === 1 && !canGenerate) {
+        setNoAccessAlertOpen(true);
+        return;
+      }
+      setTab(value);
     },
-    [searchParams, setSearchParams],
+    [canGenerate],
   );
 
   const closeNoAccessAlert = useCallback(() => setNoAccessAlertOpen(false), []);
@@ -670,16 +755,6 @@ function Tickets() {
     [tickets, filteredDate, searchQuery],
   );
 
-  const passengerSummary = useMemo(
-    () =>
-      filteredTickets.reduce((acc, t) => {
-        acc[t.pickupDateStr] =
-          (acc[t.pickupDateStr] || 0) + (t.passengerCount || 0);
-        return acc;
-      }, {}),
-    [filteredTickets],
-  );
-
   const rows = useMemo(
     () => (Array.isArray(filteredTickets) ? filteredTickets : []),
     [filteredTickets],
@@ -728,6 +803,33 @@ function Tickets() {
     if (r?.ticketId != null) return String(r.ticketId);
     return null;
   }, []);
+
+  const selectedRows = useMemo(() => {
+    if (!selectedIds.length) return [];
+    const map = new Map();
+    rows.forEach((row) => {
+      const key = getRowId(row);
+      if (key != null) {
+        map.set(String(key), row);
+      }
+    });
+    return selectedIds
+      .map((id) => map.get(String(id)))
+      .filter((row) => Boolean(row));
+  }, [rows, selectedIds, getRowId]);
+
+  const renderTicketPreviewNode = useCallback(
+    (ticket) => {
+      if (!ticket || !ticketPreviewContainerRef.current) return null;
+      const wrapper = document.createElement("div");
+      ticketPreviewContainerRef.current.appendChild(wrapper);
+      const root = ReactDOM.createRoot(wrapper);
+      root.render(<TicketPreviewCard ticket={ticket} />);
+      wrapper.__lrpRoot = root;
+      return wrapper;
+    },
+    [],
+  );
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
@@ -970,8 +1072,16 @@ function Tickets() {
               icon={<EmailIcon />}
               label="Email"
               onClick={() => {
-                setPreviewTicket(params.row);
-                setEmailDialogOpen(true);
+                const candidateId =
+                  getRowId(params.row) ||
+                  (params.row?.ticketId != null
+                    ? String(params.row.ticketId)
+                    : null);
+                if (candidateId) {
+                  setRowSelectionModel([String(candidateId)]);
+                }
+                setEmailTo(params.row?.email || emailTo);
+                setEmailOpen(true);
               }}
             />,
             <GridActionsCellItem
@@ -990,7 +1100,18 @@ function Tickets() {
           ],
         },
       ]),
-    [fmtPickup, handleDeleteClick, handleEditClick, openLink, deleting],
+    [
+      deleting,
+      emailTo,
+      fmtPickup,
+      getRowId,
+      handleDeleteClick,
+      handleEditClick,
+      openLink,
+      setEmailOpen,
+      setEmailTo,
+      setRowSelectionModel,
+    ],
   );
 
   useGridDoctor({ name: "Tickets", rows: safeRows, columns });
@@ -1000,7 +1121,8 @@ function Tickets() {
     const t = previewTicket;
     if (!node || !t) return;
     try {
-      const dataUrl = await toPng(node, {
+      const dataUrl = await htmlToImage.toPng(node, {
+        pixelRatio: 2,
         backgroundColor: theme.palette.background.paper,
       });
       const link = document.createElement("a");
@@ -1014,7 +1136,7 @@ function Tickets() {
         action: null,
       });
     } catch (err) {
-      logError(err);
+      logError(err, { area: "tickets", action: "downloadTicket" });
       setSnackbar({
         open: true,
         message: "❌ Failed to generate image",
@@ -1024,135 +1146,143 @@ function Tickets() {
     }
   }, [previewTicket, theme.palette.background.paper]);
 
-  const emailTicket = useCallback(async () => {
-    const node = previewRef.current;
-    const t = previewTicket;
-    if (!node || !t || !emailAddress) return;
-    setEmailSending(true);
-    try {
-      const dataUrl = await toPng(node, {
-        backgroundColor: theme.palette.background.paper,
+  const handleEmailSelected = useCallback(async () => {
+    if (!selectedRows.length) return;
+    if (!emailTo) {
+      setSnackbar({
+        open: true,
+        message: "Email address required",
+        severity: "warning",
+        action: null,
       });
-      const base64 = dataUrl.split(",")[1];
-      const res = await apiEmailTicket(t.ticketId, emailAddress, base64);
-      if (res?.success) {
+      return;
+    }
+    if (!ticketPreviewContainerRef.current) return;
+    setEmailSending(true);
+    const nodes = [];
+    try {
+      selectedRows.forEach((ticket, index) => {
+        const node = renderTicketPreviewNode(ticket);
+        if (!node) return;
+        const name = ticket?.ticketId || ticket?.id || `ticket-${index + 1}`;
+        node.dataset.ticketName = String(name);
+        nodes.push(node);
+      });
+      const files = [];
+      for (let i = 0; i < nodes.length; i += 1) {
+        const dataUrl = await htmlToImage.toPng(nodes[i], { pixelRatio: 2 });
+        const filename = `${nodes[i].dataset.ticketName}.png`;
+        files.push({ filename, dataUrl });
+      }
+      if (!files.length) return;
+      try {
+        await sendTicketsEmail({
+          to: emailTo,
+          subject: emailSubject,
+          message: emailMessage,
+          attachments: files,
+        });
         setSnackbar({
           open: true,
-          message: "📧 Ticket emailed",
+          message: "📧 Tickets emailed",
           severity: "success",
           action: null,
         });
-        setEmailDialogOpen(false);
-      } else throw new Error("Email failed");
+      } catch (err) {
+        logError(err, { area: "tickets", action: "emailSelected" });
+        const zipFiles = files.map((file) => ({
+          name: file.filename.replace(/\.png$/i, ""),
+          dataUrl: file.dataUrl,
+        }));
+        const { downloadZipFromPngs } = await import("@/utils/exportTickets");
+        await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
+        setSnackbar({
+          open: true,
+          message: "Endpoint unavailable — ZIP downloaded",
+          severity: "info",
+          action: null,
+        });
+      }
     } catch (err) {
-      logError(err);
+      logError(err, { area: "tickets", action: "emailSelected:generate" });
       setSnackbar({
         open: true,
-        message: "❌ Failed to email ticket",
+        message: "❌ Failed to prepare tickets",
         severity: "error",
         action: null,
       });
     } finally {
-      setEmailSending(false);
-    }
-  }, [previewTicket, emailAddress, theme.palette.background.paper]);
-
-  const bulkDownload = useCallback(async () => {
-    const selectionSet = new Set(selectedIds);
-    const selected = rows.filter((r) => selectionSet.has(String(r?.id ?? "")));
-    if (!selected.length) return;
-    setBulkDownloading(true);
-    try {
-      for (const ticket of selected) {
-        const container = document.createElement("div");
-        document.body.appendChild(container);
-        const root = ReactDOM.createRoot(container);
-        root.render(
-          <Box
-            sx={{
-              p: 2,
-              width: 360,
-              bgcolor: theme.palette.background.paper,
-              borderRadius: 2,
-              color: theme.palette.text.primary,
-            }}
-          >
-            <Box display="flex" justifyContent="center" mb={2}>
-              <img
-                src="/android-chrome-512x512.png"
-                alt="Lake Ride Pros"
-                style={{ height: 48 }}
-              />
-            </Box>
-            <Typography variant="h6" align="center" gutterBottom>
-              🎟️ Shuttle Ticket
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Typography>
-              <strong>Passenger:</strong> {ticket.passenger}
-            </Typography>
-            <Typography>
-              <strong>Passenger Count:</strong> {ticket.passengerCount}
-            </Typography>
-            <Typography>
-              <strong>Date:</strong> {formatDate(ticket.pickupTime)}
-            </Typography>
-            <Typography>
-              <strong>Time:</strong> {formatTime(ticket.pickupTime)}
-            </Typography>
-            <Typography>
-              <strong>Pickup:</strong> {ticket.pickup}
-            </Typography>
-            <Typography>
-              <strong>Dropoff:</strong> {ticket.dropoff}
-            </Typography>
-            {ticket.notes && (
-              <Typography>
-                <strong>Notes:</strong> {ticket.notes}
-              </Typography>
-            )}
-            <Typography>
-              <strong>Ticket ID:</strong> {ticket.ticketId}
-            </Typography>
-            <Box mt={2} display="flex" justifyContent="center">
-              <QRCode
-                value={`https://lakeridepros.xyz/ticket/${ticket.ticketId}`}
-                size={160}
-              />
-            </Box>
-          </Box>,
-        );
-        await new Promise((res) => setTimeout(res, 180));
-        try {
-          const dataUrl = await toPng(container, {
-            backgroundColor: theme.palette.background.paper,
-          });
-          const link = document.createElement("a");
-          link.download = `${ticket.ticketId}.png`;
-          link.href = dataUrl;
-          link.click();
-        } catch (err) {
-          logError(err);
-        } finally {
-          root.unmount();
-          document.body.removeChild(container);
+      nodes.forEach((node) => {
+        if (node?.__lrpRoot) {
+          try {
+            node.__lrpRoot.unmount();
+          } catch (error) {
+            logError(error, { area: "tickets", action: "emailCleanup" });
+          }
         }
+      });
+      if (ticketPreviewContainerRef.current) {
+        ticketPreviewContainerRef.current.innerHTML = "";
       }
+      setEmailSending(false);
+      setEmailOpen(false);
+    }
+  }, [
+    emailMessage,
+    emailSubject,
+    emailTo,
+    renderTicketPreviewNode,
+    selectedRows,
+    setSnackbar,
+  ]);
+
+  const handleExportSelected = useCallback(async () => {
+    if (!selectedRows.length) return;
+    if (!ticketPreviewContainerRef.current) return;
+    setExporting(true);
+    const nodes = [];
+    try {
+      selectedRows.forEach((ticket, index) => {
+        const node = renderTicketPreviewNode(ticket);
+        if (!node) return;
+        const name = ticket?.ticketId || ticket?.id || `ticket-${index + 1}`;
+        node.dataset.ticketName = String(name);
+        nodes.push(node);
+      });
+      if (!nodes.length) return;
+      await exportTicketNodesAsZip(nodes, {
+        zipName: `tickets-${Date.now()}.zip`,
+      });
       setSnackbar({
         open: true,
-        message: "📦 Bulk tickets downloaded",
+        message: "📦 Tickets exported",
         severity: "success",
         action: null,
       });
+    } catch (err) {
+      logError(err, { area: "tickets", action: "exportSelected" });
+      setSnackbar({
+        open: true,
+        message: "❌ Failed to export tickets",
+        severity: "error",
+        action: null,
+      });
     } finally {
-      setBulkDownloading(false);
+      nodes.forEach((node) => {
+        if (node?.__lrpRoot) {
+          try {
+            node.__lrpRoot.unmount();
+          } catch (error) {
+            logError(error, { area: "tickets", action: "exportCleanup" });
+          }
+        }
+      });
+      if (ticketPreviewContainerRef.current) {
+        ticketPreviewContainerRef.current.innerHTML = "";
+      }
+      setExporting(false);
     }
-  }, [
-    rows,
-    selectedIds,
-    theme.palette.background.paper,
-    theme.palette.text.primary,
-  ]);
+  }, [renderTicketPreviewNode, selectedRows, setSnackbar]);
 
   return (
     <PageContainer maxWidth={960}>
@@ -1209,58 +1339,6 @@ function Tickets() {
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
 
-        <Tooltip
-          title={
-            selectedIds.length
-              ? "Download selected tickets"
-              : "Select tickets to enable"
-          }
-        >
-          <span>
-            <Button
-              onClick={bulkDownload}
-              variant="contained"
-              color="success"
-              startIcon={<DownloadIcon />}
-              disabled={!selectedIds.length || bulkDownloading}
-            >
-              Bulk Download
-            </Button>
-          </span>
-        </Tooltip>
-
-        <Tooltip
-          title={
-            selectedIds.length
-              ? "Delete selected tickets"
-              : "Select tickets to enable"
-          }
-        >
-          <span>
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              disabled={!selectedIds.length || deleting}
-              onClick={() => handleDeleteRows(selectedIds)}
-            >
-              Delete Selected
-            </Button>
-          </span>
-        </Tooltip>
-
-        <Button
-          variant="outlined"
-          onClick={() =>
-            download(
-              `tickets-${dayjs().format("YYYYMMDD-HHmmss")}.csv`,
-              buildCsv(rows),
-              "text/csv",
-            )
-          }
-        >
-          Export CSV
-        </Button>
       </Box>
 
       {noAccessAlertOpen && (
@@ -1270,10 +1348,8 @@ function Tickets() {
       )}
 
       <Tabs
-        value={activeTab}
+        value={tab}
         onChange={handleTabChange}
-        variant="scrollable"
-        allowScrollButtonsMobile
         sx={{
           mb: 2,
           "& .MuiTabs-indicator": {
@@ -1281,24 +1357,84 @@ function Tickets() {
           },
         }}
       >
-        <Tab label="Tickets" value="list" {...getTabProps("list")} />
-        <Tab
-          label="Passenger Summary"
-          value="summary"
-          {...getTabProps("summary")}
-        />
-        {canGenerate && (
-          <Tab
-            label={isSmall ? "Generate" : "Generate Ticket"}
-            value="generate"
-            icon={isSmall ? undefined : <LocalActivityIcon fontSize="small" />}
-            iconPosition="start"
-            {...getTabProps("generate")}
-          />
-        )}
+        <Tab label="Manage" {...getTabProps(0)} />
+        <Tab label="Generate" disabled={!canGenerate} {...getTabProps(1)} />
       </Tabs>
 
-      <TabPanel value={activeTab} tabKey="list">
+      <TabPanel value={tab} tabKey={0}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ mb: 2, flexWrap: "wrap", alignItems: "center" }}
+        >
+          <Tooltip
+            title={
+              selectedRows.length
+                ? "Export selected as PNG (ZIP)"
+                : "Select tickets to enable"
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleExportSelected}
+                disabled={!selectedRows.length || exporting}
+              >
+                Export
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              selectedRows.length
+                ? "Email selected tickets"
+                : "Select tickets to enable"
+            }
+          >
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<EmailIcon />}
+                onClick={() => setEmailOpen(true)}
+                disabled={!selectedRows.length || emailSending}
+              >
+                Email
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              selectedIds.length
+                ? "Delete selected tickets"
+                : "Select tickets to enable"
+            }
+          >
+            <span>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<DeleteIcon />}
+                disabled={!selectedIds.length || deleting}
+                onClick={() => handleDeleteRows(selectedIds)}
+              >
+                Delete
+              </Button>
+            </span>
+          </Tooltip>
+          <Button
+            variant="outlined"
+            onClick={() =>
+              download(
+                `tickets-${dayjs().format("YYYYMMDD-HHmmss")}.csv`,
+                buildCsv(rows),
+                "text/csv",
+              )
+            }
+          >
+            Export CSV
+          </Button>
+        </Stack>
         <Paper sx={{ width: "100%" }}>
           <LrpDataGridPro
             id="tickets-grid"
@@ -1349,26 +1485,8 @@ function Tickets() {
         </Paper>
       </TabPanel>
 
-      <TabPanel value={activeTab} tabKey="summary">
-        <Paper sx={{ p: 3 }} elevation={4}>
-          <Typography variant="h6" gutterBottom>
-            🧮 Passenger Summary by Date
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <ul>
-            {Object.entries(passengerSummary)
-              .sort()
-              .map(([date, count]) => (
-                <li key={date}>
-                  <strong>{date}:</strong> {count} passengers
-                </li>
-              ))}
-          </ul>
-        </Paper>
-      </TabPanel>
-
-      <TabPanel value={activeTab} tabKey="generate">
-        {canGenerate && (
+      <TabPanel value={tab} tabKey={1}>
+        {canGenerate ? (
           <Suspense
             fallback={
               <Box p={2}>
@@ -1378,8 +1496,15 @@ function Tickets() {
           >
             <TicketGenerator />
           </Suspense>
+        ) : (
+          <Alert severity="info">Ticket generation restricted.</Alert>
         )}
       </TabPanel>
+
+      <Box
+        ref={ticketPreviewContainerRef}
+        sx={{ position: "fixed", left: -9999, top: -9999, width: 0, height: 0 }}
+      />
 
       {editingTicket && (
         <EditTicketDialog
@@ -1409,75 +1534,7 @@ function Tickets() {
           {previewTicket && (
             <>
               <Box ref={previewRef}>
-                <Box display="flex" justifyContent="center" mb={2}>
-                  <img
-                    src="/android-chrome-512x512.png"
-                    alt="Lake Ride Pros"
-                    style={{ height: 48 }}
-                  />
-                </Box>
-                <Typography variant="h6" align="center" gutterBottom>
-                  🎟️ Shuttle Ticket
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Typography>
-                  <strong>Passenger:</strong> {previewTicket.passenger}
-                </Typography>
-                <Typography>
-                  <strong>Passenger Count:</strong>{" "}
-                  {previewTicket.passengerCount}
-                </Typography>
-                <Typography>
-                  <strong>Date:</strong> {formatDate(previewTicket.pickupTime)}
-                </Typography>
-                <Typography>
-                  <strong>Time:</strong> {formatTime(previewTicket.pickupTime)}
-                </Typography>
-                <Typography>
-                  <strong>Pickup:</strong> {previewTicket.pickup}
-                </Typography>
-                <Typography>
-                  <strong>Dropoff:</strong> {previewTicket.dropoff}
-                </Typography>
-                {previewTicket.notes && (
-                  <Typography>
-                    <strong>Notes:</strong> {previewTicket.notes}
-                  </Typography>
-                )}
-                <Typography>
-                  <strong>Ticket ID:</strong> {previewTicket.ticketId}
-                </Typography>
-                {previewTicket.scannedOutbound && (
-                  <Typography>
-                    <strong>Outbound:</strong>{" "}
-                    {previewTicket.scannedOutboundAt?.format("MMM D, h:mm A") ||
-                      "—"}
-                    {" by "}
-                    {previewTicket.scannedOutboundBy || "Unknown"}
-                  </Typography>
-                )}
-                {previewTicket.scannedReturn && (
-                  <Typography>
-                    <strong>Return:</strong>{" "}
-                    {previewTicket.scannedReturnAt?.format("MMM D, h:mm A") ||
-                      "—"}
-                    {" by "}
-                    {previewTicket.scannedReturnBy || "Unknown"}
-                  </Typography>
-                )}
-                <Box mt={2} display="flex" justifyContent="center">
-                  <Box
-                    p={1.5}
-                    bgcolor={(t) => t.palette.background.paper}
-                    borderRadius={2}
-                    boxShadow="0 0 10px #4cbb17"
-                  >
-                    <QRCode
-                      value={`https://lakeridepros.xyz/ticket/${previewTicket.ticketId}`}
-                      size={160}
-                    />
-                  </Box>
-                </Box>
+                <TicketPreviewCard ticket={previewTicket} />
               </Box>
 
               <Box mt={3} display="flex" justifyContent="space-between">
@@ -1485,7 +1542,18 @@ function Tickets() {
                   variant="outlined"
                   color="info"
                   startIcon={<EmailIcon />}
-                  onClick={() => setEmailDialogOpen(true)}
+                  onClick={() => {
+                    const candidateId =
+                      getRowId(previewTicket) ||
+                      (previewTicket?.ticketId != null
+                        ? String(previewTicket.ticketId)
+                        : null);
+                    if (candidateId) {
+                      setRowSelectionModel([String(candidateId)]);
+                    }
+                    setEmailOpen(true);
+                    setEmailTo(previewTicket?.email || emailTo);
+                  }}
                 >
                   Email
                 </Button>
@@ -1509,37 +1577,41 @@ function Tickets() {
         </Box>
       </Modal>
 
-      {emailDialogOpen && (
-        <Dialog
-          open
-          onClose={() => setEmailDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>Email Ticket</DialogTitle>
-          <DialogContent>
+      <Dialog open={emailOpen} onClose={() => setEmailOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Email Selected Tickets</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
             <TextField
-              fullWidth
-              label="Email Address"
-              value={emailAddress}
-              onChange={(e) => setEmailAddress(e.target.value)}
-              type="email"
-              autoFocus
+              label="To"
+              value={emailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
+              placeholder="customer@example.com"
             />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
-            <Button
-              onClick={emailTicket}
-              variant="contained"
-              color="primary"
-              disabled={emailSending}
-            >
-              Send
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+            <TextField
+              label="Subject"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+            />
+            <TextField
+              label="Message"
+              multiline
+              minRows={3}
+              value={emailMessage}
+              onChange={(e) => setEmailMessage(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmailOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleEmailSelected}
+            disabled={emailSending || !selectedRows.length}
+          >
+            {emailSending ? "Sending…" : "Send"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {canScanTickets && (
         <>

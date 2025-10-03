@@ -11,7 +11,8 @@
         "Never empty catch",
         "Respect LRP theme",
         "Migrate legacy TimeLogs to fs",
-        "Harden SW: waitUntil + notificationclick when closed; ensure VAPID key used."
+        "Harden SW: waitUntil + notificationclick when closed; ensure VAPID key used.",
+        "Ensure preview/status parity between TicketScanner and Tickets grid."
       ]
     },
     {
@@ -23,7 +24,8 @@
         "Use shared LrpDataGridPro if present",
         "Add focus outlines",
         "No ad-hoc CSS; use sx",
-        "Use LrpDataGridPro for all grids; persist visibility and debounce quick filter."
+        "Use LrpDataGridPro for all grids; persist visibility and debounce quick filter.",
+        "Tickets page: tabs (Manage/Generate), scanner via FAB only, bulk export/email."
       ]
     }
   ]
