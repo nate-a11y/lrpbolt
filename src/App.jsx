@@ -343,10 +343,6 @@ function App() {
                 }
               />
               <Route path="/shootout" element={<ShootoutTab />} />
-              <Route
-                path="/scan"
-                element={<Navigate to="/tickets" replace />}
-              />
               <Route path="/info" element={<DriverInfoTab />} />
               <Route
                 path="/drop-guides"
@@ -388,10 +384,6 @@ function App() {
                 element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
               />
               <Route path="/tickets" element={<Tickets />} />
-              <Route
-                path="/tickets/scan"
-                element={<Navigate to="/tickets" replace />}
-              />
               <Route
                 path="/generate-ticket"
                 element={

@@ -74,6 +74,7 @@ import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { vibrateOk, vibrateWarn } from "@/utils/haptics.js";
+import { playBeep } from "@/utils/sound.js";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -387,7 +388,6 @@ function Tickets() {
   const ticketPreviewContainerRef = useRef(null);
   const rawTicketsRef = useRef(new Map());
   const deletedRowsRef = useRef([]);
-  const lastPendingRef = useRef(null);
   const [noAccessAlertOpen, setNoAccessAlertOpen] = useState(false);
   const { user, authLoading, role } = useAuth();
   const theme = useTheme();
@@ -402,6 +402,8 @@ function Tickets() {
   const [savingScanType, setSavingScanType] = useState(null);
   const [subscriptionKey, setSubscriptionKey] = useState(0);
   const [scannerInstanceKey, setScannerInstanceKey] = useState(0);
+  const [scannerResumeSignal, setScannerResumeSignal] = useState(0);
+  const [scanLookupLoading, setScanLookupLoading] = useState(false);
   const { show: showSnack } = useSnack();
 
   const announce = useCallback((message) => {
@@ -447,17 +449,27 @@ function Tickets() {
     [announce, showSnack],
   );
 
+  const resumeScanner = useCallback(
+    () => setScannerResumeSignal((value) => value + 1),
+    [],
+  );
+
   const openScanner = useCallback(() => {
     setScannerOpen(true);
-  }, []);
+    setPendingScanTicket(null);
+    setScanLookupLoading(false);
+    setTimeout(resumeScanner, 0);
+  }, [resumeScanner]);
 
   const closeScanner = useCallback(() => {
     setScannerOpen(false);
     setPendingScanTicket(null);
     setSavingScan(false);
     setSavingScanType(null);
+    setScanLookupLoading(false);
     setScannerInstanceKey((k) => k + 1);
-  }, []);
+    resumeScanner();
+  }, [resumeScanner]);
 
   const handleSequentialToggle = useCallback((event) => {
     setSequentialScan(event.target.checked);
@@ -468,13 +480,6 @@ function Tickets() {
       setRowSelectionModel([]);
     }
   }, [scannerOpen]);
-
-  useEffect(() => {
-    if (lastPendingRef.current && !pendingScanTicket) {
-      setScannerInstanceKey((k) => k + 1);
-    }
-    lastPendingRef.current = pendingScanTicket;
-  }, [pendingScanTicket]);
 
   const handleScanResult = useCallback(
     async ({ text }) => {
@@ -489,30 +494,26 @@ function Tickets() {
       if (!ticketId) {
         showWarnOrErrorSnack("Invalid ticket code", "error");
         setPendingScanTicket(null);
+        resumeScanner();
         return;
       }
-      const localMatch = tickets.find(
-        (t) => String(t.ticketId) === ticketId || String(t.id) === ticketId,
-      );
-      if (localMatch) {
-        setPreviewTicket(localMatch);
-        setPendingScanTicket(localMatch);
-        showSuccessSnack(`Ticket ${ticketId} ready — choose scan type`);
-        return;
-      }
+      setScanLookupLoading(true);
+      setPendingScanTicket({ ticketId, loading: true });
+      setPreviewTicket(null);
       try {
         const match = await getTicketById(ticketId);
-        if (match) {
-          const normalized = normalizeTicket(match, dayjs);
-          setPreviewTicket(normalized);
-          setPendingScanTicket(normalized);
-          showSuccessSnack(
-            `Ticket ${normalized.ticketId} ready — choose scan type`,
-          );
-        } else {
-          showWarnOrErrorSnack(`Ticket ${ticketId} not found`, "warning");
+        if (!match) {
+          showWarnOrErrorSnack(`Ticket ${ticketId} not found`, "error");
           setPendingScanTicket(null);
+          resumeScanner();
+          return;
         }
+        const normalized = normalizeTicket(match, dayjs);
+        setPreviewTicket(normalized);
+        setPendingScanTicket(normalized);
+        showSuccessSnack(
+          `Ticket ${normalized.ticketId} ready — confirm scan direction`,
+        );
       } catch (err) {
         logError(err, {
           area: "Tickets",
@@ -521,14 +522,17 @@ function Tickets() {
         });
         showWarnOrErrorSnack("Failed to load ticket", "error");
         setPendingScanTicket(null);
+        resumeScanner();
+      } finally {
+        setScanLookupLoading(false);
       }
     },
     [
-      tickets,
       setPreviewTicket,
       setPendingScanTicket,
       showSuccessSnack,
       showWarnOrErrorSnack,
+      resumeScanner,
     ],
   );
 
@@ -536,7 +540,9 @@ function Tickets() {
     if (savingScan) return;
     setPendingScanTicket(null);
     setSavingScanType(null);
-  }, [savingScan, setPendingScanTicket, setSavingScanType]);
+    setScanLookupLoading(false);
+    resumeScanner();
+  }, [resumeScanner, savingScan, setPendingScanTicket, setSavingScanType]);
 
   const handleScanConfirm = useCallback(
     async (scanType) => {
@@ -597,8 +603,17 @@ function Tickets() {
           scanType === "outbound" ? "Outbound" : "Return"
         }`;
         showSuccessSnack(successMessage);
+        try {
+          playBeep();
+        } catch (soundError) {
+          logError(soundError, {
+            area: "Tickets",
+            action: "scanConfirmSound",
+            ticketId: docId,
+          });
+        }
         setPendingScanTicket(null);
-        setScannerInstanceKey((k) => k + 1);
+        resumeScanner();
       } catch (err) {
         logError(err, {
           area: "Tickets",
@@ -622,6 +637,7 @@ function Tickets() {
       showInfoSnack,
       showSuccessSnack,
       showWarnOrErrorSnack,
+      resumeScanner,
       user?.displayName,
       user?.email,
       user?.uid,
@@ -1695,16 +1711,17 @@ function Tickets() {
                       onScan={handleScanResult}
                       onClose={closeScanner}
                       sequential={sequentialScan}
+                      resumeSignal={scannerResumeSignal}
                     />
                   )}
                 </Suspense>
               </Box>
             </Dialog>
 
-            <Tooltip title="Scan tickets">
+            <Tooltip title="Scan Ticket">
               <Fab
                 color="primary"
-                aria-label="Scan tickets"
+                aria-label="Scan Ticket"
                 onClick={openScanner}
                 sx={{
                   position: "fixed",
@@ -1747,45 +1764,77 @@ function Tickets() {
             Record ticket scan
           </DialogTitle>
           <DialogContent sx={{ bgcolor: "#060606", pt: 3 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Ticket {pendingScanTicket?.ticketId || "—"}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
-            >
-              Passenger: {pendingScanTicket?.passenger || "Unknown"}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{ color: "rgba(255,255,255,0.72)", mt: 1 }}
-            >
-              Current status: {pendingScanStatus}
-            </Typography>
-            {pendingScanMeta?.outAt && (
-              <Typography
-                variant="body2"
-                sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
+            {scanLookupLoading ? (
+              <Stack
+                spacing={2}
+                alignItems="center"
+                justifyContent="center"
+                sx={{ py: 4 }}
               >
-                Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at{" "}
-                {formatDateTime(pendingScanMeta.outAt)}
-              </Typography>
+                <CircularProgress size={28} sx={{ color: "#4cbb17" }} />
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                >
+                  Fetching the latest ticket details…
+                </Typography>
+              </Stack>
+            ) : (
+              <Stack spacing={1.5}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Ticket {pendingScanTicket?.ticketId || "—"}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                >
+                  Passenger: {pendingScanTicket?.passenger || "Unknown"}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                >
+                  Pickup: {pendingScanTicket?.pickup || "N/A"}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                >
+                  Date: {formatDate(pendingScanTicket?.pickupTime)} at{" "}
+                  {formatTime(pendingScanTicket?.pickupTime)}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                >
+                  Current status: {pendingScanStatus}
+                </Typography>
+                {pendingScanMeta?.outAt && (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "rgba(255,255,255,0.6)" }}
+                  >
+                    Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at{" "}
+                    {formatDateTime(pendingScanMeta.outAt)}
+                  </Typography>
+                )}
+                {pendingScanMeta?.retAt && (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "rgba(255,255,255,0.6)" }}
+                  >
+                    Return recorded by {pendingScanMeta.retBy || "Unknown"} at{" "}
+                    {formatDateTime(pendingScanMeta.retAt)}
+                  </Typography>
+                )}
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.72)", pt: 0.5 }}
+                >
+                  Select a direction to log this scan.
+                </Typography>
+              </Stack>
             )}
-            {pendingScanMeta?.retAt && (
-              <Typography
-                variant="body2"
-                sx={{ color: "rgba(255,255,255,0.6)", mt: 1 }}
-              >
-                Return recorded by {pendingScanMeta.retBy || "Unknown"} at{" "}
-                {formatDateTime(pendingScanMeta.retAt)}
-              </Typography>
-            )}
-            <Typography
-              variant="body2"
-              sx={{ color: "rgba(255,255,255,0.72)", mt: 2 }}
-            >
-              Select a direction to log this scan.
-            </Typography>
           </DialogContent>
           <DialogActions
             sx={{
@@ -1799,7 +1848,7 @@ function Tickets() {
           >
             <Button
               onClick={handleScanDialogClose}
-              disabled={savingScan}
+              disabled={savingScan || scanLookupLoading}
               sx={{
                 color: "#f5f5f5",
                 "&.Mui-disabled": { color: "rgba(255,255,255,0.4)" },
@@ -1811,7 +1860,7 @@ function Tickets() {
               onClick={() => handleScanConfirm("outbound")}
               variant="outlined"
               color="info"
-              disabled={savingScan}
+              disabled={savingScan || scanLookupLoading}
               startIcon={
                 savingScan && savingScanType === "outbound" ? (
                   <CircularProgress size={16} sx={{ color: "inherit" }} />
@@ -1836,7 +1885,7 @@ function Tickets() {
               onClick={() => handleScanConfirm("return")}
               variant="contained"
               color="success"
-              disabled={savingScan}
+              disabled={savingScan || scanLookupLoading}
               startIcon={
                 savingScan && savingScanType === "return" ? (
                   <CircularProgress size={16} sx={{ color: "inherit" }} />
