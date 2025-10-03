@@ -68,6 +68,7 @@ import {
   restoreTicketsBatch,
   getTicketById,
 } from "@/services/fs";
+import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 
 import logError from "../utils/logError.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -75,7 +76,6 @@ import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { emailTicket as apiEmailTicket, updateTicketScan } from "../hooks/api";
 
-import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import {
   LoadingOverlay,
   NoRowsOverlay,
@@ -1300,10 +1300,13 @@ function Tickets() {
 
       <TabPanel value={activeTab} tabKey="list">
         <Paper sx={{ width: "100%" }}>
-          <SmartAutoGrid
+          <LrpDataGridPro
+            id="tickets-grid"
             rows={safeRows}
             columns={columns}
-            getRowId={getRowId}
+            getRowId={(row) =>
+              getRowId(row) || (row?.ticketId ? String(row.ticketId) : null)
+            }
             checkboxSelection
             disableRowSelectionOnClick
             rowSelectionModel={rowSelectionModel}
@@ -1324,11 +1327,11 @@ function Tickets() {
             }}
             slotProps={{
               toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 300 },
+                quickFilterPlaceholder: "Search tickets",
               },
             }}
             density="compact"
+            autoHeight={false}
             sx={{
               "& .MuiDataGrid-row:nth-of-type(odd)": {
                 backgroundColor: "rgba(255,255,255,0.04)",
