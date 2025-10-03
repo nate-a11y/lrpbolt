@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Snackbar } from "@mui/material";
 
 import { clockOutActiveSession } from "@/services/timeclockActions";
+import { clearClockNotification } from "@/pwa/clockNotifications";
 import { openTimeClockModal } from "@/services/uiBus";
 import { consumePendingSwEvent } from "@/pwa/swMessages";
 import logError from "@/utils/logError.js";
@@ -40,6 +41,11 @@ export default function ClockOutConfirm() {
     try {
       setBusy(true);
       await clockOutActiveSession();
+      try {
+        await clearClockNotification();
+      } catch (error) {
+        logError(error, { where: "ClockOutConfirm", action: "clearClock" });
+      }
       setBusy(false);
       setResult("ok");
       setOpen(false);
