@@ -28,7 +28,15 @@ export async function getTicketById(ticketId) {
   const db = getDb();
   const ref = doc(db, TICKETS, ticketId);
   const snap = await getDoc(ref);
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  if (!snap.exists()) return null;
+  const rawData = typeof snap.data === "function" ? snap.data() : {};
+  const { id: legacyId, ...rest } = rawData || {};
+  return {
+    id: snap.id,
+    docId: snap.id,
+    logicalId: legacyId ?? null,
+    ...rest,
+  };
 }
 
 export function subscribeTickets({ q = null, onData, onError } = {}) {
@@ -38,7 +46,16 @@ export function subscribeTickets({ q = null, onData, onError } = {}) {
   const unsub = onSnapshot(
     compiled,
     (qs) => {
-      const rows = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const rows = qs.docs.map((d) => {
+        const data = typeof d.data === "function" ? d.data() : {};
+        const { id: legacyId, ...rest } = data || {};
+        return {
+          id: d.id,
+          docId: d.id,
+          logicalId: legacyId ?? null,
+          ...rest,
+        };
+      });
       if (onData) onData(rows);
     },
     (err) => {
@@ -82,13 +99,16 @@ const TIME_LOGS = "timeLogs";
 
 /* FIX: row.id now always equals Firestore doc id; legacy id kept as logicalId */
 function mapTimeLogDoc(docSnap) {
-  const data = docSnap?.data?.() || {};
+  const rawData =
+    docSnap && typeof docSnap.data === "function" ? docSnap.data() : {};
+  const { id: legacyId, ...rest } = rawData || {};
+  const docId = docSnap?.id || null;
   return {
-    ...data,
-    logicalId: data?.id ?? null,
-    originalId: data?.id ?? null,
-    docId: docSnap?.id || null,
-    id: docSnap?.id || null,
+    id: docId,
+    docId,
+    logicalId: legacyId ?? null,
+    originalId: legacyId ?? null,
+    ...rest,
   };
 }
 
@@ -281,7 +301,7 @@ export async function logTime(entry = {}) {
       const ref = await addDoc(collection(db, TIME_LOGS), payload);
       return ref.id;
     });
-    return { id: resultId };
+    return { id: resultId, docId: resultId };
   } catch (error) {
     logError(error, { where: "services.fs.logTime", driverId });
     throw new AppError("Failed to log time", {

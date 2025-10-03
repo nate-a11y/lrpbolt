@@ -9,6 +9,7 @@ import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBul
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { formatDateTime } from "@/utils/time";
+import { getFlag } from "@/services/observability";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import { deleteRide } from "../services/firestoreService";
@@ -32,6 +33,14 @@ export default function LiveRidesGrid() {
     );
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!getFlag || !getFlag("grid.debug")) {
+      return;
+    }
+    const sample = Array.isArray(rows) ? rows[0] : null;
+    console.log("[GridDebug:LiveRides] row0", sample);
+  }, [rows]);
 
   const handleEditRide = useCallback((row) => {
     setEditRow(row);

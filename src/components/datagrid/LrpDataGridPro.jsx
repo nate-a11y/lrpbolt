@@ -1,6 +1,14 @@
 /* LRP Portal enhancement: DataGrid wrapper, 2025-10-03.
-   Rationale: unify defaults, performance, persistence, accessibility. */
-import React, { memo, useMemo, useCallback, useState, useEffect } from "react";
+   Rationale: unify defaults, performance, persistence, accessibility.
+   FIX: remove blanket valueGetter; columns now render their real values. Use `naFallback: true` per-column to show "N/A" for nulls. */
+import React, {
+  memo,
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import PropTypes from "prop-types";
 import { Box, Button, Tooltip } from "@mui/material";
 import {
@@ -15,6 +23,7 @@ import {
 } from "@mui/x-data-grid-pro";
 
 import logError from "@/utils/logError.js";
+import { getFlag } from "@/services/observability";
 
 const QUICK_FILTER_PARSER = (value) =>
   String(value || "")
@@ -312,6 +321,7 @@ function LrpDataGridPro({
   disableRowSelectionOnClick = true,
   ...rest
 }) {
+  const missingIdWarnedRef = useRef(false);
   const defaults = useMemo(
     () => ({
       density,
@@ -330,40 +340,68 @@ function LrpDataGridPro({
     useGridStatePersistence(id, defaults);
 
   const mergedGetRowId = useCallback(
-    (row) =>
-      typeof getRowId === "function" ? getRowId(row) : safeGetRowId(row),
-    [getRowId],
+    (row) => {
+      if (typeof getRowId === "function") {
+        return getRowId(row);
+      }
+      const inferred = safeGetRowId(row);
+      if (inferred != null) {
+        return inferred;
+      }
+      const fallbackId = row?.id ?? undefined;
+      if (
+        fallbackId == null &&
+        typeof import.meta !== "undefined" &&
+        import.meta.env?.DEV &&
+        !missingIdWarnedRef.current
+      ) {
+        missingIdWarnedRef.current = true;
+        console.warn("[LrpDataGridPro] Missing row id", { gridId: id });
+      }
+      return fallbackId;
+    },
+    [getRowId, id],
   );
 
   const safeColumns = useMemo(() => {
     return (columns || []).map((col) => {
       if (!col) return col;
-      const next = { ...col };
-      if (typeof col.valueGetter === "function") {
-        next.valueGetter = (params, ...args) => {
-          try {
-            const value = col.valueGetter(params, ...args);
-            return value == null ? "N/A" : value;
-          } catch (error) {
-            logError(error, {
-              where: "LrpDataGridPro.valueGetter",
-              field: col.field,
-            });
-            return "N/A";
-          }
+      if (
+        typeof col.valueGetter === "function" ||
+        typeof col.renderCell === "function" ||
+        typeof col.valueFormatter === "function"
+      ) {
+        return col;
+      }
+      if (col.naFallback) {
+        const field = col.field;
+        return {
+          ...col,
+          valueFormatter: (params) => {
+            const value =
+              params?.value ?? (field ? params?.row?.[field] : undefined);
+            return value == null || value === "" ? "N/A" : value;
+          },
         };
-        return next;
       }
-      if (!col.field || col.type === "actions") {
-        return next;
-      }
-      next.valueGetter = (params) => {
-        const value = params?.value ?? params?.row?.[col.field];
-        return value == null ? "N/A" : value;
-      };
-      return next;
+      return col;
     });
   }, [columns]);
+
+  useEffect(() => {
+    if (!getFlag || !getFlag("grid.debug")) {
+      return;
+    }
+    const sampleRow = Array.isArray(rows) ? rows[0] : null;
+    const columnFields = (columns || [])
+      .map((c) => (c ? c.field : null))
+      .filter(Boolean);
+    console.log("[GridDebug]", {
+      id,
+      sampleRow,
+      columns: columnFields,
+    });
+  }, [id, rows, columns]);
 
   const mergedSlots = useMemo(
     () => ({
