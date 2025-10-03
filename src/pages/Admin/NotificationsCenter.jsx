@@ -41,7 +41,7 @@ import HubOutlinedIcon from "@mui/icons-material/HubOutlined";
 import SmartphoneIcon from "@mui/icons-material/Smartphone";
 
 import ResponsiveContainer from "src/components/responsive/ResponsiveContainer.jsx";
-import { useToast } from "src/context/ToastProvider.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { enqueueSms } from "src/services/messaging";
 import {
   fetchAllUsersAccess,
@@ -106,7 +106,7 @@ const SEGMENTS = [
 ];
 
 export default function Notifications() {
-  const { enqueue } = useToast();
+  const { show } = useSnack();
   const [mode, setMode] = React.useState("push");
   const [allUsers, setAllUsers] = React.useState([]);
   const [loading, setLoading] = React.useState(false); // fetching users
@@ -238,7 +238,7 @@ export default function Notifications() {
     } catch (err) {
       setLoadError("Failed to refresh users. Try again.");
       logError(err, { where: "Notifications", action: "refreshUsers" });
-      enqueue("Failed to refresh users", { severity: "error" });
+      show("Failed to refresh users", "error");
     } finally {
       setLoading(false);
     }
@@ -314,10 +314,10 @@ export default function Notifications() {
             ),
         );
       }
-      enqueue("Notification sent", { severity: "success" });
+      show("Notification sent", "success");
       resetComposer(false);
     } catch (err) {
-      enqueue("Send failed", { severity: "error" });
+      show("Send failed", "error");
       logError(err, { where: "Notifications", action: "handleSend", mode });
     } finally {
       setSending(false);

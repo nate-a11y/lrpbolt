@@ -13,7 +13,7 @@ import RideCard, {
 import RideGroup from "@/components/claims/RideGroup.jsx";
 import EmptyRideState from "@/components/claim/EmptyRideState.jsx";
 import { useAuth } from "@/context/AuthContext.jsx";
-import { useToast } from "@/context/ToastProvider.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import useAutoRefresh from "@/hooks/useAutoRefresh";
 import useClaimSelection from "@/hooks/useClaimSelection";
 import useRides from "@/hooks/useRides";
@@ -23,19 +23,11 @@ import { tsToDayjs } from "@/utils/claimTime";
 import { dayjs } from "@/utils/time";
 
 export default function ClaimRides() {
-  const toast = useToast();
-  const { enqueue, show: legacyShow } = toast || {};
+  const { show: showSnack } = useSnack();
   const showToast = useCallback(
-    (message, options = {}) => {
-      if (typeof enqueue === "function") {
-        return enqueue(message, options);
-      }
-      if (typeof legacyShow === "function") {
-        return legacyShow(message, options);
-      }
-      return undefined;
-    },
-    [enqueue, legacyShow],
+    (message, severity = "info", options = {}) =>
+      showSnack(message, severity, options),
+    [showSnack],
   );
   const sel = useClaimSelection((r) => r?.id);
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -153,10 +145,10 @@ export default function ClaimRides() {
       if (!claimedRide?.id) return;
       try {
         await undoClaimRide(claimedRide.id, user);
-        showToast("Ride restored to queue", { severity: "info" });
+        showToast("Ride restored to queue", "info");
         refetch?.();
       } catch (e) {
-        showToast(e.message || "Unable to undo", { severity: "error" });
+        showToast(e.message || "Unable to undo", "error");
       }
     },
     [refetch, showToast, user],
@@ -166,21 +158,18 @@ export default function ClaimRides() {
     async (ride) => {
       if (!ride?.id) return;
       if (lockedOut) {
-        showToast("Ride claims locked until 8:00 PM (CT)", {
-          severity: "warning",
-        });
+        showToast("Ride claims locked until 8:00 PM (CT)", "warning");
         return;
       }
       if (!isClaimable(ride)) {
-        showToast("Ride is no longer available", { severity: "info" });
+        showToast("Ride is no longer available", "info");
         return;
       }
       setIsClaiming((prev) => ({ ...prev, [ride.id]: true }));
       try {
         const claimed = await claimRideOnce(ride.id, user);
         sel.deselectMany?.([ride]);
-        showToast("Ride claimed", {
-          severity: "success",
+        showToast("Ride claimed", "success", {
           autoHideDuration: 6000,
           action: (
             <Button
@@ -194,7 +183,7 @@ export default function ClaimRides() {
         });
         refetch?.();
       } catch (e) {
-        showToast(e.message || "Failed to claim", { severity: "error" });
+        showToast(e.message || "Failed to claim", "error");
       } finally {
         setIsClaiming((prev) => ({ ...prev, [ride.id]: false }));
       }
@@ -204,9 +193,7 @@ export default function ClaimRides() {
 
   const onClaimAll = useCallback(async () => {
     if (lockedOut) {
-      showToast("Ride claims locked until 8:00 PM (CT)", {
-        severity: "warning",
-      });
+      showToast("Ride claims locked until 8:00 PM (CT)", "warning");
       return;
     }
     setBulkLoading(true);
@@ -230,12 +217,10 @@ export default function ClaimRides() {
           console.error(e);
         }
       }
-      showToast(`${ok} ${ok === 1 ? "ride" : "rides"} claimed`, {
-        severity: "success",
-      });
+      showToast(`${ok} ${ok === 1 ? "ride" : "rides"} claimed`, "success");
       refetch?.();
     } catch {
-      showToast("Failed to claim selected", { severity: "error" });
+      showToast("Failed to claim selected", "error");
     } finally {
       setBulkLoading(false);
     }

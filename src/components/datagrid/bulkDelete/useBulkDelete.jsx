@@ -1,6 +1,7 @@
 import * as React from "react";
+import { Button } from "@mui/material";
 
-import { useToast } from "@/context/ToastProvider.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
 /**
  * useBulkDelete
@@ -9,7 +10,7 @@ import { useToast } from "@/context/ToastProvider.jsx";
  * @returns {Object} control api
  */
 export default function useBulkDelete({ performDelete }) {
-  const { enqueue } = useToast();
+  const { show } = useSnack();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState([]);
@@ -33,37 +34,33 @@ export default function useBulkDelete({ performDelete }) {
       setDeleting(false);
 
       // Offer UNDO
-      enqueue(`Deleted ${selectedIds.length} item(s)`, {
-        severity: "info",
+      show(`Deleted ${selectedIds.length} item(s)`, "info", {
         action: (
-          <button
+          <Button
+            color="inherit"
+            size="small"
             onClick={async () => {
               try {
                 if (typeof performDelete.restore === "function") {
                   await performDelete.restore(selectedRowsCache);
-                  enqueue("Undo complete", { severity: "success" });
+                  show("Undo complete", "success");
                 }
               } catch (err) {
                 console.error("Undo failed", err);
-                enqueue("Undo failed", { severity: "error" });
+                show("Undo failed", "error");
               }
             }}
-            style={{
-              background: "transparent",
-              color: "#4cbb17",
-              border: "none",
-              cursor: "pointer",
-            }}
+            sx={{ fontWeight: 600 }}
           >
             Undo
-          </button>
+          </Button>
         ),
         autoHideDuration: 6000,
       });
     } catch (err) {
       setDeleting(false);
       console.error("Bulk delete failed", err);
-      enqueue("Delete failed", { severity: "error" });
+      show("Delete failed", "error");
     }
   };
 

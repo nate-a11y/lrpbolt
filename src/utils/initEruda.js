@@ -81,7 +81,8 @@ export default function initEruda() {
 
   window[INIT_FLAG] = true;
 
-  import("eruda")
+  const moduleName = "er" + "uda";
+  import(/* @vite-ignore */ moduleName)
     .then((module) => {
       const eruda = module?.default || module;
       if (!eruda) {

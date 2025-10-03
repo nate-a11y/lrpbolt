@@ -1,6 +1,8 @@
 import React from "react";
 import { Button, Paper, Stack, Typography } from "@mui/material";
 
+import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
+
 export default function BatchClaimBar({
   count,
   onClear,
@@ -31,13 +33,15 @@ export default function BatchClaimBar({
           <Button onClick={onClear} variant="text">
             Clear
           </Button>
-          <Button
+          <LoadingButtonLite
             onClick={onClaimAll}
             variant="contained"
-            disabled={loading || disabled}
+            loading={loading}
+            disabled={disabled}
+            loadingText="Claiming…"
           >
-            {loading ? "Claiming…" : "Claim Selected"}
-          </Button>
+            Claim Selected
+          </LoadingButtonLite>
         </Stack>
       </Stack>
     </Paper>

@@ -25,7 +25,8 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-import ErrorBoundary from "@/components/dev/ErrorBoundary.jsx";
+import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
+import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import ClockOutConfirm from "@/components/ClockOutConfirm.jsx";
 import NotifDiag from "@/components/NotifDiag.jsx";
 import GlobalChrome from "@/components/GlobalChrome.jsx";
@@ -38,7 +39,6 @@ import logError from "@/utils/logError.js";
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
 import ChangeDriverModal from "./components/ChangeDriverModal";
-import { useToast } from "./context/ToastProvider.jsx";
 import useDrivers from "./hooks/useDrivers";
 import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
@@ -80,7 +80,7 @@ function App() {
   const { user, authLoading, role: authRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { enqueue } = useToast();
+  const { show } = useSnack();
   const { timeLogId: activeTimeLogId } = useActiveClockSession();
   const clockOutInFlightRef = useRef(false);
   const pendingClockOutRef = useRef(false);
@@ -104,17 +104,17 @@ function App() {
       clockOutInFlightRef.current = true;
       try {
         await updateTimeLog(id, { endTime: "server" });
-        enqueue("Clocked out successfully.", { severity: "success" });
+        show("Clocked out successfully.", "success");
         return true;
       } catch (error) {
         logError(error, { where: "App", action: "clockOutRequest", id });
-        enqueue("Failed to end session.", { severity: "error" });
+        show("Failed to end session.", "error");
         return false;
       } finally {
         clockOutInFlightRef.current = false;
       }
     },
-    [enqueue],
+    [show],
   );
 
   useEffect(() => {
@@ -146,7 +146,7 @@ function App() {
       if (!pendingClockOutTimerRef.current) {
         pendingClockOutTimerRef.current = setTimeout(() => {
           if (pendingClockOutRef.current) {
-            enqueue("No active session to clock out.", { severity: "warning" });
+            show("No active session to clock out.", "warning");
             pendingClockOutRef.current = false;
           }
           pendingClockOutTimerRef.current = null;
@@ -159,7 +159,7 @@ function App() {
         unsubscribe();
       }
     };
-  }, [activeTimeLogId, enqueue, performClockOut]);
+  }, [activeTimeLogId, performClockOut, show]);
 
   useEffect(() => {
     if (!pendingClockOutRef.current) return;
@@ -205,9 +205,7 @@ function App() {
     showOffline,
     retry: retryConnection,
     dismiss: dismissOffline,
-  } = useNetworkStatus(() =>
-    enqueue("✅ Reconnected", { severity: "success" }),
-  );
+  } = useNetworkStatus(() => show("✅ Reconnected", "success"));
 
   const openChangeDriver = useCallback(() => setChangeDriverOpen(true), []);
   const closeChangeDriver = useCallback(() => setChangeDriverOpen(false), []);
@@ -244,7 +242,7 @@ function App() {
             setPhonePromptOpen(true);
           }
         } else {
-          enqueue("Access denied", { severity: "error" });
+          show("Access denied", "error");
           await logout();
           setDriver(null);
         }
@@ -253,17 +251,16 @@ function App() {
     } else {
       setDriver(null);
       if (hadUserRef.current) {
-        enqueue("Session expired. Please log in again.", { severity: "error" });
+        show("Session expired. Please log in again.", "error");
       }
       setIsAppReady(true);
     }
-  }, [user, fetchDrivers, setDriver, enqueue]);
+  }, [user, fetchDrivers, setDriver, show]);
 
   useEffect(() => {
     const handler = (e) => {
       const reg = e.detail?.registration;
-      enqueue("New version available — Reload", {
-        severity: "info",
+      show("New version available — Reload", "info", {
         action: (
           <Button
             color="inherit"
@@ -280,11 +277,12 @@ function App() {
             Reload
           </Button>
         ),
+        autoHideDuration: 6000,
       });
     };
     window.addEventListener("SW_UPDATED", handler);
     return () => window.removeEventListener("SW_UPDATED", handler);
-  }, [enqueue]);
+  }, [show]);
 
   useEffect(() => {
     if (showEliteBadge) {
