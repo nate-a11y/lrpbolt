@@ -63,12 +63,14 @@ function TicketScanner({
   beep = true,
   vibrate = true,
   showPreview = true,
+  resumeSignal = 0,
 }) {
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [userPaused, setUserPaused] = useState(false);
+  const [autoPaused, setAutoPaused] = useState(false);
   const [awaitingRestart, setAwaitingRestart] = useState(false);
   const [loadingCamera, setLoadingCamera] = useState(true);
   const [cameraDenied, setCameraDenied] = useState(false);
@@ -83,6 +85,7 @@ function TicketScanner({
   const lastResultRef = useRef({ text: "", ts: 0 });
   const fileInputRef = useRef(null);
   const startPromiseRef = useRef(null);
+  const noCameraSnackRef = useRef(false);
 
   const onScanRef = useLatestRef(onScan);
   const autoPauseRef = useLatestRef(autoPauseMs);
@@ -242,9 +245,8 @@ function TicketScanner({
         });
       }
 
-      stopDecoding();
+      setAutoPaused(true);
       setAwaitingRestart(true);
-      setPaused(true);
     },
     [
       announce,
@@ -253,7 +255,6 @@ function TicketScanner({
       clearCooldown,
       onScanRef,
       showSnack,
-      stopDecoding,
       vibrateRef,
     ],
   );
@@ -296,8 +297,8 @@ function TicketScanner({
         startPromiseRef.current = promise;
         const controls = await promise;
         controlsRef.current = controls;
-        setPaused(false);
         setAwaitingRestart(false);
+        setAutoPaused(false);
         const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
         const capabilities = track?.getCapabilities?.();
         setTorchSupported(!!capabilities?.torch);
@@ -306,10 +307,14 @@ function TicketScanner({
         }
       } catch (err) {
         stopDecoding();
-        setCameraDenied(err?.name === "NotAllowedError");
+        const denied = err?.name === "NotAllowedError";
+        setCameraDenied(denied);
         setErrorMessage(err?.message || "Unable to start camera");
-        if (err?.name === "NotAllowedError") {
-          setPaused(true);
+        if (denied) {
+          setUserPaused(true);
+          setAutoPaused(true);
+          announce("Camera access denied");
+          showSnack("Camera permission denied", "error");
         }
         logError(err, {
           area: "TicketScanner",
@@ -321,12 +326,22 @@ function TicketScanner({
         startPromiseRef.current = null;
       }
     },
-    [applyTorch, constraints, handleDecode, stopDecoding, torchEnabled],
+    [
+      announce,
+      applyTorch,
+      constraints,
+      handleDecode,
+      showSnack,
+      stopDecoding,
+      torchEnabled,
+    ],
   );
 
   useEffect(() => {
     refreshDevices();
   }, [refreshDevices]);
+
+  const paused = userPaused || autoPaused;
 
   useEffect(() => {
     if (paused) {
@@ -353,14 +368,21 @@ function TicketScanner({
     [stopDecoding],
   );
 
+  useEffect(() => {
+    setAutoPaused(false);
+    setAwaitingRestart(false);
+    clearCooldown();
+  }, [resumeSignal, clearCooldown]);
+
   const handlePauseToggle = useCallback(() => {
     setAwaitingRestart(false);
-    setPaused((prev) => !prev);
+    setUserPaused((prev) => !prev);
   }, []);
 
   const handleResume = useCallback(() => {
     setAwaitingRestart(false);
-    setPaused(false);
+    setUserPaused(false);
+    setAutoPaused(false);
   }, []);
 
   const handleDeviceChange = useCallback((event) => {
@@ -402,9 +424,25 @@ function TicketScanner({
 
   const closeScanner = useCallback(() => {
     stopDecoding();
-    setPaused(true);
+    setUserPaused(true);
+    setAutoPaused(true);
     if (onClose) onClose();
   }, [onClose, stopDecoding]);
+
+  const noCameraAvailable = !loadingCamera && !devices.length && !cameraDenied;
+
+  useEffect(() => {
+    if (noCameraAvailable && !noCameraSnackRef.current) {
+      showSnack(
+        "No camera detected — connect a camera or upload a QR image.",
+        "info",
+      );
+      noCameraSnackRef.current = true;
+    }
+    if (!noCameraAvailable) {
+      noCameraSnackRef.current = false;
+    }
+  }, [noCameraAvailable, showSnack]);
 
   return (
     <Stack spacing={3} sx={{ color: "#f5f5f5", py: 2 }}>
@@ -435,6 +473,32 @@ function TicketScanner({
             autoPlay
             sx={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
+          {noCameraAvailable && (
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 2,
+                bgcolor: "rgba(6,6,6,0.72)",
+                textAlign: "center",
+                px: 3,
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                No camera detected
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: "rgba(255,255,255,0.74)" }}
+              >
+                Connect a camera or upload a QR image to scan tickets.
+              </Typography>
+            </Box>
+          )}
           {loadingCamera && (
             <Box
               sx={{
