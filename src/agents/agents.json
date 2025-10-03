@@ -49,6 +49,7 @@
         "Focus-visible outlines; respect reduced motion.",
         "Adopt LoadingButtonLite for pending submits.",
         "Announce success via aria live + toast; haptics on confirm.",
+        "Prefer WebP with PNG fallback in Drop-Off images (picture/srcSet or image-set).",
         "Use ErrorBoundary around major pages."
       ]
     }

@@ -31,6 +31,7 @@ import QRCode from "react-qr-code";
 
 import SmartAutoGrid from "src/components/datagrid/SmartAutoGrid.jsx";
 import useIsMobile from "src/hooks/useIsMobile";
+import { PictureWebp } from "@/utils/assetVariant";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";
@@ -507,17 +508,18 @@ export default function DriverInfoTab() {
               }}
             >
               {slide?.src ? (
-                <MuiBox
-                  component="img"
-                  src={slide.src}
+                <PictureWebp
+                  srcPng={slide.src}
                   alt={selectedImage?.name || "Dropoff map"}
-                  sx={{
-                    maxWidth: "100%",
-                    maxHeight: "70vh",
-                    objectFit: "contain",
-                    borderRadius: 8,
-                    height: "auto",
-                    display: "block",
+                  imgProps={{
+                    style: {
+                      maxWidth: "100%",
+                      maxHeight: "70vh",
+                      objectFit: "contain",
+                      borderRadius: 8,
+                      height: "auto",
+                      display: "block",
+                    },
                   }}
                 />
               ) : null}
