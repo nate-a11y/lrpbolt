@@ -22,16 +22,16 @@ import EditRideDialog from "./EditRideDialog.jsx";
 dayjs.extend(utc);
 dayjs.extend(tz);
 
-function formatTs(ts) {
+const fmtTs = (ts) => {
   try {
     const d =
       ts && typeof ts?.toDate === "function" ? dayjs(ts.toDate()) : dayjs(ts);
     return d.isValid() ? d.tz(dayjs.tz.guess()).format("MMM D, h:mm A") : "—";
   } catch (error) {
-    logError(error, { where: "ClaimedRidesGrid", action: "formatTs" });
+    logError(error, { where: "RideGrids", action: "fmtTs" });
     return "—";
   }
-}
+};
 
 export default function ClaimedRidesGrid() {
   const [rows, setRows] = useState([]);
@@ -130,18 +130,9 @@ export default function ClaimedRidesGrid() {
   const getRowId = useCallback((row) => {
     if (row?.id != null) return String(row.id);
     if (row?.rideId != null) return String(row.rideId);
+    if (row?.tripId != null) return String(row.tripId);
+    if (row?.trip != null) return String(row.trip);
     return null;
-  }, []);
-
-  const formatMinutes = useCallback((raw) => {
-    const minutes = Number(raw);
-    if (!Number.isFinite(minutes) || minutes <= 0) return "—";
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    if (hours > 0) {
-      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h 0m`;
-    }
-    return `${mins}m`;
   }, []);
 
   const initialState = useMemo(
@@ -157,105 +148,119 @@ export default function ClaimedRidesGrid() {
     [],
   );
 
-  const columns = useMemo(() => {
-    const baseColumns = [
+  const actionsColumn = useMemo(
+    () =>
+      buildNativeActionsColumn({
+        onEdit: (_id, row) => handleEditRide(row),
+        onDelete: async (id) => await deleteRide("claimedRides", id),
+      }),
+    [handleEditRide],
+  );
+
+  const renderActions = useCallback(
+    (params) => {
+      const items = actionsColumn.getActions?.(params);
+      if (!items || (Array.isArray(items) && items.length === 0)) return null;
+      return <>{items}</>;
+    },
+    [actionsColumn],
+  );
+
+  const columns = useMemo(
+    () => [
       {
         field: "tripId",
         headerName: "Trip ID",
         minWidth: 140,
         flex: 1,
-        valueFormatter: (params) => {
-          const value = params?.value;
-          return value == null || value === "" ? "—" : String(value);
-        },
-      },
-      {
-        field: "claimedBy",
-        headerName: "Claimed By",
-        minWidth: 160,
-        flex: 1,
-        valueFormatter: (params) => {
-          const value = params?.value;
-          return value == null || value === "" ? "—" : String(value);
-        },
+        valueGetter: (p) =>
+          p?.row?.tripId ?? p?.row?.rideId ?? p?.row?.trip ?? null,
+        valueFormatter: (p) => (p?.value ? String(p.value) : "—"),
       },
       {
         field: "pickupTime",
         headerName: "Pickup",
         minWidth: 160,
         flex: 1,
-        valueFormatter: (params) => formatTs(params?.value),
+        valueGetter: (p) =>
+          p?.row?.pickupTime ?? p?.row?.pickupAt ?? p?.row?.pickup ?? null,
+        valueFormatter: (p) => fmtTs(p?.value),
       },
       {
         field: "rideDuration",
         headerName: "Duration",
         minWidth: 120,
-        flex: 0.7,
-        valueFormatter: (params) => formatMinutes(params?.value),
+        flex: 0.6,
+        valueGetter: (p) => p?.row?.rideDuration ?? p?.row?.duration ?? null,
+        valueFormatter: (p) => (p?.value != null ? `${p.value} min` : "—"),
       },
       {
         field: "rideType",
         headerName: "Type",
         minWidth: 120,
         flex: 0.7,
-        valueFormatter: (params) => {
-          const value = params?.value;
-          return value == null || value === "" ? "—" : String(value);
-        },
+        valueGetter: (p) => p?.row?.rideType ?? p?.row?.type ?? null,
+        valueFormatter: (p) => p?.value || "—",
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
-        minWidth: 140,
+        minWidth: 160,
         flex: 0.9,
-        valueFormatter: (params) => {
-          const value = params?.value;
-          return value == null || value === "" ? "—" : String(value);
-        },
+        valueGetter: (p) =>
+          p?.row?.vehicle ?? p?.row?.vehicleId ?? p?.row?.car ?? null,
+        valueFormatter: (p) => p?.value || "—",
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         minWidth: 180,
-        flex: 1.4,
-        valueFormatter: (params) => {
-          const value = params?.value;
-          return value == null || value === "" ? "—" : String(value);
-        },
+        flex: 1,
+        valueGetter: (p) => p?.row?.rideNotes ?? p?.row?.notes ?? null,
+        valueFormatter: (p) => p?.value || "—",
       },
       {
         field: "createdAt",
         headerName: "Created",
-        minWidth: 180,
-        flex: 1,
-        valueFormatter: (params) => formatTs(params?.value),
+        minWidth: 160,
+        flex: 0.9,
+        valueGetter: (p) => p?.row?.createdAt ?? null,
+        valueFormatter: (p) => fmtTs(p?.value),
+      },
+      {
+        field: "claimedBy",
+        headerName: "Claimed By",
+        minWidth: 140,
+        flex: 0.8,
+        valueGetter: (p) => p?.row?.claimedBy ?? null,
+        valueFormatter: (p) => p?.value || "—",
       },
       {
         field: "claimedAt",
         headerName: "Claimed At",
-        minWidth: 180,
-        flex: 1,
-        valueFormatter: (params) => formatTs(params?.value),
+        minWidth: 160,
+        flex: 0.9,
+        valueGetter: (p) => p?.row?.claimedAt ?? null,
+        valueFormatter: (p) => fmtTs(p?.value),
       },
       {
         field: "status",
         headerName: "Status",
-        minWidth: 140,
-        flex: 0.8,
-        valueFormatter: (params) => {
-          const value = params?.value;
-          return value == null || value === "" ? "—" : String(value);
-        },
+        minWidth: 120,
+        flex: 0.7,
+        valueGetter: (p) => p?.row?.status ?? null,
+        valueFormatter: (p) => p?.value || "—",
       },
-    ];
-
-    const actionsColumn = buildNativeActionsColumn({
-      onEdit: (_id, row) => handleEditRide(row),
-      onDelete: async (id) => await deleteRide("claimedRides", id),
-    });
-
-    return [...baseColumns, actionsColumn];
-  }, [formatMinutes, handleEditRide]);
+      {
+        field: "__actions",
+        headerName: "Actions",
+        minWidth: 120,
+        sortable: false,
+        renderCell: renderActions,
+      },
+    ],
+    [renderActions],
+  );
 
   return (
     <>
