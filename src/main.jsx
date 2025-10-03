@@ -33,7 +33,7 @@ if (typeof window !== "undefined") {
     );
   }
   if (!window.__LRP_FCM_BOOT__) {
-    window.__LRP_FCM_BOOT__ = true;
+    // Flag is set inside initMessagingAndToken, but keep external guard for early calls/HMR
     initMessagingAndToken();
   }
 }

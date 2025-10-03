@@ -1,5 +1,4 @@
-/* LRP Portal enhancement: FCM bootstrap, 2025-10-03. */
-import { initializeApp } from "firebase/app";
+/* FIX: reuse unified app and guard repeated bootstrap */
 import {
   deleteToken as deleteMessagingToken,
   getMessaging,
@@ -7,30 +6,24 @@ import {
   onMessage,
 } from "firebase/messaging";
 
+import { getFirebaseApp } from "@/services/firebaseApp";
 import { AppError, logError } from "@/services/errors";
 import {
-  getFcmTokenSafe as requestFcmToken,
+  getFcmTokenSafe as retrieveFcmToken,
   requestNotificationPermission,
 } from "@/services/pushTokens";
 
-let _app;
 let _messaging;
 
 export function initFirebaseApp() {
-  if (_app) return _app;
-  const cfg = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  };
-  _app = initializeApp(cfg);
-  return _app;
+  // legacy callers still import this; keep API but use our singleton
+  return getFirebaseApp();
 }
 
 function getMessagingInstance() {
   if (_messaging) return _messaging;
-  _messaging = getMessaging(initFirebaseApp());
+  const app = getFirebaseApp();
+  _messaging = getMessaging(app);
   return _messaging;
 }
 
@@ -45,14 +38,16 @@ export function isSupportedBrowser() {
 }
 
 export async function ensureServiceWorkerRegistered() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
     return null;
   }
+  if (!("serviceWorker" in navigator)) return null;
+  if (window.__LRP_SW_REG__) return window.__LRP_SW_REG__;
   try {
     const reg = await navigator.serviceWorker.register(
       "/firebase-messaging-sw.js",
     );
-    // Optionally register /sw.js too if your app uses it, but avoid duplicates
+    window.__LRP_SW_REG__ = reg;
     return reg;
   } catch (err) {
     logError(err, { where: "ensureServiceWorkerRegistered" });
@@ -62,16 +57,21 @@ export async function ensureServiceWorkerRegistered() {
 
 export async function initMessagingAndToken() {
   try {
-    initFirebaseApp();
+    if (typeof window !== "undefined") {
+      if (window.__LRP_FCM_BOOT__) return null; // guard double-run
+      window.__LRP_FCM_BOOT__ = true;
+    }
+
+    getFirebaseApp(); // ensure app exists
     await ensureServiceWorkerRegistered();
 
-    // messaging only after SW is available (preferred but not strictly required)
     if (!(await isMessagingSupported())) return null;
-    getMessagingInstance();
+
+    _messaging = _messaging || getMessagingInstance();
     const perm = await requestNotificationPermission();
     if (perm !== "granted") return null;
 
-    const token = await requestFcmToken({
+    const token = await retrieveFcmToken({
       messaging: _messaging,
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
@@ -88,7 +88,7 @@ export async function initMessagingAndToken() {
     } else {
       console.warn("[LRP] FCM token not acquired");
     }
-    return token;
+    return token || null;
   } catch (err) {
     logError(new AppError("FCM init failed", { code: "fcm_init", cause: err }));
     return null;
@@ -101,13 +101,13 @@ export async function requestFcmPermission() {
 
 export async function getFcmTokenSafe(options = {}) {
   try {
-    initFirebaseApp();
+    getFirebaseApp();
     if (!(await isMessagingSupported())) return null;
-    const messaging = getMessagingInstance();
     if (!options?.skipSw) {
       await ensureServiceWorkerRegistered();
     }
-    const token = await requestFcmToken({
+    const messaging = getMessagingInstance();
+    const token = await retrieveFcmToken({
       messaging,
       vapidKey: options?.vapidKey || import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
