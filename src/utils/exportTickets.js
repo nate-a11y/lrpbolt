@@ -1,7 +1,8 @@
 /* LRP Portal enhancement: ticket export utilities, 2025-10-03. */
-import * as htmlToImage from "html-to-image";
-import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import JSZip from "jszip";
+
+import * as htmlToImage from "html-to-image";
 
 /** Renders a DOM node to PNG data URL. Caller must pass a stable node (e.g., ticket preview). */
 export async function nodeToPngDataUrl(node, { pixelRatio = 2 } = {}) {

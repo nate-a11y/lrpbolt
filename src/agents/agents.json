@@ -16,7 +16,9 @@
         "Never empty catch",
         "Prefer services/fs wrappers",
         "Respect LRP theme",
-        "Use withExponentialBackoff for writes"
+        "Use withExponentialBackoff for writes",
+        "Route all errors through captureError (Sentry if DSN set).",
+        "Gate noisy logs behind feature flags."
       ]
     },
     {
@@ -35,7 +37,8 @@
         "RideEntryForm uses MUI Grid v1 only",
         "Tickets page: tabs (Manage/Generate), scanner via FAB only, bulk export/email.",
         "Use LrpDataGridPro for all grids; persist visibility and debounce quick filter.",
-        "Use shared LrpDataGridPro if present"
+        "Use shared LrpDataGridPro if present",
+        "Include DiagnosticsPanel for admin/settings."
       ]
     }
   ]

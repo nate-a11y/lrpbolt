@@ -1,5 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Box, Button, Typography } from "@mui/material";
+
+import DiagnosticsPanel from "@/components/DiagnosticsPanel.jsx";
+import { getFlag } from "@/services/observability";
 
 import NotificationSettingsCard from "../../components/NotificationSettingsCard.jsx";
 import PageContainer from "../../components/PageContainer.jsx";
@@ -9,7 +12,7 @@ import { logout } from "../../services/auth";
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 
 function ProfilePage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const handleClearCache = useCallback(() => {
     if (window.confirm("Clear cache and reload? You'll be signed out.")) {
       localStorage.clear();
@@ -20,9 +23,18 @@ function ProfilePage() {
       window.location.href = window.location.origin;
     }
   }, []);
+  const showDiagnostics = useMemo(
+    () => role === "admin" || getFlag("diag.panel"),
+    [role],
+  );
   return (
     <PageContainer>
       <NotificationSettingsCard user={user} />
+      {showDiagnostics && (
+        <Box sx={{ mt: 4 }}>
+          <DiagnosticsPanel />
+        </Box>
+      )}
       <Box sx={{ mt: 6, textAlign: "center" }}>
         <Typography
           variant="caption"

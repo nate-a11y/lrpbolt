@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
 import { initMessagingAndToken } from "@/services/fcm";
+import { initSentry, logEvent } from "@/services/observability";
 import ActiveClockProvider from "@/context/ActiveClockContext.jsx";
 
 import AppRoot from "./App.jsx";
@@ -23,6 +24,12 @@ import "./muix-license.js";
 initServiceWorkerMessageBridge();
 
 if (typeof window !== "undefined") {
+  if (!window.__LRP_OBS__) {
+    window.__LRP_OBS__ = true;
+    Promise.resolve(initSentry()).then(() =>
+      logEvent("app_start", { ts: Date.now() }),
+    );
+  }
   if (!window.__LRP_FCM_BOOT__) {
     window.__LRP_FCM_BOOT__ = true;
     initMessagingAndToken();

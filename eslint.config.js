@@ -42,7 +42,7 @@ export default [
         }
       },
       // Treat packages we don't want parsed as core (avoid import/named parse of their internals)
-      "import/core-modules": ["vite", "msw", "msw/node"]
+      "import/core-modules": ["vite", "msw", "msw/node", "jszip", "file-saver"]
     },
     plugins: {
       import: importPlugin,
