@@ -14,8 +14,9 @@ import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { useTheme } from "@mui/material/styles";
 
+import { updateTimeLog } from "@/services/fs";
+
 import dayjs, { isValidDayjs } from "../utils/dates";
-import { patchTimeLog } from "../services/timeLogs";
 import { TIMELOG_FIELDS } from "../constants/schemaFields";
 
 import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";
@@ -51,7 +52,7 @@ export default function EditTimeLogDialog({ open, log, onClose }) {
   const handleSave = async () => {
     if (!log?.id) return;
     try {
-      await patchTimeLog(log.id, {
+      await updateTimeLog(log.id, {
         startTime: form.startTime?.toDate(),
         endTime: form.endTime?.toDate(),
         rideId: form.rideId || "",

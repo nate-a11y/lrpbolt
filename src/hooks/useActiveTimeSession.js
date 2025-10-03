@@ -1,8 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState } from "react";
 
-import { subscribeActiveSessionForUser } from "@/services/timeLogs.js";
+import { subscribeTimeLogs } from "@/services/fs";
 import logError from "@/utils/logError.js";
+import { isActiveRow } from "@/utils/time";
 
 export default function useActiveTimeSession(user) {
   const [session, setSession] = useState(null);
@@ -11,10 +12,20 @@ export default function useActiveTimeSession(user) {
   );
 
   useEffect(() => {
-    const uid = user?.uid || user?.id || null;
-    const email = user?.email || null;
+    const identities = new Set();
+    const addIdentity = (value) => {
+      if (!value) return;
+      const str = String(value).trim();
+      if (!str) return;
+      identities.add(str);
+      identities.add(str.toLowerCase());
+    };
 
-    if (!uid && !email) {
+    addIdentity(user?.uid || user?.id);
+    addIdentity(user?.email);
+    addIdentity(user?.displayName);
+
+    if (identities.size === 0) {
       setSession(null);
       setLoading(false);
       return () => {};
@@ -22,11 +33,35 @@ export default function useActiveTimeSession(user) {
 
     setLoading(true);
 
-    const unsubscribe = subscribeActiveSessionForUser({
-      uid,
-      email,
-      onNext: (nextSession) => {
-        setSession(nextSession || null);
+    const driverIds = Array.from(identities).filter(
+      (value) => !value.includes("@") || value === value.toLowerCase(),
+    );
+    const identityLookup = new Set(
+      Array.from(identities, (value) => String(value).toLowerCase()),
+    );
+
+    const unsubscribe = subscribeTimeLogs({
+      driverId: driverIds.length ? driverIds : null,
+      limit: 40,
+      onData: (rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        const match = list.find((row) => {
+          if (!row || !isActiveRow(row)) return false;
+          const values = [
+            row.driverId,
+            row.userId,
+            row.driver,
+            row.driverName,
+            row.driverEmail,
+            row.userEmail,
+          ];
+          return values.some((value) => {
+            if (value == null) return false;
+            const str = String(value).toLowerCase();
+            return identityLookup.has(str);
+          });
+        });
+        setSession(match || null);
         setLoading(false);
       },
       onError: (error) => {
@@ -51,7 +86,7 @@ export default function useActiveTimeSession(user) {
         });
       }
     };
-  }, [user?.uid, user?.id, user?.email]);
+  }, [user?.uid, user?.id, user?.email, user?.displayName]);
 
   return { session, loading };
 }

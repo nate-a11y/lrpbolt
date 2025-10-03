@@ -9,16 +9,19 @@ import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
-import { tsToDate } from "@/utils/fsTime";
-import { formatDateTime, formatClockOutOrDash } from "@/utils/time";
-import { minutesBetween } from "@/utils/dates.js";
+import {
+  formatDateTime,
+  formatClockOutOrDash,
+  toDayjs,
+  durationSafe,
+} from "@/utils/time";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
+import { deleteTimeLog, updateTimeLog } from "@/services/fs";
 
 import { db } from "../../utils/firebaseInit";
 import { subscribeTimeLogs } from "../../hooks/firestore";
 import { enrichDriverNames } from "../../services/normalizers";
-import { patchTimeLog, deleteTimeLog } from "../../services/timeLogs";
 import SmartAutoGrid from "../datagrid/SmartAutoGrid.jsx";
 import { buildRowEditActionsColumn } from "../../columns/rowEditActions.jsx";
 
@@ -38,6 +41,17 @@ export default function EntriesTab() {
     (row) => row?.id || row?.docId || row?._id || null,
     [],
   );
+
+  const toDateSafe = useCallback((value) => {
+    if (value == null) return null;
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? value : null;
+    }
+    const parsed = toDayjs(value);
+    if (!parsed) return null;
+    const asDate = parsed.toDate();
+    return Number.isFinite(asDate?.getTime?.()) ? asDate : null;
+  }, []);
 
   const handleDelete = useCallback(
     async (row) => {
@@ -70,27 +84,26 @@ export default function EntriesTab() {
         rideId: newRow.rideId ?? null,
         note: newRow.note ?? null,
       };
-      if (newRow.startTime instanceof Date)
-        updates.startTime = newRow.startTime;
-      if (newRow.endTime instanceof Date) updates.endTime = newRow.endTime;
-      if (newRow.loggedAt instanceof Date) updates.loggedAt = newRow.loggedAt;
+      if (Object.prototype.hasOwnProperty.call(newRow, "startTime")) {
+        const parsedStart = toDateSafe(newRow.startTime);
+        updates.startTime = parsedStart ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(newRow, "endTime")) {
+        const parsedEnd = toDateSafe(newRow.endTime);
+        updates.endTime = parsedEnd ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(newRow, "loggedAt")) {
+        const parsedLogged = toDateSafe(newRow.loggedAt);
+        updates.loggedAt = parsedLogged ?? null;
+      }
 
       try {
-        await patchTimeLog(id, updates);
+        await updateTimeLog(id, updates);
 
-        // Recompute duration on the client for immediate UX
-        const start =
-          newRow.startTime instanceof Date
-            ? newRow.startTime
-            : tsToDate(newRow.startTime);
-        const end =
-          newRow.endTime instanceof Date
-            ? newRow.endTime
-            : tsToDate(newRow.endTime);
-        let duration = 0;
-        if (start && end) {
-          duration = Math.max(0, minutesBetween(start, end) || 0);
-        }
+        const start = toDateSafe(newRow.startTime);
+        const end = toDateSafe(newRow.endTime);
+        const durationMs = durationSafe(start, end);
+        const duration = durationMs > 0 ? Math.floor(durationMs / 60000) : 0;
 
         return {
           ...newRow,
@@ -102,7 +115,7 @@ export default function EntriesTab() {
         return oldRow;
       }
     },
-    [getRowId],
+    [getRowId, toDateSafe],
   );
 
   const actionsColumn = useMemo(
@@ -152,14 +165,12 @@ export default function EntriesTab() {
           type: "dateTime",
           editable: true,
           valueGetter: (params) =>
-            params?.row?.startTime instanceof Date
-              ? params.row.startTime
-              : tsToDate(params?.row?.startTime),
+            toDateSafe(params?.row?.startTime ?? params?.row?.clockIn ?? null),
           valueFormatter: (params) =>
             params?.value ? formatDateTime(params.value) : "N/A",
           valueSetter: (params) => {
             const next = { ...params.row };
-            next.startTime = params.value ?? null;
+            next.startTime = toDateSafe(params.value) ?? null;
             return next;
           },
           sortComparator: (v1, v2, cellParams1, cellParams2) =>
@@ -175,14 +186,12 @@ export default function EntriesTab() {
           type: "dateTime",
           editable: true,
           valueGetter: (params) =>
-            params?.row?.endTime instanceof Date
-              ? params.row.endTime
-              : tsToDate(params?.row?.endTime),
+            toDateSafe(params?.row?.endTime ?? params?.row?.clockOut ?? null),
           valueFormatter: (params) =>
             params?.value ? formatClockOutOrDash(params.value) : "—",
           valueSetter: (params) => {
             const next = { ...params.row };
-            next.endTime = params.value ?? null;
+            next.endTime = toDateSafe(params.value) ?? null;
             return next;
           },
           sortComparator: (v1, v2, cellParams1, cellParams2) =>
@@ -194,7 +203,7 @@ export default function EntriesTab() {
       }
       return col;
     });
-  }, [sharedColumns]);
+  }, [sharedColumns, toDateSafe]);
 
   const columns = useMemo(() => {
     const extras = [
@@ -205,14 +214,12 @@ export default function EntriesTab() {
         type: "dateTime",
         editable: true,
         valueGetter: (params) =>
-          params?.row?.loggedAt instanceof Date
-            ? params.row.loggedAt
-            : tsToDate(params?.row?.loggedAt),
+          toDateSafe(params?.row?.loggedAt ?? params?.row?.createdAt ?? null),
         valueFormatter: (params) =>
           params?.value ? formatDateTime(params.value) : "N/A",
         valueSetter: (params) => {
           const next = { ...params.row };
-          next.loggedAt = params.value ?? null;
+          next.loggedAt = toDateSafe(params.value) ?? null;
           return next;
         },
         sortComparator: (v1, v2, cellParams1, cellParams2) =>
@@ -237,7 +244,7 @@ export default function EntriesTab() {
       },
     ];
     return [...sharedAdminColumns, ...extras];
-  }, [sharedAdminColumns]);
+  }, [sharedAdminColumns, toDateSafe]);
 
   const handleRowEditStart = useCallback((params, event) => {
     event.defaultMuiPrevented = true;
@@ -257,9 +264,9 @@ export default function EntriesTab() {
           const withNames = await enrichDriverNames(mapped);
           const withDates = withNames.map((r) => ({
             ...r,
-            startTime: tsToDate(r.startTime),
-            endTime: tsToDate(r.endTime),
-            loggedAt: tsToDate(r.loggedAt),
+            startTime: toDateSafe(r.startTime),
+            endTime: toDateSafe(r.endTime),
+            loggedAt: toDateSafe(r.loggedAt),
           }));
           setRows(withDates);
         } catch (e) {
@@ -277,7 +284,7 @@ export default function EntriesTab() {
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, []);
+  }, [toDateSafe]);
 
   const filteredRows = useMemo(() => {
     const startBound = startFilter?.toDate?.() ?? null;
@@ -297,8 +304,8 @@ export default function EntriesTab() {
         ? driverField.includes(driverFilter.toLowerCase())
         : true;
 
-      const s = tsToDate(r.startTime);
-      const e = tsToDate(r.endTime) ?? s;
+      const s = toDateSafe(r.startTime);
+      const e = toDateSafe(r.endTime) ?? s;
 
       const startMatch = startBound
         ? s && s.getTime() >= startBound.getTime()
@@ -310,7 +317,7 @@ export default function EntriesTab() {
         r.rideId,
         formatDateTime(s),
         formatDateTime(e),
-        formatDateTime(tsToDate(r.loggedAt)),
+        formatDateTime(toDateSafe(r.loggedAt)),
         r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
         r.note,
       ]
@@ -323,21 +330,25 @@ export default function EntriesTab() {
 
       return driverMatch && startMatch && endMatch && searchMatch;
     });
-  }, [rows, driverFilter, startFilter, endFilter, search]);
+  }, [rows, driverFilter, startFilter, endFilter, search, toDateSafe]);
 
   const safeRows = useMemo(
     () =>
       (filteredRows || []).filter(Boolean).map((r) => {
-        const s = tsToDate(r.startTime);
-        const e = tsToDate(r.endTime);
+        const s = toDateSafe(r.startTime);
+        const e = toDateSafe(r.endTime);
         let duration =
           r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000);
         if ((duration == null || Number.isNaN(duration)) && s && e) {
-          duration = Math.max(0, minutesBetween(s, e) || 0);
+          const diffMs = durationSafe(s, e);
+          duration = diffMs > 0 ? Math.floor(diffMs / 60000) : 0;
+        }
+        if (!Number.isFinite(duration) || duration < 0) {
+          duration = 0;
         }
         return { ...r, duration };
       }),
-    [filteredRows],
+    [filteredRows, toDateSafe],
   );
 
   const performDelete = useCallback(async (ids) => {

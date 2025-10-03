@@ -31,7 +31,7 @@ import NotifDiag from "@/components/NotifDiag.jsx";
 import GlobalChrome from "@/components/GlobalChrome.jsx";
 import PermissionGate from "@/components/PermissionGate.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
-import { endTimeLog } from "@/services/timeLogs.js";
+import { updateTimeLog } from "@/services/fs";
 import { on } from "@/services/uiBus";
 import logError from "@/utils/logError.js";
 
@@ -97,7 +97,7 @@ function App() {
 
       clockOutInFlightRef.current = true;
       try {
-        await endTimeLog({ id });
+        await updateTimeLog(id, { endTime: "server" });
         enqueue("Clocked out successfully.", { severity: "success" });
         return true;
       } catch (error) {
