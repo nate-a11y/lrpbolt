@@ -4,28 +4,38 @@
       "id": "repo-doctor",
       "name": "Repo Doctor",
       "description": "Scans code for DataGrid, Firestore, and SW/push issues; suggests and applies safe patches.",
-      "scopes": ["src/**", "public/**"],
+      "scopes": [
+        "src/**",
+        "public/**"
+      ],
       "rules": [
-        "Prefer services/fs wrappers",
-        "Use withExponentialBackoff for writes",
-        "Never empty catch",
-        "Respect LRP theme",
-        "Migrate legacy TimeLogs to fs",
+        "Badge counts reflect collection subscriptions (Live/Queue/Claimed)",
+        "Ensure preview/status parity between TicketScanner and Tickets grid.",
         "Harden SW: waitUntil + notificationclick when closed; ensure VAPID key used.",
-        "Ensure preview/status parity between TicketScanner and Tickets grid."
+        "Migrate legacy TimeLogs to fs",
+        "Never empty catch",
+        "Prefer services/fs wrappers",
+        "Respect LRP theme",
+        "Use withExponentialBackoff for writes"
       ]
     },
     {
       "id": "ui-polish",
       "name": "UI Polish",
       "description": "Applies LRP theme, DataGrid defaults, accessibility and contrast fixes, consistent spacing.",
-      "scopes": ["src/components/**"],
+      "scopes": [
+        "src/components/**"
+      ],
       "rules": [
-        "Use shared LrpDataGridPro if present",
         "Add focus outlines",
+        "CSV builder/import/preview + batch commit",
+        "Disable submit while pending; validation shake + helper text",
         "No ad-hoc CSS; use sx",
+        "Persist tab + drafts to localStorage",
+        "RideEntryForm uses MUI Grid v1 only",
+        "Tickets page: tabs (Manage/Generate), scanner via FAB only, bulk export/email.",
         "Use LrpDataGridPro for all grids; persist visibility and debounce quick filter.",
-        "Tickets page: tabs (Manage/Generate), scanner via FAB only, bulk export/email."
+        "Use shared LrpDataGridPro if present"
       ]
     }
   ]

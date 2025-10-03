@@ -25,11 +25,17 @@ export async function downloadZipFromPngs(files, zipName = "tickets.zip") {
 /** Export pattern:
  * Pass a ref or selector that can render ticket previews offscreen in a loop, then collect PNGs -> zip.
  */
-export async function exportTicketNodesAsZip(nodes = [], { zipName = "tickets.zip" } = {}) {
+export async function exportTicketNodesAsZip(
+  nodes = [],
+  { zipName = "tickets.zip" } = {},
+) {
   const files = [];
   for (let i = 0; i < nodes.length; i += 1) {
     const dataUrl = await nodeToPngDataUrl(nodes[i]);
-    files.push({ name: nodes[i].dataset?.ticketName || `ticket-${i + 1}`, dataUrl });
+    files.push({
+      name: nodes[i].dataset?.ticketName || `ticket-${i + 1}`,
+      dataUrl,
+    });
   }
   await downloadZipFromPngs(files, zipName);
 }

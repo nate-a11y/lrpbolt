@@ -818,18 +818,15 @@ function Tickets() {
       .filter((row) => Boolean(row));
   }, [rows, selectedIds, getRowId]);
 
-  const renderTicketPreviewNode = useCallback(
-    (ticket) => {
-      if (!ticket || !ticketPreviewContainerRef.current) return null;
-      const wrapper = document.createElement("div");
-      ticketPreviewContainerRef.current.appendChild(wrapper);
-      const root = ReactDOM.createRoot(wrapper);
-      root.render(<TicketPreviewCard ticket={ticket} />);
-      wrapper.__lrpRoot = root;
-      return wrapper;
-    },
-    [],
-  );
+  const renderTicketPreviewNode = useCallback((ticket) => {
+    if (!ticket || !ticketPreviewContainerRef.current) return null;
+    const wrapper = document.createElement("div");
+    ticketPreviewContainerRef.current.appendChild(wrapper);
+    const root = ReactDOM.createRoot(wrapper);
+    root.render(<TicketPreviewCard ticket={ticket} />);
+    wrapper.__lrpRoot = root;
+    return wrapper;
+  }, []);
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
@@ -1338,7 +1335,6 @@ function Tickets() {
           }}
           sx={{ flexGrow: 1, minWidth: 200 }}
         />
-
       </Box>
 
       {noAccessAlertOpen && (
@@ -1577,7 +1573,12 @@ function Tickets() {
         </Box>
       </Modal>
 
-      <Dialog open={emailOpen} onClose={() => setEmailOpen(false)} fullWidth maxWidth="sm">
+      <Dialog
+        open={emailOpen}
+        onClose={() => setEmailOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
         <DialogTitle>Email Selected Tickets</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
