@@ -97,18 +97,57 @@ export async function restoreTicketsBatch(rows = []) {
 /** ---- TimeLogs ---- */
 const TIME_LOGS = "timeLogs";
 
-/* FIX: row.id now always equals Firestore doc id; legacy id kept as logicalId */
-function mapTimeLogDoc(docSnap) {
-  const rawData =
+/* LRP Portal hotfix: TimeLogs normalize + write path, 2025-10-03 */
+export function normalizeTimeLog(docSnap) {
+  const data =
     docSnap && typeof docSnap.data === "function" ? docSnap.data() : {};
-  const { id: legacyId, ...rest } = rawData || {};
-  const docId = docSnap?.id || null;
+  const id = docSnap?.id || null;
+
+  const startTs =
+    data?.startTs ||
+    data?.startTime ||
+    data?.clockInAt ||
+    data?.clockIn ||
+    data?.start ||
+    null;
+  const endTs =
+    data?.endTs ||
+    data?.endTime ||
+    data?.clockOutAt ||
+    data?.clockOut ||
+    data?.end ||
+    null;
+  const driverKey =
+    data?.driverKey ||
+    data?.userId ||
+    data?.driverId ||
+    data?.driverEmail ||
+    data?.userEmail ||
+    null;
+  const driverName =
+    data?.driverName || data?.displayName || data?.name || data?.driver || null;
+  const status =
+    data?.status || data?.state || (endTs ? "closed" : startTs ? "open" : null);
+  const legacyId = data?.id ?? null;
+  const normalizedDriverKey =
+    driverKey != null && driverKey !== undefined
+      ? (() => {
+          const str = String(driverKey).trim();
+          return str || null;
+        })()
+      : null;
+
   return {
-    id: docId,
-    docId,
-    logicalId: legacyId ?? null,
-    originalId: legacyId ?? null,
-    ...rest,
+    ...data,
+    id,
+    docId: id,
+    logicalId: legacyId,
+    originalId: legacyId,
+    startTs: startTs ?? null,
+    endTs: endTs ?? null,
+    driverKey: normalizedDriverKey,
+    driverName,
+    status: status || "open",
   };
 }
 
@@ -143,7 +182,13 @@ function toMillis(value) {
 
 function deriveSortMs(row) {
   const candidate =
-    row?.startTime ?? row?.clockIn ?? row?.loggedAt ?? row?.createdAt ?? null;
+    row?.startTs ??
+    row?.startTime ??
+    row?.clockIn ??
+    row?.clockInAt ??
+    row?.loggedAt ??
+    row?.createdAt ??
+    null;
   return toMillis(candidate);
 }
 
@@ -157,6 +202,15 @@ function normalizeEmail(value) {
 function coerceTimestamp(input, { allowNull = true, fallback = null } = {}) {
   if (input === undefined) return undefined;
   if (input === null) return allowNull ? null : (fallback ?? null);
+
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    typeof input._methodName === "string" &&
+    input._methodName.toLowerCase().includes("servertimestamp")
+  ) {
+    return input;
+  }
 
   if (input === "server" || input === "now") {
     return serverTimestamp();
@@ -240,51 +294,95 @@ export async function logTime(entry = {}) {
     throw new AppError("logTime: entry required", { code: "bad_args" });
   }
 
-  const driverIdRaw = entry.driverId ?? entry.userId ?? entry.uid ?? null;
+  const driverEmail = normalizeEmail(entry.driverEmail ?? entry.userEmail);
+  const driverIdRaw = entry.userId ?? entry.driverId ?? entry.uid ?? null;
   const driverId = driverIdRaw ? String(driverIdRaw).trim() : null;
-  if (!driverId) {
-    throw new AppError("logTime: driverId required", { code: "bad_args" });
+
+  const driverKeyCandidate = entry.driverKey ?? driverId ?? driverEmail ?? null;
+
+  if (!driverKeyCandidate) {
+    throw new AppError("logTime: driverKey required", { code: "bad_args" });
   }
 
-  const driverName = entry.driverName ?? entry.driver ?? null;
-  const driverEmail = normalizeEmail(entry.driverEmail ?? entry.userEmail);
-  const rideId = entry.rideId ? String(entry.rideId).trim() : "N/A";
-  const mode = entry.mode ? String(entry.mode).trim() : "RIDE";
+  const driverKey = String(driverKeyCandidate).trim();
+  if (!driverKey) {
+    throw new AppError("logTime: driverKey required", { code: "bad_args" });
+  }
 
-  const baseTimestamps = {
-    startTime: coerceTimestamp(entry.startTime, {
+  const modeRaw = entry.mode ? String(entry.mode).trim() : "RIDE";
+  const rideRaw = entry.rideId ? String(entry.rideId).trim() : "";
+  const mode = modeRaw || "RIDE";
+  const rideId = mode === "RIDE" ? rideRaw || "N/A" : "N/A";
+
+  const startInput =
+    entry.startTs ??
+    entry.startTime ??
+    entry.clockInAt ??
+    entry.clockIn ??
+    entry.start ??
+    null;
+  const endInput =
+    entry.endTs ??
+    entry.endTime ??
+    entry.clockOutAt ??
+    entry.clockOut ??
+    entry.end ??
+    null;
+
+  let startTs = coerceTimestamp(startInput, {
+    allowNull: false,
+    fallback: serverTimestamp(),
+  });
+  if (startTs === undefined || startTs === null) {
+    startTs = coerceTimestamp("server", {
       allowNull: false,
       fallback: serverTimestamp(),
-    }),
-    endTime: coerceTimestamp(entry.endTime, { allowNull: true }),
-    loggedAt: coerceTimestamp(entry.loggedAt, {
-      allowNull: false,
-      fallback: serverTimestamp(),
-    }),
-    updatedAt: coerceTimestamp(entry.updatedAt, {
-      allowNull: false,
-      fallback: serverTimestamp(),
-    }),
-  };
+    });
+  }
+
+  const endTs = coerceTimestamp(endInput, { allowNull: true, fallback: null });
+
+  const loggedAt = coerceTimestamp(entry.loggedAt, {
+    allowNull: false,
+    fallback: serverTimestamp(),
+  });
+  const updatedAt = coerceTimestamp(entry.updatedAt, {
+    allowNull: false,
+    fallback: serverTimestamp(),
+  });
 
   const durationMinutes = Number.isFinite(entry.duration)
     ? Math.max(0, Math.floor(Number(entry.duration)))
-    : null;
+    : computeDurationMinutes(startTs, endTs);
+
+  const driverName =
+    entry.driverName ||
+    entry.displayName ||
+    entry.name ||
+    entry.driver ||
+    (driverEmail && driverEmail.includes("@")
+      ? driverEmail.split("@")[0]
+      : driverEmail) ||
+    null;
 
   const payload = scrubPayload({
-    driverId,
-    userId: entry.userId ?? driverId,
-    driverName: driverName ?? null,
+    driverKey,
+    driverId: driverId ?? null,
+    userId: entry.userId ?? driverId ?? null,
+    driverName,
     driverEmail,
     userEmail: driverEmail,
     rideId,
     mode,
     note: entry.note ?? null,
-    startTime: baseTimestamps.startTime,
-    endTime: baseTimestamps.endTime ?? null,
-    loggedAt: baseTimestamps.loggedAt,
-    updatedAt: baseTimestamps.updatedAt,
+    startTs,
+    startTime: startTs,
+    endTs: endTs ?? null,
+    endTime: endTs ?? null,
+    loggedAt,
+    updatedAt,
     duration: durationMinutes,
+    status: entry.status || (endTs ? "closed" : "open"),
     source: entry.source ?? null,
   });
 
@@ -303,7 +401,7 @@ export async function logTime(entry = {}) {
     });
     return { id: resultId, docId: resultId };
   } catch (error) {
-    logError(error, { where: "services.fs.logTime", driverId });
+    logError(error, { where: "services.fs.logTime", driverKey });
     throw new AppError("Failed to log time", {
       code: "time_logs/log_failure",
       cause: error,
@@ -315,6 +413,7 @@ export function subscribeTimeLogs({
   onData,
   onError,
   driverId = null,
+  key = null,
   rideId = null,
   limit: limitCount = 200,
 } = {}) {
@@ -322,14 +421,28 @@ export function subscribeTimeLogs({
   try {
     const baseRef = collection(db, TIME_LOGS);
     const driverKeys = new Set();
+
+    const pushKey = (value) => {
+      if (value == null) return;
+      const str = String(value).trim();
+      if (!str) return;
+      driverKeys.add(str);
+      const lower = str.toLowerCase();
+      if (lower !== str) {
+        driverKeys.add(lower);
+      }
+      if (str.includes("@")) {
+        driverKeys.add(str.toLowerCase());
+      }
+    };
+
+    const seedKeys = Array.isArray(key) ? key : key != null ? [key] : [];
+    seedKeys.forEach((value) => pushKey(value));
+
     if (Array.isArray(driverId)) {
-      driverId.forEach((value) => {
-        const trimmed = value == null ? "" : String(value).trim();
-        if (trimmed) driverKeys.add(trimmed);
-      });
+      driverId.forEach((value) => pushKey(value));
     } else if (driverId != null) {
-      const trimmed = String(driverId).trim();
-      if (trimmed) driverKeys.add(trimmed);
+      pushKey(driverId);
     }
 
     const limitValue = Number.isFinite(limitCount)
@@ -362,7 +475,9 @@ export function subscribeTimeLogs({
       return onSnapshot(
         compiledQuery,
         (snapshot) => {
-          const rows = snapshot.docs.map((docSnap) => mapTimeLogDoc(docSnap));
+          const rows = snapshot.docs.map((docSnap) =>
+            normalizeTimeLog(docSnap),
+          );
           if (typeof onData === "function") {
             onData(rows);
           }
@@ -379,7 +494,13 @@ export function subscribeTimeLogs({
     /* FIX: broaden timeLogs subscription to OR across legacy id/email fields; dedupe by doc.id */
     const unsubs = [];
     const accumulator = new Map();
-    const fields = ["driverId", "userId", "driverEmail", "userEmail"];
+    const fields = [
+      "driverKey",
+      "driverId",
+      "userId",
+      "driverEmail",
+      "userEmail",
+    ];
     const comboSeen = new Set();
 
     const attachListener = (field, value) => {
@@ -404,7 +525,7 @@ export function subscribeTimeLogs({
                 accumulator.delete(change.doc.id);
                 return;
               }
-              accumulator.set(change.doc.id, mapTimeLogDoc(change.doc));
+              accumulator.set(change.doc.id, normalizeTimeLog(change.doc));
             });
             emitRows(accumulator);
           },
@@ -489,6 +610,7 @@ export async function updateTimeLog(id, data = {}) {
   if (hasOwn("driver")) payload.driver = data.driver ?? null;
   if (hasOwn("driverId")) payload.driverId = data.driverId ?? null;
   if (hasOwn("driverName")) payload.driverName = data.driverName ?? null;
+  if (hasOwn("driverKey")) payload.driverKey = data.driverKey ?? null;
   if (hasOwn("rideId")) payload.rideId = data.rideId ?? null;
   if (hasOwn("mode")) payload.mode = data.mode ?? null;
   if (hasOwn("note")) payload.note = data.note ?? null;
@@ -510,21 +632,56 @@ export async function updateTimeLog(id, data = {}) {
     }
   }
 
-  if (hasOwn("startTime")) {
-    const next = coerceTimestamp(data.startTime, {
+  let nextStartTs;
+  let nextStartTime;
+  let nextEndTs;
+  let nextEndTime;
+
+  if (hasOwn("startTs")) {
+    nextStartTs = coerceTimestamp(data.startTs, {
       allowNull: true,
       fallback: null,
     });
-    payload.startTime = next ?? null;
+  }
+
+  if (hasOwn("startTime")) {
+    nextStartTime = coerceTimestamp(data.startTime, {
+      allowNull: true,
+      fallback: null,
+    });
+  }
+
+  if (hasOwn("endTs")) {
+    nextEndTs = coerceTimestamp(data.endTs, {
+      allowNull: true,
+      fallback: null,
+    });
   }
 
   if (hasOwn("endTime")) {
-    const next = coerceTimestamp(data.endTime, {
+    nextEndTime = coerceTimestamp(data.endTime, {
       allowNull: true,
       fallback: null,
     });
-    payload.endTime = next ?? null;
   }
+
+  if (nextStartTs === undefined && nextStartTime !== undefined) {
+    nextStartTs = nextStartTime;
+  }
+  if (nextStartTime === undefined && nextStartTs !== undefined) {
+    nextStartTime = nextStartTs;
+  }
+  if (nextEndTs === undefined && nextEndTime !== undefined) {
+    nextEndTs = nextEndTime;
+  }
+  if (nextEndTime === undefined && nextEndTs !== undefined) {
+    nextEndTime = nextEndTs;
+  }
+
+  if (nextStartTs !== undefined) payload.startTs = nextStartTs ?? null;
+  if (nextStartTime !== undefined) payload.startTime = nextStartTime ?? null;
+  if (nextEndTs !== undefined) payload.endTs = nextEndTs ?? null;
+  if (nextEndTime !== undefined) payload.endTime = nextEndTime ?? null;
 
   if (hasOwn("loggedAt")) {
     const next = coerceTimestamp(data.loggedAt, {
@@ -539,25 +696,56 @@ export async function updateTimeLog(id, data = {}) {
     fallback: serverTimestamp(),
   });
 
-  let startTs = hasOwn("startTime") ? payload.startTime : undefined;
-  let endTs = hasOwn("endTime") ? payload.endTime : undefined;
+  let startForDuration =
+    nextStartTs !== undefined
+      ? nextStartTs
+      : nextStartTime !== undefined
+        ? nextStartTime
+        : undefined;
+  let endForDuration =
+    nextEndTs !== undefined
+      ? nextEndTs
+      : nextEndTime !== undefined
+        ? nextEndTime
+        : undefined;
 
-  if (hasOwn("startTime") || hasOwn("endTime")) {
+  if (
+    hasOwn("startTime") ||
+    hasOwn("endTime") ||
+    hasOwn("startTs") ||
+    hasOwn("endTs")
+  ) {
     try {
-      if (startTs === undefined || endTs === undefined) {
+      if (startForDuration === undefined || endForDuration === undefined) {
         const snap = await getDoc(ref);
         if (snap.exists()) {
           const existing = snap.data();
-          if (startTs === undefined) startTs = existing?.startTime ?? null;
-          if (endTs === undefined) endTs = existing?.endTime ?? null;
+          if (startForDuration === undefined) {
+            startForDuration = existing?.startTs ?? existing?.startTime ?? null;
+          }
+          if (endForDuration === undefined) {
+            endForDuration = existing?.endTs ?? existing?.endTime ?? null;
+          }
         }
       }
     } catch (error) {
       logError(error, { where: "services.fs.updateTimeLog.fetch", id });
     }
 
-    const computedDuration = computeDurationMinutes(startTs, endTs);
+    const computedDuration = computeDurationMinutes(
+      startForDuration,
+      endForDuration,
+    );
     payload.duration = computedDuration;
+
+    if (!hasOwn("status")) {
+      const statusValue = endForDuration ? "closed" : "open";
+      payload.status = statusValue;
+    }
+  }
+
+  if (hasOwn("status")) {
+    payload.status = data.status ?? null;
   }
 
   const cleaned = scrubPayload(payload);

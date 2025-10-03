@@ -87,8 +87,14 @@ function App() {
   const pendingClockOutTimerRef = useRef(null);
 
   useEffect(() => {
-    // one-time init
-    initAnalytics();
+    if (typeof window === "undefined") return;
+    if (window.__LRP_ANALYTICS__) return;
+    window.__LRP_ANALYTICS__ = true;
+    try {
+      initAnalytics();
+    } catch (error) {
+      logError(error, { where: "App", action: "initAnalytics" });
+    }
   }, []);
 
   const performClockOut = useCallback(
