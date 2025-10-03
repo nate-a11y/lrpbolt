@@ -1,4 +1,6 @@
 /* LRP Portal enhancement: FS service shim (Phase-1), 2025-10-03. */
+import { serverTimestamp, Timestamp } from "firebase/firestore";
+
 import {
   getDb,
   collection,
@@ -8,6 +10,12 @@ import {
   writeBatch,
   query,
   orderBy,
+  addDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  where,
+  limit,
 } from "../firestoreCore";
 import { withExponentialBackoff } from "../retry";
 import { AppError, logError } from "../errors";
@@ -69,65 +77,374 @@ export async function restoreTicketsBatch(rows = []) {
   });
 }
 
-/** ---- TimeLogs Façade (Phase-1) ----
- * Delegates to existing legacy service if available, else provides no-op stubs
- * so imports can migrate gradually without breaking.
- */
-let legacyModule;
-let legacyLoaded = false;
-async function ensureLegacy() {
-  if (legacyLoaded) return legacyModule;
-  try {
-    legacyModule = await import("../timeLogs.js");
-  } catch (e) {
-    legacyModule = null;
-    logError(e, { where: "services.fs.ensureLegacy" });
-  }
-  legacyLoaded = true;
-  return legacyModule;
+/** ---- TimeLogs ---- */
+const TIME_LOGS = "timeLogs";
+
+function normalizeEmail(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase();
 }
 
-function getLegacyTimeLogs() {
-  if (!legacyModule) return null;
-  return legacyModule.timeLogs || legacyModule.default || legacyModule;
+function coerceTimestamp(input, { allowNull = true, fallback = null } = {}) {
+  if (input === undefined) return undefined;
+  if (input === null) return allowNull ? null : (fallback ?? null);
+
+  if (input === "server" || input === "now") {
+    return serverTimestamp();
+  }
+
+  if (input instanceof Timestamp) {
+    return input;
+  }
+
+  if (typeof input?.toDate === "function") {
+    try {
+      const dateValue = input.toDate();
+      if (dateValue instanceof Date && Number.isFinite(dateValue.getTime())) {
+        return Timestamp.fromDate(dateValue);
+      }
+    } catch (error) {
+      logError(error, { where: "services.fs.coerceTimestamp.toDate" });
+    }
+  }
+
+  if (input instanceof Date) {
+    const ms = input.getTime();
+    if (Number.isFinite(ms)) {
+      return Timestamp.fromMillis(ms);
+    }
+    return allowNull ? null : (fallback ?? null);
+  }
+
+  if (typeof input === "number") {
+    if (Number.isFinite(input)) {
+      return Timestamp.fromMillis(input);
+    }
+    return allowNull ? null : (fallback ?? null);
+  }
+
+  if (
+    typeof input === "object" &&
+    input !== null &&
+    Number.isFinite(input.seconds)
+  ) {
+    const seconds = Number(input.seconds);
+    const nanoseconds = Number.isFinite(input.nanoseconds)
+      ? Number(input.nanoseconds)
+      : 0;
+    return new Timestamp(seconds, nanoseconds);
+  }
+
+  if (typeof input === "string") {
+    const parsed = Date.parse(input);
+    if (Number.isFinite(parsed)) {
+      return Timestamp.fromMillis(parsed);
+    }
+    if (input.toLowerCase() === "null") {
+      return allowNull ? null : (fallback ?? null);
+    }
+  }
+
+  return allowNull ? null : (fallback ?? null);
+}
+
+function scrubPayload(data) {
+  const result = {};
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined) return;
+    result[key] = value;
+  });
+  return result;
+}
+
+function computeDurationMinutes(startTs, endTs) {
+  const startMs = startTs?.toMillis?.();
+  const endMs = endTs?.toMillis?.();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  const diff = endMs - startMs;
+  if (!Number.isFinite(diff) || diff <= 0) return null;
+  return Math.floor(diff / 60000);
+}
+
+export async function logTime(entry = {}) {
+  if (!entry || typeof entry !== "object") {
+    throw new AppError("logTime: entry required", { code: "bad_args" });
+  }
+
+  const driverIdRaw = entry.driverId ?? entry.userId ?? entry.uid ?? null;
+  const driverId = driverIdRaw ? String(driverIdRaw).trim() : null;
+  if (!driverId) {
+    throw new AppError("logTime: driverId required", { code: "bad_args" });
+  }
+
+  const driverName = entry.driverName ?? entry.driver ?? null;
+  const driverEmail = normalizeEmail(entry.driverEmail ?? entry.userEmail);
+  const rideId = entry.rideId ? String(entry.rideId).trim() : "N/A";
+  const mode = entry.mode ? String(entry.mode).trim() : "RIDE";
+
+  const baseTimestamps = {
+    startTime: coerceTimestamp(entry.startTime, {
+      allowNull: false,
+      fallback: serverTimestamp(),
+    }),
+    endTime: coerceTimestamp(entry.endTime, { allowNull: true }),
+    loggedAt: coerceTimestamp(entry.loggedAt, {
+      allowNull: false,
+      fallback: serverTimestamp(),
+    }),
+    updatedAt: coerceTimestamp(entry.updatedAt, {
+      allowNull: false,
+      fallback: serverTimestamp(),
+    }),
+  };
+
+  const durationMinutes = Number.isFinite(entry.duration)
+    ? Math.max(0, Math.floor(Number(entry.duration)))
+    : null;
+
+  const payload = scrubPayload({
+    driverId,
+    userId: entry.userId ?? driverId,
+    driverName: driverName ?? null,
+    driverEmail,
+    userEmail: driverEmail,
+    rideId,
+    mode,
+    note: entry.note ?? null,
+    startTime: baseTimestamps.startTime,
+    endTime: baseTimestamps.endTime ?? null,
+    loggedAt: baseTimestamps.loggedAt,
+    updatedAt: baseTimestamps.updatedAt,
+    duration: durationMinutes,
+    source: entry.source ?? null,
+  });
+
+  const id =
+    typeof entry.id === "string" && entry.id.trim() ? entry.id.trim() : null;
+  const db = getDb();
+
+  try {
+    const resultId = await withExponentialBackoff(async () => {
+      if (id) {
+        await setDoc(doc(db, TIME_LOGS, id), payload, { merge: true });
+        return id;
+      }
+      const ref = await addDoc(collection(db, TIME_LOGS), payload);
+      return ref.id;
+    });
+    return { id: resultId };
+  } catch (error) {
+    logError(error, { where: "services.fs.logTime", driverId });
+    throw new AppError("Failed to log time", {
+      code: "time_logs/log_failure",
+      cause: error,
+    });
+  }
+}
+
+export function subscribeTimeLogs({
+  onData,
+  onError,
+  driverId = null,
+  rideId = null,
+  limit: limitCount = 200,
+} = {}) {
+  const db = getDb();
+  try {
+    const baseRef = collection(db, TIME_LOGS);
+    const constraints = [];
+    const driverIds = Array.isArray(driverId)
+      ? driverId.filter((value) => value != null)
+      : driverId != null
+        ? [driverId]
+        : [];
+
+    if (driverIds.length === 1) {
+      constraints.push(where("driverId", "==", driverIds[0]));
+    } else if (driverIds.length > 1) {
+      const sliced = driverIds.slice(0, 10);
+      constraints.push(where("driverId", "in", sliced));
+    }
+
+    if (rideId) {
+      constraints.push(where("rideId", "==", rideId));
+    }
+
+    constraints.push(orderBy("startTime", "desc"));
+
+    if (Number.isFinite(limitCount) && limitCount > 0) {
+      constraints.push(limit(limitCount));
+    }
+
+    const compiledQuery = constraints.length
+      ? query(baseRef, ...constraints)
+      : query(baseRef, orderBy("startTime", "desc"));
+
+    const unsubscribe = onSnapshot(
+      compiledQuery,
+      (snapshot) => {
+        const rows = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            ...data,
+            id: data?.id ?? docSnap.id,
+            docId: docSnap.id,
+            originalId: data?.id ?? null,
+          };
+        });
+        if (typeof onData === "function") {
+          onData(rows);
+        }
+      },
+      (error) => {
+        logError(error, { where: "services.fs.subscribeTimeLogs" });
+        if (typeof onError === "function") {
+          onError(error);
+        }
+      },
+    );
+
+    return unsubscribe;
+  } catch (error) {
+    logError(error, {
+      where: "services.fs.subscribeTimeLogs",
+      driverId,
+      rideId,
+    });
+    if (typeof onError === "function") {
+      onError(error);
+    }
+    return () => {};
+  }
+}
+
+export async function deleteTimeLog(id) {
+  if (!id) return;
+  const db = getDb();
+  try {
+    await withExponentialBackoff(async () => {
+      await deleteDoc(doc(db, TIME_LOGS, id));
+    });
+  } catch (error) {
+    logError(error, { where: "services.fs.deleteTimeLog", id });
+    throw new AppError("Failed to delete time log", {
+      code: "time_logs/delete_failure",
+      cause: error,
+    });
+  }
+}
+
+export async function updateTimeLog(id, data = {}) {
+  if (!id) {
+    throw new AppError("updateTimeLog: id required", { code: "bad_args" });
+  }
+  if (!data || typeof data !== "object") return;
+
+  const db = getDb();
+  const ref = doc(db, TIME_LOGS, id);
+
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(data, key);
+
+  const payload = {};
+
+  if (hasOwn("driver")) payload.driver = data.driver ?? null;
+  if (hasOwn("driverId")) payload.driverId = data.driverId ?? null;
+  if (hasOwn("driverName")) payload.driverName = data.driverName ?? null;
+  if (hasOwn("rideId")) payload.rideId = data.rideId ?? null;
+  if (hasOwn("mode")) payload.mode = data.mode ?? null;
+  if (hasOwn("note")) payload.note = data.note ?? null;
+  if (hasOwn("userId")) payload.userId = data.userId ?? null;
+
+  if (hasOwn("driverEmail")) {
+    payload.driverEmail = normalizeEmail(data.driverEmail);
+  }
+  if (hasOwn("userEmail")) {
+    payload.userEmail = normalizeEmail(data.userEmail);
+  }
+
+  if (hasOwn("duration")) {
+    const duration = Number(data.duration);
+    if (Number.isFinite(duration) && duration >= 0) {
+      payload.duration = Math.floor(duration);
+    } else if (data.duration === null) {
+      payload.duration = null;
+    }
+  }
+
+  if (hasOwn("startTime")) {
+    const next = coerceTimestamp(data.startTime, {
+      allowNull: true,
+      fallback: null,
+    });
+    payload.startTime = next ?? null;
+  }
+
+  if (hasOwn("endTime")) {
+    const next = coerceTimestamp(data.endTime, {
+      allowNull: true,
+      fallback: null,
+    });
+    payload.endTime = next ?? null;
+  }
+
+  if (hasOwn("loggedAt")) {
+    const next = coerceTimestamp(data.loggedAt, {
+      allowNull: true,
+      fallback: null,
+    });
+    payload.loggedAt = next ?? null;
+  }
+
+  payload.updatedAt = coerceTimestamp(data.updatedAt, {
+    allowNull: false,
+    fallback: serverTimestamp(),
+  });
+
+  let startTs = hasOwn("startTime") ? payload.startTime : undefined;
+  let endTs = hasOwn("endTime") ? payload.endTime : undefined;
+
+  if (hasOwn("startTime") || hasOwn("endTime")) {
+    try {
+      if (startTs === undefined || endTs === undefined) {
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const existing = snap.data();
+          if (startTs === undefined) startTs = existing?.startTime ?? null;
+          if (endTs === undefined) endTs = existing?.endTime ?? null;
+        }
+      }
+    } catch (error) {
+      logError(error, { where: "services.fs.updateTimeLog.fetch", id });
+    }
+
+    const computedDuration = computeDurationMinutes(startTs, endTs);
+    payload.duration = computedDuration;
+  }
+
+  const cleaned = scrubPayload(payload);
+
+  if (Object.keys(cleaned).length === 0) {
+    return;
+  }
+
+  try {
+    await withExponentialBackoff(async () => {
+      await updateDoc(ref, cleaned);
+    });
+  } catch (error) {
+    logError(error, { where: "services.fs.updateTimeLog", id });
+    throw new AppError("Failed to update time log", {
+      code: "time_logs/update_failure",
+      cause: error,
+    });
+  }
 }
 
 export const timeLogs = {
-  async logTime(entry) {
-    const legacy =
-      getLegacyTimeLogs() || (await ensureLegacy(), getLegacyTimeLogs());
-    if (legacy?.logTime) return legacy.logTime(entry);
-    throw new AppError("logTime not yet migrated; legacy missing", {
-      code: "not_implemented",
-    });
-  },
-  subscribe(cb, onErr) {
-    let unsubscribe = () => {};
-    ensureLegacy()
-      .then(() => {
-        const legacy = getLegacyTimeLogs();
-        if (legacy?.subscribeTimeLogs) {
-          unsubscribe = legacy.subscribeTimeLogs(cb, onErr);
-        } else {
-          logError(
-            new AppError("subscribeTimeLogs not yet migrated", {
-              code: "not_implemented",
-            }),
-          );
-        }
-      })
-      .catch((err) => {
-        logError(err, { where: "services.fs.timeLogs.subscribe" });
-        if (onErr) onErr(err);
-      });
-    return () => {
-      if (typeof unsubscribe === "function") {
-        try {
-          unsubscribe();
-        } catch (err) {
-          logError(err, { where: "services.fs.timeLogs.unsubscribe" });
-        }
-      }
-    };
-  },
+  logTime,
+  subscribeTimeLogs,
+  deleteTimeLog,
+  updateTimeLog,
 };

@@ -18,16 +18,17 @@ import { PlayArrow, Stop } from "@mui/icons-material";
 
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
-import {
-  subscribeMyTimeLogs,
-  startTimeLog,
-  endTimeLog,
-  patchTimeLog,
-} from "@/services/timeLogs";
+import { logTime, subscribeTimeLogs, updateTimeLog } from "@/services/fs";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
-import { isActiveRow, formatDateTime, safeDuration, dayjs } from "@/utils/time";
+import {
+  dayjs,
+  toDayjs,
+  formatDateTime,
+  durationSafe,
+  formatDuration,
+  isActiveRow,
+} from "@/utils/time";
 import { getRowId as pickId } from "@/utils/timeLogMap";
-import { tsToDate } from "@/utils/fsTime";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 const pulse = keyframes`
@@ -67,6 +68,40 @@ export default function TimeClock({ setIsTracking }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [savingIds, setSavingIds] = useState([]);
 
+  const driverQueryValues = useMemo(() => {
+    if (!user) return [];
+    const values = [];
+    const seen = new Set();
+    const push = (value) => {
+      if (value == null) return;
+      const str = String(value).trim();
+      if (!str) return;
+      if (seen.has(str)) return;
+      seen.add(str);
+      values.push(str);
+    };
+
+    push(user.uid);
+    push(user.displayName);
+    push(user.email);
+    if (typeof user?.email === "string") {
+      push(user.email.toLowerCase());
+    }
+    return values;
+  }, [user]);
+
+  const identityLookup = useMemo(() => {
+    const set = new Set();
+    driverQueryValues.forEach((value) => {
+      const str = String(value);
+      set.add(str.toLowerCase());
+    });
+    if (user?.uid) set.add(String(user.uid).toLowerCase());
+    if (user?.email) set.add(String(user.email).toLowerCase());
+    if (user?.displayName) set.add(String(user.displayName).toLowerCase());
+    return set;
+  }, [driverQueryValues, user]);
+
   useEffect(() => {
     if (!user) {
       setRows([]);
@@ -77,14 +112,32 @@ export default function TimeClock({ setIsTracking }) {
     setLoading(true);
     setError(null);
 
-    const unsubscribe = subscribeMyTimeLogs({
-      user,
+    const unsubscribe = subscribeTimeLogs({
+      driverId: driverQueryValues.length ? driverQueryValues : null,
+      limit: 200,
       onData: (data) => {
-        setRows(Array.isArray(data) ? data : []);
+        const baseRows = Array.isArray(data) ? data : [];
+        const filtered = baseRows.filter((row) => {
+          if (!row) return false;
+          const candidates = [
+            row.driverId,
+            row.userId,
+            row.driver,
+            row.driverName,
+            row.driverEmail,
+            row.userEmail,
+          ];
+          return candidates.some((candidate) => {
+            if (candidate == null) return false;
+            const str = String(candidate).toLowerCase();
+            return identityLookup.has(str);
+          });
+        });
+        setRows(filtered);
         setLoading(false);
       },
       onError: (err) => {
-        logError(err, { where: "TimeClock.subscribeMyTimeLogs" });
+        logError(err, { where: "TimeClock.subscribeTimeLogs" });
         setError("Failed to load time logs.");
         setLoading(false);
       },
@@ -93,7 +146,7 @@ export default function TimeClock({ setIsTracking }) {
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [user]);
+  }, [driverQueryValues, identityLookup, user]);
 
   const activeRow = useMemo(
     () => rows.find((row) => isActiveRow(row)) || null,
@@ -138,7 +191,7 @@ export default function TimeClock({ setIsTracking }) {
   }, [activeRow]);
 
   const parseEditDate = useCallback((value) => {
-    if (!value) return null;
+    if (value == null) return null;
     if (value instanceof Date) {
       return Number.isFinite(value.getTime()) ? value : null;
     }
@@ -146,8 +199,10 @@ export default function TimeClock({ setIsTracking }) {
       const asDate = value.toDate();
       return Number.isFinite(asDate?.getTime?.()) ? asDate : null;
     }
-    const asDate = tsToDate(value);
-    return asDate && Number.isFinite(asDate.getTime()) ? asDate : null;
+    const parsed = toDayjs(value);
+    if (!parsed) return null;
+    const asDate = parsed.toDate();
+    return Number.isFinite(asDate?.getTime?.()) ? asDate : null;
   }, []);
 
   const hasDateChanged = useCallback((next, prev) => {
@@ -315,7 +370,7 @@ export default function TimeClock({ setIsTracking }) {
       if (endChanged) updates.endTime = newEnd;
 
       try {
-        await patchTimeLog(id, updates);
+        await updateTimeLog(id, updates);
 
         const nextRow = {
           ...oldRow,
@@ -330,11 +385,9 @@ export default function TimeClock({ setIsTracking }) {
         if (oldRow?.docId) nextRow.docId = oldRow.docId;
         if (oldRow?.originalId) nextRow.originalId = oldRow.originalId;
 
-        if (newStart && newEnd && newEnd.getTime() >= newStart.getTime()) {
-          nextRow.duration = Math.floor(
-            (newEnd.getTime() - newStart.getTime()) / 60000,
-          );
-        }
+        const durationMs = durationSafe(newStart, newEnd);
+        nextRow.duration =
+          durationMs > 0 ? Math.floor(durationMs / 60000) : null;
 
         applyLocalUpdate(id, nextRow);
 
@@ -366,6 +419,9 @@ export default function TimeClock({ setIsTracking }) {
   const activeSince = active
     ? active.startTime || active.clockIn || active.loggedAt || null
     : null;
+  const activeDurationMs = activeSince ? durationSafe(activeSince, dayjs()) : 0;
+  const activeDurationLabel =
+    activeDurationMs > 0 ? formatDuration(activeDurationMs) : "N/A";
 
   const handleStart = useCallback(async () => {
     if (!user) {
@@ -385,9 +441,18 @@ export default function TimeClock({ setIsTracking }) {
 
     setStartBusy(true);
     try {
-      await startTimeLog({
-        user,
-        rideId: mode === "RIDE" ? trimmed || "N/A" : "N/A",
+      const driverId =
+        user?.uid ||
+        (typeof user?.email === "string" ? user.email.toLowerCase() : null) ||
+        user?.displayName ||
+        "unknown";
+      const rideValue = mode === "RIDE" ? trimmed || "N/A" : "N/A";
+      await logTime({
+        driverId,
+        userId: user?.uid ?? driverId,
+        driverName: user?.displayName || user?.email || "Unknown",
+        driverEmail: user?.email || null,
+        rideId: rideValue,
         mode,
       });
       setRideId("");
@@ -405,7 +470,7 @@ export default function TimeClock({ setIsTracking }) {
     const id = resolveRowId(activeRow);
     setEndBusy(true);
     try {
-      await endTimeLog({ id });
+      await updateTimeLog(id, { endTime: "server" });
     } catch (err) {
       logError(err, { where: "TimeClock.endTimeLog", id });
       setSnackbarMessage("Failed to end session.");
@@ -459,7 +524,7 @@ export default function TimeClock({ setIsTracking }) {
                 sx={{ color: "#4cbb17", fontWeight: 600 }}
               >
                 Active since {formatDateTime(activeSince)} — Duration:{" "}
-                {safeDuration(activeSince, null)}
+                {activeDurationLabel}
               </Typography>
             ) : (
               <Typography variant="body1" sx={{ color: "text.secondary" }}>

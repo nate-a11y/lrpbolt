@@ -9,7 +9,8 @@
         "Prefer services/fs wrappers",
         "Use withExponentialBackoff for writes",
         "Never empty catch",
-        "Respect LRP theme"
+        "Respect LRP theme",
+        "Migrate legacy TimeLogs to fs"
       ]
     },
     {
