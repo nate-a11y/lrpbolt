@@ -80,6 +80,53 @@ export async function restoreTicketsBatch(rows = []) {
 /** ---- TimeLogs ---- */
 const TIME_LOGS = "timeLogs";
 
+/* FIX: row.id now always equals Firestore doc id; legacy id kept as logicalId */
+function mapTimeLogDoc(docSnap) {
+  const data = docSnap?.data?.() || {};
+  return {
+    ...data,
+    logicalId: data?.id ?? null,
+    originalId: data?.id ?? null,
+    docId: docSnap?.id || null,
+    id: docSnap?.id || null,
+  };
+}
+
+function toMillis(value) {
+  if (value == null) return -Infinity;
+  try {
+    if (typeof value.toMillis === "function") {
+      return value.toMillis();
+    }
+    if (value instanceof Timestamp) {
+      return value.toMillis();
+    }
+    if (value instanceof Date) {
+      const ms = value.getTime();
+      return Number.isFinite(ms) ? ms : -Infinity;
+    }
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : -Infinity;
+    }
+    if (typeof value === "object" && Number.isFinite(value?.seconds)) {
+      const seconds = Number(value.seconds) * 1000;
+      const nanos = Number.isFinite(value.nanoseconds)
+        ? Number(value.nanoseconds) / 1e6
+        : 0;
+      return seconds + nanos;
+    }
+  } catch (error) {
+    logError(error, { where: "services.fs.toMillis" });
+  }
+  return -Infinity;
+}
+
+function deriveSortMs(row) {
+  const candidate =
+    row?.startTime ?? row?.clockIn ?? row?.loggedAt ?? row?.createdAt ?? null;
+  return toMillis(candidate);
+}
+
 function normalizeEmail(value) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -254,59 +301,129 @@ export function subscribeTimeLogs({
   const db = getDb();
   try {
     const baseRef = collection(db, TIME_LOGS);
-    const constraints = [];
-    const driverIds = Array.isArray(driverId)
-      ? driverId.filter((value) => value != null)
-      : driverId != null
-        ? [driverId]
-        : [];
-
-    if (driverIds.length === 1) {
-      constraints.push(where("driverId", "==", driverIds[0]));
-    } else if (driverIds.length > 1) {
-      const sliced = driverIds.slice(0, 10);
-      constraints.push(where("driverId", "in", sliced));
+    const driverKeys = new Set();
+    if (Array.isArray(driverId)) {
+      driverId.forEach((value) => {
+        const trimmed = value == null ? "" : String(value).trim();
+        if (trimmed) driverKeys.add(trimmed);
+      });
+    } else if (driverId != null) {
+      const trimmed = String(driverId).trim();
+      if (trimmed) driverKeys.add(trimmed);
     }
 
-    if (rideId) {
-      constraints.push(where("rideId", "==", rideId));
+    const limitValue = Number.isFinite(limitCount)
+      ? limitCount
+      : Number.isFinite(Number(limitCount))
+        ? Number(limitCount)
+        : NaN;
+    const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
+
+    const emitRows = (map) => {
+      if (typeof onData !== "function") return;
+      const rows = Array.from(map.values()).sort(
+        (a, b) => deriveSortMs(b) - deriveSortMs(a),
+      );
+      const limited = hasLimit ? rows.slice(0, limitValue) : rows;
+      onData(limited);
+    };
+
+    if (driverKeys.size === 0) {
+      const constraints = [];
+      if (rideId) {
+        constraints.push(where("rideId", "==", rideId));
+      }
+      constraints.push(orderBy("startTime", "desc"));
+      if (hasLimit) {
+        constraints.push(limit(limitValue));
+      }
+
+      const compiledQuery = query(baseRef, ...constraints);
+      return onSnapshot(
+        compiledQuery,
+        (snapshot) => {
+          const rows = snapshot.docs.map((docSnap) => mapTimeLogDoc(docSnap));
+          if (typeof onData === "function") {
+            onData(rows);
+          }
+        },
+        (error) => {
+          logError(error, { where: "services.fs.subscribeTimeLogs" });
+          if (typeof onError === "function") {
+            onError(error);
+          }
+        },
+      );
     }
 
-    constraints.push(orderBy("startTime", "desc"));
+    /* FIX: broaden timeLogs subscription to OR across legacy id/email fields; dedupe by doc.id */
+    const unsubs = [];
+    const accumulator = new Map();
+    const fields = ["driverId", "userId", "driverEmail", "userEmail"];
+    const comboSeen = new Set();
 
-    if (Number.isFinite(limitCount) && limitCount > 0) {
-      constraints.push(limit(limitCount));
-    }
-
-    const compiledQuery = constraints.length
-      ? query(baseRef, ...constraints)
-      : query(baseRef, orderBy("startTime", "desc"));
-
-    const unsubscribe = onSnapshot(
-      compiledQuery,
-      (snapshot) => {
-        const rows = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          return {
-            ...data,
-            id: data?.id ?? docSnap.id,
-            docId: docSnap.id,
-            originalId: data?.id ?? null,
-          };
+    const attachListener = (field, value) => {
+      const comboKey = `${field}::${value}`;
+      if (comboSeen.has(comboKey)) return;
+      comboSeen.add(comboKey);
+      try {
+        const clauses = [where(field, "==", value)];
+        if (rideId) {
+          clauses.push(where("rideId", "==", rideId));
+        }
+        clauses.push(orderBy("startTime", "desc"));
+        if (hasLimit) {
+          clauses.push(limit(limitValue));
+        }
+        const qref = query(baseRef, ...clauses);
+        const unsub = onSnapshot(
+          qref,
+          (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === "removed") {
+                accumulator.delete(change.doc.id);
+                return;
+              }
+              accumulator.set(change.doc.id, mapTimeLogDoc(change.doc));
+            });
+            emitRows(accumulator);
+          },
+          (error) => {
+            logError(error, {
+              where: "services.fs.subscribeTimeLogs.listener",
+              field,
+              value,
+            });
+            if (typeof onError === "function") {
+              onError(error);
+            }
+          },
+        );
+        unsubs.push(unsub);
+      } catch (error) {
+        logError(error, {
+          where: "services.fs.subscribeTimeLogs.buildQuery",
+          field,
+          value,
         });
-        if (typeof onData === "function") {
-          onData(rows);
-        }
-      },
-      (error) => {
-        logError(error, { where: "services.fs.subscribeTimeLogs" });
-        if (typeof onError === "function") {
-          onError(error);
-        }
-      },
-    );
+      }
+    };
 
-    return unsubscribe;
+    driverKeys.forEach((value) => {
+      fields.forEach((field) => attachListener(field, value));
+    });
+
+    emitRows(accumulator);
+
+    return () => {
+      unsubs.forEach((unsub) => {
+        try {
+          if (typeof unsub === "function") unsub();
+        } catch (error) {
+          logError(error, { where: "services.fs.subscribeTimeLogs.cleanup" });
+        }
+      });
+    };
   } catch (error) {
     logError(error, {
       where: "services.fs.subscribeTimeLogs",

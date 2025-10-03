@@ -92,19 +92,48 @@ self.addEventListener("notificationclick", (event) => {
       try {
         // Action: clockout (perform server call OR open app then message)
         if (action === "clockout" || payload.action === "clockout") {
-          // Attempt server-side action first (optional; keep idempotent)
-          try {
-            if (payload?.clockoutUrl) {
-              await fetch(payload.clockoutUrl, {
-                method: "POST",
-                credentials: "omit",
+          /* FIX: include credentials + verify response.ok before success UX */
+          const notifyClients = async (type, extra = {}) => {
+            try {
+              const targets = await self.clients.matchAll({
+                type: "window",
+                includeUncontrolled: true,
               });
+              targets.forEach((client) => {
+                try {
+                  client.postMessage({ type, ...extra });
+                } catch (postError) {
+                  console.warn("[LRP][FCM][SW] postMessage failed", postError);
+                }
+              });
+            } catch (clientError) {
+              console.warn("[LRP][FCM][SW] notifyClients failed", clientError);
             }
-          } catch (fetchError) {
-            console.warn("[LRP][FCM][SW] clockout fetch failed", fetchError);
+          };
+
+          if (payload?.clockoutUrl) {
+            try {
+              const response = await fetch(payload.clockoutUrl, {
+                method: "POST",
+                credentials: "include",
+              });
+              if (!response?.ok) {
+                throw new Error(`clockout_failed_${response?.status || "unknown"}`);
+              }
+              await notifyClients("CLOCKOUT_OK");
+              await focusOrOpen("/timeclock");
+              return;
+            } catch (fetchError) {
+              console.warn("[LRP][FCM][SW] clockout fetch failed", fetchError);
+              await notifyClients("CLOCKOUT_FAILED", {
+                error: fetchError?.message || "clockout_failed",
+              });
+              await focusOrOpen("/timeclock");
+              return;
+            }
           }
 
-          // Open/focus the time clock view for UX continuity
+          await notifyClients("CLOCKOUT_FAILED", { error: "missing_url" });
           await focusOrOpen("/timeclock");
           return;
         }

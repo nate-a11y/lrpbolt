@@ -28,6 +28,7 @@ function isBrowser() {
   );
 }
 
+/* FIX: persist density as string so GridToolbarDensitySelector can update state */
 /** Persist per-grid state (column visibility, density, filters) in localStorage */
 function useGridStatePersistence(id, defaults = {}) {
   const storageKey = useMemo(() => {
@@ -36,26 +37,31 @@ function useGridStatePersistence(id, defaults = {}) {
   }, [id]);
 
   const initialState = useMemo(() => {
+    const fallback = {
+      density: defaults?.density || "compact",
+      columnVisibilityModel: defaults?.columnVisibilityModel || {},
+      filterModel: defaults?.filterModel || null,
+    };
+
     if (!storageKey || !isBrowser()) {
-      return {
-        density: defaults?.density || "compact",
-        columnVisibilityModel: defaults?.columnVisibilityModel || {},
-        filterModel: defaults?.filterModel || null,
-      };
+      return fallback;
     }
 
     try {
       const raw = window.localStorage.getItem(storageKey);
       if (!raw) {
-        return {
-          density: defaults?.density || "compact",
-          columnVisibilityModel: defaults?.columnVisibilityModel || {},
-          filterModel: defaults?.filterModel || null,
-        };
+        return fallback;
       }
       const parsed = JSON.parse(raw);
+      let savedDensity = parsed?.density;
+      if (typeof savedDensity === "object" && savedDensity?.value) {
+        savedDensity = savedDensity.value;
+      }
+      if (typeof savedDensity !== "string") {
+        savedDensity = undefined;
+      }
       return {
-        density: parsed?.density || defaults?.density || "compact",
+        density: savedDensity || fallback.density,
         columnVisibilityModel:
           parsed?.columnVisibilityModel ||
           defaults?.columnVisibilityModel ||
@@ -64,11 +70,7 @@ function useGridStatePersistence(id, defaults = {}) {
       };
     } catch (error) {
       logError(error, { where: "LrpDataGridPro.initialState" });
-      return {
-        density: defaults?.density || "compact",
-        columnVisibilityModel: defaults?.columnVisibilityModel || {},
-        filterModel: defaults?.filterModel || null,
-      };
+      return fallback;
     }
   }, [
     defaults?.columnVisibilityModel,
@@ -81,8 +83,15 @@ function useGridStatePersistence(id, defaults = {}) {
     (state) => {
       if (!storageKey || !isBrowser()) return;
       try {
+        let densityValue = state?.density;
+        if (typeof densityValue === "object" && densityValue?.value) {
+          densityValue = densityValue.value;
+        }
+        if (typeof densityValue !== "string") {
+          densityValue = undefined;
+        }
         const payload = {
-          density: state?.density || defaults?.density || "compact",
+          density: densityValue || defaults?.density || "compact",
           columnVisibilityModel: state?.columns?.columnVisibilityModel || {},
           filterModel: state?.filter?.filterModel || null,
         };
@@ -189,7 +198,7 @@ function DefaultToolbar({
       }}
     >
       <GridToolbarQuickFilter
-        debounceMs={500}
+        debounceMs={300}
         quickFilterParser={QUICK_FILTER_PARSER}
         placeholder={quickFilterPlaceholder || "Search…"}
         sx={{ flexGrow: { xs: 1, sm: 0 }, minWidth: { xs: 200, sm: 0 } }}
