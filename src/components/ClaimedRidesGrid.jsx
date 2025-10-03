@@ -168,7 +168,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Trip ID",
         minWidth: 140,
         flex: 1,
-        valueGetter: ({ row }) => resolveTripId(row),
+        valueGetter: (params) => resolveTripId(params),
         valueFormatter: vfText,
       },
       {
@@ -176,7 +176,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Pickup",
         minWidth: 160,
         flex: 1,
-        valueGetter: ({ row }) => resolvePickupTime(row),
+        valueGetter: (params) => resolvePickupTime(params),
         valueFormatter: vfTime,
       },
       {
@@ -184,7 +184,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Duration",
         minWidth: 120,
         flex: 0.6,
-        valueGetter: ({ row }) => resolveRideDuration(row),
+        valueGetter: (params) => resolveRideDuration(params),
         valueFormatter: vfDurationHM,
       },
       {
@@ -192,7 +192,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Type",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: ({ row }) => resolveRideType(row),
+        valueGetter: (params) => resolveRideType(params),
         valueFormatter: vfText,
       },
       {
@@ -200,7 +200,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Vehicle",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: ({ row }) => resolveVehicle(row),
+        valueGetter: (params) => resolveVehicle(params),
         valueFormatter: vfText,
       },
       {
@@ -208,7 +208,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Notes",
         minWidth: 180,
         flex: 1,
-        valueGetter: ({ row }) => resolveRideNotes(row),
+        valueGetter: (params) => resolveRideNotes(params),
         valueFormatter: vfText,
       },
       {
@@ -216,7 +216,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Created",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: ({ row }) => resolveCreatedAt(row),
+        valueGetter: (params) => resolveCreatedAt(params),
         valueFormatter: vfTime,
       },
       {
@@ -224,7 +224,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Claimed By",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: ({ row }) => resolveClaimedBy(row),
+        valueGetter: (params) => resolveClaimedBy(params),
         valueFormatter: vfText,
       },
       {
@@ -232,7 +232,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Claimed At",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: ({ row }) => resolveClaimedAt(row),
+        valueGetter: (params) => resolveClaimedAt(params),
         valueFormatter: vfTime,
       },
       {
@@ -240,7 +240,7 @@ export default function ClaimedRidesGrid() {
         headerName: "Status",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: ({ row }) => resolveStatus(row),
+        valueGetter: (params) => resolveStatus(params),
         valueFormatter: vfText,
       },
       {
