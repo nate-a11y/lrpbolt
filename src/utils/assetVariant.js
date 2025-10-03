@@ -57,9 +57,12 @@ export function PictureWebp({
   sourceProps = {},
 }) {
   const { webp, png } = useMemo(() => asWebpIfPresent(srcPng), [srcPng]);
-  const [useWebp, setUseWebp] = useState(() =>
-    webp ? resolveCachedAvailability(webp) === true : false,
-  );
+  const [useWebp, setUseWebp] = useState(() => {
+    if (!webp) return false;
+    const cached = resolveCachedAvailability(webp);
+    if (cached === null) return true;
+    return cached;
+  });
 
   useEffect(() => {
     if (!webp) {
