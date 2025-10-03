@@ -1,15 +1,35 @@
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { subscribeTimeLogs } from "@/services/fs";
 import logError from "@/utils/logError.js";
-import { isActiveRow } from "@/utils/time";
+import { toDayjs } from "@/utils/time";
 
 export default function useActiveTimeSession(user) {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(() =>
-    Boolean(user?.uid || user?.id || user?.email),
-  );
+  const initialLoading = Boolean(user?.uid || user?.id || user?.email);
+  const [state, setState] = useState(() => ({
+    session: null,
+    loading: initialLoading,
+    hasActive: false,
+    hasValidStart: false,
+    sessionId: null,
+    startField: "(none)",
+    startTsType: "undefined",
+  }));
+
+  const identityLookup = useMemo(() => {
+    const lookup = new Set();
+    const append = (value) => {
+      if (!value) return;
+      const str = String(value).trim();
+      if (!str) return;
+      lookup.add(str.toLowerCase());
+    };
+    append(user?.uid || user?.id);
+    append(user?.email);
+    append(user?.displayName);
+    return lookup;
+  }, [user?.displayName, user?.email, user?.id, user?.uid]);
 
   useEffect(() => {
     const identities = new Set();
@@ -26,51 +46,83 @@ export default function useActiveTimeSession(user) {
     addIdentity(user?.displayName);
 
     if (identities.size === 0) {
-      setSession(null);
-      setLoading(false);
+      setState((prev) => ({
+        ...prev,
+        session: null,
+        loading: false,
+        hasActive: false,
+        hasValidStart: false,
+        sessionId: null,
+        startField: "(none)",
+        startTsType: "undefined",
+      }));
       return () => {};
     }
 
-    setLoading(true);
+    setState((prev) => ({ ...prev, loading: true }));
 
-    const driverIds = Array.from(identities).filter(
-      (value) => !value.includes("@") || value === value.toLowerCase(),
-    );
-    const identityLookup = new Set(
-      Array.from(identities, (value) => String(value).toLowerCase()),
-    );
+    const allKeys = Array.from(identities);
 
     const unsubscribe = subscribeTimeLogs({
-      driverId: driverIds.length ? driverIds : null,
+      key: allKeys.length ? allKeys : null,
       limit: 40,
       onData: (rows) => {
         const list = Array.isArray(rows) ? rows : [];
-        const match = list.find((row) => {
-          if (!row || !isActiveRow(row)) return false;
-          const values = [
+        const filtered = list.filter((row) => {
+          if (!row) return false;
+          const candidates = [
+            row.driverKey,
             row.driverId,
             row.userId,
-            row.driver,
-            row.driverName,
             row.driverEmail,
             row.userEmail,
+            row.logicalId,
           ];
-          return values.some((value) => {
+          return candidates.some((value) => {
             if (value == null) return false;
-            const str = String(value).toLowerCase();
+            const str = String(value).trim().toLowerCase();
             return identityLookup.has(str);
           });
         });
-        setSession(match || null);
-        setLoading(false);
+
+        const active = filtered.find((row) => {
+          if (!row) return false;
+          const start = row.startTs ?? null;
+          const end = row.endTs ?? null;
+          const status = row.status ?? (end ? "closed" : "open");
+          return status !== "closed" && !!start && !end;
+        });
+
+        const startValue = active?.startTs ?? null;
+        const validStart = startValue ? Boolean(toDayjs(startValue)) : false;
+
+        setState({
+          session: active || null,
+          loading: false,
+          hasActive: Boolean(active),
+          hasValidStart: validStart,
+          sessionId: active?.id || null,
+          startField: active?.startTs ? "startTs" : "(none)",
+          startTsType:
+            active?.startTs === null || active?.startTs === undefined
+              ? String(active?.startTs)
+              : typeof active?.startTs,
+        });
       },
       onError: (error) => {
         logError(error, {
           where: "useActiveTimeSession",
           action: "subscribe",
         });
-        setSession(null);
-        setLoading(false);
+        setState({
+          session: null,
+          loading: false,
+          hasActive: false,
+          hasValidStart: false,
+          sessionId: null,
+          startField: "(none)",
+          startTsType: "error",
+        });
       },
     });
 
@@ -86,7 +138,7 @@ export default function useActiveTimeSession(user) {
         });
       }
     };
-  }, [user?.uid, user?.id, user?.email, user?.displayName]);
+  }, [identityLookup, user?.uid, user?.id, user?.email, user?.displayName]);
 
-  return { session, loading };
+  return state;
 }

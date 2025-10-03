@@ -144,9 +144,21 @@ export function safeDuration(startTs, endTs) {
 }
 
 export function isActiveRow(row) {
-  const start = row?.startTime ?? row?.clockIn ?? row?.loggedAt;
-  const end = row?.endTime ?? row?.clockOut;
-  return !!start && !end;
+  if (!row) return false;
+  const status =
+    row.status ?? row.state ?? (row?.endTs || row?.endTime ? "closed" : "open");
+  if (status === "closed") return false;
+  const start =
+    row.startTs ??
+    row.startTime ??
+    row.clockIn ??
+    row.clockInAt ??
+    row.loggedAt ??
+    null;
+  if (!start) return false;
+  const end =
+    row.endTs ?? row.endTime ?? row.clockOut ?? row.clockOutAt ?? null;
+  return !end;
 }
 
 export function formatClockOutOrDash(ts) {

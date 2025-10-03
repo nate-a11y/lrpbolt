@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { serverTimestamp } from "firebase/firestore";
 import {
   Alert,
   Box,
@@ -93,7 +94,8 @@ export default function TimeClock({ setIsTracking }) {
   const identityLookup = useMemo(() => {
     const set = new Set();
     driverQueryValues.forEach((value) => {
-      const str = String(value);
+      const str = String(value).trim();
+      if (!str) return;
       set.add(str.toLowerCase());
     });
     if (user?.uid) set.add(String(user.uid).toLowerCase());
@@ -113,13 +115,14 @@ export default function TimeClock({ setIsTracking }) {
     setError(null);
 
     const unsubscribe = subscribeTimeLogs({
-      driverId: driverQueryValues.length ? driverQueryValues : null,
+      key: driverQueryValues.length ? driverQueryValues : null,
       limit: 200,
       onData: (data) => {
         const baseRows = Array.isArray(data) ? data : [];
         const filtered = baseRows.filter((row) => {
           if (!row) return false;
           const candidates = [
+            row.driverKey,
             row.driverId,
             row.userId,
             row.driver,
@@ -129,7 +132,7 @@ export default function TimeClock({ setIsTracking }) {
           ];
           return candidates.some((candidate) => {
             if (candidate == null) return false;
-            const str = String(candidate).toLowerCase();
+            const str = String(candidate).trim().toLowerCase();
             return identityLookup.has(str);
           });
         });
@@ -160,13 +163,7 @@ export default function TimeClock({ setIsTracking }) {
   }, [activeRow, setIsTracking]);
 
   useEffect(() => {
-    if (
-      !rows?.some?.((row) => {
-        const start = row?.startTime ?? row?.clockIn ?? row?.loggedAt;
-        const end = row?.endTime ?? row?.clockOut;
-        return !!start && !end;
-      })
-    ) {
+    if (!rows?.some?.((row) => isActiveRow(row))) {
       return undefined;
     }
     const t = setInterval(() => setRows((prev) => [...prev]), 60000);
@@ -417,7 +414,11 @@ export default function TimeClock({ setIsTracking }) {
 
   const active = activeRow || null;
   const activeSince = active
-    ? active.startTime || active.clockIn || active.loggedAt || null
+    ? active.startTs ||
+      active.startTime ||
+      active.clockIn ||
+      active.loggedAt ||
+      null
     : null;
   const activeDurationMs = activeSince ? durationSafe(activeSince, dayjs()) : 0;
   const activeDurationLabel =
@@ -441,21 +442,37 @@ export default function TimeClock({ setIsTracking }) {
 
     setStartBusy(true);
     try {
-      const driverId =
-        user?.uid ||
-        (typeof user?.email === "string" ? user.email.toLowerCase() : null) ||
-        user?.displayName ||
+      const uid = user?.uid ? String(user.uid).trim() : "";
+      const emailRaw =
+        typeof user?.email === "string" ? String(user.email).trim() : "";
+      const emailNormalized = emailRaw ? emailRaw.toLowerCase() : null;
+      const driverKey =
+        uid ||
+        emailNormalized ||
+        (emailRaw ? emailRaw : "") ||
+        (user?.displayName ? String(user.displayName).trim() : "") ||
         "unknown";
       const rideValue = mode === "RIDE" ? trimmed || "N/A" : "N/A";
+      const driverName =
+        user?.displayName ||
+        emailRaw ||
+        (emailNormalized ? emailNormalized.split("@")[0] : "Unknown");
+
       await logTime({
-        driverId,
-        userId: user?.uid ?? driverId,
-        driverName: user?.displayName || user?.email || "Unknown",
-        driverEmail: user?.email || null,
+        driverKey,
+        driverId: uid || null,
+        userId: uid || driverKey || null,
+        driverName,
+        driverEmail: emailNormalized,
+        userEmail: emailNormalized,
         rideId: rideValue,
         mode,
+        startTs: serverTimestamp(),
+        status: "open",
       });
       setRideId("");
+      setSnackbarMessage("Clocked in.");
+      setSnackbarOpen(true);
     } catch (err) {
       logError(err, { where: "TimeClock.startTimeLog" });
       setSnackbarMessage("Failed to start session.");
