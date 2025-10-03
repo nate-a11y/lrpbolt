@@ -1,166 +1,174 @@
-import { deleteToken, onMessage } from "firebase/messaging";
+/* LRP Portal enhancement: FCM bootstrap, 2025-10-03. */
+import { initializeApp } from "firebase/app";
+import {
+  deleteToken as deleteMessagingToken,
+  getMessaging,
+  isSupported as isMessagingSupported,
+  onMessage,
+} from "firebase/messaging";
 
-import { ensureFcmSwReady } from "@/pwa/fcmBridge";
-import { purgeOtherServiceWorkers } from "@/pwa/purgeSW";
-import { registerSW } from "@/pwa/registerSW";
+import { AppError, logError } from "@/services/errors";
+import {
+  getFcmTokenSafe as requestFcmToken,
+  requestNotificationPermission,
+} from "@/services/pushTokens";
 
-import AppError from "../utils/AppError.js";
-import { firebaseConfig, getMessagingOrNull } from "../utils/firebaseInit";
-import logError from "../utils/logError.js";
+let _app;
+let _messaging;
 
-import { getFcmTokenSafe as requestFcmToken } from "./pushTokens";
+export function initFirebaseApp() {
+  if (_app) return _app;
+  const cfg = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  };
+  _app = initializeApp(cfg);
+  return _app;
+}
 
-const FCM_ENABLED = import.meta.env.VITE_ENABLE_FCM === "true";
-const LS_KEY = "lrp_fcm_token_v1";
-
-const firebaseMessagingConfig = {
-  ...firebaseConfig,
-  ...(import.meta.env.VITE_FIREBASE_VAPID_KEY
-    ? { vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY }
-    : {}),
-};
+function getMessagingInstance() {
+  if (_messaging) return _messaging;
+  _messaging = getMessaging(initFirebaseApp());
+  return _messaging;
+}
 
 export function isSupportedBrowser() {
   return (
-    FCM_ENABLED &&
     typeof window !== "undefined" &&
+    typeof navigator !== "undefined" &&
     "Notification" in window &&
     "serviceWorker" in navigator &&
     "PushManager" in window
   );
 }
 
-let swRegPromise;
 export async function ensureServiceWorkerRegistered() {
-  if (!isSupportedBrowser()) return null;
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return null;
+  }
   try {
-    if (swRegPromise) return swRegPromise;
-    swRegPromise = (async () => {
-      try {
-        if (navigator.serviceWorker?.getRegistration) {
-          const scope = import.meta?.env?.BASE_URL || "/";
-          const existing = await navigator.serviceWorker.getRegistration(scope);
-          const scriptUrl =
-            existing?.active?.scriptURL ||
-            existing?.waiting?.scriptURL ||
-            existing?.installing?.scriptURL ||
-            "";
-          if (scriptUrl.endsWith("/sw.js")) {
-            const ackExisting = await ensureFcmSwReady(firebaseMessagingConfig);
-            if (!ackExisting) {
-              console.warn("[fcm] ensureFcmSwReady did not ACK (existing)");
-            }
-            return existing;
-          }
-        }
-      } catch (lookupError) {
-        logError(lookupError, { where: "fcm", action: "lookup-sw" });
-      }
+    const reg = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js",
+    );
+    // Optionally register /sw.js too if your app uses it, but avoid duplicates
+    return reg;
+  } catch (err) {
+    logError(err, { where: "ensureServiceWorkerRegistered" });
+    return null;
+  }
+}
 
-      await purgeOtherServiceWorkers();
-      const registration = await registerSW();
-      if (!registration) return null;
-      const ack = await ensureFcmSwReady(firebaseMessagingConfig);
-      if (!ack) {
-        console.warn("[fcm] ensureFcmSwReady did not ACK");
-      }
-      return registration;
-    })().catch((error) => {
-      logError(error, { where: "fcm", action: "ensure-sw" });
-      return null;
+export async function initMessagingAndToken() {
+  try {
+    initFirebaseApp();
+    await ensureServiceWorkerRegistered();
+
+    // messaging only after SW is available (preferred but not strictly required)
+    if (!(await isMessagingSupported())) return null;
+    getMessagingInstance();
+    const perm = await requestNotificationPermission();
+    if (perm !== "granted") return null;
+
+    const token = await requestFcmToken({
+      messaging: _messaging,
+      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
-    return swRegPromise;
-  } catch (error) {
-    logError(error, { where: "fcm", action: "ensure-sw" });
+    if (token) {
+      console.info("[LRP] FCM token acquired");
+      try {
+        localStorage.setItem("lrp_fcm_token_v1", token);
+      } catch (storageError) {
+        logError(storageError, {
+          where: "initMessagingAndToken",
+          phase: "cache",
+        });
+      }
+    } else {
+      console.warn("[LRP] FCM token not acquired");
+    }
+    return token;
+  } catch (err) {
+    logError(new AppError("FCM init failed", { code: "fcm_init", cause: err }));
     return null;
   }
 }
 
 export async function requestFcmPermission() {
-  if (!isSupportedBrowser()) return "denied";
-  try {
-    return await Notification.requestPermission();
-  } catch (error) {
-    logError(error, { where: "fcm", action: "request-permission" });
-    return "denied";
-  }
+  return requestNotificationPermission();
 }
 
-export async function getFcmTokenSafe({ serviceWorkerRegistration } = {}) {
-  if (!isSupportedBrowser()) return null;
+export async function getFcmTokenSafe(options = {}) {
   try {
-    const messaging = await getMessagingOrNull();
-    if (!messaging) {
-      console.info("[fcm] messaging unsupported or unavailable");
-      return null;
+    initFirebaseApp();
+    if (!(await isMessagingSupported())) return null;
+    const messaging = getMessagingInstance();
+    if (!options?.skipSw) {
+      await ensureServiceWorkerRegistered();
     }
-
-    const registration =
-      serviceWorkerRegistration || (await ensureServiceWorkerRegistered());
-    if (!registration) {
-      console.warn("[fcm] service worker registration unavailable");
-      return null;
-    }
-
     const token = await requestFcmToken({
       messaging,
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-      serviceWorkerRegistration: registration,
+      vapidKey: options?.vapidKey || import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
-
     if (token) {
       try {
-        localStorage.setItem(LS_KEY, token);
-      } catch (error) {
-        logError(error, { where: "fcm", action: "cache-token" });
+        localStorage.setItem("lrp_fcm_token_v1", token);
+      } catch (storageError) {
+        logError(storageError, { where: "getFcmTokenSafe", phase: "cache" });
       }
-      console.info("[fcm] token ready");
-      return token;
     }
-
-    console.info("[fcm] token not issued (permission or support)");
-    return null;
-  } catch (error) {
-    if (error instanceof AppError && error.code === "missing_vapid_key") {
-      throw error;
+    return token;
+  } catch (err) {
+    if (err instanceof AppError && err.code === "missing_vapid_key") {
+      throw err;
     }
-    logError(error, { where: "fcm", action: "get-token" });
+    logError(err, { where: "getFcmTokenSafe" });
     return null;
   }
 }
 
 export function onForegroundMessageSafe(cb) {
-  if (!isSupportedBrowser()) return () => {};
-  let unsub = () => {};
-  getMessagingOrNull()
-    .then((messaging) => {
-      if (!messaging) return;
-      unsub = onMessage(messaging, (payload) => {
+  if (typeof cb !== "function") return () => {};
+  let unsubscribe = () => {};
+  (async () => {
+    try {
+      if (!(await isMessagingSupported())) return;
+      const messaging = getMessagingInstance();
+      unsubscribe = onMessage(messaging, (payload) => {
         try {
           cb(payload);
-        } catch (error) {
-          logError(error, { where: "fcm", action: "on-foreground" });
+        } catch (handlerError) {
+          logError(handlerError, {
+            where: "onForegroundMessageSafe",
+            phase: "handler",
+          });
         }
       });
-    })
-    .catch((error) =>
-      logError(error, { where: "fcm", action: "on-foreground" }),
-    );
-  return () => unsub();
+    } catch (err) {
+      logError(err, { where: "onForegroundMessageSafe" });
+    }
+  })();
+  return () => {
+    try {
+      unsubscribe();
+    } catch (err) {
+      logError(err, { where: "onForegroundMessageSafe", phase: "unsubscribe" });
+    }
+  };
 }
 
 export async function revokeFcmToken() {
   try {
-    const messaging = await getMessagingOrNull();
-    if (messaging) {
-      await deleteToken(messaging);
-    }
-  } catch (error) {
-    logError(error, { where: "fcm", action: "revoke-token" });
+    if (!(await isMessagingSupported())) return;
+    const messaging = getMessagingInstance();
+    await deleteMessagingToken(messaging);
+  } catch (err) {
+    logError(err, { where: "revokeFcmToken" });
   }
   try {
-    localStorage.removeItem(LS_KEY);
-  } catch (error) {
-    logError(error, { where: "fcm", action: "clear-cache" });
+    localStorage.removeItem("lrp_fcm_token_v1");
+  } catch (storageError) {
+    logError(storageError, { where: "revokeFcmToken", phase: "clear-cache" });
   }
 }

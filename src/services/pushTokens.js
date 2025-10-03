@@ -1,110 +1,75 @@
-/* Proprietary and confidential. See LICENSE. */
-import {
-  getMessaging,
-  getToken,
-  isSupported,
-  onMessage,
-} from "firebase/messaging";
-
-import AppError from "@/utils/AppError.js";
-import logError from "@/utils/logError.js";
-
-function normalizeVapidKey(input) {
-  return typeof input === "string" ? input.trim() : "";
-}
-
-async function ensureNotificationPermission() {
-  if (typeof Notification === "undefined") return "denied";
-  const current = Notification.permission;
-  if (current === "granted" || current === "denied") {
-    return current;
-  }
-  try {
-    return await Notification.requestPermission();
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "request-permission" });
-    return "denied";
-  }
-}
+/* LRP Portal enhancement: FCM token flow, 2025-10-03. */
+import { AppError, logError } from "@/services/errors";
 
 export async function getFcmTokenSafe({
   messaging,
   vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY,
-  serviceWorkerRegistration,
 } = {}) {
-  const resolvedVapidKey = normalizeVapidKey(vapidKey);
-  if (!resolvedVapidKey) {
-    throw new AppError("missing_vapid_key", "missing_vapid_key");
+  if (!messaging) {
+    throw new AppError("messaging instance required", { code: "bad_args" });
+  }
+  if (!vapidKey) {
+    throw new AppError("missing VAPID key", { code: "missing_vapid_key" });
   }
 
   try {
-    const supported = await isSupported();
-    if (!supported) return null;
-    if (typeof window === "undefined") return null;
-    if (!messaging) return null;
-    if (!("Notification" in window)) return null;
-    if (!("serviceWorker" in navigator)) return null;
-    if (!("PushManager" in window)) return null;
-
-    const permission = await ensureNotificationPermission();
-    if (permission !== "granted") {
-      return null;
-    }
-
-    let registration = serviceWorkerRegistration || null;
-    if (!registration) {
-      try {
-        registration = await navigator.serviceWorker.ready;
-      } catch (error) {
-        logError(error, { where: "pushTokens", action: "sw-ready" });
-      }
-    }
-
-    const options = registration
-      ? {
-          vapidKey: resolvedVapidKey,
-          serviceWorkerRegistration: registration,
-        }
-      : { vapidKey: resolvedVapidKey };
-
-    const token = await getToken(messaging, options);
+    const { getToken, isSupported } = await import("firebase/messaging");
+    if (!(await isSupported())) return null;
+    const token = await getToken(messaging, { vapidKey });
     return token || null;
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "get-token" });
+  } catch (err) {
+    logError(err, { where: "getFcmTokenSafe" });
     return null;
   }
 }
 
-export function attachForegroundMessagingHandler(firebaseApp, onPayload) {
+export async function requestNotificationPermission() {
   try {
-    const messaging = getMessaging(firebaseApp);
-    return onMessage(messaging, (payload) => {
-      try {
-        console.info("[LRP][FCM][foreground]", payload);
-        if (
-          typeof window !== "undefined" &&
-          typeof window.dispatchEvent === "function"
-        ) {
-          const EventCtor =
-            typeof window.CustomEvent === "function"
-              ? window.CustomEvent
-              : CustomEvent;
-          window.dispatchEvent(
-            new EventCtor("LRP_FCM_MESSAGE", { detail: payload }),
-          );
-        }
-        if (typeof onPayload === "function") {
-          onPayload(payload);
-        }
-      } catch (innerError) {
-        logError(innerError, {
-          where: "pushTokens",
-          action: "foreground-handler",
-        });
-      }
-    });
-  } catch (error) {
-    logError(error, { where: "pushTokens", action: "attach-foreground" });
-    return () => {};
+    if (typeof self === "undefined" || !("Notification" in self)) {
+      return "denied";
+    }
+    if (Notification.permission === "granted") return "granted";
+    if (Notification.permission === "denied") return "denied";
+    return await Notification.requestPermission();
+  } catch (err) {
+    logError(err, { where: "requestNotificationPermission" });
+    return "denied";
   }
+}
+
+export function attachForegroundMessagingHandler(firebaseApp, onPayload) {
+  let detach = () => {};
+  (async () => {
+    try {
+      const { getMessaging, onMessage, isSupported } = await import(
+        "firebase/messaging"
+      );
+      if (!(await isSupported())) return;
+      const messaging = getMessaging(firebaseApp);
+      detach = onMessage(messaging, (payload) => {
+        try {
+          if (typeof onPayload === "function") {
+            onPayload(payload);
+          }
+        } catch (handlerError) {
+          logError(handlerError, {
+            where: "attachForegroundMessagingHandler",
+            phase: "handler",
+          });
+        }
+      });
+    } catch (err) {
+      logError(err, { where: "attachForegroundMessagingHandler" });
+    }
+  })();
+  return () => {
+    try {
+      detach();
+    } catch (err) {
+      logError(err, {
+        where: "attachForegroundMessagingHandler",
+        phase: "detach",
+      });
+    }
+  };
 }

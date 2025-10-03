@@ -1,11 +1,11 @@
 # LRP Driver Portal — Phase 3 FCM/Service Worker Audit
 
 ## Summary of Changes
-- Wrapped all async service worker handlers with `event.waitUntil` and unified notification assets (192×192 icon/badge). Clock-out actions now POST to `/api/clockout`, broadcast state updates, and open `/timeclock` after the attempt.
-- Hardened foreground bootstrap: the app registers the service worker on load, initializes Firebase Messaging, validates the VAPID key, and requests a token via the new `getFcmTokenSafe` helper with structured logging.
-- Added guarded push token utility that enforces presence of the VAPID key, prompts for permission, and logs failures without silent catches. Updated consumers to use the new API.
-- Documented agent rule for the repo doctor to keep service workers resilient.
+- Service workers wrap install, activate, push, and notificationclick handlers in `event.waitUntil`, keeping the worker alive for async work.
+- `notificationclick` now honors the `clockout` action: attempts the optional POST, then focuses/opens `/timeclock` even if the app was closed.
+- FCM initialization uses `initMessagingAndToken`, which depends on `VITE_FIREBASE_VAPID_KEY` and logs outcomes through `AppError` + `logError`.
+- Icons and badges for notifications consistently reference `/icons/icon-192.png` (192×192).
 
 ## Verification Checklist
-- Close app, deliver an FCM payload with `action=clockout`. Expect the service worker to attempt the POST, notify clients, and focus/open `/timeclock` even if the app was closed.
-- On first run with a valid `VITE_FIREBASE_VAPID_KEY`, the app bootstrap registers the service worker and logs successful FCM token acquisition.
+- Close the app, deliver an FCM payload with `action=clockout`. Expect the service worker to attempt the POST, notify clients, and open `/timeclock`.
+- On first run with a valid `VITE_FIREBASE_VAPID_KEY`, the bootstrap registers the service worker and logs the token acquisition attempt.
