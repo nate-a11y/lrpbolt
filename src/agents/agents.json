@@ -18,7 +18,12 @@
         "Respect LRP theme",
         "Use withExponentialBackoff for writes",
         "Route all errors through captureError (Sentry if DSN set).",
-        "Gate noisy logs behind feature flags."
+        "Gate noisy logs behind feature flags.",
+        "Store UTC instants; never reinterpret ISO with tz(..., true).",
+        "Persist DataGrid density as a string; allow toolbar density changes.",
+        "Service Worker clock-out: credentials include + check response.ok.",
+        "TimeLogs filters OR across driverId/userId/driverEmail/userEmail.",
+        "Emit row.id from Firestore doc id; keep logicalId separately."
       ]
     },
     {
@@ -38,7 +43,8 @@
         "Tickets page: tabs (Manage/Generate), scanner via FAB only, bulk export/email.",
         "Use LrpDataGridPro for all grids; persist visibility and debounce quick filter.",
         "Use shared LrpDataGridPro if present",
-        "Include DiagnosticsPanel for admin/settings."
+        "Include DiagnosticsPanel for admin/settings.",
+        "Surface clock-out failures to user; open /timeclock for recovery."
       ]
     }
   ]

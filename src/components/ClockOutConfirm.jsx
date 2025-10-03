@@ -21,19 +21,35 @@ export default function ClockOutConfirm() {
     function onOpen() {
       openTimeClockModal();
     }
+    function onSuccess() {
+      setBusy(false);
+      setOpen(false);
+      setResult("ok");
+    }
+    function onFailure() {
+      setBusy(false);
+      setOpen(false);
+      setResult("err");
+    }
 
     try {
       if (consumePendingSwEvent("SW_CLOCK_OUT_REQUEST")) onReq();
       if (consumePendingSwEvent("SW_OPEN_TIME_CLOCK")) onOpen();
+      if (consumePendingSwEvent("CLOCKOUT_OK")) onSuccess();
+      if (consumePendingSwEvent("CLOCKOUT_FAILED")) onFailure();
     } catch (e) {
       logError(e, { where: "ClockOutConfirm", action: "drainPending" });
     }
 
     window.addEventListener("lrp:clockout-request", onReq);
     window.addEventListener("lrp:open-timeclock", onOpen);
+    window.addEventListener("lrp:clockout-success", onSuccess);
+    window.addEventListener("lrp:clockout-failure", onFailure);
     return () => {
       window.removeEventListener("lrp:clockout-request", onReq);
       window.removeEventListener("lrp:open-timeclock", onOpen);
+      window.removeEventListener("lrp:clockout-success", onSuccess);
+      window.removeEventListener("lrp:clockout-failure", onFailure);
     };
   }, []);
 

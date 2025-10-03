@@ -203,12 +203,24 @@ function ensureLocalPickup(value) {
   return parsed.second(0).millisecond(0);
 }
 
+/* FIX: avoid double timezone reinterpretation; store UTC instant, display in local/selected TZ */
 function rowToPayload(row, currentUser) {
   const tripId = formatTripId(row.tripId || "");
   if (!tripId || !isTripIdValid(tripId)) return null;
 
-  const pickupAt = ensureLocalPickup(row.pickupAt);
-  if (!pickupAt) return null;
+  const pickupInput = row.pickupAt;
+  const parsed =
+    typeof pickupInput?.toDate === "function"
+      ? dayjs(pickupInput.toDate())
+      : dayjs.isDayjs(pickupInput)
+        ? pickupInput
+        : dayjs(pickupInput);
+
+  if (!parsed?.isValid?.()) return null;
+
+  const pickupAtUtc = parsed.utc();
+  if (!pickupAtUtc?.isValid?.()) return null;
+  const timestamp = Timestamp.fromDate(pickupAtUtc.toDate());
 
   const durationMinutes = Number(row.durationMinutes);
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return null;
@@ -216,10 +228,6 @@ function rowToPayload(row, currentUser) {
   const rideType = row.rideType?.toString().trim();
   const vehicle = row.vehicle?.toString().trim();
   if (!rideType || !vehicle) return null;
-
-  const tz = dayjs.tz?.guess?.();
-  const normalized = tz ? pickupAt.tz(tz, true) : pickupAt;
-  const timestamp = Timestamp.fromDate(normalized.toDate());
 
   return {
     tripId,
@@ -558,7 +566,7 @@ export default function RideEntryForm() {
     const payload = rowToPayload(
       {
         tripId: singleRide.tripId,
-        pickupAt: pickupAt?.toISOString?.() ?? null,
+        pickupAt,
         rideType: singleRide.rideType,
         vehicle: singleRide.vehicle,
         durationMinutes: totalMinutes,
@@ -647,7 +655,7 @@ export default function RideEntryForm() {
       durationMinutes: durationMinutes || DEFAULT_DURATION_MINUTES,
       notes: builderRide.notes || "",
     };
-    const payload = rowToPayload(candidate, currentUser);
+    const payload = rowToPayload({ ...candidate, pickupAt }, currentUser);
     if (!payload) {
       setSnackbar({
         open: true,

@@ -41,6 +41,16 @@ export function initServiceWorkerMessageBridge() {
         } else if (t === "SW_CLOCK_OUT_REQUEST") {
           _enqueue(t);
           window.dispatchEvent(new CustomEvent("lrp:clockout-request"));
+        } else if (t === "CLOCKOUT_OK") {
+          _enqueue(t);
+          window.dispatchEvent(
+            new CustomEvent("lrp:clockout-success", { detail: e?.data || {} }),
+          );
+        } else if (t === "CLOCKOUT_FAILED") {
+          _enqueue(t);
+          window.dispatchEvent(
+            new CustomEvent("lrp:clockout-failure", { detail: e?.data || {} }),
+          );
         }
       } catch (err) {
         console.error("[swMessages] dispatch failed", err);
