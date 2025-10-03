@@ -34,15 +34,38 @@ export default function EditRideDialog({
   const fullOnXs = useMediaQuery(theme.breakpoints.down("sm"));
 
   const initForm = useCallback(() => {
-    const obj = {};
-    RIDE_FIELDS.forEach((f) => {
-      const v = ride?.[f];
-      if (v && typeof v.toDate === "function") {
-        obj[f] = dayjs(v.toDate());
-      } else {
-        obj[f] = v ?? "";
+    const base = {
+      tripId: ride?.tripId ?? "",
+      pickupTime: ride?.pickupTime ?? null,
+      rideType: ride?.rideType ?? "",
+      vehicle: ride?.vehicle ?? "",
+      rideDuration: ride?.rideDuration ?? 0,
+      rideNotes: ride?.rideNotes ?? "",
+    };
+
+    const obj = { ...base };
+
+    Object.keys(obj).forEach((key) => {
+      const value = obj[key];
+      if (value && typeof value.toDate === "function") {
+        obj[key] = dayjs(value.toDate());
       }
     });
+
+    RIDE_FIELDS.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(obj, field)) {
+        return;
+      }
+      const value = ride?.[field];
+      if (value && typeof value.toDate === "function") {
+        obj[field] = dayjs(value.toDate());
+      } else if (NUM_FIELDS.has(field)) {
+        obj[field] = value == null || value === "" ? 0 : Number(value);
+      } else {
+        obj[field] = value ?? "";
+      }
+    });
+
     return obj;
   }, [ride]);
 
