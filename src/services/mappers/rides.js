@@ -1,33 +1,31 @@
 export function normalizeRide(docSnap) {
-  if (!docSnap) return { id: null, status: "queued" };
-
-  const rawData =
+  // Accept either a docSnap or a plain object (for tests)
+  const raw =
     typeof docSnap?.data === "function" ? docSnap.data() || {} : docSnap || {};
-  const data = rawData && typeof rawData === "object" ? rawData : {};
+  const id = docSnap?.id || raw.id || raw.docId || null;
 
-  const {
-    id: dataId,
-    tripId: rawTripId,
-    tripID,
-    pickupTime: rawPickupTime,
-    pickupAt,
-    rideType: rawRideType,
-    type,
-    vehicle: rawVehicle,
-    vehicleId,
-    status: rawStatus,
-    state,
-    ...rest
-  } = data;
+  // ---- Trip ID aliases ----
+  // canonical: tripId (string)
+  const tripId =
+    raw.tripId ?? raw.tripID ?? raw.rideId ?? raw.trip ?? raw.ticketId ?? null;
 
-  const id = docSnap?.id ?? dataId ?? null;
+  // ---- Pickup time aliases ----
+  // canonical: pickupTime (Firestore Timestamp | ISO)
+  const pickupTime =
+    raw.pickupTime ?? raw.pickupAt ?? raw.startAt ?? raw.pickup ?? null;
 
-  const tripId = rawTripId ?? tripID ?? null;
-  const pickupTime = rawPickupTime ?? pickupAt ?? null;
-  const rideType = rawRideType ?? type ?? null;
-  const vehicle = rawVehicle ?? vehicleId ?? null;
-  const status = rawStatus ?? state ?? "queued";
+  // ---- Type / Vehicle / Status / Notes ----
+  const rideType = raw.rideType ?? raw.type ?? raw.serviceType ?? null;
 
+  const vehicle = raw.vehicle ?? raw.vehicleId ?? raw.car ?? raw.unit ?? null;
+
+  const status = raw.status ?? raw.state ?? raw.queueStatus ?? "queued";
+
+  const rideDuration = raw.rideDuration ?? raw.duration ?? null;
+
+  const rideNotes = raw.rideNotes ?? raw.notes ?? null;
+
+  // Keep everything, but place canonical fields up front for grids/forms.
   return {
     id,
     tripId,
@@ -35,7 +33,9 @@ export function normalizeRide(docSnap) {
     rideType,
     vehicle,
     status,
-    ...rest,
+    rideDuration,
+    rideNotes,
+    ...raw,
   };
 }
 
