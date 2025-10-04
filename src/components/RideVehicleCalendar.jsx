@@ -67,8 +67,12 @@ const VehiclePillWrapper = forwardRef(
       ref={ref}
       sx={{
         width,
+        mt: 0.5,
         pr: 1,
         mb: 0.5,
+        borderRadius: 1.5,
+        pl: 1.25,
+        py: 0.25,
         bgcolor: "background.default",
         borderRight: "1px solid",
         borderColor: "divider",
@@ -79,6 +83,7 @@ const VehiclePillWrapper = forwardRef(
         position: anchored ? "absolute" : "sticky",
         left: 0,
         top: anchored ? top : stickyTopOffset,
+        transform: anchored ? "translateY(0)" : "translateY(0)",
         zIndex: (theme) => theme.zIndex.appBar,
         visibility: hidden ? "hidden" : "visible",
       }}
@@ -668,24 +673,41 @@ function RideVehicleCalendar(props = {}) {
       setPillOffsets({});
       return;
     }
+
     const anchor = stickyAnchorEl;
-    const nextOffsets = {};
-    Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
-      if (!node) return;
-      nextOffsets[vehicle] = node.offsetTop || 0;
-    });
-    setPillOffsets(nextOffsets);
-    const previousMinHeight = anchor.style.minHeight;
-    if (lanesWrapperRef.current) {
-      const height = lanesWrapperRef.current.offsetHeight;
-      if (height) {
-        anchor.style.minHeight = `${height}px`;
+    const updateOffsets = () => {
+      const nextOffsets = {};
+      Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
+        if (node) nextOffsets[vehicle] = node.offsetTop || 0;
+      });
+      setPillOffsets(nextOffsets);
+
+      if (lanesWrapperRef.current) {
+        const totalHeight = lanesWrapperRef.current.scrollHeight;
+        anchor.style.minHeight = `${totalHeight + 32}px`;
+        anchor.style.paddingBottom = "16px";
       }
-    }
-    return () => {
-      anchor.style.minHeight = previousMinHeight;
     };
-  }, [stickyAnchorEl, groupedPacked]);
+
+    updateOffsets();
+
+    const target = lanesWrapperRef.current;
+    const resizeObs =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateOffsets)
+        : null;
+    if (resizeObs && target) {
+      resizeObs.observe(target);
+    }
+
+    return () => {
+      if (resizeObs) {
+        resizeObs.disconnect();
+      }
+      anchor.style.minHeight = "";
+      anchor.style.paddingBottom = "";
+    };
+  }, [stickyAnchorEl, filteredGroups]);
 
   const summary = useMemo(() => {
     const vehicles = new Set();
@@ -1136,66 +1158,68 @@ function RideVehicleCalendar(props = {}) {
                       );
 
                     return (
-                      <Box key={vehicle} sx={{ position: "relative" }}>
-                        <VehiclePillWrapper
-                          ref={setPillRef}
-                          width={labelW}
-                          hidden={Boolean(stickyAnchorEl)}
-                          stickyTopOffset={stickyTopOffset}
-                        >
-                          {renderChip()}
-                          {renderCount()}
-                        </VehiclePillWrapper>
-                        {anchoredPill}
+                      <Box key={vehicle} sx={{ mb: 3 }}>
+                        <Box sx={{ position: "relative" }}>
+                          <VehiclePillWrapper
+                            ref={setPillRef}
+                            width={labelW}
+                            hidden={Boolean(stickyAnchorEl)}
+                            stickyTopOffset={stickyTopOffset}
+                          >
+                            {renderChip()}
+                            {renderCount()}
+                          </VehiclePillWrapper>
+                          {anchoredPill}
 
-                        {/* Lanes shifted to clear the sticky label gutter */}
-                        <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
-                          {lanes.map((lane, li) => (
-                            <Box
-                              key={li}
-                              sx={{
-                                position: "relative",
-                                height: 22,
-                                minWidth: `${24 * pxPerHour}px`,
-                              }}
-                            >
-                              {lane.map((ev) => {
-                                const { left, width } = percentSpan(
-                                  ev,
-                                  dayStart,
-                                  dayEnd,
-                                );
-                                return (
-                                  <Tooltip
-                                    key={ev.id}
-                                    title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
-                                  >
-                                    <Box
-                                      onClick={() => {
-                                        setSelectedEvent(ev);
-                                        setModalOpen(true);
-                                      }}
-                                      sx={{
-                                        position: "absolute",
-                                        left: `${left}%`,
-                                        width: `${width}%`,
-                                        top: 0,
-                                        bottom: 0,
-                                        borderRadius: 1,
-                                        bgcolor: `${vehicleColors[vehicle]}33`,
-                                        border: `1px solid ${vehicleColors[vehicle]}`,
-                                        transition: "transform 120ms ease",
-                                        "&:hover": {
-                                          transform: "translateY(-1px)",
-                                        },
-                                      }}
-                                    />
-                                  </Tooltip>
-                                );
-                              })}
-                            </Box>
-                          ))}
-                        </Stack>
+                          {/* Lanes shifted to clear the sticky label gutter */}
+                          <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
+                            {lanes.map((lane, li) => (
+                              <Box
+                                key={li}
+                                sx={{
+                                  position: "relative",
+                                  height: 22,
+                                  minWidth: `${24 * pxPerHour}px`,
+                                }}
+                              >
+                                {lane.map((ev) => {
+                                  const { left, width } = percentSpan(
+                                    ev,
+                                    dayStart,
+                                    dayEnd,
+                                  );
+                                  return (
+                                    <Tooltip
+                                      key={ev.id}
+                                      title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
+                                    >
+                                      <Box
+                                        onClick={() => {
+                                          setSelectedEvent(ev);
+                                          setModalOpen(true);
+                                        }}
+                                        sx={{
+                                          position: "absolute",
+                                          left: `${left}%`,
+                                          width: `${width}%`,
+                                          top: 0,
+                                          bottom: 0,
+                                          borderRadius: 1,
+                                          bgcolor: `${vehicleColors[vehicle]}33`,
+                                          border: `1px solid ${vehicleColors[vehicle]}`,
+                                          transition: "transform 120ms ease",
+                                          "&:hover": {
+                                            transform: "translateY(-1px)",
+                                          },
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  );
+                                })}
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
                       </Box>
                     );
                   })}
