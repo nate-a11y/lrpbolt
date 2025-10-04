@@ -20,6 +20,12 @@ const asRow = (params) => {
   return params;
 };
 
+const asRaw = (row) => {
+  if (!row || typeof row !== "object") return {};
+  const raw = row._raw;
+  return raw && typeof raw === "object" ? raw : {};
+};
+
 const textFromValue = (value) => {
   if (value === null || value === undefined) return null;
   if (typeof value === "string") {
@@ -158,98 +164,158 @@ const pickText = (...values) => {
 
 const resolveTripId = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return pickText(
     row?.tripId,
+    raw?.tripId,
+    raw?.tripID,
+    raw?.TripId,
+    raw?.TripID,
     row?.tripID,
     row?.TripId,
     row?.TripID,
     row?.rideId,
+    raw?.rideId,
+    raw?.rideID,
+    raw?.RideId,
+    raw?.RideID,
     row?.rideID,
     row?.RideId,
     row?.RideID,
     row?.trip,
+    raw?.trip,
+    raw?.Trip,
     row?.Trip,
     row?.ticketId,
+    raw?.ticketId,
+    raw?.ticketID,
+    raw?.TicketId,
+    raw?.TicketID,
     row?.ticketID,
     row?.TicketId,
     row?.TicketID,
     row?.tripCode,
+    raw?.tripCode,
+    raw?.TripCode,
     row?.TripCode,
   );
 };
 
 const resolvePickupTime = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return firstDefined(
     row?.pickupTime,
+    raw?.pickupTime,
     row?.pickup_time,
+    raw?.pickup_time,
     row?.pickupAt,
+    raw?.pickupAt,
     row?.pickup_at,
+    raw?.pickup_at,
     row?.pickup,
+    raw?.pickup,
     row?.PickupTime,
     row?.Pickup_time,
     row?.PickupAt,
     row?.Pickup_at,
     row?.Pickup,
     row?.pickupTimeMs,
+    raw?.pickupTimeMs,
     row?.startAt,
+    raw?.startAt,
     row?.StartAt,
     row?.startTime,
+    raw?.startTime,
     row?.StartTime,
   );
 };
 
 const resolveRideDuration = (rowOrParams) => {
   const row = asRow(rowOrParams);
-  return firstDefined(
+  const raw = asRaw(row);
+  const candidate = firstDefined(
     row?.rideDuration,
+    raw?.rideDuration,
     row?.RideDuration,
+    raw?.RideDuration,
     row?.duration,
+    raw?.duration,
     row?.Duration,
+    raw?.Duration,
     row?.minutes,
+    raw?.minutes,
     row?.durationMinutes,
+    raw?.durationMinutes,
     row?.DurationMinutes,
+    raw?.DurationMinutes,
     row?.duration?.minutes,
+    raw?.duration?.minutes,
   );
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return candidate;
+  }
+  if (typeof candidate === "string") {
+    const parsed = Number(candidate.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 };
 
 const resolveRideType = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return pickText(
     row?.rideType,
+    raw?.rideType,
+    raw?.RideType,
     row?.RideType,
     row?.type,
+    raw?.type,
     row?.Type,
     row?.serviceType,
+    raw?.serviceType,
     row?.ServiceType,
     row?.category,
+    raw?.category,
     row?.Category,
   );
 };
 
 const resolveVehicle = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return (
     vehicleToText(row?.vehicle) ||
+    vehicleToText(raw?.vehicle) ||
     pickText(
       row?.vehicleName,
+      raw?.vehicleName,
       row?.VehicleName,
       row?.vehicleId,
+      raw?.vehicleId,
       row?.vehicleID,
       row?.VehicleId,
       row?.VehicleID,
       row?.vehicle_id,
+      raw?.vehicle_id,
       row?.car,
+      raw?.car,
       row?.Car,
       row?.unit,
+      raw?.unit,
       row?.Unit,
       row?.vehicleLabel,
+      raw?.vehicleLabel,
       row?.VehicleLabel,
       row?.vehicleDescription,
+      raw?.vehicleDescription,
       row?.VehicleDescription,
       row?.vehicleCode,
+      raw?.vehicleCode,
       row?.VehicleCode,
       row?.vehicleDisplay,
+      raw?.vehicleDisplay,
       row?.VehicleDisplay,
     )
   );
@@ -257,17 +323,23 @@ const resolveVehicle = (rowOrParams) => {
 
 const resolveRideNotes = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return notesToText(
     firstDefined(
       row?.rideNotes,
+      raw?.rideNotes,
       row?.RideNotes,
       row?.notes,
+      raw?.notes,
       row?.Notes,
       row?.note,
+      raw?.note,
       row?.Note,
       row?.messages,
+      raw?.messages,
       row?.Messages,
       row?.description,
+      raw?.description,
       row?.Description,
     ),
   );
@@ -275,40 +347,61 @@ const resolveRideNotes = (rowOrParams) => {
 
 const resolveClaimedBy = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return pickText(
     row?.claimedBy,
+    raw?.claimedBy,
+    raw?.ClaimedBy,
     row?.ClaimedBy,
     row?.claimer,
+    raw?.claimer,
     row?.claimed_user,
+    raw?.claimed_user,
     row?.assignedTo,
+    raw?.assignedTo,
     row?.AssignedTo,
   );
 };
 
 const resolveClaimedAt = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return firstDefined(
     row?.claimedAt,
+    raw?.claimedAt,
     row?.claimedTime,
+    raw?.claimedTime,
     row?.claimed,
+    raw?.claimed,
     row?.claimedAtMs,
+    raw?.claimedAtMs,
     row?.ClaimedAt,
     row?.Claimed_at,
     row?.ClaimedTime,
+    raw?.ClaimedAt,
+    raw?.Claimed_at,
+    raw?.ClaimedTime,
   );
 };
 
 const resolveCreatedAt = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return firstDefined(
     row?.createdAt,
+    raw?.createdAt,
     row?.created,
+    raw?.created,
     row?.Created,
     row?.timestamp,
+    raw?.timestamp,
     row?.Timestamp,
     row?.createdAtMs,
+    raw?.createdAtMs,
     row?.CreatedAt,
     row?.Created_at,
+    raw?.CreatedAt,
+    raw?.Created_at,
   );
 };
 
@@ -328,13 +421,18 @@ const resolveUpdatedAt = (rowOrParams) => {
 
 const resolveStatus = (rowOrParams) => {
   const row = asRow(rowOrParams);
+  const raw = asRaw(row);
   return (
     pickText(
       row?.status,
+      raw?.status,
       row?.Status,
+      raw?.Status,
       row?.state,
+      raw?.state,
       row?.State,
       row?.queueStatus,
+      raw?.queueStatus,
       row?.QueueStatus,
     ) || "queued"
   );

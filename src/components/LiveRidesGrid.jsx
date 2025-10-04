@@ -8,7 +8,7 @@ import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
-import { normalizeRideArray } from "@/services/mappers/rides.js";
+import { normalizeRideArray } from "@/utils/normalizeRide.js";
 import { getFlag } from "@/services/observability";
 import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
 
@@ -40,7 +40,7 @@ export default function LiveRidesGrid() {
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "liveRides"),
-      (snap) => setRows(normalizeRideArray(snap)),
+      (snap) => setRows(normalizeRideArray(snap.docs)),
       console.error,
     );
     return () => unsub();
@@ -126,13 +126,6 @@ export default function LiveRidesGrid() {
     return selectionModel.map((id) => sel.get(id)).filter(Boolean);
   }, [apiRef, selectionModel]);
 
-  const getRowId = useCallback((row) => {
-    if (row?.id != null) return String(row.id);
-    const fallbackId = resolveTripId(row);
-    if (fallbackId != null) return String(fallbackId);
-    return null;
-  }, []);
-
   const initialState = useMemo(
     () => ({
       pagination: { paginationModel: { pageSize: 15, page: 0 } },
@@ -173,7 +166,7 @@ export default function LiveRidesGrid() {
         minWidth: 140,
         flex: 1,
         valueGetter: (params) => resolveTripId(params),
-        valueFormatter: (params) => vfText(params, "—"),
+        valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
         field: "pickupTime",
@@ -197,7 +190,7 @@ export default function LiveRidesGrid() {
         minWidth: 120,
         flex: 0.7,
         valueGetter: (params) => resolveRideType(params),
-        valueFormatter: (params) => vfText(params, "—"),
+        valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
         field: "vehicle",
@@ -205,7 +198,7 @@ export default function LiveRidesGrid() {
         minWidth: 160,
         flex: 0.9,
         valueGetter: (params) => resolveVehicle(params),
-        valueFormatter: (params) => vfText(params, "—"),
+        valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
         field: "rideNotes",
@@ -213,7 +206,7 @@ export default function LiveRidesGrid() {
         minWidth: 180,
         flex: 1,
         valueGetter: (params) => resolveRideNotes(params),
-        valueFormatter: (params) => vfText(params, "—"),
+        valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
         field: "createdAt",
@@ -229,7 +222,7 @@ export default function LiveRidesGrid() {
         minWidth: 140,
         flex: 0.8,
         valueGetter: (params) => resolveClaimedBy(params),
-        valueFormatter: (params) => vfText(params, "—"),
+        valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
         field: "claimedAt",
@@ -245,7 +238,7 @@ export default function LiveRidesGrid() {
         minWidth: 120,
         flex: 0.7,
         valueGetter: (params) => resolveStatus(params),
-        valueFormatter: (params) => vfText(params, "—"),
+        valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
         field: "__actions",
@@ -265,7 +258,7 @@ export default function LiveRidesGrid() {
           id="live-grid"
           rows={rows}
           columns={columns}
-          getRowId={getRowId}
+          getRowId={(row) => row?.id ?? null}
           checkboxSelection
           disableRowSelectionOnClick
           apiRef={apiRef}

@@ -416,6 +416,33 @@ function LrpDataGridPro({
   }, [columns]);
 
   useEffect(() => {
+    if (typeof import.meta === "undefined" || import.meta.env?.PROD) {
+      return;
+    }
+    if (!["queue-grid", "live-grid", "claimed-grid"].includes(id)) {
+      return;
+    }
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return;
+    }
+    const firstRow = rows[0];
+    const raw = firstRow?._raw || {};
+    console.log("[GridProbe]", id, {
+      firstRowKeys: Object.keys(firstRow || {}),
+      id: firstRow?.id ?? null,
+      tripId:
+        firstRow?.tripId ??
+        raw?.tripId ??
+        raw?.tripID ??
+        raw?.rideId ??
+        raw?.trip ??
+        null,
+      pickupTimeType: typeof firstRow?.pickupTime,
+      pickupTimeRaw: raw?.pickupTime ?? raw?.pickupAt ?? raw?.pickup ?? null,
+    });
+  }, [id, rows]);
+
+  useEffect(() => {
     if (!getFlag || !getFlag("grid.debug")) {
       return;
     }
