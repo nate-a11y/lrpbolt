@@ -24,6 +24,123 @@ import {
 
 import logError from "@/utils/logError.js";
 import { getFlag } from "@/services/observability";
+import { tsToDayjs } from "@/utils/timeUtils.js";
+
+// ---------- Ride cell rescue helpers (for queue/live/claimed) ----------
+const RIDE_GRID_IDS = ["queue-grid", "live-grid", "claimed-grid"];
+const RIDE_DATE_FIELDS = new Set(["pickupTime", "createdAt", "claimedAt"]);
+
+function resolveRideField(row, field) {
+  const raw = row?._raw || row || {};
+  switch (field) {
+    case "tripId":
+      return (
+        row?.tripId ??
+        raw.tripId ??
+        raw.tripID ??
+        raw.rideId ??
+        raw.trip ??
+        null
+      );
+    case "pickupTime":
+      return (
+        row?.pickupTime ?? raw.pickupTime ?? raw.pickupAt ?? raw.pickup ?? null
+      );
+    case "rideDuration":
+      if (typeof row?.rideDuration === "number") return row.rideDuration;
+      if (typeof raw.rideDuration === "number") return raw.rideDuration;
+      return null;
+    case "rideType":
+      return row?.rideType ?? raw.rideType ?? null;
+    case "vehicle":
+      return row?.vehicle ?? raw.vehicle ?? null;
+    case "rideNotes":
+      return row?.rideNotes ?? raw.rideNotes ?? null;
+    case "createdAt":
+      return row?.createdAt ?? raw.createdAt ?? null;
+    case "claimedBy":
+      return row?.claimedBy ?? raw.claimedBy ?? raw.ClaimedBy ?? null;
+    case "claimedAt":
+      return row?.claimedAt ?? raw.claimedAt ?? raw.ClaimedAt ?? null;
+    default:
+      return row?.[field] ?? raw[field] ?? null;
+  }
+}
+
+function formatRideDate(value) {
+  const d = tsToDayjs(value);
+  if (!d) return "—";
+  try {
+    return d.format("MMM D, h:mm A");
+  } catch (error) {
+    logError(error, { where: "LrpDataGridPro.formatRideDate" });
+    return "—";
+  }
+}
+
+function formatRideText(value) {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+  return String(value);
+}
+
+function formatRideDuration(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return "—";
+}
+
+function augmentRideColumn(column) {
+  if (!column || typeof column !== "object") {
+    return column;
+  }
+  if (typeof column.renderCell === "function") {
+    return column;
+  }
+
+  const next = { ...column };
+
+  if (RIDE_DATE_FIELDS.has(next.field) && !next.sortComparator) {
+    next.sortComparator = (v1, v2, params1, params2) => {
+      const first = tsToDayjs(resolveRideField(params1?.row, next.field));
+      const second = tsToDayjs(resolveRideField(params2?.row, next.field));
+      const a = first ? first.valueOf() : -Infinity;
+      const b = second ? second.valueOf() : -Infinity;
+      if (a === b) return 0;
+      return a < b ? -1 : 1;
+    };
+  }
+
+  next.renderCell = (params) => {
+    const value = resolveRideField(params?.row, next.field);
+    if (RIDE_DATE_FIELDS.has(next.field)) {
+      return formatRideDate(value);
+    }
+    if (next.field === "rideDuration") {
+      return formatRideDuration(value);
+    }
+    return formatRideText(value);
+  };
+
+  return next;
+}
+
+function maybeAugmentColumnsForRides(columns, gridId) {
+  if (!Array.isArray(columns) || !RIDE_GRID_IDS.includes(gridId)) {
+    return columns;
+  }
+  let changed = false;
+  const augmented = columns.map((col) => {
+    const next = augmentRideColumn(col);
+    if (next !== col) {
+      changed = true;
+    }
+    return next;
+  });
+  return changed ? augmented : columns;
+}
 
 const QUICK_FILTER_PARSER = (value) =>
   String(value || "")
@@ -383,8 +500,12 @@ function LrpDataGridPro({
     [getRowId, id],
   );
 
+  const rideAwareColumns = useMemo(() => {
+    return maybeAugmentColumnsForRides(columns, id);
+  }, [columns, id]);
+
   const safeColumns = useMemo(() => {
-    return (columns || []).map((col) => {
+    return (rideAwareColumns || []).map((col) => {
       if (!col) return col;
 
       let next = col;
@@ -413,7 +534,7 @@ function LrpDataGridPro({
 
       return next;
     });
-  }, [columns]);
+  }, [rideAwareColumns]);
 
   useEffect(() => {
     if (typeof import.meta === "undefined" || import.meta.env?.PROD) {
@@ -447,7 +568,7 @@ function LrpDataGridPro({
       return;
     }
     const sampleRow = Array.isArray(rows) ? rows[0] : null;
-    const columnFields = (columns || [])
+    const columnFields = (rideAwareColumns || [])
       .map((c) => (c ? c.field : null))
       .filter(Boolean);
     console.log("[GridDebug]", {
@@ -455,7 +576,7 @@ function LrpDataGridPro({
       sampleRow,
       columns: columnFields,
     });
-  }, [id, rows, columns]);
+  }, [id, rows, rideAwareColumns]);
 
   const mergedSlots = useMemo(
     () => ({
