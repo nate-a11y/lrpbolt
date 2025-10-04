@@ -289,21 +289,15 @@ function packIntoLanes(items) {
 
 /** Compute left% and width% for an event within [dayStart, dayEnd], clamped to [0..100]. */
 function percentSpan(ev, dayStart, dayEnd) {
-  const total = dayEnd.diff(dayStart, "minute");
-  const leftMins = Math.max(
-    0,
-    Math.min(total, ev.start.diff(dayStart, "minute")),
-  );
-  const rightMins = Math.max(
-    0,
-    Math.min(total, ev.end.diff(dayStart, "minute")),
-  );
-  const left = clamp01(leftMins / total) * 100;
-  const width = Math.max(
-    1.5,
-    (clamp01(rightMins / total) - clamp01(leftMins / total)) * 100,
-  );
-  return { left, width };
+  const totalMinutes = Math.max(1, dayEnd.diff(dayStart, "minute"));
+  const startMinutes = ev.start.diff(dayStart, "minute");
+  const endMinutes = ev.end.diff(dayStart, "minute");
+  const clampedStart = clamp01(startMinutes / totalMinutes);
+  const clampedEnd = clamp01(endMinutes / totalMinutes);
+  const left = clampedStart * 100;
+  const width = Math.max(0, clampedEnd - clampedStart) * 100;
+  const durationMinutes = Math.max(0, ev.end.diff(ev.start, "minute"));
+  return { left, width, durationMinutes };
 }
 // ===== [RVTC:helpers:end] =====
 
@@ -1185,11 +1179,16 @@ function RideVehicleCalendar(props = {}) {
                           >
                             {lanes.map((lane, laneIdx) =>
                               lane.map((ev) => {
-                                const { left, width } = percentSpan(
-                                  ev,
-                                  dayStart,
-                                  dayEnd,
-                                );
+                                const { left, width, durationMinutes } =
+                                  percentSpan(ev, dayStart, dayEnd);
+                                const minWidth =
+                                  durationMinutes === 0
+                                    ? "2px"
+                                    : durationMinutes <= 5
+                                      ? "6px"
+                                      : durationMinutes <= 10
+                                        ? "4px"
+                                        : undefined;
                                 return (
                                   <Tooltip
                                     key={ev.id}
@@ -1205,6 +1204,7 @@ function RideVehicleCalendar(props = {}) {
                                         top: laneIdx * OVERVIEW_LANE_HEIGHT,
                                         left: `${left}%`,
                                         width: `${width}%`,
+                                        minWidth,
                                         height: OVERVIEW_EVENT_HEIGHT,
                                         borderRadius: 1,
                                         bgcolor:
@@ -1336,12 +1336,19 @@ function RideVehicleCalendar(props = {}) {
                   <Collapse in={expanded} timeout="auto" unmountOnExit>
                     <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
                       {rides.map((event) => {
-                        const { left: startPct, width: widthPct } = percentSpan(
-                          event,
-                          dayStart,
-                          dayEnd,
-                        );
-                        const endPct = startPct + widthPct;
+                        const {
+                          left: startPct,
+                          width: widthPct,
+                          durationMinutes,
+                        } = percentSpan(event, dayStart, dayEnd);
+                        const minWidth =
+                          durationMinutes === 0
+                            ? "2px"
+                            : durationMinutes <= 5
+                              ? "6px"
+                              : durationMinutes <= 10
+                                ? "4px"
+                                : undefined;
                         return (
                           <Box
                             key={event.id}
@@ -1409,7 +1416,8 @@ function RideVehicleCalendar(props = {}) {
                                 sx={{
                                   position: "absolute",
                                   left: `${startPct}%`,
-                                  width: `${endPct - startPct}%`,
+                                  width: `${widthPct}%`,
+                                  minWidth,
                                   top: 0,
                                   bottom: 0,
                                   bgcolor: vehicleColors[event.vehicle],
