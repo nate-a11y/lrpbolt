@@ -175,6 +175,9 @@ async function shareDay(rides, date) {
   }
 }
 
+const OVERVIEW_LANE_HEIGHT = 28;
+const OVERVIEW_EVENT_HEIGHT = 20;
+
 const BASE_COLORS = [
   "#E6194B",
   "#3CB44B",
@@ -1172,53 +1175,67 @@ function RideVehicleCalendar(props = {}) {
                           {anchoredPill}
 
                           {/* Lanes shifted to clear the sticky label gutter */}
-                          <Stack spacing={0.5} sx={{ pl: `${gutter}px` }}>
-                            {lanes.map((lane, li) => (
-                              <Box
-                                key={li}
-                                sx={{
-                                  position: "relative",
-                                  height: 22,
-                                  minWidth: `${24 * pxPerHour}px`,
-                                }}
-                              >
-                                {lane.map((ev) => {
-                                  const { left, width } = percentSpan(
-                                    ev,
-                                    dayStart,
-                                    dayEnd,
-                                  );
-                                  return (
-                                    <Tooltip
-                                      key={ev.id}
-                                      title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
+                          <Box
+                            sx={{
+                              position: "relative",
+                              pl: `${gutter}px`,
+                              minWidth: `${24 * pxPerHour}px`,
+                              height: lanes.length * OVERVIEW_LANE_HEIGHT,
+                            }}
+                          >
+                            {lanes.map((lane, laneIdx) =>
+                              lane.map((ev) => {
+                                const { left, width } = percentSpan(
+                                  ev,
+                                  dayStart,
+                                  dayEnd,
+                                );
+                                return (
+                                  <Tooltip
+                                    key={ev.id}
+                                    title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
+                                  >
+                                    <Box
+                                      onClick={() => {
+                                        setSelectedEvent(ev);
+                                        setModalOpen(true);
+                                      }}
+                                      sx={{
+                                        position: "absolute",
+                                        top: laneIdx * OVERVIEW_LANE_HEIGHT,
+                                        left: `${left}%`,
+                                        width: `${width}%`,
+                                        height: OVERVIEW_EVENT_HEIGHT,
+                                        borderRadius: 1,
+                                        bgcolor:
+                                          vehicleColors[ev.vehicle] ||
+                                          "grey.500",
+                                        color:
+                                          vehicleText[ev.vehicle] ||
+                                          getContrastText(
+                                            vehicleColors[ev.vehicle] || "#666",
+                                          ),
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 600,
+                                        px: 0.5,
+                                        cursor: "pointer",
+                                        transition: "transform 120ms ease",
+                                        overflow: "hidden",
+                                        "&:hover": {
+                                          transform: "translateY(-1px)",
+                                        },
+                                      }}
                                     >
-                                      <Box
-                                        onClick={() => {
-                                          setSelectedEvent(ev);
-                                          setModalOpen(true);
-                                        }}
-                                        sx={{
-                                          position: "absolute",
-                                          left: `${left}%`,
-                                          width: `${width}%`,
-                                          top: 0,
-                                          bottom: 0,
-                                          borderRadius: 1,
-                                          bgcolor: `${vehicleColors[vehicle]}33`,
-                                          border: `1px solid ${vehicleColors[vehicle]}`,
-                                          transition: "transform 120ms ease",
-                                          "&:hover": {
-                                            transform: "translateY(-1px)",
-                                          },
-                                        }}
-                                      />
-                                    </Tooltip>
-                                  );
-                                })}
-                              </Box>
-                            ))}
-                          </Stack>
+                                      <span>{ev.vehicle}</span>
+                                    </Box>
+                                  </Tooltip>
+                                );
+                              }),
+                            )}
+                          </Box>
                         </Box>
                       </Box>
                     );
