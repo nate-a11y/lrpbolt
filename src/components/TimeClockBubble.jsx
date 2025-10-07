@@ -70,6 +70,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
           wasActiveRef.current = true;
           await showPersistentClockNotification({
             elapsedLabel,
+            elapsedMinutes,
           });
           await trySetAppBadge(elapsedMinutes);
         } else if (wasActiveRef.current) {
@@ -99,6 +100,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
       try {
         await showPersistentClockNotification({
           elapsedLabel,
+          elapsedMinutes,
         });
         await trySetAppBadge(elapsedMinutes);
         if (pipOn && isPiPActive()) {

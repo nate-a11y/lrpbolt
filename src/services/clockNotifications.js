@@ -6,7 +6,13 @@ import logError from "@/utils/logError.js";
  * Uses the Notifications API (foreground) and the service worker (background).
  */
 // Safe to call periodically (e.g. every 60s) — replaces existing notification silently
-export async function showPersistentClockNotification({ elapsedLabel } = {}) {
+let lastNotifiedLabel = null;
+let lastNotifiedMinutes = null;
+
+export async function showPersistentClockNotification({
+  elapsedLabel,
+  elapsedMinutes,
+} = {}) {
   try {
     if (!("serviceWorker" in navigator)) return;
     if (!("Notification" in window)) return;
@@ -14,6 +20,16 @@ export async function showPersistentClockNotification({ elapsedLabel } = {}) {
 
     const reg = await navigator.serviceWorker.getRegistration();
     if (!reg) return;
+
+    const minutesProvided =
+      typeof elapsedMinutes === "number" && Number.isFinite(elapsedMinutes);
+    if (minutesProvided) {
+      if (lastNotifiedMinutes === elapsedMinutes) {
+        return;
+      }
+    } else if (elapsedLabel && lastNotifiedLabel === elapsedLabel) {
+      return;
+    }
 
     await reg.showNotification("On the clock ⏱", {
       body: elapsedLabel
@@ -33,6 +49,11 @@ export async function showPersistentClockNotification({ elapsedLabel } = {}) {
         },
       ],
     });
+
+    lastNotifiedLabel = elapsedLabel ?? null;
+    if (minutesProvided) {
+      lastNotifiedMinutes = elapsedMinutes;
+    }
   } catch (error) {
     logError(error, {
       where: "showPersistentClockNotification",
@@ -53,6 +74,8 @@ export async function clearPersistentClockNotification() {
     if (navigator.clearAppBadge) {
       await navigator.clearAppBadge();
     }
+    lastNotifiedLabel = null;
+    lastNotifiedMinutes = null;
   } catch (error) {
     logError(error, {
       where: "clearPersistentClockNotification",
