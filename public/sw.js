@@ -295,7 +295,10 @@ self.addEventListener("notificationclick", (event) => {
     (async () => {
       try {
         if (action === "clockout") {
-          const success = await postClockoutRequest();
+          const [success, targetClient] = await Promise.all([
+            postClockoutRequest(),
+            focusOrOpen("/clock"),
+          ]);
           if (!success) {
             await self.registration.showNotification("Clock Out Failed ❌", {
               body: "We couldn't confirm your clock out. Please retry from the clock page.",
@@ -304,8 +307,14 @@ self.addEventListener("notificationclick", (event) => {
               badge: scopeUrl("icons/icon-192.png"),
             });
           }
+          if (targetClient) {
+            try {
+              targetClient.postMessage({ type: "SW_CLOCK_OUT_REQUEST" });
+            } catch (postError) {
+              console.warn("[sw] direct clockout postMessage failed", postError);
+            }
+          }
           await broadcastToClients({ type: "SW_CLOCK_OUT_REQUEST" });
-          await focusOrOpen("/timeclock");
           return;
         }
 
