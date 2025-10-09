@@ -1,43 +1,25 @@
 /* Proprietary and confidential. See LICENSE. */
 import * as React from "react";
-import {
-  Box,
-  Typography,
-  CircularProgress,
-  Fade,
-  IconButton,
-  Tooltip,
-} from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import CircularProgress from "@mui/material/CircularProgress";
 
 /**
  * EmptyRideState
- * Branded empty state with a circular countdown ring.
+ * Branded empty state with manual refresh affordance.
  *
  * Props:
- * - refreshIn (number): total seconds for the next auto-refresh. Defaults to 20.
  * - onRefresh (function): optional handler to trigger an immediate refresh.
  * - message (string): optional heading override.
+ * - refreshing (boolean): disables the button while a refresh is in-flight.
+ * - lastUpdatedLabel (string): human-friendly timestamp for the last sync.
  */
-export default function EmptyRideState({ refreshIn = 20, onRefresh, message }) {
-  const [count, setCount] = React.useState(refreshIn);
-
-  React.useEffect(() => {
-    setCount(refreshIn);
-  }, [refreshIn]);
-
-  React.useEffect(() => {
-    const id = setInterval(() => {
-      setCount((c) => (c > 0 ? c - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const percent = React.useMemo(() => {
-    if (refreshIn <= 0) return 0;
-    return ((refreshIn - count) / refreshIn) * 100;
-  }, [count, refreshIn]);
-
+export default function EmptyRideState({
+  onRefresh,
+  message,
+  refreshing = false,
+  lastUpdatedLabel = "Never",
+}) {
   return (
     <Box
       role="status"
@@ -71,60 +53,64 @@ export default function EmptyRideState({ refreshIn = 20, onRefresh, message }) {
           pointerEvents: "none",
         }}
       />
-      <Fade in timeout={300}>
-        <Box sx={{ position: "relative", display: "inline-flex", mb: 2 }}>
-          <CircularProgress
-            variant="determinate"
-            value={percent}
-            size={88}
-            thickness={3}
-            sx={{ color: "#4cbb17" }}
-          />
-          <Box
-            sx={{
-              top: 0,
-              left: 0,
-              bottom: 0,
-              right: 0,
-              position: "absolute",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              fontVariantNumeric: "tabular-nums",
-              color: "white",
-            }}
-          >
-            {Math.max(count, 0)}s
-          </Box>
-        </Box>
-      </Fade>
+      <Box
+        sx={{
+          width: 90,
+          height: 90,
+          borderRadius: "50%",
+          background:
+            "linear-gradient(135deg, rgba(76,187,23,0.28), rgba(76,187,23,0.05))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mb: 2.5,
+          boxShadow: "0 18px 40px rgba(76,187,23,0.18)",
+        }}
+      >
+        <RefreshIcon sx={{ fontSize: 36, color: "#4cbb17" }} />
+      </Box>
 
-      <Typography variant="h6" sx={{ mb: 0.5, color: "white" }}>
-        {message || "🚐 No rides available to claim"}
+      <Typography
+        variant="h6"
+        sx={{ mb: 0.75, color: "common.white", fontWeight: 800 }}
+      >
+        {message || "🚐 No rides ready to claim"}
       </Typography>
-      <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-        Refreshing automatically…
+      <Typography variant="body2" sx={{ opacity: 0.85, maxWidth: 360, mb: 2 }}>
+        Tap refresh whenever you want to check for new rides. We’ll keep your
+        place here.
       </Typography>
 
-      {typeof onRefresh === "function" && (
-        <Tooltip title="Refresh now">
-          <IconButton
-            aria-label="Refresh now"
+      {typeof onRefresh === "function" ? (
+        <Stack spacing={1.5} alignItems="center">
+          <Button
+            variant="contained"
+            color="primary"
             onClick={onRefresh}
+            disabled={refreshing}
+            startIcon={
+              refreshing ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                <RefreshIcon />
+              )
+            }
             sx={{
-              mt: 0.5,
-              color: "#4cbb17",
-              "&:hover": {
-                color: "white",
-                backgroundColor: "rgba(76,187,23,0.12)",
-              },
+              borderRadius: 9999,
+              px: 3.25,
+              py: 0.85,
+              fontWeight: 700,
+              color: "#060606",
+              "&:hover": { filter: "brightness(1.08)" },
             }}
           >
-            <RefreshIcon />
-          </IconButton>
-        </Tooltip>
-      )}
+            {refreshing ? "Refreshing…" : "Refresh rides"}
+          </Button>
+          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)" }}>
+            Last updated: {lastUpdatedLabel}
+          </Typography>
+        </Stack>
+      ) : null}
     </Box>
   );
 }

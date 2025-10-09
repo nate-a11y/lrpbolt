@@ -1,5 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, Button, CircularProgress, Stack } from "@mui/material";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  LinearProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 import BlackoutOverlay, {
   BLACKOUT_END_HOUR,
@@ -14,7 +29,6 @@ import RideGroup from "@/components/claims/RideGroup.jsx";
 import EmptyRideState from "@/components/claim/EmptyRideState.jsx";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
-import useAutoRefresh from "@/hooks/useAutoRefresh";
 import useClaimSelection from "@/hooks/useClaimSelection";
 import useRides from "@/hooks/useRides";
 import { claimRideOnce, undoClaimRide } from "@/services/claims";
@@ -34,10 +48,11 @@ export default function ClaimRides() {
   const [openNotes, setOpenNotes] = useState({});
   const [isClaiming, setIsClaiming] = useState({});
   const { user, role } = useAuth();
-  const { liveRides = [], fetchRides, loading } = useRides();
+  const { liveRides = [], fetchRides, loading, hasFetchedOnce } = useRides();
   const [isLocked, setIsLocked] = useState(false);
-  const refreshIntervalSec = 30;
-  const [, setNoRideCountdown] = useState(refreshIntervalSec);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const loadingRef = useRef(loading);
 
   const checkLockout = useCallback(() => {
     const now = dayjs().tz(TIMEZONE);
@@ -54,6 +69,40 @@ export default function ClaimRides() {
   const lockedOut = useMemo(
     () => role !== "admin" && isLocked,
     [role, isLocked],
+  );
+
+  const createNow = useCallback(() => {
+    const tzGuess = dayjs.tz?.guess?.() || TIMEZONE;
+    const now = dayjs();
+    return typeof now.tz === "function" ? now.tz(tzGuess) : now;
+  }, []);
+
+  useEffect(() => {
+    if (loadingRef.current && !loading) {
+      setLastUpdated(createNow());
+      setRefreshing(false);
+    } else if (!loading && !lastUpdated && hasFetchedOnce) {
+      setLastUpdated(createNow());
+    }
+    loadingRef.current = loading;
+  }, [createNow, hasFetchedOnce, lastUpdated, loading]);
+
+  const lastUpdatedLabel = useMemo(() => {
+    if (!lastUpdated) return "Never";
+    try {
+      const tzGuess = dayjs.tz?.guess?.() || TIMEZONE;
+      return typeof lastUpdated.tz === "function"
+        ? lastUpdated.tz(tzGuess).format("ddd, MMM D • h:mm A z")
+        : lastUpdated.format("ddd, MMM D • h:mm A");
+    } catch (error) {
+      void error;
+      return lastUpdated.format("ddd, MMM D • h:mm A");
+    }
+  }, [lastUpdated]);
+
+  const isRefreshing = useMemo(
+    () => refreshing || (loading && hasFetchedOnce),
+    [hasFetchedOnce, loading, refreshing],
   );
 
   const ridesWithNotes = useMemo(
@@ -117,24 +166,21 @@ export default function ClaimRides() {
     }));
   }, [ridesWithNotes]);
 
-  const refetch = useCallback(() => fetchRides && fetchRides(), [fetchRides]);
+  const refetch = useCallback(async () => {
+    if (typeof fetchRides !== "function") return;
+    await fetchRides();
+  }, [fetchRides]);
 
-  useAutoRefresh(refetch, 60000);
-
-  useEffect(() => {
-    if (liveRides.length) return;
-    setNoRideCountdown(refreshIntervalSec);
-    const t = setInterval(() => {
-      setNoRideCountdown((s) => {
-        if (s <= 1) {
-          refetch?.();
-          return refreshIntervalSec;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, [liveRides.length, refetch, refreshIntervalSec]);
+  const handleRefresh = useCallback(async () => {
+    if (!refetch) return;
+    try {
+      setRefreshing(true);
+      await refetch();
+    } catch (error) {
+      setRefreshing(false);
+      showToast(error?.message || "Failed to refresh rides", "error");
+    }
+  }, [refetch, showToast]);
 
   const handleToggleNotes = useCallback((rideId) => {
     setOpenNotes((prev) => ({ ...prev, [rideId]: !prev[rideId] }));
@@ -226,7 +272,7 @@ export default function ClaimRides() {
     }
   }, [lockedOut, refetch, rideMap, sel, showToast, user]);
 
-  if (loading)
+  if (!hasFetchedOnce)
     return (
       <Stack alignItems="center" sx={{ py: 6 }}>
         <CircularProgress />
@@ -235,7 +281,11 @@ export default function ClaimRides() {
 
   if (!liveRides.length)
     return (
-      <EmptyRideState refreshIn={refreshIntervalSec} onRefresh={refetch} />
+      <EmptyRideState
+        onRefresh={handleRefresh}
+        refreshing={isRefreshing}
+        lastUpdatedLabel={lastUpdatedLabel}
+      />
     );
 
   return (
@@ -253,7 +303,88 @@ export default function ClaimRides() {
         isLocked={isLocked}
         onUnlock={checkLockout}
       />
-      {/* Your existing filter bar goes here; ensure flexWrap on mobile */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        sx={{ mb: 2.5, gap: 2 }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              color: "common.white",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            Live ride queue
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+            Last updated {lastUpdatedLabel}
+          </Typography>
+        </Box>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ rowGap: 1 }}
+        >
+          <Chip
+            label={`${liveRides.length} ride${liveRides.length === 1 ? "" : "s"} available`}
+            color="primary"
+            variant="outlined"
+            sx={{
+              borderColor: "rgba(76,187,23,0.6)",
+              color: "primary.main",
+              fontWeight: 600,
+              backgroundColor: "rgba(76,187,23,0.08)",
+            }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            startIcon={
+              isRefreshing ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                <RefreshIcon />
+              )
+            }
+            sx={{
+              borderRadius: 9999,
+              px: 3,
+              py: 0.9,
+              fontWeight: 700,
+              color: "#060606",
+              minWidth: 160,
+              "&:hover": { filter: "brightness(1.08)" },
+            }}
+          >
+            {isRefreshing ? "Refreshing…" : "Refresh queue"}
+          </Button>
+        </Stack>
+      </Stack>
+
+      {loading && hasFetchedOnce ? (
+        <LinearProgress
+          color="primary"
+          sx={{
+            height: 3,
+            borderRadius: 9999,
+            mb: 2.5,
+            backgroundColor: "rgba(255,255,255,0.12)",
+          }}
+        />
+      ) : null}
+
+      {/* Filters bar placeholder; keep flexWrap for responsive layouts */}
       <Stack
         direction="row"
         spacing={1}

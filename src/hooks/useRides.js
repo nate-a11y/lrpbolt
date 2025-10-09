@@ -13,11 +13,12 @@ let countsCache = { queue: 0, live: 0, claimed: 0 };
 let loading = false;
 const listeners = new Set();
 let initialized = false;
+let hasFetchedOnce = false;
 
 export async function fetchRides() {
   loading = true;
   listeners.forEach((cb) =>
-    cb({ ...ridesCache, counts: countsCache, loading }),
+    cb({ ...ridesCache, counts: countsCache, loading, hasFetchedOnce }),
   );
   const [queue, live, claimed] = await Promise.all([
     getRides(COLLECTIONS.RIDE_QUEUE),
@@ -36,8 +37,14 @@ export async function fetchRides() {
     claimed: claimed.length,
   };
   loading = false;
+  hasFetchedOnce = true;
   listeners.forEach((cb) =>
-    cb({ ...ridesCache, counts: countsCache, loading }),
+    cb({
+      ...ridesCache,
+      counts: countsCache,
+      loading,
+      hasFetchedOnce,
+    }),
   );
 }
 
@@ -46,6 +53,7 @@ export default function useRides() {
     ...ridesCache,
     counts: countsCache,
     loading,
+    hasFetchedOnce,
   });
 
   useEffect(() => {
@@ -54,7 +62,12 @@ export default function useRides() {
       initialized = true;
       fetchRides();
     } else {
-      setState({ ...ridesCache, counts: countsCache, loading });
+      setState({
+        ...ridesCache,
+        counts: countsCache,
+        loading,
+        hasFetchedOnce,
+      });
     }
     return () => listeners.delete(setState);
   }, []);

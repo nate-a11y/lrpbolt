@@ -8,14 +8,16 @@ import {
   CardContent,
   Chip,
   Collapse,
-  IconButton,
+  Divider,
   Stack,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DirectionsCar from "@mui/icons-material/DirectionsCar";
 import CheckCircle from "@mui/icons-material/CheckCircle";
+import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
+import BoltIcon from "@mui/icons-material/Bolt";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import {
   resolvePickupTime,
@@ -136,123 +138,214 @@ export default function RideCard({
   return (
     <Card
       sx={{
+        position: "relative",
         mx: { xs: 1, sm: 1.5 },
-        my: 1,
-        p: { xs: 1.25, sm: 1.5 },
-        borderRadius: 3,
-        overflow: "visible",
-        transition: "transform 120ms ease, box-shadow 200ms ease",
-        borderColor: selected ? "primary.main" : "divider",
-        borderWidth: 1,
-        borderStyle: "solid",
+        my: 1.25,
+        p: { xs: 1.75, sm: 2 },
+        borderRadius: 4,
+        overflow: "hidden",
+        background:
+          "linear-gradient(135deg, rgba(76,187,23,0.14), rgba(6,6,6,0.95))",
+        border: "1px solid",
+        borderColor: selected ? "primary.main" : "rgba(255,255,255,0.08)",
         boxShadow: selected
-          ? "0 0 0 2px rgba(76,187,23,0.6)"
-          : "0 1px 3px rgba(0,0,0,0.18)",
-        "&:hover": { transform: "translateY(-2px)" },
+          ? "0 18px 34px rgba(76,187,23,0.28)"
+          : "0 14px 26px rgba(0,0,0,0.45)",
+        transition:
+          "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
+        "&:hover": {
+          transform: "translateY(-3px)",
+          boxShadow: "0 18px 36px rgba(0,0,0,0.55)",
+        },
         ...(highlight
           ? {
-              boxShadow: "0 0 0 4px rgba(76,187,23,0.7)",
-              animation: "fadeGlow 1.4s ease 1",
-              "@keyframes fadeGlow": {
-                from: { boxShadow: "0 0 0 8px rgba(76,187,23,0.9)" },
-                to: { boxShadow: "none" },
-              },
+              borderColor: "primary.light",
+              boxShadow:
+                "0 0 0 1px rgba(76,187,23,0.75), 0 26px 48px rgba(76,187,23,0.2)",
             }
           : {}),
       }}
       aria-pressed={selected}
     >
-      <CardContent sx={{ p: 0, pb: 1.5 }}>
+      <CardContent
+        sx={{
+          p: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.75,
+        }}
+      >
         <Stack
           direction="row"
+          spacing={1.5}
           alignItems="center"
-          spacing={1}
-          sx={{ mb: 0.5, flexWrap: "wrap", rowGap: 0.75 }}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ rowGap: 1.25 }}
         >
-          <DirectionsCar fontSize="small" />
-          <Typography
-            fontWeight={800}
-            sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              backgroundColor: "rgba(76,187,23,0.16)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "primary.main",
+              flexShrink: 0,
+            }}
           >
-            {ride?.vehicleLabel || ride?.vehicle || "Vehicle"}
-          </Typography>
-          <Chip label={ride?.type || "Ride"} variant="outlined" />
+            <DirectionsCar fontSize="small" />
+          </Box>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography
+              variant="overline"
+              sx={{
+                letterSpacing: 1.1,
+                color: "rgba(255,255,255,0.64)",
+                textTransform: "uppercase",
+              }}
+            >
+              {ride?.type || "Ride"}
+            </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {ride?.vehicleLabel || ride?.vehicle || "Vehicle"}
+            </Typography>
+          </Box>
           {claimed && (
-            <Chip color="success" icon={<CheckCircle />} label="Claimed" />
+            <Chip
+              color="success"
+              icon={<CheckCircle />}
+              label="Claimed"
+              size="small"
+              sx={{ fontWeight: 600 }}
+            />
           )}
         </Stack>
 
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 900,
-            color: "primary.main",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: "100%",
-          }}
+        <Stack
+          direction="row"
+          spacing={1.25}
+          alignItems="center"
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ rowGap: 1 }}
         >
-          {rangeLabel}
-        </Typography>
+          <ScheduleRoundedIcon
+            sx={{ color: "primary.main" }}
+            fontSize="small"
+          />
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 900,
+              color: "primary.main",
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {rangeLabel}
+          </Typography>
+        </Stack>
 
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            columnGap: 1,
-            rowGap: 0.75,
-            minWidth: 0,
-            mt: 1,
-          }}
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ rowGap: 1 }}
         >
-          <Chip label={`ID ${ride?.idShort || ride?.id || ""}`} />
-          <Chip label={durationLabel} />
+          <Chip
+            icon={<AccessTimeIcon fontSize="small" />}
+            label={durationLabel}
+            size="small"
+            sx={{
+              bgcolor: "rgba(255,255,255,0.06)",
+              color: "common.white",
+              fontWeight: 600,
+              ".MuiChip-icon": { color: "primary.main" },
+            }}
+          />
+          <Chip
+            label={`ID ${ride?.idShort || ride?.id || "N/A"}`}
+            size="small"
+            sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "common.white" }}
+          />
           {ride?.scanStatus && (
             <Chip
               label={ride.scanStatus}
+              size="small"
               color={ride.scanStatus === "Not Scanned" ? "warning" : "success"}
+              sx={{ fontWeight: 600 }}
             />
           )}
-        </Box>
+        </Stack>
 
         {notes && (
-          <Box sx={{ mt: 0.75, minWidth: 0 }}>
-            <Box
-              onClick={() => onToggleNotes?.()}
-              sx={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 1,
-                cursor: "pointer",
-                minWidth: 0,
-                "&:hover": { opacity: 0.9 },
-              }}
-              aria-label="Show ride notes"
+          <Box
+            sx={{
+              p: 1.25,
+              borderRadius: 2.5,
+              border: "1px solid rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.04)",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              justifyContent="space-between"
             >
-              <InfoOutlinedIcon
-                fontSize="small"
-                sx={{ mt: "2px", color: "primary.main" }}
-              />
-              <Typography
-                variant="body2"
-                sx={{
-                  display: "-webkit-box",
-                  WebkitLineClamp: 1,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  minWidth: 0,
-                  color: "text.secondary",
-                }}
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1.25}
+                sx={{ minWidth: 0, flexGrow: 1 }}
               >
-                {notes}
-              </Typography>
-            </Box>
+                <InfoOutlinedIcon
+                  fontSize="small"
+                  sx={{ color: "primary.main" }}
+                />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    minWidth: 0,
+                    display: "-webkit-box",
+                    WebkitLineClamp: notesOpen ? "unset" : 1,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {notes}
+                </Typography>
+              </Stack>
+              <Button
+                size="small"
+                variant="text"
+                color="primary"
+                onClick={() => onToggleNotes?.()}
+                sx={{ fontWeight: 600 }}
+              >
+                {notesOpen ? "Hide" : "View"}
+              </Button>
+            </Stack>
             <Collapse in={notesOpen} unmountOnExit>
               <Typography
                 variant="body2"
-                sx={{ color: "text.secondary", mt: 0.5 }}
+                sx={{ color: "text.secondary", mt: 1 }}
               >
                 {notes}
               </Typography>
@@ -261,73 +354,98 @@ export default function RideCard({
         )}
 
         <Collapse in={open} unmountOnExit>
-          <Typography variant="body2" sx={{ mt: 1, opacity: 0.85 }}>
-            {ride?.pickup ? `Pickup: ${ride.pickup}` : null}
-            {ride?.dropoff ? ` • Dropoff: ${ride.dropoff}` : null}
-          </Typography>
+          <Divider sx={{ my: 1.25, borderColor: "rgba(255,255,255,0.08)" }} />
+          <Stack spacing={0.75}>
+            {ride?.pickup ? (
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                <strong>Pickup:</strong> {ride.pickup}
+              </Typography>
+            ) : null}
+            {ride?.dropoff ? (
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                <strong>Dropoff:</strong> {ride.dropoff}
+              </Typography>
+            ) : null}
+          </Stack>
         </Collapse>
       </CardContent>
 
       <CardActions
         sx={{
-          p: 0,
-          pt: 1.25,
+          mt: 2,
+          px: 0,
+          pt: 1.5,
+          borderTop: "1px solid rgba(255,255,255,0.08)",
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
           justifyContent: "space-between",
-          gap: 1,
-          flexWrap: "wrap",
-          rowGap: 1,
-          minWidth: 0,
+          gap: 1.25,
         }}
       >
         <Stack
           direction="row"
           spacing={1}
+          useFlexGap
+          flexWrap="wrap"
           sx={{
-            flexWrap: "wrap",
-            minWidth: 0,
+            width: "100%",
             rowGap: 1,
-            alignItems: "center",
+            maxWidth: { xs: "100%", sm: "60%" },
           }}
         >
           <Button
             variant={selected ? "contained" : "outlined"}
+            color="primary"
             size="small"
             onClick={onToggleSelect}
             aria-label={selected ? "Deselect ride" : "Select ride"}
+            sx={{ flexGrow: 1, maxWidth: { xs: "100%", sm: "auto" } }}
           >
             {selected ? "Selected" : "Select"}
           </Button>
-          <Tooltip title="Details">
-            <IconButton
-              onClick={() => setOpen((v) => !v)}
-              aria-label="Toggle details"
-            >
-              <InfoOutlinedIcon />
-            </IconButton>
-          </Tooltip>
+          <Button
+            size="small"
+            color="inherit"
+            variant="outlined"
+            onClick={() => setOpen((v) => !v)}
+            startIcon={<InfoOutlinedIcon fontSize="small" />}
+            sx={{
+              borderColor: "rgba(255,255,255,0.18)",
+              color: "rgba(255,255,255,0.72)",
+              fontWeight: 600,
+              "&:hover": {
+                borderColor: "primary.main",
+                color: "primary.main",
+                backgroundColor: "rgba(76,187,23,0.08)",
+              },
+            }}
+          >
+            {open ? "Hide details" : "Details"}
+          </Button>
         </Stack>
 
         <Button
           variant="contained"
           color="primary"
-          size="small"
+          size="medium"
           disabled={claiming || !claimable}
           onClick={onClaim}
           aria-label="Claim ride"
+          startIcon={<BoltIcon fontSize="small" />}
           sx={{
             borderRadius: 9999,
-            px: 2.25,
-            py: 0.75,
-            alignSelf: "center",
-            ml: 1,
-            flexShrink: 0,
+            px: 3,
+            py: 1,
+            alignSelf: { xs: "stretch", sm: "center" },
             boxShadow: "0 0 0 0 rgba(0,0,0,0)",
-            backgroundColor: "primary.main",
-            color: "#000",
+            color: "#060606",
             fontWeight: 700,
-            "&:hover": { filter: "brightness(1.05)" },
+            "&:hover": { filter: "brightness(1.08)" },
+            "&.Mui-disabled": {
+              color: "rgba(255,255,255,0.4)",
+              backgroundColor: "rgba(255,255,255,0.08)",
+            },
           }}
         >
           {claimButtonLabel}
