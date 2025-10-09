@@ -48,7 +48,9 @@
 
         const laneX = (lane)=> W*(0.2 + lane*0.3); // 0,1,2 lanes visually centered
         let best = Number(localStorage.getItem('lrp_hyperlane_best')||0);
-        bestEl.textContent = best;
+        if (!Number.isFinite(best) || best < 0) best = 0;
+        best = Math.floor(best);
+        bestEl.textContent = String(best);
 
         const player = {
           lane: 1, x: laneX(1), y: H*0.76, targetX: laneX(1), speed: 5.2
@@ -154,10 +156,14 @@
         })();
 
         let rings=[], blocks=[], t=0, running=false, score=0, speed=3, z=0;
+        let lastFrameTime = null;
 
         function reset(){
           rings=[]; blocks=[]; t=0; score=0; speed=3; z=0;
           player.lane=1; player.x=laneX(1); player.targetX=laneX(1);
+          scoreEl.textContent = '0';
+          lastFrameTime = null;
+          flashTick = 0;
           running=true;
         }
 
@@ -178,17 +184,25 @@
           }
         }
 
-        function update(){
+        function update(deltaSeconds){
           if (!running) return;
-          t+=1/60; z+=speed;
-          if (t>0.5){ t=0; spawn(); }
+          const clampedDelta = Math.min(Math.max(deltaSeconds, 0), 0.2);
+          if (clampedDelta <= 0) return;
+          const frameScale = clampedDelta * 60;
+
+          t += clampedDelta;
+          while (t > 0.5){ t -= 0.5; spawn(); }
+          z += speed * frameScale;
+
           // difficulty curve
           speed = Math.min(15, 3 + Math.log2(2+score/250));
+
           // player smooth lane move
-          player.x += (player.targetX - player.x)*0.22;
+          const smoothing = 1 - Math.pow(1 - 0.22, frameScale);
+          player.x += (player.targetX - player.x) * smoothing;
 
           // move entities
-          const dy = speed * 2.2;
+          const dy = speed * 2.2 * frameScale;
           rings.forEach(r => r.y += dy);
           blocks.forEach(b => b.y += dy);
 
@@ -211,8 +225,10 @@
           blocks = blocks.filter(b => b.y < H+60);
 
           // passive score
-          score += Math.max(1, Math.floor(speed));
-          scoreEl.textContent = score;
+          score += Math.max(1, Math.floor(speed)) * frameScale;
+          scoreEl.textContent = String(Math.floor(score));
+
+          if (flashTick>0) { flashTick = Math.max(0, flashTick - frameScale); }
         }
 
         function drawGrid(){
@@ -279,8 +295,6 @@
           ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(0,26,18,0,Math.PI*2); ctx.fill();
           ctx.restore();
 
-          if (flashTick>0) { flashTick--; }
-
         }
 
         function roundRect(ctx, x,y,w,h,r, fill=true){
@@ -294,16 +308,22 @@
           if (fill) ctx.fill(); else ctx.stroke();
         }
 
-        function loop(){
-          update(); draw();
+        function loop(now){
+          if (!running) return;
+          if (lastFrameTime === null) lastFrameTime = now;
+          const deltaSeconds = (now - lastFrameTime) / 1000;
+          lastFrameTime = now;
+          update(deltaSeconds); draw();
           if (running) requestAnimationFrame(loop);
         }
 
         function gameOver(){
           running=false;
           sound.playBump();
-          if (score>best){ best=score; localStorage.setItem('lrp_hyperlane_best', String(best)); bestEl.textContent=best; }
-          try { window.parent.postMessage({ type:'HYPERLANE_SCORE', score }, '*'); } catch(e) { console.warn('[Hyperlane] postMessage failed', e); }
+          const finalScore = Math.floor(score);
+          scoreEl.textContent = String(finalScore);
+          if (finalScore>best){ best=finalScore; localStorage.setItem('lrp_hyperlane_best', String(best)); bestEl.textContent=String(best); }
+          try { window.parent.postMessage({ type:'HYPERLANE_SCORE', score: finalScore }, '*'); } catch(e) { console.warn('[Hyperlane] postMessage failed', e); }
         }
 
         function goLeft(){ if (!running) return; player.lane=Math.max(0, player.lane-1); player.targetX = laneX(player.lane); }
@@ -327,7 +347,11 @@
           }
         });
 
-        function start(){ reset(); requestAnimationFrame(loop); }
+        function start(){
+          running=false;
+          reset();
+          requestAnimationFrame(loop);
+        }
         start();
       })();
     </script>
