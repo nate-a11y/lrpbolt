@@ -235,19 +235,41 @@ export default function GamesHyperlane() {
 
   const overallRows = useMemo(
     () =>
-      (Array.isArray(topScores) ? topScores : []).map((row, index) => ({
-        id: row?.id || `overall-${index}`,
-        ...row,
-      })),
+      (Array.isArray(topScores) ? topScores : []).map((row, index) => {
+        const resolvedId = row?.id ?? `overall-${index}`;
+        const id =
+          typeof resolvedId === "string" || typeof resolvedId === "number"
+            ? resolvedId
+            : String(resolvedId);
+        const rank = Number.isFinite(Number(row?.rank))
+          ? Number(row.rank)
+          : index + 1;
+        return {
+          ...row,
+          id,
+          rank,
+        };
+      }),
     [topScores],
   );
 
   const weeklyRows = useMemo(
     () =>
-      (Array.isArray(weeklyScores) ? weeklyScores : []).map((row, index) => ({
-        id: row?.id || `weekly-${index}`,
-        ...row,
-      })),
+      (Array.isArray(weeklyScores) ? weeklyScores : []).map((row, index) => {
+        const resolvedId = row?.id ?? `weekly-${index}`;
+        const id =
+          typeof resolvedId === "string" || typeof resolvedId === "number"
+            ? resolvedId
+            : String(resolvedId);
+        const rank = Number.isFinite(Number(row?.rank))
+          ? Number(row.rank)
+          : index + 1;
+        return {
+          ...row,
+          id,
+          rank,
+        };
+      }),
     [weeklyScores],
   );
 
@@ -260,11 +282,14 @@ export default function GamesHyperlane() {
         sortable: false,
         align: "center",
         headerAlign: "center",
+        type: "number",
         valueGetter: (params) => {
-          const api = params?.api;
-          if (!api) return "N/A";
-          const index = api.getRowIndex(params.id);
-          return Number.isInteger(index) ? index + 1 : "N/A";
+          const rank = Number(params?.row?.rank ?? params?.value);
+          return Number.isFinite(rank) ? rank : null;
+        },
+        valueFormatter: (params) => {
+          const rank = Number(params?.value ?? params?.row?.rank);
+          return Number.isFinite(rank) ? rank : "N/A";
         },
       },
       {
