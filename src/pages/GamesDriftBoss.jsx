@@ -23,6 +23,9 @@ import {
   subscribeTopDriftBossScores,
 } from "@/services/games.js";
 
+// eslint-disable-next-line import/no-unresolved
+import driftBossHtml from "../../public/games/driftboss/index.html?raw";
+
 const BRAND_GREEN = "#4cbb17";
 const BACKGROUND = "#060606";
 
@@ -32,6 +35,24 @@ export default function GamesDriftBoss() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [inlineGame, setInlineGame] = useState(false);
+  const fallbackLoggedRef = useRef(false);
+
+  const triggerInlineFallback = useCallback(
+    (reason) => {
+      if (inlineGame) return;
+      if (!fallbackLoggedRef.current) {
+        fallbackLoggedRef.current = true;
+        logError(new Error("Falling back to inline Drift Boss"), {
+          where: "GamesDriftBoss.triggerInlineFallback",
+          reason,
+        });
+      }
+      setInlineGame(true);
+      setReloadKey((key) => key + 1);
+    },
+    [inlineGame],
+  );
 
   useEffect(() => {
     let active = true;
@@ -142,6 +163,29 @@ export default function GamesDriftBoss() {
     setReloadKey((key) => key + 1);
   }, []);
 
+  const handleGameLoad = useCallback(
+    (event) => {
+      if (inlineGame) return;
+      const iframe = event?.currentTarget;
+      const doc = iframe?.contentDocument;
+      const textContent = doc?.body?.textContent;
+      if (!textContent) return;
+      const normalized = textContent.trim();
+      if (!normalized) return;
+      const has403 = /403/.test(normalized) && /forbidden/i.test(normalized);
+      const hasAccessDenied = /access to this resource/i.test(normalized);
+      if (has403 || hasAccessDenied) {
+        triggerInlineFallback("iframe-served-403");
+      }
+    },
+    [inlineGame, triggerInlineFallback],
+  );
+
+  const handleGameError = useCallback(() => {
+    if (inlineGame) return;
+    triggerInlineFallback("iframe-load-error");
+  }, [inlineGame, triggerInlineFallback]);
+
   const handleFullscreen = useCallback(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
@@ -243,11 +287,15 @@ export default function GamesDriftBoss() {
                 >
                   <Box
                     component="iframe"
-                    key={reloadKey}
+                    key={`${reloadKey}-${inlineGame ? "inline" : "remote"}`}
                     ref={iframeRef}
                     title="LRP Drift Boss"
-                    src="/games/driftboss/index.html"
+                    {...(inlineGame
+                      ? { srcDoc: driftBossHtml }
+                      : { src: "/games/driftboss/index.html" })}
                     sandbox="allow-scripts allow-pointer-lock allow-same-origin"
+                    onLoad={handleGameLoad}
+                    onError={handleGameError}
                     sx={{
                       position: "absolute",
                       inset: 0,
@@ -257,6 +305,20 @@ export default function GamesDriftBoss() {
                     }}
                   />
                 </Box>
+                {inlineGame && (
+                  <Alert
+                    severity="warning"
+                    sx={{
+                      mt: 2,
+                      bgcolor: "rgba(255, 193, 7, 0.12)",
+                      color: "rgba(255,255,255,0.88)",
+                      border: "1px solid rgba(255, 193, 7, 0.32)",
+                    }}
+                  >
+                    Remote game refresh returned 403 Forbidden, so we loaded the
+                    built-in offline copy instead.
+                  </Alert>
+                )}
                 <Typography
                   variant="body2"
                   sx={{ mt: 2, color: "rgba(255,255,255,0.72)" }}
