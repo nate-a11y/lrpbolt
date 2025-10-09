@@ -5,6 +5,11 @@
     "rewrites": [
       { "source": "/service-worker.js", "destination": "/service-worker.js" },
       { "source": "/manifest.webmanifest", "destination": "/manifest.webmanifest" },
+      { "source": "/games/hyperlane", "destination": "/games/hyperlane/index.html" },
+      {
+        "source": "/games/hyperlane/**",
+        "destination": "/games/hyperlane/index.html"
+      },
       { "source": "**", "destination": "/index.html" }
     ]
   },
