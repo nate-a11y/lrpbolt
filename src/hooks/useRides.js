@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { getRides } from "../services/firestoreService";
 import { COLLECTIONS } from "../constants";
+import logError from "../utils/logError.js";
 
 let ridesCache = {
   rideQueue: [],
@@ -20,32 +21,44 @@ export async function fetchRides() {
   listeners.forEach((cb) =>
     cb({ ...ridesCache, counts: countsCache, loading, hasFetchedOnce }),
   );
-  const [queue, live, claimed] = await Promise.all([
-    getRides(COLLECTIONS.RIDE_QUEUE),
-    getRides(COLLECTIONS.LIVE_RIDES),
-    getRides(COLLECTIONS.CLAIMED_RIDES),
-  ]);
 
-  ridesCache = {
-    rideQueue: queue,
-    liveRides: live,
-    claimedRides: claimed,
-  };
-  countsCache = {
-    queue: queue.length,
-    live: live.length,
-    claimed: claimed.length,
-  };
-  loading = false;
-  hasFetchedOnce = true;
-  listeners.forEach((cb) =>
-    cb({
-      ...ridesCache,
-      counts: countsCache,
-      loading,
-      hasFetchedOnce,
-    }),
-  );
+  let error;
+  try {
+    const [queue, live, claimed] = await Promise.all([
+      getRides(COLLECTIONS.RIDE_QUEUE),
+      getRides(COLLECTIONS.LIVE_RIDES),
+      getRides(COLLECTIONS.CLAIMED_RIDES),
+    ]);
+
+    ridesCache = {
+      rideQueue: queue,
+      liveRides: live,
+      claimedRides: claimed,
+    };
+    countsCache = {
+      queue: queue.length,
+      live: live.length,
+      claimed: claimed.length,
+    };
+  } catch (err) {
+    error = err instanceof Error ? err : new Error(String(err));
+    logError(error, { scope: "useRides", action: "fetchRides" });
+  } finally {
+    loading = false;
+    hasFetchedOnce = true;
+    listeners.forEach((cb) =>
+      cb({
+        ...ridesCache,
+        counts: countsCache,
+        loading,
+        hasFetchedOnce,
+      }),
+    );
+  }
+
+  if (error) {
+    throw error;
+  }
 }
 
 export default function useRides() {
@@ -60,7 +73,9 @@ export default function useRides() {
     listeners.add(setState);
     if (!initialized) {
       initialized = true;
-      fetchRides();
+      fetchRides().catch((err) => {
+        void err;
+      });
     } else {
       setState({
         ...ridesCache,
