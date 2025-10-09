@@ -47,7 +47,7 @@ export const NAV_ITEMS = [
     to: "/games",
     label: "Games",
     icon: "SportsEsports",
-    rolesVisible: ["admin", "driver", "shootout"],
+    rolesVisible: ["admin", "driver", "shootout", "guest"],
   },
   {
     id: "tickets",
