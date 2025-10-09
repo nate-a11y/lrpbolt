@@ -37,6 +37,9 @@ import {
   subscribeUserWeeklyHyperlaneBest,
 } from "@/services/games.js";
 
+// eslint-disable-next-line import/no-unresolved
+import hyperlaneHtml from "../../public/games/hyperlane/index.html?raw";
+
 const BRAND_GREEN = "#4cbb17";
 const BACKGROUND = "#060606";
 
@@ -95,6 +98,10 @@ export default function GamesHyperlane() {
   const [lastScore, setLastScore] = useState(null);
   const [copying, setCopying] = useState(false);
   const [snack, setSnack] = useState(null);
+  const iframeContent = useMemo(
+    () => (typeof hyperlaneHtml === "string" ? hyperlaneHtml : null),
+    [],
+  );
 
   const tzGuess = useMemo(() => dayjs.tz?.guess?.() || "UTC", []);
   const startOfWeek = useMemo(
@@ -607,12 +614,42 @@ export default function GamesHyperlane() {
               <Box sx={iframeContainerSx}>
                 <Box
                   component="iframe"
-                  key={reloadKey}
+                  key={`hyperlane-${reloadKey}-${iframeContent ? "inline" : "remote"}`}
                   ref={iframeRef}
                   title="LRP Hyperlane"
-                  src="/games/hyperlane/index.html"
+                  src={
+                    iframeContent
+                      ? "about:blank"
+                      : "/games/hyperlane/index.html"
+                  }
+                  srcDoc={iframeContent || undefined}
                   sandbox="allow-scripts allow-pointer-lock allow-same-origin"
+                  allowFullScreen
                   onLoad={handleIframeLoad}
+                  onError={(event) => {
+                    logError(new Error("Hyperlane iframe failed"), {
+                      where: "GamesHyperlane.iframeError",
+                      inline: Boolean(iframeContent),
+                    });
+                    setSnack({
+                      open: true,
+                      severity: "error",
+                      message:
+                        "Couldn't load the Hyperlane game. Try refreshing.",
+                    });
+                    if (
+                      event?.target?.src &&
+                      event.target.src !== "about:blank"
+                    ) {
+                      try {
+                        event.target.removeAttribute("src");
+                      } catch (error) {
+                        logError(error, {
+                          where: "GamesHyperlane.iframeCleanup",
+                        });
+                      }
+                    }
+                  }}
                   sx={{
                     position: "absolute",
                     inset: 0,
