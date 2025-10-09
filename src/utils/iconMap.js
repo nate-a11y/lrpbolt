@@ -19,6 +19,7 @@ import Settings from "@mui/icons-material/Settings";
 import ExitToApp from "@mui/icons-material/ExitToApp";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import Notifications from "@mui/icons-material/Notifications";
+import SportsEsports from "@mui/icons-material/SportsEsports";
 
 export const iconMap = {
   AssignmentTurnedIn,
@@ -40,4 +41,5 @@ export const iconMap = {
   ExitToApp,
   ChevronRight,
   Notifications,
+  SportsEsports,
 };
