@@ -130,7 +130,10 @@ function toTimestamp(input) {
   if (!input) return null;
   if (input instanceof Timestamp) return input;
   if (typeof input === "object") {
-    if (typeof input.seconds === "number" && typeof input.nanoseconds === "number") {
+    if (
+      typeof input.seconds === "number" &&
+      typeof input.nanoseconds === "number"
+    ) {
       return new Timestamp(input.seconds, input.nanoseconds);
     }
     if (typeof input.toDate === "function") {
@@ -207,8 +210,11 @@ function subscribeScores({
       q,
       (snapshot) => {
         try {
-          const rows = snapshot.docs.map((docSnap) => normalizeHighscore(docSnap));
-          const processed = typeof postProcess === "function" ? postProcess(rows) : rows;
+          const rows = snapshot.docs.map((docSnap) =>
+            normalizeHighscore(docSnap),
+          );
+          const processed =
+            typeof postProcess === "function" ? postProcess(rows) : rows;
           if (typeof onData === "function") {
             onData(processed);
           }
@@ -244,7 +250,11 @@ function subscribeScores({
   }
 }
 
-export function subscribeTopHyperlaneScores({ onData, onError, topN = 10 } = {}) {
+export function subscribeTopHyperlaneScores({
+  onData,
+  onError,
+  topN = 10,
+} = {}) {
   return subscribeScores({ topN, onData, onError });
 }
 
@@ -276,7 +286,9 @@ export function subscribeWeeklyHyperlaneScores({
       q,
       (snapshot) => {
         try {
-          const rows = snapshot.docs.map((docSnap) => normalizeHighscore(docSnap));
+          const rows = snapshot.docs.map((docSnap) =>
+            normalizeHighscore(docSnap),
+          );
           const sorted = rows
             .filter((row) => Number.isFinite(Number(row.score)))
             .sort((a, b) => {
@@ -356,7 +368,9 @@ export function subscribeUserWeeklyHyperlaneBest({
       q,
       (snapshot) => {
         try {
-          const rows = snapshot.docs.map((docSnap) => normalizeHighscore(docSnap));
+          const rows = snapshot.docs.map((docSnap) =>
+            normalizeHighscore(docSnap),
+          );
           let best = null;
           for (const row of rows) {
             if (!Number.isFinite(Number(row.score))) continue;

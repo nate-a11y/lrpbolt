@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -31,7 +25,11 @@ import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
-import { dayjs, tsToDayjs, timestampSortComparator } from "@/utils/timeUtils.js";
+import {
+  dayjs,
+  tsToDayjs,
+  timestampSortComparator,
+} from "@/utils/timeUtils.js";
 import {
   saveHyperlaneScore,
   subscribeTopHyperlaneScores,
@@ -51,6 +49,33 @@ const gridSx = {
   "& .MuiDataGrid-row:hover": { bgcolor: "rgba(255,255,255,0.06)" },
   "& .MuiDataGrid-virtualScroller": { backgroundColor: "transparent" },
 };
+
+const iframeContainerSx = {
+  position: "relative",
+  width: "100%",
+  borderRadius: 2,
+  overflow: "hidden",
+  border: "1px solid rgba(255,255,255,0.06)",
+  bgcolor: "#101010",
+  aspectRatio: { xs: "3 / 4", md: "4 / 3" },
+  minHeight: { xs: 420, sm: 480, md: 540 },
+};
+
+const getDisplayName = (row) => {
+  const raw = row?.displayName;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed) return trimmed;
+  }
+  return "Anonymous";
+};
+
+const getScoreValue = (row) => {
+  const value = Number(row?.score);
+  return Number.isFinite(value) ? value : null;
+};
+
+const getCreatedAt = (row) => row?.createdAt ?? null;
 
 export default function GamesHyperlane() {
   const iframeRef = useRef(null);
@@ -72,7 +97,10 @@ export default function GamesHyperlane() {
   const [snack, setSnack] = useState(null);
 
   const tzGuess = useMemo(() => dayjs.tz?.guess?.() || "UTC", []);
-  const startOfWeek = useMemo(() => dayjs().tz(tzGuess).startOf("week"), [tzGuess]);
+  const startOfWeek = useMemo(
+    () => dayjs().tz(tzGuess).startOf("week"),
+    [tzGuess],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -233,8 +261,9 @@ export default function GamesHyperlane() {
         align: "center",
         headerAlign: "center",
         valueGetter: (params) => {
-          if (!params?.api) return "N/A";
-          const index = params.api.getRowIndexRelativeToVisibleRows(params.id);
+          const api = params?.api;
+          if (!api) return "N/A";
+          const index = api.getRowIndex(params.id);
           return Number.isInteger(index) ? index + 1 : "N/A";
         },
       },
@@ -242,37 +271,35 @@ export default function GamesHyperlane() {
         field: "displayName",
         headerName: "Driver",
         flex: 1,
-        valueGetter: (params) => {
-          const name = params?.row?.displayName;
-          return name && typeof name === "string" && name.trim()
-            ? name
-            : "Anonymous";
-        },
+        valueGetter: (params) => getDisplayName(params?.row),
       },
       {
         field: "score",
         headerName: "Score",
         width: 140,
         type: "number",
-        valueGetter: (params) => {
-          const value = Number(params?.row?.score);
-          return Number.isFinite(value) ? value : null;
-        },
+        valueGetter: (params) => getScoreValue(params?.row),
         valueFormatter: (params) => {
-          const value = Number(params?.value);
-          return Number.isFinite(value) ? value.toLocaleString() : "N/A";
+          const value = getScoreValue(params?.row);
+          if (Number.isFinite(value)) return value.toLocaleString();
+          const fallback = Number(params?.value);
+          return Number.isFinite(fallback) ? fallback.toLocaleString() : "N/A";
         },
       },
       {
         field: "createdAt",
         headerName: "Recorded",
         width: 220,
-        valueGetter: (params) => params?.row?.createdAt ?? null,
+        valueGetter: (params) => getCreatedAt(params?.row),
         valueFormatter: (params) => {
-          const parsed = tsToDayjs(params?.value);
+          const parsed = tsToDayjs(getCreatedAt(params?.row) ?? params?.value);
           return parsed ? parsed.format("MMM D, YYYY h:mm A") : "N/A";
         },
-        sortComparator: timestampSortComparator,
+        sortComparator: (a, b, param1, param2) =>
+          timestampSortComparator(
+            getCreatedAt(param1?.row) ?? a,
+            getCreatedAt(param2?.row) ?? b,
+          ),
       },
     ],
     [],
@@ -379,7 +406,14 @@ export default function GamesHyperlane() {
     if (weeklyLoading || topLoading) return "Leader: Loading…";
     if (weeklyError && topError) return "Leader: N/A";
     return "Leader: No scores yet";
-  }, [globalBestScore, topError, topLoading, weeklyBestScore, weeklyError, weeklyLoading]);
+  }, [
+    globalBestScore,
+    topError,
+    topLoading,
+    weeklyBestScore,
+    weeklyError,
+    weeklyLoading,
+  ]);
 
   const lastScoreLabel = useMemo(() => {
     if (!Number.isFinite(Number(lastScore))) return "Last run: N/A";
@@ -433,7 +467,11 @@ export default function GamesHyperlane() {
           </Typography>
         </Stack>
 
-        <Stack direction={{ xs: "column", lg: "row" }} spacing={2.5} sx={{ flexGrow: 1 }}>
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={2.5}
+          sx={{ flexGrow: 1 }}
+        >
           <Card
             sx={{
               flex: { xs: 1, lg: 1.5 },
@@ -444,10 +482,25 @@ export default function GamesHyperlane() {
               flexDirection: "column",
             }}
           >
-            <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
+            <CardContent
+              sx={{
+                flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                justifyContent="space-between"
+              >
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: BRAND_GREEN }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 700, color: BRAND_GREEN }}
+                  >
                     Pilot Console
                   </Typography>
                 </Stack>
@@ -462,9 +515,10 @@ export default function GamesHyperlane() {
                           "& .MuiSwitch-switchBase.Mui-checked": {
                             color: BRAND_GREEN,
                           },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                            bgcolor: `${BRAND_GREEN}90`,
-                          },
+                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                            {
+                              bgcolor: `${BRAND_GREEN}90`,
+                            },
                         }}
                       />
                     }
@@ -475,12 +529,20 @@ export default function GamesHyperlane() {
                     }}
                   />
                   <Tooltip title="Reload game">
-                    <IconButton onClick={handleReload} sx={{ color: "#fff" }} aria-label="Reload game">
+                    <IconButton
+                      onClick={handleReload}
+                      sx={{ color: "#fff" }}
+                      aria-label="Reload game"
+                    >
                       <RefreshIcon />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Fullscreen">
-                    <IconButton onClick={handleFullscreen} sx={{ color: "#fff" }} aria-label="Fullscreen">
+                    <IconButton
+                      onClick={handleFullscreen}
+                      sx={{ color: "#fff" }}
+                      aria-label="Fullscreen"
+                    >
                       <OpenInFullIcon />
                     </IconButton>
                   </Tooltip>
@@ -517,17 +579,7 @@ export default function GamesHyperlane() {
                 />
               </Stack>
 
-              <Box
-                sx={{
-                  position: "relative",
-                  width: "100%",
-                  borderRadius: 2,
-                  overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  aspectRatio: "4 / 3",
-                  bgcolor: "#101010",
-                }}
-              >
+              <Box sx={iframeContainerSx}>
                 <Box
                   component="iframe"
                   key={reloadKey}
@@ -547,10 +599,15 @@ export default function GamesHyperlane() {
               </Box>
 
               <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                Controls: ← / → or tap the on-screen pads. Grab neon rings, dodge red blocks, and chase the hyperlane leaderboard.
+                Controls: ← / → or tap the on-screen pads. Grab neon rings,
+                dodge red blocks, and chase the hyperlane leaderboard.
               </Typography>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems={{ xs: "stretch", sm: "center" }}
+              >
                 <Button
                   variant="contained"
                   onClick={handleShare}
@@ -567,7 +624,8 @@ export default function GamesHyperlane() {
                   Share score link
                 </Button>
                 <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                  Scores auto-save to the cloud when you crash. Keep racing for the top spot!
+                  Scores auto-save to the cloud when you crash. Keep racing for
+                  the top spot!
                 </Typography>
               </Stack>
             </CardContent>
@@ -584,12 +642,24 @@ export default function GamesHyperlane() {
                 flexDirection: "column",
               }}
             >
-              <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <CardContent
+                sx={{
+                  flexGrow: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: BRAND_GREEN }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 700, color: BRAND_GREEN }}
+                  >
                     Top 10 — All Time
                   </Typography>
-                  <Divider sx={{ mt: 1, borderColor: "rgba(255,255,255,0.08)" }} />
+                  <Divider
+                    sx={{ mt: 1, borderColor: "rgba(255,255,255,0.08)" }}
+                  />
                 </Box>
                 {renderLeaderboard(
                   topLoading,
@@ -610,12 +680,24 @@ export default function GamesHyperlane() {
                 flexDirection: "column",
               }}
             >
-              <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <CardContent
+                sx={{
+                  flexGrow: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: BRAND_GREEN }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 700, color: BRAND_GREEN }}
+                  >
                     Weekly Heat — Reset {startOfWeek.format("MMM D")}
                   </Typography>
-                  <Divider sx={{ mt: 1, borderColor: "rgba(255,255,255,0.08)" }} />
+                  <Divider
+                    sx={{ mt: 1, borderColor: "rgba(255,255,255,0.08)" }}
+                  />
                 </Box>
                 {userBestError ? (
                   <Alert severity="warning">{userBestError}</Alert>
