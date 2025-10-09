@@ -56,7 +56,7 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
 import PhoneNumberPrompt from "./components/PhoneNumberPrompt.jsx";
 import CalendarHubLazy from "./pages/lazy/CalendarHub.lazy.jsx";
-import GamesHyperlane from "./pages/GamesHyperlane.jsx";
+import GamesHub from "./pages/GamesHub.jsx";
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 if (import.meta.env.PROD && typeof APP_VERSION !== "undefined") {
   console.info("LRP version:", APP_VERSION);
@@ -355,7 +355,8 @@ function App() {
               />
               <Route path="/directory" element={<DirectoryEscalations />} />
               <Route path="/calendar" element={<CalendarHubLazy />} />
-              <Route path="/games" element={<GamesHyperlane />} />
+              <Route path="/games" element={<GamesHub />} />
+              <Route path="/games/hyperloop" element={<GamesHub />} />
               <Route
                 path="/escalation"
                 element={<DirectoryEscalations initialTab="escalations" />}
