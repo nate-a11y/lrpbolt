@@ -42,7 +42,7 @@ export default function RideGroup({
           borderBottom: (t) => `2px solid ${t.palette.primary.main}`,
         }}
       >
-        <Stack spacing={0.25} sx={{ pr: 2, minWidth: 0 }}>
+        <Stack spacing={0.25} sx={{ pr: 2, minWidth: 0, flex: "1 1 auto" }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
             {title}
           </Typography>
@@ -58,9 +58,11 @@ export default function RideGroup({
             borderRadius: 999,
             fontWeight: 700,
             px: 1.75,
-            whiteSpace: "nowrap",
-            ml: "auto",
-            flexShrink: 0,
+            ml: { xs: 0, sm: "auto" },
+            flexShrink: 1,
+            flexBasis: { xs: "100%", sm: "auto" },
+            width: { xs: "100%", sm: "auto" },
+            justifyContent: "center",
           }}
         >
           {allSelected ? "Clear" : "Select All"}
