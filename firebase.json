@@ -4,12 +4,20 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       { "source": "/service-worker.js", "destination": "/service-worker.js" },
-      { "source": "/manifest.webmanifest", "destination": "/manifest.webmanifest" },
-      { "source": "/games/hyperlane", "destination": "/games/hyperlane/index.html" },
+      {
+        "source": "/manifest.webmanifest",
+        "destination": "/manifest.webmanifest"
+      },
+      {
+        "source": "/games/hyperlane",
+        "destination": "/games/hyperlane/index.html"
+      },
       {
         "source": "/games/hyperlane/**",
         "destination": "/games/hyperlane/index.html"
       },
+      { "source": "/games", "destination": "/index.html" },
+      { "source": "/games/**", "destination": "/index.html" },
       { "source": "**", "destination": "/index.html" }
     ]
   },
@@ -19,8 +27,7 @@
       "codebase": "default",
       "ignore": ["node_modules", ".git", "firebase-debug.log"]
     }
-  ]
-  ,
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
