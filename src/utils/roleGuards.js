@@ -15,7 +15,7 @@ export function canSeeNav(id, role = "driver") {
 export function canAccessRoute(path, role = "driver") {
   const r = role || "driver";
   if (r === "shootout") {
-    return ["/shootout", "/directory", "/escalation"].includes(path);
+    return ["/shootout", "/directory", "/escalation", "/games"].includes(path);
   }
   return true;
 }

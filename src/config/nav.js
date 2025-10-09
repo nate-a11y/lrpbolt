@@ -43,6 +43,13 @@ export const NAV_ITEMS = [
     rolesVisible: ["admin", "driver"],
   },
   {
+    id: "games",
+    to: "/games",
+    label: "Games",
+    icon: "SportsEsports",
+    rolesVisible: ["admin", "driver", "shootout"],
+  },
+  {
     id: "tickets",
     to: "/tickets",
     label: "Tickets",
