@@ -231,6 +231,39 @@ const resolvePickupTime = (rowOrParams) => {
   );
 };
 
+const resolveDropoffTime = (rowOrParams) => {
+  const row = asRow(rowOrParams);
+  const raw = asRaw(row);
+  return firstDefined(
+    row?.dropoffTime,
+    raw?.dropoffTime,
+    row?.dropoff_time,
+    raw?.dropoff_time,
+    row?.dropoffAt,
+    raw?.dropoffAt,
+    row?.dropoff_at,
+    raw?.dropoff_at,
+    row?.dropoff,
+    raw?.dropoff,
+    row?.DropoffTime,
+    row?.Dropoff_time,
+    row?.DropoffAt,
+    row?.Dropoff_at,
+    row?.Dropoff,
+    row?.dropoffTimeMs,
+    raw?.dropoffTimeMs,
+    row?.endAt,
+    raw?.endAt,
+    row?.EndAt,
+    row?.end_at,
+    raw?.end_at,
+    row?.End_at,
+    row?.endTime,
+    raw?.endTime,
+    row?.EndTime,
+  );
+};
+
 const resolveRideDuration = (rowOrParams) => {
   const row = asRow(rowOrParams);
   const raw = asRaw(row);
@@ -441,6 +474,7 @@ const resolveStatus = (rowOrParams) => {
 export {
   resolveTripId,
   resolvePickupTime,
+  resolveDropoffTime,
   resolveRideDuration,
   resolveRideType,
   resolveVehicle,
