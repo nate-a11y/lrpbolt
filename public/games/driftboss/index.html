@@ -189,6 +189,47 @@ copies or substantial portions of the Software.
           }
         }
 
+        function pathRoundedRect(x, y, width, height, radius) {
+          if (typeof ctx.roundRect === 'function') {
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, radius);
+            return;
+          }
+
+          const normalizeRadiusArray = (values) => {
+            if (!Array.isArray(values) || values.length === 0) return 0;
+            const nums = values
+              .map((v) => (Number.isFinite(Number(v)) ? Math.abs(Number(v)) : null))
+              .filter((v) => v !== null);
+            if (nums.length === 0) return 0;
+            return Math.min(...nums);
+          };
+
+          const rawRadius = Array.isArray(radius)
+            ? normalizeRadiusArray(radius)
+            : Number.isFinite(Number(radius))
+              ? Math.abs(Number(radius))
+              : 0;
+
+          const maxRadius = Math.min(Math.abs(width) / 2, Math.abs(height) / 2);
+          const r = Math.max(0, Math.min(rawRadius, maxRadius));
+
+          const right = x + width;
+          const bottom = y + height;
+
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(right - r, y);
+          ctx.quadraticCurveTo(right, y, right, y + r);
+          ctx.lineTo(right, bottom - r);
+          ctx.quadraticCurveTo(right, bottom, right - r, bottom);
+          ctx.lineTo(x + r, bottom);
+          ctx.quadraticCurveTo(x, bottom, x, bottom - r);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+          ctx.closePath();
+        }
+
         function draw() {
           // BG
           ctx.fillStyle = '#101010';
@@ -231,8 +272,7 @@ copies or substantial portions of the Software.
           ctx.strokeStyle = 'rgba(0,0,0,0.6)';
           ctx.lineWidth = 2.5;
           // Body
-          ctx.beginPath();
-          ctx.roundRect(-18, -10, 36, 20, 6);
+          pathRoundedRect(-18, -10, 36, 20, 6);
           ctx.fill();
           ctx.stroke();
           // Windows
