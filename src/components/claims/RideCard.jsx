@@ -16,52 +16,27 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DirectionsCar from "@mui/icons-material/DirectionsCar";
 import CheckCircle from "@mui/icons-material/CheckCircle";
-import dayjsLib from "dayjs";
-import utc from "dayjs/plugin/utc";
-import tz from "dayjs/plugin/timezone";
 
-dayjsLib.extend(utc);
-dayjsLib.extend(tz);
+import {
+  resolvePickupTime,
+  resolveDropoffTime,
+  resolveRideDuration,
+} from "@/columns/rideColumns.jsx";
+import { tsToDayjs, formatHMFromMinutes } from "@/utils/timeUtils";
 
-const dayjs = dayjsLib;
-
-const USER_TZ = dayjs.tz.guess();
-
-function safeToDayjs(ts) {
-  try {
-    return ts?.toDate ? dayjs(ts.toDate()) : null;
-  } catch {
-    return null;
+const formatRideWindow = (startAt, endAt) => {
+  if (!startAt && !endAt) return "N/A";
+  if (startAt && endAt) {
+    const sameDay = endAt.isSame(startAt, "day");
+    return sameDay
+      ? `${startAt.format("ddd, MMM D • h:mm A")} – ${endAt.format("h:mm A")}`
+      : `${startAt.format("ddd, MMM D • h:mm A")} – ${endAt.format(
+          "ddd, MMM D • h:mm A",
+        )}`;
   }
-}
-
-function formatRange(startTs, endTs) {
-  const s = safeToDayjs(startTs);
-  const e = safeToDayjs(endTs);
-  if (!s) return "N/A";
-  if (!e || e.isBefore(s)) return s.tz(USER_TZ).format("ddd, MMM D • h:mm A");
-  const sameDay =
-    s.tz(USER_TZ).format("YYYY-MM-DD") === e.tz(USER_TZ).format("YYYY-MM-DD");
-  return sameDay
-    ? `${s.tz(USER_TZ).format("ddd, MMM D • h:mm A")} – ${e
-        .tz(USER_TZ)
-        .format("h:mm A")}`
-    : `${s.tz(USER_TZ).format("ddd, MMM D • h:mm A")} – ${e
-        .tz(USER_TZ)
-        .format("ddd, MMM D • h:mm A")}`;
-}
-
-function formatDuration(startTs, endTs) {
-  const s = safeToDayjs(startTs);
-  const e = safeToDayjs(endTs);
-  if (!s || !e) return "N/A";
-  const ms = e.diff(s);
-  if (!Number.isFinite(ms) || ms < 0) return "N/A";
-  const m = Math.round(ms / 60000);
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  return h ? `${h}h ${mm}m` : `${mm}m`;
-}
+  const single = startAt || endAt;
+  return single ? single.format("ddd, MMM D • h:mm A") : "N/A";
+};
 
 export function isClaimable(ride) {
   const okStatus =
@@ -109,15 +84,45 @@ export default function RideCard({
   onToggleNotes,
 }) {
   const [open, setOpen] = useState(false);
-  const startSrc = ride?.pickupTime || ride?.startTime;
-  const endSrc = ride?.dropoffTime || ride?.endTime;
+  const pickupSource = useMemo(() => resolvePickupTime(ride), [ride]);
+  const dropoffSource = useMemo(() => resolveDropoffTime(ride), [ride]);
+  const rawDuration = useMemo(() => resolveRideDuration(ride), [ride]);
+
+  const startAt = useMemo(() => tsToDayjs(pickupSource), [pickupSource]);
+  const dropoffAt = useMemo(() => tsToDayjs(dropoffSource), [dropoffSource]);
+
+  const endAt = useMemo(() => {
+    if (dropoffAt) return dropoffAt;
+    if (
+      startAt &&
+      typeof rawDuration === "number" &&
+      Number.isFinite(rawDuration) &&
+      rawDuration >= 0
+    ) {
+      return startAt.add(rawDuration, "minute");
+    }
+    return null;
+  }, [dropoffAt, rawDuration, startAt]);
+
+  const resolvedDurationMinutes = useMemo(() => {
+    if (typeof rawDuration === "number" && Number.isFinite(rawDuration)) {
+      return rawDuration;
+    }
+    if (startAt && endAt) {
+      const diff = endAt.diff(startAt, "minute");
+      return Number.isFinite(diff) && diff >= 0 ? diff : null;
+    }
+    return null;
+  }, [endAt, rawDuration, startAt]);
+
   const rangeLabel = useMemo(
-    () => formatRange(startSrc, endSrc),
-    [endSrc, startSrc],
+    () => formatRideWindow(startAt, endAt),
+    [endAt, startAt],
   );
+
   const durationLabel = useMemo(
-    () => formatDuration(startSrc, endSrc),
-    [endSrc, startSrc],
+    () => formatHMFromMinutes(resolvedDurationMinutes),
+    [resolvedDurationMinutes],
   );
 
   const claimed = Boolean(ride?.claimed || ride?.claimedBy);
