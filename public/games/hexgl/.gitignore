@@ -1,9 +1,0 @@
-*
-!.gitignore
-!LICENSE
-!README.md
-!index.html
-!launch.js
-!bkcore/
-!bkcore/hexgl/
-!bkcore/hexgl/HexGL.js
