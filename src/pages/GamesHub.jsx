@@ -33,6 +33,7 @@ import {
 
 const BACKGROUND = "#060606";
 const BRAND_GREEN = "#4cbb17";
+const HEXGL_REMOTE_ORIGIN = "https://bkcore.github.io";
 
 const gridSx = {
   bgcolor: "transparent",
@@ -396,6 +397,18 @@ function HyperloopPanel() {
 
   const handleHexglScore = useCallback(
     async (event) => {
+      const iframeWindow = iframeRef.current?.contentWindow;
+      if (!iframeWindow || event?.source !== iframeWindow) {
+        return;
+      }
+      const origin = event?.origin;
+      if (
+        typeof origin === "string" &&
+        origin !== window.location.origin &&
+        origin !== HEXGL_REMOTE_ORIGIN
+      ) {
+        return;
+      }
       const data = event?.data;
       if (!data || data.type !== "HEXGL_SCORE") {
         return;
@@ -429,7 +442,7 @@ function HyperloopPanel() {
         setSaving(false);
       }
     },
-    [saving],
+    [iframeRef, saving],
   );
 
   useEffect(() => {
