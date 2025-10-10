@@ -331,6 +331,50 @@ function HyperlanePanel() {
   );
 }
 
+function StarRunnerPanel() {
+  return (
+    <Stack spacing={2.5} sx={{ width: "100%" }}>
+      <Card
+        sx={{
+          flex: { xs: "0 1 auto", md: 2 },
+          maxHeight: 680,
+          overflow: "hidden",
+          bgcolor: "#0a0a0a",
+          borderRadius: 2,
+          border: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <CardContent
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            <SportsEsportsIcon sx={{ color: BRAND_GREEN }} />
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              LRP StarRunner — Prototype
+            </Typography>
+          </Stack>
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+          <LRPStarRunner />
+          <Typography variant="body2" sx={{ opacity: 0.75 }}>
+            Dodge debris, collect orbs, and chase a new high score.
+          </Typography>
+        </CardContent>
+      </Card>
+    </Stack>
+  );
+}
+
 export default function GamesHub() {
   const [tab, setTab] = useState(0);
 
@@ -418,7 +462,7 @@ export default function GamesHub() {
           <Tab label="StarRunner (3D)" />
         </Tabs>
 
-        {tab === 0 ? <HyperlanePanel /> : <LRPStarRunner />}
+        {tab === 0 ? <HyperlanePanel /> : <StarRunnerPanel />}
       </Stack>
     </PageContainer>
   );
