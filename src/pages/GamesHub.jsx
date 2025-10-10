@@ -8,6 +8,7 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  Link,
   Snackbar,
   Stack,
   Tab,
@@ -293,6 +294,38 @@ function HyperloopPanel() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const [hasLocalHexgl, setHasLocalHexgl] = useState(false);
+  const showAssetNotice = !hasLocalHexgl && import.meta.env.DEV;
+
+  const checkLocalHexGL = useCallback(async () => {
+    const requiredAssets = [
+      "/games/hexgl/index.html",
+      "/games/hexgl/bkcore/hexgl/HUD.js",
+    ];
+    try {
+      const results = await Promise.all(
+        requiredAssets.map(async (url) => {
+          try {
+            const res = await fetch(url, {
+              method: "GET",
+              cache: "no-store",
+            });
+            return res.ok;
+          } catch (assetErr) {
+            logError(assetErr, {
+              where: "GamesHub.checkLocalHexGL.asset",
+              url,
+            });
+            return false;
+          }
+        }),
+      );
+      return results.every(Boolean);
+    } catch (err) {
+      logError(err, { where: "GamesHub.checkLocalHexGL" });
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     setAllTimeLoading(true);
@@ -347,35 +380,67 @@ function HyperloopPanel() {
   }, [running]);
 
   useEffect(() => {
-    const controller = new AbortController();
     let active = true;
-    async function resolveSrc() {
-      try {
-        const response = await fetch("/games/hexgl/index.html", {
-          method: "GET",
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!active) return;
-        if (response.ok) {
-          setSrc("/games/hexgl/index.html");
-          return;
-        }
-        setSrc("https://bkcore.github.io/HexGL/");
-      } catch (err) {
-        if (err?.name === "AbortError") return;
-        logError(err, { where: "GamesHub.resolveHexgl" });
-        if (active) {
-          setSrc("https://bkcore.github.io/HexGL/");
-        }
-      }
-    }
-    resolveSrc();
+    (async () => {
+      const ok = await checkLocalHexGL();
+      if (!active) return;
+      setHasLocalHexgl(ok);
+      setSrc(
+        ok ? "/games/hexgl/index.html" : "https://bkcore.github.io/HexGL/",
+      );
+    })();
     return () => {
       active = false;
-      controller.abort();
     };
-  }, [reloadKey]);
+  }, [checkLocalHexGL, reloadKey]);
+
+  const handleHexglScore = useCallback(
+    async (event) => {
+      const data = event?.data;
+      if (!data || data.type !== "HEXGL_SCORE") {
+        return;
+      }
+      const rawScore = Number(data.score);
+      if (!Number.isFinite(rawScore)) {
+        return;
+      }
+      if (saving) {
+        return;
+      }
+      const normalized = Math.max(0, Math.round(rawScore));
+      const durationMs = normalized * 100;
+      const secondsValue = Math.round((durationMs / 1000) * 100) / 100;
+      setRunning(false);
+      setElapsedMs(durationMs);
+      setSaving(true);
+      try {
+        await saveHyperloopSession(durationMs);
+        setToast({
+          message: `Race finished — Score ${secondsValue}s`,
+          severity: "success",
+        });
+      } catch (err) {
+        logError(err, { where: "GamesHub.autoSaveHyperloop" });
+        setToast({
+          message: "Failed to auto-save Hyperloop score.",
+          severity: "error",
+        });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [saving],
+  );
+
+  useEffect(() => {
+    const listener = (event) => {
+      void handleHexglScore(event);
+    };
+    window.addEventListener("message", listener);
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  }, [handleHexglScore]);
 
   const buildSessionRows = useCallback(
     (rows, prefix) =>
@@ -626,6 +691,31 @@ function HyperloopPanel() {
             />
           </Box>
 
+          {showAssetNotice ? (
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{
+                borderColor: "rgba(76, 187, 23, 0.4)",
+                bgcolor: "rgba(76, 187, 23, 0.08)",
+                color: "#e8ffe1",
+                "& .MuiAlert-icon": { color: BRAND_GREEN },
+              }}
+            >
+              HexGL assets are streaming from bkcore.github.io because the local
+              bundle is missing.{" "}
+              <Link
+                href="https://github.com/LakeRidePros/lrpbolt/blob/main/docs/setup-hexgl-assets.md"
+                target="_blank"
+                rel="noreferrer"
+                sx={{ color: BRAND_GREEN, fontWeight: 700 }}
+              >
+                HexGL setup guide
+              </Link>{" "}
+              to download the assets before shipping.
+            </Alert>
+          ) : null}
+
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button
               onClick={handleStart}
@@ -665,8 +755,8 @@ function HyperloopPanel() {
           ) : null}
 
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            Tip: Arrow keys steer. Scores currently track session duration. Once
-            HexGL is local, we&apos;ll capture in-game scores automatically.
+            Tip: Arrow keys steer. Finishing a race now auto-saves your
+            Hyperloop time.
           </Typography>
         </CardContent>
       </Card>

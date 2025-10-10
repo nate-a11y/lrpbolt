@@ -1,31 +1,29 @@
 HexGL
 =========
 
-Source code of [HexGL](http://hexgl.bkcore.com), the futuristic HTML5 racing game by [Thibaut Despoulain](http://bkcore.com)
+This directory hosts the LakeRide Pros branded integration of [HexGL](https://github.com/BKcore/HexGL).
 
-## License
+## Local asset policy
 
-Unless specified in the file, HexGL's code and resources are licensed under the *Creative Commons Attribution-NonCommercial 3.0 Unported License*. 
+Large upstream assets (audio, textures, fonts, geometry caches, etc.) are **not tracked** to keep the repository binary-free. When you need the offline build, download the upstream HexGL archive and copy the missing folders into `public/games/hexgl/`.
 
-To view a copy of this license, visit http://creativecommons.org/licenses/by-nc/3.0/.
+See [`docs/setup-hexgl-assets.md`](../../docs/setup-hexgl-assets.md) for step-by-step instructions.
 
-If you feel like you deserve another license for a special case, [drop me a note](http://bkcore.com/contact.html), and we'll talk about it.
+## Customized files
 
-## Installation
+Keep the following repo-managed files when updating HexGL assets:
 
-	cd ~/
-	git clone git://github.com/BKcore/HexGL.git
-	cd HexGL
-	python -m SimpleHTTPServer
-	chromium index.html
+- `index.html` — LRP launch overlay + branding (reuses `public/Color logo with background.svg`)
+- `launch.js` — launch overlay dismissal logic
+- `bkcore/hexgl/HexGL.js` — posts `HEXGL_SCORE` messages to the React portal
+- `.gitignore` — prevents accidental commits of upstream binaries
 
-## Regarding the code
+After copying upstream files into this folder, run:
 
-As of now the code is pretty much raw and undocumented. I'll be commenting it someday, but that won't be until I've finished the next content update and code refactoring sorry!
-There will also be some refactoring, when I get some time :P
+```bash
+git restore public/games/hexgl/index.html \
+  public/games/hexgl/launch.js \
+  public/games/hexgl/bkcore/hexgl/HexGL.js
+```
 
-## Note
-
-After much thinking, I've decided to release HexGL's source code under CC 3.0 BY-NC until further notice. This is not a definite choice, and the game may end up under the MIT license someday.
-
-Feel free to post issues, patch or anything to make the game better.
+to bring back the custom branding.
