@@ -357,6 +357,7 @@ function App() {
               <Route path="/calendar" element={<CalendarHubLazy />} />
               <Route path="/games" element={<GamesHub />} />
               <Route path="/games/hyperloop" element={<GamesHub />} />
+              <Route path="/games/starrunner" element={<GamesHub />} />
               <Route
                 path="/escalation"
                 element={<DirectoryEscalations initialTab="escalations" />}
