@@ -35,12 +35,30 @@ export default function ClaimedRidesGrid() {
   const [editOpen, setEditOpen] = useState(false);
   const apiRef = useGridApiRef();
   const [selectionModel, setSelectionModel] = useState([]);
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "claimedRides"),
       (snap) => setRows(normalizeRideArray(snap.docs)),
       console.error,
+    );
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "users"),
+      (snap) => {
+        const nextUsers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (typeof window !== "undefined") {
+          window.lrpUsers = nextUsers;
+        }
+        setUsers(nextUsers);
+      },
+      (err) => {
+        logError(err, { where: "ClaimedRidesGrid", action: "loadUsers" });
+      },
     );
     return () => unsub();
   }, []);
@@ -217,7 +235,32 @@ export default function ClaimedRidesGrid() {
         headerName: "Claimed By",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => resolveClaimedBy(params),
+        valueGetter: (params) => {
+          const claimedBy = resolveClaimedBy(params);
+          if (!claimedBy) return "N/A";
+          if (typeof claimedBy === "object") {
+            return (
+              claimedBy?.displayName ||
+              claimedBy?.name ||
+              claimedBy?.fullName ||
+              "Unknown"
+            );
+          }
+          const cachedUsers =
+            typeof window !== "undefined" ? window.lrpUsers : undefined;
+          const directory =
+            Array.isArray(users) && users.length > 0 ? users : cachedUsers;
+          const match = Array.isArray(directory)
+            ? directory.find((user) => user?.id === claimedBy)
+            : null;
+          return (
+            match?.displayName ||
+            match?.name ||
+            match?.fullName ||
+            claimedBy ||
+            "N/A"
+          );
+        },
         valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
@@ -244,7 +287,7 @@ export default function ClaimedRidesGrid() {
         renderCell: renderActions,
       },
     ],
-    [renderActions],
+    [renderActions, users],
   );
 
   return (
