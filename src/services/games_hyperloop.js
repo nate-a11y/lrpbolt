@@ -2,6 +2,7 @@ import { getAuth } from "firebase/auth";
 import { serverTimestamp } from "firebase/firestore";
 
 import logError from "@/utils/logError.js";
+import { startOfWeekLocal } from "@/utils/time.js";
 
 import {
   addDoc,
@@ -14,41 +15,53 @@ import {
 } from "./firestoreCore";
 
 const COLLECTION_SEGMENTS = ["games", "hyperloop", "sessions"];
+const WEEKLY_BUFFER_SIZE = 200;
 
 function getCollectionRef(db) {
   return collection(db, ...COLLECTION_SEGMENTS);
 }
 
-function normalizeSession(docSnap) {
+function parseDuration(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return 0;
+  return numeric;
+}
+
+function sanitizeDisplayName(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return "Anonymous";
+}
+
+function mapSession(docSnap) {
   try {
     const data = typeof docSnap?.data === "function" ? docSnap.data() : {};
-    const rawDuration = data?.durationMs;
-    const durationMs = Number(rawDuration);
+    const durationMs = parseDuration(data?.durationMs);
+    const createdAt =
+      data?.createdAt && typeof data.createdAt.toDate === "function"
+        ? data.createdAt
+        : null;
+
     return {
-      id: docSnap?.id ?? null,
-      durationMs:
-        Number.isFinite(durationMs) && durationMs >= 0 ? durationMs : 0,
-      displayName:
-        typeof data?.displayName === "string" && data.displayName.trim()
-          ? data.displayName.trim()
-          : null,
+      id: docSnap?.id ?? "",
+      driver: sanitizeDisplayName(data?.displayName),
+      durationMs,
+      createdAt,
       uid: typeof data?.uid === "string" ? data.uid : null,
-      createdAt:
-        data?.createdAt && typeof data.createdAt.toDate === "function"
-          ? data.createdAt
-          : null,
     };
   } catch (error) {
     logError(error, {
-      where: "services.gamesHyperloop.normalizeSession",
+      where: "services.gamesHyperloop.mapSession",
       docId: docSnap?.id,
     });
     return {
-      id: docSnap?.id ?? null,
+      id: docSnap?.id ?? "",
+      driver: "Anonymous",
       durationMs: 0,
-      displayName: null,
-      uid: null,
       createdAt: null,
+      uid: null,
     };
   }
 }
@@ -57,18 +70,16 @@ export async function saveHyperloopSession(durationMs) {
   const db = getDb();
   const auth = getAuth();
   const user = auth?.currentUser || null;
-  const safeDuration = Number(durationMs);
-  const payload = {
-    durationMs:
-      Number.isFinite(safeDuration) && safeDuration >= 0 ? safeDuration : 0,
-    uid: user?.uid || null,
-    displayName: user?.displayName || null,
-    createdAt: serverTimestamp(),
-  };
+  const safeDuration = parseDuration(durationMs);
 
   try {
     const ref = getCollectionRef(db);
-    await addDoc(ref, payload);
+    await addDoc(ref, {
+      durationMs: safeDuration,
+      uid: user?.uid || null,
+      displayName: user?.displayName || null,
+      createdAt: serverTimestamp(),
+    });
   } catch (error) {
     logError(error, {
       where: "services.gamesHyperloop.saveHyperloopSession",
@@ -78,10 +89,21 @@ export async function saveHyperloopSession(durationMs) {
   }
 }
 
-export function subscribeTopHyperloopSessions({
+function handleSnapshot({ snapshot, onData, onError, transform }) {
+  try {
+    const rows = snapshot.docs.map((docSnap) => mapSession(docSnap));
+    const processed = typeof transform === "function" ? transform(rows) : rows;
+    onData?.(processed);
+  } catch (error) {
+    logError(error, { where: "services.gamesHyperloop.handleSnapshot" });
+    onError?.(error);
+  }
+}
+
+export function subscribeTopHyperloopAllTime({
+  topN = 10,
   onData,
   onError,
-  topN = 10,
 } = {}) {
   try {
     const db = getDb();
@@ -95,42 +117,83 @@ export function subscribeTopHyperloopSessions({
 
     return onSnapshot(
       q,
-      (snapshot) => {
-        try {
-          const rows = snapshot.docs.map((docSnap) =>
-            normalizeSession(docSnap),
-          );
-          if (typeof onData === "function") {
-            onData(rows);
-          }
-        } catch (error) {
-          logError(error, {
-            where: "services.gamesHyperloop.subscribeTopSessions.onData",
-            topN,
-          });
-          if (typeof onError === "function") {
-            onError(error);
-          }
-        }
-      },
+      (snapshot) => handleSnapshot({ snapshot, onData, onError }),
       (error) => {
         logError(error, {
-          where: "services.gamesHyperloop.subscribeTopSessions.listener",
+          where:
+            "services.gamesHyperloop.subscribeTopHyperloopAllTime.listener",
           topN,
         });
-        if (typeof onError === "function") {
-          onError(error);
-        }
+        onError?.(error);
       },
     );
   } catch (error) {
     logError(error, {
-      where: "services.gamesHyperloop.subscribeTopSessions",
+      where: "services.gamesHyperloop.subscribeTopHyperloopAllTime",
       topN,
     });
-    if (typeof onError === "function") {
-      onError(error);
-    }
+    onError?.(error);
     return () => {};
   }
+}
+
+export function subscribeTopHyperloopWeekly({
+  topN = 10,
+  onData,
+  onError,
+} = {}) {
+  try {
+    const db = getDb();
+    const ref = getCollectionRef(db);
+    const fetchLimit = Math.max(topN * 4, WEEKLY_BUFFER_SIZE);
+    const q = query(ref, orderBy("createdAt", "desc"), limit(fetchLimit));
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const weekStartDate = startOfWeekLocal()?.toDate?.() ?? new Date(0);
+        handleSnapshot({
+          snapshot,
+          onData,
+          onError,
+          transform: (rows) => {
+            const filtered = rows.filter((row) => {
+              const created = row?.createdAt;
+              const dateValue =
+                created && typeof created.toDate === "function"
+                  ? created.toDate()
+                  : null;
+              return dateValue ? dateValue >= weekStartDate : false;
+            });
+            filtered.sort((a, b) => {
+              const diff = (b.durationMs ?? 0) - (a.durationMs ?? 0);
+              if (diff !== 0) return diff;
+              const aSeconds = a?.createdAt?.seconds ?? 0;
+              const bSeconds = b?.createdAt?.seconds ?? 0;
+              return bSeconds - aSeconds;
+            });
+            return filtered.slice(0, topN);
+          },
+        });
+      },
+      (error) => {
+        logError(error, {
+          where: "services.gamesHyperloop.subscribeTopHyperloopWeekly.listener",
+          topN,
+        });
+        onError?.(error);
+      },
+    );
+  } catch (error) {
+    logError(error, {
+      where: "services.gamesHyperloop.subscribeTopHyperloopWeekly",
+      topN,
+    });
+    onError?.(error);
+    return () => {};
+  }
+}
+
+export function subscribeTopHyperloopSessions(options) {
+  return subscribeTopHyperloopAllTime(options);
 }

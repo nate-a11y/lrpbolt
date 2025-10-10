@@ -25,15 +25,11 @@ import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
-import {
-  dayjs,
-  tsToDayjs,
-  timestampSortComparator,
-} from "@/utils/timeUtils.js";
+import { formatDateTime, startOfWeekLocal } from "@/utils/timeUtils.js";
 import {
   saveHyperlaneScore,
-  subscribeTopHyperlaneScores,
-  subscribeWeeklyHyperlaneScores,
+  subscribeTopHyperlaneAllTime,
+  subscribeTopHyperlaneWeekly,
   subscribeUserWeeklyHyperlaneBest,
 } from "@/services/games.js";
 
@@ -49,6 +45,10 @@ const gridSx = {
   border: 0,
   "& .MuiDataGrid-cell": { borderColor: "rgba(255,255,255,0.08)" },
   "& .MuiDataGrid-columnHeaders": { bgcolor: "rgba(255,255,255,0.04)" },
+  "& .MuiDataGrid-row.current-user": {
+    bgcolor: "rgba(76,187,23,0.12)",
+    "&:hover": { bgcolor: "rgba(76,187,23,0.18)" },
+  },
   "& .MuiDataGrid-row:hover": { bgcolor: "rgba(255,255,255,0.06)" },
   "& .MuiDataGrid-virtualScroller": { backgroundColor: "transparent" },
 };
@@ -64,31 +64,15 @@ const iframeContainerSx = {
   minHeight: { xs: 420, sm: 480, md: 540 },
 };
 
-const getDisplayName = (row) => {
-  const raw = row?.displayName;
-  if (typeof raw === "string") {
-    const trimmed = raw.trim();
-    if (trimmed) return trimmed;
-  }
-  return "Anonymous";
-};
-
-const getScoreValue = (row) => {
-  const value = Number(row?.score);
-  return Number.isFinite(value) ? value : null;
-};
-
-const getCreatedAt = (row) => row?.createdAt ?? null;
-
 export default function GamesHyperlane() {
   const iframeRef = useRef(null);
   const { user } = useAuth();
 
   const [reloadKey, setReloadKey] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [topScores, setTopScores] = useState([]);
-  const [topLoading, setTopLoading] = useState(true);
-  const [topError, setTopError] = useState(null);
+  const [allTimeScores, setAllTimeScores] = useState([]);
+  const [allTimeLoading, setAllTimeLoading] = useState(true);
+  const [allTimeError, setAllTimeError] = useState(null);
   const [weeklyScores, setWeeklyScores] = useState([]);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
   const [weeklyError, setWeeklyError] = useState(null);
@@ -103,11 +87,7 @@ export default function GamesHyperlane() {
     [],
   );
 
-  const tzGuess = useMemo(() => dayjs.tz?.guess?.() || "UTC", []);
-  const startOfWeek = useMemo(
-    () => dayjs().tz(tzGuess).startOf("week"),
-    [tzGuess],
-  );
+  const startOfWeek = useMemo(() => startOfWeekLocal(), []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -154,17 +134,17 @@ export default function GamesHyperlane() {
   }, [sendSoundSetting, soundEnabled]);
 
   useEffect(() => {
-    setTopLoading(true);
-    const unsubscribe = subscribeTopHyperlaneScores({
+    setAllTimeLoading(true);
+    const unsubscribe = subscribeTopHyperlaneAllTime({
       topN: 10,
       onData: (rows) => {
-        setTopScores(Array.isArray(rows) ? rows : []);
-        setTopLoading(false);
-        setTopError(null);
+        setAllTimeScores(Array.isArray(rows) ? rows : []);
+        setAllTimeLoading(false);
+        setAllTimeError(null);
       },
       onError: (error) => {
-        setTopError(error?.message || "Failed to load high scores.");
-        setTopLoading(false);
+        setAllTimeError(error?.message || "Failed to load high scores.");
+        setAllTimeLoading(false);
       },
     });
     return () => {
@@ -174,9 +154,8 @@ export default function GamesHyperlane() {
 
   useEffect(() => {
     setWeeklyLoading(true);
-    const unsubscribe = subscribeWeeklyHyperlaneScores({
+    const unsubscribe = subscribeTopHyperlaneWeekly({
       topN: 10,
-      startAt: startOfWeek,
       onData: (rows) => {
         setWeeklyScores(Array.isArray(rows) ? rows : []);
         setWeeklyLoading(false);
@@ -190,7 +169,7 @@ export default function GamesHyperlane() {
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [startOfWeek]);
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -240,44 +219,49 @@ export default function GamesHyperlane() {
     };
   }, []);
 
-  const overallRows = useMemo(
-    () =>
-      (Array.isArray(topScores) ? topScores : []).map((row, index) => {
-        const resolvedId = row?.id ?? `overall-${index}`;
+  const currentUid = user?.uid || null;
+
+  const buildLeaderboardRows = useCallback(
+    (rows, prefix) =>
+      (Array.isArray(rows) ? rows : []).map((row, index) => {
+        const fallbackId = `${prefix}-${index}`;
+        const rawId = row?.id ?? fallbackId;
         const id =
-          typeof resolvedId === "string" || typeof resolvedId === "number"
-            ? resolvedId
-            : String(resolvedId);
-        const rank = Number.isFinite(Number(row?.rank))
-          ? Number(row.rank)
-          : index + 1;
+          typeof rawId === "string" || typeof rawId === "number"
+            ? rawId
+            : fallbackId;
+        const driver =
+          typeof row?.driver === "string" && row.driver.trim()
+            ? row.driver.trim()
+            : typeof row?.displayName === "string" && row.displayName.trim()
+              ? row.displayName.trim()
+              : "Anonymous";
+        const scoreValue = Number(row?.score);
+        const score = Number.isFinite(scoreValue) ? scoreValue : null;
+        const isCurrentUser =
+          currentUid && row?.uid && row.uid === currentUid ? true : false;
+
         return {
           ...row,
           id,
-          rank,
+          rank: index + 1,
+          driver,
+          score,
+          recorded: formatDateTime(row?.createdAt),
+          isCurrentUser,
         };
       }),
-    [topScores],
+    [currentUid],
+  );
+
+  const allTimeRows = useMemo(
+    () => buildLeaderboardRows(allTimeScores, "hyperlane-all-time"),
+    [allTimeScores, buildLeaderboardRows],
   );
 
   const weeklyRows = useMemo(
-    () =>
-      (Array.isArray(weeklyScores) ? weeklyScores : []).map((row, index) => {
-        const resolvedId = row?.id ?? `weekly-${index}`;
-        const id =
-          typeof resolvedId === "string" || typeof resolvedId === "number"
-            ? resolvedId
-            : String(resolvedId);
-        const rank = Number.isFinite(Number(row?.rank))
-          ? Number(row.rank)
-          : index + 1;
-        return {
-          ...row,
-          id,
-          rank,
-        };
-      }),
-    [weeklyScores],
+    () => buildLeaderboardRows(weeklyScores, "hyperlane-weekly"),
+    [weeklyScores, buildLeaderboardRows],
   );
 
   const columns = useMemo(
@@ -289,51 +273,33 @@ export default function GamesHyperlane() {
         sortable: false,
         align: "center",
         headerAlign: "center",
-        type: "number",
-        valueGetter: (params) => {
-          const rank = Number(params?.row?.rank ?? params?.value);
-          return Number.isFinite(rank) ? rank : null;
-        },
-        valueFormatter: (params) => {
-          const rank = Number(params?.value ?? params?.row?.rank);
-          return Number.isFinite(rank) ? rank : "N/A";
-        },
       },
       {
-        field: "displayName",
+        field: "driver",
         headerName: "Driver",
         flex: 1,
-        valueGetter: (params) => getDisplayName(params?.row),
+        minWidth: 140,
       },
       {
         field: "score",
         headerName: "Score",
         width: 140,
         type: "number",
-        valueGetter: (params) => getScoreValue(params?.row),
-        valueFormatter: (params) => {
-          const value = getScoreValue(params?.row);
-          if (Number.isFinite(value)) return value.toLocaleString();
-          const fallback = Number(params?.value);
-          return Number.isFinite(fallback) ? fallback.toLocaleString() : "N/A";
-        },
+        valueFormatter: ({ value }) =>
+          Number.isFinite(value) ? value.toLocaleString() : "N/A",
       },
       {
-        field: "createdAt",
+        field: "recorded",
         headerName: "Recorded",
-        width: 220,
-        valueGetter: (params) => getCreatedAt(params?.row),
-        valueFormatter: (params) => {
-          const parsed = tsToDayjs(getCreatedAt(params?.row) ?? params?.value);
-          return parsed ? parsed.format("MMM D, YYYY h:mm A") : "N/A";
-        },
-        sortComparator: (a, b, param1, param2) =>
-          timestampSortComparator(
-            getCreatedAt(param1?.row) ?? a,
-            getCreatedAt(param2?.row) ?? b,
-          ),
+        flex: 0.9,
+        minWidth: 180,
       },
     ],
+    [],
+  );
+
+  const getRowClassName = useCallback(
+    (params) => (params?.row?.isCurrentUser ? "current-user" : ""),
     [],
   );
 
@@ -414,7 +380,7 @@ export default function GamesHyperlane() {
   }, []);
 
   const yourBestScore = Number(userBest?.score);
-  const globalBestScore = Number(overallRows?.[0]?.score);
+  const globalBestScore = Number(allTimeRows?.[0]?.score);
   const weeklyBestScore = Number(weeklyRows?.[0]?.score);
 
   const yourBestChipLabel = useMemo(() => {
@@ -435,13 +401,13 @@ export default function GamesHyperlane() {
     if (Number.isFinite(activeScore)) {
       return `Leader: ${activeScore.toLocaleString()}`;
     }
-    if (weeklyLoading || topLoading) return "Leader: Loading…";
-    if (weeklyError && topError) return "Leader: N/A";
+    if (weeklyLoading || allTimeLoading) return "Leader: Loading…";
+    if (weeklyError && allTimeError) return "Leader: N/A";
     return "Leader: No scores yet";
   }, [
     globalBestScore,
-    topError,
-    topLoading,
+    allTimeError,
+    allTimeLoading,
     weeklyBestScore,
     weeklyError,
     weeklyLoading,
@@ -464,21 +430,23 @@ export default function GamesHyperlane() {
       if (errorMessage) {
         return <Alert severity="error">{errorMessage}</Alert>;
       }
-      if (!rows || rows.length === 0) {
+      const safeRows = Array.isArray(rows) ? rows : [];
+      if (safeRows.length === 0) {
         return <Alert severity="info">{emptyMessage}</Alert>;
       }
       return (
         <LrpGrid
-          rows={rows}
+          rows={safeRows}
           columns={columns}
           disableColumnMenu
           hideFooter
           disableRowSelectionOnClick
           sx={gridSx}
+          getRowClassName={getRowClassName}
         />
       );
     },
-    [columns],
+    [columns, getRowClassName],
   );
 
   return (
@@ -724,9 +692,9 @@ export default function GamesHyperlane() {
                   />
                 </Box>
                 {renderLeaderboard(
-                  topLoading,
-                  topError,
-                  overallRows,
+                  allTimeLoading,
+                  allTimeError,
+                  allTimeRows,
                   "No Hyperlane scores yet. Be the first to set a record!",
                 )}
               </CardContent>
