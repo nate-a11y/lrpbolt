@@ -1,7 +1,8 @@
 import { getAuth } from "firebase/auth";
-import { Timestamp, serverTimestamp } from "firebase/firestore";
+import { serverTimestamp, Timestamp } from "firebase/firestore";
 
 import logError from "@/utils/logError.js";
+import { startOfWeekLocal } from "@/utils/time.js";
 
 import {
   addDoc,
@@ -15,165 +16,102 @@ import {
 } from "./firestoreCore";
 
 const COLLECTION_SEGMENTS = ["games", "hyperlane", "highscores"];
-
-function coerceNumber(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const parsed = Number(trimmed.replace(/[^0-9.+-]/g, ""));
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  if (typeof value === "object" && value !== null) {
-    if (Object.prototype.hasOwnProperty.call(value, "value")) {
-      return coerceNumber(value.value);
-    }
-    if (Object.prototype.hasOwnProperty.call(value, "score")) {
-      return coerceNumber(value.score);
-    }
-  }
-
-  return null;
-}
-
-function coerceTimestamp(raw) {
-  if (!raw) return null;
-  if (typeof raw.toDate === "function" && typeof raw.seconds === "number") {
-    return raw;
-  }
-  if (raw instanceof Date) {
-    return Timestamp.fromDate(raw);
-  }
-  if (typeof raw === "number" && Number.isFinite(raw)) {
-    return Timestamp.fromMillis(raw);
-  }
-  if (typeof raw === "string" && raw.trim()) {
-    const date = new Date(raw.trim());
-    if (!Number.isNaN(date.getTime())) {
-      return Timestamp.fromDate(date);
-    }
-  }
-  if (typeof raw === "object" && typeof raw.toDate === "function") {
-    try {
-      const date = raw.toDate();
-      if (date instanceof Date && !Number.isNaN(date.getTime())) {
-        return Timestamp.fromDate(date);
-      }
-    } catch (error) {
-      logError(error, {
-        where: "services.games.coerceTimestamp",
-        raw,
-      });
-    }
-  }
-  if (
-    typeof raw === "object" &&
-    raw !== null &&
-    ("seconds" in raw || "nanoseconds" in raw)
-  ) {
-    const seconds = Number(raw.seconds ?? raw._seconds ?? 0);
-    const nanos = Number(raw.nanoseconds ?? raw._nanoseconds ?? 0);
-    if (!Number.isFinite(seconds) && !Number.isFinite(nanos)) {
-      return null;
-    }
-    return new Timestamp(
-      Number.isFinite(seconds) ? seconds : 0,
-      Number.isFinite(nanos) ? nanos : 0,
-    );
-  }
-  return null;
-}
-
-function normalizeHighscore(docSnap) {
-  try {
-    const data = typeof docSnap?.data === "function" ? docSnap.data() : null;
-    const safeData = data && typeof data === "object" ? data : {};
-    const score = coerceNumber(safeData.score ?? safeData.value ?? null);
-    const createdAt = coerceTimestamp(safeData.createdAt ?? null);
-    const displayName =
-      typeof safeData.displayName === "string" && safeData.displayName.trim()
-        ? safeData.displayName.trim()
-        : null;
-    const uid = typeof safeData.uid === "string" ? safeData.uid : null;
-
-    return {
-      id: docSnap?.id ?? null,
-      score: score ?? null,
-      createdAt,
-      displayName,
-      uid,
-    };
-  } catch (error) {
-    logError(error, {
-      where: "services.games.normalizeHighscore",
-      docId: docSnap?.id,
-    });
-    return {
-      id: docSnap?.id ?? null,
-      score: null,
-      createdAt: null,
-      displayName: null,
-      uid: null,
-    };
-  }
-}
+const WEEKLY_BUFFER_SIZE = 200;
 
 function getCollectionRef(db) {
   return collection(db, ...COLLECTION_SEGMENTS);
 }
 
-function toTimestamp(input) {
-  if (!input) return null;
-  if (input instanceof Timestamp) return input;
-  if (typeof input === "object") {
-    if (
-      typeof input.seconds === "number" &&
-      typeof input.nanoseconds === "number"
-    ) {
-      return new Timestamp(input.seconds, input.nanoseconds);
+function parseScore(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function parseDisplayName(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return "Anonymous";
+}
+
+function parseTimestamp(raw) {
+  if (!raw) return null;
+  if (raw instanceof Timestamp) return raw;
+  if (typeof raw.toDate === "function") {
+    try {
+      const dateValue = raw.toDate();
+      return Timestamp.fromDate(dateValue);
+    } catch (error) {
+      logError(error, { where: "services.games.parseTimestamp.toDate" });
+      return null;
     }
-    if (typeof input.toDate === "function") {
-      try {
-        const dateValue = input.toDate();
-        if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
-          return Timestamp.fromDate(dateValue);
-        }
-      } catch (error) {
-        logError(error, {
-          where: "services.games.toTimestamp",
-          input,
-        });
-      }
-    }
   }
-  if (input instanceof Date) {
-    return Timestamp.fromDate(input);
+  if (raw instanceof Date) {
+    return Timestamp.fromDate(raw);
   }
-  if (typeof input === "number" && Number.isFinite(input)) {
-    return Timestamp.fromMillis(input);
+  if (typeof raw === "object" && ("seconds" in raw || "nanoseconds" in raw)) {
+    const seconds = Number(raw.seconds ?? 0);
+    const nanos = Number(raw.nanoseconds ?? 0);
+    if (!Number.isFinite(seconds) && !Number.isFinite(nanos)) return null;
+    return new Timestamp(
+      Number.isFinite(seconds) ? seconds : 0,
+      Number.isFinite(nanos) ? nanos : 0,
+    );
   }
-  if (typeof input === "string" && input.trim()) {
-    const date = new Date(input.trim());
-    if (!Number.isNaN(date.getTime())) {
-      return Timestamp.fromDate(date);
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return Timestamp.fromMillis(raw);
+  }
+  if (typeof raw === "string") {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return Timestamp.fromDate(parsed);
     }
   }
   return null;
+}
+
+function mapHighscore(docSnap) {
+  try {
+    const data = typeof docSnap?.data === "function" ? docSnap.data() : {};
+    const score = parseScore(data?.score);
+    const createdAt =
+      data?.createdAt && typeof data.createdAt.toDate === "function"
+        ? data.createdAt
+        : null;
+
+    return {
+      id: docSnap?.id ?? "",
+      driver: parseDisplayName(data?.displayName),
+      score,
+      createdAt,
+      uid: typeof data?.uid === "string" ? data.uid : null,
+    };
+  } catch (error) {
+    logError(error, {
+      where: "services.games.mapHighscore",
+      docId: docSnap?.id,
+    });
+    return {
+      id: docSnap?.id ?? "",
+      driver: "Anonymous",
+      score: null,
+      createdAt: null,
+      uid: null,
+    };
+  }
 }
 
 export async function saveHyperlaneScore(score) {
   const db = getDb();
   const auth = getAuth();
   const user = auth?.currentUser || null;
+  const numericScore = parseScore(score) ?? 0;
 
   try {
     const ref = getCollectionRef(db);
     await addDoc(ref, {
-      score: Number.isFinite(Number(score)) ? Number(score) : 0,
+      score: numericScore,
       uid: user?.uid || null,
       displayName: user?.displayName || null,
       createdAt: serverTimestamp(),
@@ -188,19 +126,27 @@ export async function saveHyperlaneScore(score) {
   }
 }
 
-function subscribeScores({
+function handleSnapshot({ snapshot, onData, onError, transform }) {
+  try {
+    const rows = snapshot.docs.map((docSnap) => mapHighscore(docSnap));
+    const processed = typeof transform === "function" ? transform(rows) : rows;
+    onData?.(processed);
+  } catch (error) {
+    logError(error, { where: "services.games.handleSnapshot" });
+    onError?.(error);
+  }
+}
+
+export function subscribeTopHyperlaneAllTime({
   topN = 10,
   onData,
   onError,
-  constraints = [],
-  postProcess,
-}) {
+} = {}) {
   try {
     const db = getDb();
     const ref = getCollectionRef(db);
     const q = query(
       ref,
-      ...constraints,
       orderBy("score", "desc"),
       orderBy("createdAt", "desc"),
       limit(topN),
@@ -208,128 +154,78 @@ function subscribeScores({
 
     return onSnapshot(
       q,
-      (snapshot) => {
-        try {
-          const rows = snapshot.docs.map((docSnap) =>
-            normalizeHighscore(docSnap),
-          );
-          const processed =
-            typeof postProcess === "function" ? postProcess(rows) : rows;
-          if (typeof onData === "function") {
-            onData(processed);
-          }
-        } catch (error) {
-          logError(error, {
-            where: "services.games.subscribeScores.onData",
-            topN,
-          });
-          if (typeof onError === "function") {
-            onError(error);
-          }
-        }
-      },
+      (snapshot) => handleSnapshot({ snapshot, onData, onError }),
       (error) => {
         logError(error, {
-          where: "services.games.subscribeScores.listener",
+          where: "services.games.subscribeTopHyperlaneAllTime.listener",
           topN,
         });
-        if (typeof onError === "function") {
-          onError(error);
-        }
+        onError?.(error);
       },
     );
   } catch (error) {
     logError(error, {
-      where: "services.games.subscribeScores",
+      where: "services.games.subscribeTopHyperlaneAllTime",
       topN,
     });
-    if (typeof onError === "function") {
-      onError(error);
-    }
+    onError?.(error);
     return () => {};
   }
 }
 
-export function subscribeTopHyperlaneScores({
+export function subscribeTopHyperlaneWeekly({
+  topN = 10,
   onData,
   onError,
-  topN = 10,
 } = {}) {
-  return subscribeScores({ topN, onData, onError });
-}
-
-export function subscribeWeeklyHyperlaneScores({
-  onData,
-  onError,
-  topN = 10,
-  startAt,
-} = {}) {
-  const startTimestamp = toTimestamp(startAt);
-  if (!startTimestamp) {
-    if (typeof onData === "function") onData([]);
-    return () => {};
-  }
-
-  const fetchMultiplier = Math.max(topN * 4, 40);
   try {
     const db = getDb();
     const ref = getCollectionRef(db);
-    const q = query(
-      ref,
-      where("createdAt", ">=", startTimestamp),
-      orderBy("createdAt", "desc"),
-      orderBy("score", "desc"),
-      limit(fetchMultiplier),
-    );
+    const fetchLimit = Math.max(topN * 4, WEEKLY_BUFFER_SIZE);
+    const q = query(ref, orderBy("createdAt", "desc"), limit(fetchLimit));
 
     return onSnapshot(
       q,
       (snapshot) => {
-        try {
-          const rows = snapshot.docs.map((docSnap) =>
-            normalizeHighscore(docSnap),
-          );
-          const sorted = rows
-            .filter((row) => Number.isFinite(Number(row.score)))
-            .sort((a, b) => {
-              const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
-              if (diff !== 0) return diff;
-              const aTime = a.createdAt?.seconds ?? 0;
-              const bTime = b.createdAt?.seconds ?? 0;
-              return bTime - aTime;
+        const weekStartDate = startOfWeekLocal()?.toDate?.() ?? new Date(0);
+        handleSnapshot({
+          snapshot,
+          onError,
+          onData,
+          transform: (rows) => {
+            const filtered = rows.filter((row) => {
+              const created = row?.createdAt;
+              const dateValue =
+                created && typeof created.toDate === "function"
+                  ? created.toDate()
+                  : null;
+              return dateValue ? dateValue >= weekStartDate : false;
             });
-          const sliced = sorted.slice(0, topN);
-          if (typeof onData === "function") {
-            onData(sliced);
-          }
-        } catch (error) {
-          logError(error, {
-            where: "services.games.subscribeWeeklyHyperlaneScores.onData",
-            topN,
-          });
-          if (typeof onError === "function") {
-            onError(error);
-          }
-        }
+            filtered.sort((a, b) => {
+              const scoreDiff = (b.score ?? 0) - (a.score ?? 0);
+              if (scoreDiff !== 0) return scoreDiff;
+              const aSeconds = a?.createdAt?.seconds ?? 0;
+              const bSeconds = b?.createdAt?.seconds ?? 0;
+              return bSeconds - aSeconds;
+            });
+            return filtered.slice(0, topN);
+          },
+        });
       },
       (error) => {
         logError(error, {
-          where: "services.games.subscribeWeeklyHyperlaneScores.listener",
+          where: "services.games.subscribeTopHyperlaneWeekly.listener",
           topN,
         });
-        if (typeof onError === "function") {
-          onError(error);
-        }
+        onError?.(error);
       },
     );
   } catch (error) {
     logError(error, {
-      where: "services.games.subscribeWeeklyHyperlaneScores",
+      where: "services.games.subscribeTopHyperlaneWeekly",
       topN,
     });
-    if (typeof onError === "function") {
-      onError(error);
-    }
+    onError?.(error);
     return () => {};
   }
 }
@@ -341,16 +237,14 @@ export function subscribeUserWeeklyHyperlaneBest({
   onError,
 } = {}) {
   if (!uid) {
-    if (typeof onData === "function") onData(null);
+    onData?.(null);
     return () => {};
   }
-  const startTimestamp = toTimestamp(startAt);
+  const startTimestamp = parseTimestamp(startAt);
   if (!startTimestamp) {
-    if (typeof onData === "function") onData(null);
+    onData?.(null);
     return () => {};
   }
-
-  const fetchLimit = 50;
 
   try {
     const db = getDb();
@@ -361,34 +255,28 @@ export function subscribeUserWeeklyHyperlaneBest({
       where("createdAt", ">=", startTimestamp),
       orderBy("createdAt", "desc"),
       orderBy("score", "desc"),
-      limit(fetchLimit),
+      limit(50),
     );
 
     return onSnapshot(
       q,
       (snapshot) => {
         try {
-          const rows = snapshot.docs.map((docSnap) =>
-            normalizeHighscore(docSnap),
-          );
+          const rows = snapshot.docs.map((docSnap) => mapHighscore(docSnap));
           let best = null;
           for (const row of rows) {
-            if (!Number.isFinite(Number(row.score))) continue;
-            if (!best || Number(row.score) > Number(best.score)) {
+            if (!Number.isFinite(row?.score)) continue;
+            if (!best || (row?.score ?? 0) > (best?.score ?? 0)) {
               best = row;
             }
           }
-          if (typeof onData === "function") {
-            onData(best);
-          }
+          onData?.(best);
         } catch (error) {
           logError(error, {
             where: "services.games.subscribeUserWeeklyHyperlaneBest.onData",
             uid,
           });
-          if (typeof onError === "function") {
-            onError(error);
-          }
+          onError?.(error);
         }
       },
       (error) => {
@@ -396,9 +284,7 @@ export function subscribeUserWeeklyHyperlaneBest({
           where: "services.games.subscribeUserWeeklyHyperlaneBest.listener",
           uid,
         });
-        if (typeof onError === "function") {
-          onError(error);
-        }
+        onError?.(error);
       },
     );
   } catch (error) {
@@ -406,9 +292,7 @@ export function subscribeUserWeeklyHyperlaneBest({
       where: "services.games.subscribeUserWeeklyHyperlaneBest",
       uid,
     });
-    if (typeof onError === "function") {
-      onError(error);
-    }
+    onError?.(error);
     return () => {};
   }
 }

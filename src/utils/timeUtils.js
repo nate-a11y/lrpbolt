@@ -1,9 +1,15 @@
 /* Proprietary and confidential. See LICENSE. */
-import { dayjs, toDayjs, formatDateTime } from "@/utils/time";
+import {
+  dayjs,
+  toDayjs,
+  formatDateTime,
+  startOfWeekLocal,
+  guessUserTimezone,
+} from "@/utils/time";
 
-export { dayjs, toDayjs, formatDateTime };
+export { dayjs, toDayjs, formatDateTime, startOfWeekLocal, guessUserTimezone };
 
-export const guessTz = () => dayjs.tz?.guess?.() || "UTC";
+export const guessTz = () => guessUserTimezone();
 
 export function tsToDayjs(ts) {
   const d = toDayjs(ts);

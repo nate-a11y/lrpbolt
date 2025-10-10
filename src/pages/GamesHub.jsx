@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Divider,
   IconButton,
   Snackbar,
@@ -21,11 +22,12 @@ import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
 import logError from "@/utils/logError.js";
-import { tsToDayjs } from "@/utils/timeUtils.js";
-import { subscribeTopHyperlaneScores } from "@/services/games.js";
+import { formatDateTime } from "@/utils/timeUtils.js";
+import { subscribeTopHyperlaneAllTime } from "@/services/games.js";
 import {
   saveHyperloopSession,
-  subscribeTopHyperloopSessions,
+  subscribeTopHyperloopAllTime,
+  subscribeTopHyperloopWeekly,
 } from "@/services/games_hyperloop.js";
 
 const BACKGROUND = "#060606";
@@ -44,16 +46,16 @@ const gridSx = {
 function HyperlanePanel() {
   const iframeRef = useRef(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [scores, setScores] = useState([]);
+  const [allTimeScores, setAllTimeScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
-    const unsubscribe = subscribeTopHyperlaneScores({
+    const unsubscribe = subscribeTopHyperlaneAllTime({
       topN: 10,
       onData: (rows) => {
-        setScores(Array.isArray(rows) ? rows : []);
+        setAllTimeScores(Array.isArray(rows) ? rows : []);
         setLoading(false);
         setError(null);
       },
@@ -69,22 +71,31 @@ function HyperlanePanel() {
 
   const rows = useMemo(
     () =>
-      (Array.isArray(scores) ? scores : []).map((row, index) => {
+      (Array.isArray(allTimeScores) ? allTimeScores : []).map((row, index) => {
         const fallbackId = `hyperlane-${index}`;
+        const rawId = row?.id ?? fallbackId;
         const id =
-          typeof row?.id === "string" || typeof row?.id === "number"
-            ? row.id
+          typeof rawId === "string" || typeof rawId === "number"
+            ? rawId
             : fallbackId;
-        const rank = Number.isFinite(Number(row?.rank))
-          ? Number(row.rank)
-          : index + 1;
+        const driver =
+          typeof row?.driver === "string" && row.driver.trim()
+            ? row.driver.trim()
+            : typeof row?.displayName === "string" && row.displayName.trim()
+              ? row.displayName.trim()
+              : "Anonymous";
+        const scoreValue = Number(row?.score);
+        const score = Number.isFinite(scoreValue) ? scoreValue : null;
         return {
           ...row,
           id,
-          rank,
+          rank: index + 1,
+          driver,
+          score,
+          recorded: formatDateTime(row?.createdAt),
         };
       }),
-    [scores],
+    [allTimeScores],
   );
 
   const columns = useMemo(
@@ -96,52 +107,26 @@ function HyperlanePanel() {
         sortable: false,
         align: "center",
         headerAlign: "center",
-        valueGetter: (params) => {
-          const rank = Number(params?.row?.rank ?? params?.value);
-          return Number.isFinite(rank) ? rank : null;
-        },
-        valueFormatter: (params) => {
-          const value = Number(params?.value ?? params?.row?.rank);
-          return Number.isFinite(value) ? value : "N/A";
-        },
       },
       {
-        field: "displayName",
+        field: "driver",
         headerName: "Driver",
         flex: 1,
-        valueGetter: (params) => {
-          const raw = params?.row?.displayName;
-          if (typeof raw === "string" && raw.trim()) {
-            return raw.trim();
-          }
-          return "Anonymous";
-        },
+        minWidth: 140,
       },
       {
         field: "score",
         headerName: "Score",
         width: 140,
-        valueGetter: (params) => {
-          const value = Number(params?.row?.score ?? params?.value);
-          return Number.isFinite(value) ? value : null;
-        },
-        valueFormatter: (params) => {
-          const value = Number(params?.row?.score ?? params?.value);
-          return Number.isFinite(value) ? value.toLocaleString() : "N/A";
-        },
+        type: "number",
+        valueFormatter: ({ value }) =>
+          Number.isFinite(value) ? value.toLocaleString() : "N/A",
       },
       {
-        field: "createdAt",
+        field: "recorded",
         headerName: "Recorded",
-        width: 220,
-        valueGetter: (params) =>
-          params?.row?.createdAt ?? params?.value ?? null,
-        valueFormatter: (params) => {
-          const parsed = tsToDayjs(
-            params?.row?.createdAt ?? params?.value ?? null,
-          );
-          return parsed ? parsed.format("MMM D, YYYY h:mm A") : "N/A";
-        },
+        flex: 0.9,
+        minWidth: 180,
       },
     ],
     [],
@@ -298,26 +283,52 @@ function HyperloopPanel() {
   const iframeRef = useRef(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [src, setSrc] = useState("/games/hexgl/index.html");
-  const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [allTimeSessions, setAllTimeSessions] = useState([]);
+  const [weeklySessions, setWeeklySessions] = useState([]);
+  const [allTimeLoading, setAllTimeLoading] = useState(true);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [allTimeError, setAllTimeError] = useState(null);
+  const [weeklyError, setWeeklyError] = useState(null);
   const [running, setRunning] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    const unsubscribe = subscribeTopHyperloopSessions({
+    setAllTimeLoading(true);
+    const unsubscribe = subscribeTopHyperloopAllTime({
       topN: 10,
       onData: (rows) => {
-        setSessions(Array.isArray(rows) ? rows : []);
-        setLoading(false);
-        setError(null);
+        setAllTimeSessions(Array.isArray(rows) ? rows : []);
+        setAllTimeLoading(false);
+        setAllTimeError(null);
       },
       onError: (err) => {
-        setError(err?.message || "Unable to load Hyperloop leaderboard.");
-        setLoading(false);
+        setAllTimeError(
+          err?.message || "Unable to load Hyperloop leaderboard.",
+        );
+        setAllTimeLoading(false);
+      },
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    setWeeklyLoading(true);
+    const unsubscribe = subscribeTopHyperloopWeekly({
+      topN: 10,
+      onData: (rows) => {
+        setWeeklySessions(Array.isArray(rows) ? rows : []);
+        setWeeklyLoading(false);
+        setWeeklyError(null);
+      },
+      onError: (err) => {
+        setWeeklyError(
+          err?.message || "Unable to load Hyperloop weekly leaderboard.",
+        );
+        setWeeklyLoading(false);
       },
     });
     return () => {
@@ -366,20 +377,51 @@ function HyperloopPanel() {
     };
   }, [reloadKey]);
 
-  const rows = useMemo(
-    () =>
-      (Array.isArray(sessions) ? sessions : []).map((row, index) => {
-        const fallbackId = `hyperloop-${index}`;
+  const buildSessionRows = useCallback(
+    (rows, prefix) =>
+      (Array.isArray(rows) ? rows : []).map((row, index) => {
+        const fallbackId = `${prefix}-${index}`;
+        const rawId = row?.id ?? fallbackId;
         const id =
-          typeof row?.id === "string" || typeof row?.id === "number"
-            ? row.id
+          typeof rawId === "string" || typeof rawId === "number"
+            ? rawId
             : fallbackId;
+        const driver =
+          typeof row?.driver === "string" && row.driver.trim()
+            ? row.driver.trim()
+            : typeof row?.displayName === "string" && row.displayName.trim()
+              ? row.displayName.trim()
+              : "Anonymous";
+        const durationValue = Number(row?.durationMs);
+        const durationMs =
+          Number.isFinite(durationValue) && durationValue >= 0
+            ? durationValue
+            : null;
+        const seconds =
+          typeof durationMs === "number"
+            ? Math.round((durationMs / 1000) * 10) / 10
+            : null;
         return {
           ...row,
           id,
+          rank: index + 1,
+          driver,
+          durationMs,
+          score: seconds,
+          recorded: formatDateTime(row?.createdAt),
         };
       }),
-    [sessions],
+    [],
+  );
+
+  const allTimeRows = useMemo(
+    () => buildSessionRows(allTimeSessions, "hyperloop-all"),
+    [allTimeSessions, buildSessionRows],
+  );
+
+  const weeklyRows = useMemo(
+    () => buildSessionRows(weeklySessions, "hyperloop-weekly"),
+    [weeklySessions, buildSessionRows],
   );
 
   const columns = useMemo(
@@ -391,58 +433,65 @@ function HyperloopPanel() {
         sortable: false,
         align: "center",
         headerAlign: "center",
-        valueGetter: (params) => {
-          const api = params?.api;
-          if (!api) return null;
-          const index = api.getRowIndexRelativeToVisibleRows(params.id);
-          return Number.isFinite(index) ? index + 1 : null;
-        },
-        valueFormatter: (params) => {
-          const value = Number(params?.value);
-          return Number.isFinite(value) ? value : "N/A";
-        },
       },
       {
-        field: "displayName",
+        field: "driver",
         headerName: "Driver",
         flex: 1,
-        valueGetter: (params) => {
-          const raw = params?.row?.displayName;
-          if (typeof raw === "string" && raw.trim()) {
-            return raw.trim();
-          }
-          return "Anonymous";
-        },
+        minWidth: 140,
       },
       {
-        field: "durationMs",
+        field: "score",
         headerName: "Time (s)",
         width: 140,
-        valueGetter: (params) => {
-          const value = Number(params?.row?.durationMs ?? params?.value);
-          return Number.isFinite(value) ? value : null;
-        },
-        valueFormatter: (params) => {
-          const value = Number(params?.row?.durationMs ?? params?.value);
-          if (!Number.isFinite(value)) return "N/A";
-          return `${Math.round((value / 1000) * 10) / 10}`;
+        type: "number",
+        valueFormatter: ({ value }) => {
+          if (typeof value !== "number" || !Number.isFinite(value)) {
+            return "N/A";
+          }
+          const rounded = Math.round(value * 10) / 10;
+          const fixed = rounded.toFixed(1);
+          return fixed.endsWith(".0") ? fixed.slice(0, -2) : fixed;
         },
       },
       {
-        field: "createdAt",
+        field: "recorded",
         headerName: "Recorded",
-        width: 220,
-        valueGetter: (params) =>
-          params?.row?.createdAt ?? params?.value ?? null,
-        valueFormatter: (params) => {
-          const parsed = tsToDayjs(
-            params?.row?.createdAt ?? params?.value ?? null,
-          );
-          return parsed ? parsed.format("MMM D, YYYY h:mm A") : "N/A";
-        },
+        flex: 0.9,
+        minWidth: 180,
       },
     ],
     [],
+  );
+
+  const renderLeaderboard = useCallback(
+    (loadingState, errorMessage, rowsList, emptyMessage) => {
+      if (loadingState) {
+        return (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress size={28} color="inherit" />
+          </Box>
+        );
+      }
+      if (errorMessage) {
+        return <Alert severity="error">{errorMessage}</Alert>;
+      }
+      const safeRows = Array.isArray(rowsList) ? rowsList : [];
+      if (safeRows.length === 0) {
+        return <Alert severity="info">{emptyMessage}</Alert>;
+      }
+      return (
+        <LrpGrid
+          rows={safeRows}
+          columns={columns}
+          disableColumnMenu
+          hideFooter
+          disableRowSelectionOnClick
+          sx={gridSx}
+        />
+      );
+    },
+    [columns],
   );
 
   const handleReload = useCallback(() => {
@@ -634,26 +683,29 @@ function HyperloopPanel() {
       >
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, color: BRAND_GREEN }}>
-            Top 10 — Hyperloop
+            Top 10 — All Time
           </Typography>
           <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
-          <LrpGrid
-            rows={rows}
-            columns={columns}
-            loading={loading}
-            sx={gridSx}
-            hideFooter
-            disableColumnMenu
-          />
-          {error ? (
-            <Alert
-              severity="error"
-              variant="filled"
-              sx={{ bgcolor: "#b71c1c" }}
-            >
-              {error}
-            </Alert>
-          ) : null}
+          {renderLeaderboard(
+            allTimeLoading,
+            allTimeError,
+            allTimeRows,
+            "No Hyperloop sessions yet. Be the first to set a record!",
+          )}
+
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 800, color: BRAND_GREEN, mt: 2 }}
+          >
+            Weekly Heat
+          </Typography>
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+          {renderLeaderboard(
+            weeklyLoading,
+            weeklyError,
+            weeklyRows,
+            "No weekly sessions yet. Jump into Hyperloop this week!",
+          )}
         </CardContent>
       </Card>
 

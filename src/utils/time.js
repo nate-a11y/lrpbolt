@@ -26,20 +26,44 @@ try {
   defaultTz = "UTC";
 }
 
+export function guessUserTimezone() {
+  try {
+    if (dayjs.tz?.guess) {
+      const tzGuess = dayjs.tz.guess();
+      return tzGuess || defaultTz;
+    }
+  } catch (error) {
+    void error;
+  }
+  return defaultTz;
+}
+
+function applyTimezone(instance) {
+  if (!instance) return null;
+  try {
+    if (typeof instance.tz === "function") {
+      return instance.tz(guessUserTimezone());
+    }
+  } catch (error) {
+    void error;
+  }
+  return instance;
+}
+
 export function toDayjs(input) {
   try {
     if (input === null || input === undefined) return null;
-    if (dayjs.isDayjs?.(input)) return input;
+    if (dayjs.isDayjs?.(input)) return applyTimezone(input);
 
     if (typeof input === "object" && typeof input.toDate === "function") {
       const dateValue = input.toDate();
       const parsed = dayjs(dateValue);
-      return parsed.isValid() ? parsed : null;
+      return parsed.isValid() ? applyTimezone(parsed) : null;
     }
 
     if (input instanceof Date) {
       const parsed = dayjs(input);
-      return parsed.isValid() ? parsed : null;
+      return parsed.isValid() ? applyTimezone(parsed) : null;
     }
 
     if (
@@ -55,18 +79,18 @@ export function toDayjs(input) {
         (hasSeconds ? seconds * 1000 : 0) +
         (hasNanos ? Math.floor(nanos / 1e6) : 0);
       const parsed = dayjs(ms);
-      return parsed.isValid() ? parsed : null;
+      return parsed.isValid() ? applyTimezone(parsed) : null;
     }
 
     if (typeof input === "number") {
       if (!Number.isFinite(input)) return null;
       const parsed = dayjs(input);
-      return parsed.isValid() ? parsed : null;
+      return parsed.isValid() ? applyTimezone(parsed) : null;
     }
 
     if (typeof input === "string") {
       const parsed = dayjs(input);
-      return parsed.isValid() ? parsed : null;
+      return parsed.isValid() ? applyTimezone(parsed) : null;
     }
 
     return null;
@@ -81,8 +105,8 @@ export function formatDateTime(ts, fmt = "MMM D, YYYY h:mm A") {
   const d = toDayjs(ts);
   if (!d) return "N/A";
   try {
-    const tz = dayjs.tz?.guess?.() || defaultTz;
-    return d.tz(tz).format(fmt);
+    const tz = guessUserTimezone();
+    return d.tz ? d.tz(tz).format(fmt) : d.format(fmt);
   } catch (error) {
     void error;
     return d.format(fmt);
@@ -141,6 +165,21 @@ export function safeDuration(startTs, endTs) {
   const hours = Math.floor(mins / 60);
   const minutes = mins % 60;
   return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+export function startOfWeekLocal(reference) {
+  const base = reference ? toDayjs(reference) : applyTimezone(dayjs());
+  if (!base) {
+    return applyTimezone(dayjs()).startOf("week");
+  }
+  try {
+    const tz = guessUserTimezone();
+    const zoned = typeof base.tz === "function" ? base.tz(tz) : base;
+    return zoned.startOf("week");
+  } catch (error) {
+    void error;
+    return base.startOf("week");
+  }
 }
 
 export function isActiveRow(row) {
