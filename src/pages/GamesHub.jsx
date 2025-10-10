@@ -7,10 +7,12 @@ import {
   CardContent,
   CircularProgress,
   Divider,
+  FormControlLabel,
   IconButton,
   Link,
   Snackbar,
   Stack,
+  Switch,
   Tab,
   Tabs,
   Tooltip,
@@ -19,6 +21,8 @@ import {
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 
 import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
@@ -30,6 +34,7 @@ import {
   subscribeTopHyperloopAllTime,
   subscribeTopHyperloopWeekly,
 } from "@/services/games_hyperloop.js";
+import useGameSound from "@/hooks/useGameSound.js";
 
 const BACKGROUND = "#060606";
 const BRAND_GREEN = "#4cbb17";
@@ -50,6 +55,7 @@ function HyperlanePanel() {
   const [allTimeScores, setAllTimeScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { enabled: soundOn, setEnabled: setSoundOn, play } = useGameSound();
 
   useEffect(() => {
     setLoading(true);
@@ -69,6 +75,22 @@ function HyperlanePanel() {
       if (typeof unsubscribe === "function") unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const onSound = (event) => {
+      const data = event?.data;
+      if (data?.type === "SOUND" && data?.name) {
+        play(data.name);
+      }
+    };
+    window.addEventListener("message", onSound);
+    return () => {
+      window.removeEventListener("message", onSound);
+    };
+  }, [play]);
 
   const rows = useMemo(
     () =>
@@ -134,8 +156,9 @@ function HyperlanePanel() {
   );
 
   const handleReload = useCallback(() => {
+    play("click");
     setReloadKey((prev) => prev + 1);
-  }, []);
+  }, [play]);
 
   const handleFullscreen = useCallback(() => {
     const iframe = iframeRef.current;
@@ -185,6 +208,28 @@ function HyperlanePanel() {
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1.5} alignItems="center">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={soundOn}
+                    onChange={(event) => setSoundOn(event.target.checked)}
+                    color="success"
+                    sx={{
+                      "& .MuiSwitch-thumb": {
+                        bgcolor: soundOn ? "#4cbb17" : "#555",
+                      },
+                    }}
+                  />
+                }
+                label={
+                  soundOn ? (
+                    <VolumeUpIcon sx={{ color: "#4cbb17" }} />
+                  ) : (
+                    <VolumeOffIcon sx={{ color: "#777" }} />
+                  )
+                }
+                labelPlacement="start"
+              />
               <Tooltip title="Reload game">
                 <IconButton
                   onClick={handleReload}
@@ -296,6 +341,7 @@ function HyperloopPanel() {
   const [toast, setToast] = useState(null);
   const [hasLocalHexgl, setHasLocalHexgl] = useState(false);
   const showAssetNotice = !hasLocalHexgl && import.meta.env.DEV;
+  const { enabled: soundOn, setEnabled: setSoundOn, play } = useGameSound();
 
   const checkLocalHexGL = useCallback(async () => {
     const requiredAssets = [
@@ -347,6 +393,22 @@ function HyperloopPanel() {
       if (typeof unsubscribe === "function") unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const onSound = (event) => {
+      const data = event?.data;
+      if (data?.type === "SOUND" && data?.name) {
+        play(data.name);
+      }
+    };
+    window.addEventListener("message", onSound);
+    return () => {
+      window.removeEventListener("message", onSound);
+    };
+  }, [play]);
 
   useEffect(() => {
     setWeeklyLoading(true);
@@ -560,10 +622,11 @@ function HyperloopPanel() {
   );
 
   const handleReload = useCallback(() => {
+    play("click");
     setRunning(false);
     setElapsedMs(0);
     setReloadKey((prev) => prev + 1);
-  }, []);
+  }, [play]);
 
   const handleFullscreen = useCallback(() => {
     const iframe = iframeRef.current;
@@ -577,10 +640,11 @@ function HyperloopPanel() {
   }, []);
 
   const handleStart = useCallback(() => {
+    play("start");
     setElapsedMs(0);
     setRunning(true);
     setToast({ message: "Session started — race hard!", severity: "info" });
-  }, []);
+  }, [play]);
 
   const handleEnd = useCallback(async () => {
     if (saving) return;
@@ -641,6 +705,28 @@ function HyperloopPanel() {
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1.5} alignItems="center">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={soundOn}
+                    onChange={(event) => setSoundOn(event.target.checked)}
+                    color="success"
+                    sx={{
+                      "& .MuiSwitch-thumb": {
+                        bgcolor: soundOn ? "#4cbb17" : "#555",
+                      },
+                    }}
+                  />
+                }
+                label={
+                  soundOn ? (
+                    <VolumeUpIcon sx={{ color: "#4cbb17" }} />
+                  ) : (
+                    <VolumeOffIcon sx={{ color: "#777" }} />
+                  )
+                }
+                labelPlacement="start"
+              />
               <Tooltip title="Reload game">
                 <IconButton
                   onClick={handleReload}
