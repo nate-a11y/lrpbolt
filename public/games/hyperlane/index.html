@@ -155,6 +155,16 @@
           };
         })();
 
+        function postSound(name){
+          try {
+            if (window && window.parent) {
+              window.parent.postMessage({ type: 'SOUND', name }, '*');
+            }
+          } catch (err) {
+            console.warn('[Hyperlane] sound post failed', err); // eslint-disable-line no-console
+          }
+        }
+
         let rings=[], blocks=[], t=0, running=false, score=0, speed=3, z=0;
         let lastFrameTime = null;
 
@@ -210,6 +220,7 @@
           rings.forEach(r=>{
             if (!r.taken && r.lane===player.lane && Math.abs((H*0.76) - r.y) < 26){
               r.taken=true; score+=100; flash(); sound.playCoin();
+              postSound('ring');
             }
           });
 
@@ -320,6 +331,7 @@
         function gameOver(){
           running=false;
           sound.playBump();
+          postSound('crash');
           const finalScore = Math.floor(score);
           scoreEl.textContent = String(finalScore);
           if (finalScore>best){ best=finalScore; localStorage.setItem('lrp_hyperlane_best', String(best)); bestEl.textContent=String(best); }
@@ -333,11 +345,11 @@
         window.addEventListener('keydown', (e)=>{
           if (e.key==='ArrowLeft' || e.key==='a'){ goLeft(); }
           if (e.key==='ArrowRight' || e.key==='d'){ goRight(); }
-          if (e.key===' ' && !running){ start(); }
+          if (e.key===' ' && !running){ postSound('start'); start(); }
         });
         btnL.addEventListener('pointerdown', goLeft);
         btnR.addEventListener('pointerdown', goRight);
-        btnRestart.addEventListener('click', start);
+        btnRestart.addEventListener('click', ()=>{ postSound('start'); start(); });
 
         window.addEventListener('message', (event)=>{
           const payload = event?.data;

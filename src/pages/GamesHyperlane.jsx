@@ -20,6 +20,8 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ShareIcon from "@mui/icons-material/Share";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 
 import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
@@ -32,6 +34,7 @@ import {
   subscribeTopHyperlaneWeekly,
   subscribeUserWeeklyHyperlaneBest,
 } from "@/services/games.js";
+import useGameSound from "@/hooks/useGameSound.js";
 
 // eslint-disable-next-line import/no-unresolved
 import hyperlaneHtml from "../../public/games/hyperlane/index.html?raw";
@@ -69,7 +72,6 @@ export default function GamesHyperlane() {
   const { user } = useAuth();
 
   const [reloadKey, setReloadKey] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [allTimeScores, setAllTimeScores] = useState([]);
   const [allTimeLoading, setAllTimeLoading] = useState(true);
   const [allTimeError, setAllTimeError] = useState(null);
@@ -82,6 +84,7 @@ export default function GamesHyperlane() {
   const [lastScore, setLastScore] = useState(null);
   const [copying, setCopying] = useState(false);
   const [snack, setSnack] = useState(null);
+  const { enabled: soundOn, setEnabled: setSoundOn, play } = useGameSound();
   const iframeContent = useMemo(
     () => (typeof hyperlaneHtml === "string" ? hyperlaneHtml : null),
     [],
@@ -90,48 +93,20 @@ export default function GamesHyperlane() {
   const startOfWeek = useMemo(() => startOfWeekLocal(), []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem("lrp_hyperlane_sound");
-      if (stored === "off") {
-        setSoundEnabled(false);
-      } else if (stored === "on") {
-        setSoundEnabled(true);
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const onSound = (event) => {
+      const data = event?.data;
+      if (data?.type === "SOUND" && data?.name) {
+        play(data.name);
       }
-    } catch (error) {
-      logError(error, { where: "GamesHyperlane.initSound" });
-    }
-  }, []);
-
-  const sendSoundSetting = useCallback(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    try {
-      iframe.contentWindow?.postMessage(
-        {
-          type: "HYPERLANE_SOUND_TOGGLE",
-          enabled: soundEnabled,
-        },
-        "*",
-      );
-    } catch (error) {
-      logError(error, { where: "GamesHyperlane.sendSoundSetting" });
-    }
-  }, [soundEnabled]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        window.localStorage.setItem(
-          "lrp_hyperlane_sound",
-          soundEnabled ? "on" : "off",
-        );
-      } catch (error) {
-        logError(error, { where: "GamesHyperlane.persistSound" });
-      }
-    }
-    sendSoundSetting();
-  }, [sendSoundSetting, soundEnabled]);
+    };
+    window.addEventListener("message", onSound);
+    return () => {
+      window.removeEventListener("message", onSound);
+    };
+  }, [play]);
 
   useEffect(() => {
     setAllTimeLoading(true);
@@ -304,8 +279,9 @@ export default function GamesHyperlane() {
   );
 
   const handleReload = useCallback(() => {
+    play("click");
     setReloadKey((prev) => prev + 1);
-  }, []);
+  }, [play]);
 
   const handleFullscreen = useCallback(() => {
     const iframe = iframeRef.current;
@@ -325,14 +301,6 @@ export default function GamesHyperlane() {
     }
   }, []);
 
-  const handleSoundToggle = useCallback((event) => {
-    setSoundEnabled(event.target.checked);
-  }, []);
-
-  const handleIframeLoad = useCallback(() => {
-    sendSoundSetting();
-  }, [sendSoundSetting]);
-
   const handleShare = useCallback(async () => {
     if (!Number.isFinite(Number(lastScore))) {
       setSnack({
@@ -343,6 +311,7 @@ export default function GamesHyperlane() {
       return;
     }
     if (copying) return;
+    play("click");
     setCopying(true);
     try {
       if (typeof window === "undefined") {
@@ -372,7 +341,7 @@ export default function GamesHyperlane() {
     } finally {
       setCopying(false);
     }
-  }, [copying, lastScore]);
+  }, [copying, lastScore, play]);
 
   const handleSnackClose = useCallback((_, reason) => {
     if (reason === "clickaway") return;
@@ -508,25 +477,24 @@ export default function GamesHyperlane() {
                   <FormControlLabel
                     control={
                       <Switch
-                        size="small"
-                        checked={soundEnabled}
-                        onChange={handleSoundToggle}
+                        checked={soundOn}
+                        onChange={(event) => setSoundOn(event.target.checked)}
+                        color="success"
                         sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: BRAND_GREEN,
+                          "& .MuiSwitch-thumb": {
+                            bgcolor: soundOn ? "#4cbb17" : "#555",
                           },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              bgcolor: `${BRAND_GREEN}90`,
-                            },
                         }}
                       />
                     }
-                    label="Sound"
-                    sx={{
-                      color: "#fff",
-                      "& .MuiFormControlLabel-label": { fontWeight: 600 },
-                    }}
+                    label={
+                      soundOn ? (
+                        <VolumeUpIcon sx={{ color: "#4cbb17" }} />
+                      ) : (
+                        <VolumeOffIcon sx={{ color: "#777" }} />
+                      )
+                    }
+                    labelPlacement="start"
                   />
                   <Tooltip title="Reload game">
                     <IconButton
@@ -593,7 +561,6 @@ export default function GamesHyperlane() {
                   srcDoc={iframeContent || undefined}
                   sandbox="allow-scripts allow-pointer-lock allow-same-origin"
                   allowFullScreen
-                  onLoad={handleIframeLoad}
                   onError={(event) => {
                     logError(new Error("Hyperlane iframe failed"), {
                       where: "GamesHyperlane.iframeError",

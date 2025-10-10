@@ -197,6 +197,7 @@ bkcore.hexgl.HexGL.prototype.displayScore = function(f, l)
                         {
                                 normalizedScore = 0;
                         }
+                        window.parent.postMessage({ type: 'SOUND', name: 'crash' }, '*');
                         window.parent.postMessage({
                                 type: 'HEXGL_SCORE',
                                 score: normalizedScore
