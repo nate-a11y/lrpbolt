@@ -381,6 +381,16 @@ const resolveRideNotes = (rowOrParams) => {
 const resolveClaimedBy = (rowOrParams) => {
   const row = asRow(rowOrParams);
   const raw = asRaw(row);
+  const claimedName = pickText(
+    row?.claimedByName,
+    raw?.claimedByName,
+    raw?.ClaimedByName,
+    row?.claimed_by_name,
+    raw?.claimed_by_name,
+    row?.claimerName,
+    raw?.claimerName,
+  );
+  if (claimedName) return claimedName;
   return pickText(
     row?.claimedBy,
     raw?.claimedBy,
