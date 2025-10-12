@@ -236,30 +236,76 @@ export default function ClaimedRidesGrid() {
         minWidth: 140,
         flex: 0.8,
         valueGetter: (params) => {
+          const { row } = params || {};
+          const raw = row?._raw || {};
+
+          const claimedId =
+            row?.claimedBy ||
+            raw?.claimedBy ||
+            raw?.ClaimedBy ||
+            row?.ClaimedBy ||
+            null;
+
+          const claimedName =
+            row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
+
+          if (claimedName) {
+            return claimedName;
+          }
+
           const claimedBy = resolveClaimedBy(params);
-          if (!claimedBy) return "N/A";
-          if (typeof claimedBy === "object") {
+
+          if (!claimedBy && !claimedId) {
+            return "N/A";
+          }
+
+          if (claimedBy && typeof claimedBy === "object") {
             return (
               claimedBy?.displayName ||
               claimedBy?.name ||
               claimedBy?.fullName ||
+              claimedBy?.email ||
               "Unknown"
             );
           }
+
           const cachedUsers =
             typeof window !== "undefined" ? window.lrpUsers : undefined;
           const directory =
             Array.isArray(users) && users.length > 0 ? users : cachedUsers;
+
           const match = Array.isArray(directory)
-            ? directory.find((user) => user?.id === claimedBy)
+            ? directory.find((user) => {
+                if (!user) return false;
+                const possibilities = [
+                  user.id,
+                  user.uid,
+                  user.userId,
+                  user.email,
+                ].filter(Boolean);
+                return possibilities.some((value) => value === (claimedId || claimedBy));
+              })
             : null;
-          return (
-            match?.displayName ||
-            match?.name ||
-            match?.fullName ||
-            claimedBy ||
-            "N/A"
-          );
+
+          if (match) {
+            return (
+              match.displayName ||
+              match.name ||
+              match.fullName ||
+              match.email ||
+              "N/A"
+            );
+          }
+
+          if (claimedBy && typeof claimedBy === "string") {
+            return claimedBy;
+          }
+
+          if (claimedId) {
+            return claimedId;
+          }
+
+          return "N/A";
         },
         valueFormatter: (params) => vfText(params, "N/A"),
       },
