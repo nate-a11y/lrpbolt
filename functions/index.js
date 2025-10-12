@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 const functionsV1 = require("firebase-functions/v1");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { runWith, setGlobalOptions } = require("firebase-functions/v2/options");
+const { setGlobalOptions } = require("firebase-functions/v2");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
@@ -107,8 +107,13 @@ exports.smsOnCreate = functionsV1
     }
   });
 
-exports.smsOnCreateV2 = runWith({ region: "us-central1", secrets: TWILIO_SECRETS })(
-  onDocumentCreated("outboundMessages/{id}", async (event) => {
+exports.smsOnCreateV2 = onDocumentCreated(
+  {
+    document: "outboundMessages/{id}",
+    region: "us-central1",
+    secrets: TWILIO_SECRETS,
+  },
+  async (event) => {
     try {
       const after = event?.data?.data() || null;
       const docPath =
@@ -127,7 +132,7 @@ exports.smsOnCreateV2 = runWith({ region: "us-central1", secrets: TWILIO_SECRETS
       });
       throw e;
     }
-  })
+  }
 );
 
 async function requireAdmin(emailLower) {
