@@ -23,7 +23,7 @@ service cloud.firestore {
 
     // ---------- Auth & helpers ----------
     function toLowerCaseSafe(value) {
-      return value.toLowerCase();
+      return value is string ? lower(value) : value;
     }
 
     function strStartsWithSafe(haystack, needle) {
