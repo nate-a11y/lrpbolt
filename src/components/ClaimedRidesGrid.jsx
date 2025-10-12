@@ -1,5 +1,17 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import {
+  collection,
+  onSnapshot,
+  writeBatch,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { Paper } from "@mui/material";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
@@ -29,35 +41,82 @@ import { db } from "../utils/firebaseInit";
 
 import EditRideDialog from "./EditRideDialog.jsx";
 
+const useUserNameCache = () => {
+  const [cache, setCache] = useState({});
+  const pendingRef = useRef(new Set());
+  const cacheRef = useRef(cache);
+
+  useEffect(() => {
+    cacheRef.current = cache;
+  }, [cache]);
+
+  const fetchUserName = useCallback(async (uid) => {
+    if (!uid) return "N/A";
+    if (cacheRef.current[uid]) {
+      return cacheRef.current[uid];
+    }
+    if (pendingRef.current.has(uid)) {
+      return "Loading...";
+    }
+
+    pendingRef.current.add(uid);
+    try {
+      const snap = await getDoc(doc(db, "users", uid));
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        const name =
+          data.displayName ||
+          data.name ||
+          data.fullName ||
+          data.email ||
+          "Unknown User";
+        setCache((prev) => {
+          if (prev[uid] === name) return prev;
+          return { ...prev, [uid]: name };
+        });
+        return name;
+      }
+      setCache((prev) => {
+        if (prev[uid] === "Unknown User") return prev;
+        return { ...prev, [uid]: "Unknown User" };
+      });
+      return "Unknown User";
+    } catch (error) {
+      logError(error, {
+        where: "ClaimedRidesGrid",
+        action: "fetchUserName",
+        uid,
+      });
+      setCache((prev) => {
+        if (prev[uid] === "Unknown User") return prev;
+        return { ...prev, [uid]: "Unknown User" };
+      });
+      return "Unknown User";
+    } finally {
+      pendingRef.current.delete(uid);
+    }
+  }, []);
+
+  return { cache, fetchUserName };
+};
+
 export default function ClaimedRidesGrid() {
   const [rows, setRows] = useState([]);
   const [editRow, setEditRow] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const apiRef = useGridApiRef();
   const [selectionModel, setSelectionModel] = useState([]);
-  const [users, setUsers] = useState([]);
+  const { cache, fetchUserName } = useUserNameCache();
 
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "claimedRides"),
       (snap) => setRows(normalizeRideArray(snap.docs)),
-      console.error,
-    );
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "users"),
-      (snap) => {
-        const nextUsers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        if (typeof window !== "undefined") {
-          window.lrpUsers = nextUsers;
-        }
-        setUsers(nextUsers);
-      },
       (err) => {
-        logError(err, { where: "ClaimedRidesGrid", action: "loadUsers" });
+        logError(err, {
+          where: "ClaimedRidesGrid",
+          action: "loadClaimedRides",
+        });
       },
     );
     return () => unsub();
@@ -239,66 +298,36 @@ export default function ClaimedRidesGrid() {
           const { row } = params || {};
           const raw = row?._raw || {};
 
-          const claimedId =
-            row?.claimedBy ||
-            raw?.claimedBy ||
-            raw?.ClaimedBy ||
-            row?.ClaimedBy ||
-            null;
-
           const claimedName =
-            row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
-
+            row?.claimedByName ||
+            raw?.claimedByName ||
+            raw?.ClaimedByName ||
+            null;
           if (claimedName) {
             return claimedName;
           }
 
           const claimedBy = resolveClaimedBy(params);
-
-          if (!claimedBy && !claimedId) {
-            return "N/A";
-          }
-
           if (claimedBy && typeof claimedBy === "object") {
             return (
               claimedBy?.displayName ||
               claimedBy?.name ||
               claimedBy?.fullName ||
               claimedBy?.email ||
-              "Unknown"
+              "Unknown User"
             );
           }
 
-          const cachedUsers =
-            typeof window !== "undefined" ? window.lrpUsers : undefined;
-          const directory =
-            Array.isArray(users) && users.length > 0 ? users : cachedUsers;
+          const claimedId =
+            (typeof claimedBy === "string" && claimedBy) ||
+            row?.claimedBy ||
+            raw?.claimedBy ||
+            raw?.ClaimedBy ||
+            row?.ClaimedBy ||
+            null;
 
-          const match = Array.isArray(directory)
-            ? directory.find((user) => {
-                if (!user) return false;
-                const possibilities = [
-                  user.id,
-                  user.uid,
-                  user.userId,
-                  user.email,
-                ].filter(Boolean);
-                return possibilities.some((value) => value === (claimedId || claimedBy));
-              })
-            : null;
-
-          if (match) {
-            return (
-              match.displayName ||
-              match.name ||
-              match.fullName ||
-              match.email ||
-              "N/A"
-            );
-          }
-
-          if (claimedBy && typeof claimedBy === "string") {
-            return claimedBy;
+          if (claimedId && cache[claimedId]) {
+            return cache[claimedId];
           }
 
           if (claimedId) {
@@ -306,6 +335,50 @@ export default function ClaimedRidesGrid() {
           }
 
           return "N/A";
+        },
+        renderCell: (params) => {
+          const { row } = params || {};
+          const raw = row?._raw || {};
+
+          const claimedName =
+            row?.claimedByName ||
+            raw?.claimedByName ||
+            raw?.ClaimedByName ||
+            null;
+          if (claimedName) {
+            return claimedName;
+          }
+
+          const claimedBy = resolveClaimedBy(params);
+          if (claimedBy && typeof claimedBy === "object") {
+            return (
+              claimedBy?.displayName ||
+              claimedBy?.name ||
+              claimedBy?.fullName ||
+              claimedBy?.email ||
+              "Unknown User"
+            );
+          }
+
+          const claimedId =
+            (typeof claimedBy === "string" && claimedBy) ||
+            row?.claimedBy ||
+            raw?.claimedBy ||
+            raw?.ClaimedBy ||
+            row?.ClaimedBy ||
+            null;
+
+          if (!claimedId) {
+            return "N/A";
+          }
+
+          const cachedName = cache[claimedId];
+          if (cachedName) {
+            return cachedName;
+          }
+
+          fetchUserName(claimedId);
+          return "Loading...";
         },
         valueFormatter: (params) => vfText(params, "N/A"),
       },
@@ -333,7 +406,7 @@ export default function ClaimedRidesGrid() {
         renderCell: renderActions,
       },
     ],
-    [renderActions, users],
+    [cache, fetchUserName, renderActions],
   );
 
   return (
