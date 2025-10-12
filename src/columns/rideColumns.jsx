@@ -162,6 +162,104 @@ const pickText = (...values) => {
   return null;
 };
 
+const PLACEHOLDER_NAMES = new Set([
+  "unknown",
+  "n/a",
+  "na",
+  "-",
+  "none",
+  "unassigned",
+]);
+
+const isPlaceholderName = (value) => {
+  if (!value) return true;
+  const text = textFromValue(value);
+  if (!text) return true;
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return true;
+  if (PLACEHOLDER_NAMES.has(normalized)) return true;
+  if (normalized.includes("attached")) return true;
+  if (normalized === "claimed") return true;
+  if (normalized === "claim") return true;
+  return false;
+};
+
+const pickDisplayName = (...values) => {
+  for (const value of values) {
+    const text = textFromValue(value);
+    if (text && !isPlaceholderName(text)) {
+      return text;
+    }
+  }
+  return null;
+};
+
+const resolveClaimBlockName = (candidate) => {
+  if (!candidate || typeof candidate !== "object") return null;
+
+  const directName = pickDisplayName(
+    candidate.claimedByName,
+    candidate.ClaimedByName,
+    candidate.claimed_by_name,
+    candidate.claimerName,
+    candidate.claimer_name,
+    candidate.claimedByDisplayName,
+    candidate.claimed_by_display_name,
+    candidate.claimerDisplayName,
+    candidate.claimer_display_name,
+    candidate.assigneeName,
+    candidate.assignee_name,
+    candidate.driverName,
+    candidate.driver_name,
+  );
+  if (directName) return directName;
+
+  const nestedClaimer =
+    candidate.claimer ||
+    candidate.claimedBy ||
+    candidate.user ||
+    candidate.assignee ||
+    candidate.driver ||
+    candidate.agent;
+
+  const nestedName = pickDisplayName(
+    nestedClaimer?.displayName,
+    nestedClaimer?.name,
+    nestedClaimer?.fullName,
+    nestedClaimer?.profile?.displayName,
+    nestedClaimer?.profile?.name,
+    nestedClaimer?.profile?.fullName,
+    nestedClaimer?.ClaimedByName,
+    nestedClaimer?.claimedByName,
+    nestedClaimer?.claimerName,
+  );
+  if (nestedName) return nestedName;
+
+  const nestedId = pickDisplayName(
+    candidate.claimerId,
+    candidate.claimer_id,
+    candidate.claimerRef,
+    candidate.claimer_ref,
+    candidate.claimerID,
+    candidate.id,
+    candidate.uid,
+    candidate.userId,
+    candidate.user_id,
+    candidate.path,
+    nestedClaimer?.id,
+    nestedClaimer?.uid,
+    nestedClaimer?.userId,
+    nestedClaimer?.user_id,
+    nestedClaimer?.ref,
+    nestedClaimer?.reference,
+    nestedClaimer?.ref?.id,
+    nestedClaimer?.reference?.id,
+  );
+  if (nestedId) return nestedId;
+
+  return null;
+};
+
 const resolveTripId = (rowOrParams) => {
   const row = asRow(rowOrParams);
   const raw = asRaw(row);
@@ -381,17 +479,42 @@ const resolveRideNotes = (rowOrParams) => {
 const resolveClaimedBy = (rowOrParams) => {
   const row = asRow(rowOrParams);
   const raw = asRaw(row);
-  const claimedName = pickText(
+  const claimedName = pickDisplayName(
     row?.claimedByName,
     raw?.claimedByName,
     raw?.ClaimedByName,
     row?.claimed_by_name,
     raw?.claimed_by_name,
+    row?.claimedByDisplayName,
+    raw?.claimedByDisplayName,
+    row?.claimed_by_display_name,
+    raw?.claimed_by_display_name,
     row?.claimerName,
     raw?.claimerName,
+    row?.claimer_name,
+    raw?.claimer_name,
   );
   if (claimedName) return claimedName;
-  return pickText(
+
+  const claimBlocks = [
+    row?.claimedAs,
+    raw?.claimedAs,
+    row?.claim,
+    raw?.claim,
+    row?.claimed,
+    raw?.claimed,
+    row?.claimerDetails,
+    raw?.claimerDetails,
+    row?.claimerInfo,
+    raw?.claimerInfo,
+  ];
+
+  for (const block of claimBlocks) {
+    const resolved = resolveClaimBlockName(block);
+    if (resolved) return resolved;
+  }
+
+  return pickDisplayName(
     row?.claimedBy,
     raw?.claimedBy,
     raw?.ClaimedBy,
