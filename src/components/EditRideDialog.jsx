@@ -37,6 +37,11 @@ export default function EditRideDialog({
   const { user } = useAuth();
   const theme = useTheme();
   const fullOnXs = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTsField = useCallback((f) => {
+    if (!f || typeof f !== "string") return false;
+    const lower = f.toLowerCase();
+    return lower.includes("time") || lower.endsWith("at");
+  }, []);
 
   const initForm = useCallback(() => {
     const base = {
@@ -86,7 +91,7 @@ export default function EditRideDialog({
     });
 
     return obj;
-  }, [ride]);
+  }, [ride, isTsField]);
 
   const [form, setForm] = useState(initForm);
   useEffect(() => {
@@ -106,9 +111,6 @@ export default function EditRideDialog({
       onClose(false);
     }
   };
-
-  const isTsField = (f) =>
-    f.toLowerCase().includes("time") || f.toLowerCase().endsWith("at");
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
