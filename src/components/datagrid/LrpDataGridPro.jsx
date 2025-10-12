@@ -100,6 +100,10 @@ function augmentRideColumn(column) {
     return column;
   }
 
+  if (column.type === "actions" || typeof column.getActions === "function") {
+    return column;
+  }
+
   const next = { ...column };
 
   if (RIDE_DATE_FIELDS.has(next.field) && !next.sortComparator) {
@@ -114,14 +118,17 @@ function augmentRideColumn(column) {
   }
 
   next.renderCell = (params) => {
-    const value = resolveRideField(params?.row, next.field);
+    const resolvedValue =
+      params?.value !== undefined
+        ? params.value
+        : resolveRideField(params?.row, next.field);
     if (RIDE_DATE_FIELDS.has(next.field)) {
-      return formatRideDate(value);
+      return formatRideDate(resolvedValue);
     }
     if (next.field === "rideDuration") {
-      return formatRideDuration(value);
+      return formatRideDuration(resolvedValue);
     }
-    return formatRideText(value);
+    return formatRideText(resolvedValue);
   };
 
   return next;
