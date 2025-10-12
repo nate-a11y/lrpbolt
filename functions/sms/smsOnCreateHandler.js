@@ -10,23 +10,31 @@ const TWILIO_SECRETS = [
 ];
 
 /**
- * Idempotency guard: ensures an eventId is processed only once.
+ * Idempotency guard: ensures a document-trigger pair is processed only once.
  * Returns true if this caller should process; false if already processed elsewhere.
+ * @param {string|undefined|null} docPath
  * @param {string|undefined|null} eventId
  */
-async function ensureOnce(eventId) {
-  if (!eventId) return true;
+async function ensureOnce(docPath, eventId) {
+  const dedupeKey = docPath || eventId;
+  if (!dedupeKey) return true;
+
+  const docId = dedupeKey.replace(/\//g, "__");
   const db = admin.firestore();
-  const docRef = db.doc(`__functionEvents/smsOnCreate/${eventId}`);
+  const docRef = db.doc(`__functionEvents/smsOnCreate/${docId}`);
   try {
     await docRef.create({
       createdAt: FieldValue.serverTimestamp(),
       eventId,
+      docPath,
       func: "smsOnCreate",
     });
     return true;
   } catch (err) {
-    logger.warn("smsOnCreate idempotency: duplicate event, skipping", { eventId });
+    logger.warn("smsOnCreate idempotency: duplicate event, skipping", {
+      docPath,
+      eventId,
+    });
     return false;
   }
 }
@@ -42,7 +50,7 @@ async function handleSmsOnCreate(payload, meta = {}) {
     return null;
   }
 
-  const allowed = await ensureOnce(meta?.eventId);
+  const allowed = await ensureOnce(meta?.docPath, meta?.eventId);
   if (!allowed) return null;
 
   const db = admin.firestore();
