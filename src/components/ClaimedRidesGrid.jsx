@@ -29,6 +29,41 @@ import { db } from "../utils/firebaseInit";
 
 import EditRideDialog from "./EditRideDialog.jsx";
 
+const extractClaimIdentifier = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === "object") {
+    const possibilities = [
+      value.id,
+      value.uid,
+      value.userId,
+      value.email,
+      value.user?.id,
+      value.user?.uid,
+      value.user?.userId,
+      value.user?.email,
+    ];
+
+    for (const possibility of possibilities) {
+      if (typeof possibility === "string") {
+        const trimmed = possibility.trim();
+        if (trimmed.length > 0) {
+          return trimmed;
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
 export default function ClaimedRidesGrid() {
   const [rows, setRows] = useState([]);
   const [editRow, setEditRow] = useState(null);
@@ -239,23 +274,33 @@ export default function ClaimedRidesGrid() {
           const { row } = params || {};
           const raw = row?._raw || {};
 
-          const claimedId =
+          const claimedSource =
             row?.claimedBy ||
             raw?.claimedBy ||
             raw?.ClaimedBy ||
             row?.ClaimedBy ||
             null;
 
+          const claimedId = extractClaimIdentifier(claimedSource);
+
           const claimedName =
-            row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
+            row?.claimedByName ||
+            raw?.claimedByName ||
+            raw?.ClaimedByName ||
+            null;
 
           if (claimedName) {
             return claimedName;
           }
 
           const claimedBy = resolveClaimedBy(params);
+          const normalizedClaimedBy = extractClaimIdentifier(claimedBy);
 
-          if (!claimedBy && !claimedId) {
+          const identifiersToMatch = [claimedId, normalizedClaimedBy].filter(
+            Boolean,
+          );
+
+          if (!claimedBy && identifiersToMatch.length === 0) {
             return "N/A";
           }
 
@@ -265,6 +310,7 @@ export default function ClaimedRidesGrid() {
               claimedBy?.name ||
               claimedBy?.fullName ||
               claimedBy?.email ||
+              normalizedClaimedBy ||
               "Unknown"
             );
           }
@@ -283,7 +329,9 @@ export default function ClaimedRidesGrid() {
                   user.userId,
                   user.email,
                 ].filter(Boolean);
-                return possibilities.some((value) => value === (claimedId || claimedBy));
+                return possibilities.some((value) =>
+                  identifiersToMatch.some((identifier) => identifier === value),
+                );
               })
             : null;
 
@@ -298,7 +346,11 @@ export default function ClaimedRidesGrid() {
           }
 
           if (claimedBy && typeof claimedBy === "string") {
-            return claimedBy;
+            return claimedBy.trim() || claimedBy;
+          }
+
+          if (normalizedClaimedBy) {
+            return normalizedClaimedBy;
           }
 
           if (claimedId) {
