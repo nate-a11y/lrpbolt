@@ -108,8 +108,11 @@ exports.smsOnCreate = functionsV1
   });
 
 exports.smsOnCreateV2 = onDocumentCreated(
-  { region: "us-central1", secrets: TWILIO_SECRETS },
-  "outboundMessages/{id}",
+  {
+    region: "us-central1",
+    secrets: TWILIO_SECRETS,
+    document: "outboundMessages/{id}",
+  },
   async (event) => {
     try {
       const after = event?.data?.data() || null;
