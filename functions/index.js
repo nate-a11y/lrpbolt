@@ -1,12 +1,15 @@
 /* Proprietary and confidential. See LICENSE. */
+const functionsV1 = require("firebase-functions/v1");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { runWith, setGlobalOptions } = require("firebase-functions/v2/options");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { handleSmsOnCreate, TWILIO_SECRETS } = require("./sms/smsOnCreateHandler");
 
 // LRP: Gen-2 global function options (safe defaults)
 try {
-  const { setGlobalOptions } = require("firebase-functions/v2/options");
   // Only call once per process; idempotent across hot reloads.
   setGlobalOptions({
     region: process.env.FUNCTIONS_REGION || "us-central1",
@@ -25,8 +28,13 @@ try {
   }
 }
 
-if (admin.apps.length === 0) {
-  admin.initializeApp();
+try {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn("Admin already initialized:", e && (e.message || e));
 }
 const db = admin.firestore();
 const messagingClient = admin.messaging();
@@ -75,7 +83,52 @@ function buildDailyDropMessage() {
 }
 
 const { dropDailyFromQueue } = require("./src/jobs/dropDailyFromQueue");
-exports.smsOnCreate = require("./smsOnCreate").smsOnCreate;
+
+exports.smsOnCreate = functionsV1
+  .region("us-central1")
+  .firestore.document("outboundMessages/{id}")
+  .onCreate(async (snap, context) => {
+    try {
+      const data = (snap && snap.data()) || null;
+      const docPath = snap?.ref?.path || `outboundMessages/${context?.params?.id}`;
+      const meta = {
+        docId: context?.params?.id,
+        docPath,
+        eventId: context?.eventId,
+        createTime: snap?.createTime,
+      };
+      await handleSmsOnCreate(data, meta);
+      return null;
+    } catch (e) {
+      logger.error("smsOnCreate (v1) failed", {
+        err: e && (e.stack || e.message || e),
+      });
+      throw e;
+    }
+  });
+
+exports.smsOnCreateV2 = runWith({ region: "us-central1", secrets: TWILIO_SECRETS })(
+  onDocumentCreated("outboundMessages/{id}", async (event) => {
+    try {
+      const after = event?.data?.data() || null;
+      const docPath =
+        event?.data?.ref?.path || `outboundMessages/${event?.params?.id}`;
+      const meta = {
+        docId: event?.params?.id,
+        docPath,
+        eventId: event?.id,
+        createTime: event?.time,
+      };
+      await handleSmsOnCreate(after, meta);
+      return null;
+    } catch (e) {
+      logger.error("smsOnCreateV2 (v2) failed", {
+        err: e && (e.stack || e.message || e),
+      });
+      throw e;
+    }
+  })
+);
 
 async function requireAdmin(emailLower) {
   const snap = await db.doc(`userAccess/${emailLower}`).get();
