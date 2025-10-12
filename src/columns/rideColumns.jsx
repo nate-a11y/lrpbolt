@@ -378,6 +378,19 @@ const resolveRideNotes = (rowOrParams) => {
   );
 };
 
+const PLACEHOLDER_NAMES = new Set(["unknown", "n/a", "na", "-"]);
+
+const isPlaceholderName = (value) => {
+  if (!value) return true;
+  const text = textFromValue(value);
+  if (!text) return true;
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return true;
+  if (PLACEHOLDER_NAMES.has(normalized)) return true;
+  if (normalized.includes("attached")) return true;
+  return false;
+};
+
 const resolveClaimedBy = (rowOrParams) => {
   const row = asRow(rowOrParams);
   const raw = asRaw(row);
@@ -390,7 +403,7 @@ const resolveClaimedBy = (rowOrParams) => {
     row?.claimerName,
     raw?.claimerName,
   );
-  if (claimedName) return claimedName;
+  if (claimedName && !isPlaceholderName(claimedName)) return claimedName;
   return pickText(
     row?.claimedBy,
     raw?.claimedBy,
