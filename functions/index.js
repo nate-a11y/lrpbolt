@@ -8,6 +8,50 @@ if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 const db = admin.firestore();
+const messagingClient = admin.messaging();
+
+async function hasLiveRides() {
+  const snap = await db.collection("liveRides").limit(1).get();
+  return !snap.empty;
+}
+
+async function ensureNotAlreadySentForToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  const logRef = db
+    .collection("notifications")
+    .doc("dailyDrop")
+    .collection("days")
+    .doc(today);
+  const snapshot = await logRef.get();
+  if (snapshot.exists) return { already: true };
+  await logRef.set({
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { already: false, logRef };
+}
+
+function buildDailyDropMessage() {
+  const title = "Lake Ride Pros";
+  const body = "New Rides Have Dropped in the Portal";
+  const imageUrl = "https://lakeridepros.xyz/android-chrome-192x192.png";
+  const clickLink = "https://lakeridepros.xyz/tickets?tab=live";
+  const topic = "allUsers";
+
+  return {
+    topic,
+    notification: { title, body, imageUrl },
+    data: { kind: "daily-drop", deeplink: clickLink },
+    android: { priority: "high", notification: { imageUrl } },
+    apns: {
+      payload: { aps: { sound: "default" } },
+      fcm_options: { image: imageUrl },
+    },
+    webpush: {
+      fcmOptions: { link: clickLink },
+      notification: { image: imageUrl },
+    },
+  };
+}
 
 const { dropDailyFromQueue } = require("./src/jobs/dropDailyFromQueue");
 exports.smsOnCreate = require("./smsOnCreate").smsOnCreate;
@@ -127,6 +171,38 @@ exports.dropDailyRidesNow = onCall({ region: "us-central1" }, async (req) => {
     throw new HttpsError("internal", err?.message || "Internal error");
   }
 });
+
+exports.dailyDropIfLiveRides = onSchedule(
+  {
+    region: "us-central1",
+    schedule: "0 20 * * *",
+    timeZone: "America/Chicago",
+    timeoutSeconds: 300,
+    memoryMiB: 256,
+  },
+  async () => {
+    try {
+      const { already } = await ensureNotAlreadySentForToday();
+      if (already) {
+        logger.info("Already sent daily drop today, skipping.");
+        return;
+      }
+
+      const exists = await hasLiveRides();
+      if (!exists) {
+        logger.info("No live rides found, skipping push.");
+        return;
+      }
+
+      const message = buildDailyDropMessage();
+      const id = await messagingClient.send(message);
+      logger.info("Daily Drop sent successfully:", id);
+    } catch (err) {
+      logger.error("dailyDropIfLiveRides failed", { err });
+      throw err;
+    }
+  },
+);
 
 exports.sendDailySms = onSchedule(
   {
