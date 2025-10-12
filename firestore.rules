@@ -1,4 +1,10 @@
 rules_version = '2';
+// LRP: helper names normalized to avoid reserved/ambiguous identifiers.
+// - lower     → toLowerCaseSafe
+// - startsWith→ strStartsWithSafe
+// - map       → mapVar
+// - k         → keyVar
+// Unused helpers are removed to keep compiler warnings clean.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -16,11 +22,19 @@ service cloud.firestore {
     // ============================================================
 
     // ---------- Auth & helpers ----------
+    function toLowerCaseSafe(value) {
+      return value.toLowerCase();
+    }
+
+    function strStartsWithSafe(haystack, needle) {
+      return haystack.size() >= needle.size() && haystack[0:needle.size()] == needle;
+    }
+
     function authed() { return request.auth != null; }
 
     function email() {
       return authed() && request.auth.token.email is string
-        ? lower(request.auth.token.email)
+        ? toLowerCaseSafe(request.auth.token.email)
         : "";
     }
 
@@ -34,14 +48,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(uid)).data.role;
     }
 
-    function isAdmin()  { return authed() && lower(role()) == "admin"; }
-    function isDriver() { return authed() && lower(role()) == "driver"; }
+    function isAdmin()  { return authed() && toLowerCaseSafe(role()) == "admin"; }
+    /* removed unused helper: isDriver */
 
-    function isOwner(data) {
-      return authed()
-        && data.driverEmail is string
-        && lower(data.driverEmail) == email();
-    }
+    /* removed unused helper: isOwner */
 
     // small validators
     function isStrOrNull(v) { return (v is string) || (v == null); }
@@ -83,10 +93,7 @@ service cloud.firestore {
     }
 
     // tolerate legacy "ClaimedBy"/"ClaimedAt"
-    function claimedByLower(d) {
-      return lower((d.claimedBy != null ? d.claimedBy :
-            (d.ClaimedBy != null ? d.ClaimedBy : "")));
-    }
+    /* removed unused helper: claimedByLower */
     function claimedAtVal(d) {
       return (d.claimedAt != null ? d.claimedAt :
              (d.ClaimedAt != null ? d.ClaimedAt : null));
@@ -94,7 +101,7 @@ service cloud.firestore {
 
     // ---------- userAccess ----------
     match /userAccess/{userId} {
-      allow read: if authed() && (lower(userId) == email() || isAdmin());
+      allow read: if authed() && (toLowerCaseSafe(userId) == email() || isAdmin());
       allow create, update, delete: if authed() && isAdmin();
     }
 
@@ -107,7 +114,7 @@ service cloud.firestore {
     match /fcmTokens/{tokenId} {
       function emailPrefix() { return request.auth != null ? request.auth.token.email : ""; }
       // tokenId format: "<email>__<tokenPrefix>"
-      function ownsDoc() { return tokenId.startsWith(emailPrefix() + "__"); }
+      function ownsDoc() { return strStartsWithSafe(tokenId, emailPrefix() + "__"); }
 
       allow create, update, delete: if request.auth != null
         && ownsDoc()
