@@ -216,49 +216,7 @@ jobs:
           cache-dependency-path: |
             functions/package-lock.json
 
-      # ---- Skip functions job entirely if nothing changed under functions/ ----
-      - name: Determine diff base
-        id: base
-        run: |
-          set -euo pipefail
-          BEFORE="${{ github.event.before }}"
-          if [ "${{ github.event_name }}" = "push" ] && \
-             [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && \
-             git cat-file -e "$BEFORE^{commit}" >/dev/null 2>&1; then
-            echo "base_ref=$BEFORE" >>"$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if git ls-remote --exit-code origin main >/dev/null 2>&1; then
-            echo "base_ref=$(git merge-base HEAD origin/main)" >>"$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if git rev-parse HEAD^ >/dev/null 2>&1; then
-            echo "base_ref=$(git rev-parse HEAD^)" >>"$GITHUB_OUTPUT"
-          else
-            echo "base_ref=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
-          fi
-
-      - name: Detect functions changes
-        id: diff
-        run: |
-          BASE="${{ steps.base.outputs.base_ref }}"
-          CHANGED=$(git diff --name-only "$BASE"...HEAD -- functions/ | tr -d '\r')
-          if [ -n "$CHANGED" ]; then
-            echo "changed=true"  >> "$GITHUB_OUTPUT"
-            printf '%s\n' "$CHANGED"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No function changes."
-          fi
-
-      - name: Stop if no changes
-        if: steps.diff.outputs.changed != 'true'
-        run: echo "✅ No changes in functions/ — skipping Functions deploy."
-
       - name: Write service account key
-        if: steps.diff.outputs.changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -270,24 +228,20 @@ jobs:
           echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> "$GITHUB_ENV"
 
       - name: Install Firebase CLI
-        if: steps.diff.outputs.changed == 'true'
         run: npm i -g firebase-tools@14
 
       - name: Check lockfile sync
-        if: steps.diff.outputs.changed == 'true'
         run: npm run lock:check
 
       - name: Rebuild lockfile if needed
-        if: steps.diff.outputs.changed == 'true' && failure()
+        if: failure()
         run: npm run lock:rebuild
 
       - name: Install Functions deps
-        if: steps.diff.outputs.changed == 'true'
         working-directory: functions
         run: npm run ci:install
 
       - name: Set Twilio secrets in Firebase (idempotent)
-        if: steps.diff.outputs.changed == 'true'
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
@@ -299,14 +253,12 @@ jobs:
           firebase functions:secrets:set TWILIO_FROM        --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_FROM"
 
       - name: Deploy Firestore Rules
-        if: steps.diff.outputs.changed == 'true'
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
 
-      - name: Deploy Functions (changed functions only)
-        if: steps.diff.outputs.changed == 'true'
+      - name: Deploy Functions
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
