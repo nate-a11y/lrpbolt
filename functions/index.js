@@ -4,6 +4,27 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
+// LRP: Gen-2 global function options (safe defaults)
+try {
+  const { setGlobalOptions } = require("firebase-functions/v2/options");
+  // Only call once per process; idempotent across hot reloads.
+  setGlobalOptions({
+    region: process.env.FUNCTIONS_REGION || "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    concurrency: 80,
+    cpu: 1,
+  });
+} catch (e) {
+  // Older firebase-tools in local emulators may not expose v2/options; ignore.
+  if (process && process.env && process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "v2/options not available in this runtime; continuing without setGlobalOptions",
+    );
+  }
+}
+
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
@@ -167,7 +188,7 @@ exports.dropDailyRidesNow = onCall({ region: "us-central1" }, async (req) => {
     const stats = await dropDailyFromQueue({ dryRun });
     return { ok: true, dryRun, stats };
   } catch (err) {
-    console.error("dropDailyRidesNow failed:", err);
+    logger.error("dropDailyRidesNow failed", { err });
     throw new HttpsError("internal", err?.message || "Internal error");
   }
 });
@@ -178,7 +199,7 @@ exports.dailyDropIfLiveRides = onSchedule(
     schedule: "0 20 * * *",
     timeZone: "America/Chicago",
     timeoutSeconds: 300,
-    memoryMiB: 256,
+    memory: "256MiB",
   },
   async () => {
     try {
@@ -219,9 +240,9 @@ exports.sendDailySms = onSchedule(
         status: "queued",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      console.log("sendDailySms queued");
+      logger.info("sendDailySms queued");
     } catch (err) {
-      console.error("sendDailySms error", err);
+      logger.error("sendDailySms error", { err });
     }
   },
 );
@@ -237,7 +258,7 @@ exports.scheduleDropDailyRides = onSchedule(
       const cfg = await db.doc("AdminMeta/config").get();
       const dropEnabled = cfg.exists ? cfg.data().dropEnabled !== false : true;
       if (!dropEnabled) {
-        console.log("dropDailyRides skipped by config");
+        logger.info("dropDailyRides skipped by config");
         return;
       }
 
@@ -253,9 +274,9 @@ exports.scheduleDropDailyRides = onSchedule(
           },
           { merge: true },
         );
-      console.log("dropDailyRides complete", stats);
+      logger.info("dropDailyRides complete", stats);
     } catch (e) {
-      console.error("scheduleDropDailyRides error", e);
+      logger.error("scheduleDropDailyRides error", { err: e });
     }
   },
 );
