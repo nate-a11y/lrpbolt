@@ -159,116 +159,18 @@ export default function ClaimedRidesGrid() {
       buildNativeActionsColumn({
         onEdit: (_id, row) => handleEditRide(row),
         onDelete: async (id) => await deleteRide("claimedRides", id),
-        width: 120,
       }),
     [handleEditRide],
   );
 
-  const userDirectory = useMemo(() => {
-    const directory = new Map();
-    const sourceUsers =
-      Array.isArray(users) && users.length > 0
-        ? users
-        : typeof window !== "undefined" && Array.isArray(window.lrpUsers)
-          ? window.lrpUsers
-          : [];
-
-    sourceUsers.forEach((user) => {
-      if (!user) return;
-      const displayName =
-        user?.displayName ||
-        user?.name ||
-        user?.fullName ||
-        user?.profile?.displayName ||
-        user?.profile?.name ||
-        user?.profile?.fullName ||
-        null;
-      const identifiers = [
-        user?.id,
-        user?.uid,
-        user?.userId,
-        user?.authId,
-        user?.profile?.id,
-        user?.profile?.uid,
-      ];
-      identifiers.forEach((identifier) => {
-        if (typeof identifier !== "string") return;
-        const trimmed = identifier.trim();
-        if (!trimmed) return;
-        const existing = directory.get(trimmed);
-        if (!existing || existing === trimmed) {
-          directory.set(trimmed, displayName || trimmed);
-        }
-      });
-    });
-
-    return directory;
-  }, [users]);
-
-  const getClaimedByDisplay = useCallback(
+  const renderActions = useCallback(
     (params) => {
-      const claimedBy = resolveClaimedBy(params);
-      if (!claimedBy) return "N/A";
-      if (typeof claimedBy === "object") {
-        return (
-          claimedBy?.displayName ||
-          claimedBy?.name ||
-          claimedBy?.fullName ||
-          claimedBy?.profile?.displayName ||
-          claimedBy?.profile?.name ||
-          claimedBy?.profile?.fullName ||
-          "N/A"
-        );
-      }
-
-      const id = typeof claimedBy === "string" ? claimedBy.trim() : "";
-      if (!id) return "N/A";
-
-      const byState = userDirectory.get(id);
-      if (byState) return byState;
-
-      if (typeof window !== "undefined") {
-        const fallbackDirectory = window.lrpUsersDirectory;
-        if (fallbackDirectory && typeof fallbackDirectory.get === "function") {
-          const viaWindow = fallbackDirectory.get(id);
-          if (viaWindow) return viaWindow;
-        }
-        const fallbackList = window.lrpUsers;
-        if (Array.isArray(fallbackList)) {
-          const match = fallbackList.find((user) => {
-            return (
-              user?.id === id ||
-              user?.uid === id ||
-              user?.userId === id ||
-              user?.authId === id ||
-              user?.profile?.id === id ||
-              user?.profile?.uid === id
-            );
-          });
-          if (match) {
-            return (
-              match?.displayName ||
-              match?.name ||
-              match?.fullName ||
-              match?.profile?.displayName ||
-              match?.profile?.name ||
-              match?.profile?.fullName ||
-              id
-            );
-          }
-        }
-      }
-
-      return id || "N/A";
+      const items = actionsColumn.getActions?.(params);
+      if (!items || (Array.isArray(items) && items.length === 0)) return null;
+      return <>{items}</>;
     },
-    [userDirectory],
+    [actionsColumn],
   );
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.lrpUsersDirectory = userDirectory;
-    }
-  }, [userDirectory]);
 
   const columns = useMemo(
     () => [
@@ -333,7 +235,32 @@ export default function ClaimedRidesGrid() {
         headerName: "Claimed By",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => getClaimedByDisplay(params),
+        valueGetter: (params) => {
+          const claimedBy = resolveClaimedBy(params);
+          if (!claimedBy) return "N/A";
+          if (typeof claimedBy === "object") {
+            return (
+              claimedBy?.displayName ||
+              claimedBy?.name ||
+              claimedBy?.fullName ||
+              "Unknown"
+            );
+          }
+          const cachedUsers =
+            typeof window !== "undefined" ? window.lrpUsers : undefined;
+          const directory =
+            Array.isArray(users) && users.length > 0 ? users : cachedUsers;
+          const match = Array.isArray(directory)
+            ? directory.find((user) => user?.id === claimedBy)
+            : null;
+          return (
+            match?.displayName ||
+            match?.name ||
+            match?.fullName ||
+            claimedBy ||
+            "N/A"
+          );
+        },
         valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
@@ -353,12 +280,14 @@ export default function ClaimedRidesGrid() {
         valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
-        ...actionsColumn,
+        field: "__actions",
+        headerName: "Actions",
         minWidth: 120,
-        flex: 0.6,
+        sortable: false,
+        renderCell: renderActions,
       },
     ],
-    [actionsColumn, getClaimedByDisplay],
+    [renderActions, users],
   );
 
   return (
