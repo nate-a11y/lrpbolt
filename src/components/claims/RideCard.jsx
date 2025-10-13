@@ -14,12 +14,49 @@ import {
   Tooltip,
   Grow,
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import DirectionsCar from "@mui/icons-material/DirectionsCar";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import BoltIcon from "@mui/icons-material/Bolt";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+
+// Build a clean summary + extra details without duplicates.
+function buildDetails(ride = {}) {
+  // Candidate lines: prefer summary/description/notes; also allow pickup/dropoff/type
+  const candidates = [
+    ride.summary,
+    ride.description,
+    ride.notes,
+    ride.itinerary,
+    ride.details,
+    ride.pickup && ride.dropoff
+      ? `${ride.pickup} — ${ride.dropoff} • ${ride.rideType || "As Directed"}`
+      : null,
+    ride.pickup,
+    ride.dropoff,
+  ].filter(Boolean);
+
+  // Normalize + dedupe (case/space-insensitive)
+  const seen = new Set();
+  const lines = [];
+  for (const raw of candidates) {
+    const pieces = String(raw)
+      .split(/\r?\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const p of pieces) {
+      const key = p.replace(/\s+/g, " ").toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        lines.push(p);
+      }
+    }
+  }
+
+  const headline = lines[0] || "No details provided.";
+  const extras = lines.slice(1);
+  return { headline, extras, hasMore: extras.length > 0 };
+}
 
 import {
   resolvePickupTime,
@@ -90,10 +127,7 @@ export default function RideCard({
   claiming,
   highlight = false,
   notes = "",
-  notesOpen = false,
-  onToggleNotes,
 }) {
-  const [open, setOpen] = useState(false);
   const pickupSource = useMemo(() => resolvePickupTime(ride), [ride]);
   const dropoffSource = useMemo(() => resolveDropoffTime(ride), [ride]);
   const rawDuration = useMemo(() => resolveRideDuration(ride), [ride]);
@@ -161,6 +195,12 @@ export default function RideCard({
       ? `Status: ${normalizedStatus}`
       : "Unavailable to claim";
   }, [claimable, normalizedStatus, ride?.claimedBy]);
+
+  const { headline, extras, hasMore } = useMemo(
+    () => buildDetails({ ...ride, notes }),
+    [ride, notes],
+  );
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
     <Grow in timeout={220}>
@@ -371,84 +411,64 @@ export default function RideCard({
               )}
             </Stack>
 
-            {notes && (
-              <Box
-                sx={{
-                  p: 1.25,
-                  borderRadius: 2.5,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  backgroundColor: "rgba(255,255,255,0.04)",
-                }}
+            <Box
+              sx={{
+                borderRadius: 2,
+                bgcolor: "rgba(255,255,255,.06)",
+                border: "1px solid rgba(255,255,255,.12)",
+                px: 2,
+                py: 1.25,
+              }}
+            >
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ gap: 1 }}
               >
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={1}
-                  justifyContent="space-between"
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,.85)", pr: 1, minWidth: 0 }}
                 >
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={1.25}
-                    sx={{ minWidth: 0, flexGrow: 1 }}
-                  >
-                    <InfoOutlinedIcon
-                      fontSize="small"
-                      sx={{ color: "primary.main" }}
-                    />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "text.secondary",
-                        minWidth: 0,
-                        display: "-webkit-box",
-                        WebkitLineClamp: notesOpen ? "unset" : 1,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {notes}
-                    </Typography>
-                  </Stack>
+                  {headline}
+                </Typography>
+
+                {hasMore && (
                   <Button
                     size="small"
                     variant="text"
-                    color="primary"
-                    onClick={() => onToggleNotes?.()}
-                    sx={{ fontWeight: 600 }}
+                    onClick={() => setDetailsOpen((v) => !v)}
+                    sx={{
+                      textTransform: "none",
+                      color: "#cfcfcf",
+                      flexShrink: 0,
+                    }}
                   >
-                    {notesOpen ? "Hide" : "View"}
+                    {detailsOpen ? "Hide" : "View"}
                   </Button>
-                </Stack>
-                <Collapse in={notesOpen} unmountOnExit>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "text.secondary", mt: 1 }}
-                  >
-                    {notes}
-                  </Typography>
-                </Collapse>
-              </Box>
-            )}
-
-            <Collapse in={open} unmountOnExit>
-              <Divider
-                sx={{ my: 1.25, borderColor: "rgba(255,255,255,0.08)" }}
-              />
-              <Stack spacing={0.75}>
-                {ride?.pickup ? (
-                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    <strong>Pickup:</strong> {ride.pickup}
-                  </Typography>
-                ) : null}
-                {ride?.dropoff ? (
-                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    <strong>Dropoff:</strong> {ride.dropoff}
-                  </Typography>
-                ) : null}
+                )}
               </Stack>
-            </Collapse>
+
+              <Collapse in={detailsOpen} timeout="auto" unmountOnExit>
+                <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,.08)" }} />
+                <Stack
+                  component="ul"
+                  sx={{
+                    m: 0,
+                    pl: 2,
+                    listStyle: "disc",
+                    color: "rgba(255,255,255,.75)",
+                  }}
+                  spacing={0.5}
+                >
+                  {extras.map((line, i) => (
+                    <Typography key={i} component="li" variant="body2">
+                      {line}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Collapse>
+            </Box>
           </CardContent>
 
           <CardActions
@@ -484,25 +504,6 @@ export default function RideCard({
                 sx={{ flexGrow: 1, maxWidth: { xs: "100%", sm: "auto" } }}
               >
                 {selected ? "Selected" : "Select"}
-              </Button>
-              <Button
-                size="small"
-                color="inherit"
-                variant="outlined"
-                onClick={() => setOpen((v) => !v)}
-                startIcon={<InfoOutlinedIcon fontSize="small" />}
-                sx={{
-                  borderColor: "rgba(255,255,255,0.18)",
-                  color: "rgba(255,255,255,0.72)",
-                  fontWeight: 600,
-                  "&:hover": {
-                    borderColor: "primary.main",
-                    color: "primary.main",
-                    backgroundColor: "rgba(76,187,23,0.08)",
-                  },
-                }}
-              >
-                {open ? "Hide details" : "Details"}
               </Button>
             </Stack>
 
