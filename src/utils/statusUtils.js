@@ -4,7 +4,8 @@ export const normalizeStatus = (s) => {
     .trim()
     .toLowerCase();
   if (!v) return "";
-  if (v === "queued" || v === "queue") return "open";
+  if (["queued", "queue"].includes(v)) return "open";
+  if (["unclaimed", "available"].includes(v)) return "open";
   if (v === "cancelled") return "canceled";
   return v;
 };

@@ -13,6 +13,7 @@ import {
   LinearProgress,
   Stack,
   Typography,
+  Grow,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
@@ -325,7 +326,7 @@ export default function ClaimRides() {
           spacing={2}
           alignItems={{ xs: "flex-start", sm: "center" }}
           justifyContent="space-between"
-          sx={{ mb: 2.5, gap: 2 }}
+          sx={{ mb: 2.5, gap: 2, flexWrap: "wrap", rowGap: 1 }}
         >
           <Box sx={{ minWidth: 0 }}>
             <Typography
@@ -418,10 +419,10 @@ export default function ClaimRides() {
         <Stack
           spacing={2.5}
           sx={{
-            overflowY: "auto",
-            overflowX: "hidden",
+            overflow: "visible",
             WebkitOverflowScrolling: "touch",
             paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+            "& > *": { overflow: "visible" },
             "& > section:last-of-type": { mb: 2 },
           }}
         >
@@ -439,18 +440,21 @@ export default function ClaimRides() {
                 onSelectAll={() => sel.toggleMany(g.rides)}
               >
                 {g.rides?.map((ride) => (
-                  <RideCard
-                    key={ride.id}
-                    ride={ride}
-                    selected={sel.isSelected(ride)}
-                    onToggleSelect={() => sel.toggle(ride)}
-                    onClaim={() => handleClaim(ride)}
-                    claiming={Boolean(isClaiming[ride.id])}
-                    notes={ride.__notes}
-                    notesOpen={Boolean(openNotes[ride.id])}
-                    onToggleNotes={() => handleToggleNotes(ride.id)}
-                    highlight={Boolean(ride.__isNew)}
-                  />
+                  <Grow in timeout={180} key={ride.id}>
+                    <div>
+                      <RideCard
+                        ride={ride}
+                        selected={sel.isSelected(ride)}
+                        onToggleSelect={() => sel.toggle(ride)}
+                        onClaim={() => handleClaim(ride)}
+                        claiming={Boolean(isClaiming[ride.id])}
+                        notes={ride.__notes}
+                        notesOpen={Boolean(openNotes[ride.id])}
+                        onToggleNotes={() => handleToggleNotes(ride.id)}
+                        highlight={Boolean(ride.__isNew)}
+                      />
+                    </div>
+                  </Grow>
                 ))}
               </RideGroup>
             );
