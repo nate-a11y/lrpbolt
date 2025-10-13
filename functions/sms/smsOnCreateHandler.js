@@ -1,8 +1,6 @@
 const { FieldValue } = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
-const axios = require("axios");
-
 const TWILIO_SECRETS = [
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",
@@ -37,7 +35,7 @@ async function ensureOnce(eventId) {
  * @param {object} meta
  * @returns {Promise<null|void>}
  */
-async function handleSmsOnCreate(payload, meta = {}) {
+async function handleSmsOnCreate(payload, meta = {}, options = {}) {
   if (!payload || payload.channel !== "sms") {
     return null;
   }
@@ -50,7 +48,19 @@ async function handleSmsOnCreate(payload, meta = {}) {
   const docRef = docPath ? db.doc(docPath) : null;
 
   const env = process.env || {};
-  const missing = TWILIO_SECRETS.filter((key) => !env[key]);
+  const config = {
+    accountSid: options.accountSid || env.TWILIO_ACCOUNT_SID || "",
+    authToken: options.authToken || env.TWILIO_AUTH_TOKEN || "",
+    from: options.twilioFrom || env.TWILIO_FROM || "",
+  };
+  const missing = TWILIO_SECRETS.filter((key) => {
+    if (key === "TWILIO_ACCOUNT_SID") return !config.accountSid;
+    if (key === "TWILIO_AUTH_TOKEN") return !config.authToken;
+    if (key === "TWILIO_FROM") return !config.from;
+    return false;
+  });
+
+  const client = options.twilioClient || null;
 
   const updateDoc = async (fields) => {
     if (!docRef) {
@@ -88,26 +98,27 @@ async function handleSmsOnCreate(payload, meta = {}) {
     return fail(`Missing Twilio env vars: ${missing.join(", ")}`);
   }
 
+  if (!client) {
+    return fail("Missing Twilio client");
+  }
+
   const { to, body } = payload;
   if (!to || !body) {
     return fail("Missing to/body");
   }
 
   try {
-    const client = axios.create({
-      baseURL: `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}`,
-      auth: { username: env.TWILIO_ACCOUNT_SID, password: env.TWILIO_AUTH_TOKEN },
-      timeout: 12000,
-    });
-
-    const form = new URLSearchParams({ To: to, Body: body });
-    if (String(env.TWILIO_FROM).startsWith("MG")) {
-      form.set("MessagingServiceSid", env.TWILIO_FROM);
+    const message = {
+      to,
+      body,
+    };
+    if (String(config.from).startsWith("MG")) {
+      message.messagingServiceSid = config.from;
     } else {
-      form.set("From", env.TWILIO_FROM);
+      message.from = config.from;
     }
 
-    const { data } = await client.post("/Messages.json", form);
+    const data = await client.messages.create(message);
 
     await updateDoc({
       status: "sent",
@@ -125,4 +136,4 @@ async function handleSmsOnCreate(payload, meta = {}) {
   }
 }
 
-module.exports = { handleSmsOnCreate, ensureOnce, TWILIO_SECRETS };
+module.exports = { handleSmsOnCreate, ensureOnce };
