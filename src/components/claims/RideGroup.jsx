@@ -20,7 +20,7 @@ export default function RideGroup({
         pt: 2,
         mt: 1.5,
         isolation: "isolate", // 🔑 creates a stacking context
-        zIndex: (t) => t.zIndex.appBar + 2, // 🔑 sits above decorative curves
+        zIndex: 2, // keep above decorative art but below global overlays
       }}
     >
       <Box
