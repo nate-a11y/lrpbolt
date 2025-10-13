@@ -21,7 +21,7 @@
     "images:verify": "node scripts/verify-webp.mjs",
     "lint": "eslint --ext .js,.jsx src",
     "lint:fix": "eslint . --fix",
-    "postinstall": "patch-package && (npm run verify:happy-dom || yarn verify:happy-dom || true)",
+    "postinstall": "patch-package && node ./scripts/enforce-happy-dom.js",
     "prebuild": "npm run images:verify",
     "preview": "vite preview",
     "test": "vitest run --coverage",
@@ -42,7 +42,7 @@
     "fix:lock": "npm run lock:rebuild",
     "lh": "lhci autorun || echo \"(optional) LHCI not installed; skipping\"",
     "typecheck": "echo 'JS-only project: skipping TS typecheck'",
-    "verify:happy-dom": "node -e \"try{require.resolve('happy-dom/package.json');const v=require('happy-dom/package.json').version; if(parseInt(v.split('.')[0],10)<20) {process.exit(1)} }catch(e){process.exit(1)}\" || (echo 'happy-dom <20 detected. Check overrides/resolutions.' && exit 1)",
+    "verify:happy-dom": "node ./scripts/enforce-happy-dom.js",
     "precommit": "npm run lint && npm run format",
     "prepare": "husky"
   },
