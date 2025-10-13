@@ -21,7 +21,7 @@
     "images:verify": "node scripts/verify-webp.mjs",
     "lint": "eslint --ext .js,.jsx src",
     "lint:fix": "eslint . --fix",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && (npm run verify:happy-dom || yarn verify:happy-dom || true)",
     "prebuild": "npm run images:verify",
     "preview": "vite preview",
     "test": "vitest run --coverage",
@@ -42,6 +42,7 @@
     "fix:lock": "npm run lock:rebuild",
     "lh": "lhci autorun || echo \"(optional) LHCI not installed; skipping\"",
     "typecheck": "echo 'JS-only project: skipping TS typecheck'",
+    "verify:happy-dom": "node -e \"try{require.resolve('happy-dom/package.json');const v=require('happy-dom/package.json').version; if(parseInt(v.split('.')[0],10)<20) {process.exit(1)} }catch(e){process.exit(1)}\" || (echo 'happy-dom <20 detected. Check overrides/resolutions.' && exit 1)",
     "precommit": "npm run lint && npm run format",
     "prepare": "husky"
   },
@@ -112,6 +113,7 @@
     "fast-glob": "^3.3.3",
     "globals": "^16.3.0",
     "globby": "^14.1.0",
+    "happy-dom": "20.0.0",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "msw": "^2.11.1",
@@ -139,6 +141,7 @@
     "gauge": "^5.0.0",
     "gaxios": "^6.7.1",
     "glob": "^11.0.3",
+    "happy-dom": "20.0.0",
     "google-auth-library": "^9.14.2",
     "http-proxy-agent": "^7.0.2",
     "https-proxy-agent": "^7.0.5",
@@ -149,6 +152,14 @@
     "source-map": "^0.7.6",
     "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.5.4",
     "teeny-request": "^9.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "happy-dom": "20.0.0"
+    }
+  },
+  "resolutions": {
+    "happy-dom": "20.0.0"
   },
   "type": "module"
 }
