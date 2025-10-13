@@ -141,316 +141,328 @@ export default function RideCard({
         position: "relative",
         mx: { xs: 1, sm: 1.5 },
         my: 1.25,
-        p: { xs: 1.75, sm: 2 },
         borderRadius: 4,
-        overflow: "hidden",
-        background:
-          "linear-gradient(135deg, rgba(76,187,23,0.14), rgba(6,6,6,0.95))",
-        border: "1px solid",
-        borderColor: selected ? "primary.main" : "rgba(255,255,255,0.08)",
+        // IMPORTANT: allow the header row to render past card bounds if any parent clips
+        overflow: "visible",
+        background: "transparent",
         boxShadow: selected
           ? "0 18px 34px rgba(76,187,23,0.28)"
           : "0 14px 26px rgba(0,0,0,0.45)",
         transition:
           "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
+        willChange: "transform",
         "&:hover": {
-          transform: "translateY(-3px)",
+          transform: "translateY(-3px) translateZ(0)", // keep the lift, avoid paint cliffs
           boxShadow: "0 18px 36px rgba(0,0,0,0.55)",
         },
-        ...(highlight
-          ? {
-              borderColor: "primary.light",
-              boxShadow:
-                "0 0 0 1px rgba(76,187,23,0.75), 0 26px 48px rgba(76,187,23,0.2)",
-            }
-          : {}),
       }}
       aria-pressed={selected}
     >
-      <CardContent
+      {/* Inner “surface” holds gradient + border + padding, so the outer Card can be overflow:visible */}
+      <Box
         sx={{
-          p: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 1.75,
+          p: { xs: 1.75, sm: 2 },
+          borderRadius: 4,
+          background:
+            "linear-gradient(135deg, rgba(76,187,23,0.14), rgba(6,6,6,0.95))",
+          border: "1px solid",
+          borderColor: selected ? "primary.main" : "rgba(255,255,255,0.08)",
+          ...(highlight
+            ? {
+                borderColor: "primary.light",
+                boxShadow:
+                  "0 0 0 1px rgba(76,187,23,0.75), 0 26px 48px rgba(76,187,23,0.2)",
+              }
+            : {}),
         }}
       >
-        <Stack
-          direction="row"
-          spacing={1.5}
-          alignItems="center"
-          useFlexGap
-          flexWrap="wrap"
-          sx={{ rowGap: 1.25 }}
+        <CardContent
+          sx={{
+            p: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.75,
+          }}
         >
-          <Box
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              backgroundColor: "rgba(76,187,23,0.16)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "primary.main",
-              flexShrink: 0,
-            }}
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ rowGap: 1.25 }}
           >
-            <DirectionsCar fontSize="small" />
-          </Box>
-          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography
-              variant="overline"
+            <Box
               sx={{
-                letterSpacing: 1.1,
-                color: "rgba(255,255,255,0.64)",
-                textTransform: "uppercase",
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                backgroundColor: "rgba(76,187,23,0.16)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "primary.main",
+                flexShrink: 0,
               }}
             >
-              {ride?.type || "Ride"}
-            </Typography>
+              <DirectionsCar fontSize="small" />
+            </Box>
+            <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+              <Typography
+                variant="overline"
+                sx={{
+                  letterSpacing: 1.1,
+                  color: "rgba(255,255,255,0.64)",
+                  textTransform: "uppercase",
+                }}
+              >
+                {ride?.type || "Ride"}
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 800,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {ride?.vehicleLabel || ride?.vehicle || "Vehicle"}
+              </Typography>
+            </Box>
+            {claimed && (
+              <Chip
+                color="success"
+                icon={<CheckCircle />}
+                label="Claimed"
+                size="small"
+                sx={{ fontWeight: 600 }}
+              />
+            )}
+          </Stack>
+
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ rowGap: 1 }}
+          >
+            <ScheduleRoundedIcon
+              sx={{ color: "primary.main" }}
+              fontSize="small"
+            />
             <Typography
-              variant="h6"
+              variant="h5"
               sx={{
-                fontWeight: 800,
+                fontWeight: 900,
+                color: "primary.main",
                 minWidth: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
               }}
             >
-              {ride?.vehicleLabel || ride?.vehicle || "Vehicle"}
+              {rangeLabel}
             </Typography>
-          </Box>
-          {claimed && (
-            <Chip
-              color="success"
-              icon={<CheckCircle />}
-              label="Claimed"
-              size="small"
-              sx={{ fontWeight: 600 }}
-            />
-          )}
-        </Stack>
+          </Stack>
 
-        <Stack
-          direction="row"
-          spacing={1.25}
-          alignItems="center"
-          useFlexGap
-          flexWrap="wrap"
-          sx={{ rowGap: 1 }}
-        >
-          <ScheduleRoundedIcon
-            sx={{ color: "primary.main" }}
-            fontSize="small"
-          />
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 900,
-              color: "primary.main",
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ rowGap: 1 }}
           >
-            {rangeLabel}
-          </Typography>
-        </Stack>
-
-        <Stack
-          direction="row"
-          spacing={1}
-          useFlexGap
-          flexWrap="wrap"
-          sx={{ rowGap: 1 }}
-        >
-          <Chip
-            icon={<AccessTimeIcon fontSize="small" />}
-            label={durationLabel}
-            size="small"
-            sx={{
-              bgcolor: "rgba(255,255,255,0.06)",
-              color: "common.white",
-              fontWeight: 600,
-              ".MuiChip-icon": { color: "primary.main" },
-            }}
-          />
-          <Chip
-            label={`ID ${ride?.idShort || ride?.id || "N/A"}`}
-            size="small"
-            sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "common.white" }}
-          />
-          {ride?.scanStatus && (
             <Chip
-              label={ride.scanStatus}
+              icon={<AccessTimeIcon fontSize="small" />}
+              label={durationLabel}
               size="small"
-              color={ride.scanStatus === "Not Scanned" ? "warning" : "success"}
-              sx={{ fontWeight: 600 }}
+              sx={{
+                bgcolor: "rgba(255,255,255,0.06)",
+                color: "common.white",
+                fontWeight: 600,
+                ".MuiChip-icon": { color: "primary.main" },
+              }}
             />
-          )}
-        </Stack>
+            <Chip
+              label={`ID ${ride?.idShort || ride?.id || "N/A"}`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "common.white" }}
+            />
+            {ride?.scanStatus && (
+              <Chip
+                label={ride.scanStatus}
+                size="small"
+                color={
+                  ride.scanStatus === "Not Scanned" ? "warning" : "success"
+                }
+                sx={{ fontWeight: 600 }}
+              />
+            )}
+          </Stack>
 
-        {notes && (
-          <Box
-            sx={{
-              p: 1.25,
-              borderRadius: 2.5,
-              border: "1px solid rgba(255,255,255,0.08)",
-              backgroundColor: "rgba(255,255,255,0.04)",
-            }}
-          >
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={1}
-              justifyContent="space-between"
+          {notes && (
+            <Box
+              sx={{
+                p: 1.25,
+                borderRadius: 2.5,
+                border: "1px solid rgba(255,255,255,0.08)",
+                backgroundColor: "rgba(255,255,255,0.04)",
+              }}
             >
               <Stack
                 direction="row"
                 alignItems="center"
-                spacing={1.25}
-                sx={{ minWidth: 0, flexGrow: 1 }}
+                spacing={1}
+                justifyContent="space-between"
               >
-                <InfoOutlinedIcon
-                  fontSize="small"
-                  sx={{ color: "primary.main" }}
-                />
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1.25}
+                  sx={{ minWidth: 0, flexGrow: 1 }}
+                >
+                  <InfoOutlinedIcon
+                    fontSize="small"
+                    sx={{ color: "primary.main" }}
+                  />
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      minWidth: 0,
+                      display: "-webkit-box",
+                      WebkitLineClamp: notesOpen ? "unset" : 1,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {notes}
+                  </Typography>
+                </Stack>
+                <Button
+                  size="small"
+                  variant="text"
+                  color="primary"
+                  onClick={() => onToggleNotes?.()}
+                  sx={{ fontWeight: 600 }}
+                >
+                  {notesOpen ? "Hide" : "View"}
+                </Button>
+              </Stack>
+              <Collapse in={notesOpen} unmountOnExit>
                 <Typography
                   variant="body2"
-                  sx={{
-                    color: "text.secondary",
-                    minWidth: 0,
-                    display: "-webkit-box",
-                    WebkitLineClamp: notesOpen ? "unset" : 1,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
+                  sx={{ color: "text.secondary", mt: 1 }}
                 >
                   {notes}
                 </Typography>
-              </Stack>
-              <Button
-                size="small"
-                variant="text"
-                color="primary"
-                onClick={() => onToggleNotes?.()}
-                sx={{ fontWeight: 600 }}
-              >
-                {notesOpen ? "Hide" : "View"}
-              </Button>
+              </Collapse>
+            </Box>
+          )}
+
+          <Collapse in={open} unmountOnExit>
+            <Divider sx={{ my: 1.25, borderColor: "rgba(255,255,255,0.08)" }} />
+            <Stack spacing={0.75}>
+              {ride?.pickup ? (
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  <strong>Pickup:</strong> {ride.pickup}
+                </Typography>
+              ) : null}
+              {ride?.dropoff ? (
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                  <strong>Dropoff:</strong> {ride.dropoff}
+                </Typography>
+              ) : null}
             </Stack>
-            <Collapse in={notesOpen} unmountOnExit>
-              <Typography
-                variant="body2"
-                sx={{ color: "text.secondary", mt: 1 }}
-              >
-                {notes}
-              </Typography>
-            </Collapse>
-          </Box>
-        )}
+          </Collapse>
+        </CardContent>
 
-        <Collapse in={open} unmountOnExit>
-          <Divider sx={{ my: 1.25, borderColor: "rgba(255,255,255,0.08)" }} />
-          <Stack spacing={0.75}>
-            {ride?.pickup ? (
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                <strong>Pickup:</strong> {ride.pickup}
-              </Typography>
-            ) : null}
-            {ride?.dropoff ? (
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                <strong>Dropoff:</strong> {ride.dropoff}
-              </Typography>
-            ) : null}
-          </Stack>
-        </Collapse>
-      </CardContent>
-
-      <CardActions
-        sx={{
-          mt: 2,
-          px: 0,
-          pt: 1.5,
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "stretch", sm: "center" },
-          justifyContent: "space-between",
-          gap: 1.25,
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={1}
-          useFlexGap
-          flexWrap="wrap"
+        <CardActions
           sx={{
-            width: "100%",
-            rowGap: 1,
-            maxWidth: { xs: "100%", sm: "60%" },
+            mt: 2,
+            px: 0,
+            pt: 1.5,
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            justifyContent: "space-between",
+            gap: 1.25,
           }}
         >
-          <Button
-            variant={selected ? "contained" : "outlined"}
-            color="primary"
-            size="small"
-            onClick={onToggleSelect}
-            aria-label={selected ? "Deselect ride" : "Select ride"}
-            sx={{ flexGrow: 1, maxWidth: { xs: "100%", sm: "auto" } }}
-          >
-            {selected ? "Selected" : "Select"}
-          </Button>
-          <Button
-            size="small"
-            color="inherit"
-            variant="outlined"
-            onClick={() => setOpen((v) => !v)}
-            startIcon={<InfoOutlinedIcon fontSize="small" />}
+          <Stack
+            direction="row"
+            spacing={1}
+            useFlexGap
+            flexWrap="wrap"
             sx={{
-              borderColor: "rgba(255,255,255,0.18)",
-              color: "rgba(255,255,255,0.72)",
-              fontWeight: 600,
-              "&:hover": {
-                borderColor: "primary.main",
-                color: "primary.main",
-                backgroundColor: "rgba(76,187,23,0.08)",
+              width: "100%",
+              rowGap: 1,
+              maxWidth: { xs: "100%", sm: "60%" },
+            }}
+          >
+            <Button
+              variant={selected ? "contained" : "outlined"}
+              color="primary"
+              size="small"
+              onClick={onToggleSelect}
+              aria-label={selected ? "Deselect ride" : "Select ride"}
+              sx={{ flexGrow: 1, maxWidth: { xs: "100%", sm: "auto" } }}
+            >
+              {selected ? "Selected" : "Select"}
+            </Button>
+            <Button
+              size="small"
+              color="inherit"
+              variant="outlined"
+              onClick={() => setOpen((v) => !v)}
+              startIcon={<InfoOutlinedIcon fontSize="small" />}
+              sx={{
+                borderColor: "rgba(255,255,255,0.18)",
+                color: "rgba(255,255,255,0.72)",
+                fontWeight: 600,
+                "&:hover": {
+                  borderColor: "primary.main",
+                  color: "primary.main",
+                  backgroundColor: "rgba(76,187,23,0.08)",
+                },
+              }}
+            >
+              {open ? "Hide details" : "Details"}
+            </Button>
+          </Stack>
+
+          <Button
+            variant="contained"
+            color="primary"
+            size="medium"
+            disabled={claiming || !claimable}
+            onClick={onClaim}
+            aria-label="Claim ride"
+            startIcon={<BoltIcon fontSize="small" />}
+            sx={{
+              borderRadius: 9999,
+              px: 3,
+              py: 1,
+              alignSelf: { xs: "stretch", sm: "center" },
+              boxShadow: "0 0 0 0 rgba(0,0,0,0)",
+              color: "#060606",
+              fontWeight: 700,
+              "&:hover": { filter: "brightness(1.08)" },
+              "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.4)",
+                backgroundColor: "rgba(255,255,255,0.08)",
               },
             }}
           >
-            {open ? "Hide details" : "Details"}
+            {claimButtonLabel}
           </Button>
-        </Stack>
-
-        <Button
-          variant="contained"
-          color="primary"
-          size="medium"
-          disabled={claiming || !claimable}
-          onClick={onClaim}
-          aria-label="Claim ride"
-          startIcon={<BoltIcon fontSize="small" />}
-          sx={{
-            borderRadius: 9999,
-            px: 3,
-            py: 1,
-            alignSelf: { xs: "stretch", sm: "center" },
-            boxShadow: "0 0 0 0 rgba(0,0,0,0)",
-            color: "#060606",
-            fontWeight: 700,
-            "&:hover": { filter: "brightness(1.08)" },
-            "&.Mui-disabled": {
-              color: "rgba(255,255,255,0.4)",
-              backgroundColor: "rgba(255,255,255,0.08)",
-            },
-          }}
-        >
-          {claimButtonLabel}
-        </Button>
-      </CardActions>
+        </CardActions>
+      </Box>
     </Card>
   );
 }
