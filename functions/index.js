@@ -16,6 +16,58 @@ const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 const TWILIO_FROM = defineSecret("TWILIO_FROM");
 
+// --- Formatting helpers for SMS (idempotent) ---
+const SMS_TZ = process.env.SMS_TZ || "America/Chicago";
+
+function toDateMaybe(ts) {
+  try {
+    if (!ts) return null;
+    if (typeof ts.toDate === "function") return ts.toDate();
+    if (typeof ts._seconds === "number") return new Date(ts._seconds * 1000);
+    return new Date(ts);
+  } catch {
+    return null;
+  }
+}
+
+function fmtMdyTime(dateLike) {
+  const d = toDateMaybe(dateLike);
+  if (!d) return "";
+  // "12/12/2025 2:02 PM" (no comma)
+  const s = new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: SMS_TZ,
+  }).format(d);
+  return String(s).replace(",", "");
+}
+
+function fmtDurationHHMM(data) {
+  const s = toDateMaybe(data?.pickupTime || data?.startTime);
+  const e = toDateMaybe(data?.endTime);
+  let minutes = null;
+
+  if (s && e) {
+    minutes = Math.max(0, Math.round((e.getTime() - s.getTime()) / 60000));
+  } else if (typeof data?.rideDuration === "number") {
+    // Heuristic: treat as hours if <= 24, else minutes
+    minutes =
+      data.rideDuration <= 24
+        ? Math.round(data.rideDuration * 60)
+        : Math.round(data.rideDuration);
+    if (minutes < 0) minutes = 0;
+  }
+
+  if (minutes == null) return "N/A";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 // LRP: Gen-2 global function options (safe defaults)
 try {
   // Only call once per process; idempotent across hot reloads.
@@ -393,25 +445,6 @@ function toDateSafe(input) {
   return date;
 }
 
-function formatClaimTimestamp(ts) {
-  const date = toDateSafe(ts);
-  if (!date) return "";
-  try {
-    return date.toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch (error) {
-    logger.warn("formatClaimTimestamp failed", {
-      err: error && (error.stack || error.message || error),
-    });
-    return "";
-  }
-}
-
 function normalizeEmail(value) {
   if (!value) return "";
   if (typeof value === "string") return value.trim().toLowerCase();
@@ -448,26 +481,6 @@ async function ensureOutboxOnce(key, info) {
     }
     throw error;
   }
-}
-
-function buildClaimSmsBody({ vehicle, when, rideType, tripId, notes }) {
-  const pieces = [];
-  const headlineParts = [`LRP: You claimed ${vehicle || "ride"}`];
-  if (when) {
-    headlineParts.push(`for ${when}`);
-  }
-  if (rideType) {
-    headlineParts.push(`• ${rideType}`);
-  }
-  pieces.push(headlineParts.join(" "));
-  if (tripId) {
-    pieces.push(`Trip ${tripId}.`);
-  }
-  if (notes) {
-    pieces.push(notes);
-  }
-  pieces.push("Reply STOP to opt out.");
-  return pieces.join(" ").replace(/\s+/g, " ").trim();
 }
 
 async function sendClaimSms(to, body) {
@@ -516,17 +529,8 @@ async function notifyDriverOfClaim(rideId, data) {
     return;
   }
 
-  const when = formatClaimTimestamp(
-    firstDefined(data.pickupTime, data.PickupTime, data.startTime),
-  );
   const vehicle = firstDefined(data.vehicle, data.Vehicle) || "ride";
-  const rideType = firstDefined(data.rideType, data.RideType, "");
   const tripId = firstDefined(data.tripId, data.TripID, data.id, rideId);
-  const rawNotes = firstDefined(data.rideNotes, data.RideNotes, "");
-  const notes =
-    typeof rawNotes === "string" && rawNotes.trim()
-      ? `${rawNotes.trim().slice(0, 120)}`
-      : "";
 
   const outboxKey = `driverClaimSms_${rideId}_${driverEmail.replace(
     /[^a-z0-9]/gi,
@@ -547,13 +551,30 @@ async function notifyDriverOfClaim(rideId, data) {
     return;
   }
 
-  const body = buildClaimSmsBody({
-    vehicle,
-    when,
-    rideType,
-    tripId,
-    notes,
-  });
+  // Compose SMS in fixed, multi-line format
+  const tripIdForSms = data?.tripId || rideId;
+
+  const vehicleLabel = (() => {
+    const code = data?.vehicleCode || data?.vehicleId || data?.vehicleTag;
+    const name = data?.vehicleName || data?.vehicle || data?.unit;
+    if (code && name) return `${code} - ${name}`;
+    return code || name || "Vehicle";
+  })();
+
+  const dateTime = fmtMdyTime(data?.pickupTime || data?.startTime) || "TBD";
+  const duration = fmtDurationHHMM(data);
+  const tripType = data?.rideType || "N/A";
+  const notes = (data?.rideNotes || data?.notes || "").toString().trim() || "none";
+  const claimedAt = fmtMdyTime(data?.claimedAt) || fmtMdyTime(new Date());
+
+  const body =
+    `Trip ID: ${tripIdForSms}\n` +
+    `Vehicle: ${vehicleLabel}\n` +
+    `Date/Time: ${dateTime}\n` +
+    `Duration: ${duration}\n` +
+    `Trip Type: ${tripType}\n` +
+    `Trip Notes: ${notes}\n\n` +
+    `Claimed At: ${claimedAt}`;
   await sendClaimSms(phone, body);
 }
 
