@@ -6,7 +6,13 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
-const { handleSmsOnCreate, TWILIO_SECRETS } = require("./sms/smsOnCreateHandler");
+const { defineSecret } = require("firebase-functions/params");
+const twilio = require("twilio");
+const { handleSmsOnCreate } = require("./sms/smsOnCreateHandler");
+
+const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
+const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
+const TWILIO_FROM = defineSecret("TWILIO_FROM");
 
 // LRP: Gen-2 global function options (safe defaults)
 try {
@@ -98,7 +104,17 @@ exports.smsOnCreate = functionsV1
         eventId: context?.eventId,
         createTime: snap?.createTime,
       };
-      await handleSmsOnCreate(data, meta);
+      const env = process.env || {};
+      const sid = env.TWILIO_ACCOUNT_SID || "";
+      const token = env.TWILIO_AUTH_TOKEN || "";
+      const from = env.TWILIO_FROM || "";
+      const client = sid && token ? twilio(sid, token) : null;
+      await handleSmsOnCreate(data, meta, {
+        twilioClient: client,
+        accountSid: sid,
+        authToken: token,
+        twilioFrom: from,
+      });
       return null;
     } catch (e) {
       logger.error("smsOnCreate (v1) failed", {
@@ -112,20 +128,36 @@ exports.smsOnCreateV2 = onDocumentCreated(
   {
     document: "outboundMessages/{id}",
     region: "us-central1",
-    secrets: TWILIO_SECRETS,
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
   },
   async (event) => {
+    const data = event.data?.data();
+    if (!data?.to || !data?.body) {
+      throw new Error("Missing to/body");
+    }
+
+    const sid = TWILIO_ACCOUNT_SID.value();
+    const token = TWILIO_AUTH_TOKEN.value();
+    const from = TWILIO_FROM.value();
+
+    const client = twilio(sid, token);
+
+    const docPath =
+      event?.data?.ref?.path || `outboundMessages/${event?.params?.id}`;
+    const meta = {
+      docId: event?.params?.id,
+      docPath,
+      eventId: event?.id,
+      createTime: event?.time,
+    };
+
     try {
-      const after = event?.data?.data() || null;
-      const docPath =
-        event?.data?.ref?.path || `outboundMessages/${event?.params?.id}`;
-      const meta = {
-        docId: event?.params?.id,
-        docPath,
-        eventId: event?.id,
-        createTime: event?.time,
-      };
-      await handleSmsOnCreate(after, meta);
+      await handleSmsOnCreate(data, meta, {
+        twilioClient: client,
+        accountSid: sid,
+        authToken: token,
+        twilioFrom: from,
+      });
       return null;
     } catch (e) {
       logger.error("smsOnCreateV2 (v2) failed", {
