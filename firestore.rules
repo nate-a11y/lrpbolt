@@ -1,35 +1,17 @@
 rules_version = '2';
-// LRP: helper names normalized to avoid reserved/ambiguous identifiers.
-// - lower     → toLowerCaseSafe
-// - startsWith→ strStartsWithSafe
-// - map       → mapVar
-// - k         → keyVar
-// Unused helpers are removed to keep compiler warnings clean.
+
+// LRP Firestore Rules (map-free, warning-free)
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // === LRP helpers (idempotent) ===
-    function norm(s) {
-      return s == null ? "" : s.lower();
-    }
-
-    function allowedKeys(keys) {
-      // Use to validate whitelisted field sets in write rules
-      return request.resource.data.keys().hasOnly(keys);
-    }
 
     // ============================================================
     // WIDE-OPEN OVERRIDE (Public read/write; no auth required)
     // ============================================================
+    // NOTE: This makes the database public. Keep while testing, but
+    // remove when you’re ready to enforce the collection rules below.
     match /{document=**} {
       allow read, write: if true;
     }
-
-    // ============================================================
-    // Schema helpers & collection rules (kept for future lockdown)
-    // NOTE: These are effectively bypassed by the wide-open rule above.
-    //       Keep them here so you can re-enable fine-grained control later.
-    // ============================================================
 
     // ---------- Auth & helpers ----------
     function toLowerCaseSafe(value) {
@@ -59,9 +41,6 @@ service cloud.firestore {
     }
 
     function isAdmin()  { return authed() && toLowerCaseSafe(role()) == "admin"; }
-    /* removed unused helper: isDriver */
-
-    /* removed unused helper: isOwner */
 
     // small validators
     function isStrOrNull(v) { return (v is string) || (v == null); }
@@ -82,6 +61,7 @@ service cloud.firestore {
       ];
     }
 
+    // Validate a single (k, v) pair for rides (used by create checks)
     function rideIsValid(k, v) {
       return
         (k=='tripId'              && isStrOrNull(v)) ||
@@ -102,8 +82,27 @@ service cloud.firestore {
         (k=='lastModifiedBy'      && isStrOrNull(v));
     }
 
-    // tolerate legacy "ClaimedBy"/"ClaimedAt"
-    /* removed unused helper: claimedByLower */
+    // Validate ONLY fields present in d (for update; no map/loops)
+    function rideUpdateFieldsValid(d) {
+      return
+        (!d.keys().hasAny(['tripId'])              || isStrOrNull(d.tripId)) &&
+        (!d.keys().hasAny(['pickupTime'])          || d.pickupTime is timestamp) &&
+        (!d.keys().hasAny(['rideDuration'])        || isNumOrNull(d.rideDuration)) &&
+        (!d.keys().hasAny(['rideType'])            || isStrOrNull(d.rideType)) &&
+        (!d.keys().hasAny(['vehicle'])             || isStrOrNull(d.vehicle)) &&
+        (!d.keys().hasAny(['rideNotes'])           || isStrOrNull(d.rideNotes)) &&
+        (!d.keys().hasAny(['claimedBy'])           || isStrOrNull(d.claimedBy)) &&
+        (!d.keys().hasAny(['ClaimedBy'])           || isStrOrNull(d.ClaimedBy)) &&
+        (!d.keys().hasAny(['claimedAt'])           || isTsOrNull(d.claimedAt)) &&
+        (!d.keys().hasAny(['ClaimedAt'])           || isTsOrNull(d.ClaimedAt)) &&
+        (!d.keys().hasAny(['status'])              || isStrOrNull(d.status)) &&
+        (!d.keys().hasAny(['importedFromQueueAt']) || isTsOrNull(d.importedFromQueueAt)) &&
+        (!d.keys().hasAny(['createdAt'])           || d.createdAt is timestamp) &&
+        (!d.keys().hasAny(['createdBy'])           || isStrOrNull(d.createdBy)) &&
+        (!d.keys().hasAny(['updatedAt'])           || isTsOrNull(d.updatedAt)) &&
+        (!d.keys().hasAny(['lastModifiedBy'])      || isStrOrNull(d.lastModifiedBy));
+    }
+
     // ---------- userAccess ----------
     match /userAccess/{userId} {
       allow read: if authed() && (toLowerCaseSafe(userId) == email() || isAdmin());
@@ -127,7 +126,6 @@ service cloud.firestore {
         && request.resource.data.token is string
         && request.resource.data.updatedAt is timestamp;
 
-      // Users can read their own doc; admins can read all (if you have isAdmin()).
       allow read: if (request.auth != null && ownsDoc())
                   || (request.auth != null && isAdmin());
     }
@@ -140,79 +138,74 @@ service cloud.firestore {
 
     // ---------- timeLogs ----------
     match /timeLogs/{id} {
-      function allowedKeys() {
+      function timeLogAllowed() {
         return ['driverEmail','driver','rideId','startTime','endTime','duration','loggedAt','note'];
       }
-      function isValid(k, v) {
+      function timeLogUpdateValid(d) {
         return
-          (k=='driverEmail' && v is string) ||
-          (k=='driver'      && v is string) ||
-          (k=='rideId'      && v is string) ||
-          (k=='startTime'   && v is timestamp) ||
-          (k=='endTime'     && isTsOrNull(v)) ||
-          (k=='duration'    && v is number) ||
-          (k=='loggedAt'    && v is timestamp) ||
-          (k=='note'        && isStrOrNull(v));
+          (!d.keys().hasAny(['driverEmail']) || d.driverEmail is string) &&
+          (!d.keys().hasAny(['driver'])      || d.driver      is string) &&
+          (!d.keys().hasAny(['rideId'])      || d.rideId      is string) &&
+          (!d.keys().hasAny(['startTime'])   || d.startTime   is timestamp) &&
+          (!d.keys().hasAny(['endTime'])     || isTsOrNull(d.endTime)) &&
+          (!d.keys().hasAny(['duration'])    || d.duration    is number) &&
+          (!d.keys().hasAny(['loggedAt'])    || d.loggedAt    is timestamp) &&
+          (!d.keys().hasAny(['note'])        || isStrOrNull(d.note));
       }
 
       allow read: if authed();
 
       // Create: minimal "start" fields only
       allow create: if authed()
-        && request.resource.data.keys().hasOnly(allowedKeys())
+        && request.resource.data.keys().hasOnly(timeLogAllowed())
         && request.resource.data.driverEmail is string
         && request.resource.data.driver is string
         && request.resource.data.rideId is string
         && request.resource.data.startTime is timestamp
         && request.resource.data.loggedAt is timestamp
-        && !('endTime' in request.resource.data)
-        && !('duration' in request.resource.data);
+        && !request.resource.data.keys().hasAny(['endTime','duration']);
 
-      // Partial-safe update
+      // Partial-safe update (map-free)
       allow update: if authed()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, isValid(k, request.resource.data[k]))
-             .hasOnly([true]);
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(timeLogAllowed())
+        && timeLogUpdateValid(request.resource.data);
 
       allow delete: if authed();
     }
 
     // ---------- shootoutStats ----------
     match /shootoutStats/{id} {
-      function allowedKeys() {
+      function shootoutAllowed() {
         return ['driverEmail','vehicle','startTime','endTime','trips','passengers','createdAt'];
       }
-      function isValid(k, v) {
+      function shootoutUpdateValid(d) {
         return
-          (k=='driverEmail' && v is string) ||
-          (k=='vehicle'     && v is string) ||
-          (k=='startTime'   && v is timestamp) ||
-          (k=='endTime'     && isTsOrNull(v)) ||
-          (k=='trips'       && v is number) ||
-          (k=='passengers'  && v is number) ||
-          (k=='createdAt'   && v is timestamp);
+          (!d.keys().hasAny(['driverEmail']) || d.driverEmail is string) &&
+          (!d.keys().hasAny(['vehicle'])     || d.vehicle     is string) &&
+          (!d.keys().hasAny(['startTime'])   || d.startTime   is timestamp) &&
+          (!d.keys().hasAny(['endTime'])     || isTsOrNull(d.endTime)) &&
+          (!d.keys().hasAny(['trips'])       || d.trips       is number) &&
+          (!d.keys().hasAny(['passengers'])  || d.passengers  is number) &&
+          (!d.keys().hasAny(['createdAt'])   || d.createdAt   is timestamp);
       }
 
       allow read: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout'];
 
       // Create: minimal "start" snapshot
       allow create: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout']
-        && request.resource.data.keys().hasOnly(allowedKeys())
+        && request.resource.data.keys().hasOnly(shootoutAllowed())
         && request.resource.data.driverEmail is string
         && request.resource.data.vehicle is string
         && request.resource.data.startTime is timestamp
         && request.resource.data.createdAt is timestamp
-        && (!('trips' in request.resource.data) || request.resource.data.trips is number)
-        && (!('passengers' in request.resource.data) || request.resource.data.passengers is number)
-        && (!('endTime' in request.resource.data) || request.resource.data.endTime is timestamp);
+        && (!request.resource.data.keys().hasAny(['trips']) || request.resource.data.trips is number)
+        && (!request.resource.data.keys().hasAny(['passengers']) || request.resource.data.passengers is number)
+        && (!request.resource.data.keys().hasAny(['endTime']) || request.resource.data.endTime is timestamp);
 
-      // Partial-safe update
+      // Partial-safe update (map-free)
       allow update: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout']
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, isValid(k, request.resource.data[k]))
-             .hasOnly([true]);
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(shootoutAllowed())
+        && shootoutUpdateValid(request.resource.data);
 
       allow delete: if authed() && userRole(request.auth.uid) in ['admin','driver','shootout'];
     }
@@ -232,12 +225,10 @@ service cloud.firestore {
         && request.resource.data.tripId is string
         && request.resource.data.createdAt is timestamp;
 
-      // Partial-safe update
+      // Partial-safe update (map-free)
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, rideIsValid(k, request.resource.data[k]))
-             .hasOnly([true]);
+        && rideUpdateFieldsValid(request.resource.data);
 
       allow delete: if authed();
     }
@@ -254,9 +245,7 @@ service cloud.firestore {
 
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, rideIsValid(k, request.resource.data[k]))
-             .hasOnly([true]);
+        && rideUpdateFieldsValid(request.resource.data);
 
       allow delete: if authed();
     }
@@ -272,63 +261,64 @@ service cloud.firestore {
         && request.resource.data.tripId is string
         && request.resource.data.createdAt is timestamp
         && (
-             (request.resource.data.claimedBy is string && request.resource.data.claimedAt is timestamp) ||
-             (request.resource.data.ClaimedBy is string && request.resource.data.ClaimedAt is timestamp)
+             (request.resource.data.keys().hasAny(['claimedBy','claimedAt']) &&
+              request.resource.data.claimedBy is string &&
+              request.resource.data.claimedAt is timestamp)
+             ||
+             (request.resource.data.keys().hasAny(['ClaimedBy','ClaimedAt']) &&
+              request.resource.data.ClaimedBy is string &&
+              request.resource.data.ClaimedAt is timestamp)
            );
 
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, rideIsValid(k, request.resource.data[k]))
-             .hasOnly([true]);
+        && rideUpdateFieldsValid(request.resource.data);
 
       allow delete: if authed();
     }
 
     // ---------- tickets ----------
     match /tickets/{ticketId} {
-      function allowedKeys() {
+      function ticketAllowed() {
         return [
           'pickupTime','passengercount','ticketId','passenger','pickup','dropoff','notes',
           'scannedOutbound','scannedReturn','createdAt',
           'scannedOutboundAt','scannedOutboundBy','scannedReturnAt','scannedReturnBy'
         ];
       }
-      function isValid(k, v) {
+      function ticketUpdateValid(d) {
         return
-          (k=='pickupTime'        && v is timestamp) ||
-          (k=='passengercount'    && v is number) ||
-          (k=='ticketId'          && isStrOrNull(v)) ||
-          (k=='passenger'         && isStrOrNull(v)) ||
-          (k=='pickup'            && isStrOrNull(v)) ||
-          (k=='dropoff'           && isStrOrNull(v)) ||
-          (k=='notes'             && isStrOrNull(v)) ||
-          (k=='scannedOutbound'   && v is bool) ||
-          (k=='scannedReturn'     && v is bool) ||
-          (k=='createdAt'         && v is timestamp) ||
-          (k=='scannedOutboundAt' && isTsOrNull(v)) ||
-          (k=='scannedOutboundBy' && isStrOrNull(v)) ||
-          (k=='scannedReturnAt'   && isTsOrNull(v)) ||
-          (k=='scannedReturnBy'   && isStrOrNull(v));
+          (!d.keys().hasAny(['pickupTime'])        || d.pickupTime is timestamp) &&
+          (!d.keys().hasAny(['passengercount'])    || d.passengercount is number) &&
+          (!d.keys().hasAny(['ticketId'])          || isStrOrNull(d.ticketId)) &&
+          (!d.keys().hasAny(['passenger'])         || isStrOrNull(d.passenger)) &&
+          (!d.keys().hasAny(['pickup'])            || isStrOrNull(d.pickup)) &&
+          (!d.keys().hasAny(['dropoff'])           || isStrOrNull(d.dropoff)) &&
+          (!d.keys().hasAny(['notes'])             || isStrOrNull(d.notes)) &&
+          (!d.keys().hasAny(['scannedOutbound'])   || d.scannedOutbound is bool) &&
+          (!d.keys().hasAny(['scannedReturn'])     || d.scannedReturn is bool) &&
+          (!d.keys().hasAny(['createdAt'])         || d.createdAt is timestamp) &&
+          (!d.keys().hasAny(['scannedOutboundAt']) || isTsOrNull(d.scannedOutboundAt)) &&
+          (!d.keys().hasAny(['scannedOutboundBy']) || isStrOrNull(d.scannedOutboundBy)) &&
+          (!d.keys().hasAny(['scannedReturnAt'])   || isTsOrNull(d.scannedReturnAt)) &&
+          (!d.keys().hasAny(['scannedReturnBy'])   || isStrOrNull(d.scannedReturnBy));
       }
 
       allow read: if authed();
 
       // Full doc create (strict)
       allow create: if authed()
-        && request.resource.data.keys().hasOnly(allowedKeys())
+        && request.resource.data.keys().hasOnly(ticketAllowed())
         && request.resource.data.pickupTime is timestamp
         && request.resource.data.passengercount is number
         && request.resource.data.scannedOutbound is bool
         && request.resource.data.scannedReturn is bool
         && request.resource.data.createdAt is timestamp;
 
-      // Partial-safe update
+      // Partial-safe update (map-free)
       allow update: if authed()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedKeys())
-        && request.resource.data.diff(resource.data).changedKeys()
-             .map(k, isValid(k, request.resource.data[k]))
-             .hasOnly([true]);
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(ticketAllowed())
+        && ticketUpdateValid(request.resource.data);
 
       allow delete: if authed();
     }
@@ -362,9 +352,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ---------- default deny (kept for reference; overridden by wide-open) ----------
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    // (Intentionally omit the default-deny duplicate catch-all to avoid confusion
+    // while the wide-open override is present above.)
   }
 }
