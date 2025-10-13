@@ -289,161 +289,182 @@ export default function ClaimRides() {
     );
 
   return (
-    <Box
-      sx={{
-        position: "relative",
-        px: { xs: 1, sm: 2 },
-        maxWidth: 1100,
-        mx: "auto",
-        pb: 10,
-      }}
-    >
-      <BlackoutOverlay
-        isAdmin={role === "admin"}
-        isLocked={isLocked}
-        onUnlock={checkLockout}
-      />
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        alignItems={{ xs: "flex-start", sm: "center" }}
-        justifyContent="space-between"
-        sx={{ mb: 2.5, gap: 2 }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              color: "common.white",
-              letterSpacing: 1,
-              textTransform: "uppercase",
-            }}
-          >
-            Live ride queue
-          </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-            Last updated {lastUpdatedLabel}
-          </Typography>
-        </Box>
-        <Stack
-          direction="row"
-          spacing={1.5}
-          alignItems="center"
-          useFlexGap
-          flexWrap="wrap"
-          sx={{ rowGap: 1 }}
-        >
-          <Chip
-            label={`${liveRides.length} ride${liveRides.length === 1 ? "" : "s"} available`}
-            color="primary"
-            variant="outlined"
-            sx={{
-              borderColor: "rgba(76,187,23,0.6)",
-              color: "primary.main",
-              fontWeight: 600,
-              backgroundColor: "rgba(76,187,23,0.08)",
-            }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            startIcon={
-              isRefreshing ? (
-                <CircularProgress size={18} color="inherit" />
-              ) : (
-                <RefreshIcon />
-              )
-            }
-            sx={{
-              borderRadius: 9999,
-              px: 3,
-              py: 0.9,
-              fontWeight: 700,
-              color: "#060606",
-              minWidth: 160,
-              "&:hover": { filter: "brightness(1.08)" },
-            }}
-          >
-            {isRefreshing ? "Refreshing…" : "Refresh queue"}
-          </Button>
-        </Stack>
-      </Stack>
-
-      {loading && hasFetchedOnce ? (
-        <LinearProgress
-          color="primary"
-          sx={{
-            height: 3,
-            borderRadius: 9999,
-            mb: 2.5,
-            backgroundColor: "rgba(255,255,255,0.12)",
-          }}
-        />
-      ) : null}
-
-      {/* Filters bar placeholder; keep flexWrap for responsive layouts */}
-      <Stack
-        direction="row"
-        spacing={1}
-        useFlexGap
-        flexWrap="wrap"
-        sx={{ mb: 2 }}
-      >
-        {/* Filters... */}
-      </Stack>
-
-      <Stack
-        spacing={2.5}
+    <Box sx={{ position: "relative", minHeight: "100%", isolation: "isolate" }}>
+      {/* Decorative background */}
+      <Box
+        aria-hidden
         sx={{
-          overflowY: "auto",
-          overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
-          "& > section:last-of-type": { mb: 2 },
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 0,
+          overflow: "hidden",
         }}
       >
-        {ridesByVehicleDate?.map((g) => {
-          const selectedCount =
-            g.rides?.filter((r) => sel.isSelected(r)).length || 0;
-          const allSelected =
-            selectedCount > 0 && selectedCount === g.rides.length;
-          return (
-            <RideGroup
-              key={g.id || g.title}
-              title={g.title}
-              total={g.rides?.length || 0}
-              allSelected={allSelected}
-              onSelectAll={() => sel.toggleMany(g.rides)}
-            >
-              {g.rides?.map((ride) => (
-                <RideCard
-                  key={ride.id}
-                  ride={ride}
-                  selected={sel.isSelected(ride)}
-                  onToggleSelect={() => sel.toggle(ride)}
-                  onClaim={() => handleClaim(ride)}
-                  claiming={Boolean(isClaiming[ride.id])}
-                  notes={ride.__notes}
-                  notesOpen={Boolean(openNotes[ride.id])}
-                  onToggleNotes={() => handleToggleNotes(ride.id)}
-                  highlight={Boolean(ride.__isNew)}
-                />
-              ))}
-            </RideGroup>
-          );
-        })}
-      </Stack>
+        {/* svg / gradient art */}
+      </Box>
 
-      <BatchClaimBar
-        count={sel.count}
-        onClear={sel.clear}
-        onClaimAll={onClaimAll}
-        loading={bulkLoading}
-        disabled={lockedOut}
-      />
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          isolation: "isolate",
+          px: { xs: 1, sm: 2 },
+          maxWidth: 1100,
+          mx: "auto",
+          pb: 10,
+        }}
+      >
+        <BlackoutOverlay
+          isAdmin={role === "admin"}
+          isLocked={isLocked}
+          onUnlock={checkLockout}
+        />
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          sx={{ mb: 2.5, gap: 2 }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+                color: "common.white",
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              Live ride queue
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", mt: 0.5 }}
+            >
+              Last updated {lastUpdatedLabel}
+            </Typography>
+          </Box>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ rowGap: 1 }}
+          >
+            <Chip
+              label={`${liveRides.length} ride${liveRides.length === 1 ? "" : "s"} available`}
+              color="primary"
+              variant="outlined"
+              sx={{
+                borderColor: "rgba(76,187,23,0.6)",
+                color: "primary.main",
+                fontWeight: 600,
+                backgroundColor: "rgba(76,187,23,0.08)",
+              }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              startIcon={
+                isRefreshing ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <RefreshIcon />
+                )
+              }
+              sx={{
+                borderRadius: 9999,
+                px: 3,
+                py: 0.9,
+                fontWeight: 700,
+                color: "#060606",
+                minWidth: 160,
+                "&:hover": { filter: "brightness(1.08)" },
+              }}
+            >
+              {isRefreshing ? "Refreshing…" : "Refresh queue"}
+            </Button>
+          </Stack>
+        </Stack>
+
+        {loading && hasFetchedOnce ? (
+          <LinearProgress
+            color="primary"
+            sx={{
+              height: 3,
+              borderRadius: 9999,
+              mb: 2.5,
+              backgroundColor: "rgba(255,255,255,0.12)",
+            }}
+          />
+        ) : null}
+
+        {/* Filters bar placeholder; keep flexWrap for responsive layouts */}
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ mb: 2 }}
+        >
+          {/* Filters... */}
+        </Stack>
+
+        <Stack
+          spacing={2.5}
+          sx={{
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+            "& > section:last-of-type": { mb: 2 },
+          }}
+        >
+          {ridesByVehicleDate?.map((g) => {
+            const selectedCount =
+              g.rides?.filter((r) => sel.isSelected(r)).length || 0;
+            const allSelected =
+              selectedCount > 0 && selectedCount === g.rides.length;
+            return (
+              <RideGroup
+                key={g.id || g.title}
+                title={g.title}
+                total={g.rides?.length || 0}
+                allSelected={allSelected}
+                onSelectAll={() => sel.toggleMany(g.rides)}
+              >
+                {g.rides?.map((ride) => (
+                  <RideCard
+                    key={ride.id}
+                    ride={ride}
+                    selected={sel.isSelected(ride)}
+                    onToggleSelect={() => sel.toggle(ride)}
+                    onClaim={() => handleClaim(ride)}
+                    claiming={Boolean(isClaiming[ride.id])}
+                    notes={ride.__notes}
+                    notesOpen={Boolean(openNotes[ride.id])}
+                    onToggleNotes={() => handleToggleNotes(ride.id)}
+                    highlight={Boolean(ride.__isNew)}
+                  />
+                ))}
+              </RideGroup>
+            );
+          })}
+        </Stack>
+
+        <BatchClaimBar
+          count={sel.count}
+          onClear={sel.clear}
+          onClaimAll={onClaimAll}
+          loading={bulkLoading}
+          disabled={lockedOut}
+        />
+      </Box>
     </Box>
   );
 }
