@@ -83,6 +83,7 @@ function buildDailyDropMessage() {
 }
 
 const { dropDailyFromQueue } = require("./src/jobs/dropDailyFromQueue");
+const { ensureLiveRideOpen } = require("./ensureLiveOpen");
 
 exports.smsOnCreate = functionsV1
   .region("us-central1")
@@ -134,6 +135,8 @@ exports.smsOnCreateV2 = onDocumentCreated(
     }
   }
 );
+
+exports.ensureLiveRideOpen = ensureLiveRideOpen;
 
 async function requireAdmin(emailLower) {
   const snap = await db.doc(`userAccess/${emailLower}`).get();

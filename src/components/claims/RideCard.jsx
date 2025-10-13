@@ -25,6 +25,7 @@ import {
   resolveRideDuration,
 } from "@/columns/rideColumns.jsx";
 import { tsToDayjs, formatHMFromMinutes } from "@/utils/timeUtils";
+import { normalizeStatus } from "@/utils/statusUtils.js";
 
 const formatRideWindow = (startAt, endAt) => {
   if (!startAt && !endAt) return "N/A";
@@ -41,9 +42,14 @@ const formatRideWindow = (startAt, endAt) => {
 };
 
 export function isClaimable(ride) {
+  const status = normalizeStatus(ride?.status);
   const okStatus =
-    !ride?.status || ride.status === "unclaimed" || ride.status === "open";
-  return okStatus && !ride?.claimed && !ride?.claimedBy;
+    !status ||
+    status === "unclaimed" ||
+    status === "open" ||
+    status === "available";
+  const claimed = Boolean(ride?.claimed) || Boolean(ride?.claimedBy);
+  return okStatus && !claimed;
 }
 
 export function getRideNotes(src) {
