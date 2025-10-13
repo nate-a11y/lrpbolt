@@ -1,6 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 const functionsV1 = require("firebase-functions/v1");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require(
+  "firebase-functions/v2/firestore",
+);
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -370,6 +372,233 @@ exports.scheduleDropDailyRides = onSchedule(
       logger.info("dropDailyRides complete", stats);
     } catch (e) {
       logger.error("scheduleDropDailyRides error", { err: e });
+    }
+  },
+);
+
+function toDateSafe(input) {
+  if (!input) return null;
+  if (typeof input.toDate === "function") {
+    try {
+      return input.toDate();
+    } catch (error) {
+      logger.warn("toDateSafe failed", {
+        err: error && (error.stack || error.message || error),
+      });
+      return null;
+    }
+  }
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function formatClaimTimestamp(ts) {
+  const date = toDateSafe(ts);
+  if (!date) return "";
+  try {
+    return date.toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch (error) {
+    logger.warn("formatClaimTimestamp failed", {
+      err: error && (error.stack || error.message || error),
+    });
+    return "";
+  }
+}
+
+function normalizeEmail(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim().toLowerCase();
+  if (typeof value === "object") {
+    const candidate =
+      value.email ||
+      value.primaryEmail ||
+      value.loginEmail ||
+      value.userEmail ||
+      value.contactEmail ||
+      value.uid ||
+      value.id ||
+      "";
+    return normalizeEmail(candidate);
+  }
+  return String(value).trim().toLowerCase();
+}
+
+async function ensureOutboxOnce(key, info) {
+  const ref = db.collection("notificationsOutbox").doc(key);
+  try {
+    await ref.create({
+      ...info,
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    if (
+      error?.code === 6 ||
+      error?.code === "already-exists" ||
+      error?.message?.toLowerCase().includes("already exists")
+    ) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+function buildClaimSmsBody({ vehicle, when, rideType, tripId, notes }) {
+  const pieces = [];
+  const headlineParts = [`LRP: You claimed ${vehicle || "ride"}`];
+  if (when) {
+    headlineParts.push(`for ${when}`);
+  }
+  if (rideType) {
+    headlineParts.push(`• ${rideType}`);
+  }
+  pieces.push(headlineParts.join(" "));
+  if (tripId) {
+    pieces.push(`Trip ${tripId}.`);
+  }
+  if (notes) {
+    pieces.push(notes);
+  }
+  pieces.push("Reply STOP to opt out.");
+  return pieces.join(" ").replace(/\s+/g, " ").trim();
+}
+
+async function sendClaimSms(to, body) {
+  const sid = TWILIO_ACCOUNT_SID.value();
+  const token = TWILIO_AUTH_TOKEN.value();
+  const from = TWILIO_FROM.value();
+  if (!sid || !token || !from) {
+    throw new Error("Twilio configuration missing");
+  }
+  const client = twilio(sid, token);
+  await client.messages.create({ to, from, body });
+}
+
+function firstDefined(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+}
+
+async function notifyDriverOfClaim(rideId, data) {
+  if (!rideId || !data) return;
+  const driverEmail = normalizeEmail(data.claimedBy || data.ClaimedBy);
+  if (!driverEmail || !driverEmail.includes("@")) {
+    logger.info("notifyDriverOfClaim skipped: missing driver email", {
+      rideId,
+      claimedBy: data.claimedBy,
+    });
+    return;
+  }
+
+  const accessSnap = await db.doc(`userAccess/${driverEmail}`).get();
+  if (!accessSnap.exists) {
+    logger.info("notifyDriverOfClaim skipped: userAccess missing", {
+      rideId,
+      driverEmail,
+    });
+    return;
+  }
+  const phone = accessSnap.get("phone");
+  if (!phone) {
+    logger.info("notifyDriverOfClaim skipped: phone missing", {
+      rideId,
+      driverEmail,
+    });
+    return;
+  }
+
+  const when = formatClaimTimestamp(
+    firstDefined(data.pickupTime, data.PickupTime, data.startTime),
+  );
+  const vehicle = firstDefined(data.vehicle, data.Vehicle) || "ride";
+  const rideType = firstDefined(data.rideType, data.RideType, "");
+  const tripId = firstDefined(data.tripId, data.TripID, data.id, rideId);
+  const rawNotes = firstDefined(data.rideNotes, data.RideNotes, "");
+  const notes =
+    typeof rawNotes === "string" && rawNotes.trim()
+      ? `${rawNotes.trim().slice(0, 120)}`
+      : "";
+
+  const outboxKey = `driverClaimSms_${rideId}_${driverEmail.replace(
+    /[^a-z0-9]/gi,
+    "_",
+  )}`;
+  const recorded = await ensureOutboxOnce(outboxKey, {
+    to: phone,
+    driverEmail,
+    tripId: String(tripId || ""),
+    vehicle,
+    type: "driver-claim-sms",
+  });
+  if (!recorded) {
+    logger.info("notifyDriverOfClaim skipped: already sent", {
+      rideId,
+      driverEmail,
+    });
+    return;
+  }
+
+  const body = buildClaimSmsBody({
+    vehicle,
+    when,
+    rideType,
+    tripId,
+    notes,
+  });
+  await sendClaimSms(phone, body);
+}
+
+exports.notifyDriverOnClaimCreated = onDocumentCreated(
+  {
+    document: "claimedRides/{rideId}",
+    region: "us-central1",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
+  },
+  async (event) => {
+    try {
+      const data = event.data?.data();
+      if (!data) return;
+      await notifyDriverOfClaim(event.params.rideId, data);
+    } catch (error) {
+      logger.error("notifyDriverOnClaimCreated failed", {
+        err: error && (error.stack || error.message || error),
+        rideId: event.params?.rideId,
+      });
+      throw error;
+    }
+  },
+);
+
+exports.notifyDriverOnClaimUpdated = onDocumentUpdated(
+  {
+    document: "liveRides/{rideId}",
+    region: "us-central1",
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
+  },
+  async (event) => {
+    try {
+      const before = event.data?.before?.data() || {};
+      const after = event.data?.after?.data() || {};
+      const wasClaimed = Boolean(before.claimedAt || before.ClaimedAt);
+      const isClaimed = Boolean(after.claimedAt || after.ClaimedAt);
+      if (!wasClaimed && isClaimed) {
+        await notifyDriverOfClaim(event.params.rideId, after);
+      }
+    } catch (error) {
+      logger.error("notifyDriverOnClaimUpdated failed", {
+        err: error && (error.stack || error.message || error),
+        rideId: event.params?.rideId,
+      });
+      throw error;
     }
   },
 );

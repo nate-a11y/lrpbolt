@@ -671,6 +671,50 @@ export async function claimRideAtomic(rideId, driver, extra = {}) {
   if (!rideId) throw new Error("claimRideAtomic: missing rideId");
   if (!driver) throw new Error("claimRideAtomic: missing driver");
 
+  const normalizeDriverEmail = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") return value.trim().toLowerCase();
+    if (typeof value === "object") {
+      const candidate =
+        value.email ||
+        value.primaryEmail ||
+        value.loginEmail ||
+        value.userEmail ||
+        value.contactEmail ||
+        value.claims?.email ||
+        value.profile?.email ||
+        "";
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim().toLowerCase();
+      }
+    }
+    return "";
+  };
+
+  const driverEmail = normalizeDriverEmail(driver);
+  if (!driverEmail) throw new Error("claimRideAtomic: missing driver email");
+
+  const {
+    pickupTime,
+    rideDuration,
+    claimedByName: extraClaimedByName,
+    ...rawRest
+  } = extra;
+  const { claimedBy: _claimedBy, ClaimedBy: _legacyClaimedBy, ...rest } = rawRest;
+  void _claimedBy;
+  void _legacyClaimedBy;
+
+  const driverName =
+    (typeof driver === "object" &&
+      (driver.displayName ||
+        driver.name ||
+        driver.fullName ||
+        driver.full_name ||
+        driver.driverName ||
+        driver.preferredName)) ||
+    extraClaimedByName ||
+    driverEmail;
+
   const srcRef = doc(db, COLLECTIONS.LIVE_RIDES, rideId);
   const dstRef = doc(db, COLLECTIONS.CLAIMED_RIDES, rideId);
 
@@ -684,22 +728,23 @@ export async function claimRideAtomic(rideId, driver, extra = {}) {
     }
 
     const now = serverTimestamp();
-    const { pickupTime, rideDuration, ...rest } = extra;
     const pickup = pickupTime ?? data.pickupTime ?? data.PickupTime;
     const duration = rideDuration ?? data.rideDuration ?? data.RideDuration;
     tx.set(dstRef, {
       ...data,
+      ...rest,
       // Maintain both legacy and new field names for compatibility
-      claimedBy: driver,
-      ClaimedBy: driver,
+      claimedBy: driverEmail,
+      ClaimedBy: driverEmail,
+      claimedByName: driverName,
       claimedAt: now,
       ClaimedAt: now,
       status: "claimed",
+      lastModifiedBy: driverEmail,
       pickupTime: pickup,
       PickupTime: pickup,
       rideDuration: duration,
       RideDuration: duration,
-      ...rest,
     });
     tx.delete(srcRef);
   });
