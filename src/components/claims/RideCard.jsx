@@ -143,11 +143,13 @@ export default function RideCard({
         my: 1.25,
         borderRadius: 4,
         overflow: "visible", // ⬅️ allow content/hover lift to render freely
+        zIndex: 2, // keep surface above decorative backgrounds
         background: "transparent",
         boxShadow: selected
           ? "0 18px 34px rgba(76,187,23,0.28)"
           : "0 14px 26px rgba(0,0,0,0.45)",
-        transition: "transform 180ms ease, box-shadow 220ms ease",
+        transition:
+          "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
         willChange: "transform",
         "&:hover": {
           transform: "translateY(-3px) translateZ(0)",

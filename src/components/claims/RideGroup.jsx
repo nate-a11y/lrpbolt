@@ -19,10 +19,12 @@ export default function RideGroup({
         overflow: "visible",
         pt: 2,
         mt: 1.5,
-        isolation: "isolate", // 🔑 creates a stacking context
-        zIndex: (t) => t.zIndex.appBar + 2, // 🔑 sits above decorative curves
+        pb: 1.5,
+        isolation: "isolate",
+        zIndex: (t) => t.zIndex.appBar + 2,
       }}
     >
+      {/* Sticky header stays above group cards but inside this context */}
       <Box
         sx={{
           position: "sticky",
@@ -30,7 +32,7 @@ export default function RideGroup({
             xs: "calc(56px + env(safe-area-inset-top, 0px))",
             sm: "64px",
           },
-          zIndex: (t) => t.zIndex.appBar + 1,
+          zIndex: 3,
           backdropFilter: "blur(6px)",
           backgroundColor: (t) =>
             t.palette.mode === "dark"
@@ -72,9 +74,13 @@ export default function RideGroup({
           {allSelected ? "Clear" : "Select All"}
         </Button>
       </Box>
-      <Stack spacing={1.5} sx={{ py: 1.5 }}>
-        {children}
-      </Stack>
+
+      {/* ✅ Cards layer (always above any decorative art) */}
+      <Box sx={{ position: "relative", zIndex: 2 }}>
+        <Stack spacing={1.5} sx={{ py: 1.5 }}>
+          {children}
+        </Stack>
+      </Box>
     </Box>
   );
 }
