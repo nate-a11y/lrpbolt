@@ -15,8 +15,10 @@ export default function RideGroup({
         borderRadius: (t) => t.shape.borderRadius,
         border: (t) => `1px solid ${t.palette.divider}`,
         bgcolor: (t) => t.palette.background.paper,
-        overflow: "visible",
         position: "relative",
+        overflow: "visible",
+        pt: 1.25,
+        mt: 1.25,
       }}
     >
       <Box
