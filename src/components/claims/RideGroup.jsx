@@ -17,8 +17,10 @@ export default function RideGroup({
         bgcolor: (t) => t.palette.background.paper,
         position: "relative",
         overflow: "visible",
-        pt: 1.25,
-        mt: 1.25,
+        pt: 2,
+        mt: 1.5,
+        isolation: "isolate", // 🔑 creates a stacking context
+        zIndex: (t) => t.zIndex.appBar + 2, // 🔑 sits above decorative curves
       }}
     >
       <Box

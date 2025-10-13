@@ -142,23 +142,21 @@ export default function RideCard({
         mx: { xs: 1, sm: 1.5 },
         my: 1.25,
         borderRadius: 4,
-        // IMPORTANT: allow the header row to render past card bounds if any parent clips
-        overflow: "visible",
+        overflow: "visible", // ⬅️ allow content/hover lift to render freely
         background: "transparent",
         boxShadow: selected
           ? "0 18px 34px rgba(76,187,23,0.28)"
           : "0 14px 26px rgba(0,0,0,0.45)",
-        transition:
-          "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
+        transition: "transform 180ms ease, box-shadow 220ms ease",
         willChange: "transform",
         "&:hover": {
-          transform: "translateY(-3px) translateZ(0)", // keep the lift, avoid paint cliffs
+          transform: "translateY(-3px) translateZ(0)",
           boxShadow: "0 18px 36px rgba(0,0,0,0.55)",
         },
       }}
       aria-pressed={selected}
     >
-      {/* Inner “surface” holds gradient + border + padding, so the outer Card can be overflow:visible */}
+      {/* Inner surface keeps rounding/gradient/border; outer Card stays unclipped */}
       <Box
         sx={{
           p: { xs: 1.75, sm: 2 },
