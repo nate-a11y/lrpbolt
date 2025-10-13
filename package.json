@@ -15,6 +15,7 @@
     "dedupe": "npm dedupe || true",
     "deploy:s3": "bash scripts/deploy-s3.sh",
     "dev": "vite",
+    "backfill:live-open": "node functions/scripts/backfillLiveOpen.js",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx}\"",
     "images:build": "node scripts/convert-images.mjs",
