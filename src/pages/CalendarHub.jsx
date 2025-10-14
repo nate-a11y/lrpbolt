@@ -93,10 +93,20 @@ const StickyPill = styled(Box)(({ theme }) => ({
   alignItems: "center",
 }));
 
+const useResolvedStickyTop = () => {
+  const theme = useTheme();
+  const isSmUp = useMediaQuery(theme.breakpoints.up("sm"));
+  const APPBAR_MOBILE = 56;
+  const APPBAR_DESKTOP = 64;
+  const base = isSmUp ? APPBAR_DESKTOP : APPBAR_MOBILE;
+  return `calc(${base}px + env(safe-area-inset-top, 0px))`;
+};
+
 export default function CalendarHub() {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
   const useDrawer = useMediaQuery(theme.breakpoints.down("lg"));
+  const stickyTopCss = useResolvedStickyTop();
   const APPBAR_MOBILE = 56;
   const APPBAR_DESKTOP = 64;
   const drawerTopXs = `calc(${APPBAR_MOBILE}px + env(safe-area-inset-top, 0px))`;
@@ -140,11 +150,6 @@ export default function CalendarHub() {
   const handleHelpClose = useCallback(() => {
     setHelpOpen(false);
   }, []);
-
-  const toolbarHeight = { xs: 56, sm: 64 };
-  const stickyTopXs = `calc(${toolbarHeight.xs}px + env(safe-area-inset-top, 0px))`;
-  const stickyTopSm = `calc(${toolbarHeight.sm}px + env(safe-area-inset-top, 0px))`;
-  const stickyTop = { xs: stickyTopXs, sm: stickyTopSm };
 
   return (
     <Box
@@ -195,7 +200,7 @@ export default function CalendarHub() {
             {/* Sticky vehicle pill wrapper: RideVehicleCalendar should render its pill inside this slot when possible */}
             <StickyPill
               id="sticky-vehicle-pill-anchor"
-              sx={{ top: stickyTop }}
+              sx={{ top: stickyTopCss }}
             />
             <Suspense
               fallback={
@@ -218,7 +223,7 @@ export default function CalendarHub() {
                 hideHeader
                 hideQuickActions
                 hideLowerActions
-                stickyTopOffset={stickyTop}
+                stickyTopOffset={stickyTopCss}
               />
             </Suspense>
           </Grid>

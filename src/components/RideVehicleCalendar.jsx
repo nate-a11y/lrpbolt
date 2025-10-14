@@ -37,18 +37,25 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import { dayjs } from "@/utils/time";
+import logError from "@/utils/logError.js";
+import { getVehicleEvents } from "@/services/calendarService.js";
+import {
+  VEHICLE_CALENDARS,
+  getCalendarIdsForVehicles,
+} from "@/constants/vehicleCalendars.js";
 
 import { TIMEZONE } from "../constants";
-import { fetchWithRetry } from "../utils/network";
-import logError from "../utils/logError.js";
 
 import PageContainer from "./PageContainer.jsx";
 
 const cache = new Map();
 
-const DEFAULT_STICKY_TOP = {
-  xs: `calc(56px + env(safe-area-inset-top, 0px))`,
-  sm: `calc(64px + env(safe-area-inset-top, 0px))`,
+const DEFAULT_STICKY_TOP = 64;
+
+const resolveTopCss = (topValue) => {
+  if (topValue == null) return 64;
+  if (typeof topValue === "number") return topValue;
+  return topValue;
 };
 
 const VehiclePillWrapper = forwardRef(
@@ -82,7 +89,7 @@ const VehiclePillWrapper = forwardRef(
         boxShadow: (theme) => theme.shadows[2],
         position: anchored ? "absolute" : "sticky",
         left: 0,
-        top: anchored ? top : stickyTopOffset,
+        top: anchored ? top : resolveTopCss(stickyTopOffset),
         transform: anchored ? "translateY(0)" : "translateY(0)",
         zIndex: (theme) => theme.zIndex.appBar,
         visibility: hidden ? "hidden" : "visible",
@@ -301,8 +308,6 @@ function percentSpan(ev, dayStart, dayEnd) {
 }
 // ===== [RVTC:helpers:end] =====
 
-const API_KEY = import.meta.env.VITE_CALENDAR_API_KEY;
-const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID;
 const CST = TIMEZONE;
 const FILTERS_STORAGE_KEY = "lrp.calendar.filters";
 const DEFAULT_FILTERS = { vehicles: ["ALL"], scrollToNow: true };
@@ -558,21 +563,40 @@ function RideVehicleCalendar(props = {}) {
       setError(null);
       return;
     }
+
     const controller = new AbortController();
-    const fetchEvents = async () => {
+
+    const load = async () => {
       setLoading(true);
       setError(null);
-      const start = date.startOf("day").toISOString();
-      const end = date.endOf("day").toISOString();
-      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-        CALENDAR_ID,
-      )}/events?key=${API_KEY}&timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime`;
       try {
-        const res = await fetchWithRetry(url, { signal: controller.signal });
-        const data = await res.json();
+        const fallbackPrimary = import.meta.env.VITE_GCAL_PRIMARY_ID;
+        const filterVehicles = filtersState?.vehicles || [];
+        const selectedVehicles = filterVehicles.includes("ALL")
+          ? Object.keys(VEHICLE_CALENDARS).length
+            ? Object.keys(VEHICLE_CALENDARS)
+            : [...new Set(events.map((event) => event.vehicle))]
+          : filterVehicles;
+
+        const calendarIds = getCalendarIdsForVehicles(
+          selectedVehicles,
+          fallbackPrimary,
+        );
+
+        const { events: items } = await getVehicleEvents({
+          calendarIds: calendarIds.length
+            ? calendarIds
+            : [fallbackPrimary].filter(Boolean),
+          start: date.startOf("day"),
+          end: date.endOf("day"),
+          tz: dayjs.tz?.guess?.(),
+          signal: controller.signal,
+        });
+
         if (controller.signal.aborted) return;
-        const parsed = (data.items || [])
-          .filter((item) => !/Driver:\s*-/.test(item.description))
+
+        const parsed = (items || [])
+          .filter((item) => !/Driver:\s*-/.test(item.description || ""))
           .map((item) => {
             const desc = (item.description || "")
               .replace("(Lake Ride Pros)", "")
@@ -580,18 +604,27 @@ function RideVehicleCalendar(props = {}) {
             const vehicle = (
               desc.match(/Vehicle:\s*(.+)/)?.[1] || "Unknown"
             ).trim();
-            const title =
-              item.summary?.replace("(Lake Ride Pros)", "").trim() ||
-              "Untitled";
+            const title = (item.summary || "Untitled")
+              .replace("(Lake Ride Pros)", "")
+              .trim();
+
             const start = parseGcTime(item.start);
             const end = parseGcTime(item.end);
-            return { start, end, vehicle, title, description: desc };
+
+            return {
+              start,
+              end,
+              vehicle,
+              title,
+              description: desc,
+            };
           })
           .sort((a, b) => a.start.valueOf() - b.start.valueOf())
-          .map((e) => ({
-            ...e,
-            id: `${e.start.unix()}-${e.end.unix()}-${e.vehicle}-${e.title}`,
+          .map((event) => ({
+            ...event,
+            id: `${event.start.unix()}-${event.end.unix()}-${event.vehicle}-${event.title}`,
           }));
+
         cache.set(key, parsed);
         setEvents(parsed);
       } catch (err) {
@@ -600,11 +633,15 @@ function RideVehicleCalendar(props = {}) {
           setError(err);
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
-    fetchEvents();
+
+    load();
     return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
   const grouped = useMemo(() => {
@@ -672,35 +709,44 @@ function RideVehicleCalendar(props = {}) {
     }
 
     const anchor = stickyAnchorEl;
-    const updateOffsets = () => {
-      const nextOffsets = {};
-      Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
-        if (node) nextOffsets[vehicle] = node.offsetTop || 0;
-      });
-      setPillOffsets(nextOffsets);
+    const measure = () => {
+      const wrapper = lanesWrapperRef.current;
+      if (!wrapper) return;
 
-      if (lanesWrapperRef.current) {
-        const totalHeight = lanesWrapperRef.current.scrollHeight;
-        anchor.style.minHeight = `${totalHeight + 32}px`;
-        anchor.style.paddingBottom = "16px";
-      }
+      const wrapperTop = wrapper.getBoundingClientRect().top;
+      const next = {};
+      Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
+        if (!node) return;
+        const nodeTop = node.getBoundingClientRect().top - wrapperTop;
+        next[vehicle] = Math.max(0, Math.round(nodeTop));
+      });
+      setPillOffsets(next);
+
+      const totalHeight = wrapper.scrollHeight;
+      anchor.style.minHeight = `${totalHeight + 32}px`;
+      anchor.style.paddingBottom = "16px";
     };
 
-    updateOffsets();
+    measure();
 
-    const target = lanesWrapperRef.current;
-    const resizeObs =
+    const wrapper = lanesWrapperRef.current;
+    const resizeObserver =
       typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(updateOffsets)
+        ? new ResizeObserver(measure)
         : null;
-    if (resizeObs && target) {
-      resizeObs.observe(target);
+    if (resizeObserver && wrapper) {
+      resizeObserver.observe(wrapper);
     }
 
+    const scrollContainer = rulerRef.current;
+    const onScroll = () => measure();
+    scrollContainer?.addEventListener("scroll", onScroll, { passive: true });
+
     return () => {
-      if (resizeObs) {
-        resizeObs.disconnect();
+      if (resizeObserver) {
+        resizeObserver.disconnect();
       }
+      scrollContainer?.removeEventListener("scroll", onScroll);
       anchor.style.minHeight = "";
       anchor.style.paddingBottom = "";
     };
@@ -938,7 +984,7 @@ function RideVehicleCalendar(props = {}) {
             <Box
               sx={{
                 position: "sticky",
-                top: stickyTopOffset,
+                top: resolveTopCss(stickyTopOffset),
                 zIndex: 1,
                 backgroundColor: theme.palette.background.default,
                 borderBottom: 1,
@@ -1043,7 +1089,7 @@ function RideVehicleCalendar(props = {}) {
                 <Box
                   sx={{
                     position: "sticky",
-                    top: stickyTopOffset,
+                    top: resolveTopCss(stickyTopOffset),
                     zIndex: 1,
                     bgcolor: theme.palette.background.paper,
                     borderBottom: "1px solid",

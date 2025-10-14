@@ -11,6 +11,7 @@ const admin = require("firebase-admin");
 const { defineSecret } = require("firebase-functions/params");
 const twilio = require("twilio");
 const { handleSmsOnCreate } = require("./sms/smsOnCreateHandler");
+const { apiCalendarFetch } = require("./calendarFetch");
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
@@ -323,6 +324,8 @@ exports.sendPortalNotification = onCall(async (req) => {
     throw new HttpsError("internal", err.message || "send error");
   }
 });
+
+exports.apiCalendarFetch = apiCalendarFetch;
 
 exports.dropDailyRidesNow = onCall({ region: "us-central1" }, async (req) => {
   const uid = req.auth && req.auth.uid;
