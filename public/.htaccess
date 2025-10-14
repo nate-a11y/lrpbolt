@@ -1,6 +1,16 @@
 Options -MultiViews
 RewriteEngine On
 
+# === LRP security & isolation headers ===
+# Allow third-party auth popups to interact with opener sufficiently to close.
+Header set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+
+# Keep other safe headers:
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
 # Let SW + manifest + icons pass through unchanged
 RewriteRule ^(firebase-messaging-sw\.js|sw\.js|manifest\.webmanifest|icons/icon-192\.png|icons/icon-512\.png)$ - [L]
 

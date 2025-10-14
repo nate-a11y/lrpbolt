@@ -2,15 +2,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Snackbar } from "@mui/material";
 
-import {
-  attachForegroundMessagingHandler,
-  getFcmTokenSafe,
-} from "@/services/pushTokens";
+import { attachForegroundMessagingHandler } from "@/services/pushTokens";
+import { ensureServiceWorkerRegistered, getFcmTokenSafe } from "@/services/fcm";
 import { claimAnonymousToken, saveUserPushToken } from "@/services/fcmTokens";
-import {
-  app as firebaseApp,
-  getControllingServiceWorkerRegistration,
-} from "@/utils/firebaseInit";
+import { app as firebaseApp } from "@/utils/firebaseInit";
 import { diagPushSupport } from "@/utils/pushDiag.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
@@ -56,9 +51,13 @@ export default function PermissionGate({ user: userProp, children = null }) {
 
   const registerPushFor = useCallback(async (targetUserId) => {
     try {
-      const swReg = await getControllingServiceWorkerRegistration();
-      console.info("[LRP][FCM] registration scope", swReg?.scope || "(none)");
-      const token = await getFcmTokenSafe();
+      const swReg = await ensureServiceWorkerRegistered();
+      if (!swReg) {
+        console.info("[LRP][FCM] registration unavailable");
+        return;
+      }
+      console.info("[LRP][FCM] registration scope", swReg.scope || "(none)");
+      const token = await getFcmTokenSafe(swReg);
 
       if (!token) {
         console.warn("[LRP][FCM] registration did not issue a token");
