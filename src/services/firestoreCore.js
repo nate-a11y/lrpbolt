@@ -17,7 +17,8 @@ import {
   limit,
 } from "firebase/firestore";
 
-import { getFirebaseApp } from "./firebaseApp";
+import { getFirebaseApp } from "@/utils/firebaseInit";
+
 import { AppError, logError } from "./errors";
 
 let _db;

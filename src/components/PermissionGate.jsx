@@ -10,7 +10,6 @@ import { claimAnonymousToken, saveUserPushToken } from "@/services/fcmTokens";
 import {
   app as firebaseApp,
   getControllingServiceWorkerRegistration,
-  getMessagingOrNull,
 } from "@/utils/firebaseInit";
 import { diagPushSupport } from "@/utils/pushDiag.js";
 import { useAuth } from "@/context/AuthContext.jsx";
@@ -59,17 +58,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
     try {
       const swReg = await getControllingServiceWorkerRegistration();
       console.info("[LRP][FCM] registration scope", swReg?.scope || "(none)");
-      const messaging = await getMessagingOrNull();
-      if (!messaging) {
-        console.warn("[LRP][FCM] messaging unavailable in PermissionGate");
-        return;
-      }
-
-      const token = await getFcmTokenSafe({
-        messaging,
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-        serviceWorkerRegistration: swReg || undefined,
-      });
+      const token = await getFcmTokenSafe();
 
       if (!token) {
         console.warn("[LRP][FCM] registration did not issue a token");

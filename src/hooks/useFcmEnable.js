@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { env } from "@/utils/env";
+
 import {
   isSupportedBrowser,
   ensureServiceWorkerRegistered,
@@ -8,7 +10,7 @@ import {
 } from "../services/fcm";
 import logError from "../utils/logError.js";
 
-const FCM_ENABLED = import.meta.env.VITE_ENABLE_FCM === "true";
+const FCM_ENABLED = env.ENABLE_FCM;
 
 export default function useFcmEnable() {
   const supported = isSupportedBrowser();

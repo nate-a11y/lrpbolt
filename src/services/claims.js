@@ -20,7 +20,9 @@ function normalizeEmail(value) {
       value.id;
     return candidate ? normalizeEmail(candidate) : "";
   }
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function extractUserEmail(user) {

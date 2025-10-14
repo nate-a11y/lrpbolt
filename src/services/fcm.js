@@ -6,12 +6,13 @@ import {
   onMessage,
 } from "firebase/messaging";
 
-import { getFirebaseApp } from "@/services/firebaseApp";
+import { getFirebaseApp } from "@/utils/firebaseInit";
 import { AppError, logError } from "@/services/errors";
 import {
   getFcmTokenSafe as retrieveFcmToken,
   requestNotificationPermission,
 } from "@/services/pushTokens";
+import { env } from "@/utils/env";
 
 let _messaging;
 
@@ -57,6 +58,7 @@ export async function ensureServiceWorkerRegistered() {
 
 export async function initMessagingAndToken() {
   try {
+    if (!env.ENABLE_FCM) return null;
     if (typeof window !== "undefined") {
       if (window.__LRP_FCM_BOOT__) return null; // guard double-run
       window.__LRP_FCM_BOOT__ = true;
@@ -71,10 +73,7 @@ export async function initMessagingAndToken() {
     const perm = await requestNotificationPermission();
     if (perm !== "granted") return null;
 
-    const token = await retrieveFcmToken({
-      messaging: _messaging,
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    });
+    const token = await retrieveFcmToken();
     if (token) {
       console.info("[LRP] FCM token acquired");
       try {
@@ -101,16 +100,14 @@ export async function requestFcmPermission() {
 
 export async function getFcmTokenSafe(options = {}) {
   try {
+    if (!env.ENABLE_FCM) return null;
     getFirebaseApp();
     if (!(await isMessagingSupported())) return null;
     if (!options?.skipSw) {
       await ensureServiceWorkerRegistered();
     }
-    const messaging = getMessagingInstance();
-    const token = await retrieveFcmToken({
-      messaging,
-      vapidKey: options?.vapidKey || import.meta.env.VITE_FIREBASE_VAPID_KEY,
-    });
+    getMessagingInstance();
+    const token = await retrieveFcmToken();
     if (token) {
       try {
         localStorage.setItem("lrp_fcm_token_v1", token);
