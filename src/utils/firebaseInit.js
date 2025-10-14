@@ -13,36 +13,38 @@ import {
 import { bindFirestore } from "../services/normalizers";
 
 import logError from "./logError.js";
-import getEnv from "./env.js";
+import { env } from "./env.js";
 
-const env = getEnv();
-
-const projectId = env.VITE_FIREBASE_PROJECT_ID;
+const projectId = env.FIREBASE.PROJECT_ID;
 const authDomain =
-  env.VITE_FIREBASE_AUTH_DOMAIN ||
+  env.FIREBASE.AUTH_DOMAIN ||
   (projectId ? `${projectId}.firebaseapp.com` : undefined);
 const storageBucket =
-  env.VITE_FIREBASE_STORAGE_BUCKET ||
+  env.FIREBASE.STORAGE_BUCKET ||
   (projectId ? `${projectId}.appspot.com` : undefined);
 
 export const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
+  apiKey: env.FIREBASE.API_KEY,
   projectId,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
-  ...(env.VITE_FIREBASE_VAPID_KEY
-    ? { vapidKey: env.VITE_FIREBASE_VAPID_KEY }
-    : {}),
+  messagingSenderId: env.FIREBASE.MESSAGING_SENDER_ID,
+  appId: env.FIREBASE.APP_ID,
   ...(authDomain ? { authDomain } : {}),
   ...(storageBucket ? { storageBucket } : {}),
-  ...(env.VITE_FIREBASE_MEASUREMENT_ID
-    ? { measurementId: env.VITE_FIREBASE_MEASUREMENT_ID }
+  // ✅ Needed for Firebase Analytics + GA4
+  ...(env.FIREBASE.MEASUREMENT_ID
+    ? { measurementId: env.FIREBASE.MEASUREMENT_ID }
     : {}),
 };
 
-export const app = getApps().length
-  ? getApps()[0]
-  : initializeApp(firebaseConfig);
+let appInstance;
+export function getFirebaseApp() {
+  if (appInstance) return appInstance;
+  const existing = getApps()[0];
+  appInstance = existing || initializeApp(firebaseConfig);
+  return appInstance;
+}
+
+export const app = getFirebaseApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 bindFirestore(db);
@@ -52,14 +54,14 @@ let messagingInstance;
 export async function getMessagingOrNull() {
   try {
     if (messagingInstance) return messagingInstance;
-    if (await messagingSupported()) {
-      messagingInstance = getMessaging(app);
-      return messagingInstance;
-    }
+    if (!(await messagingSupported())) return null;
+
+    messagingInstance = getMessaging(getFirebaseApp());
+    return messagingInstance;
   } catch (err) {
     logError(err, { where: "firebaseInit", action: "getMessagingOrNull" });
+    return null;
   }
-  return null;
 }
 
 /**

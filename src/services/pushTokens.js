@@ -1,24 +1,28 @@
-/* LRP Portal enhancement: FCM token flow, 2025-10-03. */
-import { AppError, logError } from "@/services/errors";
+import { isSupported, getMessaging, getToken } from "firebase/messaging";
 
-export async function getFcmTokenSafe({
-  messaging,
-  vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY,
-} = {}) {
-  if (!messaging) {
-    throw new AppError("messaging instance required", { code: "bad_args" });
-  }
-  if (!vapidKey) {
-    throw new AppError("missing VAPID key", { code: "missing_vapid_key" });
-  }
+import { getFirebaseApp } from "@/utils/firebaseInit";
+import { env } from "@/utils/env";
+import logError from "@/utils/logError.js";
 
+export async function getFcmTokenSafe() {
   try {
-    const { getToken, isSupported } = await import("firebase/messaging");
-    if (!(await isSupported())) return null;
+    if (!env.ENABLE_FCM) return null;
+
+    const supported = await isSupported();
+    if (!supported) return null;
+
+    const vapidKey = env.FCM_VAPID_KEY;
+    if (!vapidKey) {
+      console.warn("[FCM] Missing VAPID key env (VITE_FCM_VAPID_KEY).");
+      return null;
+    }
+
+    const messaging = getMessaging(getFirebaseApp());
     const token = await getToken(messaging, { vapidKey });
     return token || null;
   } catch (err) {
-    logError(err, { where: "getFcmTokenSafe" });
+    // Quietly absorb adblock/offline cases
+    console.warn("[FCM] getToken failed:", err?.message || err);
     return null;
   }
 }
@@ -41,11 +45,9 @@ export function attachForegroundMessagingHandler(firebaseApp, onPayload) {
   let detach = () => {};
   (async () => {
     try {
-      const { getMessaging, onMessage, isSupported } = await import(
-        "firebase/messaging"
-      );
+      const { onMessage } = await import("firebase/messaging");
       if (!(await isSupported())) return;
-      const messaging = getMessaging(firebaseApp);
+      const messaging = getMessaging(firebaseApp || getFirebaseApp());
       detach = onMessage(messaging, (payload) => {
         try {
           if (typeof onPayload === "function") {

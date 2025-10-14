@@ -700,7 +700,11 @@ export async function claimRideAtomic(rideId, driver, extra = {}) {
     claimedByName: extraClaimedByName,
     ...rawRest
   } = extra;
-  const { claimedBy: _claimedBy, ClaimedBy: _legacyClaimedBy, ...rest } = rawRest;
+  const {
+    claimedBy: _claimedBy,
+    ClaimedBy: _legacyClaimedBy,
+    ...rest
+  } = rawRest;
   void _claimedBy;
   void _legacyClaimedBy;
 

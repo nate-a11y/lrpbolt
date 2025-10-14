@@ -8,13 +8,7 @@ import {
   lazy,
   useCallback,
 } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -32,6 +26,7 @@ import NotifDiag from "@/components/NotifDiag.jsx";
 import GlobalChrome from "@/components/GlobalChrome.jsx";
 import PermissionGate from "@/components/PermissionGate.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
+import useAnalyticsPageViews from "@/hooks/useAnalyticsPageViews";
 import { updateTimeLog } from "@/services/fs";
 import { on } from "@/services/uiBus";
 import logError from "@/utils/logError.js";
@@ -51,7 +46,6 @@ import { logout } from "./services/auth";
 import useNetworkStatus from "./hooks/useNetworkStatus";
 import OfflineNotice from "./components/OfflineNotice";
 import { startMonitoring, stopMonitoring } from "./utils/apiMonitor";
-import { initAnalytics, trackPageView } from "./utils/analytics";
 import LoadingScreen from "./components/LoadingScreen.jsx";
 import AppShell from "./layout/AppShell.jsx";
 import PhoneNumberPrompt from "./components/PhoneNumberPrompt.jsx";
@@ -79,7 +73,6 @@ function App() {
   const { driver, setDriver } = useDriver();
   const { fetchDrivers } = useDrivers();
   const { user, authLoading, role: authRole } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
   const { show } = useSnack();
   const { timeLogId: activeTimeLogId } = useActiveClockSession();
@@ -87,16 +80,7 @@ function App() {
   const pendingClockOutRef = useRef(false);
   const pendingClockOutTimerRef = useRef(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.__LRP_ANALYTICS__) return;
-    window.__LRP_ANALYTICS__ = true;
-    try {
-      initAnalytics();
-    } catch (error) {
-      logError(error, { where: "App", action: "initAnalytics" });
-    }
-  }, []);
+  useAnalyticsPageViews();
 
   const performClockOut = useCallback(
     async (id) => {
@@ -117,11 +101,6 @@ function App() {
     },
     [show],
   );
-
-  useEffect(() => {
-    // fire on route change only
-    trackPageView(location.pathname);
-  }, [location.pathname]);
 
   useEffect(() => {
     const unsubscribe = on("OPEN_TIME_CLOCK", () => {
