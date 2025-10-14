@@ -1,5 +1,6 @@
+// [LRP:BEGIN:calendarHub]
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState, useCallback, lazy, Suspense } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import {
   Box,
   Grid,
@@ -14,82 +15,47 @@ import {
   Drawer,
   Switch,
   FormControlLabel,
-  Alert,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import dayjs from "dayjs";
 
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
 
-const STORAGE_KEY = "lrp.calendar.filters";
-const STORAGE_VERSION = 2;
+const STORAGE_KEY = "lrp.calendar.filters.v2";
 
-/** --------- Lazy resolver with idle prefetch + multi-path import ---------- */
-let rideVehicleCalendarComponent = null;
-let rideVehicleCalendarPromise = null;
-
-const resolveRideVehicleCalendar = async () => {
-  if (rideVehicleCalendarComponent) return rideVehicleCalendarComponent;
-
-  if (!rideVehicleCalendarPromise) {
-    rideVehicleCalendarPromise = (async () => {
-      const candidates = [
-        { label: "alias", loader: () => import("@/components/RideVehicleCalendar.jsx") },
-        { label: "relative", loader: () => import("../components/RideVehicleCalendar.jsx") },
-      ];
-      for (const attempt of candidates) {
-        try {
-          const mod = await attempt.loader();
-          const comp = mod?.default || mod?.RideVehicleCalendar || null;
-          if (comp) {
-            rideVehicleCalendarComponent = comp;
-            return comp;
-          }
-          logError(new Error("RideVehicleCalendar export missing"), {
-            area: "CalendarHub",
-            action: "load-ride-vehicle-calendar",
-            attempt: attempt.label,
-          });
-        } catch (err) {
-          logError(err, {
-            area: "CalendarHub",
-            action: "load-ride-vehicle-calendar",
-            attempt: attempt.label,
-          });
-        }
-      }
-      return null;
-    })();
-  }
-  return rideVehicleCalendarPromise;
+// Idle chunk prefetch
+let RideVehicleCalendarLazy = null;
+const idlePrefetch = () => {
+  const rIC =
+    typeof window !== "undefined" && "requestIdleCallback" in window
+      ? window.requestIdleCallback
+      : (fn) => setTimeout(fn, 150);
+  rIC(() => {
+    import("@/components/RideVehicleCalendar.jsx")
+      .then((m) => {
+        RideVehicleCalendarLazy = m.default || m.RideVehicleCalendar || m;
+      })
+      .catch((e) =>
+        logError(e, { area: "CalendarHub", action: "idle-prefetch" }),
+      );
+  });
 };
+idlePrefetch();
 
-// Idle prefetch to hide first-content jank
-const rIC =
-  typeof window !== "undefined" && "requestIdleCallback" in window
-    ? window.requestIdleCallback
-    : (fn) => setTimeout(fn, 150);
-
-rIC(() => {
-  resolveRideVehicleCalendar().catch((e) =>
-    logError(e, { area: "CalendarHub", action: "idle-prefetch" }),
-  );
-});
-
-const RideVehicleCalendarLazy = lazy(async () => {
-  const component = await resolveRideVehicleCalendar();
-  if (!component) {
-    throw new Error(
-      "RideVehicleCalendar component not found. Ensure it exports default or { RideVehicleCalendar }.",
-    );
+const LazyCalendar = lazy(async () => {
+  if (RideVehicleCalendarLazy) {
+    return { default: RideVehicleCalendarLazy };
   }
-  return { default: component };
+  const mod = await import("@/components/RideVehicleCalendar.jsx");
+  const comp = mod.default || mod.RideVehicleCalendar || mod;
+  RideVehicleCalendarLazy = comp;
+  return { default: comp };
 });
 
-/** --------------------------------- Hooks --------------------------------- */
 const useResolvedStickyTop = () => {
   const theme = useTheme();
   const isSmUp = useMediaQuery(theme.breakpoints.up("sm"));
@@ -99,38 +65,28 @@ const useResolvedStickyTop = () => {
   return `calc(${base}px + env(safe-area-inset-top, 0px))`;
 };
 
-const usePersistentFilters = () => {
-  const load = useCallback(() => {
+export default function CalendarHub() {
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const useDrawer = useMediaQuery(theme.breakpoints.down("lg"));
+  const stickyTopCss = useResolvedStickyTop();
+
+  const [filters, setFilters] = useState(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        return { _v: STORAGE_VERSION, vehicles: [], scrollToNow: true, showHeader: false };
-      }
-      const parsed = JSON.parse(raw);
-      // simple migration example
-      if (!parsed || typeof parsed !== "object") {
-        return { _v: STORAGE_VERSION, vehicles: [], scrollToNow: true, showHeader: false };
-      }
-      if (!parsed._v || parsed._v < STORAGE_VERSION) {
-        const migrated = {
-          _v: STORAGE_VERSION,
-          vehicles: Array.isArray(parsed.vehicles) ? parsed.vehicles : [],
-          scrollToNow:
-            typeof parsed.scrollToNow === "boolean" ? parsed.scrollToNow : true,
-          showHeader: typeof parsed.showHeader === "boolean" ? parsed.showHeader : false,
-        };
-        return migrated;
-      }
-      return parsed;
+      return (
+        JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {
+          vehicles: [],
+          scrollToNow: true,
+          showHeader: false,
+        }
+      );
     } catch (e) {
       logError(e, { area: "CalendarHub", action: "hydrate-filters" });
-      return { _v: STORAGE_VERSION, vehicles: [], scrollToNow: true, showHeader: false };
+      return { vehicles: [], scrollToNow: true, showHeader: false };
     }
-  }, []);
+  });
 
-  const [filters, setFilters] = useState(load);
-
-  // debounce persist (avoid thrash)
+  // Persist (debounced)
   useEffect(() => {
     const id = setTimeout(() => {
       try {
@@ -138,120 +94,57 @@ const usePersistentFilters = () => {
       } catch (e) {
         logError(e, { area: "CalendarHub", action: "persist-filters" });
       }
-    }, 150);
+    }, 140);
     return () => clearTimeout(id);
   }, [filters]);
 
-  const update = useCallback((next) => {
-    setFilters((prev) => ({ ...prev, ...next, _v: STORAGE_VERSION }));
-  }, []);
-
-  return [filters, update];
-};
-
-/** ------------------------------ Error boundary ---------------------------- */
-function CalendarErrorBoundary({ children, onRetry }) {
-  const [err, setErr] = useState(null);
-  const reset = useCallback(() => {
-    setErr(null);
-    onRetry?.();
-  }, [onRetry]);
-
-  if (err) {
-    return (
-      <Box sx={{ py: 4 }}>
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={reset}>
-              Retry
-            </Button>
-          }
-        >
-          Failed to load the Vehicle Calendar. Please try again.
-        </Alert>
-      </Box>
-    );
-  }
-
-  return (
-    <ErrorCatcher onError={setErr}>
-      {children}
-    </ErrorCatcher>
-  );
-}
-
-function ErrorCatcher({ children, onError }) {
-  // minimal error boundary using React error handling via a thrown promise boundary
-  // We rely on Suspense throw; for runtime render errors we wrap in try/catch where possible.
-  return children;
-}
-
-/** --------------------------------- View ---------------------------------- */
-export default function CalendarHub() {
-  const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
-  const useDrawer = useMediaQuery(theme.breakpoints.down("lg"));
-  const stickyTopCss = useResolvedStickyTop();
-
-  const APPBAR_MOBILE = 56;
-  const APPBAR_DESKTOP = 64;
-  const drawerTopXs = `calc(${APPBAR_MOBILE}px + env(safe-area-inset-top, 0px))`;
-  const drawerTopSm = `calc(${APPBAR_DESKTOP}px + env(safe-area-inset-top, 0px))`;
-
-  const [filters, setFilters] = usePersistentFilters();
+  const [dateISO, setDateISO] = useState(() => dayjs().format("YYYY-MM-DD"));
   const [helpOpen, setHelpOpen] = useState(false);
 
   const actions = useMemo(
     () => ({
-      onToday: () => window.dispatchEvent(new CustomEvent("calendar:today")),
+      onToday: () => setDateISO(dayjs().format("YYYY-MM-DD")),
       onCenterNow: () =>
         window.dispatchEvent(new CustomEvent("calendar:center-now")),
     }),
     [],
   );
 
-  // Keyboard shortcuts: T (today), C (center now), ? (help)
+  // Auto center on load
+  useEffect(() => {
+    if (filters?.scrollToNow) {
+      const id = setTimeout(() => actions.onCenterNow(), 250);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [filters?.scrollToNow, actions, dateISO]);
+
+  // Hotkeys: T=Today, C=Center, ?=Help
   useEffect(() => {
     const onKey = (e) => {
-      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) {
-        return;
-      }
-      if (e.key === "t" || e.key === "T") {
-        actions.onToday();
-      } else if (e.key === "c" || e.key === "C") {
-        actions.onCenterNow();
-      } else if (e.key === "?") {
-        setHelpOpen((v) => !v);
-      }
+      const el = e.target;
+      const isEditing =
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable);
+      if (isEditing) return;
+      if (e.key === "t" || e.key === "T") actions.onToday();
+      if (e.key === "c" || e.key === "C") actions.onCenterNow();
+      if (e.key === "?") setHelpOpen((v) => !v);
     };
     window.addEventListener("keyup", onKey);
     return () => window.removeEventListener("keyup", onKey);
   }, [actions]);
 
-  // Auto-center on mount if enabled
-  useEffect(() => {
-    if (filters?.scrollToNow) {
-      // slight delay so the child mounts first
-      const id = setTimeout(() => actions.onCenterNow(), 200);
-      return () => clearTimeout(id);
-    }
-    return undefined;
-  }, [filters?.scrollToNow, actions]);
-
-  const handleHelpOpen = useCallback(() => setHelpOpen(true), []);
-  const handleHelpClose = useCallback(() => setHelpOpen(false), []);
-  const toggleScrollToNow = useCallback(
-    (_, checked) => setFilters({ scrollToNow: checked }),
-    [setFilters],
-  );
-  const toggleHeader = useCallback(
-    (_, checked) => setFilters({ showHeader: checked }),
-    [setFilters],
-  );
-
   return (
-    <Box sx={{ pt: 0, pb: `env(safe-area-inset-bottom, 0px)`, px: { xs: 1, sm: 2 } }}>
+    <Box
+      sx={{
+        pt: 0,
+        pb: `env(safe-area-inset-bottom, 0px)`,
+        px: { xs: 1, sm: 2 },
+      }}
+    >
       <Box sx={{ maxWidth: 1280, mx: "auto", width: "100%" }}>
         {/* Sticky command bar */}
         <Box
@@ -262,16 +155,31 @@ export default function CalendarHub() {
             pt: 0.5,
             pb: 1,
             background:
-              theme.palette.mode === "dark" ? "rgba(6,6,6,0.9)" : theme.palette.background.paper,
+              theme.palette.mode === "dark"
+                ? "rgba(6,6,6,0.9)"
+                : theme.palette.background.paper,
             backdropFilter: "saturate(1.2) blur(6px)",
           }}
         >
-          <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2, mb: 1 }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 700, lineHeight: 1.2, mb: 1 }}
+          >
             Ride &amp; Vehicle Calendar
           </Typography>
 
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" rowGap={1}>
-            <Button size="small" startIcon={<TodayIcon />} onClick={actions.onToday}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            rowGap={1}
+          >
+            <Button
+              size="small"
+              startIcon={<TodayIcon />}
+              onClick={actions.onToday}
+            >
               Today
             </Button>
             <Button
@@ -288,8 +196,9 @@ export default function CalendarHub() {
               control={
                 <Switch
                   checked={!!filters?.scrollToNow}
-                  onChange={toggleScrollToNow}
-                  inputProps={{ "aria-label": "Auto center on Now when opening" }}
+                  onChange={(_, v) =>
+                    setFilters((p) => ({ ...p, scrollToNow: v }))
+                  }
                 />
               }
             />
@@ -299,14 +208,21 @@ export default function CalendarHub() {
               control={
                 <Switch
                   checked={!!filters?.showHeader}
-                  onChange={toggleHeader}
-                  inputProps={{ "aria-label": "Show timeline header inside calendar" }}
+                  onChange={(_, v) =>
+                    setFilters((p) => ({ ...p, showHeader: v }))
+                  }
                 />
               }
             />
+
             <Box sx={{ flexGrow: 1 }} />
+
             <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
-              <Button size="small" onClick={handleHelpOpen} startIcon={<HelpOutlineIcon />}>
+              <Button
+                size="small"
+                onClick={() => setHelpOpen(true)}
+                startIcon={<HelpOutlineIcon />}
+              >
                 Availability Help
               </Button>
             </Tooltip>
@@ -316,60 +232,59 @@ export default function CalendarHub() {
         {!isMdUp && <Divider sx={{ my: 2 }} />}
 
         <Grid container spacing={2}>
-          {/* Left: Schedule */}
           <Grid item xs={12} md={8}>
-            <CalendarErrorBoundary
-              onRetry={() =>
-                resolveRideVehicleCalendar().catch((e) =>
-                  logError(e, { area: "CalendarHub", action: "retry-load" }),
-                )
+            <Suspense
+              fallback={
+                <Box
+                  sx={{
+                    py: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress size={32} />
+                </Box>
               }
             >
-              <Suspense
-                fallback={
-                  <Box
-                    sx={{
-                      py: 6,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <CircularProgress size={32} />
-                  </Box>
+              <LazyCalendar
+                dateISO={dateISO}
+                data={
+                  undefined /* your component can still fetch internally if needed */
                 }
-              >
-                <RideVehicleCalendarLazy
-                  persistedFilters={filters}
-                  onFiltersChange={setFilters}
-                  hideHeader={!filters?.showHeader}
-                  hideQuickActions
-                  hideLowerActions
-                  stickyTopOffset={stickyTopCss}
-                />
-              </Suspense>
-            </CalendarErrorBoundary>
+                hideHeader={!filters?.showHeader}
+                stickyTopOffset={stickyTopCss}
+                onCenterNow={filters?.scrollToNow ? "init" : undefined}
+              />
+            </Suspense>
           </Grid>
 
-          {/* Right: Help */}
-          <Grid item xs={12} xl={4} sx={{ display: { xs: "none", xl: "block" } }}>
+          <Grid
+            item
+            xs={12}
+            xl={4}
+            sx={{ display: { xs: "none", xl: "block" } }}
+          >
             {!useDrawer && <CalendarUpdateTab compact />}
           </Grid>
         </Grid>
       </Box>
 
-      {/* Help Drawer for smaller screens */}
+      {/* Help Drawer */}
       <Drawer
         anchor="right"
         open={helpOpen}
-        onClose={handleHelpClose}
+        onClose={() => setHelpOpen(false)}
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
-            mt: { xs: drawerTopXs, sm: drawerTopSm },
+            mt: {
+              xs: `calc(56px + env(safe-area-inset-top, 0px))`,
+              sm: `calc(64px + env(safe-area-inset-top, 0px))`,
+            },
             height: {
-              xs: `calc(100% - ${drawerTopXs})`,
-              sm: `calc(100% - ${drawerTopSm})`,
+              xs: `calc(100% - calc(56px + env(safe-area-inset-top, 0px)))`,
+              sm: `calc(100% - calc(64px + env(safe-area-inset-top, 0px)))`,
             },
             width: { xs: "94vw", sm: 420 },
             overflow: "auto",
@@ -382,7 +297,7 @@ export default function CalendarHub() {
         </Box>
       </Drawer>
 
-      {/* Compact action FABs (mobile reach) */}
+      {/* Mobile reach FABs */}
       <Tooltip title="Today">
         <Fab
           size="medium"
@@ -423,3 +338,4 @@ export default function CalendarHub() {
     </Box>
   );
 }
+// [LRP:END:calendarHub]
