@@ -13,7 +13,7 @@ import {
   Fab,
   Drawer,
 } from "@mui/material";
-import { styled, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
@@ -82,16 +82,6 @@ const RideVehicleCalendarLazy = lazy(async () => {
   }
   return { default: component };
 });
-
-const StickyPill = styled(Box)(({ theme }) => ({
-  position: "sticky",
-  left: 0,
-  zIndex: theme.zIndex.appBar,
-  backgroundColor: theme.palette.background.default,
-  paddingRight: theme.spacing(1),
-  display: "inline-flex",
-  alignItems: "center",
-}));
 
 const useResolvedStickyTop = () => {
   const theme = useTheme();
@@ -197,11 +187,6 @@ export default function CalendarHub() {
         <Grid container spacing={2}>
           {/* Left: Schedule */}
           <Grid item xs={12} md={8}>
-            {/* Sticky vehicle pill wrapper: RideVehicleCalendar should render its pill inside this slot when possible */}
-            <StickyPill
-              id="sticky-vehicle-pill-anchor"
-              sx={{ top: stickyTopCss }}
-            />
             <Suspense
               fallback={
                 <Box
@@ -219,7 +204,6 @@ export default function CalendarHub() {
               <RideVehicleCalendarLazy
                 persistedFilters={filters}
                 onFiltersChange={handleFiltersChange}
-                stickyPillAnchorId="sticky-vehicle-pill-anchor"
                 hideHeader
                 hideQuickActions
                 hideLowerActions
