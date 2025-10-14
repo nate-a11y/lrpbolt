@@ -570,7 +570,7 @@ function RideVehicleCalendar(props = {}) {
       setLoading(true);
       setError(null);
       try {
-        const fallbackPrimary = import.meta.env.VITE_GCAL_PRIMARY_ID;
+        const fallbackPrimary = import.meta.env.VITE_CALENDAR_ID;
         const filterVehicles = filtersState?.vehicles || [];
         const selectedVehicles = filterVehicles.includes("ALL")
           ? Object.keys(VEHICLE_CALENDARS).length
@@ -583,10 +583,23 @@ function RideVehicleCalendar(props = {}) {
           fallbackPrimary,
         );
 
+        const idsToQuery = calendarIds.length
+          ? calendarIds
+          : [fallbackPrimary].filter(Boolean);
+
+        if (!idsToQuery.length) {
+          setEvents([]);
+          setLoading(false);
+          setError(
+            new Error(
+              "No calendar ID configured. Set VITE_CALENDAR_ID or vehicle mapping.",
+            ),
+          );
+          return;
+        }
+
         const { events: items } = await getVehicleEvents({
-          calendarIds: calendarIds.length
-            ? calendarIds
-            : [fallbackPrimary].filter(Boolean),
+          calendarIds: idsToQuery,
           start: date.startOf("day"),
           end: date.endOf("day"),
           tz: dayjs.tz?.guess?.(),
