@@ -1,14 +1,6 @@
-// [LRP:BEGIN:calendarHub]
+// [LRP:BEGIN:calendarHub:defaults-only]
 /* Proprietary and confidential. See LICENSE. */
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  lazy,
-  Suspense,
-} from "react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import {
   Box,
   Grid,
@@ -28,50 +20,13 @@ import { useTheme } from "@mui/material/styles";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
-import IosShareIcon from "@mui/icons-material/IosShare";
-import EventIcon from "@mui/icons-material/Event";
-import DownloadIcon from "@mui/icons-material/Download";
 import dayjs from "dayjs";
 
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
-import {
-  exportNodeToPng,
-  buildICS,
-  downloadICS,
-  shareDeepLink,
-} from "@/utils/calendarExport.js";
 
 const STORAGE_KEY = "lrp.calendar.filters.v2";
-
-// Idle chunk prefetch
-let RideVehicleCalendarLazy = null;
-const idlePrefetch = () => {
-  const rIC =
-    typeof window !== "undefined" && "requestIdleCallback" in window
-      ? window.requestIdleCallback
-      : (fn) => setTimeout(fn, 150);
-  rIC(() => {
-    import("@/components/RideVehicleCalendar.jsx")
-      .then((m) => {
-        RideVehicleCalendarLazy = m.default || m.RideVehicleCalendar || m;
-      })
-      .catch((e) =>
-        logError(e, { area: "CalendarHub", action: "idle-prefetch" }),
-      );
-  });
-};
-idlePrefetch();
-
-const LazyCalendar = lazy(async () => {
-  if (RideVehicleCalendarLazy) {
-    return { default: RideVehicleCalendarLazy };
-  }
-  const mod = await import("@/components/RideVehicleCalendar.jsx");
-  const comp = mod.default || mod.RideVehicleCalendar || mod;
-  RideVehicleCalendarLazy = comp;
-  return { default: comp };
-});
+const LazyCalendar = lazy(() => import("@/components/RideVehicleCalendar.jsx"));
 
 const useResolvedStickyTop = () => {
   const theme = useTheme();
@@ -94,7 +49,7 @@ export default function CalendarHub() {
         JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {
           vehicles: [],
           scrollToNow: true,
-          showHeader: true,
+          showHeader: true, // default ON
         }
       );
     } catch (e) {
@@ -103,9 +58,6 @@ export default function CalendarHub() {
     }
   });
 
-  const calendarExportRef = useRef(null);
-
-  // Persist (debounced)
   useEffect(() => {
     const id = setTimeout(() => {
       try {
@@ -120,18 +72,6 @@ export default function CalendarHub() {
   const [dateISO, setDateISO] = useState(() => dayjs().format("YYYY-MM-DD"));
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const deepLink = useMemo(() => {
-    try {
-      if (typeof window === "undefined") return "";
-      const u = new URL(window.location.href);
-      u.searchParams.set("date", dateISO);
-      return u.toString();
-    } catch (e) {
-      logError(e, { area: "CalendarHub", action: "build-deeplink" });
-      return "";
-    }
-  }, [dateISO]);
-
   const actions = useMemo(
     () => ({
       onToday: () => setDateISO(dayjs().format("YYYY-MM-DD")),
@@ -141,7 +81,6 @@ export default function CalendarHub() {
     [],
   );
 
-  // Auto center on load
   useEffect(() => {
     if (filters?.scrollToNow) {
       const id = setTimeout(() => actions.onCenterNow(), 250);
@@ -150,54 +89,6 @@ export default function CalendarHub() {
     return undefined;
   }, [filters?.scrollToNow, actions, dateISO]);
 
-  // Hotkeys: T=Today, C=Center, ?=Help
-  useEffect(() => {
-    const onKey = (e) => {
-      const el = e.target;
-      const isEditing =
-        el &&
-        (el.tagName === "INPUT" ||
-          el.tagName === "TEXTAREA" ||
-          el.isContentEditable);
-      if (isEditing) return;
-      if (e.key === "t" || e.key === "T") actions.onToday();
-      if (e.key === "c" || e.key === "C") actions.onCenterNow();
-      if (e.key === "?") setHelpOpen((v) => !v);
-    };
-    window.addEventListener("keyup", onKey);
-    return () => window.removeEventListener("keyup", onKey);
-  }, [actions]);
-
-  /* Export handlers (data-safe even if child fetches internally) */
-  const handleExportPng = useCallback(() => {
-    exportNodeToPng(calendarExportRef.current, {
-      fileBase: `LRP-calendar-${dateISO}`,
-    });
-  }, [dateISO]);
-
-  const handleAddIcs = useCallback(() => {
-    try {
-      const items = Array.isArray(window.__LRP_DAYDATA)
-        ? window.__LRP_DAYDATA
-        : [];
-      const ics = buildICS({ calendarName: `LRP — ${dateISO}`, items });
-      downloadICS(ics, `LRP-${dateISO}`);
-    } catch (e) {
-      logError(e, { area: "CalendarHub", action: "addIcs" });
-    }
-  }, [dateISO]);
-
-  const handleShare = useCallback(async () => {
-    const ok = await shareDeepLink({
-      url: deepLink,
-      text: `LRP Ride & Vehicle Calendar — ${dateISO}`,
-    });
-    if (!ok) {
-      // noop; copy fallback handled in util; could toast if you have a Snackbar util.
-    }
-  }, [deepLink, dateISO]);
-
-  /* Hotkeys for Export (E), Add to Calendar (A), Share (S) */
   useEffect(() => {
     const onKey = (e) => {
       const el = e.target;
@@ -207,13 +98,13 @@ export default function CalendarHub() {
           el.tagName === "TEXTAREA" ||
           el.isContentEditable);
       if (editing) return;
-      if (e.key === "e" || e.key === "E") handleExportPng();
-      if (e.key === "a" || e.key === "A") handleAddIcs();
-      if (e.key === "s" || e.key === "S") handleShare();
+      if (e.key === "t" || e.key === "T") actions.onToday();
+      if (e.key === "c" || e.key === "C") actions.onCenterNow();
+      if (e.key === "?") setHelpOpen((v) => !v);
     };
     window.addEventListener("keyup", onKey);
     return () => window.removeEventListener("keyup", onKey);
-  }, [handleExportPng, handleAddIcs, handleShare]);
+  }, [actions]);
 
   return (
     <Box
@@ -295,36 +186,6 @@ export default function CalendarHub() {
 
             <Box sx={{ flexGrow: 1 }} />
 
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="Export PNG (E)">
-                <Button
-                  size="small"
-                  startIcon={<DownloadIcon />}
-                  onClick={handleExportPng}
-                >
-                  Export
-                </Button>
-              </Tooltip>
-              <Tooltip title="Add to Calendar (.ics) (A)">
-                <Button
-                  size="small"
-                  startIcon={<EventIcon />}
-                  onClick={handleAddIcs}
-                >
-                  Add to Calendar
-                </Button>
-              </Tooltip>
-              <Tooltip title="Share / Copy (S)">
-                <Button
-                  size="small"
-                  startIcon={<IosShareIcon />}
-                  onClick={handleShare}
-                >
-                  Share
-                </Button>
-              </Tooltip>
-            </Stack>
-
             <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
               <Button
                 size="small"
@@ -340,7 +201,7 @@ export default function CalendarHub() {
         {!isMdUp && <Divider sx={{ my: 2 }} />}
 
         <Grid container spacing={2}>
-          <Grid item xs={12} md={8} ref={calendarExportRef}>
+          <Grid item xs={12} md={8}>
             <Suspense
               fallback={
                 <Box
@@ -357,9 +218,6 @@ export default function CalendarHub() {
             >
               <LazyCalendar
                 dateISO={dateISO}
-                data={
-                  undefined /* your component can still fetch internally if needed */
-                }
                 hideHeader={!filters?.showHeader}
                 stickyTopOffset={stickyTopCss}
                 onCenterNow={filters?.scrollToNow ? "init" : undefined}
@@ -446,4 +304,4 @@ export default function CalendarHub() {
     </Box>
   );
 }
-// [LRP:END:calendarHub]
+// [LRP:END:calendarHub:defaults-only]
