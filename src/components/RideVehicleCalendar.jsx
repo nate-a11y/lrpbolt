@@ -754,6 +754,39 @@ function RideVehicleCalendar({
     [filteredGroups],
   );
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const items = [];
+
+      if (Array.isArray(flatFiltered) && flatFiltered.length > 0) {
+        flatFiltered.forEach((ev) => {
+          items.push({
+            startTime: ev.start,
+            endTime: ev.end,
+            summary: ev.title || ev.vehicle || "LRP Ride",
+            location: ev.vehicle || "",
+            description: ev.description || "",
+          });
+        });
+      } else if (Array.isArray(data?.events)) {
+        data.events.forEach((ev) => {
+          items.push({
+            startTime: ev.startTime || ev.start,
+            endTime: ev.endTime || ev.end,
+            summary: ev.title || ev.vehicle || ev.vehicleName || "LRP Ride",
+            location: ev.pickup || ev.location || "",
+            description: ev.notes || ev.description || "",
+          });
+        });
+      }
+
+      window.__LRP_DAYDATA = items;
+    } catch (e) {
+      logError(e, { area: "RideVehicleCalendar", action: "publishDayData" });
+    }
+  }, [flatFiltered, data]);
+
   // ===== [RVTC:lanes:start] =====
   const groupedPacked = useMemo(() => {
     // Reuse filtered groups to respect vehicle filter
@@ -1118,13 +1151,17 @@ function RideVehicleCalendar({
           )}
           {/* ===== [RVTC:overview:start] ===== */}
           <Box
-            sx={{
+            sx={(t) => ({
               mb: 2,
               borderRadius: 2,
-              border: 1,
-              borderColor: "divider",
+              border: `1px solid ${t.palette.divider}`,
+              background:
+                t.palette.mode === "dark"
+                  ? "rgba(20,20,20,0.9)"
+                  : t.palette.background.paper,
+              boxShadow: t.shadows[2],
               overflow: "hidden",
-            }}
+            })}
           >
             <Stack
               direction="row"

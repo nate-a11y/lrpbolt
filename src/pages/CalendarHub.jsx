@@ -1,6 +1,14 @@
 // [LRP:BEGIN:calendarHub]
 /* Proprietary and confidential. See LICENSE. */
-import { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Box,
   Grid,
@@ -20,10 +28,19 @@ import { useTheme } from "@mui/material/styles";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import IosShareIcon from "@mui/icons-material/IosShare";
+import EventIcon from "@mui/icons-material/Event";
+import DownloadIcon from "@mui/icons-material/Download";
 import dayjs from "dayjs";
 
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
+import {
+  exportNodeToPng,
+  buildICS,
+  downloadICS,
+  shareDeepLink,
+} from "@/utils/calendarExport.js";
 
 const STORAGE_KEY = "lrp.calendar.filters.v2";
 
@@ -77,14 +94,16 @@ export default function CalendarHub() {
         JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {
           vehicles: [],
           scrollToNow: true,
-          showHeader: false,
+          showHeader: true,
         }
       );
     } catch (e) {
       logError(e, { area: "CalendarHub", action: "hydrate-filters" });
-      return { vehicles: [], scrollToNow: true, showHeader: false };
+      return { vehicles: [], scrollToNow: true, showHeader: true };
     }
   });
+
+  const calendarExportRef = useRef(null);
 
   // Persist (debounced)
   useEffect(() => {
@@ -100,6 +119,18 @@ export default function CalendarHub() {
 
   const [dateISO, setDateISO] = useState(() => dayjs().format("YYYY-MM-DD"));
   const [helpOpen, setHelpOpen] = useState(false);
+
+  const deepLink = useMemo(() => {
+    try {
+      if (typeof window === "undefined") return "";
+      const u = new URL(window.location.href);
+      u.searchParams.set("date", dateISO);
+      return u.toString();
+    } catch (e) {
+      logError(e, { area: "CalendarHub", action: "build-deeplink" });
+      return "";
+    }
+  }, [dateISO]);
 
   const actions = useMemo(
     () => ({
@@ -136,6 +167,53 @@ export default function CalendarHub() {
     window.addEventListener("keyup", onKey);
     return () => window.removeEventListener("keyup", onKey);
   }, [actions]);
+
+  /* Export handlers (data-safe even if child fetches internally) */
+  const handleExportPng = useCallback(() => {
+    exportNodeToPng(calendarExportRef.current, {
+      fileBase: `LRP-calendar-${dateISO}`,
+    });
+  }, [dateISO]);
+
+  const handleAddIcs = useCallback(() => {
+    try {
+      const items = Array.isArray(window.__LRP_DAYDATA)
+        ? window.__LRP_DAYDATA
+        : [];
+      const ics = buildICS({ calendarName: `LRP — ${dateISO}`, items });
+      downloadICS(ics, `LRP-${dateISO}`);
+    } catch (e) {
+      logError(e, { area: "CalendarHub", action: "addIcs" });
+    }
+  }, [dateISO]);
+
+  const handleShare = useCallback(async () => {
+    const ok = await shareDeepLink({
+      url: deepLink,
+      text: `LRP Ride & Vehicle Calendar — ${dateISO}`,
+    });
+    if (!ok) {
+      // noop; copy fallback handled in util; could toast if you have a Snackbar util.
+    }
+  }, [deepLink, dateISO]);
+
+  /* Hotkeys for Export (E), Add to Calendar (A), Share (S) */
+  useEffect(() => {
+    const onKey = (e) => {
+      const el = e.target;
+      const editing =
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable);
+      if (editing) return;
+      if (e.key === "e" || e.key === "E") handleExportPng();
+      if (e.key === "a" || e.key === "A") handleAddIcs();
+      if (e.key === "s" || e.key === "S") handleShare();
+    };
+    window.addEventListener("keyup", onKey);
+    return () => window.removeEventListener("keyup", onKey);
+  }, [handleExportPng, handleAddIcs, handleShare]);
 
   return (
     <Box
@@ -217,6 +295,36 @@ export default function CalendarHub() {
 
             <Box sx={{ flexGrow: 1 }} />
 
+            <Stack direction="row" spacing={1}>
+              <Tooltip title="Export PNG (E)">
+                <Button
+                  size="small"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExportPng}
+                >
+                  Export
+                </Button>
+              </Tooltip>
+              <Tooltip title="Add to Calendar (.ics) (A)">
+                <Button
+                  size="small"
+                  startIcon={<EventIcon />}
+                  onClick={handleAddIcs}
+                >
+                  Add to Calendar
+                </Button>
+              </Tooltip>
+              <Tooltip title="Share / Copy (S)">
+                <Button
+                  size="small"
+                  startIcon={<IosShareIcon />}
+                  onClick={handleShare}
+                >
+                  Share
+                </Button>
+              </Tooltip>
+            </Stack>
+
             <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
               <Button
                 size="small"
@@ -232,7 +340,7 @@ export default function CalendarHub() {
         {!isMdUp && <Divider sx={{ my: 2 }} />}
 
         <Grid container spacing={2}>
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={8} ref={calendarExportRef}>
             <Suspense
               fallback={
                 <Box
