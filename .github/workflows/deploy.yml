@@ -263,3 +263,27 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+              # Authenticate gcloud using your SA JSON (already in secrets)
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      # Make sure Cloud Run keeps the GCAL env vars on each deploy
+      - name: Pin env vars on Cloud Run (apiCalendarFetch)
+        env:
+          GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}  # must contain \n
+        run: |
+          gcloud run services update apicalendarfetch \
+            --region=us-central1 \
+            --platform=managed \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}" \
+            --quiet
+
