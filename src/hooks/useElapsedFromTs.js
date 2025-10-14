@@ -1,18 +1,19 @@
 /* FIX: null-safe elapsed calculation */
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { dayjs, formatDuration, toDayjs } from "@/utils/time";
+import { dayjs, toDayjs } from "@/utils/time";
 import { logError } from "@/services/errors";
 
 /**
  * Computes a live-updating elapsed duration since a start timestamp.
+ * Limits renders to once per second via rAF (with interval fallback).
  */
 export default function useElapsedFromTs(
   startTs,
-  { tickMs = 1000, logOnNullOnce = true } = {},
+  { logOnNullOnce = true } = {},
 ) {
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const timeoutRef = useRef();
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const rafRef = useRef(0);
   const didLogRef = useRef(false);
 
   const startDj = useMemo(() => {
@@ -23,10 +24,6 @@ export default function useElapsedFromTs(
       return null;
     }
   }, [startTs]);
-
-  const safeTickMs = useMemo(() => {
-    return Number.isFinite(tickMs) && tickMs > 0 ? tickMs : 1000;
-  }, [tickMs]);
 
   useEffect(() => {
     if (startDj) {
@@ -42,41 +39,64 @@ export default function useElapsedFromTs(
         didLogRef.current = true;
       }
     }
-    setElapsedMs(0);
+    setElapsedSeconds(0);
     return undefined;
   }, [logOnNullOnce, startDj]);
 
   useEffect(() => {
     if (!startDj) return undefined;
 
-    const tick = () => {
-      const now = dayjs();
-      const diff = now.diff(startDj);
-      setElapsedMs(Number.isFinite(diff) && diff > 0 ? diff : 0);
-      timeoutRef.current = setTimeout(tick, safeTickMs);
+    let active = true;
+    let intervalId;
+    let lastSecond = -1;
+
+    const updateElapsed = () => {
+      const diff = dayjs().diff(startDj, "second");
+      const safeDiff = Number.isFinite(diff) && diff > 0 ? diff : 0;
+      if (safeDiff !== lastSecond) {
+        lastSecond = safeDiff;
+        setElapsedSeconds(safeDiff);
+      }
     };
 
-    tick();
+    const hasRaf =
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function" &&
+      typeof window.cancelAnimationFrame === "function";
+
+    updateElapsed();
+
+    if (hasRaf) {
+      const tick = () => {
+        if (!active) return;
+        updateElapsed();
+        rafRef.current = window.requestAnimationFrame(tick);
+      };
+      rafRef.current = window.requestAnimationFrame(tick);
+    } else {
+      intervalId = setInterval(() => {
+        if (active) updateElapsed();
+      }, 1000);
+    }
 
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = undefined;
+      active = false;
+      if (rafRef.current && hasRaf) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
-  }, [safeTickMs, startDj]);
+  }, [startDj]);
 
-  useEffect(
-    () => () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = undefined;
-      }
-    },
-    [],
-  );
-
-  const formatted = useMemo(() => formatDuration(elapsedMs), [elapsedMs]);
+  const elapsedMs = useMemo(() => elapsedSeconds * 1000, [elapsedSeconds]);
+  const formatted = useMemo(() => {
+    const minutes = Math.floor(elapsedSeconds / 60);
+    const seconds = elapsedSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [elapsedSeconds]);
   const startMs = startDj?.valueOf();
 
   if (!startDj) {

@@ -45,9 +45,18 @@ export async function ensureServiceWorkerRegistered() {
   if (!("serviceWorker" in navigator)) return null;
   if (window.__LRP_SW_REG__) return window.__LRP_SW_REG__;
   try {
-    const reg = await navigator.serviceWorker.register(
-      "/firebase-messaging-sw.js",
-    );
+    const existing =
+      (await navigator.serviceWorker
+        .getRegistration("/sw.js")
+        .catch(() => null)) ||
+      (await navigator.serviceWorker.getRegistration().catch(() => null));
+    if (existing?.active?.scriptURL?.includes("/sw.js")) {
+      window.__LRP_SW_REG__ = existing;
+      return existing;
+    }
+    const reg = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+    });
     window.__LRP_SW_REG__ = reg;
     return reg;
   } catch (err) {
@@ -65,7 +74,7 @@ export async function initMessagingAndToken() {
     }
 
     getFirebaseApp(); // ensure app exists
-    await ensureServiceWorkerRegistered();
+    const swReg = await ensureServiceWorkerRegistered();
 
     if (!(await isMessagingSupported())) return null;
 
@@ -73,7 +82,7 @@ export async function initMessagingAndToken() {
     const perm = await requestNotificationPermission();
     if (perm !== "granted") return null;
 
-    const token = await retrieveFcmToken();
+    const token = await retrieveFcmToken(swReg);
     if (token) {
       console.info("[LRP] FCM token acquired");
       try {
@@ -103,11 +112,11 @@ export async function getFcmTokenSafe(options = {}) {
     if (!env.ENABLE_FCM) return null;
     getFirebaseApp();
     if (!(await isMessagingSupported())) return null;
-    if (!options?.skipSw) {
-      await ensureServiceWorkerRegistered();
-    }
+    const swReg = options?.skipSw
+      ? window.__LRP_SW_REG__ || null
+      : await ensureServiceWorkerRegistered();
     getMessagingInstance();
-    const token = await retrieveFcmToken();
+    const token = await retrieveFcmToken(swReg);
     if (token) {
       try {
         localStorage.setItem("lrp_fcm_token_v1", token);

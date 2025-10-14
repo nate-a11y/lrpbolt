@@ -1,28 +1,32 @@
 import { isSupported, getMessaging, getToken } from "firebase/messaging";
 
+import { AppError, logError } from "@/services/errors";
 import { getFirebaseApp } from "@/utils/firebaseInit";
 import { env } from "@/utils/env";
-import logError from "@/utils/logError.js";
 
-export async function getFcmTokenSafe() {
+export async function getFcmTokenSafe(swReg) {
   try {
     if (!env.ENABLE_FCM) return null;
 
-    const supported = await isSupported();
-    if (!supported) return null;
+    if (!(await isSupported())) return null;
 
     const vapidKey = env.FCM_VAPID_KEY;
     if (!vapidKey) {
-      console.warn("[FCM] Missing VAPID key env (VITE_FCM_VAPID_KEY).");
-      return null;
+      throw new AppError("VAPID key missing", {
+        code: "missing_vapid_key",
+        context: { where: "getFcmTokenSafe" },
+      });
     }
 
+    const registration = swReg || null;
     const messaging = getMessaging(getFirebaseApp());
-    const token = await getToken(messaging, { vapidKey });
+    const token = await getToken(messaging, {
+      vapidKey,
+      ...(registration ? { serviceWorkerRegistration: registration } : {}),
+    });
     return token || null;
   } catch (err) {
-    // Quietly absorb adblock/offline cases
-    console.warn("[FCM] getToken failed:", err?.message || err);
+    logError(err, { where: "getFcmTokenSafe" });
     return null;
   }
 }
