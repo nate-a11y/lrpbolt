@@ -37,7 +37,6 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ShareIcon from "@mui/icons-material/Share";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
@@ -93,33 +92,32 @@ const VehiclePillWrapper = forwardRef(
     },
     ref,
   ) => (
+    // [LRP:BEGIN:vehicleCalendar:visual-tune]
     <Box
       ref={ref}
       sx={{
+        position: anchored ? "absolute" : "sticky",
+        left: 0,
+        top: anchored ? top : resolveTopCss(stickyTopOffset),
+        zIndex: (theme) => theme.zIndex.appBar + 1,
         width,
-        mt: 0.5,
-        pr: 1,
-        mb: 0.5,
-        borderRadius: 1.5,
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? "none" : "auto",
+        borderRadius: 2,
         pl: 1.25,
-        py: 0.25,
+        py: 0.4,
         bgcolor: "background.default",
         borderRight: "1px solid",
         borderColor: "divider",
         display: "flex",
         alignItems: "center",
         gap: 0.75,
-        boxShadow: (theme) => theme.shadows[2],
-        position: anchored ? "absolute" : "sticky",
-        left: 0,
-        top: anchored ? top : resolveTopCss(stickyTopOffset),
-        transform: anchored ? "translateY(0)" : "translateY(0)",
-        zIndex: (theme) => theme.zIndex.appBar,
-        visibility: hidden ? "hidden" : "visible",
+        boxShadow: (t) => t.shadows[1],
       }}
     >
       {children}
     </Box>
+    // [LRP:END:vehicleCalendar:visual-tune]
   ),
 );
 
@@ -141,69 +139,6 @@ function getLuminance(hex) {
   return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
 }
 const getContrastText = (bg) => (getLuminance(bg) > 0.4 ? "#000" : "#fff");
-
-const formatIcsDate = (d) => d.utc().format("YYYYMMDD[T]HHmmss[Z]");
-
-function downloadCsv(rides, overlapsMap, date) {
-  const header = ["Start", "End", "Vehicle", "Title", "TightGap", "Overlap"];
-  const rows = rides.map((r) => [
-    r.start.format("HH:mm"),
-    r.end.format("HH:mm"),
-    r.vehicle,
-    r.title,
-    r.tightGap ? "true" : "false",
-    overlapsMap.has(r.id) ? "true" : "false",
-  ]);
-  const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${date.format("YYYY-MM-DD")}-rides.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function downloadIcs(rides, date) {
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//LRP//RideCalendar//EN",
-  ];
-  rides.forEach((r) => {
-    lines.push("BEGIN:VEVENT");
-    lines.push(`DTSTART:${formatIcsDate(r.start)}`);
-    lines.push(`DTEND:${formatIcsDate(r.end)}`);
-    lines.push(`SUMMARY:${r.title}`);
-    lines.push(`LOCATION:${r.vehicle}`);
-    lines.push("END:VEVENT");
-  });
-  lines.push("END:VCALENDAR");
-  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${date.format("YYYY-MM-DD")}-rides.ics`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-async function shareDay(rides, date) {
-  const text = [
-    `Rides for ${date.format("YYYY-MM-DD")}:`,
-    ...rides.map(
-      (r) =>
-        `${r.start.format("HH:mm")}-${r.end.format("HH:mm")} ${r.title} (${r.vehicle})`,
-    ),
-  ].join("\n");
-  try {
-    if (navigator.share) {
-      await navigator.share({ text });
-    } else {
-      await navigator.clipboard.writeText(text);
-    }
-  } catch (err) {
-    logError(err, "RideVehicleCalendar:share");
-  }
-}
 
 const OVERVIEW_LANE_HEIGHT = 28;
 const OVERVIEW_EVENT_HEIGHT = 20;
@@ -345,7 +280,6 @@ function RideVehicleCalendar({
   onFiltersChange,
   stickyPillAnchorId,
   hideQuickActions = false,
-  hideLowerActions = false,
   ...rest
 } = {}) {
   const [date, setDate] = useState(() => {
@@ -948,52 +882,6 @@ function RideVehicleCalendar({
   }, [centerNow]);
   // [LRP:END:calendar:eventBridge]
 
-  useEffect(() => {
-    const handleToday = () => {
-      try {
-        setDate(dayjs().tz(CST));
-      } catch (err) {
-        logError(err, { area: "CalendarHub", action: "today" });
-      }
-    };
-    const handleExportCsv = () => {
-      try {
-        downloadCsv(flatFiltered, overlapsMap, date);
-      } catch (err) {
-        logError(err, { area: "CalendarHub", action: "export-csv" });
-      }
-    };
-    const handleAddToCalendar = () => {
-      try {
-        downloadIcs(flatFiltered, date);
-      } catch (err) {
-        logError(err, { area: "CalendarHub", action: "add-to-calendar" });
-      }
-    };
-    const handleShare = () => {
-      try {
-        shareDay(flatFiltered, date);
-      } catch (err) {
-        logError(err, { area: "CalendarHub", action: "share" });
-      }
-    };
-
-    window.addEventListener("calendar:today", handleToday);
-    window.addEventListener("calendar:export-csv", handleExportCsv);
-    window.addEventListener("calendar:add-to-calendar", handleAddToCalendar);
-    window.addEventListener("calendar:share", handleShare);
-
-    return () => {
-      window.removeEventListener("calendar:today", handleToday);
-      window.removeEventListener("calendar:export-csv", handleExportCsv);
-      window.removeEventListener(
-        "calendar:add-to-calendar",
-        handleAddToCalendar,
-      );
-      window.removeEventListener("calendar:share", handleShare);
-    };
-  }, [scrollToNow, flatFiltered, overlapsMap, date]);
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <PageContainer {...rest}>
@@ -1150,303 +1038,283 @@ function RideVehicleCalendar({
             </Box>
           )}
           {/* ===== [RVTC:overview:start] ===== */}
-          <Box
-            sx={(t) => ({
-              mb: 2,
-              borderRadius: 2,
-              border: `1px solid ${t.palette.divider}`,
-              background:
-                t.palette.mode === "dark"
-                  ? "rgba(20,20,20,0.9)"
-                  : t.palette.background.paper,
-              boxShadow: t.shadows[2],
-              overflow: "hidden",
-            })}
-          >
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ px: 1, py: 0.75, bgcolor: theme.palette.action.hover }}
+          <Box sx={{ mb: 2 }}>
+            {/* [LRP:BEGIN:vehicleCalendar:card] */}
+            <Box
+              sx={(t) => ({
+                borderRadius: 2,
+                border: `1px solid ${t.palette.divider}`,
+                background:
+                  t.palette.mode === "dark"
+                    ? "rgba(16,16,16,0.95)"
+                    : t.palette.background.paper,
+                boxShadow: t.shadows[2],
+                overflow: "hidden",
+              })}
             >
-              <Typography fontWeight={700} fontSize={13}>
-                Vehicle Availability Overview
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Button size="small" onClick={() => setShowOverview((v) => !v)}>
-                  {showOverview ? "Hide" : "Show"}
-                </Button>
-                <Button
-                  size="small"
-                  onClick={centerNow}
-                  disabled={!isToday}
-                  title="Center now on the overview"
-                >
-                  Center Now
-                </Button>
-              </Stack>
-            </Stack>
-
-            <Collapse in={showOverview} timeout="auto" unmountOnExit>
-              {/* Hour ruler + lanes */}
-              <Box sx={{ position: "relative", pt: 0, mt: 0 }}>
-                {!hideHeader && (
-                  <Box
-                    ref={headerRef}
-                    sx={(t) => ({
-                      position: "sticky",
-                      top: resolveTopCss(stickyTopOffset),
-                      zIndex: t.zIndex.appBar + 1,
-                      background:
-                        t.palette.mode === "dark"
-                          ? "rgba(6,6,6,0.9)"
-                          : t.palette.background.paper,
-                      backdropFilter: "saturate(1.1) blur(4px)",
-                      borderBottom: `1px solid ${t.palette.divider}`,
-                      px: 1,
-                      py: 0.75,
-                      m: 0,
-                    })}
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ px: 1, py: 0.75, bgcolor: theme.palette.action.hover }}
+              >
+                <Typography fontWeight={700} fontSize={13}>
+                  Vehicle Availability Overview
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button
+                    size="small"
+                    onClick={() => setShowOverview((v) => !v)}
                   >
+                    {showOverview ? "Hide" : "Show"}
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={centerNow}
+                    disabled={!isToday}
+                    title="Center now on the overview"
+                  >
+                    Center Now
+                  </Button>
+                </Stack>
+              </Stack>
+
+              <Collapse in={showOverview} timeout="auto" unmountOnExit>
+                {/* Hour ruler + lanes */}
+                <Box sx={{ position: "relative", pt: 0, mt: 0 }}>
+                  {/* [LRP:BEGIN:vehicleCalendar:visual-tune] */}
+                  {!hideHeader && (
                     <Box
-                      sx={{
-                        position: "relative",
-                        pl: `${gutter}px`,
-                        minWidth: `${gutter + 24 * pxPerHour}px`,
-                      }}
+                      ref={headerRef}
+                      sx={(t) => ({
+                        position: "sticky",
+                        top: stickyTopOffset || 0,
+                        zIndex: t.zIndex.appBar + 1,
+                        background:
+                          t.palette.mode === "dark"
+                            ? "rgba(10,10,10,0.9)"
+                            : t.palette.background.paper,
+                        backdropFilter: "saturate(1.05) blur(3px)",
+                        borderBottom: `1px solid ${t.palette.divider}`,
+                        px: 1,
+                        py: 0.5,
+                        m: 0,
+                      })}
                     >
                       <Box
                         sx={{
-                          display: "grid",
-                          gridTemplateColumns: `repeat(24, ${pxPerHour}px)`,
+                          position: "relative",
+                          pl: `${gutter}px`,
+                          minWidth: `${gutter + 24 * pxPerHour}px`,
                         }}
                       >
-                        {hours.slice(0, 24).map((h, i) => (
-                          <Box
-                            key={i}
-                            sx={{
-                              height: 28,
-                              borderLeft: i === 0 ? "none" : "1px dashed",
-                              borderColor: "divider",
-                              display: "flex",
-                              alignItems: "center",
-                              fontSize: 12,
-                              color: "text.secondary",
-                              pl: 0.75,
-                            }}
-                          >
-                            {h.format("ha")}
-                          </Box>
-                        ))}
-                      </Box>
-                      {isToday && (
                         <Box
                           sx={{
-                            position: "absolute",
-                            left: `${
-                              clamp01(
-                                minutesBetween(dayStart, now) /
-                                  minutesBetween(dayStart, dayEnd),
-                              ) * 100
-                            }%`,
-                            top: 0,
-                            bottom: 0,
-                            width: 2,
-                            transform: "translateX(-1px)",
-                            bgcolor: theme.palette.primary.main,
+                            display: "grid",
+                            gridTemplateColumns: `repeat(24, ${pxPerHour}px)`,
                           }}
-                        />
-                      )}
+                        >
+                          {hours.slice(0, 24).map((h, i) => (
+                            <Box
+                              key={i}
+                              sx={{
+                                height: 24,
+                                borderLeft: i === 0 ? "none" : "1px dashed",
+                                borderColor: "divider",
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: 12,
+                                color: "text.secondary",
+                                pl: 0.5,
+                              }}
+                            >
+                              {h.format("ha")}
+                            </Box>
+                          ))}
+                        </Box>
+                        {isToday && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              left: `${
+                                clamp01(
+                                  minutesBetween(dayStart, now) /
+                                    minutesBetween(dayStart, dayEnd),
+                                ) * 100
+                              }%`,
+                              top: 0,
+                              bottom: 0,
+                              width: 2,
+                              transform: "translateX(-1px)",
+                              bgcolor: theme.palette.primary.main,
+                            }}
+                          />
+                        )}
+                      </Box>
                     </Box>
-                  </Box>
-                )}
+                  )}
 
-                <Box
-                  ref={scrollerRef}
-                  sx={{
-                    position: "relative",
-                    pt: hideHeader ? 0 : headerH,
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    scrollbarGutter: "stable",
-                    WebkitOverflowScrolling: "touch",
-                    px: 1,
-                    pb: 1,
-                    bgcolor: theme.palette.background.paper,
-                  }}
-                >
-                  <Stack
-                    ref={lanesWrapperRef}
+                  <Box
+                    ref={scrollerRef}
                     sx={{
-                      pt: hideHeader ? 0 : 1,
-                      minWidth: `${gutter + 24 * pxPerHour}px`,
+                      position: "relative",
+                      overflowX: "auto",
+                      overflowY: "hidden",
+                      scrollbarGutter: "stable",
+                      WebkitOverflowScrolling: "touch",
+                      px: 1,
+                      pb: 1,
+                      bgcolor: theme.palette.background.paper,
                     }}
-                    spacing={1}
                   >
-                    {groupedPacked.map(({ vehicle, lanes }) => {
-                      const rideCount = lanes.reduce(
-                        (acc, l) => acc + l.length,
-                        0,
-                      );
-                      const setPillRef = (node) => {
-                        if (node) {
-                          pillRefs.current[vehicle] = node;
-                        } else {
-                          delete pillRefs.current[vehicle];
-                        }
-                      };
-                      const renderChip = () => (
-                        <Chip
-                          size="small"
-                          label={vehicle}
-                          sx={{
-                            bgcolor: vehicleColors[vehicle],
-                            color: vehicleText[vehicle],
-                            fontWeight: 600,
-                          }}
-                        />
-                      );
-                      const renderCount = () => (
-                        <Typography variant="caption" color="text.secondary">
-                          {rideCount} rides
-                        </Typography>
-                      );
-
-                      const anchoredPill =
-                        stickyAnchorEl &&
-                        createPortal(
-                          <VehiclePillWrapper
-                            width={labelW}
-                            anchored
-                            top={pillOffsets[vehicle] ?? 0}
-                            stickyTopOffset={stickyTopOffset}
-                          >
-                            {renderChip()}
-                            {renderCount()}
-                          </VehiclePillWrapper>,
-                          stickyAnchorEl,
+                    <Stack
+                      ref={lanesWrapperRef}
+                      sx={{
+                        pt: hideHeader ? 0 : headerH,
+                        minWidth: `${gutter + 24 * pxPerHour}px`,
+                      }}
+                      spacing={1}
+                    >
+                      {groupedPacked.map(({ vehicle, lanes }) => {
+                        const rideCount = lanes.reduce(
+                          (acc, l) => acc + l.length,
+                          0,
+                        );
+                        const setPillRef = (node) => {
+                          if (node) {
+                            pillRefs.current[vehicle] = node;
+                          } else {
+                            delete pillRefs.current[vehicle];
+                          }
+                        };
+                        const renderChip = () => (
+                          <Chip
+                            size="small"
+                            label={vehicle}
+                            sx={{
+                              bgcolor: vehicleColors[vehicle],
+                              color: vehicleText[vehicle],
+                              fontWeight: 600,
+                            }}
+                          />
+                        );
+                        const renderCount = () => (
+                          <Typography variant="caption" color="text.secondary">
+                            {rideCount} rides
+                          </Typography>
                         );
 
-                      return (
-                        <Box key={vehicle} sx={{ mb: 3 }}>
-                          <Box sx={{ position: "relative" }}>
+                        const anchoredPill =
+                          stickyAnchorEl &&
+                          createPortal(
                             <VehiclePillWrapper
-                              ref={setPillRef}
                               width={labelW}
-                              hidden={Boolean(stickyAnchorEl)}
+                              anchored
+                              top={pillOffsets[vehicle] ?? 0}
                               stickyTopOffset={stickyTopOffset}
                             >
                               {renderChip()}
                               {renderCount()}
-                            </VehiclePillWrapper>
-                            {anchoredPill}
+                            </VehiclePillWrapper>,
+                            stickyAnchorEl,
+                          );
 
-                            {/* Lanes shifted to clear the sticky label gutter */}
-                            <Box
-                              sx={{
-                                position: "relative",
-                                pl: `${gutter}px`,
-                                minWidth: `${24 * pxPerHour}px`,
-                                height: lanes.length * OVERVIEW_LANE_HEIGHT,
-                              }}
-                            >
-                              {lanes.map((lane, laneIdx) =>
-                                lane.map((ev) => {
-                                  const { left, width, durationMinutes } =
-                                    percentSpan(ev, dayStart, dayEnd);
-                                  const minWidth =
-                                    durationMinutes === 0
-                                      ? "2px"
-                                      : durationMinutes <= 5
-                                        ? "6px"
-                                        : durationMinutes <= 10
-                                          ? "4px"
-                                          : undefined;
-                                  return (
-                                    <Tooltip
-                                      key={ev.id}
-                                      title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
-                                    >
-                                      <Box
-                                        onClick={() => {
-                                          setSelectedEvent(ev);
-                                          setModalOpen(true);
-                                        }}
-                                        sx={{
-                                          position: "absolute",
-                                          top: laneIdx * OVERVIEW_LANE_HEIGHT,
-                                          left: `${left}%`,
-                                          width: `${width}%`,
-                                          minWidth,
-                                          height: OVERVIEW_EVENT_HEIGHT,
-                                          borderRadius: 1,
-                                          bgcolor:
-                                            vehicleColors[ev.vehicle] ||
-                                            "grey.500",
-                                          color:
-                                            vehicleText[ev.vehicle] ||
-                                            getContrastText(
-                                              vehicleColors[ev.vehicle] ||
-                                                "#666",
-                                            ),
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          fontSize: "0.75rem",
-                                          fontWeight: 600,
-                                          px: 0.5,
-                                          cursor: "pointer",
-                                          transition: "transform 120ms ease",
-                                          overflow: "hidden",
-                                          "&:hover": {
-                                            transform: "translateY(-1px)",
-                                          },
-                                        }}
+                        return (
+                          <Box key={vehicle} sx={{ mb: 3 }}>
+                            <Box sx={{ position: "relative" }}>
+                              <VehiclePillWrapper
+                                ref={setPillRef}
+                                width={labelW}
+                                hidden={Boolean(stickyAnchorEl)}
+                                stickyTopOffset={stickyTopOffset}
+                              >
+                                {renderChip()}
+                                {renderCount()}
+                              </VehiclePillWrapper>
+                              {anchoredPill}
+
+                              {/* Lanes shifted to clear the sticky label gutter */}
+                              <Box
+                                sx={{
+                                  position: "relative",
+                                  pl: `${gutter}px`,
+                                  minWidth: `${24 * pxPerHour}px`,
+                                  height: lanes.length * OVERVIEW_LANE_HEIGHT,
+                                }}
+                              >
+                                {lanes.map((lane, laneIdx) =>
+                                  lane.map((ev) => {
+                                    const { left, width, durationMinutes } =
+                                      percentSpan(ev, dayStart, dayEnd);
+                                    const minWidth =
+                                      durationMinutes === 0
+                                        ? "2px"
+                                        : durationMinutes <= 5
+                                          ? "6px"
+                                          : durationMinutes <= 10
+                                            ? "4px"
+                                            : undefined;
+                                    return (
+                                      <Tooltip
+                                        key={ev.id}
+                                        title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
                                       >
-                                        <span>{ev.vehicle}</span>
-                                      </Box>
-                                    </Tooltip>
-                                  );
-                                }),
-                              )}
+                                        <Box
+                                          onClick={() => {
+                                            setSelectedEvent(ev);
+                                            setModalOpen(true);
+                                          }}
+                                          sx={{
+                                            position: "absolute",
+                                            top: laneIdx * OVERVIEW_LANE_HEIGHT,
+                                            left: `${left}%`,
+                                            width: `${width}%`,
+                                            minWidth,
+                                            height: OVERVIEW_EVENT_HEIGHT,
+                                            borderRadius: 1,
+                                            bgcolor:
+                                              vehicleColors[ev.vehicle] ||
+                                              "grey.500",
+                                            color:
+                                              vehicleText[ev.vehicle] ||
+                                              getContrastText(
+                                                vehicleColors[ev.vehicle] ||
+                                                  "#666",
+                                              ),
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "0.75rem",
+                                            fontWeight: 600,
+                                            px: 0.5,
+                                            cursor: "pointer",
+                                            transition: "transform 120ms ease",
+                                            overflow: "hidden",
+                                            "&:hover": {
+                                              transform: "translateY(-1px)",
+                                            },
+                                          }}
+                                        >
+                                          <span>{ev.vehicle}</span>
+                                        </Box>
+                                      </Tooltip>
+                                    );
+                                  }),
+                                )}
+                              </Box>
                             </Box>
                           </Box>
-                        </Box>
-                      );
-                    })}
-                  </Stack>
+                        );
+                      })}
+                    </Stack>
+                    {/* [LRP:END:vehicleCalendar:visual-tune] */}
+                  </Box>
                 </Box>
-              </Box>
-            </Collapse>
+              </Collapse>
+            </Box>
+            {/* [LRP:END:vehicleCalendar:card] */}
           </Box>
           {/* ===== [RVTC:overview:end] ===== */}
-
-          {!hideLowerActions && (
-            <Stack direction="row" spacing={1} mb={2}>
-              <Button
-                size="small"
-                onClick={() => downloadCsv(flatFiltered, overlapsMap, date)}
-                disabled={loading || !!error}
-              >
-                Export CSV
-              </Button>
-              <Button
-                size="small"
-                onClick={() => downloadIcs(flatFiltered, date)}
-                disabled={loading || !!error}
-              >
-                Add to Calendar
-              </Button>
-              <Button
-                size="small"
-                onClick={() => shareDay(flatFiltered, date)}
-                disabled={loading || !!error}
-                startIcon={<ShareIcon fontSize="small" />}
-              >
-                Share
-              </Button>
-            </Stack>
-          )}
 
           {error && (
             <Alert
