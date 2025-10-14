@@ -28,6 +28,7 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "analyze": "vite build --mode production && vite-bundle-visualizer || echo \"(optional) bundle visualizer not installed\"",
+    "analyze:unused": "node scripts/unused-report.js",
     "deps:check": "npx npm-check-updates",
     "deps:update": "npm-check-updates -u && npm install",
     "deps:unused": "npx depcheck",
