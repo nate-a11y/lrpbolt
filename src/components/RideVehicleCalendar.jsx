@@ -1,42 +1,32 @@
 /* Proprietary and confidential. See LICENSE. */
 // [LRP:BEGIN:calendar:imports]
 import {
-  forwardRef,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
   useRef,
+  useEffect,
   useState,
+  useMemo,
+  useCallback,
+  memo,
+  forwardRef,
 } from "react";
-// [LRP] calendar imports
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import TodayIcon from "@mui/icons-material/Today";
-import {
-  Box,
-  Button,
-  IconButton,
-  Stack,
-  Switch,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box } from "@mui/material";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-// [LRP] dayjs setup
-if (!dayjs.__lrp_init) {
-  dayjs.extend(utc);
-  dayjs.extend(timezone);
-  dayjs.tz.setDefault(dayjs.tz.guess());
-  dayjs.__lrp_init = true;
-}
+dayjs.extend(utc);
+dayjs.extend(timezone);
 // [LRP:END:calendar:imports]
 import { createPortal } from "react-dom";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
+import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import TextField from "@mui/material/TextField";
+import Switch from "@mui/material/Switch";
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
 import Collapse from "@mui/material/Collapse";
 import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
@@ -280,26 +270,18 @@ const CST = TIMEZONE;
 const FILTERS_STORAGE_KEY = "lrp.calendar.filters";
 const DEFAULT_FILTERS = { vehicles: ["ALL"], scrollToNow: true };
 
-function RideVehicleCalendar(props = {}) {
-  const {
-    dateISO,
-    data,
-    hideHeader = false,
-    stickyTopOffset = DEFAULT_STICKY_TOP,
-    onCenterNow,
-    persistedFilters,
-    onFiltersChange,
-    stickyPillAnchorId,
-    hideQuickActions = false,
-    initialShowHeader,
-    ...rest
-  } = props;
-  // [LRP] refs and state
-  const timelineRef = useRef(null);
-  const [showHeader, setShowHeader] = useState(
-    typeof initialShowHeader === "boolean" ? initialShowHeader : true,
-  );
-
+function RideVehicleCalendar({
+  dateISO,
+  data,
+  hideHeader = false,
+  stickyTopOffset = DEFAULT_STICKY_TOP,
+  onCenterNow,
+  persistedFilters,
+  onFiltersChange,
+  stickyPillAnchorId,
+  hideQuickActions = false,
+  ...rest
+} = {}) {
   const [date, setDate] = useState(() => {
     if (dateISO) {
       const parsed = dayjs(dateISO).tz(CST);
@@ -385,18 +367,6 @@ function RideVehicleCalendar(props = {}) {
   const [now, setNow] = useState(dayjs().tz(CST));
   const { vehicles: vehicleFilter, scrollToNow: scrollToNowPref } =
     filtersState;
-  const [centerOnLoad, setCenterOnLoad] = useState(() => {
-    if (Object.prototype.hasOwnProperty.call(props, "centerOnLoad")) {
-      return Boolean(props.centerOnLoad);
-    }
-    return Boolean(scrollToNowPref ?? true);
-  });
-  const prevScrollPrefRef = useRef(scrollToNowPref);
-  useEffect(() => {
-    if (prevScrollPrefRef.current === scrollToNowPref) return;
-    prevScrollPrefRef.current = scrollToNowPref;
-    setCenterOnLoad(Boolean(scrollToNowPref));
-  }, [scrollToNowPref]); // [LRP]
   const [stickyAnchorEl, setStickyAnchorEl] = useState(null);
   const [pillOffsets, setPillOffsets] = useState({});
 
@@ -501,7 +471,6 @@ function RideVehicleCalendar(props = {}) {
   // width of the sticky label gutter (+ small spacing)
   const labelW = useMemo(() => (isMobile ? 140 : 200), [isMobile]);
   const gutter = labelW + 8;
-  const headerVisible = showHeader && !hideHeader; // [LRP]
   // ===== [RVTC:state:end] =====
 
   useEffect(() => {
@@ -831,17 +800,6 @@ function RideVehicleCalendar(props = {}) {
 
   const vehicleOptions = useMemo(() => ["ALL", ...vehicles], [vehicles]);
 
-  const scrollToToday = useCallback(() => {
-    setDate(dayjs().tz(CST));
-    if (!scrollToNowPref) return;
-    setCenterOnLoad(false);
-    if (typeof window !== "undefined") {
-      window.requestAnimationFrame(() => setCenterOnLoad(true));
-    } else {
-      setCenterOnLoad(true);
-    }
-  }, [scrollToNowPref, setCenterOnLoad]); // [LRP]
-
   const handlePrevDay = useCallback(() => {
     setDate((d) => d.subtract(1, "day"));
   }, []);
@@ -914,27 +872,6 @@ function RideVehicleCalendar(props = {}) {
     return () => clearTimeout(id);
   }, [onCenterNow, centerNow]);
 
-  // [LRP] Robust center-on-load
-  useEffect(() => {
-    if (!centerOnLoad || !timelineRef.current) return;
-
-    const nowInstant = dayjs().tz();
-    const container = timelineRef.current;
-    const hourEl =
-      container.querySelector?.(`[data-hour="${nowInstant.hour()}"]`) ||
-      container.querySelector?.('[data-hour="now"]');
-
-    if (hourEl && hourEl.scrollIntoView) {
-      hourEl.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest",
-      });
-    }
-    setCenterOnLoad(false);
-    // do not run again automatically
-  }, [centerOnLoad]);
-
   // [LRP:BEGIN:calendar:eventBridge]
   useEffect(() => {
     const onCenter = () => {
@@ -950,61 +887,9 @@ function RideVehicleCalendar(props = {}) {
       <PageContainer {...rest}>
         <Box sx={{ width: "100%" }}>
           {!hideHeader && (
-            <>
-              {/* [LRP] Header — responsive, non-overlapping */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: { xs: 1, sm: 1.5 },
-                  alignItems: { sm: "center" },
-                  mt: 1,
-                  mb: 1,
-                }}
-              >
-                <Typography variant="h6" sx={{ flexShrink: 0 }}>
-                  Ride & Vehicle Calendar
-                </Typography>
-
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  flexWrap="wrap"
-                  sx={{ ml: { sm: "auto" } }}
-                >
-                  <Button
-                    size="small"
-                    startIcon={<TodayIcon />}
-                    onClick={scrollToToday}
-                    aria-label="Jump to today"
-                  >
-                    Today
-                  </Button>
-
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <Switch
-                      size="small"
-                      checked={showHeader}
-                      onChange={(e) => setShowHeader(e.target.checked)}
-                      disabled={hideHeader}
-                      inputProps={{ "aria-label": "Show header row" }}
-                    />
-                    <Typography variant="body2">Show header row</Typography>
-                  </Stack>
-
-                  <Tooltip title="Availability Help">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      aria-label="Availability help"
-                    >
-                      <HelpOutlineIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Box>
-            </>
+            <Typography variant="h5" gutterBottom>
+              🚖 Ride & Vehicle Calendar
+            </Typography>
           )}
 
           <Stack direction="row" spacing={1} alignItems="center" mb={2}>
@@ -1114,10 +999,7 @@ function RideVehicleCalendar(props = {}) {
                 alignItems={isMobile ? "flex-start" : "center"}
                 justifyContent="space-between"
               >
-                <Typography
-                  variant="caption"
-                  sx={{ opacity: 0.85, display: "block", mb: 0.5 }}
-                >
+                <Typography fontSize={14}>
                   {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
                   {summary.tight} Tight Gaps • {summary.overlap} Overlaps
                 </Typography>
@@ -1199,23 +1081,9 @@ function RideVehicleCalendar(props = {}) {
 
               <Collapse in={showOverview} timeout="auto" unmountOnExit>
                 {/* Hour ruler + lanes */}
-                {/* [LRP] Availability container — removes phantom top gap and adapts height */}
-                <Box
-                  ref={timelineRef}
-                  sx={{
-                    position: "relative",
-                    mt: headerVisible ? 0 : -1,
-                    pt: headerVisible ? 0.5 : 0,
-                    mb: 2,
-                    minHeight:
-                      Array.isArray(flatFiltered) && flatFiltered.length > 0
-                        ? "auto"
-                        : 80,
-                    transition: "margin-top 0.25s ease, padding 0.25s ease",
-                  }}
-                >
+                <Box sx={{ position: "relative", pt: 0, mt: 0 }}>
                   {/* [LRP:BEGIN:vehicleCalendar:visual-tune] */}
-                  {headerVisible && (
+                  {!hideHeader && (
                     <Box
                       ref={headerRef}
                       sx={(t) => ({
@@ -1249,7 +1117,6 @@ function RideVehicleCalendar(props = {}) {
                           {hours.slice(0, 24).map((h, i) => (
                             <Box
                               key={i}
-                              data-hour={i}
                               sx={{
                                 height: 24,
                                 borderLeft: i === 0 ? "none" : "1px dashed",
@@ -1267,7 +1134,6 @@ function RideVehicleCalendar(props = {}) {
                         </Box>
                         {isToday && (
                           <Box
-                            data-hour="now"
                             sx={{
                               position: "absolute",
                               left: `${
@@ -1304,7 +1170,7 @@ function RideVehicleCalendar(props = {}) {
                     <Stack
                       ref={lanesWrapperRef}
                       sx={{
-                        pt: headerVisible ? headerH : 0,
+                        pt: hideHeader ? 0 : headerH,
                         minWidth: `${gutter + 24 * pxPerHour}px`,
                       }}
                       spacing={1}
@@ -1376,48 +1242,6 @@ function RideVehicleCalendar(props = {}) {
                                   height: lanes.length * OVERVIEW_LANE_HEIGHT,
                                 }}
                               >
-                                {/* [LRP] Hour anchors */}
-                                {hours.slice(0, 24).map((_, hourIdx) => {
-                                  const leftPx = gutter + hourIdx * pxPerHour;
-                                  // [LRP] Hour anchor marker
-                                  return (
-                                    <Box
-                                      key={`hour-anchor-${hourIdx}`}
-                                      data-hour={hourIdx}
-                                      sx={{
-                                        position: "absolute",
-                                        top: 0,
-                                        bottom: 0,
-                                        left: `${leftPx}px`,
-                                        width: "1px",
-                                        opacity: 0,
-                                        pointerEvents: "none",
-                                      }}
-                                    />
-                                  );
-                                })}
-                                {isToday && (
-                                  <Box
-                                    data-hour="now"
-                                    sx={{
-                                      position: "absolute",
-                                      top: 0,
-                                      bottom: 0,
-                                      left: `${
-                                        clamp01(
-                                          minutesBetween(dayStart, now) /
-                                            minutesBetween(dayStart, dayEnd),
-                                        ) * 100
-                                      }%`,
-                                      width: 2,
-                                      transform: "translateX(-1px)",
-                                      bgcolor: theme.palette.primary.main,
-                                      pointerEvents: "none",
-                                      opacity: 0.9,
-                                      zIndex: 2,
-                                    }}
-                                  />
-                                )}
                                 {lanes.map((lane, laneIdx) =>
                                   lane.map((ev) => {
                                     const { left, width, durationMinutes } =
