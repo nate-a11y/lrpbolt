@@ -41,6 +41,7 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import logError from "@/utils/logError.js";
+import { clampToDay, getDayWindow, plural } from "@/utils/calendarTime.js";
 import { getVehicleEvents } from "@/services/calendarService.js";
 import {
   VEHICLE_CALENDARS,
@@ -252,17 +253,42 @@ function packIntoLanes(items) {
   return lanes;
 }
 
-/** Compute left% and width% for an event within [dayStart, dayEnd], clamped to [0..100]. */
-function percentSpan(ev, dayStart, dayEnd) {
-  const totalMinutes = Math.max(1, dayEnd.diff(dayStart, "minute"));
-  const startMinutes = ev.start.diff(dayStart, "minute");
-  const endMinutes = ev.end.diff(dayStart, "minute");
-  const clampedStart = clamp01(startMinutes / totalMinutes);
-  const clampedEnd = clamp01(endMinutes / totalMinutes);
-  const left = clampedStart * 100;
-  const width = Math.max(0, clampedEnd - clampedStart) * 100;
-  const durationMinutes = Math.max(0, ev.end.diff(ev.start, "minute"));
-  return { left, width, durationMinutes };
+/** Compute left% and width% for an event within the selected day, clamped to [0..100]. */
+function percentSpan(ev, selectedDay, tz, containerWidth = 0) {
+  const clamp = clampToDay({ start: ev.start, end: ev.end }, selectedDay, tz);
+  if (!clamp) {
+    return { left: 0, width: 0, durationMinutes: 0, clamp: null };
+  }
+
+  const dayMs = Math.max(1, clamp.dayEnd.diff(clamp.dayStart, "millisecond"));
+  const startOffset = clamp.clampedStart.diff(clamp.dayStart, "millisecond");
+  const endOffset = clamp.clampedEnd.diff(clamp.dayStart, "millisecond");
+
+  const left = clamp01(startOffset / dayMs) * 100;
+  let width = (Math.max(0, endOffset - startOffset) / dayMs) * 100;
+  const available = Math.max(0, 100 - left);
+  const minPct = containerWidth ? (2 / containerWidth) * 100 : 0.15;
+  if (width < minPct) {
+    width = available > 0 ? Math.min(minPct, available) : minPct;
+  }
+  width = Math.min(width, available);
+
+  const durationMinutes = Math.max(
+    0,
+    clamp.clampedEnd.diff(clamp.clampedStart, "minute"),
+  );
+
+  return { left, width, durationMinutes, clamp };
+}
+
+function edgeChipFor(ride, selectedDay, tz) {
+  if (!ride) return null;
+  const res = clampToDay({ start: ride.start, end: ride.end }, selectedDay, tz);
+  if (!res) return null;
+  if (res.reason === "fromPrevDay") return "From Previous Day";
+  if (res.reason === "intoNextDay") return "Spans Into Next Day";
+  if (res.reason === "spansBoth") return "From Previous Day • Into Next Day";
+  return null;
 }
 // ===== [RVTC:helpers:end] =====
 
@@ -850,14 +876,11 @@ function RideVehicleCalendar({
   // ===== [RVTC:scrollH:end] =====
 
   const isToday = date.isSame(now, "day");
-  const dayStart = date.startOf("day");
-  const dayEnd = date.endOf("day");
+  const { dayStart, dayEnd } = getDayWindow(date, CST);
   const nowPct = isToday
     ? (100 * minutesBetween(dayStart, now)) / minutesBetween(dayStart, dayEnd)
     : null;
-
-  const selectedFromPrev = selectedEvent?.start?.isBefore(dayStart);
-  const selectedIntoNext = selectedEvent?.end?.isAfter(dayEnd);
+  const selectedEdgeChip = edgeChipFor(selectedEvent, date, CST);
 
   useEffect(() => {
     if (!scrollToNowPref) return;
@@ -1000,8 +1023,10 @@ function RideVehicleCalendar({
                 justifyContent="space-between"
               >
                 <Typography fontSize={14}>
-                  {summary.rides} Rides • {summary.vehicles} Vehicles •{" "}
-                  {summary.tight} Tight Gaps • {summary.overlap} Overlaps
+                  {plural(summary.rides, "ride")} •{" "}
+                  {plural(summary.vehicles, "vehicle")} •{" "}
+                  {plural(summary.tight, "tight gap")} •{" "}
+                  {plural(summary.overlap, "overlap")}
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
@@ -1200,7 +1225,7 @@ function RideVehicleCalendar({
                         );
                         const renderCount = () => (
                           <Typography variant="caption" color="text.secondary">
-                            {rideCount} rides
+                            {plural(rideCount, "ride")}
                           </Typography>
                         );
 
@@ -1244,8 +1269,15 @@ function RideVehicleCalendar({
                               >
                                 {lanes.map((lane, laneIdx) =>
                                   lane.map((ev) => {
+                                    const span = percentSpan(
+                                      ev,
+                                      date,
+                                      CST,
+                                      scrollerRef.current?.clientWidth || 0,
+                                    );
+                                    if (!span.clamp) return null;
                                     const { left, width, durationMinutes } =
-                                      percentSpan(ev, dayStart, dayEnd);
+                                      span;
                                     const minWidth =
                                       durationMinutes === 0
                                         ? "2px"
@@ -1363,7 +1395,7 @@ function RideVehicleCalendar({
               return (
                 <Box key={vehicle} mb={2} sx={{ width: "100%" }}>
                   <Chip
-                    label={`${vehicle} • ${rides.length} • ${formatHm(total)}`}
+                    label={`${vehicle} • ${plural(rides.length, "ride")} • ${formatHm(total)}`}
                     onClick={() => handleToggleSection(vehicle)}
                     onDelete={() => handleToggleSection(vehicle)}
                     deleteIcon={
@@ -1379,11 +1411,11 @@ function RideVehicleCalendar({
                   <Collapse in={expanded} timeout="auto" unmountOnExit>
                     <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
                       {rides.map((event) => {
-                        const {
-                          left: startPct,
-                          width: widthPct,
-                          durationMinutes,
-                        } = percentSpan(event, dayStart, dayEnd);
+                        const span = percentSpan(event, date, CST);
+                        const startPct = span.left;
+                        const widthPct = span.width;
+                        const durationMinutes = span.durationMinutes;
+                        const edgeChipLabel = edgeChipFor(event, date, CST);
                         const minWidth =
                           durationMinutes === 0
                             ? "2px"
@@ -1494,18 +1526,16 @@ function RideVehicleCalendar({
                                   size="small"
                                 />
                               )}
-                              {event.start.isBefore(dayStart) && (
+                              {edgeChipLabel && (
                                 <Chip
-                                  label="From Prev Day"
-                                  color="info"
                                   size="small"
-                                />
-                              )}
-                              {event.end.isAfter(dayEnd) && (
-                                <Chip
-                                  label="Into Next Day"
-                                  color="info"
-                                  size="small"
+                                  label={edgeChipLabel}
+                                  sx={{
+                                    bgcolor: "primary.main",
+                                    color: "#000",
+                                    fontWeight: 600,
+                                    mr: 1,
+                                  }}
                                 />
                               )}
                             </Stack>
@@ -1537,14 +1567,17 @@ function RideVehicleCalendar({
               {selectedEvent?.start.format("h:mm A")} –{" "}
               {selectedEvent?.end.format("h:mm A")}
             </Typography>
-            {(selectedFromPrev || selectedIntoNext) && (
+            {selectedEdgeChip && (
               <Stack direction="row" spacing={1} mt={1}>
-                {selectedFromPrev && (
-                  <Chip label="From Previous Day" color="info" />
-                )}
-                {selectedIntoNext && (
-                  <Chip label="Into Next Day" color="info" />
-                )}
+                <Chip
+                  size="small"
+                  label={selectedEdgeChip}
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "#000",
+                    fontWeight: 600,
+                  }}
+                />
               </Stack>
             )}
             {selectedEvent?.tightGap && (
