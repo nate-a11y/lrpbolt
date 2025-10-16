@@ -81,9 +81,6 @@ function getLuminance(hex) {
 }
 const getContrastText = (bg) => (getLuminance(bg) > 0.4 ? "#000" : "#fff");
 
-const OVERVIEW_LANE_HEIGHT = 28;
-const OVERVIEW_EVENT_HEIGHT = 20;
-
 const BASE_COLORS = [
   "#E6194B",
   "#3CB44B",
@@ -278,13 +275,17 @@ function edgeChipFor(ride, selectedDay, tz) {
 // ===== [RVTC:helpers:end] =====
 
 const PX_PER_MIN_FALLBACK = 1.8;
+const GUTTER_W = 170;
+const HEADER_H = 36;
+const LANE_H = 48;
+const LANE_GAP = 8;
 
 const AvailabilityOverview = forwardRef(function AvailabilityOverview(
   {
     vehicles = [],
     tz = "America/Chicago",
     pxPerMin: pxPerMinProp,
-    minutesSinceVisibleStart = null,
+    minutesSinceVisibleStart = 0,
     onHideClick,
     onEventClick,
     selectedDay,
@@ -292,29 +293,47 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
   ref,
 ) {
   const pxPerMin = pxPerMinProp || PX_PER_MIN_FALLBACK;
+
   const scrollRef = useRef(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportW, setViewportW] = useState(0);
 
   const contentWidth = useMemo(() => 24 * 60 * pxPerMin, [pxPerMin]);
+  const totalHeight = useMemo(
+    () => HEADER_H + vehicles.length * (LANE_H + LANE_GAP) + 8,
+    [vehicles.length],
+  );
 
-  const nowMarkerLeft = useMemo(() => {
-    if (minutesSinceVisibleStart == null) return null;
-    return Math.max(
-      0,
-      Math.min(contentWidth, minutesSinceVisibleStart * pxPerMin),
-    );
-  }, [minutesSinceVisibleStart, pxPerMin, contentWidth]);
-
-  const centerNow = useCallback(() => {
-    if (nowMarkerLeft == null) return;
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const target = Math.max(0, nowMarkerLeft - el.clientWidth / 2);
+    const onResize = () => setViewportW(el.clientWidth);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => setScrollLeft(el.scrollLeft);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const centerNow = useCallback(() => {
+    if (typeof minutesSinceVisibleStart !== "number") return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const nowOffsetPx = minutesSinceVisibleStart * pxPerMin;
+    const target = Math.max(0, nowOffsetPx - el.clientWidth / 2);
     el.scrollTo({ left: target, behavior: "smooth" });
-  }, [nowMarkerLeft]);
+  }, [pxPerMin, minutesSinceVisibleStart]);
 
   useImperativeHandle(ref, () => ({ centerNow }), [centerNow]);
 
-  const hasNowMarker = minutesSinceVisibleStart != null;
+  const showLeftShadow = scrollLeft > 0;
+  const showRightShadow = scrollLeft + viewportW < contentWidth - 1;
 
   return (
     <Box sx={{ borderRadius: 3, bgcolor: "#060606", p: 1.5 }}>
@@ -327,7 +346,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
         <Typography variant="subtitle1" sx={{ color: "#fff", fontWeight: 600 }}>
           Vehicle Availability Overview
         </Typography>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={2} alignItems="center">
           <Typography
             role="button"
             tabIndex={0}
@@ -347,7 +366,6 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
             sx={{
               color: "#4cbb17",
               cursor: "pointer",
-              ml: 1,
               "&:hover": { textDecoration: "underline" },
             }}
           >
@@ -356,193 +374,285 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
         </Stack>
       </Stack>
 
+      {/* Outer wrapper: sticky gutter + ONE horizontal scroller */}
       <Box
-        ref={scrollRef}
         sx={{
-          overflowX: "auto",
-          overflowY: "hidden",
           position: "relative",
           borderRadius: 2,
-          bgcolor: "#0b0b0b",
           border: "1px solid rgba(255,255,255,0.08)",
+          bgcolor: "#0b0b0b",
+          overflow: "hidden",
         }}
-        aria-label="Availability timeline scroller"
       >
+        {/* LEFT STICKY GUTTER (frozen vehicle chips) */}
         <Box
           sx={{
-            position: "sticky",
+            position: "absolute",
             top: 0,
-            zIndex: 2,
+            left: 0,
+            width: GUTTER_W,
+            height: totalHeight,
+            zIndex: 3,
             bgcolor: "#0b0b0b",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            borderRight: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          <Box sx={{ width: contentWidth, height: 36, position: "relative" }}>
-            {Array.from({ length: 25 }).map((_, i) => {
-              const isEdge = i === 0 || i === 24;
-              const left = i * 60 * pxPerMin;
+          {/* Header spacer line */}
+          <Box
+            sx={{
+              height: HEADER_H,
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+            }}
+          />
+          {/* Vehicle chips list */}
+          <Box sx={{ position: "relative", pt: 1, pb: 1 }}>
+            {vehicles.map((v, idx) => {
+              const chipLabel = v.name || v.label || v.vehicle || v.id;
               return (
                 <Box
-                  key={i}
+                  key={v.id}
                   sx={{
-                    position: "absolute",
-                    left,
-                    top: 0,
-                    bottom: 0,
-                    width: 1,
-                    bgcolor: "rgba(255,255,255,0.12)",
-                    "&::after": {
-                      content: `"${isEdge ? "" : formatHourLabel(i)}"`,
-                      position: "absolute",
-                      top: 8,
-                      left: 6,
-                      fontSize: 12,
-                      color: "rgba(255,255,255,0.72)",
-                      letterSpacing: 0.2,
-                    },
+                    height: LANE_H,
+                    display: "flex",
+                    alignItems: "center",
+                    px: 1,
+                    mb: idx === vehicles.length - 1 ? 0 : `${LANE_GAP}px`,
                   }}
-                />
+                >
+                  <Chip
+                    label={chipLabel}
+                    size="small"
+                    sx={{
+                      bgcolor: v.color || "#1f1f1f",
+                      color: "#fff",
+                      borderRadius: "999px",
+                      fontWeight: 700,
+                    }}
+                  />
+                  {!!v.rideCount && (
+                    <Typography
+                      sx={{
+                        ml: 1,
+                        color: "rgba(255,255,255,0.72)",
+                        fontSize: 12,
+                      }}
+                    >
+                      {v.rideCount} {v.rideCount === 1 ? "ride" : "rides"}
+                    </Typography>
+                  )}
+                </Box>
               );
             })}
           </Box>
         </Box>
 
-        {hasNowMarker && nowMarkerLeft != null && (
+        {/* ONE horizontal scroller (header + bars) with left padding to clear gutter */}
+        <Box
+          ref={scrollRef}
+          sx={{
+            overflowX: "auto",
+            overflowY: "hidden",
+            position: "relative",
+            pl: `${GUTTER_W}px`,
+          }}
+          aria-label="Availability timeline scroller"
+          data-left-shadow={showLeftShadow ? 1 : 0}
+          data-right-shadow={showRightShadow ? 1 : 0}
+        >
+          {/* Sticky header WITH NO GRADIENT behind labels */}
           <Box
             sx={{
-              position: "absolute",
-              left: nowMarkerLeft,
+              position: "sticky",
               top: 0,
-              bottom: 0,
-              width: "2px",
-              bgcolor: "#4cbb17",
-              opacity: 0.9,
-              pointerEvents: "none",
+              zIndex: 2,
+              bgcolor: "#0b0b0b",
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
             }}
-            aria-hidden
-          />
-        )}
+          >
+            <Box
+              sx={{
+                width: contentWidth,
+                height: HEADER_H,
+                position: "relative",
+              }}
+            >
+              {Array.from({ length: 25 }).map((_, i) => {
+                const left = i * 60 * pxPerMin;
+                return (
+                  <Box
+                    key={i}
+                    sx={{
+                      position: "absolute",
+                      left,
+                      top: 0,
+                      height: HEADER_H,
+                    }}
+                  >
+                    {/* vertical tick */}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        width: 1,
+                        bgcolor: "rgba(255,255,255,0.14)",
+                      }}
+                    />
+                    {/* label: solid white text, NO gradient background */}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 6,
+                        left: 6,
+                        fontSize: 12,
+                        color: "#ffffff",
+                        background: "transparent",
+                        pointerEvents: "none",
+                        userSelect: "none",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.7)",
+                        WebkitFontSmoothing: "antialiased",
+                        MozOsxFontSmoothing: "grayscale",
+                      }}
+                    >
+                      {formatHourLabel(i)}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
 
-        <Box sx={{ width: contentWidth, position: "relative", py: 1 }}>
-          {vehicles.map((vehicle) => (
-            <VehicleLane
-              key={vehicle.id}
-              vehicle={vehicle}
-              pxPerMin={pxPerMin}
-              tz={tz}
-              contentWidth={contentWidth}
-              selectedDay={selectedDay}
-              onEventClick={onEventClick}
+          {/* NOW marker aligned to timeline (account for gutter) */}
+          {typeof minutesSinceVisibleStart === "number" && (
+            <Box
+              sx={{
+                position: "absolute",
+                left: minutesSinceVisibleStart * pxPerMin + GUTTER_W,
+                top: 0,
+                bottom: 0,
+                width: "2px",
+                bgcolor: "#4cbb17",
+                opacity: 0.9,
+                pointerEvents: "none",
+              }}
+              aria-hidden
             />
-          ))}
+          )}
+
+          {/* Lanes/baselines + your bars */}
+          <Box sx={{ width: contentWidth, position: "relative", pt: 1, pb: 1 }}>
+            {vehicles.map((v, idx) => (
+              <Box
+                key={v.id}
+                sx={{
+                  position: "relative",
+                  height: LANE_H,
+                  mb: idx === vehicles.length - 1 ? 0 : `${LANE_GAP}px`,
+                }}
+              >
+                {/* baseline */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: "50%",
+                    height: 6,
+                    transform: "translateY(-50%)",
+                    borderRadius: 999,
+                    bgcolor: "rgba(255,255,255,0.1)",
+                  }}
+                />
+                {/* Render your existing bars for this vehicle (absolute left/width via pxPerMin) */}
+                <VehicleLaneBars
+                  vehicle={v}
+                  pxPerMin={pxPerMin}
+                  tz={tz}
+                  selectedDay={selectedDay}
+                  onEventClick={onEventClick}
+                />
+              </Box>
+            ))}
+          </Box>
         </Box>
       </Box>
     </Box>
   );
 });
 
-function VehicleLane({
-  vehicle,
-  pxPerMin,
-  tz,
-  contentWidth,
-  selectedDay,
-  onEventClick,
-}) {
-  const laneCount = Math.max(1, vehicle?.lanes?.length || 0);
-  const containerHeight = laneCount * OVERVIEW_LANE_HEIGHT;
+function VehicleLaneBars({ vehicle, pxPerMin, tz, selectedDay, onEventClick }) {
+  const lanes = vehicle?.lanes || [];
+  if (!lanes.length) return null;
 
-  return (
-    <Box sx={{ position: "relative", px: 1.5, py: 1 }}>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-        <Chip
-          size="small"
-          label={vehicle.label || vehicle.id}
-          sx={{
-            bgcolor: vehicle.color || "grey.700",
-            color: vehicle.textColor || "#fff",
-            fontWeight: 600,
-          }}
-        />
-        <Typography variant="caption" color="text.secondary">
-          {plural(vehicle.rideCount || 0, "ride")}
-        </Typography>
-      </Stack>
+  const laneCount = Math.max(1, lanes.length);
+  const contentWidth = 24 * 60 * pxPerMin;
+  const trackGap = laneCount > 1 ? 4 : 0;
+  const effectiveHeight = LANE_H - (laneCount - 1) * trackGap;
+  const trackHeight = Math.max(12, effectiveHeight / laneCount);
+  const eventHeight = Math.min(24, trackHeight - 2);
+  const verticalOffset = Math.max(
+    0,
+    (LANE_H - (trackHeight * laneCount + trackGap * (laneCount - 1))) / 2,
+  );
 
-      <Box
-        sx={{
-          position: "relative",
-          height: containerHeight,
-          borderRadius: 2,
-          bgcolor: "rgba(255,255,255,0.04)",
-        }}
-      >
-        {vehicle.lanes?.map((lane, laneIdx) =>
-          lane.map((ev) => {
-            const span = percentSpan(ev, selectedDay, tz, contentWidth);
-            if (!span.clamp) return null;
+  return lanes.flatMap((lane, laneIdx) =>
+    lane.map((ev) => {
+      const span = percentSpan(ev, selectedDay, tz, contentWidth);
+      if (!span.clamp) return null;
 
-            const leftPx = (span.left / 100) * contentWidth;
-            const widthPctPx = (span.width / 100) * contentWidth;
-            const durationPx = span.durationMinutes * pxPerMin;
-            const baseMinWidth =
-              span.durationMinutes === 0
-                ? 2
-                : span.durationMinutes <= 5
-                  ? 6
-                  : span.durationMinutes <= 10
-                    ? 4
-                    : 0;
-            const finalWidth = Math.max(
-              widthPctPx,
-              durationPx,
-              baseMinWidth,
-              2,
-            );
+      const leftPx = (span.left / 100) * contentWidth;
+      const widthPctPx = (span.width / 100) * contentWidth;
+      const durationPx = span.durationMinutes * pxPerMin;
+      const baseMinWidth =
+        span.durationMinutes === 0
+          ? 2
+          : span.durationMinutes <= 5
+            ? 6
+            : span.durationMinutes <= 10
+              ? 4
+              : 0;
+      const finalWidth = Math.max(widthPctPx, durationPx, baseMinWidth, 2);
 
-            return (
-              <Tooltip
-                key={ev.id}
-                title={`${ev.start.format("h:mm A")} – ${ev.end.format(
-                  "h:mm A",
-                )} • ${ev.title}`}
-              >
-                <Box
-                  onClick={() => onEventClick?.(ev)}
-                  sx={{
-                    position: "absolute",
-                    top:
-                      laneIdx * OVERVIEW_LANE_HEIGHT +
-                      (OVERVIEW_LANE_HEIGHT - OVERVIEW_EVENT_HEIGHT) / 2,
-                    left: leftPx,
-                    width: finalWidth,
-                    height: OVERVIEW_EVENT_HEIGHT,
-                    borderRadius: 1,
-                    bgcolor: vehicle.color || "grey.600",
-                    color: vehicle.textColor || "#000",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    px: 0.5,
-                    cursor: "pointer",
-                    transition: "transform 120ms ease",
-                    overflow: "hidden",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.35)",
-                    "&:hover": {
-                      transform: "translateY(-1px)",
-                    },
-                  }}
-                >
-                  <span>{ev.vehicle}</span>
-                </Box>
-              </Tooltip>
-            );
-          }),
-        )}
-      </Box>
-    </Box>
+      const laneTop =
+        verticalOffset +
+        laneIdx * (trackHeight + trackGap) +
+        (trackHeight - eventHeight) / 2;
+      const tooltipTitle = `${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title || ev.vehicle || "Ride"}`;
+      const chipText = ev.vehicle || ev.title || "Ride";
+
+      return (
+        <Tooltip key={ev.id} title={tooltipTitle}>
+          <Box
+            onClick={() => onEventClick?.(ev)}
+            sx={{
+              position: "absolute",
+              top: laneTop,
+              left: leftPx,
+              width: finalWidth,
+              height: eventHeight,
+              borderRadius: 999,
+              bgcolor: vehicle.color || "grey.600",
+              color: vehicle.textColor || "#000",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              px: 0.75,
+              cursor: "pointer",
+              transition: "transform 120ms ease",
+              overflow: "hidden",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.35)",
+              "&:hover": {
+                transform: "translateY(-1px)",
+              },
+            }}
+          >
+            <span>{chipText}</span>
+          </Box>
+        </Tooltip>
+      );
+    }),
   );
 }
 
