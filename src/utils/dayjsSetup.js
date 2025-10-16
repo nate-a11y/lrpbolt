@@ -1,15 +1,15 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isBetween from "dayjs/plugin/isBetween";
-import advancedFormat from "dayjs/plugin/advancedFormat";
-import localizedFormat from "dayjs/plugin/localizedFormat";
-import customParseFormat from "dayjs/plugin/customParseFormat";
-import duration from "dayjs/plugin/duration";
-import relativeTime from "dayjs/plugin/relativeTime";
+import dayjs from "dayjs/esm/index.js";
+import utc from "dayjs/esm/plugin/utc/index.js";
+import timezone from "dayjs/esm/plugin/timezone/index.js";
+import isSameOrBefore from "dayjs/esm/plugin/isSameOrBefore/index.js";
+import isSameOrAfter from "dayjs/esm/plugin/isSameOrAfter/index.js";
+import isBetween from "dayjs/esm/plugin/isBetween/index.js";
+import advancedFormat from "dayjs/esm/plugin/advancedFormat/index.js";
+import localizedFormat from "dayjs/esm/plugin/localizedFormat/index.js";
+import customParseFormat from "dayjs/esm/plugin/customParseFormat/index.js";
+import duration from "dayjs/esm/plugin/duration/index.js";
+import relativeTime from "dayjs/esm/plugin/relativeTime/index.js";
 
 if (!dayjs.__lrpSetupDone) {
   dayjs.extend(utc);
