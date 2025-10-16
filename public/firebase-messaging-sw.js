@@ -5,9 +5,14 @@ importScripts("https://www.gstatic.com/firebasejs/10.14.0/firebase-messaging-com
 
 // Page code initializes the app; in the SW we only need messaging.
 try {
-  // No config needed here when using compat + page init.
-  const messaging = firebase.messaging();
+  if (!firebase.apps || firebase.apps.length === 0) {
+    firebase.initializeApp({
+      messagingSenderId: "799613895072",
+    });
+  }
+  firebase.messaging();
   // Optional: background display logic goes here if needed.
 } catch (err) {
-  // Keep quiet in SW to avoid console noise.
+  // Keep quiet in SW to avoid console noise while still touching the error.
+  void err;
 }

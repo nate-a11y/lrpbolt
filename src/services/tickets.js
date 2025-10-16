@@ -1,6 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
 import {
-  getFirestore,
   collection,
   doc,
   getDoc,
@@ -11,8 +10,7 @@ import {
 } from "firebase/firestore";
 
 import logError from "@/utils/logError.js";
-
-const db = getFirestore();
+import { db } from "@/services/firebase.js";
 
 export function subscribeTickets({ onData, onError } = {}) {
   const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
