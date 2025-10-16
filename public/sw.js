@@ -19,9 +19,7 @@ self.addEventListener("fetch", (event) => {
       return;
     }
   } catch (error) {
-    if (console && typeof console.debug === "function") {
-      console.debug("[sw] fetch inspect failed", error);
-    }
+    // Swallow silently to avoid console noise; diagnostics handled elsewhere.
   }
 });
 
