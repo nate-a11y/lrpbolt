@@ -11,10 +11,18 @@ function scopeUrl(path) {
 self.addEventListener("fetch", (event) => {
   try {
     const url = new URL(event.request.url);
+    const { origin, pathname } = url;
+
+    if (
+      origin === "https://firestore.googleapis.com" ||
+      origin === "https://securetoken.googleapis.com"
+    ) {
+      return;
+    }
+
     if (
       url.hostname.endsWith("googleapis.com") &&
-      (url.pathname.includes("/Firestore/Listen/") ||
-        url.pathname.includes("/v1/token"))
+      (pathname.includes("/Firestore/Listen/") || pathname.includes("/v1/token"))
     ) {
       return;
     }

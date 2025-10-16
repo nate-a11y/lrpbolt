@@ -1,6 +1,5 @@
 /* FIX: use unified Firebase app; avoid duplicate-app */
 import {
-  getFirestore,
   collection,
   doc,
   getDoc,
@@ -17,24 +16,15 @@ import {
   limit,
 } from "firebase/firestore";
 
-import { getFirebaseApp } from "@/utils/firebaseInit";
+import { db } from "@/services/firebase.js";
 
-import { AppError, logError } from "./errors";
+import { AppError } from "./errors";
 
-let _db;
 export function getDb() {
-  if (_db) return _db;
-  try {
-    const app = getFirebaseApp();
-    _db = getFirestore(app);
-    return _db;
-  } catch (e) {
-    logError(e, { where: "firestoreCore.getDb" });
-    throw new AppError("Failed to init Firestore", {
-      code: "firestore_init",
-      cause: e,
-    });
-  }
+  if (db) return db;
+  throw new AppError("Failed to init Firestore", {
+    code: "firestore_init",
+  });
 }
 
 // re-exports remain unchanged
