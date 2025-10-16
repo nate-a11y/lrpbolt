@@ -1,10 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import dayjs from "@/utils/dayjsSetup.js";
 
 /**
  * Return [windowStart, windowEnd] day window for a given date in tz.

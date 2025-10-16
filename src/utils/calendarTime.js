@@ -1,64 +1,95 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
+import dayjs, { toDayjs, isD, getDefaultTimezone } from "./dayjsSetup.js";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
+export const LRP_TZ = getDefaultTimezone() || dayjs.tz?.guess?.() || "UTC";
 
-export const LRP_TZ = dayjs.tz.guess();
+const cmpLTE = (a, b) => {
+  if (!a || !b) return false;
+  const da = isD(a) ? a : toDayjs(a);
+  const db = isD(b) ? b : toDayjs(b);
+  if (!isD(da) || !isD(db)) return false;
+  return typeof da.isSameOrBefore === "function"
+    ? da.isSameOrBefore(db)
+    : da.valueOf() <= db.valueOf();
+};
 
-/** tz-aware day window for a given date-like (string|Date|dayjs) */
+const cmpGTE = (a, b) => {
+  if (!a || !b) return false;
+  const da = isD(a) ? a : toDayjs(a);
+  const db = isD(b) ? b : toDayjs(b);
+  if (!isD(da) || !isD(db)) return false;
+  return typeof da.isSameOrAfter === "function"
+    ? da.isSameOrAfter(db)
+    : da.valueOf() >= db.valueOf();
+};
+
+export const compareLte = cmpLTE;
+export const compareGte = cmpGTE;
+
 export function getDayWindow(selectedDay, tz = LRP_TZ) {
-  const dayStart = dayjs.tz(selectedDay, tz).startOf("day");
-  const dayEnd = dayStart.add(1, "day"); // [dayStart, dayEnd)
-  return { dayStart, dayEnd };
+  const base =
+    toDayjs(selectedDay, tz) ||
+    (typeof dayjs.tz === "function" ? dayjs().tz(tz) : dayjs());
+  const dayStart = base.startOf("day");
+  const dayEnd = dayStart.add(1, "day");
+  return { dayStart, dayEnd, tz };
 }
 
-/** Safe convert input to dayjs in tz. Accepts Firestore Timestamp, ms, ISO, Date, dayjs. */
-export function toDayjsSafe(input, tz = LRP_TZ) {
-  try {
-    if (!input) return null;
-    if (typeof input?.toMillis === "function")
-      return dayjs.tz(input.toMillis(), tz);
-    if (typeof input === "number" && Number.isFinite(input))
-      return dayjs.tz(input, tz);
-    if (dayjs.isDayjs(input))
-      return input.tz ? input.tz(tz) : dayjs.tz(input.valueOf(), tz);
-    const d = dayjs(input);
-    return d.isValid() ? d.tz(tz) : null;
-  } catch {
-    return null;
-  }
-}
+export const clampToWindow = (
+  { start, end },
+  winStart,
+  winEnd,
+  tz = LRP_TZ,
+) => {
+  const s = toDayjs(start, tz);
+  const e = toDayjs(end, tz);
+  const ws = toDayjs(winStart, tz);
+  const we = toDayjs(winEnd, tz);
 
-/**
- * Clamp a [start,end) interval to the selected day.
- * Returns null if no overlap.
- * reason: "fromPrevDay" | "intoNextDay" | "spansBoth" | null
- */
+  if (!isD(s) || !isD(e) || !isD(ws) || !isD(we)) return null;
+  if (cmpGTE(s, we) || cmpLTE(e, ws)) return null;
+
+  const clampedStart = cmpGTE(s, ws) ? s : ws;
+  const clampedEnd = cmpLTE(e, we) ? e : we;
+  if (!cmpLTE(clampedStart, clampedEnd)) return null;
+
+  return {
+    start: clampedStart,
+    end: clampedEnd,
+    windowStart: ws,
+    windowEnd: we,
+  };
+};
+
 export function clampToDay({ start, end }, selectedDay, tz = LRP_TZ) {
-  const s = toDayjsSafe(start, tz);
-  const e = toDayjsSafe(end, tz);
-  if (!s || !e || !s.isValid() || !e.isValid()) return null;
-
   const { dayStart, dayEnd } = getDayWindow(selectedDay, tz);
+  const clamped = clampToWindow({ start, end }, dayStart, dayEnd, tz);
+  if (!clamped) return null;
 
-  // If ends <= dayStart or starts >= dayEnd → no visible portion on this day
-  if (e.isSameOrBefore(dayStart) || s.isSameOrAfter(dayEnd)) return null;
-
-  const clampedStart = s.isBefore(dayStart) ? dayStart : s;
-  const clampedEnd = e.isAfter(dayEnd) ? dayEnd : e;
+  const originalStart = toDayjs(start, tz);
+  const originalEnd = toDayjs(end, tz);
+  if (!isD(originalStart) || !isD(originalEnd)) return null;
 
   let reason = null;
-  if (s.isBefore(dayStart) && e.isAfter(dayStart)) reason = "fromPrevDay";
-  if (e.isAfter(dayEnd) && s.isBefore(dayEnd))
+  if (cmpLTE(originalStart, dayStart) && cmpGTE(originalEnd, dayStart)) {
+    reason = "fromPrevDay";
+  }
+  if (cmpGTE(originalEnd, dayEnd) && cmpLTE(originalStart, dayEnd)) {
     reason = reason ? "spansBoth" : "intoNextDay";
+  }
 
-  return { clampedStart, clampedEnd, reason, dayStart, dayEnd, tz };
+  return {
+    clampedStart: clamped.start,
+    clampedEnd: clamped.end,
+    reason,
+    dayStart,
+    dayEnd,
+    tz,
+  };
 }
 
-/** Simple plural helper: plural(1,"ride") → "1 ride"; plural(2,"ride") → "2 rides" */
+export const toDayjsSafe = toDayjs;
+
 export function plural(n, singular, pluralWord = `${singular}s`) {
   return `${n} ${n === 1 ? singular : pluralWord}`;
 }

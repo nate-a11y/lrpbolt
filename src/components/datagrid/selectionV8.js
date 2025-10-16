@@ -1,9 +1,4 @@
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import dayjs from "@/utils/dayjsSetup.js";
 
 // Export the default portal timezone (Central); fall back to guess if needed.
 export const DEFAULT_TZ = "America/Chicago";

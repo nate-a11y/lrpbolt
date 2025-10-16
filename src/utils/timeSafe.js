@@ -1,21 +1,17 @@
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import dayjs, { toDayjs } from "@/utils/dayjsSetup.js";
 
 function fromTs(ts) {
-  if (!ts) return null;
-  if (typeof ts.toDate === "function") return dayjs(ts.toDate());
-  if (ts instanceof Date) return dayjs(ts);
-  return dayjs(ts);
+  return toDayjs(ts);
 }
 
 export function formatTz(ts, fmt = "MMM D, YYYY h:mm A z") {
   const d = fromTs(ts);
   if (!d || !d.isValid()) return "N/A";
-  const tz = dayjs.tz.guess();
-  return d.tz(tz).format(fmt);
+  const tz = dayjs.tz?.guess?.();
+  if (tz) {
+    return d.tz(tz).format(fmt);
+  }
+  return d.format(fmt);
 }
 
 export function durationHm(startTs, endTs) {
@@ -34,7 +30,7 @@ export function durationHm(startTs, endTs) {
 }
 
 export function friendlyTzLabel() {
-  const guess = dayjs.tz.guess();
+  const guess = dayjs.tz?.guess?.();
   if (!guess) return "";
   const map = {
     "America/Chicago": "Central Time",
