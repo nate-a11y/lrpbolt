@@ -18,5 +18,9 @@
     "firebase-functions": "^5.0.0",
     "googleapis": "^132.0.0",
     "twilio": "^4.0.0"
+  },
+  "packageManager": "npm@11.4.2",
+  "overrides": {
+    "happy-dom": "20.0.2"
   }
 }
