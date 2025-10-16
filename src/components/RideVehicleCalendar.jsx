@@ -8,10 +8,10 @@ import {
   useCallback,
   memo,
   forwardRef,
+  useImperativeHandle,
 } from "react";
 import { Box } from "@mui/material";
 // [LRP:END:calendar:imports]
-import { createPortal } from "react-dom";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -63,68 +63,6 @@ const resolveTopCss = (topValue) => {
   if (typeof topValue === "number") return topValue;
   return topValue;
 };
-
-// [LRP:BEGIN:calendar:useMeasuredHeight]
-function useMeasuredHeight() {
-  const ref = useRef(null);
-  const [h, setH] = useState(0);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const ro = new ResizeObserver((entries) => {
-      const r = entries[0]?.contentRect;
-      if (r) setH(Math.ceil(r.height));
-    });
-    ro.observe(ref.current);
-    return () => ro.disconnect();
-  }, []);
-
-  return [ref, h];
-}
-// [LRP:END:calendar:useMeasuredHeight]
-
-const VehiclePillWrapper = forwardRef(
-  (
-    {
-      children,
-      width,
-      hidden = false,
-      anchored = false,
-      top = 0,
-      stickyTopOffset = DEFAULT_STICKY_TOP,
-    },
-    ref,
-  ) => (
-    // [LRP:BEGIN:vehicleCalendar:visual-tune]
-    <Box
-      ref={ref}
-      sx={{
-        position: anchored ? "absolute" : "sticky",
-        left: 0,
-        top: anchored ? top : resolveTopCss(stickyTopOffset),
-        zIndex: (theme) => theme.zIndex.appBar + 1,
-        width,
-        opacity: hidden ? 0 : 1,
-        pointerEvents: hidden ? "none" : "auto",
-        borderRadius: 2,
-        pl: 1.25,
-        py: 0.4,
-        bgcolor: "background.default",
-        borderRight: "1px solid",
-        borderColor: "divider",
-        display: "flex",
-        alignItems: "center",
-        gap: 0.75,
-        boxShadow: (t) => t.shadows[1],
-      }}
-    >
-      {children}
-    </Box>
-    // [LRP:END:vehicleCalendar:visual-tune]
-  ),
-);
-
-VehiclePillWrapper.displayName = "VehiclePillWrapper";
 
 const minutesBetween = (a, b) => Math.max(0, b.diff(a, "minute"));
 const formatHm = (mins) => {
@@ -339,6 +277,282 @@ function edgeChipFor(ride, selectedDay, tz) {
 }
 // ===== [RVTC:helpers:end] =====
 
+const PX_PER_MIN_FALLBACK = 1.8;
+
+const AvailabilityOverview = forwardRef(function AvailabilityOverview(
+  {
+    vehicles = [],
+    tz = "America/Chicago",
+    pxPerMin: pxPerMinProp,
+    minutesSinceVisibleStart = null,
+    onHideClick,
+    onEventClick,
+    selectedDay,
+  },
+  ref,
+) {
+  const pxPerMin = pxPerMinProp || PX_PER_MIN_FALLBACK;
+  const scrollRef = useRef(null);
+
+  const contentWidth = useMemo(() => 24 * 60 * pxPerMin, [pxPerMin]);
+
+  const nowMarkerLeft = useMemo(() => {
+    if (minutesSinceVisibleStart == null) return null;
+    return Math.max(
+      0,
+      Math.min(contentWidth, minutesSinceVisibleStart * pxPerMin),
+    );
+  }, [minutesSinceVisibleStart, pxPerMin, contentWidth]);
+
+  const centerNow = useCallback(() => {
+    if (nowMarkerLeft == null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = Math.max(0, nowMarkerLeft - el.clientWidth / 2);
+    el.scrollTo({ left: target, behavior: "smooth" });
+  }, [nowMarkerLeft]);
+
+  useImperativeHandle(ref, () => ({ centerNow }), [centerNow]);
+
+  const hasNowMarker = minutesSinceVisibleStart != null;
+
+  return (
+    <Box sx={{ borderRadius: 3, bgcolor: "#060606", p: 1.5 }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 1 }}
+      >
+        <Typography variant="subtitle1" sx={{ color: "#fff", fontWeight: 600 }}>
+          Vehicle Availability Overview
+        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography
+            role="button"
+            tabIndex={0}
+            onClick={centerNow}
+            sx={{
+              color: "#4cbb17",
+              cursor: "pointer",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            Center Now
+          </Typography>
+          <Typography
+            role="button"
+            tabIndex={0}
+            onClick={onHideClick}
+            sx={{
+              color: "#4cbb17",
+              cursor: "pointer",
+              ml: 1,
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            Hide
+          </Typography>
+        </Stack>
+      </Stack>
+
+      <Box
+        ref={scrollRef}
+        sx={{
+          overflowX: "auto",
+          overflowY: "hidden",
+          position: "relative",
+          borderRadius: 2,
+          bgcolor: "#0b0b0b",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+        aria-label="Availability timeline scroller"
+      >
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            bgcolor: "#0b0b0b",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <Box sx={{ width: contentWidth, height: 36, position: "relative" }}>
+            {Array.from({ length: 25 }).map((_, i) => {
+              const isEdge = i === 0 || i === 24;
+              const left = i * 60 * pxPerMin;
+              return (
+                <Box
+                  key={i}
+                  sx={{
+                    position: "absolute",
+                    left,
+                    top: 0,
+                    bottom: 0,
+                    width: 1,
+                    bgcolor: "rgba(255,255,255,0.12)",
+                    "&::after": {
+                      content: `"${isEdge ? "" : formatHourLabel(i)}"`,
+                      position: "absolute",
+                      top: 8,
+                      left: 6,
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.72)",
+                      letterSpacing: 0.2,
+                    },
+                  }}
+                />
+              );
+            })}
+          </Box>
+        </Box>
+
+        {hasNowMarker && nowMarkerLeft != null && (
+          <Box
+            sx={{
+              position: "absolute",
+              left: nowMarkerLeft,
+              top: 0,
+              bottom: 0,
+              width: "2px",
+              bgcolor: "#4cbb17",
+              opacity: 0.9,
+              pointerEvents: "none",
+            }}
+            aria-hidden
+          />
+        )}
+
+        <Box sx={{ width: contentWidth, position: "relative", py: 1 }}>
+          {vehicles.map((vehicle) => (
+            <VehicleLane
+              key={vehicle.id}
+              vehicle={vehicle}
+              pxPerMin={pxPerMin}
+              tz={tz}
+              contentWidth={contentWidth}
+              selectedDay={selectedDay}
+              onEventClick={onEventClick}
+            />
+          ))}
+        </Box>
+      </Box>
+    </Box>
+  );
+});
+
+function VehicleLane({
+  vehicle,
+  pxPerMin,
+  tz,
+  contentWidth,
+  selectedDay,
+  onEventClick,
+}) {
+  const laneCount = Math.max(1, vehicle?.lanes?.length || 0);
+  const containerHeight = laneCount * OVERVIEW_LANE_HEIGHT;
+
+  return (
+    <Box sx={{ position: "relative", px: 1.5, py: 1 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Chip
+          size="small"
+          label={vehicle.label || vehicle.id}
+          sx={{
+            bgcolor: vehicle.color || "grey.700",
+            color: vehicle.textColor || "#fff",
+            fontWeight: 600,
+          }}
+        />
+        <Typography variant="caption" color="text.secondary">
+          {plural(vehicle.rideCount || 0, "ride")}
+        </Typography>
+      </Stack>
+
+      <Box
+        sx={{
+          position: "relative",
+          height: containerHeight,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.04)",
+        }}
+      >
+        {vehicle.lanes?.map((lane, laneIdx) =>
+          lane.map((ev) => {
+            const span = percentSpan(ev, selectedDay, tz, contentWidth);
+            if (!span.clamp) return null;
+
+            const leftPx = (span.left / 100) * contentWidth;
+            const widthPctPx = (span.width / 100) * contentWidth;
+            const durationPx = span.durationMinutes * pxPerMin;
+            const baseMinWidth =
+              span.durationMinutes === 0
+                ? 2
+                : span.durationMinutes <= 5
+                  ? 6
+                  : span.durationMinutes <= 10
+                    ? 4
+                    : 0;
+            const finalWidth = Math.max(
+              widthPctPx,
+              durationPx,
+              baseMinWidth,
+              2,
+            );
+
+            return (
+              <Tooltip
+                key={ev.id}
+                title={`${ev.start.format("h:mm A")} – ${ev.end.format(
+                  "h:mm A",
+                )} • ${ev.title}`}
+              >
+                <Box
+                  onClick={() => onEventClick?.(ev)}
+                  sx={{
+                    position: "absolute",
+                    top:
+                      laneIdx * OVERVIEW_LANE_HEIGHT +
+                      (OVERVIEW_LANE_HEIGHT - OVERVIEW_EVENT_HEIGHT) / 2,
+                    left: leftPx,
+                    width: finalWidth,
+                    height: OVERVIEW_EVENT_HEIGHT,
+                    borderRadius: 1,
+                    bgcolor: vehicle.color || "grey.600",
+                    color: vehicle.textColor || "#000",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    px: 0.5,
+                    cursor: "pointer",
+                    transition: "transform 120ms ease",
+                    overflow: "hidden",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.35)",
+                    "&:hover": {
+                      transform: "translateY(-1px)",
+                    },
+                  }}
+                >
+                  <span>{ev.vehicle}</span>
+                </Box>
+              </Tooltip>
+            );
+          }),
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+function formatHourLabel(i) {
+  if (i === 0 || i === 24) return "12am";
+  if (i === 12) return "12pm";
+  if (i < 12) return `${i}am`;
+  return `${i - 12}pm`;
+}
+
 const CST = TIMEZONE;
 const FILTERS_STORAGE_KEY = "lrp.calendar.filters";
 const DEFAULT_FILTERS = { vehicles: ["ALL"], scrollToNow: true };
@@ -351,7 +565,6 @@ function RideVehicleCalendar({
   onCenterNow,
   persistedFilters,
   onFiltersChange,
-  stickyPillAnchorId,
   hideQuickActions = false,
   ...rest
 } = {}) {
@@ -537,12 +750,7 @@ function RideVehicleCalendar({
   const [now, setNow] = useState(() => dayjs().tz(tz));
   const { vehicles: vehicleFilter, scrollToNow: scrollToNowPref } =
     filtersState;
-  const [stickyAnchorEl, setStickyAnchorEl] = useState(null);
-  const [pillOffsets, setPillOffsets] = useState({});
-
   const rideRefs = useRef({});
-  const pillRefs = useRef({});
-  const lanesWrapperRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -629,18 +837,7 @@ function RideVehicleCalendar({
     localStorage.setItem("rvcal.overview", String(showOverview));
   }, [showOverview]);
 
-  // Hour ruler + horizontal scroll
-  const scrollerRef = useRef(null);
-  const [headerRef, headerH] = useMeasuredHeight();
   const pxPerHour = useMemo(() => (isMobile ? 62 : 88), [isMobile]);
-  const hours = useMemo(
-    () =>
-      Array.from({ length: 25 }, (_, i) => date.startOf("day").add(i, "hour")),
-    [date],
-  );
-  // width of the sticky label gutter (+ small spacing)
-  const labelW = useMemo(() => (isMobile ? 140 : 200), [isMobile]);
-  const gutter = labelW + 8;
   // ===== [RVTC:state:end] =====
 
   useEffect(() => {
@@ -657,27 +854,6 @@ function RideVehicleCalendar({
   useEffect(() => {
     localStorage.setItem("rvcal.sectionState", JSON.stringify(sectionState));
   }, [sectionState]);
-
-  useEffect(() => {
-    if (!stickyPillAnchorId) {
-      setStickyAnchorEl(null);
-      return;
-    }
-    if (typeof document === "undefined") return;
-    let frame = null;
-    const assign = () => {
-      const anchor = document.getElementById(stickyPillAnchorId);
-      if (anchor) {
-        setStickyAnchorEl(anchor);
-      } else {
-        frame = requestAnimationFrame(assign);
-      }
-    };
-    assign();
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [stickyPillAnchorId]);
 
   const vehicles = useMemo(
     () => [...new Set(events.map((e) => e.vehicle))],
@@ -876,55 +1052,18 @@ function RideVehicleCalendar({
   }, [filteredGroups]);
   // ===== [RVTC:lanes:end] =====
 
-  useEffect(() => {
-    if (!stickyAnchorEl) {
-      setPillOffsets({});
-      return;
-    }
-
-    const anchor = stickyAnchorEl;
-    const measure = () => {
-      const wrapper = lanesWrapperRef.current;
-      if (!wrapper) return;
-
-      const wrapperTop = wrapper.getBoundingClientRect().top;
-      const next = {};
-      Object.entries(pillRefs.current).forEach(([vehicle, node]) => {
-        if (!node) return;
-        const nodeTop = node.getBoundingClientRect().top - wrapperTop;
-        next[vehicle] = Math.max(0, Math.round(nodeTop));
-      });
-      setPillOffsets(next);
-
-      const totalHeight = wrapper.scrollHeight;
-      anchor.style.minHeight = `${totalHeight + 32}px`;
-      anchor.style.paddingBottom = "16px";
-    };
-
-    measure();
-
-    const wrapper = lanesWrapperRef.current;
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(measure)
-        : null;
-    if (resizeObserver && wrapper) {
-      resizeObserver.observe(wrapper);
-    }
-
-    const scrollContainer = scrollerRef.current;
-    const onScroll = () => measure();
-    scrollContainer?.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => {
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
-      scrollContainer?.removeEventListener("scroll", onScroll);
-      anchor.style.minHeight = "";
-      anchor.style.paddingBottom = "";
-    };
-  }, [stickyAnchorEl, filteredGroups]);
+  const overviewVehicles = useMemo(
+    () =>
+      groupedPacked.map(({ vehicle, lanes }) => ({
+        id: vehicle,
+        label: vehicle,
+        lanes,
+        color: vehicleColors[vehicle],
+        textColor: vehicleText[vehicle],
+        rideCount: lanes.reduce((acc, lane) => acc + lane.length, 0),
+      })),
+    [groupedPacked, vehicleColors, vehicleText],
+  );
 
   const summary = useMemo(() => {
     const vehicles = new Set();
@@ -968,34 +1107,28 @@ function RideVehicleCalendar({
     }
   }, [flatFiltered, now]);
 
-  // ===== [RVTC:scrollH:start] =====
-  const getNowX = useCallback(() => {
-    const el = scrollerRef.current;
-    if (!el) return 0;
-    if (!date.isSame(now, "day")) return 0;
-    const start = date.startOf("day");
-    const end = start.add(24, "hour");
-    const pct = clamp01(
-      minutesBetween(start, now) / Math.max(1, minutesBetween(start, end)),
-    );
-    const timelineWidth = 24 * pxPerHour;
-    const x = gutter + timelineWidth * pct;
-    return Math.max(0, Math.min(x, el.scrollWidth));
-  }, [date, now, pxPerHour, gutter]);
+  const availabilityOverviewRef = useRef(null);
+  const pxPerMin = useMemo(() => pxPerHour / 60, [pxPerHour]);
+  const { dayStart, dayEnd } = useMemo(() => getDayWindow(date, CST), [date]);
+  const isToday = useMemo(() => date.isSame(now, "day"), [date, now]);
+  const minutesSinceVisibleStart = useMemo(() => {
+    if (!isToday) return null;
+    const diff = minutesBetween(dayStart, now);
+    return Math.min(diff, 24 * 60);
+  }, [isToday, dayStart, now]);
 
   const centerNow = useCallback(() => {
-    if (!date.isSame(now, "day")) return;
+    if (!isToday) return;
     scrollToNow();
-    const el = scrollerRef.current;
-    if (!el) return;
-    const x = getNowX();
-    const target = Math.max(0, x - el.clientWidth / 2);
-    el.scrollTo({ left: target, behavior: "smooth" });
-  }, [date, now, scrollToNow, getNowX]);
-  // ===== [RVTC:scrollH:end] =====
+    availabilityOverviewRef.current?.centerNow();
+  }, [isToday, scrollToNow]);
 
-  const isToday = date.isSame(now, "day");
-  const { dayStart, dayEnd } = getDayWindow(date, CST);
+  const handleOverviewEventClick = useCallback((event) => {
+    if (!event) return;
+    setSelectedEvent(event);
+    setModalOpen(true);
+  }, []);
+
   const nowPct = isToday
     ? (100 * minutesBetween(dayStart, now)) / minutesBetween(dayStart, dayEnd)
     : null;
@@ -1183,287 +1316,43 @@ function RideVehicleCalendar({
           )}
           {/* ===== [RVTC:overview:start] ===== */}
           <Box sx={{ mb: 2 }}>
-            {/* [LRP:BEGIN:vehicleCalendar:card] */}
-            <Box
-              sx={(t) => ({
-                borderRadius: 2,
-                border: `1px solid ${t.palette.divider}`,
-                background:
-                  t.palette.mode === "dark"
-                    ? "rgba(16,16,16,0.95)"
-                    : t.palette.background.paper,
-                boxShadow: t.shadows[2],
-                overflow: "hidden",
-              })}
-            >
-              <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ px: 1, py: 0.75, bgcolor: theme.palette.action.hover }}
+            {showOverview ? (
+              <AvailabilityOverview
+                ref={availabilityOverviewRef}
+                vehicles={overviewVehicles}
+                tz={tz}
+                pxPerMin={pxPerMin}
+                minutesSinceVisibleStart={minutesSinceVisibleStart}
+                onHideClick={() => setShowOverview(false)}
+                onEventClick={handleOverviewEventClick}
+                selectedDay={date}
+              />
+            ) : (
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  bgcolor: "#060606",
+                  p: 1.5,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
               >
-                <Typography fontWeight={700} fontSize={13}>
-                  Vehicle Availability Overview
-                </Typography>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Button
-                    size="small"
-                    onClick={() => setShowOverview((v) => !v)}
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ color: "#fff", fontWeight: 600 }}
                   >
-                    {showOverview ? "Hide" : "Show"}
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={centerNow}
-                    disabled={!isToday}
-                    title="Center now on the overview"
-                  >
-                    Center Now
+                    Vehicle Availability Overview
+                  </Typography>
+                  <Button size="small" onClick={() => setShowOverview(true)}>
+                    Show
                   </Button>
                 </Stack>
-              </Stack>
-
-              <Collapse in={showOverview} timeout="auto" unmountOnExit>
-                {/* Hour ruler + lanes */}
-                <Box sx={{ position: "relative", pt: 0, mt: 0 }}>
-                  {/* [LRP:BEGIN:vehicleCalendar:visual-tune] */}
-                  {!hideHeader && (
-                    <Box
-                      ref={headerRef}
-                      sx={(t) => ({
-                        position: "sticky",
-                        top: stickyTopOffset || 0,
-                        zIndex: t.zIndex.appBar + 1,
-                        background:
-                          t.palette.mode === "dark"
-                            ? "rgba(10,10,10,0.9)"
-                            : t.palette.background.paper,
-                        backdropFilter: "saturate(1.05) blur(3px)",
-                        borderBottom: `1px solid ${t.palette.divider}`,
-                        px: 1,
-                        py: 0.5,
-                        m: 0,
-                      })}
-                    >
-                      <Box
-                        sx={{
-                          position: "relative",
-                          pl: `${gutter}px`,
-                          minWidth: `${gutter + 24 * pxPerHour}px`,
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: "grid",
-                            gridTemplateColumns: `repeat(24, ${pxPerHour}px)`,
-                          }}
-                        >
-                          {hours.slice(0, 24).map((h, i) => (
-                            <Box
-                              key={i}
-                              sx={{
-                                height: 24,
-                                borderLeft: i === 0 ? "none" : "1px dashed",
-                                borderColor: "divider",
-                                display: "flex",
-                                alignItems: "center",
-                                fontSize: 12,
-                                color: "text.secondary",
-                                pl: 0.5,
-                              }}
-                            >
-                              {h.format("ha")}
-                            </Box>
-                          ))}
-                        </Box>
-                        {isToday && (
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              left: `${
-                                clamp01(
-                                  minutesBetween(dayStart, now) /
-                                    minutesBetween(dayStart, dayEnd),
-                                ) * 100
-                              }%`,
-                              top: 0,
-                              bottom: 0,
-                              width: 2,
-                              transform: "translateX(-1px)",
-                              bgcolor: theme.palette.primary.main,
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
-                  )}
-
-                  <Box
-                    ref={scrollerRef}
-                    sx={{
-                      position: "relative",
-                      overflowX: "auto",
-                      overflowY: "hidden",
-                      scrollbarGutter: "stable",
-                      WebkitOverflowScrolling: "touch",
-                      px: 1,
-                      pb: 1,
-                      bgcolor: theme.palette.background.paper,
-                    }}
-                  >
-                    <Stack
-                      ref={lanesWrapperRef}
-                      sx={{
-                        pt: hideHeader ? 0 : headerH,
-                        minWidth: `${gutter + 24 * pxPerHour}px`,
-                      }}
-                      spacing={1}
-                    >
-                      {groupedPacked.map(({ vehicle, lanes }) => {
-                        const rideCount = lanes.reduce(
-                          (acc, l) => acc + l.length,
-                          0,
-                        );
-                        const setPillRef = (node) => {
-                          if (node) {
-                            pillRefs.current[vehicle] = node;
-                          } else {
-                            delete pillRefs.current[vehicle];
-                          }
-                        };
-                        const renderChip = () => (
-                          <Chip
-                            size="small"
-                            label={vehicle}
-                            sx={{
-                              bgcolor: vehicleColors[vehicle],
-                              color: vehicleText[vehicle],
-                              fontWeight: 600,
-                            }}
-                          />
-                        );
-                        const renderCount = () => (
-                          <Typography variant="caption" color="text.secondary">
-                            {plural(rideCount, "ride")}
-                          </Typography>
-                        );
-
-                        const anchoredPill =
-                          stickyAnchorEl &&
-                          createPortal(
-                            <VehiclePillWrapper
-                              width={labelW}
-                              anchored
-                              top={pillOffsets[vehicle] ?? 0}
-                              stickyTopOffset={stickyTopOffset}
-                            >
-                              {renderChip()}
-                              {renderCount()}
-                            </VehiclePillWrapper>,
-                            stickyAnchorEl,
-                          );
-
-                        return (
-                          <Box key={vehicle} sx={{ mb: 3 }}>
-                            <Box sx={{ position: "relative" }}>
-                              <VehiclePillWrapper
-                                ref={setPillRef}
-                                width={labelW}
-                                hidden={Boolean(stickyAnchorEl)}
-                                stickyTopOffset={stickyTopOffset}
-                              >
-                                {renderChip()}
-                                {renderCount()}
-                              </VehiclePillWrapper>
-                              {anchoredPill}
-
-                              {/* Lanes shifted to clear the sticky label gutter */}
-                              <Box
-                                sx={{
-                                  position: "relative",
-                                  pl: `${gutter}px`,
-                                  minWidth: `${24 * pxPerHour}px`,
-                                  height: lanes.length * OVERVIEW_LANE_HEIGHT,
-                                }}
-                              >
-                                {lanes.map((lane, laneIdx) =>
-                                  lane.map((ev) => {
-                                    const span = percentSpan(
-                                      ev,
-                                      date,
-                                      CST,
-                                      scrollerRef.current?.clientWidth || 0,
-                                    );
-                                    if (!span.clamp) return null;
-                                    const { left, width, durationMinutes } =
-                                      span;
-                                    const minWidth =
-                                      durationMinutes === 0
-                                        ? "2px"
-                                        : durationMinutes <= 5
-                                          ? "6px"
-                                          : durationMinutes <= 10
-                                            ? "4px"
-                                            : undefined;
-                                    return (
-                                      <Tooltip
-                                        key={ev.id}
-                                        title={`${ev.start.format("h:mm A")} – ${ev.end.format("h:mm A")} • ${ev.title}`}
-                                      >
-                                        <Box
-                                          onClick={() => {
-                                            setSelectedEvent(ev);
-                                            setModalOpen(true);
-                                          }}
-                                          sx={{
-                                            position: "absolute",
-                                            top: laneIdx * OVERVIEW_LANE_HEIGHT,
-                                            left: `${left}%`,
-                                            width: `${width}%`,
-                                            minWidth,
-                                            height: OVERVIEW_EVENT_HEIGHT,
-                                            borderRadius: 1,
-                                            bgcolor:
-                                              vehicleColors[ev.vehicle] ||
-                                              "grey.500",
-                                            color:
-                                              vehicleText[ev.vehicle] ||
-                                              getContrastText(
-                                                vehicleColors[ev.vehicle] ||
-                                                  "#666",
-                                              ),
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "0.75rem",
-                                            fontWeight: 600,
-                                            px: 0.5,
-                                            cursor: "pointer",
-                                            transition: "transform 120ms ease",
-                                            overflow: "hidden",
-                                            "&:hover": {
-                                              transform: "translateY(-1px)",
-                                            },
-                                          }}
-                                        >
-                                          <span>{ev.vehicle}</span>
-                                        </Box>
-                                      </Tooltip>
-                                    );
-                                  }),
-                                )}
-                              </Box>
-                            </Box>
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                    {/* [LRP:END:vehicleCalendar:visual-tune] */}
-                  </Box>
-                </Box>
-              </Collapse>
-            </Box>
-            {/* [LRP:END:vehicleCalendar:card] */}
+              </Box>
+            )}
           </Box>
           {/* ===== [RVTC:overview:end] ===== */}
 
