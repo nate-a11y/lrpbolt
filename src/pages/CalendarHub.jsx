@@ -20,8 +20,8 @@ import { useTheme } from "@mui/material/styles";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
-import dayjs from "dayjs";
 
+import dayjs from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
 

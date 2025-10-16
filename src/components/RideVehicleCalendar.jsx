@@ -10,11 +10,6 @@ import {
   forwardRef,
 } from "react";
 import { Box } from "@mui/material";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-dayjs.extend(utc);
-dayjs.extend(timezone);
 // [LRP:END:calendar:imports]
 import { createPortal } from "react-dom";
 import Typography from "@mui/material/Typography";
@@ -40,8 +35,15 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
+import dayjs, { toDayjs, isD } from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
-import { clampToDay, getDayWindow, plural } from "@/utils/calendarTime.js";
+import {
+  clampToWindow,
+  getDayWindow,
+  plural,
+  compareGte,
+  compareLte,
+} from "@/utils/calendarTime.js";
 import { getVehicleEvents } from "@/services/calendarService.js";
 import {
   VEHICLE_CALENDARS,
@@ -217,18 +219,38 @@ const adjustColor = (hex, adjustment) => {
 // ===== [RVTC:helpers:start] =====
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-function parseGcTime({ dateTime, date, timeZone }) {
-  try {
-    const tz = timeZone || CST;
-    return dateTime
-      ? dayjs.utc(dateTime).tz(tz)
-      : dayjs.tz(date, tz).startOf("day");
-  } catch (e) {
-    logError(e, "RideVehicleCalendar:parseGcTime");
-    return dateTime
-      ? dayjs.utc(dateTime).tz(timeZone || CST)
-      : dayjs.tz(date, timeZone || CST).startOf("day");
+function parseGcTime({ dateTime, date, timeZone }, fallbackTz) {
+  const tz = timeZone || fallbackTz || CST;
+
+  if (dateTime) {
+    try {
+      const parsed = dayjs.utc(dateTime).tz(tz);
+      if (parsed.isValid()) return parsed;
+    } catch (error) {
+      logError(error, {
+        area: "RideVehicleCalendar",
+        action: "parseGcTime",
+        payload: { dateTime, tz },
+      });
+    }
+    return toDayjs(dateTime, tz);
   }
+
+  if (date) {
+    try {
+      const parsed = dayjs.tz(date, tz).startOf("day");
+      if (parsed.isValid()) return parsed;
+    } catch (error) {
+      logError(error, {
+        area: "RideVehicleCalendar",
+        action: "parseGcDate",
+        payload: { date, tz },
+      });
+    }
+    return toDayjs(`${date}T00:00:00`, tz);
+  }
+
+  return null;
 }
 
 /** Greedy packing of events into non-overlapping lanes. Each lane is an array of events. */
@@ -255,14 +277,23 @@ function packIntoLanes(items) {
 
 /** Compute left% and width% for an event within the selected day, clamped to [0..100]. */
 function percentSpan(ev, selectedDay, tz, containerWidth = 0) {
-  const clamp = clampToDay({ start: ev.start, end: ev.end }, selectedDay, tz);
+  if (!ev) {
+    return { left: 0, width: 0, durationMinutes: 0, clamp: null };
+  }
+
+  const { dayStart, dayEnd } = getDayWindow(selectedDay, tz);
+  const clamp =
+    ev.clamp ||
+    clampToWindow({ start: ev.start, end: ev.end }, dayStart, dayEnd, tz);
   if (!clamp) {
     return { left: 0, width: 0, durationMinutes: 0, clamp: null };
   }
 
-  const dayMs = Math.max(1, clamp.dayEnd.diff(clamp.dayStart, "millisecond"));
-  const startOffset = clamp.clampedStart.diff(clamp.dayStart, "millisecond");
-  const endOffset = clamp.clampedEnd.diff(clamp.dayStart, "millisecond");
+  const windowStart = clamp.windowStart || dayStart;
+  const windowEnd = clamp.windowEnd || dayEnd;
+  const dayMs = Math.max(1, windowEnd.diff(windowStart, "millisecond"));
+  const startOffset = clamp.start.diff(windowStart, "millisecond");
+  const endOffset = clamp.end.diff(windowStart, "millisecond");
 
   const left = clamp01(startOffset / dayMs) * 100;
   let width = (Math.max(0, endOffset - startOffset) / dayMs) * 100;
@@ -273,21 +304,37 @@ function percentSpan(ev, selectedDay, tz, containerWidth = 0) {
   }
   width = Math.min(width, available);
 
-  const durationMinutes = Math.max(
-    0,
-    clamp.clampedEnd.diff(clamp.clampedStart, "minute"),
-  );
+  const durationMinutes = Math.max(0, clamp.end.diff(clamp.start, "minute"));
 
   return { left, width, durationMinutes, clamp };
 }
 
 function edgeChipFor(ride, selectedDay, tz) {
   if (!ride) return null;
-  const res = clampToDay({ start: ride.start, end: ride.end }, selectedDay, tz);
-  if (!res) return null;
-  if (res.reason === "fromPrevDay") return "From Previous Day";
-  if (res.reason === "intoNextDay") return "Spans Into Next Day";
-  if (res.reason === "spansBoth") return "From Previous Day • Into Next Day";
+
+  let clamp = ride.clamp || null;
+  if (!clamp) {
+    const { dayStart, dayEnd } = getDayWindow(selectedDay, tz);
+    const fallback = clampToWindow(
+      { start: ride.start, end: ride.end },
+      dayStart,
+      dayEnd,
+      tz,
+    );
+    if (!fallback) return null;
+    let reason = null;
+    if (compareLte(ride.start, dayStart) && compareGte(ride.end, dayStart)) {
+      reason = "fromPrevDay";
+    }
+    if (compareGte(ride.end, dayEnd) && compareLte(ride.start, dayEnd)) {
+      reason = reason ? "spansBoth" : "intoNextDay";
+    }
+    clamp = { ...fallback, reason };
+  }
+
+  if (clamp.reason === "fromPrevDay") return "From Previous Day";
+  if (clamp.reason === "intoNextDay") return "Spans Into Next Day";
+  if (clamp.reason === "spansBoth") return "From Previous Day • Into Next Day";
   return null;
 }
 // ===== [RVTC:helpers:end] =====
@@ -332,12 +379,109 @@ function RideVehicleCalendar({
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const tz = useMemo(() => dayjs.tz?.guess?.() || CST, []);
+
+  const normalizeEvents = useCallback(
+    (rawItems = []) => {
+      const dayReference =
+        (date && typeof date.tz === "function"
+          ? date.tz(tz)
+          : toDayjs(date, tz)) ||
+        (typeof dayjs.tz === "function" ? dayjs().tz(tz) : dayjs());
+
+      const windowStart = dayReference.startOf("day");
+      const windowEnd = windowStart.add(1, "day");
+
+      return (rawItems || [])
+        .map((item) => {
+          if (!item) return null;
+
+          const descriptionRaw =
+            typeof item.description === "string" ? item.description : "";
+          if (/Driver:\s*-/.test(descriptionRaw)) return null;
+
+          const cleanedDescription = descriptionRaw
+            .replace("(Lake Ride Pros)", "")
+            .trim();
+
+          const vehicleSource =
+            (typeof item.vehicle === "string" && item.vehicle) ||
+            (typeof item.vehicleName === "string" && item.vehicleName) ||
+            cleanedDescription.match(/Vehicle:\s*(.+)/)?.[1] ||
+            "Unknown";
+          const vehicle = vehicleSource.trim();
+
+          const summaryRaw =
+            (typeof item.summary === "string" && item.summary) ||
+            (typeof item.title === "string" && item.title) ||
+            vehicle ||
+            "Untitled";
+          const title = summaryRaw.replace("(Lake Ride Pros)", "").trim();
+
+          const isGooglePayload =
+            item.start &&
+            typeof item.start === "object" &&
+            ("dateTime" in item.start || "date" in item.start);
+
+          const startSource = isGooglePayload
+            ? parseGcTime(item.start, tz)
+            : toDayjs(item.start, tz);
+          const endSource = isGooglePayload
+            ? parseGcTime(item.end, tz)
+            : toDayjs(item.end, tz);
+
+          const start = toDayjs(startSource, tz);
+          const end = toDayjs(endSource, tz);
+          if (!isD(start) || !isD(end)) return null;
+          if (end.valueOf() <= start.valueOf()) return null;
+
+          const clamp = clampToWindow(
+            { start, end },
+            windowStart,
+            windowEnd,
+            tz,
+          );
+          if (!clamp) return null;
+
+          let reason = null;
+          if (compareLte(start, windowStart) && compareGte(end, windowStart)) {
+            reason = "fromPrevDay";
+          }
+          if (compareGte(end, windowEnd) && compareLte(start, windowEnd)) {
+            reason = reason ? "spansBoth" : "intoNextDay";
+          }
+
+          const visibleStart = clamp.start;
+          const visibleEnd = clamp.end;
+          const durationMs = Math.max(0, visibleEnd.diff(visibleStart));
+
+          return {
+            start,
+            end,
+            vehicle,
+            title,
+            description: cleanedDescription,
+            clamp: { ...clamp, reason },
+            visibleStart,
+            visibleEnd,
+            durationMs,
+          };
+        })
+        .filter(Boolean)
+        .map((event) => ({
+          ...event,
+          id: `${event.start.valueOf()}-${event.end.valueOf()}-${event.vehicle}-${event.title}`,
+        }))
+        .sort((a, b) => a.start.valueOf() - b.start.valueOf());
+    },
+    [date, tz],
+  );
   useEffect(() => {
     if (!Array.isArray(data)) return;
-    setEvents(data);
+    setEvents(normalizeEvents(data));
     setLoading(false);
     setError(null);
-  }, [data]);
+  }, [data, normalizeEvents]);
   const [filtersState, setFiltersState] = useState(() => {
     const base = { ...DEFAULT_FILTERS };
     if (persistedFilters && typeof persistedFilters === "object") {
@@ -390,7 +534,7 @@ function RideVehicleCalendar({
   const [sectionState, setSectionState] = useState(() =>
     JSON.parse(localStorage.getItem("rvcal.sectionState") || "{}"),
   );
-  const [now, setNow] = useState(dayjs().tz(CST));
+  const [now, setNow] = useState(() => dayjs().tz(tz));
   const { vehicles: vehicleFilter, scrollToNow: scrollToNowPref } =
     filtersState;
   const [stickyAnchorEl, setStickyAnchorEl] = useState(null);
@@ -500,9 +644,9 @@ function RideVehicleCalendar({
   // ===== [RVTC:state:end] =====
 
   useEffect(() => {
-    const id = setInterval(() => setNow(dayjs().tz(CST)), 60000);
+    const id = setInterval(() => setNow(dayjs().tz(tz)), 60000);
     return () => clearInterval(id);
-  }, []);
+  }, [tz]);
 
   useEffect(() => {
     localStorage.setItem("rvcal.date", date.format("YYYY-MM-DD"));
@@ -564,7 +708,7 @@ function RideVehicleCalendar({
   );
 
   useEffect(() => {
-    const key = date.format("YYYY-MM-DD");
+    const key = `${date.format("YYYY-MM-DD")}:${tz}`;
     const cached = cache.get(key);
     if (cached) {
       setEvents(cached);
@@ -611,47 +755,22 @@ function RideVehicleCalendar({
           calendarIds: idsToQuery,
           start: date.startOf("day"),
           end: date.endOf("day"),
-          tz: dayjs.tz?.guess?.(),
+          tz,
           signal: controller.signal,
         });
 
         if (controller.signal.aborted) return;
 
-        const parsed = (items || [])
-          .filter((item) => !/Driver:\s*-/.test(item.description || ""))
-          .map((item) => {
-            const desc = (item.description || "")
-              .replace("(Lake Ride Pros)", "")
-              .trim();
-            const vehicle = (
-              desc.match(/Vehicle:\s*(.+)/)?.[1] || "Unknown"
-            ).trim();
-            const title = (item.summary || "Untitled")
-              .replace("(Lake Ride Pros)", "")
-              .trim();
-
-            const start = parseGcTime(item.start);
-            const end = parseGcTime(item.end);
-
-            return {
-              start,
-              end,
-              vehicle,
-              title,
-              description: desc,
-            };
-          })
-          .sort((a, b) => a.start.valueOf() - b.start.valueOf())
-          .map((event) => ({
-            ...event,
-            id: `${event.start.unix()}-${event.end.unix()}-${event.vehicle}-${event.title}`,
-          }));
-
+        const parsed = normalizeEvents(items);
         cache.set(key, parsed);
         setEvents(parsed);
       } catch (err) {
         if (!controller.signal.aborted) {
-          logError(err, "RideVehicleCalendar:fetch");
+          logError(err, {
+            area: "RideVehicleCalendar",
+            action: "fetchEvents",
+            hint: "calendar-service",
+          });
           setError(err);
         }
       } finally {
@@ -664,7 +783,7 @@ function RideVehicleCalendar({
     load();
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  }, [date, normalizeEvents, tz]);
 
   const grouped = useMemo(() => {
     const map = {};

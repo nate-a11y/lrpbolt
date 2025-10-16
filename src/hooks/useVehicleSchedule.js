@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo } from "react";
-import dayjs from "dayjs";
 
+import dayjs from "@/utils/dayjsSetup.js";
 import {
   normalizeRide,
   computeTightGaps,

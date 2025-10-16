@@ -1,24 +1,16 @@
 // [LRP:BEGIN:calendar:utils]
 /* Proprietary and confidential. See LICENSE. */
 import * as htmlToImage from "html-to-image";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 
+import dayjs, { toDayjs } from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TZ = dayjs.tz.guess() || "America/Chicago";
+const TZ = dayjs.tz?.guess?.() || "America/Chicago";
 
 /** Normalize Firestore Timestamp/ISO/number/Date → dayjs (null-safe) */
 export function toDj(x) {
   try {
-    if (!x) return null;
-    if (typeof x?.toDate === "function") return dayjs(x.toDate());
-    if (typeof x === "number") return dayjs(x);
-    return dayjs(x);
+    return toDayjs(x, TZ);
   } catch (e) {
     logError(e, { area: "calendarExport", action: "toDj" });
     return null;

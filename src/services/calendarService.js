@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
+import dayjs from "@/utils/dayjsSetup.js";
 
 // ✅ use your existing var
 const RAW_BASE = import.meta.env.VITE_API_BASE_URL || "";

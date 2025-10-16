@@ -1,25 +1,17 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-
+import dayjs, { toDayjs as toDayjsCore } from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 export function toDayjs(v, tz) {
   try {
-    const zone = tz || dayjs.tz.guess();
+    const zone = tz || dayjs.tz?.guess?.();
     if (!v) return null;
-    if (typeof v?.toDate === "function") return dayjs(v.toDate()).tz(zone); // Firestore Timestamp
-    if (v?.dateTime) return dayjs(v.dateTime).tz(zone); // gCal
-    if (v?.date) return dayjs(v.date).startOf("day").tz(zone); // all-day gCal
-    if (v instanceof Date) return dayjs(v).tz(zone);
-    if (typeof v === "number") return dayjs(v).tz(zone);
-    return dayjs(v).tz(zone);
+    if (typeof v?.toDate === "function") return toDayjsCore(v.toDate(), zone);
+    if (v?.dateTime) return toDayjsCore(v.dateTime, zone);
+    if (v?.date) return toDayjsCore(`${v.date}T00:00:00`, zone);
+    return toDayjsCore(v, zone);
   } catch (err) {
-    logError(err);
+    logError(err, { area: "scheduleUtils", action: "toDayjs" });
     return null;
   }
 }
@@ -27,7 +19,7 @@ export function toDayjs(v, tz) {
 /** Normalize multiple schemas into { id, vehicleId, title, driverName, start:dayjs, end:dayjs } */
 export function normalizeRide(raw, tz) {
   if (!raw) return null;
-  const zone = tz || dayjs.tz.guess();
+  const zone = tz || dayjs.tz?.guess?.();
 
   // id
   const id =
