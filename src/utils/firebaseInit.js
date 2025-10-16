@@ -4,6 +4,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import {
+  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -66,7 +67,7 @@ function ensureFirestore(appInstance) {
       where: "firebaseInit",
       action: "initializeFirestore",
     });
-    throw error;
+    dbInstance = getFirestore(appInstance);
   }
   return dbInstance;
 }
