@@ -3,7 +3,12 @@
 
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import {
   getMessaging,
@@ -46,7 +51,28 @@ export function getFirebaseApp() {
 
 export const app = getFirebaseApp();
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+let dbInstance;
+function ensureFirestore(appInstance) {
+  if (dbInstance) return dbInstance;
+  try {
+    dbInstance = initializeFirestore(appInstance, {
+      experimentalAutoDetectLongPolling: true,
+      useFetchStreams: false,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch (error) {
+    logError(error, {
+      where: "firebaseInit",
+      action: "initializeFirestore",
+    });
+    dbInstance = getFirestore(appInstance);
+  }
+  return dbInstance;
+}
+
+export const db = ensureFirestore(app);
 bindFirestore(db);
 export const storage = getStorage(app);
 

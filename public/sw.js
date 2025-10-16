@@ -8,6 +8,23 @@ function scopeUrl(path) {
   try { return new URL(String(path || "").replace(/^\//, ""), self.registration.scope).href; } catch (_) { return path; }
 }
 
+self.addEventListener("fetch", (event) => {
+  try {
+    const url = new URL(event.request.url);
+    if (
+      url.hostname.endsWith("googleapis.com") &&
+      (url.pathname.includes("/Firestore/Listen/") ||
+        url.pathname.includes("/v1/token"))
+    ) {
+      return;
+    }
+  } catch (error) {
+    if (console && typeof console.debug === "function") {
+      console.debug("[sw] fetch inspect failed", error);
+    }
+  }
+});
+
 self.addEventListener("install", (evt) => {
   evt.waitUntil(
     (async () => {

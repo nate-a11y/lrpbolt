@@ -17,6 +17,13 @@ export class AppError extends Error {
   }
 }
 export function logError(err, context = {}) {
-  // Structured logging; don’t swallow
-  console.error("[LRP]", { err, context });
+  const payload = {
+    ...context,
+    name: err?.name || "Error",
+    message: err?.message || String(err),
+  };
+  if (err && err.stack) {
+    payload.stack = err.stack;
+  }
+  console.error("[LRP][Error]", payload);
 }
