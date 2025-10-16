@@ -14,12 +14,6 @@ export default defineConfig({
     alias: [
       { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
       { find: "src", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
-      {
-        find: /^dayjs$/,
-        replacement: fileURLToPath(
-          new URL("./src/utils/dayjsSetup.js", import.meta.url),
-        ),
-      },
     ],
     dedupe: ["react", "react-dom"],
     extensions: [".js", ".jsx"],
