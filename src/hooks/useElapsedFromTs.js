@@ -57,8 +57,23 @@ export default function useElapsedFromTs(
 
     let rafId = 0;
     let intervalId = 0;
-    const updateNow = () => setNowMs(Date.now());
-    updateNow();
+    const normalizedTickMs = normalizeTickMs(tickMs);
+    const updateNow = (force = false) => {
+      const now = Date.now();
+      setNowMs((prev) => {
+        if (!force) {
+          const prevBucket = Number.isFinite(prev)
+            ? Math.floor(prev / normalizedTickMs)
+            : -1;
+          const nextBucket = Math.floor(now / normalizedTickMs);
+          if (prevBucket === nextBucket) {
+            return prev;
+          }
+        }
+        return now;
+      });
+    };
+    updateNow(true);
 
     const hasRaf =
       typeof window.requestAnimationFrame === "function" &&
@@ -71,7 +86,7 @@ export default function useElapsedFromTs(
       };
       rafId = window.requestAnimationFrame(tick);
     } else {
-      intervalId = window.setInterval(updateNow, normalizeTickMs(tickMs));
+      intervalId = window.setInterval(updateNow, normalizedTickMs);
     }
 
     return () => {
