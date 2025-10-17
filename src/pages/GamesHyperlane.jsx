@@ -23,26 +23,23 @@ import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 
+import GamesBridge from "@/components/GamesBridge.jsx";
 import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
+import { highscoreColumns } from "@/columns/highscoreColumns.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
-import { formatDateTime, startOfWeekLocal } from "@/utils/timeUtils.js";
+import { startOfWeekLocal } from "@/utils/timeUtils.js";
 import {
-  saveHyperlaneScore,
   subscribeTopHyperlaneAllTime,
   subscribeTopHyperlaneWeekly,
   subscribeUserWeeklyHyperlaneBest,
 } from "@/services/games.js";
+import { toNumberOrNull } from "@/services/gamesService.js";
 import useGameSound from "@/hooks/useGameSound.js";
-
-// eslint-disable-next-line import/no-unresolved
-import hyperlaneHtml from "../../public/games/hyperlane/index.html?raw";
 
 const BRAND_GREEN = "#4cbb17";
 const BACKGROUND = "#060606";
-const rawGamesOrigin = import.meta.env.VITE_GAMES_ORIGIN || "/games";
-const GAMES_ORIGIN = rawGamesOrigin.replace(/\/+$/, "") || "/games";
 
 const gridSx = {
   bgcolor: "transparent",
@@ -87,10 +84,6 @@ export default function GamesHyperlane() {
   const [copying, setCopying] = useState(false);
   const [snack, setSnack] = useState(null);
   const { enabled: soundOn, setEnabled: setSoundOn, play } = useGameSound();
-  const iframeContent = useMemo(
-    () => (typeof hyperlaneHtml === "string" ? hyperlaneHtml : null),
-    [],
-  );
 
   const startOfWeek = useMemo(() => startOfWeekLocal(), []);
 
@@ -174,28 +167,6 @@ export default function GamesHyperlane() {
     };
   }, [startOfWeek, user?.uid]);
 
-  useEffect(() => {
-    const handleMessage = (event) => {
-      const payload = event?.data;
-      if (!payload || payload.type !== "HYPERLANE_SCORE") return;
-      const value = Number(payload.score);
-      if (!Number.isFinite(value)) return;
-      setLastScore(value);
-      saveHyperlaneScore(value).catch((error) => {
-        logError(error, { where: "GamesHyperlane.saveScore", score: value });
-        setSnack({
-          open: true,
-          severity: "error",
-          message: "Score saved locally, but cloud sync failed.",
-        });
-      });
-    };
-    window.addEventListener("message", handleMessage);
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
-  }, []);
-
   const currentUid = user?.uid || null;
 
   const buildLeaderboardRows = useCallback(
@@ -213,18 +184,19 @@ export default function GamesHyperlane() {
             : typeof row?.displayName === "string" && row.displayName.trim()
               ? row.displayName.trim()
               : "Anonymous";
-        const scoreValue = Number(row?.score);
-        const score = Number.isFinite(scoreValue) ? scoreValue : null;
+        const score = toNumberOrNull(row?.score);
         const isCurrentUser =
           currentUid && row?.uid && row.uid === currentUid ? true : false;
 
         return {
           ...row,
           id,
-          rank: index + 1,
-          driver,
+          displayName: driver,
           score,
-          recorded: formatDateTime(row?.createdAt),
+          createdAt:
+            row?.createdAt && typeof row.createdAt.toDate === "function"
+              ? row.createdAt
+              : (row?.createdAt ?? null),
           isCurrentUser,
         };
       }),
@@ -241,39 +213,7 @@ export default function GamesHyperlane() {
     [weeklyScores, buildLeaderboardRows],
   );
 
-  const columns = useMemo(
-    () => [
-      {
-        field: "rank",
-        headerName: "#",
-        width: 70,
-        sortable: false,
-        align: "center",
-        headerAlign: "center",
-      },
-      {
-        field: "driver",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 140,
-      },
-      {
-        field: "score",
-        headerName: "Score",
-        width: 140,
-        type: "number",
-        valueFormatter: ({ value }) =>
-          Number.isFinite(value) ? value.toLocaleString() : "N/A",
-      },
-      {
-        field: "recorded",
-        headerName: "Recorded",
-        flex: 0.9,
-        minWidth: 180,
-      },
-    ],
-    [],
-  );
+  const columns = useMemo(() => highscoreColumns, []);
 
   const getRowClassName = useCallback(
     (params) => (params?.row?.isCurrentUser ? "current-user" : ""),
@@ -350,9 +290,9 @@ export default function GamesHyperlane() {
     setSnack(null);
   }, []);
 
-  const yourBestScore = Number(userBest?.score);
-  const globalBestScore = Number(allTimeRows?.[0]?.score);
-  const weeklyBestScore = Number(weeklyRows?.[0]?.score);
+  const yourBestScore = toNumberOrNull(userBest?.score);
+  const globalBestScore = toNumberOrNull(allTimeRows?.[0]?.score);
+  const weeklyBestScore = toNumberOrNull(weeklyRows?.[0]?.score);
 
   const yourBestChipLabel = useMemo(() => {
     if (!user) return "Sign in to track your best this week";
@@ -550,25 +490,25 @@ export default function GamesHyperlane() {
               </Stack>
 
               <Box sx={iframeContainerSx}>
-                <Box
-                  component="iframe"
-                  key={`hyperlane-${reloadKey}-${iframeContent ? "inline" : "remote"}`}
+                <GamesBridge
+                  key={`hyperlane-${reloadKey}`}
                   ref={iframeRef}
+                  game="hyperlane"
+                  path="hyperlane/index.html"
                   title="LRP Hyperlane"
-                  src={
-                    iframeContent
-                      ? "about:blank"
-                      : `${GAMES_ORIGIN}/hyperlane/index.html`
-                  }
-                  srcDoc={iframeContent || undefined}
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-pointer-lock"
-                  allow="fullscreen; gamepad; autoplay"
-                  referrerPolicy="no-referrer"
-                  allowFullScreen
+                  height="100%"
+                  onScore={(value) => setLastScore(value)}
+                  onSaveError={(error) => {
+                    logError(error, { where: "GamesHyperlane.saveScore" });
+                    setSnack({
+                      open: true,
+                      severity: "error",
+                      message: "Score saved locally, but cloud sync failed.",
+                    });
+                  }}
                   onError={(event) => {
                     logError(new Error("Hyperlane iframe failed"), {
                       where: "GamesHyperlane.iframeError",
-                      inline: Boolean(iframeContent),
                     });
                     setSnack({
                       open: true,
@@ -576,25 +516,22 @@ export default function GamesHyperlane() {
                       message:
                         "Couldn't load the Hyperlane game. Try refreshing.",
                     });
-                    if (
-                      event?.target?.src &&
-                      event.target.src !== "about:blank"
-                    ) {
+                    if (event?.target?.removeAttribute) {
                       try {
                         event.target.removeAttribute("src");
-                      } catch (error) {
-                        logError(error, {
+                      } catch (iframeError) {
+                        logError(iframeError, {
                           where: "GamesHyperlane.iframeCleanup",
                         });
                       }
                     }
                   }}
+                  allowFullScreen
                   sx={{
                     position: "absolute",
                     inset: 0,
                     width: "100%",
                     height: "100%",
-                    border: 0,
                   }}
                 />
               </Box>

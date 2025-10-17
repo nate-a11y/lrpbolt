@@ -13,6 +13,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // LRP games highscores: users can create entries; reads are public for the board.
+    match /games/{game}/highscores/{id} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false; // immutable highscores (optional)
+    }
+
     // ---------- Auth & helpers ----------
     function toLowerCaseSafe(value) {
       return value.lower();

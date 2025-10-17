@@ -4,6 +4,7 @@ import { serverTimestamp, Timestamp } from "firebase/firestore";
 import logError from "@/utils/logError.js";
 import { startOfWeekLocal } from "@/utils/time.js";
 
+import { toNumberOrNull } from "./gamesService.js";
 import {
   addDoc,
   collection,
@@ -23,8 +24,7 @@ function getCollectionRef(db) {
 }
 
 function parseScore(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
+  return toNumberOrNull(value);
 }
 
 function parseDisplayName(value) {
