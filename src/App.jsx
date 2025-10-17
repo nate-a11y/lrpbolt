@@ -30,6 +30,7 @@ import useAnalyticsPageViews from "@/hooks/useAnalyticsPageViews";
 import { updateTimeLog } from "@/services/fs";
 import { on } from "@/services/uiBus";
 import logError from "@/utils/logError.js";
+import { getAppVersion } from "@/utils/appVersion.js";
 
 import "./index.css";
 import InstallBanner from "./components/InstallBanner";
@@ -51,8 +52,8 @@ import AppShell from "./layout/AppShell.jsx";
 import PhoneNumberPrompt from "./components/PhoneNumberPrompt.jsx";
 import CalendarHubLazy from "./pages/lazy/CalendarHub.lazy.jsx";
 import GamesHub from "./pages/GamesHub.jsx";
-const APP_VERSION = import.meta.env.VITE_APP_VERSION;
-if (import.meta.env.PROD && typeof APP_VERSION !== "undefined") {
+const APP_VERSION = getAppVersion();
+if (APP_VERSION) {
   console.info("LRP version:", APP_VERSION);
 }
 

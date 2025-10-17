@@ -8,8 +8,9 @@ import NotificationSettingsCard from "../../components/NotificationSettingsCard.
 import PageContainer from "../../components/PageContainer.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { logout } from "../../services/auth";
+import { getAppVersion } from "../../utils/appVersion.js";
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION;
+const APP_VERSION = getAppVersion();
 
 function ProfilePage() {
   const { user, role } = useAuth();
@@ -47,7 +48,7 @@ function ProfilePage() {
         >
           🚀 Version:{" "}
           <span style={{ fontFamily: "monospace" }}>
-            v{APP_VERSION || "dev"}
+            {APP_VERSION || "vdev"}
           </span>{" "}
           • Lake Ride Pros © {new Date().getFullYear()}
         </Typography>

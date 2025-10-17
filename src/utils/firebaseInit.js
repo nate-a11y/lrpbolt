@@ -4,9 +4,15 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import {
+  getAnalytics,
+  isSupported as analyticsSupported,
+  setConsent,
+} from "firebase/analytics";
+import {
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager,
+  persistentSingleTabManager,
+  memoryLocalCache,
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import {
@@ -54,12 +60,17 @@ let dbInstance;
 function ensureFirestore(appInstance) {
   if (dbInstance) return dbInstance;
   try {
+    const cacheMode = env.FIRESTORE_CACHE_MODE || "persistent";
+    const usePersistent = cacheMode === "persistent" && supportsIndexedDb();
+
     dbInstance = initializeFirestore(appInstance, {
       experimentalAutoDetectLongPolling: true,
-      useFetchStreams: false,
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
+      useFetchStreams: true,
+      localCache: usePersistent
+        ? persistentLocalCache({
+            tabManager: persistentSingleTabManager({}),
+          })
+        : memoryLocalCache(),
     });
   } catch (error) {
     logError(error, {
@@ -74,6 +85,44 @@ function ensureFirestore(appInstance) {
 export const db = ensureFirestore(app);
 bindFirestore(db);
 export const storage = getStorage(app);
+
+function supportsIndexedDb() {
+  try {
+    return (
+      typeof indexedDB !== "undefined" && typeof indexedDB.open === "function"
+    );
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.debug("[firebaseInit] indexedDB check failed", error);
+    }
+    return false;
+  }
+}
+
+let analyticsInitPromise = null;
+export async function initAnalyticsIfEnabled() {
+  if (analyticsInitPromise) return analyticsInitPromise;
+  analyticsInitPromise = (async () => {
+    try {
+      if (!env.ENABLE_ANALYTICS) return null;
+      setConsent({
+        ad_storage: "denied",
+        analytics_storage: "denied",
+        functionality_storage: "granted",
+        personalization_storage: "denied",
+        security_storage: "granted",
+      });
+      if (!(await analyticsSupported())) return null;
+      return getAnalytics(getFirebaseApp());
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn("[Analytics] init skipped:", error?.message || error);
+      }
+      return null;
+    }
+  })();
+  return analyticsInitPromise;
+}
 
 let messagingInstance;
 export async function getMessagingOrNull() {

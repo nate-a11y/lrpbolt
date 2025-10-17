@@ -24,8 +24,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useColorMode } from "../context/ColorModeContext.jsx";
 import { canSeeNav } from "../utils/roleGuards";
+import { getAppVersion } from "../utils/appVersion.js";
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION;
+const APP_VERSION = getAppVersion();
 const QUICK_LINK_IDS = new Set(["admin-user-manager", "admin-notifications"]);
 
 function MainNav({
@@ -82,7 +83,7 @@ function MainNav({
 
   const SettingsIcon = iconMap.Settings || iconMap.ChevronRight;
   const ExitIcon = iconMap.ExitToApp || iconMap.ChevronRight;
-  const versionLabel = APP_VERSION ? `v${APP_VERSION}` : "vdev";
+  const versionLabel = APP_VERSION || "vdev";
 
   const handleNavigate = useCallback(
     (to) => {
