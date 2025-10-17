@@ -8,6 +8,8 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 
 import { setFlag, logEvent, captureError } from "@/services/observability";
 
+import VersionBadge from "./VersionBadge.jsx";
+
 const successStatuses = new Set(["ok", "granted"]);
 
 function StatusItem({ label, value }) {
@@ -113,7 +115,10 @@ export default function DiagnosticsPanel() {
       <StatusItem label="Service Worker" value={state.sw} />
       <StatusItem label="Notifications/FCM" value={state.fcm} />
       <StatusItem label="Firestore" value={state.firestore} />
-      <StatusItem label="Version" value={state.version} />
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 0.5 }}>
+        <Typography sx={{ width: 140 }}>Version</Typography>
+        <VersionBadge value={state.version} />
+      </Stack>
       <Divider sx={{ my: 1 }} />
       <Stack direction="row" spacing={1}>
         <Button

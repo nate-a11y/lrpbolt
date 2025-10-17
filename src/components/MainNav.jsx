@@ -26,6 +26,8 @@ import { useColorMode } from "../context/ColorModeContext.jsx";
 import { canSeeNav } from "../utils/roleGuards";
 import { getAppVersion } from "../utils/appVersion.js";
 
+import VersionInline from "./VersionInline.jsx";
+
 const APP_VERSION = getAppVersion();
 const QUICK_LINK_IDS = new Set(["admin-user-manager", "admin-notifications"]);
 
@@ -83,8 +85,6 @@ function MainNav({
 
   const SettingsIcon = iconMap.Settings || iconMap.ChevronRight;
   const ExitIcon = iconMap.ExitToApp || iconMap.ChevronRight;
-  const versionLabel = APP_VERSION || "vdev";
-
   const handleNavigate = useCallback(
     (to) => {
       navigate(to);
@@ -180,17 +180,28 @@ function MainNav({
           <Switch checked={mode === "dark"} onChange={toggle} />
         </Stack>
 
-        <Typography
-          variant="caption"
-          sx={{
-            color: (t) =>
-              t.palette.mode === "dark"
-                ? "rgba(255,255,255,0.5)"
-                : t.palette.text.secondary,
-          }}
-        >
-          Version: {versionLabel}
-        </Typography>
+        <Box>
+          <Typography
+            variant="caption"
+            sx={{
+              color: (t) =>
+                t.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.5)"
+                  : t.palette.text.secondary,
+            }}
+          >
+            Version
+          </Typography>
+          <VersionInline
+            value={APP_VERSION}
+            sx={{
+              color: (t) =>
+                t.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.72)"
+                  : t.palette.text.secondary,
+            }}
+          />
+        </Box>
 
         <Stack
           direction="row"
