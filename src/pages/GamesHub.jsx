@@ -262,7 +262,7 @@ function HyperlanePanel() {
               ref={iframeRef}
               title="LRP Hyperlane"
               src="/games/hyperlane/index.html"
-              sandbox="allow-scripts allow-popups allow-pointer-lock"
+              sandbox="allow-scripts allow-popups allow-pointer-lock allow-same-origin"
               allow="fullscreen; gamepad; autoplay"
               referrerPolicy="no-referrer"
               sx={{

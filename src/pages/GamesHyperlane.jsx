@@ -559,7 +559,7 @@ export default function GamesHyperlane() {
                       : "/games/hyperlane/index.html"
                   }
                   srcDoc={iframeContent || undefined}
-                  sandbox="allow-scripts allow-popups allow-pointer-lock"
+                  sandbox="allow-scripts allow-popups allow-pointer-lock allow-same-origin"
                   allow="fullscreen; gamepad; autoplay"
                   referrerPolicy="no-referrer"
                   allowFullScreen
