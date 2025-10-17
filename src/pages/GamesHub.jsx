@@ -21,18 +21,18 @@ import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 
+import GamesBridge from "@/components/GamesBridge.jsx";
 import LRPStarRunner from "@/components/LRPStarRunner.jsx";
 import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
+import { highscoreColumns } from "@/columns/highscoreColumns.js";
 import useGameSound from "@/hooks/useGameSound.js";
 import { subscribeTopHyperlaneAllTime } from "@/services/games.js";
+import { toNumberOrNull } from "@/services/gamesService.js";
 import logError from "@/utils/logError.js";
-import { formatDateTime } from "@/utils/timeUtils.js";
 
 const BACKGROUND = "#060606";
 const BRAND_GREEN = "#4cbb17";
-const rawGamesOrigin = import.meta.env.VITE_GAMES_ORIGIN || "/games";
-const GAMES_ORIGIN = rawGamesOrigin.replace(/\/+$/, "") || "/games";
 
 const gridSx = {
   bgcolor: "transparent",
@@ -102,53 +102,22 @@ function HyperlanePanel() {
             : typeof row?.displayName === "string" && row.displayName.trim()
               ? row.displayName.trim()
               : "Anonymous";
-        const scoreValue = Number(row?.score);
-        const score = Number.isFinite(scoreValue) ? scoreValue : null;
+        const score = toNumberOrNull(row?.score);
         return {
           ...row,
           id,
-          rank: index + 1,
-          driver,
+          displayName: driver,
           score,
-          recorded: formatDateTime(row?.createdAt),
+          createdAt:
+            row?.createdAt && typeof row.createdAt.toDate === "function"
+              ? row.createdAt
+              : (row?.createdAt ?? null),
         };
       }),
     [allTimeScores],
   );
 
-  const columns = useMemo(
-    () => [
-      {
-        field: "rank",
-        headerName: "#",
-        width: 70,
-        sortable: false,
-        align: "center",
-        headerAlign: "center",
-      },
-      {
-        field: "driver",
-        headerName: "Driver",
-        flex: 1,
-        minWidth: 140,
-      },
-      {
-        field: "score",
-        headerName: "Score",
-        width: 140,
-        type: "number",
-        valueFormatter: ({ value }) =>
-          Number.isFinite(value) ? value.toLocaleString() : "N/A",
-      },
-      {
-        field: "recorded",
-        headerName: "Recorded",
-        flex: 0.9,
-        minWidth: 180,
-      },
-    ],
-    [],
-  );
+  const columns = useMemo(() => highscoreColumns, []);
 
   const handleReload = useCallback(() => {
     play("click");
@@ -258,21 +227,31 @@ function HyperlanePanel() {
               minHeight: { xs: 420, sm: 480, md: 520 },
             }}
           >
-            <Box
-              component="iframe"
+            <GamesBridge
               key={`hyperlane-${reloadKey}`}
               ref={iframeRef}
+              game="hyperlane"
+              path="hyperlane/index.html"
               title="LRP Hyperlane"
-              src={`${GAMES_ORIGIN}/hyperlane/index.html`}
-              sandbox="allow-scripts allow-same-origin allow-popups allow-pointer-lock"
-              allow="fullscreen; gamepad; autoplay"
-              referrerPolicy="no-referrer"
+              height="100%"
+              onError={(event) => {
+                logError(new Error("Hyperlane iframe failed"), {
+                  where: "GamesHub.iframeError",
+                });
+                if (event?.target?.removeAttribute) {
+                  try {
+                    event.target.removeAttribute("src");
+                  } catch (error) {
+                    logError(error, { where: "GamesHub.iframeCleanup" });
+                  }
+                }
+              }}
+              allowFullScreen
               sx={{
                 position: "absolute",
                 inset: 0,
                 width: "100%",
                 height: "100%",
-                border: 0,
               }}
             />
           </Box>
