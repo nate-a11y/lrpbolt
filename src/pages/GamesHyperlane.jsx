@@ -41,6 +41,8 @@ import hyperlaneHtml from "../../public/games/hyperlane/index.html?raw";
 
 const BRAND_GREEN = "#4cbb17";
 const BACKGROUND = "#060606";
+const rawGamesOrigin = import.meta.env.VITE_GAMES_ORIGIN || "/games";
+const GAMES_ORIGIN = rawGamesOrigin.replace(/\/+$/, "") || "/games";
 
 const gridSx = {
   bgcolor: "transparent",
@@ -556,10 +558,10 @@ export default function GamesHyperlane() {
                   src={
                     iframeContent
                       ? "about:blank"
-                      : "/games/hyperlane/index.html"
+                      : `${GAMES_ORIGIN}/hyperlane/index.html`
                   }
                   srcDoc={iframeContent || undefined}
-                  sandbox="allow-scripts allow-popups allow-pointer-lock"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-pointer-lock"
                   allow="fullscreen; gamepad; autoplay"
                   referrerPolicy="no-referrer"
                   allowFullScreen

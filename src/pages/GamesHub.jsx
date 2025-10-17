@@ -31,6 +31,8 @@ import { formatDateTime } from "@/utils/timeUtils.js";
 
 const BACKGROUND = "#060606";
 const BRAND_GREEN = "#4cbb17";
+const rawGamesOrigin = import.meta.env.VITE_GAMES_ORIGIN || "/games";
+const GAMES_ORIGIN = rawGamesOrigin.replace(/\/+$/, "") || "/games";
 
 const gridSx = {
   bgcolor: "transparent",
@@ -261,8 +263,8 @@ function HyperlanePanel() {
               key={`hyperlane-${reloadKey}`}
               ref={iframeRef}
               title="LRP Hyperlane"
-              src="/games/hyperlane/index.html"
-              sandbox="allow-scripts allow-popups allow-pointer-lock"
+              src={`${GAMES_ORIGIN}/hyperlane/index.html`}
+              sandbox="allow-scripts allow-same-origin allow-popups allow-pointer-lock"
               allow="fullscreen; gamepad; autoplay"
               referrerPolicy="no-referrer"
               sx={{
