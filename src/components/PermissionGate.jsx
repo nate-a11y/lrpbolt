@@ -1,16 +1,76 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isSupported as isMessagingSupported } from "firebase/messaging";
+import {
+  getMessaging,
+  getToken,
+  isSupported as isMessagingSupported,
+} from "firebase/messaging";
 import { Alert, Snackbar } from "@mui/material";
 
 import { attachForegroundMessagingHandler } from "@/services/pushTokens";
-import { ensureServiceWorkerRegistered, getFcmTokenSafe } from "@/services/fcm";
+import { ensureServiceWorkerRegistered } from "@/services/fcm";
 import { claimAnonymousToken, saveUserPushToken } from "@/services/fcmTokens";
 import { app as firebaseApp } from "@/utils/firebaseInit";
 import { diagPushSupport } from "@/utils/pushDiag.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
 import { env } from "@/utils/env.js";
+
+export async function ensureFcmToken(options = {}) {
+  try {
+    if (!(await isMessagingSupported())) return null;
+    if (typeof Notification === "undefined") return null;
+
+    let permission = Notification.permission;
+    if (permission !== "granted") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") return null;
+
+    const vapidKey = env.FIREBASE_VAPID_KEY || env.FCM_VAPID_KEY;
+    if (!vapidKey) {
+      console.warn("[FCM] Missing VITE_FIREBASE_VAPID_KEY");
+      return null;
+    }
+
+    let registration = options?.registration || null;
+    if (!registration) {
+      if (
+        typeof navigator === "undefined" ||
+        !navigator.serviceWorker ||
+        !navigator.serviceWorker.ready
+      ) {
+        console.warn("[FCM] Service worker API unavailable");
+        return null;
+      }
+      try {
+        registration = await navigator.serviceWorker.ready;
+      } catch (readyError) {
+        console.warn("[FCM] Service worker ready() failed", readyError);
+        registration = null;
+      }
+    }
+
+    if (!registration) {
+      console.warn("[FCM] Service worker registration not ready");
+      return null;
+    }
+
+    const messaging = getMessaging(firebaseApp);
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    });
+    if (!token) {
+      console.warn("[FCM] getToken returned null (blocked?)");
+      return null;
+    }
+    return token;
+  } catch (error) {
+    console.warn("[FCM] token error", error);
+    return null;
+  }
+}
 
 export default function PermissionGate({ user: userProp, children = null }) {
   const authContext = useAuth();
@@ -23,7 +83,6 @@ export default function PermissionGate({ user: userProp, children = null }) {
     if (typeof Notification === "undefined") return "default";
     return Notification.permission;
   });
-  const vapidKey = env.FCM_VAPID_KEY;
   const detachRef = useRef(null);
   const lastUserIdRef = useRef(undefined);
   const lastPersistedRef = useRef({ userId: undefined, token: undefined });
@@ -116,20 +175,13 @@ export default function PermissionGate({ user: userProp, children = null }) {
           console.info("[LRP][FCM] notification permission", permission);
           return;
         }
-        if (!vapidKey) {
-          logError(new Error("Missing VITE_FIREBASE_VAPID_KEY"), {
-            where: "PermissionGate",
-            action: "vapid-check",
-          });
-          return;
-        }
         const swReg = await ensureServiceWorkerRegistered();
         if (!swReg) {
           console.info("[LRP][FCM] registration unavailable");
           return;
         }
         console.info("[LRP][FCM] registration scope", swReg.scope || "(none)");
-        const token = await getFcmTokenSafe(swReg);
+        const token = await ensureFcmToken({ registration: swReg });
 
         if (!token) {
           console.warn("[LRP][FCM] registration did not issue a token");
@@ -168,7 +220,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
         logError(error, { where: "PermissionGate", action: "registerPushFor" });
       }
     },
-    [permission, supported, vapidKey],
+    [permission, supported],
   );
 
   const normalizedUserId = (() => {

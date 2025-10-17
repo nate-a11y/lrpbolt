@@ -22,7 +22,7 @@ import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
 import NotificationsProvider from "./context/NotificationsProvider.jsx";
-import "./utils/firebaseInit.js";
+import { initAnalyticsIfEnabled } from "./utils/firebaseInit.js";
 import "./muix-license.js";
 import initEruda from "./utils/initEruda.js";
 
@@ -39,6 +39,7 @@ import initEruda from "./utils/initEruda.js";
   }
 })();
 
+initAnalyticsIfEnabled?.();
 initAnalytics(); // fire-and-forget; guarded internally
 initServiceWorkerMessageBridge();
 initEruda();

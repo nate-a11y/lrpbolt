@@ -1,11 +1,6 @@
-import {
-  isSupported,
-  getAnalytics,
-  logEvent,
-  setUserProperties,
-} from "firebase/analytics";
+import { logEvent, setUserProperties } from "firebase/analytics";
 
-import { getFirebaseApp } from "@/utils/firebaseInit";
+import { initAnalyticsIfEnabled } from "@/utils/firebaseInit";
 import { env } from "@/utils/env";
 
 let analyticsInstance = null;
@@ -30,11 +25,9 @@ export async function initAnalytics() {
   if (initialized) return analyticsInstance;
 
   try {
-    const supported = await isSupported();
-    if (!supported) return null;
-
-    const app = getFirebaseApp();
-    analyticsInstance = getAnalytics(app); // uses measurementId from firebaseConfig
+    const analytics = await initAnalyticsIfEnabled?.();
+    if (!analytics) return null;
+    analyticsInstance = analytics;
     configureGtagOnce();
     initialized = true;
     return analyticsInstance;

@@ -17,9 +17,14 @@ export const env = {
   FCM_VAPID_KEY:
     import.meta.env.VITE_FCM_VAPID_KEY ||
     import.meta.env.VITE_FIREBASE_VAPID_KEY,
+  FIREBASE_VAPID_KEY: import.meta.env.VITE_FIREBASE_VAPID_KEY,
   MUIX_LICENSE_KEY:
     import.meta.env.VITE_MUIX_LICENSE_KEY || import.meta.env.YOUR_MUI_PRO_KEY, // prefer first
   ENABLE_FCM: `${import.meta.env.VITE_ENABLE_FCM}` === "true",
+  ENABLE_ANALYTICS: `${import.meta.env.VITE_ENABLE_ANALYTICS}` === "true",
+  FIRESTORE_CACHE_MODE: `${import.meta.env.VITE_FIRESTORE_CACHE_MODE || ""}`
+    .toLowerCase()
+    .trim(),
 };
 
 export default env;

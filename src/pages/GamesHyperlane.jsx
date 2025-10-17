@@ -559,7 +559,9 @@ export default function GamesHyperlane() {
                       : "/games/hyperlane/index.html"
                   }
                   srcDoc={iframeContent || undefined}
-                  sandbox="allow-scripts allow-pointer-lock allow-same-origin"
+                  sandbox="allow-scripts allow-popups allow-pointer-lock"
+                  allow="fullscreen; gamepad; autoplay"
+                  referrerPolicy="no-referrer"
                   allowFullScreen
                   onError={(event) => {
                     logError(new Error("Hyperlane iframe failed"), {

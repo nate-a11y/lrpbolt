@@ -1,6 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 /* global self */
-const SW_VERSION = "lrp-sw-v17";
+const DEFAULT_SW_VERSION = "lrp-sw-dev";
+let SW_VERSION = DEFAULT_SW_VERSION;
+let versionFetchPromise = null;
+let versionFetchFailed = false;
 let CLOCK_STICKY = false;
 
 // Scope-relative URL builder
@@ -8,26 +11,62 @@ function scopeUrl(path) {
   try { return new URL(String(path || "").replace(/^\//, ""), self.registration.scope).href; } catch (_) { return path; }
 }
 
+async function resolveSwVersion() {
+  if (versionFetchPromise) return versionFetchPromise;
+  versionFetchPromise = (async () => {
+    try {
+      const response = await fetch(scopeUrl("version.json"), { cache: "no-store" });
+      if (response?.ok) {
+        const data = await response.json().catch(() => null);
+        if (data?.version) {
+          SW_VERSION = `lrp-sw-${data.version}`;
+        }
+      }
+    } catch (error) {
+      if (!versionFetchFailed) {
+        versionFetchFailed = true;
+        console.error("[sw] version fetch failed", error);
+      }
+    } finally {
+      versionFetchPromise = null;
+    }
+    return SW_VERSION;
+  })();
+  return versionFetchPromise;
+}
+
+resolveSwVersion();
+
 self.addEventListener("fetch", (event) => {
+  let url;
   try {
-    const url = new URL(event.request.url);
-    const { origin, pathname } = url;
-
-    if (
-      origin === "https://firestore.googleapis.com" ||
-      origin === "https://securetoken.googleapis.com"
-    ) {
-      return;
-    }
-
-    if (
-      url.hostname.endsWith("googleapis.com") &&
-      (pathname.includes("/Firestore/Listen/") || pathname.includes("/v1/token"))
-    ) {
-      return;
-    }
+    url = new URL(event.request.url);
   } catch (error) {
-    // Swallow silently to avoid console noise; diagnostics handled elsewhere.
+    return;
+  }
+
+  const { origin, pathname, hostname } = url;
+
+  if (
+    /firestore\.googleapis\.com$/i.test(hostname) ||
+    /www\.google-analytics\.com$/i.test(hostname)
+  ) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (
+    origin === "https://firestore.googleapis.com" ||
+    origin === "https://securetoken.googleapis.com"
+  ) {
+    return;
+  }
+
+  if (
+    hostname.endsWith("googleapis.com") &&
+    (pathname.includes("/Firestore/Listen/") || pathname.includes("/v1/token"))
+  ) {
+    return;
   }
 });
 
@@ -47,6 +86,14 @@ self.addEventListener("install", (evt) => {
 self.addEventListener("activate", (evt) => {
   evt.waitUntil(
     (async () => {
+      try {
+        await resolveSwVersion();
+        if ("navigationPreload" in self.registration) {
+          await self.registration.navigationPreload.enable();
+        }
+      } catch (e) {
+        console.error("[sw] navigationPreload enable failed", e);
+      }
       try {
         if (self.clients?.claim) {
           await self.clients.claim();

@@ -108,17 +108,38 @@ jobs:
 
           cp .env .env.production
 
-      - name: Set build version
+      - name: Compute stamped app version (SemVer + channel + date + run + sha)
+        id: ver
+        shell: bash
         run: |
           if ! command -v jq &> /dev/null; then
             sudo apt-get update && sudo apt-get install -y jq
           fi
           BASE_VERSION=$(jq -r '.version // "0.0.0"' package.json)
-          DATE_TAG=$(date +"%Y%m%d")
-          COUNT=${GITHUB_RUN_NUMBER}
-          FINAL_VERSION="${BASE_VERSION}-${DATE_TAG}.${COUNT}"
-          sed -i '/^VITE_APP_VERSION=/d' .env .env.production 2>/dev/null || true
-          echo "VITE_APP_VERSION=$FINAL_VERSION" | tee -a .env .env.production
+          DATE=$(date -u +%Y%m%d)
+          RUN=${GITHUB_RUN_NUMBER}
+          SHA=$(git rev-parse --short HEAD)
+          REF_NAME="${GITHUB_REF_NAME}"
+          CHANNEL="canary"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${REF_NAME}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BASE_VERSION="${REF_NAME#v}"
+            CHANNEL="release"
+          else
+            case "${REF_NAME}" in
+              main) CHANNEL="prod" ;;
+              develop|dev|beta) CHANNEL="beta" ;;
+              *) CHANNEL="canary" ;;
+            esac
+          fi
+          FINAL_VERSION="v${BASE_VERSION}-${CHANNEL}.${DATE}.${RUN}+${SHA}"
+          echo "VITE_APP_VERSION=${FINAL_VERSION}" >> "$GITHUB_ENV"
+          echo "app_version=${FINAL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Stamped version: ${FINAL_VERSION}"
+
+      - name: Write public/version.json
+        run: |
+          mkdir -p public
+          echo "{\"version\":\"${{ steps.ver.outputs.app_version }}\"}" > public/version.json
 
       - name: Check lockfile sync
         run: npm run lock:check
@@ -148,6 +169,12 @@ jobs:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: npm run build:prod
+
+      - name: Upload version.json artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lrp-version
+          path: public/version.json
 
       - name: Verify web manifest exists
         run: |
