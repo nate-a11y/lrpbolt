@@ -6,6 +6,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 
 import logError from "@/utils/logError.js";
@@ -29,15 +30,22 @@ function resolveAppVersion() {
 /** Map highscore doc -> grid row */
 export function mapHighscoreDoc(snap) {
   const data = typeof snap?.data === "function" ? snap.data() : {};
+  const rawDriver =
+    typeof data?.displayName === "string" && data.displayName.trim()
+      ? data.displayName.trim()
+      : "Unknown";
+
+  const createdAtValue = data?.createdAt;
+  const hasTimestamp =
+    createdAtValue && typeof createdAtValue.toDate === "function";
+
   return {
     id: snap?.id ?? null,
     uid: typeof data?.uid === "string" && data.uid ? data.uid : null,
-    displayName:
-      typeof data?.displayName === "string" && data.displayName.trim()
-        ? data.displayName.trim()
-        : "Unknown",
+    driver: rawDriver,
+    displayName: rawDriver,
     score: toNumberOrNull(data?.score),
-    createdAt: data?.createdAt || null,
+    createdAt: hasTimestamp ? createdAtValue : null,
     version: data?.version || null,
     ua: data?.ua || null,
   };
@@ -49,13 +57,25 @@ export function subscribeTopScores(game, topN, cb, onError) {
   if (typeof cb !== "function") throw new Error("callback is required");
 
   const col = collection(db, "games", game, "highscores");
-  const q = query(col, orderBy("score", "desc"), limit(topN || 10));
+  const q = query(
+    col,
+    where("score", ">=", 0),
+    orderBy("score", "desc"),
+    limit(topN || 10),
+  );
 
   return onSnapshot(
     q,
     (qs) => {
       try {
-        cb(qs.docs.map(mapHighscoreDoc));
+        const rows = qs.docs
+          .map(mapHighscoreDoc)
+          .filter((row) => Number.isFinite(row?.score) && row.score >= 0)
+          .filter(
+            (row) =>
+              row?.createdAt && typeof row.createdAt.toDate === "function",
+          );
+        cb(rows);
       } catch (error) {
         logError(error, { where: "gamesService.subscribeTopScores.map" });
         onError?.(error);

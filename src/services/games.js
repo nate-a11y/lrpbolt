@@ -80,9 +80,12 @@ function mapHighscore(docSnap) {
         ? data.createdAt
         : null;
 
+    const driverName = parseDisplayName(data?.displayName);
+
     return {
       id: docSnap?.id ?? "",
-      driver: parseDisplayName(data?.displayName),
+      driver: driverName,
+      displayName: driverName,
       score,
       createdAt,
       uid: typeof data?.uid === "string" ? data.uid : null,
@@ -128,7 +131,12 @@ export async function saveHyperlaneScore(score) {
 
 function handleSnapshot({ snapshot, onData, onError, transform }) {
   try {
-    const rows = snapshot.docs.map((docSnap) => mapHighscore(docSnap));
+    const rows = snapshot.docs
+      .map((docSnap) => mapHighscore(docSnap))
+      .filter((row) => Number.isFinite(row?.score) && row.score >= 0)
+      .filter(
+        (row) => row?.createdAt && typeof row.createdAt.toDate === "function",
+      );
     const processed = typeof transform === "function" ? transform(rows) : rows;
     onData?.(processed);
   } catch (error) {
@@ -147,6 +155,7 @@ export function subscribeTopHyperlaneAllTime({
     const ref = getCollectionRef(db);
     const q = query(
       ref,
+      where("score", ">=", 0),
       orderBy("score", "desc"),
       orderBy("createdAt", "desc"),
       limit(topN),

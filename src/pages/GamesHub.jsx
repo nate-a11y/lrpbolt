@@ -89,31 +89,39 @@ function HyperlanePanel() {
 
   const rows = useMemo(
     () =>
-      (Array.isArray(allTimeScores) ? allTimeScores : []).map((row, index) => {
-        const fallbackId = `hyperlane-${index}`;
-        const rawId = row?.id ?? fallbackId;
-        const id =
-          typeof rawId === "string" || typeof rawId === "number"
-            ? rawId
-            : fallbackId;
-        const driver =
-          typeof row?.driver === "string" && row.driver.trim()
-            ? row.driver.trim()
-            : typeof row?.displayName === "string" && row.displayName.trim()
-              ? row.displayName.trim()
-              : "Anonymous";
-        const score = toNumberOrNull(row?.score);
-        return {
-          ...row,
-          id,
-          displayName: driver,
-          score,
-          createdAt:
+      (Array.isArray(allTimeScores) ? allTimeScores : [])
+        .map((row, index) => {
+          const fallbackId = `hyperlane-${index}`;
+          const rawId = row?.id ?? fallbackId;
+          const id =
+            typeof rawId === "string" || typeof rawId === "number"
+              ? rawId
+              : fallbackId;
+          const driverName =
+            typeof row?.driver === "string" && row.driver.trim()
+              ? row.driver.trim()
+              : typeof row?.displayName === "string" && row.displayName.trim()
+                ? row.displayName.trim()
+                : "Anonymous";
+          const score = toNumberOrNull(row?.score);
+          const createdAt =
             row?.createdAt && typeof row.createdAt.toDate === "function"
               ? row.createdAt
-              : (row?.createdAt ?? null),
-        };
-      }),
+              : null;
+          if (!Number.isFinite(score) || score < 0 || !createdAt) {
+            return null;
+          }
+
+          return {
+            ...row,
+            id,
+            driver: driverName,
+            displayName: driverName,
+            score,
+            createdAt,
+          };
+        })
+        .filter(Boolean),
     [allTimeScores],
   );
 
