@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 
 import DiagnosticsPanel from "@/components/DiagnosticsPanel.jsx";
+import VersionBadge from "@/components/VersionBadge.jsx";
 import { getFlag } from "@/services/observability";
 
 import NotificationSettingsCard from "../../components/NotificationSettingsCard.jsx";
@@ -37,21 +38,31 @@ function ProfilePage() {
         </Box>
       )}
       <Box sx={{ mt: 6, textAlign: "center" }}>
-        <Typography
-          variant="caption"
-          sx={{
-            color: "success.main",
-            fontWeight: "bold",
-            display: "block",
-            mb: 1,
-          }}
-        >
-          🚀 Version:{" "}
-          <span style={{ fontFamily: "monospace" }}>
-            {APP_VERSION || "vdev"}
-          </span>{" "}
-          • Lake Ride Pros © {new Date().getFullYear()}
-        </Typography>
+        <Stack spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography
+              variant="caption"
+              sx={{ color: "success.main", fontWeight: "bold" }}
+            >
+              🚀
+            </Typography>
+            <VersionBadge
+              value={APP_VERSION}
+              dense
+              size="small"
+              sx={{
+                bgcolor: "rgba(76,187,23,0.1)",
+                border: "1px solid rgba(76,187,23,0.4)",
+              }}
+            />
+          </Stack>
+          <Typography
+            variant="caption"
+            sx={{ color: "success.main", fontWeight: "bold" }}
+          >
+            Lake Ride Pros © {new Date().getFullYear()}
+          </Typography>
+        </Stack>
         <Button
           size="small"
           variant="outlined"
