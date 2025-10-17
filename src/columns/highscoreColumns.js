@@ -3,7 +3,18 @@ import { toNumberOrNull } from "@/services/gamesService.js";
 
 const formatScore = (value) => {
   const numeric = toNumberOrNull(value);
-  return Number.isFinite(numeric) ? numeric : null;
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+};
+
+const getDriverName = (row) => {
+  if (!row) return "N/A";
+  if (typeof row.driver === "string" && row.driver.trim()) {
+    return row.driver.trim();
+  }
+  if (typeof row.displayName === "string" && row.displayName.trim()) {
+    return row.displayName.trim();
+  }
+  return "N/A";
 };
 
 export const highscoreColumns = [
@@ -20,7 +31,13 @@ export const highscoreColumns = [
       return typeof index === "number" && index >= 0 ? index + 1 : "";
     },
   },
-  { field: "displayName", headerName: "Driver", flex: 1, minWidth: 180 },
+  {
+    field: "driver",
+    headerName: "Driver",
+    flex: 1,
+    minWidth: 180,
+    valueGetter: (params) => getDriverName(params?.row),
+  },
   {
     field: "score",
     headerName: "Score",

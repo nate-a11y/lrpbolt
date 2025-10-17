@@ -4,28 +4,29 @@ import { Box } from "@mui/material";
 
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
-import { submitHighscore, toNumberOrNull } from "@/services/gamesService.js";
+import { submitHighscore } from "@/services/gamesService.js";
 import logError from "@/utils/logError.js";
 
-function normalizeOrigin() {
+function computeGamesOrigin() {
   if (typeof window === "undefined") return "";
   const raw = import.meta.env.VITE_GAMES_ORIGIN || "/games";
   try {
     const url = new URL(raw, window.location.origin);
     return url.origin;
   } catch (error) {
-    logError(error, { where: "GamesBridge.normalizeOrigin" });
+    logError(error, { where: "GamesBridge.computeGamesOrigin" });
     return window.location.origin;
   }
 }
 
 function buildSrc(path, game) {
-  const base = import.meta.env.VITE_GAMES_ORIGIN || "/games";
+  const rawBase = import.meta.env.VITE_GAMES_ORIGIN || "/games";
   const fallbackOrigin =
     typeof window !== "undefined" ? window.location.origin : "http://localhost";
   const effectivePath = path || (game ? `${game}/index.html` : "");
+
   try {
-    const baseUrl = new URL(base, fallbackOrigin);
+    const baseUrl = new URL(rawBase, fallbackOrigin);
     const cleanBase = baseUrl.href.replace(/\/+$/, "/");
     const cleanPath = effectivePath ? effectivePath.replace(/^\/+/, "") : "";
     return cleanPath
@@ -34,10 +35,10 @@ function buildSrc(path, game) {
   } catch (error) {
     logError(error, {
       where: "GamesBridge.buildSrc",
-      base,
-      path: effectivePath,
+      rawBase,
+      effectivePath,
     });
-    const cleanBase = (base || "").replace(/\/+$/, "");
+    const cleanBase = (rawBase || "").replace(/\/+$/, "");
     const cleanPath = effectivePath ? effectivePath.replace(/^\/+/, "") : "";
     return cleanPath ? `${cleanBase}/${cleanPath}` : cleanBase || "/games";
   }
@@ -49,9 +50,9 @@ const GamesBridge = forwardRef(function GamesBridge(
     path,
     height = 600,
     sx,
-    onScore,
     sandbox = "allow-scripts allow-same-origin allow-popups allow-pointer-lock",
     allow = "fullscreen; gamepad; autoplay",
+    onScore,
     onSaveSuccess,
     onSaveError,
     ...rest
@@ -62,21 +63,22 @@ const GamesBridge = forwardRef(function GamesBridge(
   const snack = useSnack?.();
   const showSnack = snack?.show;
 
-  const gamesOrigin = useMemo(() => normalizeOrigin(), []);
+  const gamesOrigin = useMemo(() => computeGamesOrigin(), []);
   const iframeSrc = useMemo(() => buildSrc(path, game), [game, path]);
-  const dedupeRef = useRef({ key: "", ts: 0 });
+  const lastSaveRef = useRef({ key: "", ts: 0 });
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
-    const allowedOrigins = new Set(
-      [gamesOrigin, window.location?.origin].filter(Boolean),
-    );
-
     const handleMessage = (event) => {
       try {
         if (!event?.data) return;
-        if (allowedOrigins.size > 0 && !allowedOrigins.has(event.origin)) {
+
+        const sameOrigin = event.origin === gamesOrigin;
+        const devOrigin =
+          gamesOrigin === window.location.origin &&
+          event.origin === window.location.origin;
+        if (!sameOrigin && !devOrigin) {
           return;
         }
 
@@ -87,7 +89,6 @@ const GamesBridge = forwardRef(function GamesBridge(
           game: legacyGame,
         } = event.data || {};
         const normalizedType = type || event.data?.type;
-
         if (
           normalizedType !== "lrp:game-highscore" &&
           normalizedType !== "HYPERLANE_SCORE"
@@ -95,62 +96,54 @@ const GamesBridge = forwardRef(function GamesBridge(
           return;
         }
 
-        const incomingPayload =
+        const incoming =
           normalizedType === "HYPERLANE_SCORE"
             ? { score: legacyScore, game: legacyGame }
             : payload || {};
-        const resolvedGame = incomingPayload?.game || game;
-        if (!resolvedGame) return;
 
-        const numericScore = toNumberOrNull(incomingPayload?.score);
-        if (numericScore === null) return;
+        const finalGame = incoming?.game || game;
+        const numericScore = Number(incoming?.score);
+        if (!finalGame || !Number.isFinite(numericScore) || numericScore < 0) {
+          return;
+        }
 
-        const resolvedUid = incomingPayload?.uid || user?.uid || "anon";
-        const dedupeKey = `${resolvedGame}:${resolvedUid}:${numericScore}`;
+        const uid = user?.uid || "anon";
+        const dedupeKey = `${finalGame}:${uid}:${numericScore}`;
         const now = Date.now();
         if (
-          dedupeRef.current.key === dedupeKey &&
-          now - dedupeRef.current.ts < 3000
+          lastSaveRef.current.key === dedupeKey &&
+          now - lastSaveRef.current.ts < 3000
         ) {
           return;
         }
-        dedupeRef.current = { key: dedupeKey, ts: now };
+        lastSaveRef.current = { key: dedupeKey, ts: now };
 
         onScore?.(numericScore);
 
-        const payloadDisplayName =
-          incomingPayload?.displayName &&
-          typeof incomingPayload.displayName === "string"
-            ? incomingPayload.displayName
-            : undefined;
-
         submitHighscore({
-          game: resolvedGame,
-          uid: resolvedUid,
+          game: finalGame,
+          uid,
           displayName:
-            payloadDisplayName ||
+            incoming?.displayName ||
             user?.displayName ||
             user?.email ||
             "Anonymous",
           score: numericScore,
-          version: incomingPayload?.version,
+          version: incoming?.version,
         })
           .then(() => {
-            onSaveSuccess?.({
-              game: resolvedGame,
-              score: numericScore,
-              uid: resolvedUid,
-            });
             showSnack?.("Score saved!", "success");
+            onSaveSuccess?.({ game: finalGame, score: numericScore, uid });
           })
           .catch((error) => {
-            dedupeRef.current = { key: "", ts: 0 };
+            lastSaveRef.current = { key: "", ts: 0 };
             logError(error, {
               where: "GamesBridge.submitHighscore",
-              resolvedGame,
+              game: finalGame,
+              score: numericScore,
             });
-            onSaveError?.(error);
             showSnack?.("Could not save score", "error");
+            onSaveError?.(error);
           });
       } catch (error) {
         logError(error, { where: "GamesBridge.handleMessage" });
@@ -203,9 +196,9 @@ GamesBridge.propTypes = {
   path: PropTypes.string,
   height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   sx: PropTypes.object,
-  onScore: PropTypes.func,
   sandbox: PropTypes.string,
   allow: PropTypes.string,
+  onScore: PropTypes.func,
   onSaveSuccess: PropTypes.func,
   onSaveError: PropTypes.func,
 };

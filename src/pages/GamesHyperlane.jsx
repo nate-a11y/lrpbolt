@@ -171,35 +171,42 @@ export default function GamesHyperlane() {
 
   const buildLeaderboardRows = useCallback(
     (rows, prefix) =>
-      (Array.isArray(rows) ? rows : []).map((row, index) => {
-        const fallbackId = `${prefix}-${index}`;
-        const rawId = row?.id ?? fallbackId;
-        const id =
-          typeof rawId === "string" || typeof rawId === "number"
-            ? rawId
-            : fallbackId;
-        const driver =
-          typeof row?.driver === "string" && row.driver.trim()
-            ? row.driver.trim()
-            : typeof row?.displayName === "string" && row.displayName.trim()
-              ? row.displayName.trim()
-              : "Anonymous";
-        const score = toNumberOrNull(row?.score);
-        const isCurrentUser =
-          currentUid && row?.uid && row.uid === currentUid ? true : false;
-
-        return {
-          ...row,
-          id,
-          displayName: driver,
-          score,
-          createdAt:
+      (Array.isArray(rows) ? rows : [])
+        .map((row, index) => {
+          const fallbackId = `${prefix}-${index}`;
+          const rawId = row?.id ?? fallbackId;
+          const id =
+            typeof rawId === "string" || typeof rawId === "number"
+              ? rawId
+              : fallbackId;
+          const driverName =
+            typeof row?.driver === "string" && row.driver.trim()
+              ? row.driver.trim()
+              : typeof row?.displayName === "string" && row.displayName.trim()
+                ? row.displayName.trim()
+                : "Anonymous";
+          const score = toNumberOrNull(row?.score);
+          const createdAt =
             row?.createdAt && typeof row.createdAt.toDate === "function"
               ? row.createdAt
-              : (row?.createdAt ?? null),
-          isCurrentUser,
-        };
-      }),
+              : null;
+          if (!Number.isFinite(score) || score < 0 || !createdAt) {
+            return null;
+          }
+          const isCurrentUser =
+            currentUid && row?.uid && row.uid === currentUid ? true : false;
+
+          return {
+            ...row,
+            id,
+            driver: driverName,
+            displayName: driverName,
+            score,
+            createdAt,
+            isCurrentUser,
+          };
+        })
+        .filter(Boolean),
     [currentUid],
   );
 
