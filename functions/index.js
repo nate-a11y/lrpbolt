@@ -42,7 +42,7 @@ attach("notifyQueue-notifyQueueOnCreate", "./notifyQueue", "notifyQueueOnCreate"
 attach("smsOnCreate", "./smsOnCreateV2", "smsOnCreateV2");
 attach("ticketsOnWrite-ticketsOnWrite", "./ticketsOnWrite", "ticketsOnWrite");
 attach("adminMigrate-migrateIssueTickets", "./adminMigrateIssueTickets", "migrateIssueTickets");
-attach("dropDailyRidesNow", "./schedules", "scheduleDropDailyRides");
+attach("dropDailyRidesNow", "./src", "dropDailyRidesNow");
 
 process.on("unhandledRejection", (err) => {
   // eslint-disable-next-line no-console
