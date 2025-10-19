@@ -1,19 +1,39 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Box, Chip, IconButton, Tooltip } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Chip,
+  IconButton,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime } from "@/utils/time";
 
-const STATUS_COLOR = {
-  open: "warning",
-  pending: "info",
-  closed: "default",
-  resolved: "success",
-  breached: "error",
-};
+function NoTicketsOverlay() {
+  return (
+    <Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
+      No Support Tickets Found 🚀
+    </Box>
+  );
+}
+
+function TicketsErrorOverlay({ message }) {
+  return (
+    <Box sx={{ p: 4, textAlign: "center", color: "#ff5252" }}>
+      Error loading tickets. Try again.
+      {message ? (
+        <Typography variant="body2" sx={{ mt: 1, opacity: 0.7 }}>
+          {message}
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
 
 function TicketGrid({ onSelect, activeTicketId }) {
   const [rows, setRows] = useState([]);
@@ -110,6 +130,90 @@ function TicketGrid({ onSelect, activeTicketId }) {
     return () => window.removeEventListener("hashchange", handler);
   }, [extractIdFromLocation, handleSelect, rows]);
 
+  const getAssigneeDisplayName = useCallback((row) => {
+    const assignee = row?.assignee;
+    if (!assignee) return "Unassigned";
+    if (typeof assignee === "string") {
+      return assignee.trim() || "Unassigned";
+    }
+    if (typeof assignee.displayName === "string" && assignee.displayName) {
+      return assignee.displayName;
+    }
+    if (typeof assignee.name === "string" && assignee.name) {
+      return assignee.name;
+    }
+    if (typeof assignee.userId === "string" && assignee.userId) {
+      return assignee.userId;
+    }
+    return "Unassigned";
+  }, []);
+
+  const renderCategoryChip = useCallback((params) => {
+    const raw = params?.row?.category;
+    const isMissing = !raw;
+    const label = isMissing ? "N/A" : String(raw);
+    return (
+      <Chip
+        label={label}
+        size="small"
+        sx={{
+          bgcolor: "#2e2e2e",
+          color: "#4cbb17",
+          textTransform: isMissing ? "none" : "capitalize",
+          fontWeight: 500,
+        }}
+      />
+    );
+  }, []);
+
+  const renderStatusChip = useCallback((params) => {
+    const statusRaw = params?.row?.status;
+    const status = statusRaw ? String(statusRaw).toLowerCase() : "open";
+    const isClosed = status === "closed" || status === "resolved";
+    const label = status
+      .replace(/_/g, " ")
+      .split(" ")
+      .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : ""))
+      .join(" ");
+    return (
+      <Chip
+        label={label || "Open"}
+        size="small"
+        sx={{
+          bgcolor: isClosed ? "rgba(76,187,23,0.15)" : "rgba(255,193,7,0.15)",
+          color: isClosed ? "#4cbb17" : "#ffc107",
+          textTransform: "capitalize",
+          fontWeight: 600,
+        }}
+      />
+    );
+  }, []);
+
+  const renderAssigneeCell = useCallback(
+    (params) => {
+      const displayName = getAssigneeDisplayName(params?.row);
+      const firstLetter = displayName?.trim()?.charAt(0)?.toUpperCase() || "?";
+      return (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Avatar
+            sx={{
+              bgcolor: "#4cbb17",
+              width: 26,
+              height: 26,
+              fontSize: 13,
+            }}
+          >
+            {firstLetter}
+          </Avatar>
+          <Typography variant="body2" sx={{ color: "inherit" }}>
+            {displayName}
+          </Typography>
+        </Box>
+      );
+    },
+    [getAssigneeDisplayName],
+  );
+
   const columns = useMemo(() => {
     return [
       {
@@ -118,43 +222,33 @@ function TicketGrid({ onSelect, activeTicketId }) {
         flex: 1,
         minWidth: 220,
         valueGetter: (params) => params?.row?.title || "N/A",
-        naFallback: true,
       },
       {
         field: "category",
         headerName: "Category",
         width: 150,
-        renderCell: (params) => {
-          const label = params?.row?.category || "N/A";
-          return <Chip size="small" label={label} />;
-        },
+        renderCell: renderCategoryChip,
+        valueGetter: (params) => params?.row?.category || "N/A",
       },
       {
         field: "status",
         headerName: "Status",
         width: 140,
-        renderCell: (params) => {
-          const status = String(params?.row?.status || "open").toLowerCase();
-          const color = STATUS_COLOR[status] || "default";
-          return <Chip size="small" color={color} label={status || "N/A"} />;
-        },
+        renderCell: renderStatusChip,
+        valueGetter: (params) => params?.row?.status || "open",
       },
       {
         field: "assignee",
         headerName: "Assignee",
-        width: 160,
-        valueGetter: (params) =>
-          params?.row?.assignee?.displayName ||
-          params?.row?.assignee?.userId ||
-          "N/A",
-        naFallback: true,
+        width: 180,
+        renderCell: renderAssigneeCell,
+        valueGetter: (params) => getAssigneeDisplayName(params?.row),
       },
       {
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
         valueGetter: (params) => formatDateTime(params?.row?.updatedAt),
-        naFallback: true,
       },
       {
         field: "actions",
@@ -178,7 +272,13 @@ function TicketGrid({ onSelect, activeTicketId }) {
         ),
       },
     ];
-  }, [handleSelect]);
+  }, [
+    getAssigneeDisplayName,
+    handleSelect,
+    renderAssigneeCell,
+    renderCategoryChip,
+    renderStatusChip,
+  ]);
 
   const getRowClassName = useCallback(
     (params) => {
@@ -199,6 +299,14 @@ function TicketGrid({ onSelect, activeTicketId }) {
     return { message: error?.message || String(error) };
   }, [error]);
 
+  const gridSlots = useMemo(
+    () => ({
+      noRowsOverlay: NoTicketsOverlay,
+      errorOverlay: TicketsErrorOverlay,
+    }),
+    [],
+  );
+
   useEffect(() => {
     if (!activeTicketId) {
       setSelectedId(null);
@@ -211,14 +319,21 @@ function TicketGrid({ onSelect, activeTicketId }) {
         id="support-tickets-grid"
         rows={rows}
         columns={columns}
-        getRowId={(row) => row?.id}
+        getRowId={(row) => row?.id || row?.ticketId}
         loading={loading}
         error={gridError}
         quickFilterPlaceholder="Search tickets"
         onRowClick={(params) => handleSelect(params?.row)}
         disableRowSelectionOnClick
         getRowClassName={getRowClassName}
+        slots={gridSlots}
         sx={{
+          bgcolor: "#0c0c0c",
+          color: "#fff",
+          border: "none",
+          "& .MuiDataGrid-row:hover": {
+            bgcolor: "rgba(76,187,23,0.05)",
+          },
           "& .status-breached": {
             bgcolor: "rgba(244, 67, 54, 0.18)",
           },

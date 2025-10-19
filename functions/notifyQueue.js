@@ -14,6 +14,8 @@ try {
 
 const cfg = process.env || {};
 
+const db = admin.firestore();
+
 const smsClient =
   cfg.TWILIO_ACCOUNT_SID && cfg.TWILIO_AUTH_TOKEN
     ? twilio(cfg.TWILIO_ACCOUNT_SID, cfg.TWILIO_AUTH_TOKEN)
@@ -97,6 +99,45 @@ async function sendAllTargets(targets = [], ticket = {}, link) {
   }
 }
 
+async function sendDirectFcmNotifications(data = {}) {
+  const recipients = [data?.to, data?.assigneeEmail]
+    .filter((value) => typeof value === "string" && value.trim())
+    .map((value) => value.trim());
+
+  if (recipients.length === 0) {
+    return;
+  }
+
+  try {
+    const snapshot = await db
+      .collection("fcmTokens")
+      .where("email", "in", recipients)
+      .get();
+
+    const tokens = snapshot.docs
+      .map((doc) => doc.id)
+      .filter((token) => typeof token === "string" && token.length > 0);
+
+    if (!tokens.length) {
+      return;
+    }
+
+    await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: data?.title || "New Support Ticket",
+        body: data?.message || "A new ticket update has been posted.",
+      },
+      data: { click_action: "FLUTTER_NOTIFICATION_CLICK" },
+    });
+  } catch (err) {
+    logger.error("notifyQueue.directFcm", {
+      err: err && (err.stack || err.message || err),
+      recipients,
+    });
+  }
+}
+
 exports.notifyQueueOnCreate = functions.firestore
   .document("notifyQueue/{id}")
   .onCreate(async (snap) => {
@@ -104,6 +145,7 @@ exports.notifyQueueOnCreate = functions.firestore
     const ctx = data.context || {};
     const targets = Array.isArray(data.targets) ? data.targets : [];
     try {
+      await sendDirectFcmNotifications(data);
       await sendAllTargets(targets, ctx.ticket, ctx.link);
       await snap.ref.update({ status: "sent" });
     } catch (err) {
