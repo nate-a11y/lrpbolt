@@ -1,21 +1,29 @@
 /* Proprietary and confidential. See LICENSE. */
-const functions = require("firebase-functions/v1");
-const admin = require("firebase-admin");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { setGlobalOptions, logger } = require("firebase-functions/v2");
+const { admin } = require("./_admin");
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!global.__lrpGlobalOptionsSet) {
+  try {
+    setGlobalOptions({ region: "us-central1", cpu: 1, memory: "256MiB", timeoutSeconds: 60 });
+    global.__lrpGlobalOptionsSet = true;
+  } catch (error) {
+    logger.warn("ensureLiveRideOpen:setGlobalOptions", error?.message || error);
+  }
 }
 
-exports.ensureLiveRideOpen = functions.firestore
-  .document("liveRides/{id}")
-  .onCreate(async (snap) => {
-    const data = snap.data() || {};
-    const status = String(data.status || "").trim().toLowerCase();
-    const needsFix = status !== "open" || data.claimed === true || data.claimedBy;
+exports.ensureLiveRideOpen = onDocumentCreated("liveRides/{id}", async (event) => {
+  const snap = event.data;
+  if (!snap) return;
 
-    if (!needsFix) return null;
+  const data = snap.data() || {};
+  const status = String(data.status || "").trim().toLowerCase();
+  const needsFix = status !== "open" || data.claimed === true || data.claimedBy;
 
-    return snap.ref.set(
+  if (!needsFix) return;
+
+  try {
+    await snap.ref.set(
       {
         status: "open",
         claimed: false,
@@ -24,4 +32,8 @@ exports.ensureLiveRideOpen = functions.firestore
       },
       { merge: true },
     );
-  });
+  } catch (error) {
+    logger.error("ensureLiveRideOpen:updateFailed", error?.message || error);
+    throw error;
+  }
+});
