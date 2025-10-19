@@ -19,6 +19,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      functions: ${{ steps.filter.outputs.functions }}
+      rules: ${{ steps.filter.outputs.rules }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            functions:
+              - 'functions/**'
+            rules:
+              - 'firestore.rules'
+              - 'firestore.indexes.json'
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -253,7 +272,8 @@ jobs:
 
   functions:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, changes]
+    if: needs.changes.outputs.functions == 'true' || needs.changes.outputs.rules == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -316,24 +336,28 @@ jobs:
           firebase functions:secrets:set TWILIO_AUTH_TOKEN  --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_AUTH_TOKEN"
           firebase functions:secrets:set TWILIO_FROM        --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_FROM"
 
-      - name: Deploy Firestore Rules
+      - name: Deploy Firestore Rules (only when BOTH functions & rules changed)
+        if: needs.changes.outputs.functions == 'true' && needs.changes.outputs.rules == 'true'
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Deploy Functions
+        if: needs.changes.outputs.functions == 'true'
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Setup gcloud
+        if: needs.changes.outputs.functions == 'true'
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Pin env vars on Cloud Run (apiCalendarFetch)
+        if: needs.changes.outputs.functions == 'true'
         env:
           GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
           GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
@@ -343,3 +367,34 @@ jobs:
             --platform=managed \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}" \
             --quiet
+
+  rules:
+    name: Deploy Firestore Rules (rules-only path)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.rules == 'true' && needs.changes.outputs.functions != 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools@latest
+
+      - name: Validate rules compile (emulator)
+        run: npx firebase-tools@latest emulators:exec --only firestore "echo Firestore rules compile ✔️"
+
+      - name: Deploy Firestore Rules
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
