@@ -163,7 +163,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
   }, [supported]);
 
   const registerPushFor = useCallback(
-    async (targetUserId) => {
+    async (targetUserId, targetEmail) => {
       try {
         if (!supported) {
           console.info(
@@ -211,6 +211,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
         await saveUserPushToken({
           userId: resolvedUserId,
           token,
+          email: typeof targetEmail === "string" ? targetEmail : undefined,
           deviceInfo: { ua: navigator.userAgent, scope: swReg?.scope || null },
         });
 
@@ -230,6 +231,12 @@ export default function PermissionGate({ user: userProp, children = null }) {
     return String(raw).trim();
   })();
 
+  const normalizedEmail = (() => {
+    if (!user?.email) return null;
+    const trimmed = String(user.email).trim();
+    return trimmed ? trimmed.toLowerCase() : null;
+  })();
+
   const shouldWaitForAuth = userProp === undefined && authLoading;
 
   useEffect(() => {
@@ -244,13 +251,14 @@ export default function PermissionGate({ user: userProp, children = null }) {
     }
 
     lastUserIdRef.current = currentUserId;
-    registerPushFor(currentUserId).catch((error) => {
+    registerPushFor(currentUserId, normalizedEmail).catch((error) => {
       logError(error, { where: "PermissionGate", action: "register-effect" });
     });
 
     return undefined;
   }, [
     normalizedUserId,
+    normalizedEmail,
     registerPushFor,
     shouldWaitForAuth,
     permission,

@@ -14,6 +14,7 @@ export default function TicketsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [optimisticTicket, setOptimisticTicket] = useState(null);
 
   const handleOpen = useCallback(() => {
     if (!user) {
@@ -31,6 +32,32 @@ export default function TicketsPage() {
     if (!ticket) return;
     setSelectedTicket(ticket);
     setDrawerOpen(true);
+  }, []);
+
+  const handleTicketUpdated = useCallback((patched) => {
+    if (!patched) return;
+    const patchId =
+      patched.id || patched.ticketId || patched.docId || patched._id || null;
+    if (!patchId) return;
+    setSelectedTicket((prev) => {
+      if (!prev) return prev;
+      const prevIds = [prev.id, prev.ticketId, prev.docId, prev._id].filter(
+        Boolean,
+      );
+      if (!prevIds.includes(patchId)) {
+        return prev;
+      }
+      return { ...prev, ...patched };
+    });
+    setOptimisticTicket({ ...patched, _optimisticAt: Date.now() });
+  }, []);
+
+  const handleTicketCreated = useCallback((created) => {
+    if (!created) return;
+    const createdId =
+      created.id || created.ticketId || created.docId || created._id || null;
+    if (!createdId) return;
+    setOptimisticTicket({ ...created, _optimisticAt: Date.now() });
   }, []);
 
   useEffect(() => {
@@ -86,12 +113,17 @@ export default function TicketsPage() {
         </Button>
       </Box>
 
-      <TicketGrid onSelect={handleSelect} activeTicketId={selectedTicket?.id} />
+      <TicketGrid
+        onSelect={handleSelect}
+        activeTicketId={selectedTicket?.id}
+        optimisticTicket={optimisticTicket}
+      />
 
       <TicketFormDialog
         open={dialogOpen}
         onClose={handleClose}
         currentUser={user}
+        onSaved={handleTicketCreated}
       />
 
       <TicketDetailDrawer
@@ -99,6 +131,7 @@ export default function TicketsPage() {
         onClose={handleDrawerClose}
         ticket={selectedTicket}
         currentUser={user}
+        onTicketUpdated={handleTicketUpdated}
       />
     </Box>
   );

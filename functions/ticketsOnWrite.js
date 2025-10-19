@@ -2,6 +2,7 @@ const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions, logger } = require("firebase-functions/v2");
 const { admin } = require("./_admin");
 const { sendAllTargets } = require("./notifyQueue"); // re-use our unified sender
+const { resolveEmailFromId } = require("./_assignees");
 
 if (!global.__lrpGlobalOptionsSet) {
   try {
@@ -31,26 +32,76 @@ function collectCandidateEmails(doc = {}) {
   return Array.from(out);
 }
 
-async function resolveEmails(db, candidates) {
+async function resolveEmails(db, candidates = []) {
   const emails = new Set();
-  // Split into obvious emails vs keys we need to resolve in userAccess
   const toResolve = [];
-  for (const c of candidates) {
-    if (c.includes("@")) emails.add(c.toLowerCase());
-    else toResolve.push(c);
-  }
-  // Resolve userAccess/<key> → .email (if present)
-  if (toResolve.length) {
-    const reads = toResolve.map((k) => db.doc(`userAccess/${k}`).get());
-    const snaps = await Promise.allSettled(reads);
-    for (const r of snaps) {
-      if (r.status !== "fulfilled") continue;
-      const s = r.value;
-      if (!s.exists) continue;
-      const e = (s.data()?.email || s.id || "").toString().trim().toLowerCase();
-      if (e && e.includes("@")) emails.add(e);
+  const seenKeys = new Set();
+
+  for (const rawCandidate of candidates) {
+    if (!rawCandidate) continue;
+    const candidate = String(rawCandidate).trim();
+    if (!candidate) continue;
+    if (candidate.includes("@")) {
+      emails.add(candidate.toLowerCase());
+      continue;
     }
+    const aliasEmail = resolveEmailFromId(candidate);
+    if (aliasEmail) {
+      emails.add(aliasEmail);
+      continue;
+    }
+    const key = candidate.toLowerCase();
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    toResolve.push(candidate);
   }
+
+  if (!toResolve.length) {
+    return Array.from(emails);
+  }
+
+  const lookups = await Promise.allSettled(
+    toResolve.map(async (key) => {
+      try {
+        const accessSnap = await db.doc(`userAccess/${key}`).get();
+        if (accessSnap.exists) {
+          const emailFromAccess = (accessSnap.data()?.email || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          if (emailFromAccess && emailFromAccess.includes("@")) {
+            return emailFromAccess;
+          }
+        }
+
+        const userSnap = await db.doc(`users/${key}`).get();
+        if (userSnap.exists) {
+          const emailFromUser = (userSnap.data()?.email || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          if (emailFromUser && emailFromUser.includes("@")) {
+            return emailFromUser;
+          }
+        }
+      } catch (error) {
+        logger.warn("ticketsOnWrite:resolveEmails", {
+          key,
+          err: error?.message || error,
+        });
+      }
+      return "";
+    }),
+  );
+
+  lookups.forEach((result) => {
+    if (result.status !== "fulfilled") return;
+    const email = String(result.value || "").trim().toLowerCase();
+    if (email && email.includes("@")) {
+      emails.add(email);
+    }
+  });
+
   return Array.from(emails);
 }
 

@@ -20,16 +20,17 @@ import logError from "@/utils/logError.js";
 import { toDayjs } from "@/utils/time";
 import { db } from "@/services/firebase.js";
 import { withExponentialBackoff } from "@/services/retry.js";
+import { normalizeAssignee } from "@/lib/assignees.js";
 
 import { COLLECTIONS } from "../constants/collections.js";
 
 const TICKETS_COLLECTION = collection(db, COLLECTIONS.ISSUE_TICKETS);
 
 export const DEFAULT_ASSIGNEES = {
-  vehicle: { userId: "jim", displayName: "Jim" },
-  marketing: { userId: "michael", displayName: "Michael" },
-  tech: { userId: "nate", displayName: "Nate" },
-  moovs: { userId: "nate", displayName: "Nate" },
+  vehicle: normalizeAssignee({ userId: "jim", displayName: "Jim" }),
+  marketing: normalizeAssignee({ userId: "michael", displayName: "Michael" }),
+  tech: normalizeAssignee({ userId: "nate", displayName: "Nate" }),
+  moovs: normalizeAssignee({ userId: "nate", displayName: "Nate" }),
 };
 
 function normalizeWatcherValue(raw) {
@@ -83,7 +84,14 @@ function normalizeTicketInput(input = {}) {
     throw new AppError("Creator missing userId", "TICKET_CREATOR_INVALID");
   }
 
-  const assignee = DEFAULT_ASSIGNEES[category] || DEFAULT_ASSIGNEES.tech;
+  const preferredAssignee =
+    input.assignee && Object.keys(input.assignee || {}).length
+      ? normalizeAssignee(input.assignee)
+      : null;
+  const fallbackAssignee =
+    DEFAULT_ASSIGNEES[category] || DEFAULT_ASSIGNEES.tech || {};
+  const assigneeCandidate = preferredAssignee || fallbackAssignee;
+  const assignee = normalizeAssignee(assigneeCandidate);
   const watcherCandidates = Array.isArray(input.watchers) ? input.watchers : [];
   const watchers = mergeWatchers([
     ...watcherCandidates,
@@ -271,8 +279,15 @@ export async function updateTicket(ticketId, updates = {}) {
     throw new AppError("Update payload invalid", "TICKET_UPDATE_INVALID");
   }
 
-  const payload = { ...updates, updatedAt: serverTimestamp() };
+  const payload = { ...updates };
   delete payload.id;
+
+  if (Object.prototype.hasOwnProperty.call(payload, "assignee")) {
+    const normalized = normalizeAssignee(payload.assignee);
+    payload.assignee = Object.keys(normalized).length ? normalized : null;
+  }
+
+  payload.updatedAt = serverTimestamp();
 
   try {
     await withExponentialBackoff(async () => {

@@ -14,6 +14,20 @@ import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime } from "@/utils/time";
 
+const dash = (value) => {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : "—";
+  }
+  return value;
+};
+
+const stringOrDash = (value) => {
+  const resolved = dash(value);
+  return resolved === "—" ? "—" : String(resolved);
+};
+
 function NoTicketsOverlay() {
   return (
     <Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
@@ -35,7 +49,7 @@ function TicketsErrorOverlay({ message }) {
   );
 }
 
-function TicketGrid({ onSelect, activeTicketId }) {
+function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -64,6 +78,37 @@ function TicketGrid({ onSelect, activeTicketId }) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!optimisticTicket) return;
+    const patchId =
+      optimisticTicket.id ||
+      optimisticTicket.ticketId ||
+      optimisticTicket.docId ||
+      optimisticTicket._id ||
+      null;
+    if (!patchId) return;
+    const { _optimisticAt: _ignore, ...patch } = optimisticTicket;
+    setRows((prev) => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      let updated = false;
+      const next = safePrev.map((row) => {
+        if (!row) return row;
+        const rowIds = [row.id, row.ticketId, row.docId, row._id].filter(
+          Boolean,
+        );
+        if (!rowIds.includes(patchId)) {
+          return row;
+        }
+        updated = true;
+        return { ...row, ...patch, id: row.id || patchId };
+      });
+      if (updated) {
+        return next;
+      }
+      return [{ ...patch, id: patch.id || patchId }, ...safePrev];
+    });
+  }, [optimisticTicket]);
 
   const handleSelect = useCallback(
     (row) => {
@@ -139,6 +184,9 @@ function TicketGrid({ onSelect, activeTicketId }) {
     if (typeof assignee.displayName === "string" && assignee.displayName) {
       return assignee.displayName;
     }
+    if (typeof assignee.email === "string" && assignee.email) {
+      return assignee.email;
+    }
     if (typeof assignee.name === "string" && assignee.name) {
       return assignee.name;
     }
@@ -149,9 +197,8 @@ function TicketGrid({ onSelect, activeTicketId }) {
   }, []);
 
   const renderCategoryChip = useCallback((params) => {
-    const raw = params?.row?.category;
-    const isMissing = !raw;
-    const label = isMissing ? "N/A" : String(raw);
+    const label = stringOrDash(params?.row?.category);
+    const isMissing = label === "—";
     return (
       <Chip
         label={label}
@@ -168,7 +215,20 @@ function TicketGrid({ onSelect, activeTicketId }) {
 
   const renderStatusChip = useCallback((params) => {
     const statusRaw = params?.row?.status;
-    const status = statusRaw ? String(statusRaw).toLowerCase() : "open";
+    if (!statusRaw) {
+      return (
+        <Chip
+          label="—"
+          size="small"
+          sx={{
+            bgcolor: "rgba(255,255,255,0.08)",
+            color: "#bdbdbd",
+            fontWeight: 500,
+          }}
+        />
+      );
+    }
+    const status = String(statusRaw).toLowerCase();
     const isClosed = status === "closed" || status === "resolved";
     const label = status
       .replace(/_/g, " ")
@@ -177,12 +237,12 @@ function TicketGrid({ onSelect, activeTicketId }) {
       .join(" ");
     return (
       <Chip
-        label={label || "Open"}
+        label={label || "—"}
         size="small"
         sx={{
           bgcolor: isClosed ? "rgba(76,187,23,0.15)" : "rgba(255,193,7,0.15)",
           color: isClosed ? "#4cbb17" : "#ffc107",
-          textTransform: "capitalize",
+          textTransform: label ? "capitalize" : "none",
           fontWeight: 600,
         }}
       />
@@ -192,7 +252,11 @@ function TicketGrid({ onSelect, activeTicketId }) {
   const renderAssigneeCell = useCallback(
     (params) => {
       const displayName = getAssigneeDisplayName(params?.row);
-      const firstLetter = displayName?.trim()?.charAt(0)?.toUpperCase() || "?";
+      const label = stringOrDash(displayName);
+      const firstLetter =
+        label && label !== "—"
+          ? label.trim().charAt(0)?.toUpperCase() || "?"
+          : "?";
       return (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Avatar
@@ -206,7 +270,7 @@ function TicketGrid({ onSelect, activeTicketId }) {
             {firstLetter}
           </Avatar>
           <Typography variant="body2" sx={{ color: "inherit" }}>
-            {displayName}
+            {label}
           </Typography>
         </Box>
       );
@@ -216,7 +280,7 @@ function TicketGrid({ onSelect, activeTicketId }) {
 
   const columns = useMemo(() => {
     const resolveTitle = (row) => {
-      if (!row) return "N/A";
+      if (!row) return "—";
       const candidates = [
         row.title,
         row.subject,
@@ -229,7 +293,7 @@ function TicketGrid({ onSelect, activeTicketId }) {
           return value.trim();
         }
       }
-      return "N/A";
+      return "—";
     };
 
     return [
@@ -238,34 +302,41 @@ function TicketGrid({ onSelect, activeTicketId }) {
         headerName: "Title",
         flex: 1,
         minWidth: 220,
-        valueGetter: (params) => resolveTitle(params?.row),
+        valueGetter: (params) => stringOrDash(resolveTitle(params?.row)),
       },
       {
         field: "category",
         headerName: "Category",
         width: 150,
         renderCell: renderCategoryChip,
-        valueGetter: (params) => params?.row?.category || "N/A",
+        valueGetter: (params) => stringOrDash(params?.row?.category),
       },
       {
         field: "status",
         headerName: "Status",
         width: 140,
         renderCell: renderStatusChip,
-        valueGetter: (params) => params?.row?.status || "open",
+        valueGetter: (params) => {
+          const raw = params?.row?.status;
+          return raw ? String(raw) : "—";
+        },
       },
       {
         field: "assignee",
         headerName: "Assignee",
         width: 180,
         renderCell: renderAssigneeCell,
-        valueGetter: (params) => getAssigneeDisplayName(params?.row),
+        valueGetter: (params) =>
+          stringOrDash(getAssigneeDisplayName(params?.row)),
       },
       {
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
-        valueGetter: (params) => formatDateTime(params?.row?.updatedAt),
+        valueGetter: (params) => {
+          const formatted = formatDateTime(params?.row?.updatedAt);
+          return formatted === "N/A" ? "—" : formatted;
+        },
       },
       {
         field: "actions",
@@ -336,7 +407,14 @@ function TicketGrid({ onSelect, activeTicketId }) {
         id="support-tickets-grid"
         rows={rows}
         columns={columns}
-        getRowId={(row) => row?.id || row?.ticketId}
+        getRowId={(row) =>
+          row?.id ||
+          row?.ticketId ||
+          row?.docId ||
+          row?._id ||
+          row?.docID ||
+          row?.documentId
+        }
         loading={loading}
         error={gridError}
         quickFilterPlaceholder="Search tickets"

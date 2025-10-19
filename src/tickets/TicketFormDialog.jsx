@@ -18,6 +18,7 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import ClearIcon from "@mui/icons-material/Clear";
 
 import logError from "@/utils/logError.js";
+import { dayjs } from "@/utils/time";
 import { createTicket } from "@/services/tickets.js";
 import { enqueueNotification } from "@/services/notify.js";
 import { getUserContacts } from "@/services/users.js";
@@ -69,7 +70,12 @@ function assigneePreview(cat) {
   return { id: "nate", name: "Nate" };
 }
 
-export default function TicketFormDialog({ open, onClose, currentUser }) {
+export default function TicketFormDialog({
+  open,
+  onClose,
+  currentUser,
+  onSaved,
+}) {
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState("tech");
@@ -226,6 +232,25 @@ export default function TicketFormDialog({ open, onClose, currentUser }) {
           ticketId,
         );
       }
+
+      const now = dayjs();
+      onSaved?.({
+        id: ticketId,
+        title: snapshot?.title || title,
+        description: snapshot?.description || description,
+        category: snapshot?.category || category,
+        priority: snapshot?.priority || priority,
+        status: snapshot?.status || "open",
+        assignee,
+        watchers: Array.isArray(watcherIds) ? watcherIds : [],
+        createdBy: snapshot?.createdBy || {
+          userId: currentUser?.uid || currentUser?.id || "unknown",
+          displayName:
+            currentUser?.displayName || currentUser?.name || "Unknown",
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
 
       onClose?.();
     } catch (err) {

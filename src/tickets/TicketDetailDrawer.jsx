@@ -23,7 +23,7 @@ import {
   addWatcher,
 } from "@/services/tickets.js";
 import { getUserContacts } from "@/services/users.js";
-import { formatDateTime } from "@/utils/time";
+import { dayjs, formatDateTime } from "@/utils/time";
 import logError from "@/utils/logError.js";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { APP_BAR_HEIGHT } from "@/layout/constants.js";
@@ -44,6 +44,7 @@ export default function TicketDetailDrawer({
   onClose,
   ticket,
   currentUser,
+  onTicketUpdated,
 }) {
   const [comment, setComment] = React.useState("");
   const [commentBusy, setCommentBusy] = React.useState(false);
@@ -167,6 +168,10 @@ export default function TicketDetailDrawer({
             "Unknown",
         },
       });
+      const optimistic = ticket ? { ...ticket } : { id: ticketId };
+      optimistic.lastCommentAt = dayjs();
+      optimistic.updatedAt = dayjs();
+      onTicketUpdated?.(optimistic);
       setComment("");
       show("Comment added.", "success");
     } catch (error) {
@@ -181,7 +186,9 @@ export default function TicketDetailDrawer({
     currentUser?.email,
     currentUser?.name,
     currentUserId,
+    onTicketUpdated,
     show,
+    ticket,
     ticketId,
   ]);
 
@@ -191,6 +198,11 @@ export default function TicketDetailDrawer({
       setUpdateBusy(true);
       try {
         await updateTicket(ticketId, { [field]: value });
+        onTicketUpdated?.({
+          ...ticket,
+          [field]: value,
+          updatedAt: dayjs(),
+        });
         show(`Support ticket ${field} updated.`, "success");
       } catch (error) {
         logError(error, {
@@ -203,7 +215,7 @@ export default function TicketDetailDrawer({
         setUpdateBusy(false);
       }
     },
-    [show, ticketId],
+    [onTicketUpdated, show, ticket, ticketId],
   );
 
   const handleUploadFiles = React.useCallback(
@@ -234,6 +246,13 @@ export default function TicketDetailDrawer({
     setWatcherBusy(true);
     try {
       await addWatcher(ticketId, currentUserId);
+      const existing = Array.isArray(ticket?.watchers) ? ticket.watchers : [];
+      const mergedWatchers = Array.from(new Set([...existing, currentUserId]));
+      onTicketUpdated?.({
+        ...ticket,
+        watchers: mergedWatchers,
+        updatedAt: dayjs(),
+      });
       show("Added to watchers.", "success");
     } catch (error) {
       logError(error, { where: "TicketDetailDrawer.addWatcher", ticketId });
@@ -241,7 +260,7 @@ export default function TicketDetailDrawer({
     } finally {
       setWatcherBusy(false);
     }
-  }, [currentUserId, show, ticketId]);
+  }, [currentUserId, onTicketUpdated, show, ticket, ticketId]);
 
   const handleClose = React.useCallback(() => {
     if (commentBusy || updateBusy || uploadBusy || watcherBusy) return;

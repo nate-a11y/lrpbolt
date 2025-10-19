@@ -3,16 +3,30 @@ import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { db } from "@/utils/firebaseInit";
 import logError from "@/utils/logError.js";
+import { resolveEmailFromId } from "@/lib/assignees.js";
 
-export async function saveUserPushToken({ userId, token, deviceInfo = {} }) {
-  if (!userId || !token) return;
+export async function saveUserPushToken({
+  userId,
+  token,
+  deviceInfo = {},
+  email,
+}) {
+  if (!token) return;
   try {
     const ref = doc(db, "fcmTokens", token);
+    const normalizedUserId = userId ? String(userId).trim() : null;
+    const normalizedEmail = (() => {
+      const explicit =
+        typeof email === "string" ? email.trim().toLowerCase() : "";
+      if (explicit) return explicit;
+      return resolveEmailFromId(normalizedUserId);
+    })();
     await setDoc(
       ref,
       {
-        userId,
+        userId: normalizedUserId || null,
         token,
+        email: normalizedEmail || null,
         updatedAt: serverTimestamp(),
         deviceInfo,
       },
