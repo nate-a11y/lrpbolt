@@ -1,16 +1,8 @@
 const functions = require("firebase-functions");
-const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 
-const { _sendAllTargets } = require("./notifyQueue");
-
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp();
-  }
-} catch (err) {
-  logger.warn("ticketsOnWrite:init", err && (err.message || err));
-}
+const { admin } = require("./_admin");
+const { sendAllTargets } = require("./notifyQueue");
 
 function diffChanged(before, after, keys = []) {
   if (!before) return true;
@@ -93,7 +85,9 @@ async function targetsForUsers(db, userIds = []) {
       const email =
         (userData.email || userData.contactEmail || null) || accessData.email ||
         null;
-      const phone = (userData.phone || userData.phoneNumber || null) || accessData.phone || null;
+      const phone =
+        (userData.phone || userData.phoneNumber || null) || accessData.phone ||
+        null;
 
       if (email && !dedupEmail.has(email)) {
         dedupEmail.add(email);
@@ -223,7 +217,7 @@ exports.ticketsOnWrite = functions.firestore
     };
 
     try {
-      await _sendAllTargets(targets, ticketPayload, buildLink(ticketId));
+      await sendAllTargets(targets, ticketPayload, buildLink(ticketId));
     } catch (err) {
       logger.error("ticketsOnWrite:notify", {
         ticketId,
@@ -275,7 +269,7 @@ exports.slaSweep = functions.pubsub
         );
         const targets = await targetsForUsers(db, userIds);
         if (targets.length) {
-          await _sendAllTargets(
+          await sendAllTargets(
             targets,
             { id: item.id, ...item.ticket, status: "breached" },
             buildLink(item.id),

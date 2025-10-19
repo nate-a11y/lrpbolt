@@ -23,7 +23,7 @@ async function ensureOnce(eventId) {
       func: "smsOnCreate",
     });
     return true;
-  } catch (err) {
+  } catch {
     logger.warn("smsOnCreate idempotency: duplicate event, skipping", { eventId });
     return false;
   }
