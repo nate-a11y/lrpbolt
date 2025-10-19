@@ -8,9 +8,13 @@ function loadExports() {
 }
 
 const expectedExports = [
+  "apiCalendarFetch",
   "dailyDropIfLiveRides",
   "dropDailyRidesNow",
+  "ensureLiveRideOpen",
   "migrateIssueTickets",
+  "notifyDriverOnClaimCreated",
+  "notifyDriverOnClaimUpdated",
   "notifyQueueOnCreate",
   "scheduleDropDailyRides",
   "sendDailySms",
@@ -21,12 +25,32 @@ const expectedExports = [
   "ticketsOnWriteV2",
 ].sort();
 
+const allowedAliases = new Set([
+  "calendarFetch",
+  "ensureLiveOpen",
+  "notifyQueue",
+  "sendPortalNotification",
+  "smsOnCreate",
+]);
+
 function main() {
   const have = loadExports();
   const missing = expectedExports.filter((name) => !have.includes(name));
-  const extra = have.filter((name) => !expectedExports.includes(name));
+  const extra = have.filter(
+    (name) => !expectedExports.includes(name) && !allowedAliases.has(name),
+  );
 
-  const payload = { have, expected: expectedExports, missing, extra };
+  const missingAliases = Array.from(allowedAliases).filter(
+    (name) => !have.includes(name),
+  );
+
+  const payload = {
+    have,
+    expected: expectedExports,
+    missing,
+    extra,
+    missingAliases,
+  };
   console.log(JSON.stringify(payload, null, 2));
 
   if (missing.length) {
@@ -41,7 +65,11 @@ function main() {
     return;
   }
 
-  console.log("\u2705 Exports OK");
+  if (missingAliases.length) {
+    console.warn("\u26a0\ufe0f Missing legacy aliases", missingAliases);
+  } else {
+    console.log("\u2705 Exports OK");
+  }
 }
 
 main();
