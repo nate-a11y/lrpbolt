@@ -6,6 +6,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { GridActionsCellItem, GridRowModes } from "@mui/x-data-grid-pro";
 
+import logError from "@/utils/logError.js";
+
 /**
  * Build an actions column that supports row editing with save/cancel and optional delete.
  */
@@ -40,7 +42,7 @@ export function buildRowEditActionsColumn({
     try {
       await onDelete(id, row);
     } catch (err) {
-      console.error("Delete failed:", err);
+      logError({ where: "rowEditActions.delete", id, row }, err);
       alert("Delete failed. Check console.");
     }
   };
@@ -51,9 +53,33 @@ export function buildRowEditActionsColumn({
     headerName,
     width,
     getActions: (params) => {
-      const id = params.id;
-      const row = params.row || {};
-      const isInEditMode = rowModesModel[id]?.mode === GridRowModes.Edit;
+      if (!params) {
+        logError({
+          where: "rowEditActions.getActions",
+          reason: "missing-params",
+        });
+        return [];
+      }
+
+      const { id } = params;
+      if (id == null) {
+        logError({
+          where: "rowEditActions.getActions",
+          reason: "missing-id",
+          params,
+        });
+        return [];
+      }
+
+      const resolvedRow = params.row ?? apiRef?.current?.getRow?.(id) ?? null;
+      if (!resolvedRow) {
+        logError(
+          { where: "rowEditActions.getActions", reason: "missing-row", id },
+          new Error("Unable to resolve row for actions"),
+        );
+      }
+      const row = resolvedRow ?? {};
+      const isInEditMode = rowModesModel?.[id]?.mode === GridRowModes.Edit;
       if (isInEditMode) {
         const items = [
           <GridActionsCellItem
