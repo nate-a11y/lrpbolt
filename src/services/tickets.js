@@ -32,6 +32,37 @@ export const DEFAULT_ASSIGNEES = {
   moovs: { userId: "nate", displayName: "Nate" },
 };
 
+function normalizeWatcherValue(raw) {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    return trimmed || null;
+  }
+  if (typeof raw === "object") {
+    const candidate =
+      raw.userId || raw.uid || raw.email || raw.id || raw.value || null;
+    if (!candidate) return null;
+    const trimmed = String(candidate).trim();
+    return trimmed || null;
+  }
+  return null;
+}
+
+function mergeWatchers(list) {
+  const result = [];
+  const seen = new Set();
+  if (!Array.isArray(list)) return result;
+  list.forEach((entry) => {
+    const normalized = normalizeWatcherValue(entry);
+    if (!normalized) return;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(normalized);
+  });
+  return result;
+}
+
 function normalizeTicketInput(input = {}) {
   const title = String(input.title ?? "").trim();
   const description = String(input.description ?? "").trim();
@@ -53,9 +84,12 @@ function normalizeTicketInput(input = {}) {
   }
 
   const assignee = DEFAULT_ASSIGNEES[category] || DEFAULT_ASSIGNEES.tech;
-  const watchers = Array.from(
-    new Set([createdBy.userId, assignee?.userId].filter(Boolean)),
-  );
+  const watcherCandidates = Array.isArray(input.watchers) ? input.watchers : [];
+  const watchers = mergeWatchers([
+    ...watcherCandidates,
+    createdBy.userId,
+    assignee?.userId,
+  ]);
 
   return {
     payload: {

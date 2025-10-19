@@ -40,7 +40,7 @@ import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import NotificationsOptInDialog from "./components/NotificationsOptInDialog.jsx";
 import { getUserAccess } from "./hooks/api";
-import { registerFCM } from "./services/fcm";
+import { ensureFcmToken, listenForegroundMessages } from "./services/fcm";
 import DriverInfoTab from "./components/DriverInfoTab";
 import DirectoryEscalations from "./components/DirectoryEscalations.jsx";
 import { logout } from "./services/auth";
@@ -167,10 +167,20 @@ function App() {
   );
 
   useEffect(() => {
-    if (!user) return;
-    registerFCM().catch((error) => {
-      logError(error, { where: "App", action: "registerFCM" });
-    });
+    let mounted = true;
+    let unsubscribe = () => {};
+    if (user && mounted) {
+      ensureFcmToken(user);
+      unsubscribe = listenForegroundMessages();
+    }
+    return () => {
+      mounted = false;
+      try {
+        unsubscribe();
+      } catch (err) {
+        logError(err, { where: "App", action: "fcm-unsubscribe" });
+      }
+    };
   }, [user]);
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
