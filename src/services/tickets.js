@@ -180,6 +180,10 @@ export function subscribeTickets(filters = {}, callback) {
     return onSnapshot(
       qRef,
       (snapshot) => {
+        if (snapshot.size) {
+          const first = snapshot.docs[0];
+          console.log("ticket sample", first.id, first.data());
+        }
         const rows = snapshot.docs.map(mapTicketDoc);
         cb({ rows });
       },
