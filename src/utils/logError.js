@@ -1,21 +1,35 @@
 /* Proprietary and confidential. See LICENSE. */
 
-export default function logError(err, context = {}) {
-  const msg = err?.message || String(err ?? "Unknown error");
-  const isWebChannelNoise =
-    /webchannel|Listen\/channel|Write\/channel/i.test(msg) &&
-    typeof navigator !== "undefined" &&
-    navigator &&
-    navigator.onLine === false;
+const isDev = !!import.meta.env?.DEV;
 
-  if (isWebChannelNoise && import.meta.env.DEV) {
-    console.debug("[LRP][dev-only webchannel]", msg, context);
+function isWebChannelNoise(message) {
+  if (!message) return false;
+  return (
+    /webchannel|Listen\/channel|Write\/channel/i.test(message) &&
+    typeof navigator !== "undefined" &&
+    navigator?.onLine === false
+  );
+}
+
+export function logError(context = {}, err) {
+  const error = err ?? context?.error ?? null;
+  const message = error?.message || String(error ?? "Unknown error");
+
+  if (isWebChannelNoise(message) && isDev) {
+    console.debug("[LRP][dev-only webchannel]", message, context);
     return;
   }
 
-  console.error("[LRP]", {
-    message: msg,
+  const payload = {
+    message,
     ...context,
-    error: err?.stack || err,
-  });
+    error: error?.stack || error || message,
+  };
+
+  console.error("[LRP]", payload);
+}
+
+export default function logErrorDefault(err, context = {}) {
+  const ctx = context && typeof context === "object" ? context : {};
+  logError(ctx, err);
 }

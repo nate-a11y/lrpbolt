@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { initServiceWorkerMessageBridge } from "@/pwa/swMessages";
 import { initMessagingAndToken } from "@/services/fcm";
 import { initSentry, logEvent } from "@/services/observability";
-import { env } from "@/utils/env";
 import { initAnalytics } from "@/services/analytics";
 import SnackbarProvider from "@/components/feedback/SnackbarProvider.jsx";
 import LiveRegion from "@/components/a11y/LiveRegion.jsx";
@@ -25,19 +24,6 @@ import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import { initAnalyticsIfEnabled } from "./utils/firebaseInit.js";
 import "./muix-license.js";
 import initEruda from "./utils/initEruda.js";
-
-(async () => {
-  try {
-    const mod = await import("@mui/x-license");
-    if (mod?.setLicenseKey && env.MUIX_LICENSE_KEY) {
-      mod.setLicenseKey(env.MUIX_LICENSE_KEY);
-    }
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.debug("[MUI] License module not loaded", error?.message || error);
-    }
-  }
-})();
 
 initAnalyticsIfEnabled?.();
 initAnalytics(); // fire-and-forget; guarded internally
