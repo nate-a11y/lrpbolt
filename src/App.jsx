@@ -40,7 +40,7 @@ import { useDriver } from "./context/DriverContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import NotificationsOptInDialog from "./components/NotificationsOptInDialog.jsx";
 import { getUserAccess } from "./hooks/api";
-import { ensureFcmToken } from "./utils/fcm";
+import { registerFCM } from "./services/fcm";
 import DriverInfoTab from "./components/DriverInfoTab";
 import DirectoryEscalations from "./components/DirectoryEscalations.jsx";
 import { logout } from "./services/auth";
@@ -69,6 +69,7 @@ const ProfilePage = lazy(() => import("./pages/Profile/Settings.jsx"));
 const ShootoutTab = lazy(() => import("./components/ShootoutTab"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
 const Tickets = lazy(() => import("./components/Tickets"));
+const TicketsPage = lazy(() => import("./pages/TicketsPage.jsx"));
 
 function App() {
   const { driver, setDriver } = useDriver();
@@ -167,9 +168,9 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    ensureFcmToken(user).catch((e) =>
-      console.warn("[LRP] ensureFcmToken:", e?.message || e),
-    );
+    registerFCM().catch((error) => {
+      logError(error, { where: "App", action: "registerFCM" });
+    });
   }, [user]);
   const handleRefresh = useCallback(() => window.location.reload(), []);
   const [showEliteBadge, setShowEliteBadge] = useState(false);
@@ -366,12 +367,13 @@ function App() {
                 path="/ride-entry"
                 element={isAdmin ? <RideEntryForm /> : <Navigate to="/" />}
               />
-              <Route path="/tickets" element={<Tickets />} />
+              <Route path="/tickets" element={<TicketsPage />} />
+              <Route path="/tickets/legacy" element={<Tickets />} />
               <Route
                 path="/generate-ticket"
                 element={
                   <Navigate
-                    to={isAdmin ? "/tickets?tab=generate" : "/tickets"}
+                    to={isAdmin ? "/tickets/legacy?tab=generate" : "/tickets"}
                     replace
                   />
                 }

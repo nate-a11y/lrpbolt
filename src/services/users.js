@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   serverTimestamp,
   setDoc,
@@ -126,4 +127,60 @@ export async function saveUserPhoneNumber(email, phone) {
     });
     throw appErr;
   }
+}
+
+export async function getUserContacts(userId) {
+  const contact = {
+    email: null,
+    phone: null,
+    displayName: null,
+    fcmTokens: [],
+  };
+
+  if (!userId) {
+    return contact;
+  }
+
+  const tried = new Set();
+  const paths = [
+    ["users", userId],
+    ["userAccess", userId],
+  ];
+
+  try {
+    for (const path of paths) {
+      const key = path.join("/");
+      if (tried.has(key)) continue;
+      tried.add(key);
+
+      const snapshot = await getDoc(doc(db, ...path));
+      if (!snapshot.exists()) {
+        continue;
+      }
+      const data = snapshot.data() || {};
+      contact.displayName =
+        contact.displayName || data.name || data.displayName || null;
+      contact.email = contact.email || data.email || null;
+      contact.phone = contact.phone || data.phone || data.phoneNumber || null;
+    }
+
+    const fcmSnapshot = await getDocs(collection(db, "fcmTokens"));
+    fcmSnapshot.forEach((tokenDoc) => {
+      const data = tokenDoc.data() || {};
+      if (!data.email || !contact.email) return;
+      if (
+        String(data.email).toLowerCase() !== String(contact.email).toLowerCase()
+      ) {
+        return;
+      }
+      if (!data.source) {
+        return;
+      }
+      contact.fcmTokens.push(tokenDoc.id);
+    });
+  } catch (err) {
+    logError(err, { where: "users.getUserContacts", userId });
+  }
+
+  return contact;
 }

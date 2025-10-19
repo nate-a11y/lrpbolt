@@ -52,7 +52,14 @@ export const NAV_ITEMS = [
   {
     id: "tickets",
     to: "/tickets",
-    label: "Tickets",
+    label: "Support Tickets",
+    icon: "ConfirmationNumber",
+    rolesVisible: ["admin", "driver"],
+  },
+  {
+    id: "shuttle-tickets",
+    to: "/tickets/legacy",
+    label: "Shuttle Tickets",
     icon: "ConfirmationNumber",
     rolesVisible: ["admin", "driver"],
   },

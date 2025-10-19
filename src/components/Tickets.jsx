@@ -516,7 +516,7 @@ function Tickets() {
         );
       } catch (err) {
         logError(err, {
-          area: "Tickets",
+          area: "Shuttle Tickets",
           action: "scanLookup",
           ticketId,
         });
@@ -607,7 +607,7 @@ function Tickets() {
           playBeep();
         } catch (soundError) {
           logError(soundError, {
-            area: "Tickets",
+            area: "Shuttle Tickets",
             action: "scanConfirmSound",
             ticketId: docId,
           });
@@ -616,7 +616,7 @@ function Tickets() {
         resumeScanner();
       } catch (err) {
         logError(err, {
-          area: "Tickets",
+          area: "Shuttle Tickets",
           action: "recordScan",
           scanType,
           ticketId: docId,
@@ -1135,7 +1135,7 @@ function Tickets() {
     ],
   );
 
-  useGridDoctor({ name: "Tickets", rows: safeRows, columns });
+  useGridDoctor({ name: "Shuttle Tickets", rows: safeRows, columns });
 
   const downloadTicket = useCallback(async () => {
     const node = previewRef.current;

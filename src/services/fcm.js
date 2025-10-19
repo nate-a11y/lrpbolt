@@ -7,6 +7,7 @@ import {
 } from "firebase/messaging";
 
 import { getFirebaseApp } from "@/utils/firebaseInit";
+import { messaging as firebaseMessaging } from "@/services/firebase.js";
 import { AppError, logError } from "@/services/errors";
 import {
   getFcmTokenSafe as retrieveFcmToken,
@@ -15,6 +16,7 @@ import {
 import { env } from "@/utils/env";
 
 let _messaging;
+let hasConsoleMessageListener = false;
 
 export function initFirebaseApp() {
   // legacy callers still import this; keep API but use our singleton
@@ -25,7 +27,21 @@ function getMessagingInstance() {
   if (_messaging) return _messaging;
   const app = getFirebaseApp();
   _messaging = getMessaging(app);
+  attachConsoleLogging(_messaging);
   return _messaging;
+}
+
+function attachConsoleLogging(instance) {
+  if (hasConsoleMessageListener) return;
+  if (!instance) return;
+  try {
+    onMessage(instance, (payload) => {
+      console.log("\uD83D\uDD25 FCM message:", payload);
+    });
+    hasConsoleMessageListener = true;
+  } catch (err) {
+    logError(err, { where: "fcm.attachConsoleLogging" });
+  }
 }
 
 export function isSupportedBrowser() {
@@ -102,6 +118,21 @@ export async function initMessagingAndToken() {
     return null;
   }
 }
+
+export async function registerFCM() {
+  try {
+    const token = await initMessagingAndToken();
+    if (token && import.meta.env.DEV) {
+      console.log("\uD83D\uDCF2 FCM token:", token);
+    }
+    return token;
+  } catch (err) {
+    logError(err, { where: "fcm.registerFCM" });
+    return null;
+  }
+}
+
+attachConsoleLogging(firebaseMessaging);
 
 export async function requestFcmPermission() {
   return requestNotificationPermission();

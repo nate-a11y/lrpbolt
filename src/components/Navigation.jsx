@@ -103,7 +103,16 @@ const ALL_NAV_ITEMS = [
     icon: <CalendarMonthIcon />,
     path: "/calendar",
   },
-  { label: "Tickets", icon: <ConfirmationNumberIcon />, path: "/tickets" },
+  {
+    label: "Support Tickets",
+    icon: <ConfirmationNumberIcon />,
+    path: "/tickets",
+  },
+  {
+    label: "Shuttle Tickets",
+    icon: <ConfirmationNumberIcon />,
+    path: "/tickets/legacy",
+  },
 
   // Admin-only
   {
@@ -192,10 +201,12 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   );
 
   // Determine label of currently active route
-  const activeLabel = useMemo(
-    () => items.find((it) => location.pathname.startsWith(it.path))?.label,
-    [items, location.pathname],
-  );
+  const activeLabel = useMemo(() => {
+    const matches = items.filter((it) => location.pathname.startsWith(it.path));
+    if (!matches.length) return undefined;
+    matches.sort((a, b) => b.path.length - a.path.length);
+    return matches[0]?.label;
+  }, [items, location.pathname]);
 
   const activeSXExpanded = useMemo(() => makeActiveExpandedSX(theme), [theme]);
   const activeSXCollapsed = useMemo(
