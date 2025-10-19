@@ -215,13 +215,30 @@ function TicketGrid({ onSelect, activeTicketId }) {
   );
 
   const columns = useMemo(() => {
+    const resolveTitle = (row) => {
+      if (!row) return "N/A";
+      const candidates = [
+        row.title,
+        row.subject,
+        row.summary,
+        row.name,
+        row.ticketTitle,
+      ];
+      for (const value of candidates) {
+        if (typeof value === "string" && value.trim()) {
+          return value.trim();
+        }
+      }
+      return "N/A";
+    };
+
     return [
       {
         field: "title",
         headerName: "Title",
         flex: 1,
         minWidth: 220,
-        valueGetter: (params) => params?.row?.title || "N/A",
+        valueGetter: (params) => resolveTitle(params?.row),
       },
       {
         field: "category",

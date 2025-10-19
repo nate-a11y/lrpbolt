@@ -189,12 +189,27 @@ export function subscribeTickets(filters = {}, callback) {
 
 export async function createTicket(input = {}) {
   try {
-    const { payload } = normalizeTicketInput(input);
+    const { payload, assignee } = normalizeTicketInput(input);
     const refId = await withExponentialBackoff(async () => {
       const ref = await addDoc(TICKETS_COLLECTION, payload);
       return ref.id;
     });
-    return refId;
+
+    const watchers = Array.isArray(payload.watchers) ? payload.watchers : [];
+
+    return {
+      id: refId,
+      assignee,
+      watchers,
+      ticket: {
+        title: payload.title,
+        description: payload.description,
+        category: payload.category,
+        priority: payload.priority,
+        status: payload.status,
+        createdBy: payload.createdBy,
+      },
+    };
   } catch (error) {
     const appErr =
       error instanceof AppError
