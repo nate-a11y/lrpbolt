@@ -112,6 +112,7 @@ exports.ticketsOnWrite = onDocumentWritten("tickets/{id}", async (event) => {
     await sendAllTargets(targets, ticket, link);
   } catch (err) {
     logger.error("ticketsOnWrite v2 failed", { err: err?.message || err, id });
+    throw err;
   }
 });
 
