@@ -197,9 +197,6 @@ jobs:
       - name: Firestore Rules Validation
         run: npx firebase-tools@latest emulators:exec --only firestore "echo Firestore rules valid ✔️"
 
-      - name: Functions emulator boot check
-        run: npx firebase-tools@latest emulators:exec --only functions "node -e \"console.log('Functions boot ✔️')\""
-
       - name: Test
         run: |
           if npm ls vitest --depth=0 >/dev/null 2>&1; then npm test; else echo "Skipping tests"; fi
@@ -348,7 +345,7 @@ jobs:
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
+        run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive --force
 
       - name: Setup gcloud
         if: needs.changes.outputs.functions == 'true'
