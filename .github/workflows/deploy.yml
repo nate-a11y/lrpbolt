@@ -176,10 +176,10 @@ jobs:
           if npm ls eslint --depth=0 >/dev/null 2>&1; then npm run lint --if-present; else echo "Skipping lint"; fi
 
       - name: Firestore Rules Validation
-        run: npx firebase-tools@14 emulators:exec --only firestore "echo Firestore rules valid ✔️"
+        run: npx firebase-tools@latest emulators:exec --only firestore "echo Firestore rules valid ✔️"
 
       - name: Functions emulator boot check
-        run: npx firebase-tools@14 emulators:exec --only functions "node -e \"console.log('Functions boot ✔️')\""
+        run: npx firebase-tools@latest emulators:exec --only functions "node -e \"console.log('Functions boot ✔️')\""
 
       - name: Test
         run: |
@@ -278,13 +278,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x'
           cache: 'npm'
           cache-dependency-path: |
             functions/package-lock.json
 
       - name: Install Firebase CLI
-        run: npm i -g firebase-tools@14
+        run: npm i -g firebase-tools@latest
 
       - name: Check lockfile sync
         run: npm run lock:check
@@ -302,8 +302,8 @@ jobs:
         run: |
           npm ls firebase-functions firebase-admin twilio nodemailer --depth=0 || true
 
-      - name: Functions emulator boot check
-        run: npx firebase-tools@14 emulators:exec --only functions "node -e \"console.log('Functions boot ✔️')\""
+      - name: Functions analyzer boot
+        run: npx firebase-tools@latest emulators:exec --only functions "node -e \"console.log('Functions v2 analyzer ✔')\""
 
       - name: Set Twilio secrets in Firebase (idempotent)
         env:
