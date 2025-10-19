@@ -4,7 +4,7 @@ const { admin } = require("./_admin");
 
 if (!global.__lrpGlobalOptionsSet) {
   try {
-    setGlobalOptions({ region: "us-central1", cpu: 1 });
+    setGlobalOptions({ region: "us-central1", cpu: 1, memory: "256MiB", timeoutSeconds: 60 });
     global.__lrpGlobalOptionsSet = true;
   } catch (error) {
     logger.warn("notifyQueue:setGlobalOptions", error?.message || error);
