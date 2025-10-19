@@ -54,7 +54,7 @@ service cloud.firestore {
         // core
         'tripId','pickupTime','rideDuration','rideType','vehicle','rideNotes',
         // claim (new + legacy tolerated)
-        'claimedBy','claimedAt','ClaimedBy','ClaimedAt',
+        'claimed','claimedBy','claimedAt','ClaimedBy','ClaimedAt',
         // status & system
         'status','importedFromQueueAt',
         // audit
@@ -71,6 +71,7 @@ service cloud.firestore {
         (!d.keys().hasAny(['rideType'])            || isStrOrNull(d.rideType)) &&
         (!d.keys().hasAny(['vehicle'])             || isStrOrNull(d.vehicle)) &&
         (!d.keys().hasAny(['rideNotes'])           || isStrOrNull(d.rideNotes)) &&
+        (!d.keys().hasAny(['claimed'])             || d.claimed is bool) &&
         (!d.keys().hasAny(['claimedBy'])           || isStrOrNull(d.claimedBy)) &&
         (!d.keys().hasAny(['ClaimedBy'])           || isStrOrNull(d.ClaimedBy)) &&
         (!d.keys().hasAny(['claimedAt'])           || isTsOrNull(d.claimedAt)) &&
@@ -81,6 +82,29 @@ service cloud.firestore {
         (!d.keys().hasAny(['createdBy'])           || isStrOrNull(d.createdBy)) &&
         (!d.keys().hasAny(['updatedAt'])           || isTsOrNull(d.updatedAt)) &&
         (!d.keys().hasAny(['lastModifiedBy'])      || isStrOrNull(d.lastModifiedBy));
+    }
+
+    function rideClaimTransitionAllowed(newData, oldData) {
+      return authed()
+        && oldData.claimed != true
+        && (oldData.claimedBy == null || oldData.claimedBy == "")
+        && (!oldData.keys().hasAny(['ClaimedBy']) || oldData.ClaimedBy == null || oldData.ClaimedBy == "")
+        && newData.claimed == true
+        && newData.claimed is bool
+        && newData.claimedBy == email()
+        && (!newData.keys().hasAny(['claimedAt']) || newData.claimedAt is timestamp)
+        && newData.diff(oldData).changedKeys().hasOnly(['claimed','claimedBy','claimedAt']);
+    }
+
+    function claimedRideMirrorCreateAllowed(data, rideId) {
+      return authed()
+        && data.claimedBy is string
+        && data.claimedBy == email()
+        && (data.rideId == rideId || data.id == rideId)
+        && data.keys().hasOnly(['claimed','claimedBy','rideId','id','claimedAt','createdAt'])
+        && (!data.keys().hasAny(['claimed']) || data.claimed is bool)
+        && (!data.keys().hasAny(['claimedAt']) || data.claimedAt is timestamp)
+        && (!data.keys().hasAny(['createdAt']) || data.createdAt is timestamp);
     }
 
     // ---------- userAccess ----------
@@ -217,15 +241,21 @@ service cloud.firestore {
     match /liveRides/{rideId} {
       allow read: if authed();
 
-      allow create: if authed()
-        && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
-        && request.resource.data.pickupTime is timestamp
-        && request.resource.data.tripId is string
-        && request.resource.data.createdAt is timestamp;
+      allow create: if (
+          authed()
+          && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
+          && request.resource.data.pickupTime is timestamp
+          && request.resource.data.tripId is string
+          && request.resource.data.createdAt is timestamp
+        )
+        || claimedRideMirrorCreateAllowed(request.resource.data, rideId);
 
-      allow update: if authed()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
-        && rideUpdateFieldsValid(request.resource.data);
+      allow update: if (
+          authed()
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
+          && rideUpdateFieldsValid(request.resource.data)
+        )
+        || rideClaimTransitionAllowed(request.resource.data, resource.data);
 
       allow delete: if authed();
     }
@@ -235,20 +265,23 @@ service cloud.firestore {
       allow read: if authed();
 
       // require claimed on create (new or legacy)
-      allow create: if authed()
-        && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
-        && request.resource.data.pickupTime is timestamp
-        && request.resource.data.tripId is string
-        && request.resource.data.createdAt is timestamp
-        && (
-             (request.resource.data.keys().hasAny(['claimedBy','claimedAt']) &&
-              request.resource.data.claimedBy is string &&
-              request.resource.data.claimedAt is timestamp)
-             ||
-             (request.resource.data.keys().hasAny(['ClaimedBy','ClaimedAt']) &&
-              request.resource.data.ClaimedBy is string &&
-              request.resource.data.ClaimedAt is timestamp)
-           );
+      allow create: if (
+          authed()
+          && request.resource.data.keys().hasOnly(rideAllowedKeysBase())
+          && request.resource.data.pickupTime is timestamp
+          && request.resource.data.tripId is string
+          && request.resource.data.createdAt is timestamp
+          && (
+               (request.resource.data.keys().hasAny(['claimedBy','claimedAt']) &&
+                request.resource.data.claimedBy is string &&
+                request.resource.data.claimedAt is timestamp)
+               ||
+               (request.resource.data.keys().hasAny(['ClaimedBy','ClaimedAt']) &&
+                request.resource.data.ClaimedBy is string &&
+                request.resource.data.ClaimedAt is timestamp)
+             )
+        )
+        || claimedRideMirrorCreateAllowed(request.resource.data, rideId);
 
       allow update: if authed()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(rideAllowedKeysBase())
