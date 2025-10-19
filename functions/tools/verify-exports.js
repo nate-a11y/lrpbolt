@@ -10,6 +10,7 @@ function loadExports() {
 const expectedExports = [
   "dailyDropIfLiveRides",
   "dropDailyRidesNow",
+  "ensureLiveRideOpen",
   "migrateIssueTickets",
   "notifyQueueOnCreate",
   "scheduleDropDailyRides",
