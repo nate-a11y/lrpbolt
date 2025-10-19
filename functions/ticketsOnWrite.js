@@ -120,7 +120,8 @@ async function fetchFcmTokensForEmails(db, emails) {
   return Array.from(tokens);
 }
 
-exports.ticketsOnWrite = onDocumentWritten("tickets/{id}", async (event) => {
+// IMPORTANT: tickets live in the 'issueTickets' collection
+exports.ticketsOnWrite = onDocumentWritten("issueTickets/{id}", async (event) => {
   const db = admin.firestore();
   if (!event?.data) return;
   const beforeExists = event.data.before.exists;
@@ -136,7 +137,10 @@ exports.ticketsOnWrite = onDocumentWritten("tickets/{id}", async (event) => {
     (before?.assignee?.userId || before?.assignee?.email || "") !==
     (after?.assignee?.userId || after?.assignee?.email || "");
 
-  if (!created && !statusChanged && !assigneeChanged) return;
+  if (!created && !statusChanged && !assigneeChanged) {
+    logger.debug("ticketsOnWrite: no-op change", { id: event.params?.id });
+    return;
+  }
 
   const id = event.params.id;
   const link = `https://lakeridepros.xyz/#/tickets?id=${id}`;
@@ -149,6 +153,14 @@ exports.ticketsOnWrite = onDocumentWritten("tickets/{id}", async (event) => {
   };
 
   try {
+    logger.info("ticketsOnWrite: change detected", {
+      id,
+      created,
+      statusChanged,
+      assigneeChanged,
+      status: ticket.status,
+      assignee: after?.assignee || null,
+    });
     const candidates = collectCandidateEmails(after);
     const emails = await resolveEmails(db, candidates);
     const fcmTokens = await fetchFcmTokensForEmails(db, emails);
@@ -159,7 +171,13 @@ exports.ticketsOnWrite = onDocumentWritten("tickets/{id}", async (event) => {
     // Email (notify all)
     emails.forEach((e) => targets.push({ type: "email", to: e }));
 
-    if (targets.length === 0) return;
+    if (targets.length === 0) {
+      logger.warn("ticketsOnWrite: no targets resolved", {
+        id,
+        emailsCount: emails.length,
+      });
+      return;
+    }
     await sendAllTargets(targets, ticket, link);
   } catch (err) {
     logger.error("ticketsOnWrite v2 failed", { err: err?.message || err, id });

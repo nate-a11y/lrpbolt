@@ -98,6 +98,10 @@ const notifyQueueOnCreate = onDocumentCreated(
 
     try {
       await sendAllTargets(data.targets || [], ctx.ticket, ctx.link);
+      logger.info("notifyQueue: sent", {
+        id: event?.params?.id || event?.data?.id || null,
+        count: Array.isArray(data.targets) ? data.targets.length : 0,
+      });
       await event.data.ref.update({ status: "sent" });
     } catch (error) {
       logger.error("notifyQueue", error?.message || error);
