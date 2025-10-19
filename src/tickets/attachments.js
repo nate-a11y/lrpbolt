@@ -1,21 +1,21 @@
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
-  collection,
+  getFirestore,
   doc,
+  setDoc,
+  collection,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
-  setDoc,
 } from "firebase/firestore";
 
-import { app, db } from "@/services/firebase.js";
+import { app } from "@/services/firebase.js";
 import logError from "@/utils/logError.js";
-import { COLLECTIONS } from "@/constants/collections.js";
 
 const storage = getStorage(app);
+const db = getFirestore(app);
 
-export async function uploadTicketFiles(ticketId, files = [], user) {
+export async function uploadTicketFiles(ticketId, files, user) {
   const safeId = String(ticketId || "").trim();
   if (!safeId || !Array.isArray(files) || !files.length) {
     return;
@@ -29,23 +29,22 @@ export async function uploadTicketFiles(ticketId, files = [], user) {
       await uploadBytes(storageRef, file, { contentType: file.type });
       const url = await getDownloadURL(storageRef);
       await setDoc(
-        doc(db, COLLECTIONS.ISSUE_TICKETS, safeId, "attachments", key),
+        doc(db, "issueTickets", safeId, "attachments", key),
         {
           url,
           name: file.name,
           size: file.size,
-          contentType: file.type || "application/octet-stream",
+          contentType: file.type,
           uploader: {
             userId: user?.uid || "unknown",
-            displayName: user?.displayName || user?.name || "Unknown",
+            displayName: user?.displayName || "Unknown",
           },
-          createdAt: serverTimestamp(),
+          createdAt: new Date(),
         },
         { merge: true },
       );
     } catch (err) {
-      logError(err, { where: "ticket.uploadTicketFiles", ticketId: safeId });
-      throw err;
+      logError(err, { where: "uploadTicketFiles", ticketId: safeId });
     }
   }
 }
@@ -55,12 +54,13 @@ export function subscribeTicketAttachments(ticketId, callback) {
   if (!safeId) {
     return () => {};
   }
+
   const cb = typeof callback === "function" ? callback : () => {};
 
   try {
     const attachmentsRef = collection(
       db,
-      COLLECTIONS.ISSUE_TICKETS,
+      "issueTickets",
       safeId,
       "attachments",
     );
@@ -76,14 +76,14 @@ export function subscribeTicketAttachments(ticketId, callback) {
       },
       (error) => {
         logError(error, {
-          where: "ticket.subscribeAttachments",
+          where: "subscribeTicketAttachments",
           ticketId: safeId,
         });
         cb({ error });
       },
     );
   } catch (error) {
-    logError(error, { where: "ticket.subscribeAttachments", ticketId: safeId });
+    logError(error, { where: "subscribeTicketAttachments", ticketId: safeId });
     cb({ error });
     return () => {};
   }

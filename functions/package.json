@@ -1,23 +1,30 @@
 {
   "name": "lrp-functions",
+  "description": "Lake Ride Pros Cloud Functions",
   "private": true,
+  "main": "index.js",
+  "type": "commonjs",
   "engines": {
-    "node": "22"
+    "node": "18"
   },
   "scripts": {
-    "ci:install": "npm ci --no-progress --foreground-scripts=false --loglevel=error",
+    "ci:install": "npm ci",
     "serve": "firebase emulators:start --only functions",
-    "deploy:drop": "firebase deploy --only functions:dropDailyRidesNow --force",
-    "lint": "eslint .",
     "deploy:functions": "firebase deploy --only functions",
-    "deploy:rules": "firebase deploy --only firestore:rules"
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:drop": "firebase deploy --only functions:dropDailyRidesNow --force",
+    "lint": "eslint ."
   },
   "dependencies": {
     "axios": "^1.12.0",
     "firebase-admin": "^12.0.0",
     "firebase-functions": "^5.0.0",
     "googleapis": "^132.0.0",
-    "twilio": "^4.0.0"
+    "nodemailer": "^6.9.13",
+    "twilio": "^4.21.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
   },
   "packageManager": "npm@11.4.2",
   "overrides": {
