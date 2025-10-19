@@ -12,23 +12,27 @@ import {
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
-import { formatDateTime } from "@/utils/time";
-
-const safe = (value, fallback = "—") => {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : fallback;
-  }
-  if (typeof value === "number" && Number.isNaN(value)) {
-    return fallback;
-  }
-  return value;
+const cap = (value) => {
+  if (value === null || value === undefined) return "—";
+  const text = String(value).trim();
+  if (!text) return "—";
+  return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-const safeText = (value, fallback = "—") => {
-  const resolved = safe(value, fallback);
-  return resolved === fallback ? fallback : String(resolved);
+const formatFromMillis = (ms) => {
+  const numeric = Number(ms);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "—";
+  }
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+    }).format(new Date(numeric));
+  } catch (error) {
+    void error;
+    return "—";
+  }
 };
 
 function NoTicketsOverlay() {
@@ -52,12 +56,128 @@ function TicketsErrorOverlay({ message }) {
   );
 }
 
-function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
+function TicketGrid({
+  onSelect,
+  activeTicketId,
+  optimisticTicket: _optimisticTicket,
+}) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+
+  const normalizeTicketRow = useCallback((ticket) => {
+    if (!ticket) {
+      return {
+        id: "",
+        title: "—",
+        category: "general",
+        status: "open",
+        priority: "normal",
+        assigneeName: "Unassigned",
+        assigneeInitial: "U",
+        updatedAt: 0,
+        updatedAtSource: null,
+        _source: null,
+      };
+    }
+
+    const fallbackId =
+      ticket.id ||
+      ticket.ticketId ||
+      ticket.docId ||
+      ticket._id ||
+      ticket.docID ||
+      ticket.documentId ||
+      "";
+
+    const title =
+      typeof ticket.title === "string" && ticket.title.trim()
+        ? ticket.title.trim()
+        : "—";
+
+    const category =
+      typeof ticket.category === "string" && ticket.category.trim()
+        ? ticket.category.trim().toLowerCase()
+        : "general";
+
+    const status =
+      typeof ticket.status === "string" && ticket.status.trim()
+        ? ticket.status.trim().toLowerCase()
+        : "open";
+
+    const priority =
+      typeof ticket.priority === "string" && ticket.priority.trim()
+        ? ticket.priority.trim().toLowerCase()
+        : "normal";
+
+    const assignee = ticket.assignee || null;
+    const assigneeName =
+      (typeof assignee?.displayName === "string" &&
+        assignee.displayName.trim()) ||
+      (typeof assignee?.email === "string" && assignee.email.trim()) ||
+      (typeof assignee?.name === "string" && assignee.name.trim()) ||
+      (typeof assignee?.userId === "string" && assignee.userId.trim()) ||
+      (typeof assignee === "string" && assignee.trim()) ||
+      "Unassigned";
+
+    const initialSource = assigneeName.trim();
+    const assigneeInitial = initialSource
+      ? initialSource.charAt(0).toUpperCase()
+      : "U";
+
+    const updatedAtSource =
+      ticket.updatedAtSource ||
+      ticket.updatedAtTimestamp ||
+      ticket.updatedAtRaw ||
+      ticket.updatedAt ||
+      null;
+
+    let updatedAtMillis = 0;
+    if (updatedAtSource && typeof updatedAtSource.toMillis === "function") {
+      updatedAtMillis = Number(updatedAtSource.toMillis()) || 0;
+    } else if (
+      updatedAtSource &&
+      typeof updatedAtSource.valueOf === "function" &&
+      Number.isFinite(Number(updatedAtSource.valueOf()))
+    ) {
+      updatedAtMillis = Number(updatedAtSource.valueOf()) || 0;
+    } else if (typeof updatedAtSource === "number") {
+      updatedAtMillis = Number(updatedAtSource);
+    }
+
+    if (!Number.isFinite(updatedAtMillis) || updatedAtMillis < 0) {
+      updatedAtMillis = 0;
+    }
+
+    return {
+      ...ticket,
+      id: fallbackId,
+      title,
+      category,
+      status,
+      priority,
+      assigneeName,
+      assigneeInitial,
+      updatedAtSource: updatedAtSource || null,
+      updatedAt: updatedAtMillis,
+      _source: ticket,
+    };
+  }, []);
+
+  const buildTicketPayload = useCallback((row) => {
+    if (!row) return null;
+    if (!row._source) {
+      return row;
+    }
+    const updated =
+      row.updatedAtSource || row._source?.updatedAt || row.updatedAt;
+    return {
+      ...row._source,
+      ...row,
+      updatedAt: updated,
+    };
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -65,10 +185,12 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
     const unsubscribe = subscribeTickets({}, (result) => {
       if (result?.error) {
         setError(result.error);
+        setRows([]);
         setLoading(false);
         return;
       }
-      setRows(result?.rows || []);
+      const incoming = Array.isArray(result?.rows) ? result.rows : [];
+      setRows(incoming.map((ticket) => normalizeTicketRow(ticket)));
       setError(null);
       setLoading(false);
     });
@@ -82,43 +204,7 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
         logError(err, { where: "TicketGrid.cleanup" });
       }
     };
-  }, [refreshKey]);
-
-  useEffect(() => {
-    if (!optimisticTicket) return;
-    setRefreshKey((prev) => prev + 1);
-  }, [optimisticTicket]);
-
-  useEffect(() => {
-    if (!optimisticTicket) return;
-    const patchId =
-      optimisticTicket.id ||
-      optimisticTicket.ticketId ||
-      optimisticTicket.docId ||
-      optimisticTicket._id ||
-      null;
-    if (!patchId) return;
-    const { _optimisticAt: _ignore, ...patch } = optimisticTicket;
-    setRows((prev) => {
-      const safePrev = Array.isArray(prev) ? prev : [];
-      let updated = false;
-      const next = safePrev.map((row) => {
-        if (!row) return row;
-        const rowIds = [row.id, row.ticketId, row.docId, row._id].filter(
-          Boolean,
-        );
-        if (!rowIds.includes(patchId)) {
-          return row;
-        }
-        updated = true;
-        return { ...row, ...patch, id: row.id || patchId };
-      });
-      if (updated) {
-        return next;
-      }
-      return [{ ...patch, id: patch.id || patchId }, ...safePrev];
-    });
-  }, [optimisticTicket]);
+  }, [normalizeTicketRow]);
 
   const handleSelect = useCallback(
     (row) => {
@@ -134,10 +220,10 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
         }
       }
       if (typeof onSelect === "function") {
-        onSelect(row);
+        onSelect(buildTicketPayload(row));
       }
     },
-    [onSelect],
+    [buildTicketPayload, onSelect],
   );
 
   const extractIdFromLocation = useCallback(() => {
@@ -185,41 +271,9 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
     return () => window.removeEventListener("hashchange", handler);
   }, [extractIdFromLocation, handleSelect, rows]);
 
-  const getAssigneeDisplayName = useCallback((row) => {
-    const assignee = row?.assignee;
-    if (!assignee) return "Unassigned";
-    if (typeof assignee === "string") {
-      return assignee.trim() || "Unassigned";
-    }
-    if (typeof assignee.displayName === "string" && assignee.displayName) {
-      return assignee.displayName;
-    }
-    if (typeof assignee.email === "string" && assignee.email) {
-      return assignee.email;
-    }
-    if (typeof assignee.name === "string" && assignee.name) {
-      return assignee.name;
-    }
-    if (typeof assignee.userId === "string" && assignee.userId) {
-      return assignee.userId;
-    }
-    return "Unassigned";
-  }, []);
-
-  const getUpdatedAtDisplay = useCallback((row) => {
-    if (!row) return "—";
-    const ts = row.updatedAt;
-    if (!ts) return "—";
-    const candidate = typeof ts?.toDate === "function" ? ts.toDate() : ts;
-    const formatted = formatDateTime(candidate);
-    if (!formatted || formatted === "N/A") {
-      return "—";
-    }
-    return formatted;
-  }, []);
-
   const renderCategoryChip = useCallback((params) => {
-    const label = safeText(params?.row?.category);
+    const value = params?.row?.category;
+    const label = cap(value);
     const isMissing = label === "—";
     return (
       <Chip
@@ -236,7 +290,7 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
   }, []);
 
   const renderStatusChip = useCallback((params) => {
-    const statusValue = safe(params?.row?.status, null);
+    const statusValue = params?.row?.status;
     if (!statusValue) {
       return (
         <Chip
@@ -271,87 +325,68 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
     );
   }, []);
 
-  const renderAssigneeCell = useCallback(
-    (params) => {
-      const displayName = getAssigneeDisplayName(params?.row);
-      const label = safeText(displayName);
-      const firstLetter =
-        label && label !== "—"
-          ? label.trim().charAt(0)?.toUpperCase() || "?"
-          : "?";
-      return (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Avatar
-            sx={{
-              bgcolor: "#4cbb17",
-              width: 26,
-              height: 26,
-              fontSize: 13,
-            }}
-          >
-            {firstLetter}
-          </Avatar>
-          <Typography variant="body2" sx={{ color: "inherit" }}>
-            {label}
-          </Typography>
-        </Box>
-      );
-    },
-    [getAssigneeDisplayName],
-  );
+  const renderAssigneeCell = useCallback((params) => {
+    const label = params?.row?.assigneeName || "Unassigned";
+    const firstLetter =
+      params?.row?.assigneeInitial ||
+      (label && label !== "—"
+        ? label.trim().charAt(0)?.toUpperCase() || "?"
+        : "?");
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Avatar
+          sx={{
+            bgcolor: "#4cbb17",
+            width: 26,
+            height: 26,
+            fontSize: 13,
+          }}
+        >
+          {firstLetter}
+        </Avatar>
+        <Typography variant="body2" sx={{ color: "inherit" }}>
+          {label}
+        </Typography>
+      </Box>
+    );
+  }, []);
 
   const columns = useMemo(() => {
-    const resolveTitle = (row) => {
-      if (!row) return null;
-      const candidates = [
-        row.title,
-        row.subject,
-        row.summary,
-        row.name,
-        row.ticketTitle,
-      ];
-      for (const value of candidates) {
-        if (typeof value === "string" && value.trim()) {
-          return value.trim();
-        }
-      }
-      return null;
-    };
-
     return [
       {
         field: "title",
         headerName: "Title",
         flex: 1,
         minWidth: 220,
-        valueGetter: (params) => safeText(resolveTitle(params?.row)),
+        valueGetter: (params) => params?.row?.title || "—",
       },
       {
         field: "category",
         headerName: "Category",
         width: 150,
         renderCell: renderCategoryChip,
-        valueGetter: (params) => safeText(params?.row?.category),
+        valueGetter: (params) => params?.row?.category || "general",
       },
       {
         field: "status",
         headerName: "Status",
         width: 140,
         renderCell: renderStatusChip,
-        valueGetter: (params) => safeText(params?.row?.status),
+        valueGetter: (params) => params?.row?.status || "open",
       },
       {
         field: "assignee",
         headerName: "Assignee",
         width: 180,
         renderCell: renderAssigneeCell,
-        valueGetter: (params) => safeText(getAssigneeDisplayName(params?.row)),
+        valueGetter: (params) => params?.row?.assigneeName || "Unassigned",
       },
       {
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
-        valueGetter: (params) => getUpdatedAtDisplay(params?.row),
+        valueGetter: (params) => params?.row?.updatedAt ?? 0,
+        valueFormatter: (params) => formatFromMillis(params?.value),
       },
       {
         field: "actions",
@@ -375,14 +410,7 @@ function TicketGrid({ onSelect, activeTicketId, optimisticTicket }) {
         ),
       },
     ];
-  }, [
-    getAssigneeDisplayName,
-    handleSelect,
-    renderAssigneeCell,
-    renderCategoryChip,
-    renderStatusChip,
-    getUpdatedAtDisplay,
-  ]);
+  }, [handleSelect, renderAssigneeCell, renderCategoryChip, renderStatusChip]);
 
   const getRowClassName = useCallback(
     (params) => {
