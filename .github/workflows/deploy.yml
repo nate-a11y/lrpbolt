@@ -295,7 +295,7 @@ jobs:
 
       - name: Install Functions deps
         working-directory: functions
-        run: npm run ci:install
+        run: npm ci
 
       - name: Verify Functions deps
         working-directory: functions

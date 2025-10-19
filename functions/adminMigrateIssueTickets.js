@@ -1,47 +1,31 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const logger = require("firebase-functions/logger");
+const { onCall } = require("firebase-functions/v2/https");
+const { logger } = require("firebase-functions/v2");
 
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp();
-  }
-} catch (err) {
-  logger.warn("adminMigrate:init", err && (err.message || err));
-}
+const { admin } = require("./_admin");
 
-exports.migrateIssueTickets = functions.https.onCall(async (data, context) => {
-  const isAdmin =
-    context?.auth?.token?.admin === true ||
-    context?.auth?.token?.role === "admin";
-  if (!isAdmin) {
-    throw new functions.https.HttpsError("permission-denied", "Admin only");
+const migrateIssueTickets = onCall({ region: "us-central1", invoker: "public" }, async (request) => {
+  const token = request?.auth?.token || {};
+  if (!token.admin && token.role !== "admin") {
+    throw new Error("permission-denied: Admin only");
   }
 
   const db = admin.firestore();
   const moved = [];
-  const snapshot = await db.collection("tickets").get();
+  const snap = await db.collection("tickets").get();
 
-  for (const docSnap of snapshot.docs) {
-    const record = docSnap.data() || {};
-    const looksLikeIssue =
-      record.status && record.assignee && !record.passengerName && !record.qrCode;
-    const already = record.migratedToIssueTickets === true;
-    if (!looksLikeIssue || already) {
-      continue;
-    }
+  for (const doc of snap.docs) {
+    const data = doc.data() || {};
+    const looksLikeIssue = data.status && data.assignee && !data.passengerName && !data.qrCode;
+    const already = data.migratedToIssueTickets === true;
+    if (!looksLikeIssue || already) continue;
 
-    try {
-      await db.collection("issueTickets").doc(docSnap.id).set(record, { merge: true });
-      await docSnap.ref.set({ migratedToIssueTickets: true }, { merge: true });
-      moved.push(docSnap.id);
-    } catch (err) {
-      logger.error("adminMigrate:moveFailed", {
-        id: docSnap.id,
-        err: err && (err.stack || err.message || err),
-      });
-    }
+    await db.collection("issueTickets").doc(doc.id).set(data, { merge: true });
+    await doc.ref.set({ migratedToIssueTickets: true }, { merge: true });
+    moved.push(doc.id);
   }
 
+  logger.info("migrated", { count: moved.length });
   return { movedCount: moved.length, movedIds: moved };
 });
+
+module.exports = { migrateIssueTickets };
