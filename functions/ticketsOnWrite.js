@@ -105,24 +105,55 @@ async function resolveEmails(db, candidates = []) {
   return Array.from(emails);
 }
 
-async function fetchFcmTokensForEmails(db, emails) {
-  // Firestore "in" is limited to 10 values. Chunk queries.
-  const chunks = [];
-  for (let i = 0; i < emails.length; i += 10) chunks.push(emails.slice(i, i + 10));
+async function resolveUidsFromEmails(auth, emails = []) {
+  const uids = new Set();
+  if (!emails.length) return Array.from(uids);
+  const lookups = emails.map((email) => auth.getUserByEmail(email));
+  const results = await Promise.allSettled(lookups);
+  results.forEach((result) => {
+    if (result.status === "fulfilled" && result.value?.uid) {
+      uids.add(result.value.uid);
+    }
+  });
+  return Array.from(uids);
+}
+
+async function fetchFcmTokensForRecipients(db, { emails = [], uids = [] } = {}) {
   const tokens = new Set();
-  for (const group of chunks) {
-    const qs = await db.collection("fcmTokens").where("email", "in", group).get();
-    qs.docs.forEach((d) => {
-      const t = d.data()?.token || d.id; // support legacy where docId was token
-      if (t) tokens.add(String(t));
+
+  const chunk = (values = []) => {
+    const slices = [];
+    for (let i = 0; i < values.length; i += 10) {
+      slices.push(values.slice(i, i + 10));
+    }
+    return slices;
+  };
+
+  for (const group of chunk(emails)) {
+    if (!group.length) continue;
+    const snap = await db.collection("fcmTokens").where("email", "in", group).get();
+    snap.docs.forEach((doc) => {
+      const token = doc.data()?.token || doc.id;
+      if (token) tokens.add(String(token));
     });
   }
+
+  for (const group of chunk(uids)) {
+    if (!group.length) continue;
+    const snap = await db.collection("fcmTokens").where("userId", "in", group).get();
+    snap.docs.forEach((doc) => {
+      const token = doc.data()?.token || doc.id;
+      if (token) tokens.add(String(token));
+    });
+  }
+
   return Array.from(tokens);
 }
 
 // IMPORTANT: tickets live in the 'issueTickets' collection
 exports.ticketsOnWrite = onDocumentWritten("issueTickets/{id}", async (event) => {
   const db = admin.firestore();
+  const auth = admin.auth();
   if (!event?.data) return;
   const beforeExists = event.data.before.exists;
   const afterExists = event.data.after.exists;
@@ -163,7 +194,8 @@ exports.ticketsOnWrite = onDocumentWritten("issueTickets/{id}", async (event) =>
     });
     const candidates = collectCandidateEmails(after);
     const emails = await resolveEmails(db, candidates);
-    const fcmTokens = await fetchFcmTokensForEmails(db, emails);
+    const uids = await resolveUidsFromEmails(auth, emails);
+    const fcmTokens = await fetchFcmTokensForRecipients(db, { emails, uids });
 
     const targets = [];
     // FCM
@@ -171,11 +203,15 @@ exports.ticketsOnWrite = onDocumentWritten("issueTickets/{id}", async (event) =>
     // Email (notify all)
     emails.forEach((e) => targets.push({ type: "email", to: e }));
 
+    logger.info("ticketsOnWrite:recipients", {
+      id,
+      emails,
+      uids,
+      fcmTokensCount: fcmTokens.length,
+    });
+
     if (targets.length === 0) {
-      logger.warn("ticketsOnWrite: no targets resolved", {
-        id,
-        emailsCount: emails.length,
-      });
+      logger.warn("ticketsOnWrite:no-targets", { id });
       return;
     }
     await sendAllTargets(targets, ticket, link);
