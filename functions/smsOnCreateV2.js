@@ -1,7 +1,13 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions/v2");
-const twilio = require("twilio");
+let twilioFactory = null;
+try {
+  // eslint-disable-next-line global-require
+  twilioFactory = require("twilio");
+} catch (error) {
+  logger.warn("smsOnCreateV2:twilio-missing", error?.message || error);
+}
 const { admin } = require("./_admin");
 
 const accountSidSecret = defineSecret("TWILIO_ACCOUNT_SID");
@@ -17,7 +23,15 @@ async function deliverSms(payload) {
     throw new Error("Twilio secrets are not configured");
   }
 
-  await twilio(sid, token).messages.create({
+  if (!twilioFactory) {
+    logger.warn("smsOnCreateV2:twilio-unavailable", {
+      reason: "twilio dependency not installed",
+      to: payload.to,
+    });
+    return;
+  }
+
+  await twilioFactory(sid, token).messages.create({
     to: payload.to,
     from,
     body: payload.body,
