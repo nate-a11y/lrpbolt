@@ -34,7 +34,7 @@ attach("adminMigrate", "./adminMigrateIssueTickets", "migrateIssueTickets");
 // ---- Deployed legacy names reported by Firebase (map 1:1 to v2 targets) ----
 attach("notifyDriverOnClaimCreated", "./ticketsOnWrite", "ticketsOnWrite");
 attach("notifyDriverOnClaimUpdated", "./ticketsOnWrite", "ticketsOnWrite");
-attach("ensureLiveRideOpen", "./schedules", "scheduleDropDailyRides");
+attach("ensureLiveRideOpen", "./ensureLiveOpen", "ensureLiveRideOpen");
 attach("ticketsOnWrite-slaSweep", "./ticketsV2", "slaSweep");
 attach("apiCalendarFetch", "./sendPortalNotificationV2", "sendPortalNotificationV2");
 attach("sendPortalNotification", "./sendPortalNotificationV2", "sendPortalNotificationV2");

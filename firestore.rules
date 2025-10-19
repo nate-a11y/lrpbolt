@@ -62,27 +62,6 @@ service cloud.firestore {
       ];
     }
 
-    // Validate a single (k, v) pair for rides (used by create checks)
-    function rideIsValid(k, v) {
-      return
-        (k=='tripId'              && isStrOrNull(v)) ||
-        (k=='pickupTime'          && v is timestamp) ||
-        (k=='rideDuration'        && isNumOrNull(v)) ||
-        (k=='rideType'            && isStrOrNull(v)) ||
-        (k=='vehicle'             && isStrOrNull(v)) ||
-        (k=='rideNotes'           && isStrOrNull(v)) ||
-        (k=='claimedBy'           && isStrOrNull(v)) ||
-        (k=='ClaimedBy'           && isStrOrNull(v)) ||
-        (k=='claimedAt'           && isTsOrNull(v))  ||
-        (k=='ClaimedAt'           && isTsOrNull(v))  ||
-        (k=='status'              && isStrOrNull(v)) ||
-        (k=='importedFromQueueAt' && isTsOrNull(v))  ||
-        (k=='createdAt'           && v is timestamp) ||
-        (k=='createdBy'           && isStrOrNull(v)) ||
-        (k=='updatedAt'           && isTsOrNull(v))  ||
-        (k=='lastModifiedBy'      && isStrOrNull(v));
-    }
-
     // Validate ONLY fields present in d (for update; no map/loops)
     function rideUpdateFieldsValid(d) {
       return
