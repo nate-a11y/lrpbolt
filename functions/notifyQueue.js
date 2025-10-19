@@ -1,8 +1,16 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const twilio = require("twilio");
-const nodemailer = require("nodemailer");
 const logger = require("firebase-functions/logger");
+
+let nodemailer = null;
+try {
+  // Only load if installed so analysis doesn't fail when SMTP is disabled.
+  // eslint-disable-next-line global-require, import/no-extraneous-dependencies
+  nodemailer = require("nodemailer");
+} catch (err) {
+  logger.warn("notifyQueue:nodemailer-missing", err?.message || err);
+}
 
 try {
   if (!admin.apps.length) {
@@ -22,7 +30,7 @@ const smsClient =
     : null;
 
 const mailer =
-  cfg.SMTP_HOST && cfg.SMTP_USER
+  cfg.SMTP_HOST && cfg.SMTP_USER && nodemailer
     ? nodemailer.createTransport({
         host: cfg.SMTP_HOST,
         port: Number(cfg.SMTP_PORT || 587),

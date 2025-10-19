@@ -10,7 +10,7 @@ on:
       - 'vite.config.*'
       - 'package.json'
       - 'package-lock.json'
-      - 'functions/**'   # still trigger workflow if functions changed; job-level filter will split
+      - 'functions/**'
       - '.github/workflows/**'
   workflow_dispatch:
 
@@ -23,6 +23,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Cache Firebase emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-v1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -161,6 +173,9 @@ jobs:
       - name: Firestore Rules Validation
         run: npx firebase-tools@14 emulators:exec --only firestore "echo Firestore rules valid ✔️"
 
+      - name: Functions emulator boot check
+        run: npx firebase-tools@14 emulators:exec --only functions "node -e \"console.log('Functions boot ✔️')\""
+
       - name: Test
         run: |
           if npm ls vitest --depth=0 >/dev/null 2>&1; then npm test; else echo "Skipping tests"; fi
@@ -215,6 +230,12 @@ jobs:
           [ -f dist/sw.js ] || { echo "❌ sw.js missing"; exit 1; }
           echo "✅ Service worker present"
 
+      - name: Firebase auth (login:ci)
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
+        run: echo "Using CI token"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -239,9 +260,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Cache Firebase emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-v1
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '18.x'
           cache: 'npm'
           cache-dependency-path: |
             functions/package-lock.json
@@ -260,6 +293,12 @@ jobs:
       - name: Install Firebase CLI
         run: npm i -g firebase-tools@14
 
+      - name: Firebase auth (login:ci)
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
+        run: echo "Using CI token"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
       - name: Check lockfile sync
         run: npm run lock:check
 
@@ -269,7 +308,15 @@ jobs:
 
       - name: Install Functions deps
         working-directory: functions
-        run: npm run ci:install
+        run: npm ci
+
+      - name: Verify Functions deps
+        working-directory: functions
+        run: |
+          npm ls firebase-functions firebase-admin twilio nodemailer --depth=0 || true
+
+      - name: Functions emulator boot check
+        run: npx firebase-tools@14 emulators:exec --only functions "node -e \"console.log('Functions boot ✔️')\""
 
       - name: Set Twilio secrets in Firebase (idempotent)
         env:
@@ -294,7 +341,6 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive
 
-              # Authenticate gcloud using your SA JSON (already in secrets)
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
@@ -305,15 +351,13 @@ jobs:
         with:
           project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      # Make sure Cloud Run keeps the GCAL env vars on each deploy
       - name: Pin env vars on Cloud Run (apiCalendarFetch)
         env:
           GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
-          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}  # must contain \n
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
         run: |
           gcloud run services update apicalendarfetch \
             --region=us-central1 \
             --platform=managed \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}" \
             --quiet
-
