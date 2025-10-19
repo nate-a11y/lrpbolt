@@ -5,9 +5,10 @@ import {
   isSupported as isMessagingSupported,
   onMessage,
 } from "firebase/messaging";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 import { getFirebaseApp } from "@/utils/firebaseInit";
-import { messaging as firebaseMessaging } from "@/services/firebase.js";
+import { messaging as firebaseMessaging, db } from "@/services/firebase.js";
 import { AppError, logError } from "@/services/errors";
 import {
   getFcmTokenSafe as retrieveFcmToken,
@@ -207,5 +208,53 @@ export async function revokeFcmToken() {
     localStorage.removeItem("lrp_fcm_token_v1");
   } catch (storageError) {
     logError(storageError, { where: "revokeFcmToken", phase: "clear-cache" });
+  }
+}
+
+export async function ensureFcmToken(user) {
+  try {
+    if (!user) return null;
+    const token = await registerFCM();
+    if (!token) return null;
+    await setDoc(
+      doc(db, "fcmTokens", token),
+      {
+        email: user.email || null,
+        source: "optin-dialog",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return token;
+  } catch (err) {
+    logError(err, { where: "ensureFcmToken" });
+    return null;
+  }
+}
+
+export function listenForegroundMessages(cb) {
+  try {
+    return onForegroundMessageSafe((payload) => {
+      if (typeof cb === "function") {
+        try {
+          cb(payload);
+        } catch (handlerError) {
+          logError(handlerError, {
+            where: "listenForegroundMessages",
+            phase: "handler",
+          });
+        }
+        return;
+      }
+      const title = payload?.notification?.title;
+      if (!title) return;
+      const body = payload.notification.body || "";
+      if (typeof window !== "undefined") {
+        window.alert(`${title}\n${body}`);
+      }
+    });
+  } catch (err) {
+    logError(err, { where: "listenForegroundMessages" });
+    return () => {};
   }
 }
