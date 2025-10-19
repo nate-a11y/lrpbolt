@@ -1,23 +1,31 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { logger } = require("firebase-functions/v2");
-
+const { logger, setGlobalOptions } = require("firebase-functions/v2");
 const { admin } = require("./_admin");
+
+if (!global.__lrpGlobalOptionsSet) {
+  try {
+    setGlobalOptions({ region: "us-central1", cpu: 1 });
+    global.__lrpGlobalOptionsSet = true;
+  } catch (error) {
+    logger.warn("notifyQueue:setGlobalOptions", error?.message || error);
+  }
+}
 
 let twilio = null;
 try {
   twilio = require("twilio");
-} catch (err) {
-  logger.warn("notifyQueue:twilio-missing", err?.message || err);
+} catch (error) {
+  logger.warn("notifyQueue:twilio-missing", error?.message || error);
 }
 
 let nodemailer = null;
 try {
   nodemailer = require("nodemailer");
-} catch (err) {
-  logger.warn("notifyQueue:nodemailer-missing", err?.message || err);
+} catch (error) {
+  logger.warn("notifyQueue:nodemailer-missing", error?.message || error);
 }
 
-const cfg = process.env || {};
+const cfg = process.env;
 
 const smsClient =
   twilio && cfg.TWILIO_ACCOUNT_SID && cfg.TWILIO_AUTH_TOKEN
@@ -34,66 +42,42 @@ const mailer =
       })
     : null;
 
-function subjectFor(ticket) {
-  const base = ticket?.title || "LRP Ticket";
-  const suffix = ticket?.status ? ` (${ticket.status})` : "";
-  return `[LRP] ${base}${suffix}`;
+function renderHtml(ticket, link) {
+  return `
+    <div style="font-family:sans-serif">
+      <h3>${ticket?.title || "LRP Ticket"}</h3>
+      <p>${ticket?.description || ""}</p>
+      ${link ? `<a href="${link}">Open Ticket</a>` : ""}
+    </div>
+  `;
 }
 
-function renderHTML(ticket, link) {
-  const desc = ticket?.description ? `<p>${ticket.description}</p>` : "";
-  const anchor = link ? `<p><a href='${link}'>Open Ticket</a></p>` : "";
-  return `<div style='font-family:system-ui,Segoe UI,sans-serif;line-height:1.5'>
-    <h3 style='margin:0 0 8px'>${ticket?.title || "LRP Ticket"}</h3>
-    <div><b>ID:</b> ${ticket?.id || ""} &nbsp; | &nbsp; <b>Category:</b> ${ticket?.category || ""} &nbsp; | &nbsp; <b>Status:</b> ${ticket?.status || ""}</div>
-    ${desc}${anchor}
-  </div>`;
-}
+async function sendAllTargets(targets, ticket, link) {
+  const title = `[LRP] ${ticket?.title || "Ticket"}${
+    ticket?.status ? ` (${ticket.status})` : ""
+  }`;
+  const text = `${ticket?.description || ""}\n${link || ""}`.trim();
+  const tokens = [
+    ...new Set((targets || []).filter((t) => t.type === "fcm").map((t) => t.to)),
+  ].filter(Boolean);
 
-async function sendAllTargets(targets = [], ticket = {}, link) {
-  if (!Array.isArray(targets) || targets.length === 0) {
-    return;
+  if (tokens.length) {
+    await admin
+      .messaging()
+      .sendEachForMulticast({
+        tokens,
+        notification: { title, body: ticket?.description || "" },
+      });
   }
 
-  const filtered = targets.filter((t) => t && t.type && t.to);
-  if (!filtered.length) {
-    return;
-  }
-
-  const subject = subjectFor(ticket);
-  const text = `Ticket: ${ticket?.title || "LRP Ticket"}\nStatus: ${
-    ticket?.status || ""
-  }\n${ticket?.description || ""}\n${link || ""}`;
-  const html = renderHTML(ticket, link);
-
-  const messaging = admin.messaging();
-  const fcmTokens = new Set();
-  filtered
-    .filter((t) => t.type === "fcm")
-    .forEach((t) => {
-      if (t.to) fcmTokens.add(t.to);
-    });
-
-  if (fcmTokens.size) {
-    await messaging.sendEachForMulticast({
-      tokens: Array.from(fcmTokens),
-      notification: { title: subject, body: ticket?.description || "" },
-      data: {
-        ticketId: String(ticket?.id || ""),
-        category: String(ticket?.category || ""),
-        status: String(ticket?.status || ""),
-      },
-    });
-  }
-
-  for (const target of filtered) {
+  for (const target of targets || []) {
     if (target.type === "email" && mailer) {
       await mailer.sendMail({
         to: target.to,
         from: cfg.SMTP_USER,
-        subject,
+        subject: title,
         text,
-        html,
+        html: renderHtml(ticket, link),
       });
     }
     if (target.type === "sms" && smsClient) {
@@ -106,29 +90,24 @@ async function sendAllTargets(targets = [], ticket = {}, link) {
   }
 }
 
-const notifyQueueOnCreate = onDocumentCreated("notifyQueue/{id}", async (event) => {
-  const snap = event.data;
-  if (!snap) return;
-  const data = snap.data() || {};
-  const ctx = data.context || {};
-  const targets = Array.isArray(data.targets) ? data.targets : [];
+const notifyQueueOnCreate = onDocumentCreated(
+  "notifyQueue/{id}",
+  async (event) => {
+    const data = event.data?.data() || {};
+    const ctx = data.context || {};
 
-  try {
-    await sendAllTargets(targets, ctx.ticket, ctx.link);
-    await snap.ref.update({ status: "sent" });
-  } catch (err) {
-    logger.error("notifyQueueOnCreate", {
-      err: err && (err.stack || err.message || err),
-    });
-    await snap.ref.update({
-      status: "error",
-      error: err?.message || String(err),
-    });
-  }
-});
+    try {
+      await sendAllTargets(data.targets || [], ctx.ticket, ctx.link);
+      await event.data.ref.update({ status: "sent" });
+    } catch (error) {
+      logger.error("notifyQueue", error?.message || error);
+      await event.data.ref.update({
+        status: "error",
+        error: error?.message || "error",
+      });
+    }
+  },
+);
 
-module.exports = {
-  notifyQueueOnCreate,
-  sendAllTargets,
-  _sendAllTargets: sendAllTargets,
-};
+exports.notifyQueueOnCreate = notifyQueueOnCreate;
+module.exports = { notifyQueueOnCreate, sendAllTargets };
