@@ -1,5 +1,6 @@
 /* LRP Cloud Functions v2 entry (native exports only) */
 
+const { ensureLiveRideOpen } = require("./ensureLiveOpen");
 const { notifyQueueOnCreate } = require("./notifyQueue");
 const { ticketsOnWrite } = require("./ticketsOnWrite");
 const { ticketsOnWrite: ticketsOnWriteV2, slaSweep } = require("./ticketsV2");
@@ -19,6 +20,7 @@ exports.ticketsOnWriteV2 = ticketsOnWriteV2;
 exports.slaSweep = slaSweep;
 exports.smsOnCreateV2 = smsOnCreateV2;
 exports.sendPortalNotificationV2 = sendPortalNotificationV2;
+exports.ensureLiveRideOpen = ensureLiveRideOpen;
 exports.dailyDropIfLiveRides = dailyDropIfLiveRides;
 exports.sendDailySms = sendDailySms;
 exports.scheduleDropDailyRides = scheduleDropDailyRides;
