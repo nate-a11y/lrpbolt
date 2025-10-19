@@ -7,45 +7,36 @@ function loadExports() {
   return Object.keys(mod).sort();
 }
 
-const expectedCore = [
+const expectedExports = [
+  "dailyDropIfLiveRides",
+  "dropDailyRidesNow",
+  "migrateIssueTickets",
   "notifyQueueOnCreate",
-  "ticketsOnWrite",
-  "ticketsOnWriteV2",
+  "scheduleDropDailyRides",
+  "sendDailySms",
+  "sendPortalNotificationV2",
   "slaSweep",
   "smsOnCreateV2",
-  "sendPortalNotificationV2",
-  "dailyDropIfLiveRides",
-  "sendDailySms",
-  "scheduleDropDailyRides",
-];
-
-const expectedCompat = [
-  "notifyQueue",
-  "smsOnCreate",
-  "adminMigrate",
-  "notifyDriverOnClaimCreated",
-  "notifyDriverOnClaimUpdated",
-  "ensureLiveRideOpen",
-  "ticketsOnWrite-slaSweep",
-  "apiCalendarFetch",
-  "sendPortalNotification",
-  "notifyQueue-notifyQueueOnCreate",
-  "ticketsOnWrite-ticketsOnWrite",
-  "adminMigrate-migrateIssueTickets",
-  "dropDailyRidesNow",
-];
+  "ticketsOnWrite",
+  "ticketsOnWriteV2",
+].sort();
 
 function main() {
   const have = loadExports();
-  const need = [...expectedCore, ...expectedCompat].sort();
-  const missing = need.filter((name) => !have.includes(name));
-  const extra = have.filter((name) => !need.includes(name));
+  const missing = expectedExports.filter((name) => !have.includes(name));
+  const extra = have.filter((name) => !expectedExports.includes(name));
 
-  const payload = { have, need, missing, extra };
+  const payload = { have, expected: expectedExports, missing, extra };
   console.log(JSON.stringify(payload, null, 2));
 
   if (missing.length) {
     console.error("\u274c Missing exports", missing);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (extra.length) {
+    console.error("\u274c Unexpected exports", extra);
     process.exitCode = 1;
     return;
   }
