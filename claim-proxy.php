@@ -16,7 +16,7 @@ $firebase_base = 'https://us-central1-lrp---claim-portal.cloudfunctions.net'; //
 // --- Determine endpoint ---
 $type = $_GET['type'] ?? '';
 if (!$type && !empty($_SERVER['PATH_INFO'])) {
-  $type = trim($_SERVER['PATH_INFO'], '/'); // allow /claim-proxy.php/apiCalendarFetch
+  $type = trim($_SERVER['PATH_INFO'], '/'); // allow /claim-proxy.php/apiCalendarFetchHttp
 }
 
 if (!$type) {

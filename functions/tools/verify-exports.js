@@ -9,6 +9,7 @@ function loadExports() {
 
 const expectedExports = [
   "apiCalendarFetch",
+  "apiCalendarFetchHttp",
   "dailyDropIfLiveRides",
   "dropDailyRidesNow",
   "ensureLiveRideOpen",
