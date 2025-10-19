@@ -33,6 +33,36 @@ const CATS = [
 
 const PRIORITIES = ["low", "normal", "high", "urgent"];
 
+const EMAIL_PATTERN = /@/;
+
+function sanitizePhone(value) {
+  if (!value) return "";
+  return String(value).replace(/[^+\d]/g, "");
+}
+
+function looksLikePhone(value) {
+  if (!value) return false;
+  const digits = sanitizePhone(value);
+  return digits.length >= 10;
+}
+
+function looksLikeEmail(value) {
+  if (!value) return false;
+  return EMAIL_PATTERN.test(String(value));
+}
+
+function addFallbackTargets(identifier, pushTarget) {
+  const trimmed = String(identifier || "").trim();
+  if (!trimmed) return;
+  if (looksLikeEmail(trimmed)) {
+    pushTarget("email", trimmed.toLowerCase());
+    return;
+  }
+  if (looksLikePhone(trimmed)) {
+    pushTarget("sms", sanitizePhone(trimmed));
+  }
+}
+
 function assigneePreview(cat) {
   if (cat === "vehicle") return { id: "jim", name: "Jim" };
   if (cat === "marketing") return { id: "michael", name: "Michael" };
@@ -81,7 +111,19 @@ export default function TicketFormDialog({ open, onClose, currentUser }) {
     setSubmitting(true);
     try {
       setBusyText("Creating ticket…");
-      const ticketId = await createTicket({
+      const creatorId =
+        currentUser?.uid ||
+        currentUser?.id ||
+        currentUser?.userId ||
+        currentUser?.email ||
+        null;
+
+      const {
+        id: ticketId,
+        watchers: watcherIds,
+        assignee,
+        ticket: snapshot,
+      } = await createTicket({
         title,
         description,
         category,
@@ -104,46 +146,86 @@ export default function TicketFormDialog({ open, onClose, currentUser }) {
       }
 
       setBusyText("Resolving contacts…");
-      const creator = await getUserContacts(
-        currentUser?.uid || currentUser?.id,
-      );
-      const assigneeId =
-        category === "vehicle"
-          ? "jim"
-          : category === "marketing"
-            ? "michael"
-            : "nate";
-      const assignee = await getUserContacts(assigneeId);
 
-      const targets = [];
-      if (creator?.email) targets.push({ type: "email", to: creator.email });
-      if (creator?.phone) targets.push({ type: "sms", to: creator.phone });
-      (creator?.fcmTokens || []).forEach((token) =>
-        targets.push({ type: "fcm", to: token }),
+      const lookupIds = new Set(
+        Array.isArray(watcherIds) ? watcherIds.filter(Boolean) : [],
       );
+      if (creatorId) lookupIds.add(creatorId);
+      if (assignee?.userId) lookupIds.add(assignee.userId);
 
-      if (assignee?.email) targets.push({ type: "email", to: assignee.email });
-      if (assignee?.phone) targets.push({ type: "sms", to: assignee.phone });
-      (assignee?.fcmTokens || []).forEach((token) =>
-        targets.push({ type: "fcm", to: token }),
+      const contactEntries = await Promise.all(
+        Array.from(lookupIds).map(async (id) => {
+          try {
+            const info = await getUserContacts(id);
+            return [id, info];
+          } catch (err) {
+            logError(err, { where: "TicketFormDialog.contacts", id });
+            return [id, null];
+          }
+        }),
       );
 
-      setBusyText("Notifying assignee…");
-      await enqueueNotification({
-        targets,
-        template: "ticket_created",
-        context: {
-          ticketId,
-          link: `${window.location.origin}/#/tickets?id=${ticketId}`,
-          ticket: {
-            id: ticketId,
-            title,
-            description,
-            category,
-            status: "open",
-          },
-        },
+      const targetsMap = new Map();
+      const pushTarget = (type, raw) => {
+        if (!type || !raw) return;
+        const normalizedType = String(type).trim().toLowerCase();
+        if (!normalizedType) return;
+        const sanitizedValue =
+          normalizedType === "sms" ? sanitizePhone(raw) : String(raw).trim();
+        if (!sanitizedValue) return;
+        const key = `${normalizedType}:${sanitizedValue}`;
+        if (targetsMap.has(key)) return;
+        targetsMap.set(key, { type: normalizedType, to: sanitizedValue });
+      };
+
+      if (currentUser?.email) {
+        pushTarget("email", currentUser.email);
+      }
+      if (currentUser?.phoneNumber) {
+        pushTarget("sms", currentUser.phoneNumber);
+      }
+
+      (currentUser?.fcmTokens || []).forEach((token) =>
+        pushTarget("fcm", token),
+      );
+
+      contactEntries.forEach(([id, info]) => {
+        if (info) {
+          if (info.email) pushTarget("email", info.email);
+          if (info.phone) pushTarget("sms", info.phone);
+          (info.fcmTokens || []).forEach((token) => pushTarget("fcm", token));
+        }
+        addFallbackTargets(id, pushTarget);
       });
+
+      watchers.forEach((value) => addFallbackTargets(value, pushTarget));
+
+      const targets = Array.from(targetsMap.values());
+
+      if (targets.length) {
+        setBusyText("Queueing notifications…");
+        await enqueueNotification({
+          targets,
+          template: "ticket_created",
+          context: {
+            ticketId,
+            link: `${window.location.origin}/#/tickets?id=${ticketId}`,
+            ticket: {
+              id: ticketId,
+              title: snapshot?.title || title,
+              description: snapshot?.description || description,
+              category: snapshot?.category || category,
+              status: snapshot?.status || "open",
+              priority: snapshot?.priority || priority,
+            },
+          },
+        });
+      } else if (import.meta.env?.DEV) {
+        console.warn(
+          "[LRP] No notification targets resolved for ticket",
+          ticketId,
+        );
+      }
 
       onClose?.();
     } catch (err) {

@@ -26,6 +26,7 @@ import { getUserContacts } from "@/services/users.js";
 import { formatDateTime } from "@/utils/time";
 import logError from "@/utils/logError.js";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
+import { APP_BAR_HEIGHT } from "@/layout/constants.js";
 
 import { subscribeTicketAttachments, uploadTicketFiles } from "./attachments";
 
@@ -259,7 +260,17 @@ export default function TicketDetailDrawer({
       open={open}
       onClose={handleClose}
       PaperProps={{
-        sx: { width: { xs: 360, sm: 400, md: 420 }, bgcolor: "#111" },
+        sx: (theme) => {
+          const safeTop = `calc(${APP_BAR_HEIGHT}px + env(safe-area-inset-top, 0px))`;
+          return {
+            width: { xs: 360, sm: 400, md: 420 },
+            bgcolor: "#111",
+            top: safeTop,
+            height: `calc(100% - ${safeTop})`,
+            borderLeft: `1px solid ${theme.palette.divider}`,
+            borderTop: "none",
+          };
+        },
       }}
     >
       <Box
