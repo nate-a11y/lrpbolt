@@ -24,6 +24,6 @@ export async function getVehicleEvents({
   params.set("timeMax", dayjs(end).toISOString());
   if (tz) params.set("tz", tz);
 
-  const url = `${API_BASE}/apiCalendarFetch?${params.toString()}`;
+  const url = `${API_BASE}/apiCalendarFetchHttp?${params.toString()}`;
   return fetchJson(url, signal);
 }

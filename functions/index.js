@@ -44,6 +44,7 @@ attach(
   "sendPortalNotificationV2",
 );
 attach("apiCalendarFetch", "./calendarFetch", "apiCalendarFetch");
+attach("apiCalendarFetchHttp", "./calendarFetch", "apiCalendarFetchHttp");
 attach("ensureLiveRideOpen", "./ensureLiveOpen", "ensureLiveRideOpen");
 attach("dailyDropIfLiveRides", "./schedules", "dailyDropIfLiveRides");
 attach("sendDailySms", "./schedules", "sendDailySms");
