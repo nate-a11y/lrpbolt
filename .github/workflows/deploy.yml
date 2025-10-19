@@ -158,6 +158,9 @@ jobs:
         run: |
           if npm ls eslint --depth=0 >/dev/null 2>&1; then npm run lint --if-present; else echo "Skipping lint"; fi
 
+      - name: Firestore Rules Validation
+        run: npx firebase-tools@14 emulators:exec --only firestore "echo Firestore rules valid ✔️"
+
       - name: Test
         run: |
           if npm ls vitest --depth=0 >/dev/null 2>&1; then npm test; else echo "Skipping tests"; fi

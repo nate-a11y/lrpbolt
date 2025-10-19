@@ -626,3 +626,11 @@ exports.notifyDriverOnClaimUpdated = onDocumentUpdated(
     }
   },
 );
+
+exports.notifyQueue = require("./notifyQueue");
+exports.ticketsOnWrite = require("./ticketsOnWrite");
+exports.adminMigrate = require("./adminMigrateIssueTickets");
+
+process.on("unhandledRejection", (err) => {
+  console.error("\uD83D\uDD25 Unhandled rejection:", err);
+});

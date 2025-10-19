@@ -4,15 +4,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================================
-    // WIDE-OPEN OVERRIDE (Public read/write; no auth required)
-    // ============================================================
-    // NOTE: This makes the database public. Keep while testing, but
-    // remove when you’re ready to enforce the collection rules below.
-    match /{document=**} {
-      allow read, write: if true;
-    }
-
     // LRP games highscores: users can create entries; reads are public for the board.
     match /games/{game}/highscores/{id} {
       allow read: if true;
@@ -364,5 +355,32 @@ service cloud.firestore {
 
     // (Intentionally omit the default-deny duplicate catch-all to avoid confusion
     // while the wide-open override is present above.)
+
+    match /issueTickets/{id} {
+      allow read: if authed();
+      allow create: if authed();
+      allow update: if isAdmin();
+
+      match /comments/{cid} {
+        allow read: if authed();
+        allow create: if authed();
+        allow update, delete: if isAdmin();
+      }
+
+      match /attachments/{aid} {
+        allow read: if authed();
+        allow create: if authed();
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /ticketFilters/{uid} {
+      allow read, write: if authed() && (uid == request.auth.uid || isAdmin());
+    }
+
+    match /notifyQueue/{nid} {
+      allow create: if authed();
+      allow read, update, delete: if false;
+    }
   }
 }
