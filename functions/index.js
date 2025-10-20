@@ -1,5 +1,7 @@
 /* Canonical v2 exports with legacy aliases. */
 const { logger } = require("firebase-functions/v2");
+const { onCall: onCallHttps, HttpsError } = require("firebase-functions/v2/https");
+const { admin } = require("./admin");
 
 function attach(name, path, exportName) {
   try {
@@ -73,6 +75,52 @@ attach("smsOnCreate", "./smsOnCreateV2", "smsOnCreateV2");
 attach("notifyQueue", "./notifyQueue", "notifyQueueOnCreate");
 attach("calendarFetch", "./calendarFetch", "apiCalendarFetch");
 attach("ensureLiveOpen", "./ensureLiveOpen", "ensureLiveRideOpen");
+
+exports.seedImportantInfoOnce = onCallHttps(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 120,
+    cors: true,
+    enforceAppCheck: false,
+  },
+  async (req) => {
+    const { auth } = req;
+    if (!auth || auth.token.admin !== true) {
+      throw new HttpsError("permission-denied", "Admin only.");
+    }
+    const db = admin.firestore();
+    const col = await db.collection("importantInfo").limit(1).get();
+    if (!col.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Collection already has items.",
+      );
+    }
+
+    // Seed payload (trimmed for brevity)
+    const items = require("./importantInfo.seed.json");
+
+    const batch = db.batch();
+    items.forEach((item) => {
+      const ref = db.collection("importantInfo").doc();
+      batch.set(ref, {
+        title: (item.title || "Untitled").trim(),
+        blurb: item.blurb || null,
+        details: item.details || null,
+        category: (item.category || "General").trim(),
+        phone: item.phone || null,
+        url: item.url || null,
+        smsTemplate: item.smsTemplate || null,
+        isActive: item.isActive !== false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    await batch.commit();
+    return { ok: true, count: items.length };
+  },
+);
 
 process.on("unhandledRejection", (error) => {
   logger.error("functions.index.unhandledRejection", error?.message || error);

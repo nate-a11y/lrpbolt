@@ -10,13 +10,23 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 import { db } from "@/services/firebase.js";
 import { withExponentialBackoff } from "@/services/retry.js";
 import { AppError } from "@/services/errors";
 import logError from "@/utils/logError.js";
+import { getLRPFunctions } from "@/utils/functions.js";
 
 const COLLECTION = "importantInfo";
+
+let seedCallable = null;
+
+function getSeedCallable() {
+  if (seedCallable) return seedCallable;
+  seedCallable = httpsCallable(getLRPFunctions(), "seedImportantInfoOnce");
+  return seedCallable;
+}
 
 function safeTrim(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -207,6 +217,26 @@ export async function restoreImportantInfo(item) {
       where: "importantInfoService.restore",
       payload: { id },
     });
+    throw appErr;
+  }
+}
+
+export async function seedImportantInfoDefaults() {
+  try {
+    const callable = getSeedCallable();
+    const response = await callable({});
+    return response?.data || { ok: true, count: 0 };
+  } catch (error) {
+    logError(error, {
+      where: "importantInfoService.seedDefaults",
+    });
+    const appErr =
+      error instanceof AppError
+        ? error
+        : new AppError("Failed to seed important info", {
+            code: "importantinfo_seed",
+            cause: error,
+          });
     throw appErr;
   }
 }
