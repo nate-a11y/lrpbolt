@@ -24,8 +24,6 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import MailIcon from "@mui/icons-material/Mail";
 import KeyIcon from "@mui/icons-material/Key";
-import LightModeIcon from "@mui/icons-material/LightMode";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
 import GoogleIcon from "@mui/icons-material/Google";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -37,7 +35,10 @@ import {
   sendPasswordReset,
   registerWithEmail,
 } from "../services/auth";
-import { useColorMode } from "../context/ColorModeContext.jsx";
+import {
+  useColorMode,
+  ColorModeToggle,
+} from "../context/ColorModeContext.jsx";
 
 /** utils **/
 const isEmail = (v) =>
@@ -73,7 +74,7 @@ function mapAuthError(err) {
 export default function Login() {
   const prefersReducedMotion = useReducedMotion();
   const upMd = useMediaQuery("(min-width:900px)");
-  const { mode, toggle } = useColorMode();
+  const { toggle } = useColorMode();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -335,17 +336,10 @@ export default function Login() {
           >
             {/* Top bar: theme toggle */}
             <Box sx={{ display: "flex", justifyContent: "flex-end", p: 1 }}>
-              <IconButton
-                onClick={toggle}
-                size="large"
-                aria-label={
-                  mode === "dark"
-                    ? "Switch to light mode"
-                    : "Switch to dark mode"
-                }
-              >
-                {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
+              <ColorModeToggle
+                iconButtonProps={{ size: "large" }}
+                tooltipProps={{ placement: "left" }}
+              />
             </Box>
 
             <CardContent sx={{ pt: 0, px: { xs: 3, sm: 5 }, pb: 4 }}>

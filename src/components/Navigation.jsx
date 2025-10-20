@@ -43,7 +43,10 @@ import ContactEmergencyIcon from "@mui/icons-material/ContactEmergency";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
-import { useColorMode } from "../context/ColorModeContext.jsx";
+import {
+  useColorMode,
+  ColorModeToggle,
+} from "../context/ColorModeContext.jsx";
 import useFcmEnable from "../hooks/useFcmEnable";
 
 const DRAWER_WIDTH = 260;
@@ -140,7 +143,7 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
   const role = (driver?.access || "").toLowerCase();
   const isAdmin = role === "admin";
   const selectedDriver = driver?.name || "";
-  const { mode, toggle } = useColorMode();
+  const { mode, resolvedMode, setMode } = useColorMode();
   const {
     enableFcm,
     supported: fcmSupported,
@@ -428,14 +431,35 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
             >
               <Brightness4Icon />
             </ListItemIcon>
-            {!collapsed && <ListItemText primary="Dark Mode" />}
-            <Switch
-              edge="end"
-              checked={mode === "dark"}
-              onChange={toggle}
-              inputProps={{ "aria-label": "Toggle dark mode" }}
-              sx={{ ml: collapsed ? 0 : 1 }}
-            />
+            {!collapsed && (
+              <ListItemText
+                primary="Theme"
+                secondary={
+                  mode === "system"
+                    ? `System (${resolvedMode || "auto"})`
+                    : (resolvedMode || mode || "light").replace(
+                        /^(.)/,
+                        (m) => m.toUpperCase(),
+                      )
+                }
+              />
+            )}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Switch
+                edge="end"
+                checked={resolvedMode === "dark"}
+                onChange={(event) => {
+                  event.stopPropagation();
+                  setMode(event.target.checked ? "dark" : "light");
+                }}
+                inputProps={{ "aria-label": "Toggle dark mode" }}
+                sx={{ ml: collapsed ? 0 : 1 }}
+              />
+              <ColorModeToggle
+                iconButtonProps={{ size: "small" }}
+                tooltipProps={{ placement: collapsed ? "right" : "top" }}
+              />
+            </Box>
           </ListItemButton>
 
           {isAdmin && (
@@ -576,16 +600,23 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
           <Box display="flex" alignItems="center" gap={2} flexShrink={0}>
             {!isMobile && (
               <>
-                <Tooltip title="Toggle Dark Mode">
-                  <Box display="flex" alignItems="center" gap={0.5}>
-                    <Brightness4Icon fontSize="small" />
-                    <Switch
-                      checked={mode === "dark"}
-                      onChange={toggle}
-                      inputProps={{ "aria-label": "Toggle dark mode" }}
-                    />
-                  </Box>
-                </Tooltip>
+                <Box display="flex" alignItems="center" gap={0.75}>
+                  <Brightness4Icon fontSize="small" />
+                  <Switch
+                    checked={resolvedMode === "dark"}
+                    onChange={(event) => setMode(event.target.checked ? "dark" : "light")}
+                    inputProps={{ "aria-label": "Toggle dark mode" }}
+                  />
+                  <ColorModeToggle iconButtonProps={{ size: "small" }} />
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    {mode === "system"
+                      ? `System (${resolvedMode || "auto"})`
+                      : (resolvedMode || mode || "light").replace(
+                          /^(.)/,
+                          (m) => m.toUpperCase(),
+                        )}
+                  </Typography>
+                </Box>
 
                 <Typography
                   variant="body2"
