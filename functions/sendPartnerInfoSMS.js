@@ -10,16 +10,7 @@ try {
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
-// Support either legacy TWILIO_FROM or new TWILIO_NUMBER
 const TWILIO_FROM = defineSecret("TWILIO_FROM");
-const TWILIO_NUMBER = defineSecret("TWILIO_NUMBER");
-
-function resolveFromNumber() {
-  const a = (TWILIO_NUMBER.value && TWILIO_NUMBER.value()) || "";
-  const b = (TWILIO_FROM.value && TWILIO_FROM.value()) || "";
-  const pick = a || b;
-  return pick && pick.trim();
-}
 
 function normalizePhone(to) {
   if (!to || typeof to !== "string") return null;
@@ -51,7 +42,6 @@ exports.sendPartnerInfoSMS = onCall(
       TWILIO_ACCOUNT_SID,
       TWILIO_AUTH_TOKEN,
       TWILIO_FROM,
-      TWILIO_NUMBER,
     ],
     cors: true,
     enforceAppCheck: false,
@@ -89,11 +79,11 @@ exports.sendPartnerInfoSMS = onCall(
       throw new HttpsError("failed-precondition", "Item is inactive.");
     }
 
-    const from = resolveFromNumber();
+    const from = (TWILIO_FROM.value && TWILIO_FROM.value())?.trim();
     if (!from) {
       throw new HttpsError(
         "failed-precondition",
-        "Missing TWILIO_FROM/TWILIO_NUMBER in Secret Manager.",
+        "Missing TWILIO_FROM in Secret Manager.",
       );
     }
 
