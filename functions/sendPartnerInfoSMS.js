@@ -1,21 +1,25 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
-const { logger } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
+
+try {
+  admin.initializeApp();
+} catch (e) {
+  // no-op; already initialized in tests or emulator
+}
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
+// Support either legacy TWILIO_FROM or new TWILIO_NUMBER
+const TWILIO_FROM = defineSecret("TWILIO_FROM");
 const TWILIO_NUMBER = defineSecret("TWILIO_NUMBER");
 
-try {
-  if (!admin.apps.length) {
-    admin.initializeApp();
-  }
-} catch (error) {
-  logger.warn("sendPartnerInfoSMS.init", error?.message || error);
+function resolveFromNumber() {
+  const a = (TWILIO_NUMBER.value && TWILIO_NUMBER.value()) || "";
+  const b = (TWILIO_FROM.value && TWILIO_FROM.value()) || "";
+  const pick = a || b;
+  return pick && pick.trim();
 }
-
-const db = admin.firestore();
 
 function normalizePhone(to) {
   if (!to || typeof to !== "string") return null;
@@ -43,14 +47,22 @@ function buildMessage(item) {
 exports.sendPartnerInfoSMS = onCall(
   {
     region: "us-central1",
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_NUMBER],
+    secrets: [
+      TWILIO_ACCOUNT_SID,
+      TWILIO_AUTH_TOKEN,
+      TWILIO_FROM,
+      TWILIO_NUMBER,
+    ],
     cors: true,
     enforceAppCheck: false,
   },
   async (request) => {
     const { data, auth } = request;
     if (!auth) {
-      throw new HttpsError("unauthenticated", "Must be signed in to send messages.");
+      throw new HttpsError(
+        "unauthenticated",
+        "Must be signed in to send messages.",
+      );
     }
 
     const itemId = data?.itemId;
@@ -64,8 +76,11 @@ exports.sendPartnerInfoSMS = onCall(
       throw new HttpsError("invalid-argument", "Invalid destination phone.");
     }
 
-    const docRef = db.collection("importantInfo").doc(itemId);
-    const snap = await docRef.get();
+    const snap = await admin
+      .firestore()
+      .collection("importantInfo")
+      .doc(itemId)
+      .get();
     if (!snap.exists) {
       throw new HttpsError("not-found", "Important info item not found.");
     }
@@ -74,53 +89,38 @@ exports.sendPartnerInfoSMS = onCall(
       throw new HttpsError("failed-precondition", "Item is inactive.");
     }
 
-    const from = TWILIO_NUMBER.value();
+    const from = resolveFromNumber();
     if (!from) {
-      throw new HttpsError("failed-precondition", "Missing Twilio number secret.");
+      throw new HttpsError(
+        "failed-precondition",
+        "Missing TWILIO_FROM/TWILIO_NUMBER in Secret Manager.",
+      );
     }
-
-    const body = buildMessage(item);
 
     const client = require("twilio")(
       TWILIO_ACCOUNT_SID.value(),
       TWILIO_AUTH_TOKEN.value(),
     );
+    const body = buildMessage(item);
 
-    let result;
     try {
-      result = await client.messages.create({
-        to,
-        from,
-        body,
-      });
-    } catch (error) {
-      logger.error("sendPartnerInfoSMS.twilio_error", {
-        message: error?.message || error,
-        code: error?.code,
-      });
+      const resp = await client.messages.create({ to, from, body });
+      await admin
+        .firestore()
+        .collection("smsLogs")
+        .add({
+          type: "partnerInfo",
+          itemId,
+          to,
+          sid: resp.sid,
+          status: resp.status || "queued",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          userId: auth?.uid || "unknown",
+        });
+      return { ok: true, sid: resp.sid, status: resp.status };
+    } catch (err) {
+      console.error("Twilio send error", err);
       throw new HttpsError("internal", "Failed to send SMS.");
     }
-
-    const logEntry = {
-      type: "partnerInfo",
-      itemId,
-      to,
-      sid: result.sid,
-      status: result.status || "queued",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      userId: auth?.uid || "unknown",
-    };
-
-    try {
-      await db.collection("smsLogs").add(logEntry);
-    } catch (logError) {
-      logger.warn("sendPartnerInfoSMS.log_write_failed", {
-        message: logError?.message || logError,
-        itemId,
-        to,
-      });
-    }
-
-    return { ok: true, sid: result.sid, status: result.status };
   },
 );
