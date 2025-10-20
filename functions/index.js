@@ -86,35 +86,35 @@ exports.seedImportantInfoOnce = onCallHttps(
   },
   async (req) => {
     const { auth } = req;
-    if (!auth || auth.token.admin !== true) {
+    if (!auth || auth.token?.admin !== true) {
       throw new HttpsError("permission-denied", "Admin only.");
     }
     const db = admin.firestore();
-    const col = await db.collection("importantInfo").limit(1).get();
-    if (!col.empty) {
+    const existing = await db.collection("importantInfo").limit(1).get();
+    if (!existing.empty) {
       throw new HttpsError(
         "failed-precondition",
         "Collection already has items.",
       );
     }
 
-    // Seed payload (trimmed for brevity)
     const items = require("./importantInfo.seed.json");
+    const now = admin.firestore.FieldValue.serverTimestamp();
 
     const batch = db.batch();
     items.forEach((item) => {
       const ref = db.collection("importantInfo").doc();
       batch.set(ref, {
-        title: (item.title || "Untitled").trim(),
-        blurb: item.blurb || null,
-        details: item.details || null,
-        category: (item.category || "General").trim(),
-        phone: item.phone || null,
-        url: item.url || null,
-        smsTemplate: item.smsTemplate || null,
-        isActive: item.isActive !== false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        title: (item?.title || "Untitled").trim(),
+        blurb: item?.blurb || null,
+        details: item?.details || null,
+        category: (item?.category || "General").trim(),
+        phone: item?.phone || null,
+        url: item?.url || null,
+        smsTemplate: item?.smsTemplate || null,
+        isActive: item?.isActive !== false,
+        createdAt: now,
+        updatedAt: now,
       });
     });
     await batch.commit();

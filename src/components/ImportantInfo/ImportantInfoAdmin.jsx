@@ -55,7 +55,7 @@ const DEFAULT_FORM = {
   isActive: true,
 };
 
-export default function ImportantInfoAdmin({ items, loading }) {
+export default function ImportantInfoAdmin({ items, loading, error }) {
   const { show } = useSnack();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState("create");
@@ -66,6 +66,9 @@ export default function ImportantInfoAdmin({ items, loading }) {
   const [seeding, setSeeding] = useState(false);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
+  const hasRows = rows.length > 0;
+  const showError = Boolean(error) && !loading;
+  const showEmpty = !showError && !loading && !hasRows;
 
   const categories = useMemo(() => {
     const set = new Set(["General"]);
@@ -342,46 +345,144 @@ export default function ImportantInfoAdmin({ items, loading }) {
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1}
-        alignItems={{ xs: "stretch", sm: "center" }}
-        justifyContent="flex-end"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        sx={{ gap: { xs: 1.5, sm: 2 } }}
       >
-        <Button
-          onClick={handleSeedDefaults}
-          size="small"
-          variant="outlined"
-          disabled={seeding}
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          Important Info — Admin
+        </Typography>
+        <Stack
+          direction="row"
+          spacing={1}
           sx={{
-            borderColor: "#4cbb17",
-            color: "#b7ffb7",
-            minWidth: 140,
-            "&:hover": { borderColor: "#43a814" },
+            flexWrap: "wrap",
+            rowGap: 1,
+            justifyContent: { xs: "flex-start", sm: "flex-end" },
           }}
         >
-          {seeding ? "Seeding…" : "Seed Defaults"}
-        </Button>
-        <Button
-          variant="contained"
-          onClick={openCreate}
-          sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
-        >
-          Add Important Info
-        </Button>
+          <Button
+            variant="contained"
+            onClick={openCreate}
+            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+          >
+            New Item
+          </Button>
+          <Button
+            onClick={handleSeedDefaults}
+            size="small"
+            variant="outlined"
+            disabled={seeding}
+            sx={{
+              borderColor: "#4cbb17",
+              color: "#b7ffb7",
+              minWidth: 140,
+              "&:hover": { borderColor: "#43a814" },
+            }}
+          >
+            {seeding ? "Seeding…" : "Seed Defaults"}
+          </Button>
+        </Stack>
       </Stack>
-      <LrpDataGridPro
-        id="important-info-admin"
-        rows={rows}
-        columns={columns}
-        getRowId={(row) => row?.id ?? null}
-        loading={loading}
-        autoHeight
-        disableRowSelectionOnClick
-        hideFooterSelectedRowCount
-        slotProps={{
-          toolbar: {
-            quickFilterPlaceholder: "Search admin info",
-          },
-        }}
-      />
+
+      {showError ? (
+        <Box sx={{ p: 2 }}>
+          <Stack
+            spacing={1.5}
+            sx={{
+              bgcolor: "#1a0b0b",
+              border: "1px solid #2a1111",
+              p: 2,
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ color: "#ffb4b4" }}>
+              Unable to load important information.
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              Try refreshing the page. If the issue persists, seed defaults or
+              recreate items once Firestore access is restored.
+            </Typography>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outlined"
+              size="small"
+              sx={{
+                borderColor: "#4cbb17",
+                color: "#b7ffb7",
+                width: "fit-content",
+              }}
+            >
+              Refresh
+            </Button>
+          </Stack>
+        </Box>
+      ) : null}
+
+      {showEmpty ? (
+        <Box sx={{ p: 2 }}>
+          <Stack
+            spacing={1.5}
+            sx={{
+              bgcolor: "#0b0f0b",
+              border: "1px solid #153015",
+              p: 2,
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ color: "#b7ffb7" }}>
+              No items yet.
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+              Seed our starter playbook or add the first custom entry to help
+              drivers respond faster.
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                flexWrap: "wrap",
+                rowGap: 1,
+                justifyContent: { xs: "flex-start", sm: "flex-start" },
+              }}
+            >
+              <Button
+                onClick={openCreate}
+                variant="contained"
+                sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+              >
+                Add first item
+              </Button>
+              <Button
+                onClick={handleSeedDefaults}
+                variant="outlined"
+                disabled={seeding}
+                sx={{ borderColor: "#4cbb17", color: "#b7ffb7" }}
+              >
+                {seeding ? "Seeding…" : "Seed Defaults"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+      ) : null}
+
+      {!showError && (hasRows || loading) ? (
+        <LrpDataGridPro
+          id="important-info-admin"
+          rows={rows}
+          columns={columns}
+          getRowId={(row) => row?.id ?? null}
+          loading={loading}
+          autoHeight
+          disableRowSelectionOnClick
+          hideFooterSelectedRowCount
+          slotProps={{
+            toolbar: {
+              quickFilterPlaceholder: "Search admin info",
+            },
+          }}
+        />
+      ) : null}
 
       <Dialog
         open={dialogOpen}
@@ -502,4 +603,5 @@ export default function ImportantInfoAdmin({ items, loading }) {
 ImportantInfoAdmin.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
   loading: PropTypes.bool,
+  error: PropTypes.any,
 };
