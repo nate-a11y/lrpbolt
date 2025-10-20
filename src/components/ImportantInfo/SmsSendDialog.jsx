@@ -45,10 +45,12 @@ export default function SmsSendDialog({ open, onClose, item }) {
   const { show } = useSnack();
   const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setPhone("");
     setSending(false);
+    setError("");
   }, [open]);
 
   const preview = useMemo(() => buildMessagePreview(item), [item]);
@@ -63,8 +65,9 @@ export default function SmsSendDialog({ open, onClose, item }) {
       event?.preventDefault();
       if (!item?.id) return;
       const trimmed = phone.trim();
+      setError("");
       if (!trimmed) {
-        show("Enter a destination phone number.", "warning");
+        setError("Enter a phone number.");
         return;
       }
       setSending(true);
@@ -101,12 +104,23 @@ export default function SmsSendDialog({ open, onClose, item }) {
           <TextField
             label="Destination phone"
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              if (error) setError("");
+            }}
             autoFocus
             placeholder="e.g. +15551234567 or 5551234567"
             disabled={sending}
             fullWidth
-            helperText="Enter the customer’s phone. We do not store this number."
+            error={Boolean(error)}
+            helperText={
+              error ||
+              "Enter the customer’s phone. This is not stored, and replies are not monitored."
+            }
+            inputProps={{
+              inputMode: "tel",
+              "aria-label": "Customer phone number",
+            }}
           />
           <Box
             sx={{
@@ -138,7 +152,11 @@ export default function SmsSendDialog({ open, onClose, item }) {
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleClose} disabled={sending}>
+        <Button
+          onClick={handleClose}
+          disabled={sending}
+          aria-label="Cancel sending SMS"
+        >
           Cancel
         </Button>
         <LoadingButtonLite
@@ -150,6 +168,7 @@ export default function SmsSendDialog({ open, onClose, item }) {
             bgcolor: "#4cbb17",
             "&:hover": { bgcolor: "#3aa40f" },
           }}
+          aria-label="Send SMS to entered phone number"
         >
           Send SMS
         </LoadingButtonLite>
