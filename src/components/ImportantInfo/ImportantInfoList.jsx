@@ -30,8 +30,16 @@ function toTelHref(phone) {
   return `tel:${digits}`;
 }
 
-export default function ImportantInfoList({ items, loading, onSendSms }) {
+export default function ImportantInfoList({
+  items,
+  loading,
+  onSendSms,
+  error,
+}) {
   const rows = useMemo(() => normalizeRows(items), [items]);
+  const hasRows = rows.length > 0;
+  const showError = Boolean(error) && !loading;
+  const showEmpty = !showError && !loading && !hasRows;
 
   const handleSendClick = useCallback(
     (row) => {
@@ -205,6 +213,66 @@ export default function ImportantInfoList({ items, loading, onSendSms }) {
     ];
   }, [handleSendClick]);
 
+  if (showError) {
+    return (
+      <Box sx={{ p: 2, color: "white" }}>
+        <Stack
+          spacing={1.5}
+          sx={{
+            bgcolor: "#1a0b0b",
+            border: "1px solid #2a1111",
+            p: 2,
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ color: "#ffb4b4" }}>
+            Unable to load important information.
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            If you have admin access, open the <strong>Admin</strong> tab to
+            seed defaults or add the first item.
+          </Typography>
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outlined"
+            size="small"
+            sx={{
+              borderColor: "#4cbb17",
+              color: "#b7ffb7",
+              width: "fit-content",
+            }}
+          >
+            Refresh
+          </Button>
+        </Stack>
+      </Box>
+    );
+  }
+
+  if (showEmpty) {
+    return (
+      <Box sx={{ p: 2, color: "white" }}>
+        <Stack
+          spacing={1.5}
+          sx={{
+            bgcolor: "#0b0f0b",
+            border: "1px solid #153015",
+            p: 2,
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ color: "#b7ffb7" }}>
+            No important info yet.
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.85 }}>
+            Once admins add partners or emergency contacts, they’ll show here
+            with quick share buttons.
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ width: "100%", "& .MuiDataGrid-row": { alignItems: "center" } }}>
       <LrpDataGridPro
@@ -230,4 +298,5 @@ ImportantInfoList.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
   loading: PropTypes.bool,
   onSendSms: PropTypes.func,
+  error: PropTypes.any,
 };

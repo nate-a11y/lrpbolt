@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  Alert,
-  Box,
-  CircularProgress,
-  Tab,
-  Tabs,
-  Typography,
-} from "@mui/material";
+import { Box, CircularProgress, Tab, Tabs, Typography } from "@mui/material";
 
 import SmsSendDialog from "@/components/ImportantInfo/SmsSendDialog.jsx";
 import ImportantInfoList from "@/components/ImportantInfo/ImportantInfoList.jsx";
@@ -101,25 +94,18 @@ export default function ImportantInfoPage() {
       );
     }
 
-    if (error) {
-      return (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          Unable to load important information. Please refresh.
-        </Alert>
-      );
-    }
-
     if (tab === 0 || !isAdmin) {
       return (
         <ImportantInfoList
           items={activeItems}
           loading={loading}
+          error={error}
           onSendSms={handleSendSms}
         />
       );
     }
 
-    return <ImportantInfoAdmin items={items} loading={loading} />;
+    return <ImportantInfoAdmin items={items} loading={loading} error={error} />;
   };
 
   return (

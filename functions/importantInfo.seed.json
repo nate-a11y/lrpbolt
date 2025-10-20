@@ -1,51 +1,81 @@
 [
   {
-    "title": "Emergency Dispatch",
-    "blurb": "Primary contact for immediate ride emergencies.",
-    "details": "Use this line for any emergency situations during an active ride requiring dispatcher support.",
-    "category": "Emergency",
-    "phone": "+1-555-0100",
+    "title": "Tyler’s Lock & Key Service",
+    "blurb": "Trusted locksmith partner for vehicles & properties.",
+    "details": "24/7 availability. Share with guests if they’re locked out or keys are misplaced.",
+    "category": "Premier Partner",
+    "phone": null,
     "url": null,
-    "smsTemplate": "Emergency assistance requested at {{location}} for rider {{riderName}}.",
-    "isActive": true
-  },
-  {
-    "title": "Roadside Assistance",
-    "blurb": "24/7 roadside partner hotline.",
-    "details": "Covers jump starts, tows within 25 miles, and flat tire support for active drivers.",
-    "category": "Support",
-    "phone": "+1-555-0142",
-    "url": "https://portal.lrp.example/roadside",
-    "smsTemplate": "Roadside needed for vehicle {{vehicleNumber}} at {{location}}.",
-    "isActive": true
-  },
-  {
-    "title": "Safety Team",
-    "blurb": "Report safety incidents or concerns.",
-    "details": "Escalate passenger or driver safety issues. Available daily 5am – 1am local time.",
-    "category": "Safety",
-    "phone": "+1-555-0168",
-    "url": "https://portal.lrp.example/safety",
     "smsTemplate": null,
     "isActive": true
   },
   {
-    "title": "Benefits & HR",
-    "blurb": "Questions about benefits, leave, or payroll.",
-    "details": "Email or call for HR support Monday – Friday, 9am – 6pm CT.",
-    "category": "Operations",
-    "phone": "+1-555-0185",
-    "url": "https://portal.lrp.example/hr",
-    "smsTemplate": "Driver {{driverName}} needs HR follow-up regarding {{topic}}.",
+    "title": "Premier Partner — Cadillac Events",
+    "blurb": "Luxury activations & VIP transfers supported by Cadillac.",
+    "details": "Use for VIP movements, brand events, and partner referrals.",
+    "category": "Premier Partner",
+    "phone": null,
+    "url": "https://www.cadillac.com/",
+    "smsTemplate": null,
     "isActive": true
   },
   {
-    "title": "Tech Support",
-    "blurb": "App or hardware issues.",
-    "details": "Submit a ticket for Rider Portal or device issues. Response within 2 business hours.",
-    "category": "Support",
+    "title": "Local PD (Non-Emergency)",
+    "blurb": "Non-emergency assistance number.",
+    "details": "Use for reporting incidents that are not life-threatening. Call 911 for emergencies.",
+    "category": "Emergency",
     "phone": null,
-    "url": "https://portal.lrp.example/support",
+    "url": null,
+    "smsTemplate": "Non-emergency police line for assistance. If this is an emergency, call 911.",
+    "isActive": true
+  },
+  {
+    "title": "Local Hospital — ER",
+    "blurb": "Nearest emergency room for urgent care.",
+    "details": "Share with guests requesting medical attention or directions to ER.",
+    "category": "Emergency",
+    "phone": null,
+    "url": null,
+    "smsTemplate": null,
+    "isActive": true
+  },
+  {
+    "title": "Towing & Roadside",
+    "blurb": "Preferred towing partner for vehicles.",
+    "details": "For breakdowns or accidents. Coordinate location, vehicle type, and contact details.",
+    "category": "Referral",
+    "phone": null,
+    "url": null,
+    "smsTemplate": null,
+    "isActive": true
+  },
+  {
+    "title": "Event Day Shuttle Guidance",
+    "blurb": "What to text when guests ask about pickup flow.",
+    "details": "Please wait at your pickup point. Your driver will text/call on approach. Have your party ready to load promptly.",
+    "category": "Policy",
+    "phone": null,
+    "url": null,
+    "smsTemplate": "Your shuttle is en route. Please be at the pickup point with your party ready to load. Thank you!",
+    "isActive": true
+  },
+  {
+    "title": "Lost & Found",
+    "blurb": "LRP process & contact when items are lost.",
+    "details": "Direct guests to reply with item description, last known time, and vehicle if known.",
+    "category": "Policy",
+    "phone": null,
+    "url": null,
+    "smsTemplate": "Reply with what was lost, last time seen, and vehicle if known. We’ll check and update you.",
+    "isActive": true
+  },
+  {
+    "title": "Clean-Up & Detailing",
+    "blurb": "Preferred detailer for quick turnarounds.",
+    "details": "Use for interior cleanups between tight turns or post-event.",
+    "category": "Referral",
+    "phone": null,
+    "url": null,
     "smsTemplate": null,
     "isActive": true
   }
