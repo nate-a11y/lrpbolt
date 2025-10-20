@@ -23,6 +23,20 @@ service cloud.firestore {
       allow update, delete: if false; // immutable highscores (optional)
     }
 
+    // --- Important Information content ---
+    // Drivers can read; only admins can write.
+    match /importantInfo/{docId} {
+      allow read: if authed();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- Outbound SMS logs ---
+    // Any signed-in user can create a log; only admins can read.
+    match /smsLogs/{docId} {
+      allow create: if authed();
+      allow read, update, delete: if isAdmin();
+    }
+
     // ---------- Auth & helpers ----------
     function toLowerCaseSafe(value) {
       return value.lower();
