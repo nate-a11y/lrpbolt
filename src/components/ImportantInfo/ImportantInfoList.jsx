@@ -7,7 +7,6 @@ import {
   CardActions,
   CardContent,
   Chip,
-  Divider,
   FormControl,
   InputLabel,
   MenuItem,
@@ -23,6 +22,7 @@ import {
   PROMO_PARTNER_FILTER_OPTIONS,
 } from "@/constants/importantInfo.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
+import ExpandableDetails from "@/components/ExpandableDetails.jsx";
 
 function normalizeRows(items) {
   if (!Array.isArray(items)) return [];
@@ -316,23 +316,19 @@ export default function ImportantInfoList({
                             />
                           </Stack>
 
-                          {row?.blurb ? (
-                            <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                              {row.blurb}
-                            </Typography>
-                          ) : null}
-
-                          {row?.details ? (
-                            <Box>
-                              <Divider sx={{ borderColor: "#222", mb: 1 }} />
-                              <Typography
-                                variant="body2"
-                                sx={{ whiteSpace: "pre-wrap", opacity: 0.85 }}
-                              >
-                                {row.details}
-                              </Typography>
-                            </Box>
-                          ) : null}
+                          <ExpandableDetails
+                            id={
+                              row?.id != null
+                                ? String(row.id)
+                                : row?.docId != null
+                                  ? String(row.docId)
+                                  : row?.title
+                                    ? String(row.title)
+                                    : undefined
+                            }
+                            blurb={row?.blurb ? String(row.blurb) : ""}
+                            details={row?.details ? String(row.details) : ""}
+                          />
 
                           <Stack
                             direction={{ xs: "column", sm: "row" }}
