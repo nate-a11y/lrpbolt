@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
@@ -184,6 +185,50 @@ export async function deleteImportantInfo(id) {
     });
     throw appErr;
   }
+}
+
+export async function bulkCreateImportantInfo(items = []) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return 0;
+
+  const chunkSize = 500;
+  const colRef = collection(db, COLLECTION);
+  let total = 0;
+
+  for (let index = 0; index < list.length; index += chunkSize) {
+    const slice = list.slice(index, index + chunkSize);
+    try {
+      await withExponentialBackoff(async () => {
+        const batch = writeBatch(db);
+        slice.forEach((raw) => {
+          const ref = doc(colRef);
+          const payload = {
+            ...sanitizePayload(raw),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          };
+          batch.set(ref, payload);
+        });
+        await batch.commit();
+      });
+      total += slice.length;
+    } catch (error) {
+      logError(error, {
+        where: "importantInfoService.bulkCreate",
+        payload: { chunkSize: slice.length },
+      });
+      const appErr =
+        error instanceof AppError
+          ? error
+          : new AppError("Failed to import important info", {
+              code: "importantinfo_bulk_create",
+              cause: error,
+            });
+      throw appErr;
+    }
+  }
+
+  return total;
 }
 
 export async function restoreImportantInfo(item) {

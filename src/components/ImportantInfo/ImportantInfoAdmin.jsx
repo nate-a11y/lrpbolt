@@ -39,6 +39,8 @@ import logError from "@/utils/logError.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
 import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
 
+import BulkImportDialog from "./BulkImportDialog.jsx";
+
 const DEFAULT_CATEGORY = IMPORTANT_INFO_CATEGORIES[0];
 
 function ensureString(value) {
@@ -116,6 +118,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortBy, setSortBy] = useState("updated");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -184,6 +187,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setActiveId(null);
     setDialogOpen(true);
   }, []);
+
+  const handleImportClose = useCallback(
+    (result) => {
+      setImportDialogOpen(false);
+      if (result?.ok) {
+        const count = typeof result.count === "number" ? result.count : 0;
+        show(`Imported ${count} item${count === 1 ? "" : "s"}.`, "success");
+      }
+    },
+    [show],
+  );
 
   const openEdit = useCallback((row) => {
     if (!row) return;
@@ -334,13 +348,22 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Important Info — Admin
         </Typography>
-        <Button
-          variant="contained"
-          onClick={openCreate}
-          sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
-        >
-          New Item
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button
+            variant="contained"
+            onClick={openCreate}
+            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+          >
+            New Item
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => setImportDialogOpen(true)}
+            sx={{ borderColor: "#4cbb17", color: "#b7ffb7" }}
+          >
+            Import Excel
+          </Button>
+        </Stack>
       </Stack>
 
       <Stack
@@ -635,6 +658,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           })}
         </Stack>
       ) : null}
+
+      <BulkImportDialog open={importDialogOpen} onClose={handleImportClose} />
 
       <Dialog
         open={dialogOpen}

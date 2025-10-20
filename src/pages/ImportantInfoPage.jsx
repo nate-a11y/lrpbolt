@@ -123,8 +123,8 @@ export default function ImportantInfoPage() {
           Important Information
         </Typography>
         <Typography variant="body1" sx={{ color: "text.secondary" }}>
-          Premier partners, emergency contacts, and referral perks ready to
-          share.
+          Effortlessly share official Lake Ride Pros promotions, premier
+          partners, and referral rewards with your guests.
         </Typography>
       </Box>
 
