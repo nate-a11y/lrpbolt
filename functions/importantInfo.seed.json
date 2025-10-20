@@ -1,0 +1,52 @@
+[
+  {
+    "title": "Emergency Dispatch",
+    "blurb": "Primary contact for immediate ride emergencies.",
+    "details": "Use this line for any emergency situations during an active ride requiring dispatcher support.",
+    "category": "Emergency",
+    "phone": "+1-555-0100",
+    "url": null,
+    "smsTemplate": "Emergency assistance requested at {{location}} for rider {{riderName}}.",
+    "isActive": true
+  },
+  {
+    "title": "Roadside Assistance",
+    "blurb": "24/7 roadside partner hotline.",
+    "details": "Covers jump starts, tows within 25 miles, and flat tire support for active drivers.",
+    "category": "Support",
+    "phone": "+1-555-0142",
+    "url": "https://portal.lrp.example/roadside",
+    "smsTemplate": "Roadside needed for vehicle {{vehicleNumber}} at {{location}}.",
+    "isActive": true
+  },
+  {
+    "title": "Safety Team",
+    "blurb": "Report safety incidents or concerns.",
+    "details": "Escalate passenger or driver safety issues. Available daily 5am – 1am local time.",
+    "category": "Safety",
+    "phone": "+1-555-0168",
+    "url": "https://portal.lrp.example/safety",
+    "smsTemplate": null,
+    "isActive": true
+  },
+  {
+    "title": "Benefits & HR",
+    "blurb": "Questions about benefits, leave, or payroll.",
+    "details": "Email or call for HR support Monday – Friday, 9am – 6pm CT.",
+    "category": "Operations",
+    "phone": "+1-555-0185",
+    "url": "https://portal.lrp.example/hr",
+    "smsTemplate": "Driver {{driverName}} needs HR follow-up regarding {{topic}}.",
+    "isActive": true
+  },
+  {
+    "title": "Tech Support",
+    "blurb": "App or hardware issues.",
+    "details": "Submit a ticket for Rider Portal or device issues. Response within 2 business hours.",
+    "category": "Support",
+    "phone": null,
+    "url": "https://portal.lrp.example/support",
+    "smsTemplate": null,
+    "isActive": true
+  }
+]

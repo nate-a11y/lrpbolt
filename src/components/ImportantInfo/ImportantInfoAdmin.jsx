@@ -21,6 +21,7 @@ import {
   updateImportantInfo,
   deleteImportantInfo,
   restoreImportantInfo,
+  seedImportantInfoDefaults,
 } from "@/services/importantInfoService.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime } from "@/utils/time.js";
@@ -62,6 +63,7 @@ export default function ImportantInfoAdmin({ items, loading }) {
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [pendingMap, setPendingMap] = useState({});
+  const [seeding, setSeeding] = useState(false);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
 
@@ -106,6 +108,30 @@ export default function ImportantInfoAdmin({ items, loading }) {
   const handleFieldChange = useCallback((field, value) => {
     setFormValues((prev) => ({ ...prev, [field]: value }));
   }, []);
+
+  const handleSeedDefaults = useCallback(async () => {
+    try {
+      setSeeding(true);
+      const result = await seedImportantInfoDefaults();
+      const count = Number.isFinite(result?.count) ? result.count : 0;
+      show(`Seeded ${count} items.`, "success");
+    } catch (error) {
+      logError(error, { where: "ImportantInfoAdmin.seedDefaults" });
+      const causeCode =
+        typeof error?.cause?.code === "string" ? error.cause.code : "";
+      const appCode = typeof error?.code === "string" ? error.code : "";
+      const finalCode = causeCode || appCode;
+      const alreadySeeded = finalCode.includes("failed-precondition");
+      show(
+        alreadySeeded
+          ? "Seeder skipped — items already exist."
+          : "Seeder failed. Please try again.",
+        "error",
+      );
+    } finally {
+      setSeeding(false);
+    }
+  }, [show]);
 
   const handleSubmit = useCallback(
     async (event) => {
@@ -313,7 +339,26 @@ export default function ImportantInfoAdmin({ items, loading }) {
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
     >
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1}
+        alignItems={{ xs: "stretch", sm: "center" }}
+        justifyContent="flex-end"
+      >
+        <Button
+          onClick={handleSeedDefaults}
+          size="small"
+          variant="outlined"
+          disabled={seeding}
+          sx={{
+            borderColor: "#4cbb17",
+            color: "#b7ffb7",
+            minWidth: 140,
+            "&:hover": { borderColor: "#43a814" },
+          }}
+        >
+          {seeding ? "Seeding…" : "Seed Defaults"}
+        </Button>
         <Button
           variant="contained"
           onClick={openCreate}
@@ -321,7 +366,7 @@ export default function ImportantInfoAdmin({ items, loading }) {
         >
           Add Important Info
         </Button>
-      </Box>
+      </Stack>
       <LrpDataGridPro
         id="important-info-admin"
         rows={rows}
