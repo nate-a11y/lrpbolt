@@ -20,28 +20,10 @@ import LoadingScreen from "./components/LoadingScreen.jsx";
 import { DriverProvider } from "./context/DriverContext.jsx";
 import AuthProvider from "./context/AuthContext.jsx";
 import ColorModeProvider from "./context/ColorModeContext.jsx";
-import { LRPInitColorSchemeScript } from "./theme/ColorSchemeProvider.jsx";
 import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import { initAnalyticsIfEnabled } from "./utils/firebaseInit.js";
 import "./muix-license.js";
 import initEruda from "./utils/initEruda.js";
-
-if (typeof document !== "undefined") {
-  const head = document.querySelector("head");
-  const existing = document.getElementById("lrp-color-init");
-  const target = existing || document.createElement("script");
-  if (target) {
-    target.id = "lrp-color-init";
-    target.setAttribute("type", "text/javascript");
-    const initScript = LRPInitColorSchemeScript();
-    const scriptContent =
-      initScript?.props?.dangerouslySetInnerHTML?.__html || "";
-    target.innerHTML = scriptContent;
-    if (!existing && head) {
-      head.prepend(target);
-    }
-  }
-}
 
 initAnalyticsIfEnabled?.();
 initAnalytics(); // fire-and-forget; guarded internally
