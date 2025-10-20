@@ -112,7 +112,7 @@ function MainNav({
   const drawerContent = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <List sx={{ py: 1 }}>
-        {primaryItems.map(({ id, to, label, icon }) => {
+        {primaryItems.map(({ id, to, label, icon, iconColor }) => {
           const Icon = iconMap[icon] || iconMap.ChevronRight;
           const selected = location.pathname === to;
           return (
@@ -129,8 +129,8 @@ function MainNav({
               }}
               end
             >
-              <ListItemIcon>
-                <Icon />
+              <ListItemIcon sx={{ color: iconColor || "inherit" }}>
+                <Icon sx={iconColor ? { color: iconColor } : undefined} />
               </ListItemIcon>
               <ListItemText primary={label} />
             </ListItemButton>
