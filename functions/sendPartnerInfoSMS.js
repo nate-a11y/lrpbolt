@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 
 try {
   admin.initializeApp();
-} catch (e) {
+} catch {
   // no-op; already initialized in tests or emulator
 }
 
@@ -14,11 +14,21 @@ const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 const TWILIO_FROM = defineSecret("TWILIO_FROM");
 const TWILIO_NUMBER = defineSecret("TWILIO_NUMBER");
 
+function safeSecretValue(secret) {
+  if (!secret || typeof secret.value !== "function") return "";
+  try {
+    const raw = secret.value();
+    return typeof raw === "string" ? raw.trim() : `${raw || ""}`.trim();
+  } catch (err) {
+    console.warn("Unable to resolve secret", secret?.name || "unknown", err);
+    return "";
+  }
+}
+
 function resolveFromNumber() {
-  const a = (TWILIO_NUMBER.value && TWILIO_NUMBER.value()) || "";
-  const b = (TWILIO_FROM.value && TWILIO_FROM.value()) || "";
-  const pick = a || b;
-  return pick && pick.trim();
+  const primary = safeSecretValue(TWILIO_NUMBER);
+  if (primary) return primary;
+  return safeSecretValue(TWILIO_FROM);
 }
 
 function normalizePhone(to) {
