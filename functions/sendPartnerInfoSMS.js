@@ -81,28 +81,18 @@ exports.sendPartnerInfoSMS = onCall(
 
     const body = buildMessage(item);
 
+    const client = require("twilio")(
+      TWILIO_ACCOUNT_SID.value(),
+      TWILIO_AUTH_TOKEN.value(),
+    );
+
+    let result;
     try {
-      const client = require("twilio")(
-        TWILIO_ACCOUNT_SID.value(),
-        TWILIO_AUTH_TOKEN.value(),
-      );
-      const result = await client.messages.create({
+      result = await client.messages.create({
         to,
         from,
         body,
       });
-
-      await db.collection("smsLogs").add({
-        type: "partnerInfo",
-        itemId,
-        to,
-        sid: result.sid,
-        status: result.status || "queued",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        userId: auth?.uid || "unknown",
-      });
-
-      return { ok: true, sid: result.sid, status: result.status };
     } catch (error) {
       logger.error("sendPartnerInfoSMS.twilio_error", {
         message: error?.message || error,
@@ -110,5 +100,27 @@ exports.sendPartnerInfoSMS = onCall(
       });
       throw new HttpsError("internal", "Failed to send SMS.");
     }
+
+    const logEntry = {
+      type: "partnerInfo",
+      itemId,
+      to,
+      sid: result.sid,
+      status: result.status || "queued",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      userId: auth?.uid || "unknown",
+    };
+
+    try {
+      await db.collection("smsLogs").add(logEntry);
+    } catch (logError) {
+      logger.warn("sendPartnerInfoSMS.log_write_failed", {
+        message: logError?.message || logError,
+        itemId,
+        to,
+      });
+    }
+
+    return { ok: true, sid: result.sid, status: result.status };
   },
 );
