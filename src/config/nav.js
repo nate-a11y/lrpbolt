@@ -21,6 +21,14 @@ export const NAV_ITEMS = [
     rolesVisible: ["admin", "driver"],
   },
   {
+    id: "important-info",
+    to: "/important",
+    label: "Important Information",
+    icon: "Info",
+    rolesVisible: ["admin", "driver"],
+    iconColor: "#4cbb17",
+  },
+  {
     id: "drop-guides",
     to: "/drop-guides",
     label: "Vehicle Tips",

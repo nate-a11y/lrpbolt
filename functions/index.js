@@ -43,6 +43,7 @@ attach(
   "./sendPortalNotificationV2",
   "sendPortalNotificationV2",
 );
+attach("sendPartnerInfoSMS", "./sendPartnerInfoSMS", "sendPartnerInfoSMS");
 attach("apiCalendarFetch", "./calendarFetch", "apiCalendarFetch");
 attach("apiCalendarFetchHttp", "./calendarFetch", "apiCalendarFetchHttp");
 attach("ensureLiveRideOpen", "./ensureLiveOpen", "ensureLiveRideOpen");
