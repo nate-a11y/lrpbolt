@@ -35,6 +35,7 @@ import {
   deleteImportantInfo,
   restoreImportantInfo,
 } from "@/services/importantInfoService.js";
+import { getSmsHealth, getLastSmsError } from "@/services/smsService.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
 import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
@@ -119,6 +120,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortBy, setSortBy] = useState("updated");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [healthDialogOpen, setHealthDialogOpen] = useState(false);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthData, setHealthData] = useState(null);
+  const [healthError, setHealthError] = useState("");
+  const [localLastSmsError, setLocalLastSmsError] = useState(null);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -187,6 +193,33 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setActiveId(null);
     setDialogOpen(true);
   }, []);
+
+  const fetchSmsHealth = useCallback(async () => {
+    setHealthLoading(true);
+    setHealthError("");
+    try {
+      const payload = await getSmsHealth();
+      setHealthData(payload);
+    } catch (err) {
+      const message = err?.message || "Unable to fetch SMS health.";
+      setHealthError(message);
+      logError(err, { where: "ImportantInfoAdmin.fetchSmsHealth" });
+    } finally {
+      setHealthLoading(false);
+    }
+  }, []);
+
+  const openHealthDialog = useCallback(() => {
+    if (healthLoading) return;
+    setLocalLastSmsError(getLastSmsError());
+    setHealthDialogOpen(true);
+    fetchSmsHealth();
+  }, [fetchSmsHealth, healthLoading]);
+
+  const closeHealthDialog = useCallback(() => {
+    if (healthLoading) return;
+    setHealthDialogOpen(false);
+  }, [healthLoading]);
 
   const handleImportClose = useCallback(
     (result) => {
@@ -363,6 +396,18 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           >
             Import Excel
           </Button>
+          <LoadingButtonLite
+            variant="outlined"
+            onClick={openHealthDialog}
+            loading={healthLoading && healthDialogOpen}
+            sx={{
+              borderColor: "#4cbb17",
+              color: "#b7ffb7",
+              minWidth: 140,
+            }}
+          >
+            SMS Health
+          </LoadingButtonLite>
         </Stack>
       </Stack>
 
@@ -774,6 +819,194 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
           >
             {dialogMode === "edit" ? "Save Changes" : "Create"}
+          </LoadingButtonLite>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={healthDialogOpen}
+        onClose={closeHealthDialog}
+        fullWidth
+        maxWidth="sm"
+        sx={{ "& .MuiPaper-root": { bgcolor: "background.paper" } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>SMS Health</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {healthLoading ? (
+              <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                Checking Twilio configuration…
+              </Typography>
+            ) : null}
+            {healthError ? (
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: "#1a0b0b",
+                  border: "1px solid #2a1111",
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ color: "#ffb4b4" }}>
+                  {healthError}
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                  Ensure you are signed in as an admin and try again.
+                </Typography>
+              </Box>
+            ) : null}
+            {healthData ? (
+              <Stack spacing={1.5}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: healthData.ok ? "#102712" : "#2a1111",
+                    border: `1px solid ${healthData.ok ? "#2f7a1c" : "#5d1f1f"}`,
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Overall Status
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                    {healthData.ok
+                      ? "All Twilio checks passed."
+                      : "Attention required — verify region and Twilio secrets."}
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    Last checked {formatDateTime(healthData.checkedAt)}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: "#0b0f0b",
+                    border: "1px solid #153015",
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Region
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                    Configured: {healthData.region?.configured || "us-central1"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                    Runtime: {healthData.region?.runtime || "Unknown"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                    Match: {healthData.region?.matches ? "Yes" : "No"}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: "#0b0f0b",
+                    border: "1px solid #153015",
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Twilio Secrets
+                  </Typography>
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                      Account SID:{" "}
+                      {healthData.secrets?.TWILIO_ACCOUNT_SID
+                        ? "Present"
+                        : "Missing"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                      Auth Token:{" "}
+                      {healthData.secrets?.TWILIO_AUTH_TOKEN
+                        ? "Present"
+                        : "Missing"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                      From Number:{" "}
+                      {healthData.secrets?.TWILIO_FROM?.present
+                        ? "Present"
+                        : "Missing"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                      From E.164 Valid:{" "}
+                      {healthData.secrets?.TWILIO_FROM?.e164 ? "Yes" : "No"}
+                    </Typography>
+                  </Stack>
+                </Box>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: "#101010",
+                    border: "1px solid #1f1f1f",
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Last Twilio Error
+                  </Typography>
+                  {healthData.lastError ? (
+                    <Stack spacing={0.75} sx={{ mt: 1 }}>
+                      <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                        {healthData.lastError.errorMessage}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                        Code: {healthData.lastError.errorCode || "N/A"}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                        To: {healthData.lastError.to || "N/A"}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                        Logged: {formatDateTime(healthData.lastError.createdAt)}
+                      </Typography>
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                      No Twilio errors recorded in the latest 10 logs.
+                    </Typography>
+                  )}
+                </Box>
+                {localLastSmsError ? (
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: "#101010",
+                      border: "1px solid #1f1f1f",
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Last error this session
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                      {localLastSmsError.message}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      {formatDateTime(localLastSmsError.at)} (code:{" "}
+                      {localLastSmsError.code})
+                    </Typography>
+                  </Box>
+                ) : null}
+              </Stack>
+            ) : null}
+            {!healthLoading && !healthError && !healthData ? (
+              <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                Click Refresh to check SMS health.
+              </Typography>
+            ) : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={closeHealthDialog} disabled={healthLoading}>
+            Close
+          </Button>
+          <LoadingButtonLite
+            onClick={fetchSmsHealth}
+            loading={healthLoading}
+            loadingText="Refreshing…"
+            variant="contained"
+            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+          >
+            Refresh
           </LoadingButtonLite>
         </DialogActions>
       </Dialog>
