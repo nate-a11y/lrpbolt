@@ -127,6 +127,8 @@ export default function ImportantInfoList({
   const handleSendClick = useCallback(
     (row) => {
       if (!row) return;
+      const category = row?._cat || row?.category;
+      if (category === "Insider Members") return;
       onSendSms?.(row);
     },
     [onSendSms],
@@ -368,19 +370,29 @@ export default function ImportantInfoList({
                       <CardActions
                         sx={{ px: 2, pb: 2, justifyContent: "flex-end" }}
                       >
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={() => handleSendClick(row)}
-                          sx={{
-                            bgcolor: "#4cbb17",
-                            fontWeight: 600,
-                            "&:hover": { bgcolor: "#3aa40f" },
-                          }}
-                          aria-label="Text this information to a customer"
-                        >
-                          Text to Customer
-                        </Button>
+                        {row?._cat !== "Insider Members" ? (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => handleSendClick(row)}
+                            sx={{
+                              bgcolor: "#4cbb17",
+                              fontWeight: 600,
+                              "&:hover": { bgcolor: "#3aa40f" },
+                            }}
+                            aria-label="Text this information to a customer"
+                          >
+                            Text to Customer
+                          </Button>
+                        ) : (
+                          <Typography
+                            variant="caption"
+                            sx={{ opacity: 0.7 }}
+                            aria-label="Internal information only"
+                          >
+                            Internal — Not shareable
+                          </Typography>
+                        )}
                       </CardActions>
                     </Card>
                   );
