@@ -25,6 +25,7 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import MailIcon from "@mui/icons-material/Mail";
 import KeyIcon from "@mui/icons-material/Key";
 import GoogleIcon from "@mui/icons-material/Google";
+import { alpha } from "@mui/material/styles";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
@@ -325,9 +326,10 @@ export default function Login() {
               borderRadius: 3,
               backdropFilter: "saturate(120%) blur(10px)",
               backgroundColor: (t) =>
-                t.palette.mode === "dark"
-                  ? "rgba(17, 24, 39, 0.75)"
-                  : "rgba(255,255,255,0.8)",
+                alpha(
+                  t.palette.background.paper,
+                  t.palette.mode === "dark" ? 0.82 : 0.9,
+                ),
               overflow: "hidden",
             }}
           >

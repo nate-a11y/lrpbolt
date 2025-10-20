@@ -37,6 +37,7 @@ const baseTypography = {
   h3: { fontSize: "clamp(1.2rem, 2vw, 1.6rem)" },
   body1: { fontSize: "clamp(0.95rem, 1.2vw, 1rem)" },
   body2: { fontSize: "clamp(0.85rem, 1vw, 0.95rem)" },
+  allVariants: { color: "var(--mui-palette-text-primary)" },
 };
 
 const transitions = {
@@ -207,6 +208,27 @@ const components = {
   MuiTextField: {
     defaultProps: { variant: "outlined", fullWidth: true },
   },
+  MuiInputBase: {
+    styleOverrides: {
+      root: { color: "var(--mui-palette-text-primary)" },
+      input: { color: "var(--mui-palette-text-primary)" },
+    },
+  },
+  MuiFormLabel: {
+    styleOverrides: {
+      root: { color: "var(--mui-palette-text-secondary)" },
+    },
+  },
+  MuiInputLabel: {
+    styleOverrides: {
+      root: { color: "var(--mui-palette-text-secondary)" },
+    },
+  },
+  MuiFormHelperText: {
+    styleOverrides: {
+      root: { color: "var(--mui-palette-text-secondary)" },
+    },
+  },
   MuiDataGrid: {
     defaultProps: {
       density: "compact",
@@ -215,47 +237,52 @@ const components = {
       root: ({ theme }) => ({
         border: 0,
         borderRadius: theme.shape.borderRadius,
-        backgroundColor: theme.palette.background.paper,
-        color: theme.palette.text.primary,
-        "--DataGrid-rowBorderColor": alpha(
-          theme.palette.text.primary,
-          theme.palette.mode === "dark" ? 0.18 : 0.08,
-        ),
-        "& .MuiDataGrid-columnHeaders": {
-          backgroundColor: alpha(
-            theme.palette.primary.main,
-            theme.palette.mode === "dark" ? 0.08 : 0.04,
-          ),
-          borderBottom: `1px solid ${theme.palette.divider}`,
-        },
-        "& .MuiDataGrid-footerContainer": {
-          borderTop: `1px solid ${theme.palette.divider}`,
-          backgroundColor: alpha(
-            theme.palette.primary.main,
-            theme.palette.mode === "dark" ? 0.04 : 0.02,
-          ),
-        },
-        "& .MuiDataGrid-row:hover": {
-          backgroundColor: alpha(
-            theme.palette.primary.main,
-            theme.palette.mode === "dark" ? 0.12 : 0.08,
-          ),
-        },
-        "& .MuiCheckbox-root.Mui-checked": {
-          color: theme.palette.primary.main,
-        },
-        "& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus": {
-          outline: `1px solid ${theme.palette.primary.main}`,
-          outlineOffset: -1,
-        },
-        "& .MuiDataGrid-columnHeader:focus-within": { outline: "none" },
+        backgroundColor: "var(--mui-palette-background-paper)",
+        color: "var(--mui-palette-text-primary)",
+        "--DataGrid-containerBackground": "var(--mui-palette-background-paper)",
+        "--DataGrid-rowBorderColor": "var(--mui-palette-divider)",
+        "--DataGrid-headerBorderColor": "var(--mui-palette-divider)",
+        "--DataGrid-rowHoverBackground":
+          "color-mix(in oklab, var(--mui-palette-primary-main) 8%, transparent)",
+        "--DataGrid-selectedRowBackground":
+          "color-mix(in oklab, var(--mui-palette-primary-main) 14%, transparent)",
+        "--DataGrid-cellFocusOutline":
+          "1px solid var(--mui-palette-primary-main)",
       }),
-      cell: {
-        outline: "none !important",
+      columnHeaders: {
+        backgroundColor:
+          "color-mix(in oklab, var(--mui-palette-background-paper) 86%, var(--mui-palette-background-default))",
+        color: "var(--mui-palette-text-secondary)",
+        borderBottom: "1px solid var(--mui-palette-divider)",
       },
-      columnHeaders: ({ theme }) => ({
-        borderBottom: `1px solid ${theme.palette.divider}`,
-      }),
+      toolbarContainer: {
+        backgroundColor: "var(--mui-palette-background-paper)",
+        borderBottom: "1px solid var(--mui-palette-divider)",
+      },
+      footerContainer: {
+        backgroundColor: "var(--mui-palette-background-paper)",
+        borderTop: "1px solid var(--mui-palette-divider)",
+      },
+      cell: {
+        color: "var(--mui-palette-text-primary)",
+      },
+      row: {
+        "&:hover": {
+          backgroundColor: "var(--DataGrid-rowHoverBackground)",
+        },
+        "&.Mui-selected": {
+          backgroundColor: "var(--DataGrid-selectedRowBackground) !important",
+        },
+      },
+      iconSeparator: { color: "var(--mui-palette-divider)" },
+      menuIcon: { color: "var(--mui-palette-text-secondary)" },
+      sortIcon: { color: "var(--mui-palette-text-secondary)" },
+      filterForm: { color: "var(--mui-palette-text-primary)" },
+      checkboxInput: { color: "var(--mui-palette-text-secondary)" },
+      columnHeaderTitle: { color: "var(--mui-palette-text-secondary)" },
+      virtualScrollerRenderZone: {
+        backgroundColor: "var(--mui-palette-background-paper)",
+      },
     },
   },
 };
