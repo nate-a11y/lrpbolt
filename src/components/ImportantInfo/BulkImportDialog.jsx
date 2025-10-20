@@ -24,7 +24,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import * as XLSX from "xlsx";
 
 import { bulkCreateImportantInfo } from "@/services/importantInfoService.js";
-import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
+import { PROMO_PARTNER_CATEGORIES } from "@/constants/importantInfo.js";
 
 const HEADER_MAP = {
   title: ["title", "name"],
@@ -81,16 +81,6 @@ function downloadSampleWorkbook() {
       "Active",
     ],
     [
-      "Insider Deal: Free Upgrade",
-      "Limited-time perk for members",
-      "Mention code INSIDER at booking.",
-      "Insider Members",
-      "",
-      "https://lakeridepros.com/insider",
-      "Your insider perk: Free upgrade when you mention code INSIDER at booking.",
-      "TRUE",
-    ],
-    [
       "Fall Promotion: 10% Off",
       "Seasonal promo",
       "Valid through Nov 30.",
@@ -141,7 +131,7 @@ function resolveCategory(label) {
   if (!normalized) {
     return { value: "Referral Partners", valid: true };
   }
-  if (IMPORTANT_INFO_CATEGORIES.includes(normalized)) {
+  if (PROMO_PARTNER_CATEGORIES.includes(normalized)) {
     return { value: normalized, valid: true };
   }
   return { value: normalized, valid: false };
@@ -172,7 +162,7 @@ function validateRows(jsonRows) {
 
     if (!valid) {
       errors.push(
-        `Row ${rowNumber}: Invalid Category "${categoryLabel}" (allowed: ${IMPORTANT_INFO_CATEGORIES.join(", ")})`,
+        `Row ${rowNumber}: Invalid Category "${categoryLabel}" (allowed: ${PROMO_PARTNER_CATEGORIES.join(", ")})`,
       );
     }
 

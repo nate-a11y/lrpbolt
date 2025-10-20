@@ -18,7 +18,10 @@ import {
   Link as MuiLink,
 } from "@mui/material";
 
-import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
+import {
+  PROMO_PARTNER_CATEGORIES,
+  PROMO_PARTNER_FILTER_OPTIONS,
+} from "@/constants/importantInfo.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
 
 function normalizeRows(items) {
@@ -27,7 +30,7 @@ function normalizeRows(items) {
     .filter((item) => item && item.isActive !== false)
     .map((item) => {
       const rawCategory = item?.category ? String(item.category) : "";
-      const normalizedCategory = IMPORTANT_INFO_CATEGORIES.includes(rawCategory)
+      const normalizedCategory = PROMO_PARTNER_CATEGORIES.includes(rawCategory)
         ? rawCategory
         : null;
       return { ...item, _cat: normalizedCategory };
@@ -84,7 +87,7 @@ export default function ImportantInfoList({
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortBy, setSortBy] = useState("title");
 
-  const categories = useMemo(() => ["All", ...IMPORTANT_INFO_CATEGORIES], []);
+  const categories = useMemo(() => PROMO_PARTNER_FILTER_OPTIONS.slice(), []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -95,7 +98,7 @@ export default function ImportantInfoList({
 
   const filteredRows = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
-    const safeCategory = IMPORTANT_INFO_CATEGORIES.includes(categoryFilter)
+    const safeCategory = PROMO_PARTNER_FILTER_OPTIONS.includes(categoryFilter)
       ? categoryFilter
       : "All";
 
@@ -128,7 +131,7 @@ export default function ImportantInfoList({
     (row) => {
       if (!row) return;
       const category = row?._cat || row?.category;
-      if (category === "Insider Members") return;
+      if (!PROMO_PARTNER_CATEGORIES.includes(category)) return;
       onSendSms?.(row);
     },
     [onSendSms],
@@ -370,7 +373,7 @@ export default function ImportantInfoList({
                       <CardActions
                         sx={{ px: 2, pb: 2, justifyContent: "flex-end" }}
                       >
-                        {row?._cat !== "Insider Members" ? (
+                        {PROMO_PARTNER_CATEGORIES.includes(row?._cat) ? (
                           <Button
                             size="small"
                             variant="contained"
@@ -422,10 +425,10 @@ export default function ImportantInfoList({
 }
 
 function safeSections(rows, categoryFilter) {
-  const safeCategory = IMPORTANT_INFO_CATEGORIES.includes(categoryFilter)
+  const safeCategory = PROMO_PARTNER_FILTER_OPTIONS.includes(categoryFilter)
     ? categoryFilter
     : "All";
-  return IMPORTANT_INFO_CATEGORIES.filter((category) =>
+  return PROMO_PARTNER_CATEGORIES.filter((category) =>
     safeCategory === "All" ? true : category === safeCategory,
   )
     .map((category) => ({

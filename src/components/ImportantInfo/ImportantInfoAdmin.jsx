@@ -39,11 +39,14 @@ import {
 import { getSmsHealth, getLastSmsError } from "@/services/smsService.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
-import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
+import {
+  PROMO_PARTNER_CATEGORIES,
+  PROMO_PARTNER_FILTER_OPTIONS,
+} from "@/constants/importantInfo.js";
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
 
-const DEFAULT_CATEGORY = IMPORTANT_INFO_CATEGORIES[0];
+const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
 function ensureString(value) {
   if (value == null) return "";
@@ -52,7 +55,7 @@ function ensureString(value) {
 
 function normalizeCategory(value) {
   const label = ensureString(value).trim();
-  return IMPORTANT_INFO_CATEGORIES.includes(label) ? label : DEFAULT_CATEGORY;
+  return PROMO_PARTNER_CATEGORIES.includes(label) ? label : DEFAULT_CATEGORY;
 }
 
 function buildPayload(values) {
@@ -137,12 +140,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     rows.forEach((row) => {
       if (!row?.category) return;
       const label = String(row.category);
-      if (!IMPORTANT_INFO_CATEGORIES.includes(label)) {
-        extras.add(label);
-      }
+      if (PROMO_PARTNER_CATEGORIES.includes(label)) return;
+      if (label === "Insider Members") return;
+      extras.add(label);
     });
     const sortedExtras = Array.from(extras).sort((a, b) => a.localeCompare(b));
-    return ["All", ...IMPORTANT_INFO_CATEGORIES, ...sortedExtras];
+    return [...PROMO_PARTNER_FILTER_OPTIONS, ...sortedExtras];
   }, [rows]);
 
   useEffect(() => {
@@ -742,7 +745,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                   handleFieldChange("category", event.target.value)
                 }
               >
-                {IMPORTANT_INFO_CATEGORIES.map((option) => (
+                {PROMO_PARTNER_CATEGORIES.map((option) => (
                   <MenuItem key={option} value={option}>
                     {option}
                   </MenuItem>
