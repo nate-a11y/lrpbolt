@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 
@@ -87,10 +87,6 @@ exports.smsHealth = onCall(
     enforceAppCheck: false,
   },
   async (request) => {
-    if (!request.auth || request.auth.token?.admin !== true) {
-      throw new HttpsError("permission-denied", "Admin only.");
-    }
-
     const sidSecret = readSecret(TWILIO_ACCOUNT_SID, "TWILIO_ACCOUNT_SID");
     const tokenSecret = readSecret(TWILIO_AUTH_TOKEN, "TWILIO_AUTH_TOKEN");
     const fromSecret = readSecret(TWILIO_FROM, "TWILIO_FROM");
@@ -121,8 +117,8 @@ exports.smsHealth = onCall(
       },
       lastError,
       auth: {
-        uid: request.auth.uid,
-        admin: request.auth.token?.admin === true,
+        uid: request.auth?.uid || null,
+        admin: request.auth?.token?.admin === true,
       },
     };
   },
