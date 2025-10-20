@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -18,6 +19,7 @@ import { withExponentialBackoff } from "@/services/retry.js";
 import { AppError } from "@/services/errors";
 import logError from "@/utils/logError.js";
 import { getLRPFunctions } from "@/utils/functions.js";
+import { PROMO_PARTNER_CATEGORIES } from "@/constants/importantInfo.js";
 
 const COLLECTION = "importantInfo";
 
@@ -62,12 +64,20 @@ function mapSnapshot(docSnap) {
 
 export function subscribeImportantInfo({ onData, onError } = {}) {
   const ref = collection(db, COLLECTION);
-  const q = query(ref, orderBy("category", "asc"), orderBy("title", "asc"));
+  const q = query(
+    ref,
+    where("category", "in", PROMO_PARTNER_CATEGORIES),
+    orderBy("updatedAt", "desc"),
+  );
   try {
     return onSnapshot(
       q,
       (snapshot) => {
-        const rows = snapshot.docs.map(mapSnapshot).filter(Boolean);
+        const rows = snapshot.docs.map(mapSnapshot).filter((item) => {
+          if (!item) return false;
+          const label = item?.category ? String(item.category) : "";
+          return PROMO_PARTNER_CATEGORIES.includes(label);
+        });
         if (onData) onData(rows);
       },
       (error) => {

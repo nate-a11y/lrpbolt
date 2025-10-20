@@ -9,6 +9,7 @@ import { subscribeImportantInfo } from "@/services/importantInfoService.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import logError from "@/utils/logError.js";
+import { PROMO_PARTNER_CATEGORIES } from "@/constants/importantInfo.js";
 
 export default function ImportantInfoPage() {
   const { role } = useAuth();
@@ -59,10 +60,15 @@ export default function ImportantInfoPage() {
     }
   }, [isAdmin, tab]);
 
-  const activeItems = useMemo(
-    () => items.filter((item) => item && item.isActive !== false),
-    [items],
-  );
+  const activeItems = useMemo(() => {
+    return items.filter((item) => {
+      if (!item || item.isActive === false) {
+        return false;
+      }
+      const label = item?.category ? String(item.category) : "";
+      return PROMO_PARTNER_CATEGORIES.includes(label);
+    });
+  }, [items]);
 
   const handleTabChange = useCallback((_, next) => {
     setTab(next);
