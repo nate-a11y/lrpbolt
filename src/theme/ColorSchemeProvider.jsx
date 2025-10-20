@@ -5,15 +5,10 @@ import {
   extendTheme,
   responsiveFontSizes,
   alpha,
+  getInitColorSchemeScript,
 } from "@mui/material/styles";
 import { CssBaseline, IconButton, Tooltip } from "@mui/material";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import SettingsBrightnessIcon from "@mui/icons-material/SettingsBrightness";
@@ -158,11 +153,12 @@ const components = {
   MuiTooltip: {
     styleOverrides: {
       tooltip: ({ theme }) => ({
-        backgroundColor:
-          theme.palette.mode === "dark" ? "#1a1d20" : "#f5f7fb",
+        backgroundColor: theme.palette.mode === "dark" ? "#1a1d20" : "#f5f7fb",
         border: `1px solid ${alpha("#e8eaed", theme.palette.mode === "dark" ? 0.18 : 0.28)}`,
         color:
-          theme.palette.mode === "dark" ? "#f8fafc" : theme.palette.text.primary,
+          theme.palette.mode === "dark"
+            ? "#f8fafc"
+            : theme.palette.text.primary,
       }),
     },
   },
@@ -336,7 +332,7 @@ const darkPalette = {
   },
 };
 
-const theme = responsiveFontSizes(
+export const theme = responsiveFontSizes(
   extendTheme({
     colorSchemes: {
       light: { palette: lightPalette },
@@ -359,30 +355,20 @@ const ColorModeContext = createContext({
 
 export const useColorMode = () => useContext(ColorModeContext);
 
+export function LRPInitColorSchemeScript() {
+  return getInitColorSchemeScript({
+    defaultMode: "system",
+    modeStorageKey: STORAGE_KEY,
+  });
+}
+
 function ColorModeBridge({ children }) {
   const { mode, setMode, systemMode } = useColorScheme();
   const resolved = mode === "system" ? systemMode || "light" : mode || "light";
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && stored !== mode) {
-        setMode(stored);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [mode, setMode]);
-
   const setAndStore = useCallback(
     (nextMode) => {
       setMode(nextMode);
-      try {
-        localStorage.setItem(STORAGE_KEY, nextMode);
-      } catch {
-        /* ignore storage */
-      }
     },
     [setMode],
   );
@@ -392,7 +378,8 @@ function ColorModeBridge({ children }) {
   }, [resolved, setAndStore]);
 
   const cycleMode = useCallback(() => {
-    const next = mode === "dark" ? "light" : mode === "light" ? "system" : "dark";
+    const next =
+      mode === "dark" ? "light" : mode === "light" ? "system" : "dark";
     setAndStore(next);
   }, [mode, setAndStore]);
 
@@ -407,30 +394,33 @@ function ColorModeBridge({ children }) {
     [mode, resolved, setAndStore, toggle, cycleMode],
   );
 
-  return <ColorModeContext.Provider value={value}>{children}</ColorModeContext.Provider>;
+  return (
+    <ColorModeContext.Provider value={value}>
+      {children}
+    </ColorModeContext.Provider>
+  );
 }
 
 export function ColorModeToggle({ iconButtonProps = {}, tooltipProps = {} }) {
   const { mode, resolvedMode, cycleMode } = useColorMode();
 
   const label = useMemo(() => {
-    if (mode === "system") {
-      return `System (${resolvedMode || "auto"})`;
-    }
-    return resolvedMode || mode || "light";
+    const base = mode || "light";
+    const resolved = resolvedMode || base;
+    return `${base}${mode === "system" ? ` (resolved: ${resolved})` : ""}`;
   }, [mode, resolvedMode]);
 
-  const icon = resolvedMode === "dark"
-    ? <DarkModeIcon />
-    : resolvedMode === "light"
-      ? <LightModeIcon />
-      : <SettingsBrightnessIcon />;
+  const icon =
+    resolvedMode === "dark" ? (
+      <DarkModeIcon />
+    ) : resolvedMode === "light" ? (
+      <LightModeIcon />
+    ) : (
+      <SettingsBrightnessIcon />
+    );
 
   return (
-    <Tooltip
-      title={`Theme: ${label}`}
-      {...tooltipProps}
-    >
+    <Tooltip title={`Theme: ${label}`} {...tooltipProps}>
       <IconButton
         onClick={(event) => {
           event.stopPropagation?.();

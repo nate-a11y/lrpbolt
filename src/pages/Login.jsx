@@ -35,10 +35,7 @@ import {
   sendPasswordReset,
   registerWithEmail,
 } from "../services/auth";
-import {
-  useColorMode,
-  ColorModeToggle,
-} from "../context/ColorModeContext.jsx";
+import { useColorMode, ColorModeToggle } from "../context/ColorModeContext.jsx";
 
 /** utils **/
 const isEmail = (v) =>

@@ -20,7 +20,6 @@ import {
 } from "@mui/material";
 import GetAppIcon from "@mui/icons-material/GetApp";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-// eslint-disable-next-line import/no-unresolved
 import * as XLSX from "xlsx";
 
 import { bulkCreateImportantInfo } from "@/services/importantInfoService.js";
