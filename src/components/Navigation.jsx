@@ -43,7 +43,10 @@ import ContactEmergencyIcon from "@mui/icons-material/ContactEmergency";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
-import { useColorMode, ColorModeToggle } from "../context/ColorModeContext.jsx";
+import {
+  useColorMode,
+  ColorModeToggle,
+} from "../context/ColorModeContext.jsx";
 import useFcmEnable from "../hooks/useFcmEnable";
 
 const DRAWER_WIDTH = 260;
@@ -434,8 +437,9 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                 secondary={
                   mode === "system"
                     ? `System (${resolvedMode || "auto"})`
-                    : (resolvedMode || mode || "light").replace(/^(.)/, (m) =>
-                        m.toUpperCase(),
+                    : (resolvedMode || mode || "light").replace(
+                        /^(.)/,
+                        (m) => m.toUpperCase(),
                       )
                 }
               />
@@ -600,17 +604,16 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
                   <Brightness4Icon fontSize="small" />
                   <Switch
                     checked={resolvedMode === "dark"}
-                    onChange={(event) =>
-                      setMode(event.target.checked ? "dark" : "light")
-                    }
+                    onChange={(event) => setMode(event.target.checked ? "dark" : "light")}
                     inputProps={{ "aria-label": "Toggle dark mode" }}
                   />
                   <ColorModeToggle iconButtonProps={{ size: "small" }} />
                   <Typography variant="caption" sx={{ opacity: 0.7 }}>
                     {mode === "system"
                       ? `System (${resolvedMode || "auto"})`
-                      : (resolvedMode || mode || "light").replace(/^(.)/, (m) =>
-                          m.toUpperCase(),
+                      : (resolvedMode || mode || "light").replace(
+                          /^(.)/,
+                          (m) => m.toUpperCase(),
                         )}
                   </Typography>
                 </Box>

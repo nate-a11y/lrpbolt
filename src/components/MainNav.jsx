@@ -22,7 +22,10 @@ import { DRAWER_WIDTH, APP_BAR_HEIGHT } from "../layout/constants";
 import { iconMap } from "../utils/iconMap";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
-import { useColorMode, ColorModeToggle } from "../context/ColorModeContext.jsx";
+import {
+  useColorMode,
+  ColorModeToggle,
+} from "../context/ColorModeContext.jsx";
 import { canSeeNav } from "../utils/roleGuards";
 import { getAppVersion } from "../utils/appVersion.js";
 
@@ -179,18 +182,14 @@ function MainNav({
           <Typography variant="body2">Theme</Typography>
           <Switch
             checked={resolvedMode === "dark"}
-            onChange={(event) =>
-              setMode(event.target.checked ? "dark" : "light")
-            }
+            onChange={(event) => setMode(event.target.checked ? "dark" : "light")}
             inputProps={{ "aria-label": "Toggle dark mode" }}
           />
           <ColorModeToggle iconButtonProps={{ size: "small" }} />
           <Typography variant="caption" sx={{ opacity: 0.7 }}>
             {mode === "system"
               ? `System (${resolvedMode || "auto"})`
-              : (resolvedMode || mode || "light").replace(/^(.)/, (m) =>
-                  m.toUpperCase(),
-                )}
+              : (resolvedMode || mode || "light").replace(/^(.)/, (m) => m.toUpperCase())}
           </Typography>
         </Stack>
 
