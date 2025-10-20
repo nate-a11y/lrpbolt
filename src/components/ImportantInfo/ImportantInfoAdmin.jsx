@@ -1,19 +1,32 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
   Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
+  Link as MuiLink,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import {
@@ -21,14 +34,21 @@ import {
   updateImportantInfo,
   deleteImportantInfo,
   restoreImportantInfo,
-  seedImportantInfoDefaults,
 } from "@/services/importantInfoService.js";
 import logError from "@/utils/logError.js";
-import { formatDateTime } from "@/utils/time.js";
+import { formatDateTime, toDayjs } from "@/utils/time.js";
+import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
+
+const DEFAULT_CATEGORY = IMPORTANT_INFO_CATEGORIES[0];
 
 function ensureString(value) {
   if (value == null) return "";
   return String(value);
+}
+
+function normalizeCategory(value) {
+  const label = ensureString(value).trim();
+  return IMPORTANT_INFO_CATEGORIES.includes(label) ? label : DEFAULT_CATEGORY;
 }
 
 function buildPayload(values) {
@@ -36,7 +56,7 @@ function buildPayload(values) {
     title: ensureString(values.title),
     blurb: ensureString(values.blurb),
     details: ensureString(values.details),
-    category: ensureString(values.category) || "General",
+    category: normalizeCategory(values.category),
     phone: ensureString(values.phone),
     url: ensureString(values.url),
     smsTemplate: ensureString(values.smsTemplate),
@@ -48,12 +68,41 @@ const DEFAULT_FORM = {
   title: "",
   blurb: "",
   details: "",
-  category: "General",
+  category: DEFAULT_CATEGORY,
   phone: "",
   url: "",
   smsTemplate: "",
   isActive: true,
 };
+
+function toTelHref(phone) {
+  if (!phone) return null;
+  const digits = String(phone).replace(/[^\d+]/g, "");
+  if (!digits) return null;
+  return `tel:${digits}`;
+}
+
+function getUpdatedAtValue(input) {
+  const d = toDayjs(input);
+  return d ? d.valueOf() : 0;
+}
+
+function matchesQuery(row, query) {
+  if (!query) return true;
+  const haystack = [
+    row?.title,
+    row?.blurb,
+    row?.details,
+    row?.category,
+    row?.phone,
+    row?.url,
+    row?.smsTemplate,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
 
 export default function ImportantInfoAdmin({ items, loading, error }) {
   const { show } = useSnack();
@@ -63,7 +112,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [saving, setSaving] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [pendingMap, setPendingMap] = useState({});
-  const [seeding, setSeeding] = useState(false);
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("updated");
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -71,12 +122,53 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const showEmpty = !showError && !loading && !hasRows;
 
   const categories = useMemo(() => {
-    const set = new Set(["General"]);
+    const extras = new Set();
     rows.forEach((row) => {
-      if (row?.category) set.add(String(row.category));
+      if (!row?.category) return;
+      const label = String(row.category);
+      if (!IMPORTANT_INFO_CATEGORIES.includes(label)) {
+        extras.add(label);
+      }
     });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    const sortedExtras = Array.from(extras).sort((a, b) => a.localeCompare(b));
+    return ["All", ...IMPORTANT_INFO_CATEGORIES, ...sortedExtras];
   }, [rows]);
+
+  useEffect(() => {
+    if (!categories.includes(categoryFilter)) {
+      setCategoryFilter("All");
+    }
+  }, [categories, categoryFilter]);
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = rows.slice();
+
+    const filtered = list.filter((row) => {
+      if (!row) return false;
+      if (categoryFilter !== "All") {
+        const label = row?.category ? String(row.category) : "General";
+        if (label !== categoryFilter) return false;
+      }
+      return matchesQuery(row, q);
+    });
+
+    filtered.sort((a, b) => {
+      if (sortBy === "title") {
+        return ensureString(a?.title).localeCompare(ensureString(b?.title));
+      }
+      if (sortBy === "category") {
+        const aLabel = ensureString(a?.category) || "General";
+        const bLabel = ensureString(b?.category) || "General";
+        return aLabel.localeCompare(bLabel);
+      }
+      const aTs = getUpdatedAtValue(a?.updatedAt);
+      const bTs = getUpdatedAtValue(b?.updatedAt);
+      return bTs - aTs;
+    });
+
+    return filtered;
+  }, [rows, query, categoryFilter, sortBy]);
 
   const openCreate = useCallback(() => {
     setDialogMode("create");
@@ -93,7 +185,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       title: ensureString(row.title),
       blurb: ensureString(row.blurb),
       details: ensureString(row.details),
-      category: row.category ? String(row.category) : "General",
+      category: normalizeCategory(row.category),
       phone: ensureString(row.phone),
       url: ensureString(row.url),
       smsTemplate: ensureString(row.smsTemplate),
@@ -112,30 +204,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleSeedDefaults = useCallback(async () => {
-    try {
-      setSeeding(true);
-      const result = await seedImportantInfoDefaults();
-      const count = Number.isFinite(result?.count) ? result.count : 0;
-      show(`Seeded ${count} items.`, "success");
-    } catch (error) {
-      logError(error, { where: "ImportantInfoAdmin.seedDefaults" });
-      const causeCode =
-        typeof error?.cause?.code === "string" ? error.cause.code : "";
-      const appCode = typeof error?.code === "string" ? error.code : "";
-      const finalCode = causeCode || appCode;
-      const alreadySeeded = finalCode.includes("failed-precondition");
-      show(
-        alreadySeeded
-          ? "Seeder skipped — items already exist."
-          : "Seeder failed. Please try again.",
-        "error",
-      );
-    } finally {
-      setSeeding(false);
-    }
-  }, [show]);
-
   const handleSubmit = useCallback(
     async (event) => {
       event?.preventDefault();
@@ -151,8 +219,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         }
         setDialogOpen(false);
         setActiveId(null);
-      } catch (error) {
-        logError(error, { where: "ImportantInfoAdmin.handleSubmit", activeId });
+      } catch (err) {
+        logError(err, { where: "ImportantInfoAdmin.handleSubmit", activeId });
         show("Failed to save. Please try again.", "error");
       } finally {
         setSaving(false);
@@ -164,6 +232,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const setRowPending = useCallback((id, value) => {
     setPendingMap((prev) => {
       const next = { ...prev };
+      if (!id) return next;
       if (value) {
         next[id] = true;
       } else {
@@ -178,14 +247,13 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       if (!row?.id) return;
       setRowPending(row.id, true);
       try {
-        const payload = buildPayload({ ...row, isActive: nextActive });
-        await updateImportantInfo(row.id, payload);
+        await updateImportantInfo(row.id, { isActive: nextActive });
         show(
           nextActive ? "Marked as active." : "Marked as inactive.",
           "success",
         );
-      } catch (error) {
-        logError(error, {
+      } catch (err) {
+        logError(err, {
           where: "ImportantInfoAdmin.handleToggleActive",
           id: row?.id,
         });
@@ -215,8 +283,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 try {
                   await restoreImportantInfo(snapshot);
                   show("Undo complete.", "success");
-                } catch (error) {
-                  logError(error, {
+                } catch (undoErr) {
+                  logError(undoErr, {
                     where: "ImportantInfoAdmin.undoDelete",
                     id: snapshot.id,
                   });
@@ -228,8 +296,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             </Button>
           ),
         });
-      } catch (error) {
-        logError(error, {
+      } catch (err) {
+        logError(err, {
           where: "ImportantInfoAdmin.handleDelete",
           id: row.id,
         });
@@ -241,148 +309,70 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     [setRowPending, show],
   );
 
-  const columns = useMemo(() => {
-    return [
-      {
-        field: "title",
-        headerName: "Title",
-        minWidth: 240,
-        flex: 1.4,
-        valueGetter: (params) => ensureString(params?.row?.title) || "Untitled",
-        renderCell: (params) => {
-          const row = params?.row || {};
-          return (
-            <Stack spacing={0.5} sx={{ py: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                {row.title || "Untitled"}
-              </Typography>
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                {row.blurb || "N/A"}
-              </Typography>
-            </Stack>
-          );
-        },
-      },
-      {
-        field: "category",
-        headerName: "Category",
-        minWidth: 140,
-        flex: 0.6,
-        valueGetter: (params) =>
-          ensureString(params?.row?.category) || "General",
-      },
-      {
-        field: "isActive",
-        headerName: "Active",
-        minWidth: 120,
-        flex: 0.4,
-        sortable: false,
-        filterable: false,
-        renderCell: (params) => {
-          const row = params?.row || {};
-          const id = row.id;
-          return (
-            <Switch
-              size="small"
-              checked={row.isActive !== false}
-              disabled={pendingMap[id]}
-              onChange={(event) =>
-                handleToggleActive(row, event.target.checked)
-              }
-            />
-          );
-        },
-      },
-      {
-        field: "updatedAt",
-        headerName: "Updated",
-        minWidth: 180,
-        flex: 0.7,
-        valueGetter: (params) => formatDateTime(params?.row?.updatedAt),
-      },
-      {
-        field: "actions",
-        headerName: "Actions",
-        minWidth: 200,
-        flex: 0.8,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        renderCell: (params) => {
-          const row = params?.row || {};
-          const id = row.id;
-          const disabled = pendingMap[id];
-          return (
-            <Stack direction="row" spacing={1}>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => openEdit(row)}
-                disabled={disabled}
-              >
-                Edit
-              </Button>
-              <Button
-                size="small"
-                variant="contained"
-                color="error"
-                onClick={() => handleDelete(row)}
-                disabled={disabled}
-              >
-                Delete
-              </Button>
-            </Stack>
-          );
-        },
-      },
-    ];
-  }, [handleDelete, handleToggleActive, openEdit, pendingMap]);
-
   return (
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
     >
       <Stack
         direction={{ xs: "column", sm: "row" }}
-        spacing={1}
+        spacing={1.5}
         alignItems={{ xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
-        sx={{ gap: { xs: 1.5, sm: 2 } }}
       >
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Important Info — Admin
         </Typography>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{
-            flexWrap: "wrap",
-            rowGap: 1,
-            justifyContent: { xs: "flex-start", sm: "flex-end" },
-          }}
+        <Button
+          variant="contained"
+          onClick={openCreate}
+          sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
         >
-          <Button
-            variant="contained"
-            onClick={openCreate}
-            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+          New Item
+        </Button>
+      </Stack>
+
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={1}
+        sx={{ flexWrap: "wrap", gap: { xs: 1, md: 1.5 } }}
+      >
+        <TextField
+          size="small"
+          placeholder="Search title, details, partners…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          fullWidth
+          sx={{ maxWidth: { md: 320 }, bgcolor: "#101010" }}
+          InputProps={{ sx: { color: "white" } }}
+        />
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel sx={{ color: "white" }}>Category</InputLabel>
+          <Select
+            label="Category"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            sx={{ color: "white", bgcolor: "#101010" }}
           >
-            New Item
-          </Button>
-          <Button
-            onClick={handleSeedDefaults}
-            size="small"
-            variant="outlined"
-            disabled={seeding}
-            sx={{
-              borderColor: "#4cbb17",
-              color: "#b7ffb7",
-              minWidth: 140,
-              "&:hover": { borderColor: "#43a814" },
-            }}
+            {categories.map((item) => (
+              <MenuItem key={item} value={item}>
+                {item}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel sx={{ color: "white" }}>Sort</InputLabel>
+          <Select
+            label="Sort"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            sx={{ color: "white", bgcolor: "#101010" }}
           >
-            {seeding ? "Seeding…" : "Seed Defaults"}
-          </Button>
-        </Stack>
+            <MenuItem value="updated">Updated (newest)</MenuItem>
+            <MenuItem value="title">Title (A–Z)</MenuItem>
+            <MenuItem value="category">Category (A–Z)</MenuItem>
+          </Select>
+        </FormControl>
       </Stack>
 
       {showError ? (
@@ -400,8 +390,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               Unable to load important information.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              Try refreshing the page. If the issue persists, seed defaults or
-              recreate items once Firestore access is restored.
+              Try refreshing the page. If the issue persists, recreate entries
+              once Firestore access is restored.
             </Typography>
             <Button
               onClick={() => window.location.reload()}
@@ -434,54 +424,201 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               No items yet.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.85 }}>
-              Seed our starter playbook or add the first custom entry to help
-              drivers respond faster.
+              Add partner contacts, perks, or emergency resources so drivers can
+              act fast.
             </Typography>
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{
-                flexWrap: "wrap",
-                rowGap: 1,
-                justifyContent: { xs: "flex-start", sm: "flex-start" },
-              }}
+            <Button
+              onClick={openCreate}
+              variant="contained"
+              sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
             >
-              <Button
-                onClick={openCreate}
-                variant="contained"
-                sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
-              >
-                Add first item
-              </Button>
-              <Button
-                onClick={handleSeedDefaults}
-                variant="outlined"
-                disabled={seeding}
-                sx={{ borderColor: "#4cbb17", color: "#b7ffb7" }}
-              >
-                {seeding ? "Seeding…" : "Seed Defaults"}
-              </Button>
-            </Stack>
+              Add first item
+            </Button>
           </Stack>
         </Box>
       ) : null}
 
-      {!showError && (hasRows || loading) ? (
-        <LrpDataGridPro
-          id="important-info-admin"
-          rows={rows}
-          columns={columns}
-          getRowId={(row) => row?.id ?? null}
-          loading={loading}
-          autoHeight
-          disableRowSelectionOnClick
-          hideFooterSelectedRowCount
-          slotProps={{
-            toolbar: {
-              quickFilterPlaceholder: "Search admin info",
-            },
-          }}
-        />
+      {!showError && !showEmpty ? (
+        <Stack spacing={1.25} sx={{ width: "100%" }}>
+          {loading && !filteredRows.length ? (
+            <Typography variant="body2" sx={{ opacity: 0.7 }}>
+              Loading important info…
+            </Typography>
+          ) : null}
+
+          {!loading && hasRows && !filteredRows.length ? (
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                border: "1px solid #1f1f1f",
+                bgcolor: "#0b0b0b",
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+                No matches for your filters.
+              </Typography>
+            </Box>
+          ) : null}
+
+          {filteredRows.map((row) => {
+            const id = row?.id;
+            const disabled = !!pendingMap[id];
+            const updatedLabel = formatDateTime(row?.updatedAt);
+            const categoryLabel = row?.category
+              ? String(row.category)
+              : DEFAULT_CATEGORY;
+            const telHref = toTelHref(row?.phone);
+
+            return (
+              <Card
+                key={id}
+                variant="outlined"
+                sx={{
+                  bgcolor: "#0b0b0b",
+                  borderColor: "#1c1c1c",
+                  borderRadius: 3,
+                }}
+              >
+                <CardContent sx={{ pb: 1.5 }}>
+                  <Stack spacing={1.25}>
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      justifyContent="space-between"
+                      alignItems={{ xs: "flex-start", sm: "center" }}
+                    >
+                      <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 700 }}
+                          noWrap
+                        >
+                          {row?.title || "Untitled"}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          Updated {updatedLabel}
+                        </Typography>
+                      </Stack>
+                      <Chip
+                        size="small"
+                        label={categoryLabel}
+                        sx={{
+                          bgcolor: "#143d0a",
+                          color: "#b7ffb7",
+                          border: "1px solid #4cbb17",
+                          fontWeight: 600,
+                        }}
+                      />
+                    </Stack>
+
+                    {row?.blurb ? (
+                      <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                        {row.blurb}
+                      </Typography>
+                    ) : null}
+
+                    {row?.details ? (
+                      <Box>
+                        <Divider sx={{ borderColor: "#222", mb: 1 }} />
+                        <Typography
+                          variant="body2"
+                          sx={{ whiteSpace: "pre-wrap", opacity: 0.85 }}
+                        >
+                          {row.details}
+                        </Typography>
+                      </Box>
+                    ) : null}
+
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      sx={{ opacity: 0.85 }}
+                    >
+                      {row?.phone ? (
+                        <Typography variant="body2">
+                          Phone:{" "}
+                          {telHref ? (
+                            <MuiLink
+                              href={telHref}
+                              sx={{ color: "#4cbb17", fontWeight: 600 }}
+                            >
+                              {row.phone}
+                            </MuiLink>
+                          ) : (
+                            row.phone
+                          )}
+                        </Typography>
+                      ) : null}
+                      {row?.url ? (
+                        <Typography variant="body2">
+                          Link:{" "}
+                          <MuiLink
+                            href={row.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ color: "#4cbb17", fontWeight: 600 }}
+                          >
+                            View
+                          </MuiLink>
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  </Stack>
+                </CardContent>
+                <CardActions
+                  sx={{
+                    px: 2,
+                    pb: 2,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Switch
+                      size="small"
+                      checked={row?.isActive !== false}
+                      onChange={(event) =>
+                        handleToggleActive(row, event.target.checked)
+                      }
+                      disabled={disabled}
+                    />
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      {row?.isActive !== false ? "Active" : "Inactive"}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={0.5}>
+                    <Tooltip title="Edit">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => openEdit(row)}
+                          disabled={disabled}
+                          sx={{ color: "#4cbb17" }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(row)}
+                          disabled={disabled}
+                          sx={{ color: "#ff6b6b" }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                </CardActions>
+              </Card>
+            );
+          })}
+        </Stack>
       ) : null}
 
       <Dialog
@@ -509,18 +646,22 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               required
               fullWidth
             />
-            <TextField
-              label="Category"
-              value={formValues.category}
-              onChange={(event) =>
-                handleFieldChange("category", event.target.value)
-              }
-              select={false}
-              helperText={
-                categories.length ? `Suggested: ${categories.join(", ")}` : ""
-              }
-              fullWidth
-            />
+            <FormControl fullWidth size="small">
+              <InputLabel>Category</InputLabel>
+              <Select
+                label="Category"
+                value={formValues.category}
+                onChange={(event) =>
+                  handleFieldChange("category", event.target.value)
+                }
+              >
+                {IMPORTANT_INFO_CATEGORIES.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="Blurb"
               value={formValues.blurb}

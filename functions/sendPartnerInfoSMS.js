@@ -21,15 +21,22 @@ function normalizePhone(to) {
   return null;
 }
 
+const SMS_FOOTER =
+  "— Sent from a Lake Ride Pros automated number. Replies are not monitored.";
+
 function buildMessage(item) {
-  if (item?.smsTemplate) return item.smsTemplate;
+  const appendFooter = (base) => {
+    const trimmed = typeof base === "string" ? base.trim() : "";
+    return `${trimmed}\n${SMS_FOOTER}`;
+  };
+  if (item?.smsTemplate) return appendFooter(item.smsTemplate);
   const lines = [
     item?.title ? `${item.title}` : "Important Info",
     item?.blurb ? `${item.blurb}` : null,
     item?.details ? `${item.details}` : null,
     item?.phone ? `Phone: ${item.phone}` : null,
     item?.url ? `More: ${item.url}` : null,
-    "— Sent via Lake Ride Pros",
+    SMS_FOOTER,
   ].filter(Boolean);
   const message = lines.join("\n").trim();
   return message.length > 840 ? `${message.slice(0, 837)}…` : message;

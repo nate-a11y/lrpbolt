@@ -17,24 +17,28 @@ import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { sendPartnerInfo } from "@/services/smsService.js";
 import logError from "@/utils/logError.js";
 
+const SMS_FOOTER =
+  "— Sent from a Lake Ride Pros automated number. Replies are not monitored.";
+
 function buildMessagePreview(item) {
   if (!item) return "";
-  if (item.smsTemplate) return item.smsTemplate;
+  const appendFooter = (base) => {
+    const trimmed = base.trim();
+    return `${trimmed}\n${SMS_FOOTER}`;
+  };
+  if (item.smsTemplate) {
+    return appendFooter(item.smsTemplate);
+  }
   const lines = [
     item.title ? `${item.title}` : "Important Info",
     item.blurb ? `${item.blurb}` : null,
     item.details ? `${item.details}` : null,
     item.phone ? `Phone: ${item.phone}` : null,
     item.url ? `More: ${item.url}` : null,
-    "— Sent via Lake Ride Pros",
+    SMS_FOOTER,
   ].filter(Boolean);
   const message = lines.join("\n").trim();
   return message.length > 840 ? `${message.slice(0, 837)}…` : message;
-}
-
-function normalizeInitialPhone(value) {
-  if (!value || typeof value !== "string") return "";
-  return value.trim();
 }
 
 export default function SmsSendDialog({ open, onClose, item }) {
@@ -43,13 +47,9 @@ export default function SmsSendDialog({ open, onClose, item }) {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setPhone(normalizeInitialPhone(item?.phone));
-    } else {
-      setPhone("");
-      setSending(false);
-    }
-  }, [open, item?.phone]);
+    setPhone("");
+    setSending(false);
+  }, [open]);
 
   const preview = useMemo(() => buildMessagePreview(item), [item]);
 
@@ -106,6 +106,7 @@ export default function SmsSendDialog({ open, onClose, item }) {
             placeholder="e.g. +15551234567 or 5551234567"
             disabled={sending}
             fullWidth
+            helperText="Enter the customer’s phone. We do not store this number."
           />
           <Box
             sx={{
