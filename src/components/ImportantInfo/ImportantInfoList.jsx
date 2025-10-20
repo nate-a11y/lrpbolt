@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
@@ -17,6 +17,7 @@ import {
   Typography,
   Link as MuiLink,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
@@ -80,13 +81,21 @@ export default function ImportantInfoList({
   const showEmpty = !showError && !loading && !hasRows;
 
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortBy, setSortBy] = useState("title");
 
   const categories = useMemo(() => ["All", ...IMPORTANT_INFO_CATEGORIES], []);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [query]);
+
   const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     const safeCategory = IMPORTANT_INFO_CATEGORIES.includes(categoryFilter)
       ? categoryFilter
       : "All";
@@ -114,7 +123,7 @@ export default function ImportantInfoList({
     });
 
     return filtered;
-  }, [rows, query, categoryFilter, sortBy]);
+  }, [rows, debouncedQuery, categoryFilter, sortBy]);
 
   const handleSendClick = useCallback(
     (row) => {
@@ -187,20 +196,39 @@ export default function ImportantInfoList({
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
     >
+      <Stack spacing={1.5} sx={{ mb: 0.5 }}>
+        <Stack direction="row" spacing={1.25} alignItems="flex-start">
+          <InfoOutlinedIcon
+            sx={{ color: "#4cbb17", mt: "2px" }}
+            fontSize="medium"
+            aria-hidden
+          />
+          <Stack spacing={0.5} sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              Important Information
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+              Effortlessly share official Lake Ride Pros promotions, premier
+              partners, and referral rewards with your guests.
+            </Typography>
+          </Stack>
+        </Stack>
+        <TextField
+          size="small"
+          placeholder="Search partners, promotions, or referral details…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          fullWidth
+          sx={{ maxWidth: { md: 640 }, bgcolor: "#101010" }}
+          InputProps={{ sx: { color: "white" } }}
+          inputProps={{ "aria-label": "Search important information" }}
+        />
+      </Stack>
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={1}
         sx={{ flexWrap: "wrap", gap: { xs: 1, md: 1.5 } }}
       >
-        <TextField
-          size="small"
-          placeholder="Search partners, perks, details…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          fullWidth
-          sx={{ maxWidth: { md: 320 }, bgcolor: "#101010" }}
-          InputProps={{ sx: { color: "white" } }}
-        />
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel sx={{ color: "white" }}>Category</InputLabel>
           <Select
@@ -367,8 +395,9 @@ export default function ImportantInfoList({
                             fontWeight: 600,
                             "&:hover": { bgcolor: "#3aa40f" },
                           }}
+                          aria-label="Text this information to a customer"
                         >
-                          Text Customer
+                          Text to Customer
                         </Button>
                       </CardActions>
                     </Card>

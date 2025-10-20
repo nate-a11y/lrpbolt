@@ -113,6 +113,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [activeId, setActiveId] = useState(null);
   const [pendingMap, setPendingMap] = useState({});
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortBy, setSortBy] = useState("updated");
 
@@ -140,8 +141,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     }
   }, [categories, categoryFilter]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [query]);
+
   const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase();
     const list = rows.slice();
 
     const filtered = list.filter((row) => {
@@ -168,7 +176,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     });
 
     return filtered;
-  }, [rows, query, categoryFilter, sortBy]);
+  }, [rows, debouncedQuery, categoryFilter, sortBy]);
 
   const openCreate = useCallback(() => {
     setDialogMode("create");
@@ -268,6 +276,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const handleDelete = useCallback(
     async (row) => {
       if (!row?.id) return;
+      const confirmed = window.confirm(
+        "Delete this item? This cannot be undone.",
+      );
+      if (!confirmed) return;
       setRowPending(row.id, true);
       const snapshot = { ...row };
       try {
@@ -338,12 +350,13 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       >
         <TextField
           size="small"
-          placeholder="Search title, details, partners…"
+          placeholder="Search partners, promotions, or referral details…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           fullWidth
-          sx={{ maxWidth: { md: 320 }, bgcolor: "#101010" }}
+          sx={{ maxWidth: { md: 360 }, bgcolor: "#101010" }}
           InputProps={{ sx: { color: "white" } }}
+          inputProps={{ "aria-label": "Search important info admin list" }}
         />
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel sx={{ color: "white" }}>Category</InputLabel>
@@ -596,6 +609,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                           onClick={() => openEdit(row)}
                           disabled={disabled}
                           sx={{ color: "#4cbb17" }}
+                          aria-label={`Edit ${row?.title || "important info"}`}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -608,6 +622,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                           onClick={() => handleDelete(row)}
                           disabled={disabled}
                           sx={{ color: "#ff6b6b" }}
+                          aria-label={`Delete ${row?.title || "important info"}`}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
