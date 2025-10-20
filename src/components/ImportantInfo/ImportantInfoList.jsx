@@ -1,25 +1,42 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
   Button,
+  Card,
+  CardActions,
+  CardContent,
   Chip,
-  Link as MuiLink,
+  Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
-  Tooltip,
+  TextField,
   Typography,
+  Link as MuiLink,
 } from "@mui/material";
 
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
-import { formatDateTime } from "@/utils/time.js";
+import { IMPORTANT_INFO_CATEGORIES } from "@/constants/importantInfo.js";
+import { formatDateTime, toDayjs } from "@/utils/time.js";
 
 function normalizeRows(items) {
   if (!Array.isArray(items)) return [];
-  return items.filter((item) => item && item.isActive !== false);
+  return items
+    .filter((item) => item && item.isActive !== false)
+    .map((item) => {
+      const rawCategory = item?.category ? String(item.category) : "";
+      const normalizedCategory = IMPORTANT_INFO_CATEGORIES.includes(rawCategory)
+        ? rawCategory
+        : null;
+      return { ...item, _cat: normalizedCategory };
+    })
+    .filter((item) => item._cat);
 }
 
-function safeText(value) {
-  if (value == null || value === "") return "N/A";
+function ensureString(value) {
+  if (value == null) return "";
   return String(value);
 }
 
@@ -28,6 +45,27 @@ function toTelHref(phone) {
   const digits = String(phone).replace(/[^\d+]/g, "");
   if (!digits) return null;
   return `tel:${digits}`;
+}
+
+function matchesQuery(row, query) {
+  if (!query) return true;
+  const haystack = [
+    row?.title,
+    row?.blurb,
+    row?.details,
+    row?._cat,
+    row?.phone,
+    row?.url,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
+function getUpdatedAtValue(input) {
+  const d = toDayjs(input);
+  return d ? d.valueOf() : 0;
 }
 
 export default function ImportantInfoList({
@@ -41,6 +79,43 @@ export default function ImportantInfoList({
   const showError = Boolean(error) && !loading;
   const showEmpty = !showError && !loading && !hasRows;
 
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("title");
+
+  const categories = useMemo(() => ["All", ...IMPORTANT_INFO_CATEGORIES], []);
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const safeCategory = IMPORTANT_INFO_CATEGORIES.includes(categoryFilter)
+      ? categoryFilter
+      : "All";
+
+    const filtered = rows.filter((row) => {
+      if (!row) return false;
+      if (safeCategory !== "All" && row._cat !== safeCategory) {
+        return false;
+      }
+      return matchesQuery(row, q);
+    });
+
+    filtered.sort((a, b) => {
+      if (sortBy === "title") {
+        return ensureString(a?.title).localeCompare(ensureString(b?.title));
+      }
+      if (sortBy === "category") {
+        const aLabel = ensureString(a?._cat);
+        const bLabel = ensureString(b?._cat);
+        return aLabel.localeCompare(bLabel);
+      }
+      const aTs = getUpdatedAtValue(a?.updatedAt);
+      const bTs = getUpdatedAtValue(b?.updatedAt);
+      return bTs - aTs;
+    });
+
+    return filtered;
+  }, [rows, query, categoryFilter, sortBy]);
+
   const handleSendClick = useCallback(
     (row) => {
       if (!row) return;
@@ -48,170 +123,6 @@ export default function ImportantInfoList({
     },
     [onSendSms],
   );
-
-  const columns = useMemo(() => {
-    return [
-      {
-        field: "title",
-        headerName: "Title",
-        minWidth: 260,
-        flex: 1.6,
-        sortable: true,
-        valueGetter: (params) => safeText(params?.row?.title),
-        renderCell: (params) => {
-          const row = params?.row || {};
-          return (
-            <Stack spacing={0.5} sx={{ py: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                {safeText(row.title)}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{ color: "text.secondary", maxWidth: 480 }}
-              >
-                {row.blurb ? row.blurb : "N/A"}
-              </Typography>
-            </Stack>
-          );
-        },
-      },
-      {
-        field: "category",
-        headerName: "Category",
-        minWidth: 140,
-        flex: 0.6,
-        valueGetter: (params) => safeText(params?.row?.category),
-        renderCell: (params) => {
-          const label = params?.row?.category || "General";
-          return (
-            <Chip
-              size="small"
-              label={label}
-              sx={{
-                bgcolor: "rgba(76,187,23,0.18)",
-                color: "#ffffff",
-                fontWeight: 600,
-                textTransform: "capitalize",
-              }}
-            />
-          );
-        },
-      },
-      {
-        field: "phone",
-        headerName: "Partner Phone",
-        minWidth: 160,
-        flex: 0.7,
-        valueGetter: (params) => safeText(params?.row?.phone),
-        renderCell: (params) => {
-          const phone = params?.row?.phone;
-          if (!phone) return "N/A";
-          const href = toTelHref(phone);
-          if (!href) return safeText(phone);
-          return (
-            <MuiLink
-              href={href}
-              underline="hover"
-              sx={{ color: "#4cbb17", fontWeight: 600 }}
-            >
-              {phone}
-            </MuiLink>
-          );
-        },
-      },
-      {
-        field: "url",
-        headerName: "Link",
-        minWidth: 160,
-        flex: 0.7,
-        valueGetter: (params) => safeText(params?.row?.url),
-        renderCell: (params) => {
-          const url = params?.row?.url;
-          if (!url) return "N/A";
-          return (
-            <MuiLink
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              underline="hover"
-              sx={{ color: "#4cbb17", fontWeight: 600 }}
-            >
-              View
-            </MuiLink>
-          );
-        },
-      },
-      {
-        field: "updatedAt",
-        headerName: "Updated",
-        minWidth: 170,
-        flex: 0.8,
-        valueGetter: (params) => formatDateTime(params?.row?.updatedAt),
-        renderCell: (params) => (
-          <Typography variant="body2">
-            {formatDateTime(params?.row?.updatedAt)}
-          </Typography>
-        ),
-      },
-      {
-        field: "details",
-        headerName: "Details",
-        minWidth: 240,
-        flex: 1.2,
-        sortable: false,
-        valueGetter: (params) => safeText(params?.row?.details),
-        renderCell: (params) => {
-          const details = params?.row?.details;
-          if (!details) return "N/A";
-          const truncated =
-            details.length > 160 ? `${details.slice(0, 157)}…` : details;
-          return (
-            <Tooltip
-              title={
-                <Typography sx={{ whiteSpace: "pre-wrap" }}>
-                  {details}
-                </Typography>
-              }
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  whiteSpace: "pre-wrap",
-                  maxHeight: 96,
-                  overflow: "hidden",
-                }}
-              >
-                {truncated}
-              </Typography>
-            </Tooltip>
-          );
-        },
-      },
-      {
-        field: "actions",
-        headerName: "",
-        minWidth: 160,
-        flex: 0.6,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        renderCell: (params) => (
-          <Button
-            size="small"
-            variant="contained"
-            onClick={() => handleSendClick(params?.row)}
-            sx={{
-              bgcolor: "#4cbb17",
-              fontWeight: 600,
-              "&:hover": { bgcolor: "#3aa40f" },
-            }}
-          >
-            Text Customer
-          </Button>
-        ),
-      },
-    ];
-  }, [handleSendClick]);
 
   if (showError) {
     return (
@@ -229,8 +140,7 @@ export default function ImportantInfoList({
             Unable to load important information.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            If you have admin access, open the <strong>Admin</strong> tab to
-            seed defaults or add the first item.
+            If you have admin access, open the Admin tab to add the first item.
           </Typography>
           <Button
             onClick={() => window.location.reload()}
@@ -274,24 +184,232 @@ export default function ImportantInfoList({
   }
 
   return (
-    <Box sx={{ width: "100%", "& .MuiDataGrid-row": { alignItems: "center" } }}>
-      <LrpDataGridPro
-        id="important-info-list"
-        rows={rows}
-        columns={columns}
-        getRowId={(row) => row?.id ?? null}
-        loading={loading}
-        disableRowSelectionOnClick
-        autoHeight
-        hideFooterSelectedRowCount
-        slotProps={{
-          toolbar: {
-            quickFilterPlaceholder: "Search important info",
-          },
-        }}
-      />
+    <Box
+      sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
+    >
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={1}
+        sx={{ flexWrap: "wrap", gap: { xs: 1, md: 1.5 } }}
+      >
+        <TextField
+          size="small"
+          placeholder="Search partners, perks, details…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          fullWidth
+          sx={{ maxWidth: { md: 320 }, bgcolor: "#101010" }}
+          InputProps={{ sx: { color: "white" } }}
+        />
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel sx={{ color: "white" }}>Category</InputLabel>
+          <Select
+            label="Category"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            sx={{ color: "white", bgcolor: "#101010" }}
+          >
+            {categories.map((item) => (
+              <MenuItem key={item} value={item}>
+                {item}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel sx={{ color: "white" }}>Sort</InputLabel>
+          <Select
+            label="Sort"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            sx={{ color: "white", bgcolor: "#101010" }}
+          >
+            <MenuItem value="title">Title (A–Z)</MenuItem>
+            <MenuItem value="category">Category (A–Z)</MenuItem>
+            <MenuItem value="updated">Updated (newest)</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
+
+      <Stack spacing={2.5}>
+        {loading && !filteredRows.length ? (
+          <Typography variant="body2" sx={{ opacity: 0.7 }}>
+            Loading important info…
+          </Typography>
+        ) : null}
+
+        {safeSections(filteredRows, categoryFilter).map(
+          ({ category, items }) => (
+            <Box
+              key={category}
+              sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}
+            >
+              <Typography variant="h6" sx={{ color: "#b7ffb7" }}>
+                {category}
+              </Typography>
+              <Stack spacing={1.25}>
+                {items.map((row) => {
+                  const updatedLabel = formatDateTime(row?.updatedAt);
+                  const telHref = toTelHref(row?.phone);
+                  const fallbackKey = `${row?._cat || "category"}-${ensureString(
+                    row?.title,
+                  )}-${getUpdatedAtValue(row?.updatedAt)}`;
+                  const key = row?.id ?? fallbackKey;
+
+                  return (
+                    <Card
+                      key={key}
+                      variant="outlined"
+                      sx={{
+                        bgcolor: "#0b0b0b",
+                        borderColor: "#1c1c1c",
+                        borderRadius: 3,
+                      }}
+                    >
+                      <CardContent sx={{ pb: 1.5 }}>
+                        <Stack spacing={1.25}>
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1}
+                            justifyContent="space-between"
+                            alignItems={{ xs: "flex-start", sm: "center" }}
+                          >
+                            <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 700 }}
+                                noWrap
+                              >
+                                {row?.title || "Untitled"}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{ opacity: 0.7 }}
+                              >
+                                Updated {updatedLabel}
+                              </Typography>
+                            </Stack>
+                            <Chip
+                              size="small"
+                              label={category}
+                              sx={{
+                                bgcolor: "#143d0a",
+                                color: "#b7ffb7",
+                                border: "1px solid #4cbb17",
+                                fontWeight: 600,
+                              }}
+                            />
+                          </Stack>
+
+                          {row?.blurb ? (
+                            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                              {row.blurb}
+                            </Typography>
+                          ) : null}
+
+                          {row?.details ? (
+                            <Box>
+                              <Divider sx={{ borderColor: "#222", mb: 1 }} />
+                              <Typography
+                                variant="body2"
+                                sx={{ whiteSpace: "pre-wrap", opacity: 0.85 }}
+                              >
+                                {row.details}
+                              </Typography>
+                            </Box>
+                          ) : null}
+
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1}
+                            sx={{ opacity: 0.85 }}
+                          >
+                            {row?.phone ? (
+                              <Typography variant="body2">
+                                Phone:{" "}
+                                {telHref ? (
+                                  <MuiLink
+                                    href={telHref}
+                                    sx={{ color: "#4cbb17", fontWeight: 600 }}
+                                  >
+                                    {row.phone}
+                                  </MuiLink>
+                                ) : (
+                                  row.phone
+                                )}
+                              </Typography>
+                            ) : null}
+                            {row?.url ? (
+                              <Typography variant="body2">
+                                Link:{" "}
+                                <MuiLink
+                                  href={row.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ color: "#4cbb17", fontWeight: 600 }}
+                                >
+                                  View
+                                </MuiLink>
+                              </Typography>
+                            ) : null}
+                          </Stack>
+                        </Stack>
+                      </CardContent>
+                      <CardActions
+                        sx={{ px: 2, pb: 2, justifyContent: "flex-end" }}
+                      >
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => handleSendClick(row)}
+                          sx={{
+                            bgcolor: "#4cbb17",
+                            fontWeight: 600,
+                            "&:hover": { bgcolor: "#3aa40f" },
+                          }}
+                        >
+                          Text Customer
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            </Box>
+          ),
+        )}
+
+        {!filteredRows.length ? (
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: "1px solid #1f1f1f",
+              bgcolor: "#0b0b0b",
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+              No matches for your filters.
+            </Typography>
+          </Box>
+        ) : null}
+      </Stack>
     </Box>
   );
+}
+
+function safeSections(rows, categoryFilter) {
+  const safeCategory = IMPORTANT_INFO_CATEGORIES.includes(categoryFilter)
+    ? categoryFilter
+    : "All";
+  return IMPORTANT_INFO_CATEGORIES.filter((category) =>
+    safeCategory === "All" ? true : category === safeCategory,
+  )
+    .map((category) => ({
+      category,
+      items: rows.filter((row) => row._cat === category),
+    }))
+    .filter((section) => section.items.length > 0);
 }
 
 ImportantInfoList.propTypes = {
