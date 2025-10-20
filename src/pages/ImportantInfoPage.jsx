@@ -4,6 +4,7 @@ import { Box, CircularProgress, Tab, Tabs, Typography } from "@mui/material";
 import SmsSendDialog from "@/components/ImportantInfo/SmsSendDialog.jsx";
 import ImportantInfoList from "@/components/ImportantInfo/ImportantInfoList.jsx";
 import ImportantInfoAdmin from "@/components/ImportantInfo/ImportantInfoAdmin.jsx";
+import InsiderMembersPanel from "@/components/ImportantInfo/InsiderMembersPanel.jsx";
 import { subscribeImportantInfo } from "@/services/importantInfoService.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -15,7 +16,7 @@ export default function ImportantInfoPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState("promos_partners");
   const [selectedItem, setSelectedItem] = useState(null);
   const [smsOpen, setSmsOpen] = useState(false);
 
@@ -53,8 +54,8 @@ export default function ImportantInfoPage() {
   }, [show]);
 
   useEffect(() => {
-    if (!isAdmin && tab !== 0) {
-      setTab(0);
+    if (!isAdmin && tab === "admin") {
+      setTab("promos_partners");
     }
   }, [isAdmin, tab]);
 
@@ -79,7 +80,7 @@ export default function ImportantInfoPage() {
   }, []);
 
   const renderContent = () => {
-    if (loading) {
+    if (tab === "promos_partners" && loading) {
       return (
         <Box
           sx={{
@@ -94,7 +95,7 @@ export default function ImportantInfoPage() {
       );
     }
 
-    if (tab === 0 || !isAdmin) {
+    if (tab === "promos_partners") {
       return (
         <ImportantInfoList
           items={activeItems}
@@ -103,6 +104,10 @@ export default function ImportantInfoPage() {
           onSendSms={handleSendSms}
         />
       );
+    }
+
+    if (tab === "insiders") {
+      return <InsiderMembersPanel isAdmin={isAdmin} />;
     }
 
     return <ImportantInfoAdmin items={items} loading={loading} error={error} />;
@@ -128,19 +133,29 @@ export default function ImportantInfoPage() {
         </Typography>
       </Box>
 
-      {isAdmin ? (
-        <Tabs
-          value={tab}
-          onChange={handleTabChange}
-          sx={{
-            borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-            "& .MuiTabs-indicator": { bgcolor: "#4cbb17" },
-          }}
-        >
-          <Tab label="For Drivers" value={0} sx={{ fontWeight: 600 }} />
-          <Tab label="Admin" value={1} sx={{ fontWeight: 600 }} />
-        </Tabs>
-      ) : null}
+      <Tabs
+        value={tab}
+        onChange={handleTabChange}
+        variant="scrollable"
+        sx={{
+          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+          "& .MuiTabs-indicator": { bgcolor: "#4cbb17" },
+        }}
+      >
+        <Tab
+          label="Promotions & Partners"
+          value="promos_partners"
+          sx={{ fontWeight: 600 }}
+        />
+        <Tab
+          label="Insider Members"
+          value="insiders"
+          sx={{ fontWeight: 600 }}
+        />
+        {isAdmin ? (
+          <Tab label="Admin" value="admin" sx={{ fontWeight: 600 }} />
+        ) : null}
+      </Tabs>
 
       {renderContent()}
 
