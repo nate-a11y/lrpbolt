@@ -31,10 +31,9 @@ service cloud.firestore {
     }
 
     // --- Outbound SMS logs ---
-    // Any signed-in user can create a log; only admins can read.
+    // Only admins may access smsLogs.
     match /smsLogs/{docId} {
-      allow create: if authed();
-      allow read, update, delete: if isAdmin();
+      allow create, read, update, delete: if isAdmin();
     }
 
     // ---------- Auth & helpers ----------
