@@ -15,16 +15,13 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditIcon from "@mui/icons-material/Edit";
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 
 import InsiderEditorDialog from "@/components/ImportantInfo/InsiderEditorDialog.jsx";
 import {
   deleteInsider,
   restoreInsider,
-  setPoints,
   subscribeInsiders,
 } from "@/services/insiders.js";
 import logError from "@/utils/logError.js";
@@ -48,7 +45,6 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
     open: false,
     initial: null,
   });
-  const [pointPending, setPointPending] = useState(() => new Set());
   const [deletePending, setDeletePending] = useState(() => new Set());
 
   useEffect(() => {
@@ -129,31 +125,6 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
   const closeDialog = useCallback(() => {
     setDialogState({ open: false, initial: null });
   }, []);
-
-  const adjustPoints = useCallback(
-    async (row, delta) => {
-      if (!row?.id) return;
-      setPointPending((prev) => new Set(prev).add(row.id));
-      const nextValue = Math.max(0, Number(row.points || 0) + delta);
-      try {
-        await setPoints(row.id, nextValue);
-        show(`Points updated to ${nextValue}.`, "success");
-      } catch (adjustError) {
-        logError(adjustError, {
-          where: "InsiderMembersPanel.adjustPoints",
-          payload: { id: row.id, delta },
-        });
-        show("Failed to update points.", "error");
-      } finally {
-        setPointPending((prev) => {
-          const next = new Set(prev);
-          next.delete(row.id);
-          return next;
-        });
-      }
-    },
-    [show],
-  );
 
   const handleDelete = useCallback(
     async (row) => {
@@ -342,7 +313,6 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                     ) : (
                       <Stack spacing={1.25}>
                         {list.map((row) => {
-                          const isPointBusy = pointPending.has(row.id);
                           const isDeleteBusy = deletePending.has(row.id);
                           const members = Array.isArray(row.members)
                             ? row.members
@@ -409,38 +379,6 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                                   <Typography variant="body2">
                                     {Number(row.points ?? 0)}
                                   </Typography>
-                                  {isAdmin ? (
-                                    <Stack direction="row" spacing={0.5}>
-                                      <Tooltip title="Add 10">
-                                        <span>
-                                          <IconButton
-                                            size="small"
-                                            color="inherit"
-                                            disabled={isPointBusy}
-                                            onClick={() =>
-                                              adjustPoints(row, 10)
-                                            }
-                                          >
-                                            <AddCircleOutlineIcon fontSize="small" />
-                                          </IconButton>
-                                        </span>
-                                      </Tooltip>
-                                      <Tooltip title="Minus 10">
-                                        <span>
-                                          <IconButton
-                                            size="small"
-                                            color="inherit"
-                                            disabled={isPointBusy}
-                                            onClick={() =>
-                                              adjustPoints(row, -10)
-                                            }
-                                          >
-                                            <RemoveCircleOutlineIcon fontSize="small" />
-                                          </IconButton>
-                                        </span>
-                                      </Tooltip>
-                                    </Stack>
-                                  ) : null}
                                 </Stack>
 
                                 {isAdmin ? (
