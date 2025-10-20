@@ -1,28 +1,33 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
-const admin = require("firebase-admin");
+const logger = require("firebase-functions/logger");
+const twilio = require("twilio");
 
-try {
-  admin.initializeApp();
-} catch (e) {
-  // no-op; already initialized in tests or emulator
-}
+const { admin } = require("./admin");
+
+const REGION = "us-central1";
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
 const TWILIO_FROM = defineSecret("TWILIO_FROM");
 
-function normalizePhone(to) {
-  if (!to || typeof to !== "string") return null;
-  const digits = to.replace(/[^\d+]/g, "");
-  if (digits.startsWith("+")) return digits;
-  if (/^\d{10}$/.test(digits)) return `+1${digits}`;
-  if (/^1\d{10}$/.test(digits)) return `+${digits}`;
-  return null;
-}
-
 const SMS_FOOTER =
   "— Sent from a Lake Ride Pros automated number. Replies are not monitored.";
+
+function asE164(raw) {
+  const input = typeof raw === "string" || typeof raw === "number" ? raw : "";
+  const trimmed = String(input).trim();
+  if (!trimmed) return null;
+  const sanitized = trimmed.replace(/[^\d+]/g, "");
+  if (!sanitized) return null;
+  if (sanitized.startsWith("+")) {
+    return /^\+\d{8,15}$/.test(sanitized) ? sanitized : null;
+  }
+  const digits = sanitized.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}
 
 function buildMessage(item) {
   const appendFooter = (base) => {
@@ -42,14 +47,75 @@ function buildMessage(item) {
   return message.length > 840 ? `${message.slice(0, 837)}…` : message;
 }
 
+function loadSecretValue(secret, label) {
+  try {
+    const value = secret?.value?.();
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      logger.error("sendPartnerInfoSMS.secretEmpty", { label });
+      return null;
+    }
+    return trimmed;
+  } catch (error) {
+    logger.error("sendPartnerInfoSMS.secretLoadFailed", { label, error });
+    return null;
+  }
+}
+
+function mapTwilioError(err) {
+  const code = err?.code;
+  const status = err?.status;
+  const message = err?.message || "Twilio request failed.";
+  if (code === 21211 || code === 21614) {
+    return {
+      statusCode: "invalid-argument",
+      message: "Twilio rejected the phone number. Confirm it is a valid mobile number in E.164 format.",
+      reason: "invalid-phone",
+    };
+  }
+  if (code === 21610) {
+    return {
+      statusCode: "failed-precondition",
+      message: "The destination number has unsubscribed from SMS messages.",
+      reason: "unsubscribed",
+    };
+  }
+  if (code === 21612 || code === 21408) {
+    return {
+      statusCode: "failed-precondition",
+      message: "Twilio is not enabled to send to this region. Verify SMS permissions for the account.",
+      reason: "unsupported-region",
+    };
+  }
+  return {
+    statusCode: "internal",
+    message,
+    reason: status || "twilio-error",
+  };
+}
+
+async function logSmsAttempt(payload) {
+  try {
+    await admin
+      .firestore()
+      .collection("smsLogs")
+      .add({
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...payload,
+      });
+  } catch (error) {
+    logger.error("sendPartnerInfoSMS.logFailure", {
+      error: error?.message || error,
+      payload,
+    });
+  }
+}
+
 exports.sendPartnerInfoSMS = onCall(
   {
-    region: "us-central1",
-    secrets: [
-      TWILIO_ACCOUNT_SID,
-      TWILIO_AUTH_TOKEN,
-      TWILIO_FROM,
-    ],
+    region: REGION,
+    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
     cors: true,
     enforceAppCheck: false,
   },
@@ -63,15 +129,19 @@ exports.sendPartnerInfoSMS = onCall(
     }
 
     const itemId = data?.itemId;
-    const rawTo = data?.to;
     if (!itemId) {
       throw new HttpsError("invalid-argument", "Missing itemId.");
     }
 
-    const to = normalizePhone(rawTo);
-    if (!to) {
-      throw new HttpsError("invalid-argument", "Invalid destination phone.");
+    const normalizedTo = asE164(data?.to);
+    if (!normalizedTo) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Destination phone must be a valid E.164 number.",
+      );
     }
+
+    const dryRun = data?.dryRun === true;
 
     const snap = await admin
       .firestore()
@@ -86,38 +156,86 @@ exports.sendPartnerInfoSMS = onCall(
       throw new HttpsError("failed-precondition", "Item is inactive.");
     }
 
-    const from = (TWILIO_FROM.value && TWILIO_FROM.value())?.trim();
+    const from = loadSecretValue(TWILIO_FROM, "TWILIO_FROM");
     if (!from) {
       throw new HttpsError(
         "failed-precondition",
-        "Missing TWILIO_FROM in Secret Manager.",
+        "Missing TWILIO_FROM secret configuration.",
+      );
+    }
+    if (!/^\+\d{8,15}$/.test(from)) {
+      throw new HttpsError(
+        "failed-precondition",
+        "TWILIO_FROM must be an E.164-formatted phone number.",
       );
     }
 
-    const client = require("twilio")(
-      TWILIO_ACCOUNT_SID.value(),
-      TWILIO_AUTH_TOKEN.value(),
-    );
-    const body = buildMessage(item);
+    const accountSid = loadSecretValue(TWILIO_ACCOUNT_SID, "TWILIO_ACCOUNT_SID");
+    const authToken = loadSecretValue(TWILIO_AUTH_TOKEN, "TWILIO_AUTH_TOKEN");
+    if (!accountSid || !authToken) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Missing Twilio credentials. Verify bound secrets.",
+      );
+    }
+
+    const messageBody = buildMessage(item);
+
+    if (dryRun) {
+      await logSmsAttempt({
+        type: "partnerInfo",
+        itemId,
+        to: normalizedTo,
+        from,
+        status: "dry-run",
+        userId: auth?.uid || "unknown",
+      });
+      return {
+        ok: true,
+        dryRun: true,
+        to: normalizedTo,
+        bodyPreview: messageBody,
+      };
+    }
+
+    const client = twilio(accountSid, authToken);
 
     try {
-      const resp = await client.messages.create({ to, from, body });
-      await admin
-        .firestore()
-        .collection("smsLogs")
-        .add({
-          type: "partnerInfo",
-          itemId,
-          to,
-          sid: resp.sid,
-          status: resp.status || "queued",
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          userId: auth?.uid || "unknown",
-        });
-      return { ok: true, sid: resp.sid, status: resp.status };
-    } catch (err) {
-      console.error("Twilio send error", err);
-      throw new HttpsError("internal", "Failed to send SMS.");
+      const resp = await client.messages.create({ to: normalizedTo, from, body: messageBody });
+      await logSmsAttempt({
+        type: "partnerInfo",
+        itemId,
+        to: normalizedTo,
+        from,
+        sid: resp?.sid || null,
+        status: resp?.status || "queued",
+        userId: auth?.uid || "unknown",
+      });
+      return { ok: true, sid: resp?.sid || null, status: resp?.status || "queued" };
+    } catch (error) {
+      const mapped = mapTwilioError(error);
+      logger.error("sendPartnerInfoSMS.twilioError", {
+        error: error?.message || error,
+        code: error?.code,
+        status: error?.status,
+        itemId,
+        to: normalizedTo,
+      });
+      await logSmsAttempt({
+        type: "partnerInfo",
+        itemId,
+        to: normalizedTo,
+        from,
+        status: "error",
+        errorCode: error?.code || mapped.reason,
+        errorMessage: error?.message || mapped.message,
+        userId: auth?.uid || "unknown",
+      });
+      throw new HttpsError(mapped.statusCode, mapped.message, {
+        twilioCode: error?.code,
+        twilioStatus: error?.status,
+        reason: mapped.reason,
+      });
     }
   },
 );

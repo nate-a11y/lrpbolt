@@ -80,7 +80,15 @@ export default function SmsSendDialog({ open, onClose, item }) {
           where: "SmsSendDialog.handleSubmit",
           itemId: item?.id,
         });
-        show("Failed to send SMS. Please try again.", "error");
+        const message =
+          error?.message || "Failed to send SMS. Please try again.";
+        if (error?.code === "sms_invalid_phone") {
+          setError(message);
+          show(message, "warning");
+        } else {
+          setError("");
+          show(message, "error");
+        }
       } finally {
         setSending(false);
       }
