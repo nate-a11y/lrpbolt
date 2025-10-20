@@ -22,7 +22,10 @@ import { DRAWER_WIDTH, APP_BAR_HEIGHT } from "../layout/constants";
 import { iconMap } from "../utils/iconMap";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
-import { useColorMode } from "../context/ColorModeContext.jsx";
+import {
+  useColorMode,
+  ColorModeToggle,
+} from "../context/ColorModeContext.jsx";
 import { canSeeNav } from "../utils/roleGuards";
 import { getAppVersion } from "../utils/appVersion.js";
 
@@ -39,7 +42,7 @@ function MainNav({
 }) {
   const { user, role } = useAuth();
   const { driverName, logout: signOut } = useDriver?.() || {};
-  const { mode, toggle } = useColorMode();
+  const { mode, resolvedMode, setMode } = useColorMode();
   const location = useLocation();
   const navigate = useNavigate();
   const items = useMemo(
@@ -176,8 +179,18 @@ function MainNav({
           flexWrap="wrap"
           rowGap={1}
         >
-          <Typography variant="body2">Dark Mode</Typography>
-          <Switch checked={mode === "dark"} onChange={toggle} />
+          <Typography variant="body2">Theme</Typography>
+          <Switch
+            checked={resolvedMode === "dark"}
+            onChange={(event) => setMode(event.target.checked ? "dark" : "light")}
+            inputProps={{ "aria-label": "Toggle dark mode" }}
+          />
+          <ColorModeToggle iconButtonProps={{ size: "small" }} />
+          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+            {mode === "system"
+              ? `System (${resolvedMode || "auto"})`
+              : (resolvedMode || mode || "light").replace(/^(.)/, (m) => m.toUpperCase())}
+          </Typography>
         </Stack>
 
         <Box>
