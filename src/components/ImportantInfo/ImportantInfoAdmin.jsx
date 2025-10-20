@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -197,9 +198,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const fetchSmsHealth = useCallback(async () => {
     setHealthLoading(true);
     setHealthError("");
+    setHealthData(null);
     try {
       const payload = await getSmsHealth();
-      setHealthData(payload);
+      setHealthData(payload || null);
     } catch (err) {
       const message = err?.message || "Unable to fetch SMS health.";
       setHealthError(message);
@@ -838,153 +840,115 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               </Typography>
             ) : null}
             {healthError ? (
-              <Box
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: "#1a0b0b",
-                  border: "1px solid #2a1111",
-                }}
+              <Alert
+                severity="error"
+                sx={{ bgcolor: "#2a1111", color: "#ffb4b4" }}
               >
-                <Typography variant="subtitle2" sx={{ color: "#ffb4b4" }}>
-                  {healthError}
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.75 }}>
-                  Ensure you are signed in as an admin and try again.
-                </Typography>
-              </Box>
+                {healthError}
+              </Alert>
             ) : null}
             {healthData ? (
               <Stack spacing={1.5}>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: healthData.ok ? "#102712" : "#2a1111",
-                    border: `1px solid ${healthData.ok ? "#2f7a1c" : "#5d1f1f"}`,
-                  }}
-                >
+                <Stack spacing={0.5} sx={{ color: "white" }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    Overall Status
+                    Environment
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    {healthData.ok
-                      ? "All Twilio checks passed."
-                      : "Attention required — verify region and Twilio secrets."}
+                  <Typography variant="body2">
+                    Status: {healthData.ok ? "OK" : "Needs attention"}
+                  </Typography>
+                  <Typography variant="body2">
+                    Project: {healthData.projectId || "Unknown"}
+                  </Typography>
+                  <Typography variant="body2">
+                    Region:{" "}
+                    {healthData.region?.runtime ||
+                      healthData.region?.configured ||
+                      "us-central1"}
+                  </Typography>
+                  <Typography variant="body2">
+                    Region match: {healthData.region?.matches ? "Yes" : "No"}
                   </Typography>
                   <Typography variant="caption" sx={{ opacity: 0.7 }}>
                     Last checked {formatDateTime(healthData.checkedAt)}
                   </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: "#0b0f0b",
-                    border: "1px solid #153015",
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    Region
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    Configured: {healthData.region?.configured || "us-central1"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    Runtime: {healthData.region?.runtime || "Unknown"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                    Match: {healthData.region?.matches ? "Yes" : "No"}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: "#0b0f0b",
-                    border: "1px solid #153015",
-                  }}
-                >
+                </Stack>
+                <Divider sx={{ borderColor: "#222" }} />
+                <Stack spacing={0.75} sx={{ color: "white" }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                     Twilio Secrets
                   </Typography>
-                  <Stack spacing={0.75} sx={{ mt: 1 }}>
-                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                      Account SID:{" "}
-                      {healthData.secrets?.TWILIO_ACCOUNT_SID
-                        ? "Present"
-                        : "Missing"}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                      Auth Token:{" "}
-                      {healthData.secrets?.TWILIO_AUTH_TOKEN
-                        ? "Present"
-                        : "Missing"}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                      From Number:{" "}
-                      {healthData.secrets?.TWILIO_FROM?.present
-                        ? "Present"
-                        : "Missing"}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                      From E.164 Valid:{" "}
-                      {healthData.secrets?.TWILIO_FROM?.e164 ? "Yes" : "No"}
-                    </Typography>
-                  </Stack>
-                </Box>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    bgcolor: "#101010",
-                    border: "1px solid #1f1f1f",
-                  }}
-                >
+                  <Typography variant="body2">
+                    TWILIO_ACCOUNT_SID:{" "}
+                    {healthData.secrets?.TWILIO_ACCOUNT_SID ? "OK" : "MISSING"}
+                  </Typography>
+                  <Typography variant="body2">
+                    TWILIO_AUTH_TOKEN:{" "}
+                    {healthData.secrets?.TWILIO_AUTH_TOKEN ? "OK" : "MISSING"}
+                  </Typography>
+                  <Typography variant="body2">
+                    TWILIO_FROM:{" "}
+                    {healthData.secrets?.TWILIO_FROM?.present
+                      ? "OK"
+                      : "MISSING"}
+                  </Typography>
+                  <Typography variant="body2">
+                    TWILIO_FROM E.164:{" "}
+                    {healthData.secrets?.TWILIO_FROM?.e164 ? "OK" : "INVALID"}
+                  </Typography>
+                </Stack>
+                <Divider sx={{ borderColor: "#222" }} />
+                <Stack spacing={0.75} sx={{ color: "white" }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                     Last Twilio Error
                   </Typography>
                   {healthData.lastError ? (
-                    <Stack spacing={0.75} sx={{ mt: 1 }}>
-                      <Typography variant="body2" sx={{ opacity: 0.85 }}>
+                    <>
+                      <Typography variant="body2">
                         {healthData.lastError.errorMessage}
                       </Typography>
-                      <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                      <Typography variant="body2">
                         Code: {healthData.lastError.errorCode || "N/A"}
                       </Typography>
-                      <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                      <Typography variant="body2">
                         To: {healthData.lastError.to || "N/A"}
                       </Typography>
-                      <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                      <Typography variant="body2">
                         Logged: {formatDateTime(healthData.lastError.createdAt)}
                       </Typography>
-                    </Stack>
+                    </>
                   ) : (
-                    <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                    <Typography variant="body2">
                       No Twilio errors recorded in the latest 10 logs.
                     </Typography>
                   )}
-                </Box>
+                </Stack>
                 {localLastSmsError ? (
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: "#101010",
-                      border: "1px solid #1f1f1f",
-                    }}
+                  <>
+                    <Divider sx={{ borderColor: "#222" }} />
+                    <Stack spacing={0.75} sx={{ color: "white" }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        Last error this session
+                      </Typography>
+                      <Typography variant="body2">
+                        {localLastSmsError.message}
+                      </Typography>
+                      <Typography variant="body2">
+                        Logged: {formatDateTime(localLastSmsError.at)} (code:{" "}
+                        {localLastSmsError.code})
+                      </Typography>
+                    </Stack>
+                  </>
+                ) : null}
+                {!healthData.ok && !healthError ? (
+                  <Alert
+                    severity="warning"
+                    sx={{ bgcolor: "#2a1f11", color: "#ffdca8" }}
                   >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Last error this session
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                      {localLastSmsError.message}
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      {formatDateTime(localLastSmsError.at)} (code:{" "}
-                      {localLastSmsError.code})
-                    </Typography>
-                  </Box>
+                    Missing Twilio secrets. Set <code>TWILIO_ACCOUNT_SID</code>,{" "}
+                    <code>TWILIO_AUTH_TOKEN</code>, and
+                    <code>TWILIO_FROM</code> in Functions secrets, then redeploy
+                    functions.
+                  </Alert>
                 ) : null}
               </Stack>
             ) : null}
