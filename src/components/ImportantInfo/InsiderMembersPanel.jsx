@@ -320,16 +320,16 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                           return (
                             <Box
                               key={row.id}
-                              sx={{
+                              sx={(t) => ({
                                 display: "flex",
                                 gap: 1,
                                 alignItems: "flex-start",
                                 justifyContent: "space-between",
                                 borderRadius: 1.5,
                                 border: "1px solid rgba(255,255,255,0.06)",
-                                bgcolor: "#0b0b0b",
+                                bgcolor: t.palette.background.paper,
                                 p: 1.25,
-                              }}
+                              })}
                             >
                               <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                                 <Typography sx={{ fontWeight: 700 }}>

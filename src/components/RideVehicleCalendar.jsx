@@ -376,26 +376,26 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
 
       {/* Outer wrapper: sticky gutter + ONE horizontal scroller */}
       <Box
-        sx={{
+        sx={(t) => ({
           position: "relative",
           borderRadius: 2,
-          border: "1px solid rgba(255,255,255,0.08)",
-          bgcolor: "#0b0b0b",
+          border: `1px solid ${t.palette.divider}`,
+          bgcolor: t.palette.background.paper,
           overflow: "hidden",
-        }}
+        })}
       >
         {/* LEFT STICKY GUTTER (frozen vehicle chips) */}
         <Box
-          sx={{
+          sx={(t) => ({
             position: "absolute",
             top: 0,
             left: 0,
             width: GUTTER_W,
             height: totalHeight,
             zIndex: 3,
-            bgcolor: "#0b0b0b",
-            borderRight: "1px solid rgba(255,255,255,0.08)",
-          }}
+            bgcolor: t.palette.background.paper,
+            borderRight: `1px solid ${t.palette.divider}`,
+          })}
         >
           {/* Header spacer line */}
           <Box
@@ -461,13 +461,13 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
         >
           {/* Sticky header WITH NO GRADIENT behind labels */}
           <Box
-            sx={{
+            sx={(t) => ({
               position: "sticky",
               top: 0,
               zIndex: 2,
-              bgcolor: "#0b0b0b",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-            }}
+              bgcolor: t.palette.background.paper,
+              borderBottom: `1px solid ${t.palette.divider}`,
+            })}
           >
             <Box
               sx={{

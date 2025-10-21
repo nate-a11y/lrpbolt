@@ -31,15 +31,9 @@ import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import VehicleChip from "./VehicleChip";
 import PageContainer from "./PageContainer.jsx";
 
-// LRP brand tokens
-const LRP = {
-  green: "#4cbb17",
-  black: "#060606",
-  card: "#0b0b0b",
-  chipBg: "#1a1a1a",
-  chipBorder: "rgba(255,255,255,0.12)",
-  textDim: "rgba(255,255,255,0.72)",
-};
+// Tokens derived from theme (light/dark safe)
+// NOTE: we shadow `LRP` inside the component to read theme dynamically.
+const LRP_BASE = { green: "#4cbb17" };
 
 // helpers
 function getInitials(name = "") {
@@ -94,7 +88,7 @@ function iconBtnSx() {
     border: `1px solid rgba(76,187,23,0.35)`,
     borderRadius: 2,
     "&:hover": {
-      borderColor: LRP.green,
+      borderColor: LRP_BASE.green,
       boxShadow: `0 0 10px rgba(76,187,23,0.45) inset`,
       backgroundColor: "rgba(76,187,23,0.06)",
     },
@@ -107,6 +101,26 @@ export default function DriverDirectory({
   sx: sxProp = null,
 } = {}) {
   const theme = useTheme();
+  const LRP = React.useMemo(
+    () => ({
+      ...LRP_BASE,
+      black: theme.palette.background.paper, // used for local surfaces
+      card: theme.palette.background.paper,
+      chipBg:
+        theme.palette.mode === "dark"
+          ? theme.palette.grey[900]
+          : theme.palette.grey[200],
+      chipBorder: theme.palette.divider,
+      textDim: theme.palette.text.secondary,
+    }),
+    [
+      theme.palette.background.paper,
+      theme.palette.divider,
+      theme.palette.grey,
+      theme.palette.mode,
+      theme.palette.text.secondary,
+    ],
+  );
   const apiRef = useGridApiRef();
   const [search, setSearch] = React.useState("");
 
@@ -409,7 +423,7 @@ export default function DriverDirectory({
         },
       },
     ],
-    [search],
+    [LRP, search],
   );
 
   const baseSx = React.useMemo(
@@ -497,12 +511,12 @@ export default function DriverDirectory({
           }}
           pageSizeOptions={[10, 25, 50, 100]}
           sx={{
-            bgcolor: LRP.black,
+            bgcolor: (t) => t.palette.background.paper,
             color: "#fff",
             borderRadius: 2,
             border: `1px solid rgba(255,255,255,0.06)`,
             boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
-            "--DataGrid-containerBackground": LRP.card,
+            "--DataGrid-containerBackground": (t) => t.palette.background.paper,
             "& .MuiDataGrid-columnHeaders": {
               bgcolor: "transparent",
               borderBottom: `1px dashed rgba(255,255,255,0.12)`,

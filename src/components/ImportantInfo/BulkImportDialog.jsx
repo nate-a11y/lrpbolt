@@ -327,15 +327,15 @@ export default function BulkImportDialog({ open, onClose }) {
           <Box
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            sx={{
+            sx={(t) => ({
               mt: 1,
               p: 2,
               border: "1px dashed #2a2a2a",
               borderRadius: 2,
-              bgcolor: "#0b0b0b",
+              bgcolor: t.palette.background.paper,
               textAlign: "center",
               color: "white",
-            }}
+            })}
           >
             {fileName ? (
               <Typography variant="body2">

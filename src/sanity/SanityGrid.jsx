@@ -9,7 +9,9 @@ const columns = [{ field: "name", headerName: "Name", flex: 1 }];
 
 export default function SanityGrid() {
   return (
-    <Box sx={{ height: 400, bgcolor: "#0b0b0b", p: 2 }}>
+    <Box
+      sx={(t) => ({ height: 400, bgcolor: t.palette.background.paper, p: 2 })}
+    >
       <DataGridPro
         rows={rows}
         columns={columns}

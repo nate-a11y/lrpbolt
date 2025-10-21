@@ -403,12 +403,12 @@ export default function ImportantInfoList({
 
         {!filteredRows.length ? (
           <Box
-            sx={{
+            sx={(t) => ({
               p: 2,
               borderRadius: 2,
-              border: "1px solid #1f1f1f",
-              bgcolor: "#0b0b0b",
-            }}
+              border: `1px solid ${t.palette.divider}`,
+              bgcolor: t.palette.background.paper,
+            })}
           >
             <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
               No matches for your filters.

@@ -675,6 +675,20 @@ function LrpDataGridPro({
       slotProps={mergedSlotProps}
       experimentalFeatures={{ ariaV7: true }}
       error={error}
+      sx={(t) => ({
+        "& .MuiDataGrid-toolbarContainer": {
+          backgroundColor: t.palette.background.paper,
+          borderBottom: `1px solid ${t.palette.divider}`,
+        },
+        "& .MuiDataGrid-columnHeaders": {
+          backgroundColor: t.palette.background.paper,
+          borderBottom: `1px solid ${t.palette.divider}`,
+        },
+        "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
+          {
+            backgroundColor: t.palette.background.paper,
+          },
+      })}
       {...rest}
     />
   );
