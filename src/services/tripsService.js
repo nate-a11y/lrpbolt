@@ -9,6 +9,7 @@ import {
 
 import { TRIP_STATES, canTransition } from "../constants/tripStates.js";
 import logError from "../utils/logError.js";
+import { COLLECTIONS } from "../constants.js";
 
 import { db } from "./firebase.js"; // must point to your initialized Firestore
 
@@ -16,6 +17,7 @@ import { db } from "./firebase.js"; // must point to your initialized Firestore
 const RIDES_COLLECTION = "rides";
 /** Optional shadow collection when OPEN: comment out if unused. */
 const LIVE_RIDES_COLLECTION = "liveRides";
+const QUEUE_COLLECTION = COLLECTIONS.RIDE_QUEUE || "rideQueue";
 
 /** Get a ride by id (throws if missing). */
 export async function getRideById(rideId) {
@@ -37,55 +39,106 @@ export async function transitionRideState(
   rideId,
   from,
   to,
-  { userId = "system", extra = {} } = {},
+  { userId = "system", extra = {}, queueId: providedQueueId = null } = {},
 ) {
-  if (!canTransition(from, to)) {
-    throw new Error(`Invalid state transition ${from} → ${to}`);
+  const normalizedFrom = typeof from === "string" ? from.toLowerCase() : from;
+  const normalizedTo = typeof to === "string" ? to.toLowerCase() : to;
+
+  if (!canTransition(normalizedFrom, normalizedTo)) {
+    throw new Error(
+      `Invalid state transition ${normalizedFrom} → ${normalizedTo}`,
+    );
   }
 
   const rideRef = doc(db, RIDES_COLLECTION, rideId);
   const liveRef = LIVE_RIDES_COLLECTION
     ? doc(db, LIVE_RIDES_COLLECTION, rideId)
     : null;
+  const queueId = providedQueueId || rideId;
+  const queueRef =
+    normalizedFrom === TRIP_STATES.QUEUED && queueId
+      ? doc(db, QUEUE_COLLECTION, queueId)
+      : null;
 
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(rideRef);
-    if (!snap.exists()) throw new Error(`Ride ${rideId} not found`);
+    let current = snap.exists() ? snap.data() : null;
 
-    const current = snap.data();
-    const currentState = current?.state || TRIP_STATES.QUEUED;
+    if (!current && queueRef) {
+      const queueSnap = await tx.get(queueRef);
+      if (!queueSnap.exists()) throw new Error(`Ride ${rideId} not found`);
+      const queueData = queueSnap.data() || {};
+      current = {
+        ...queueData,
+        id: queueData.id || rideId,
+        rideId: queueData.rideId || queueData.id || rideId,
+        tripId: queueData.tripId || queueData.id || rideId,
+        queueId,
+      };
+    } else if (!current) {
+      throw new Error(`Ride ${rideId} not found`);
+    }
 
-    if (currentState !== from) {
+    const stateCandidate =
+      typeof current?.state === "string"
+        ? current.state.toLowerCase()
+        : current?.state;
+    const statusCandidate =
+      typeof current?.status === "string"
+        ? current.status.toLowerCase()
+        : current?.status;
+
+    const currentState =
+      stateCandidate ||
+      statusCandidate ||
+      (normalizedFrom === TRIP_STATES.QUEUED
+        ? TRIP_STATES.QUEUED
+        : normalizedFrom);
+
+    if (currentState !== normalizedFrom) {
       // Allow idempotency if it's already at the target
-      if (currentState === to) return { id: rideId, ...current };
+      if (currentState === normalizedTo) return { id: rideId, ...current };
       throw new Error(
-        `State mismatch for ${rideId}: expected ${from}, found ${currentState}`,
+        `State mismatch for ${rideId}: expected ${normalizedFrom}, found ${currentState}`,
       );
     }
 
+    const timestamp = serverTimestamp();
     const next = {
       ...current,
       ...extra,
-      state: to,
-      updatedAt: serverTimestamp(),
+      queueId,
+      state: normalizedTo,
+      status: normalizedTo,
+      queueStatus: normalizedTo,
+      updatedAt: timestamp,
       updatedBy: userId,
     };
 
     tx.set(rideRef, next, { merge: true });
 
+    if (queueRef) {
+      tx.delete(queueRef);
+    }
+
     // Shadow handling for liveRides
     if (liveRef) {
-      if (to === TRIP_STATES.OPEN) {
-        tx.set(
-          liveRef,
-          {
-            rideId,
-            state: TRIP_STATES.OPEN,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
+      if (normalizedTo === TRIP_STATES.OPEN) {
+        const livePayload = {
+          ...next,
+          id: rideId,
+          rideId,
+          queueId,
+          createdAt:
+            current?.createdAt ||
+            current?.created_at ||
+            current?.created ||
+            timestamp,
+          updatedAt: timestamp,
+          state: TRIP_STATES.OPEN,
+          status: TRIP_STATES.OPEN,
+        };
+        tx.set(liveRef, livePayload, { merge: true });
       } else {
         // Leaving OPEN removes shadow, if it exists
         tx.delete(liveRef);
@@ -94,7 +147,14 @@ export async function transitionRideState(
 
     return { id: rideId, ...next };
   }).catch((err) => {
-    logError(err, { where: "transitionRideState", rideId, from, to, userId });
+    logError(err, {
+      where: "transitionRideState",
+      rideId,
+      from: normalizedFrom,
+      to: normalizedTo,
+      userId,
+      queueId: providedQueueId || rideId,
+    });
     throw err;
   });
 }
