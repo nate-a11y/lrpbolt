@@ -56,7 +56,11 @@ export default function SmsConsent() {
               justifyContent="space-between"
               alignItems="center"
             >
-              <Typography variant="h3" component="h1">
+              <Typography
+                variant="h3"
+                component="h1"
+                sx={{ typography: { xs: "h4", sm: "h3", md: "h3" } }}
+              >
                 Lake Ride Pros — SMS Consent
               </Typography>
               <Button

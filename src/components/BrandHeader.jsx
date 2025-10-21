@@ -30,14 +30,30 @@ export default function BrandHeader() {
     >
       <Toolbar variant="dense" sx={{ minHeight: headerHeight }}>
         {/* left: menu + logo */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
+        >
           {/* ... existing left controls ... */}
         </Box>
 
-        <Box sx={{ flex: 1 }} />
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            fontWeight: 800,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: { xs: 160, sm: 260, md: 360 },
+          }}
+        >
+          {/* App title */}
+        </Box>
 
         {/* right controls */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
+        >
           {/* ... existing right controls ... */}
         </Box>
       </Toolbar>

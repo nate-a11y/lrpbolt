@@ -125,7 +125,6 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           ModalProps={{ keepMounted: true }}
           PaperProps={{ sx: { width: DRAWER_WIDTH, boxSizing: "border-box" } }}
         >
-          <Toolbar />
           <List>
             {(railItems || []).map(({ label, icon: Icon, to }, idx) => (
               <ListItemButton

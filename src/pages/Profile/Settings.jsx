@@ -38,7 +38,7 @@ function ProfilePage() {
           <DiagnosticsPanel />
         </Box>
       )}
-      <Box sx={{ mt: 6, textAlign: "center" }}>
+      <Box sx={{ mt: 1, textAlign: "center" }}>
         <Stack spacing={1} alignItems="center">
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography

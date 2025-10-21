@@ -395,7 +395,7 @@ function App() {
                 path="*"
                 element={
                   <Typography
-                    sx={{ mt: 6, textAlign: "center", color: "error.main" }}
+                    sx={{ mt: 1, textAlign: "center", color: "error.main" }}
                   >
                     🚧 404 — Page Not Found
                   </Typography>
