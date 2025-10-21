@@ -6,7 +6,7 @@ import globals from "globals";
 
 export default [
   // Ignore build artifacts
-  { ignores: ["dist/**", "coverage/**", "node_modules/**", "functions/lib/**"] },
+  { ignores: ["dist/**", "coverage/**", "node_modules/**", "functions/lib/**", "src/vendor/**"] },
 
   // Base + plugins
   js.configs.recommended,

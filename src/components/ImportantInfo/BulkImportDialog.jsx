@@ -20,8 +20,8 @@ import {
 } from "@mui/material";
 import GetAppIcon from "@mui/icons-material/GetApp";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import * as XLSX from "xlsx";
 
+import * as XLSX from "@/vendor/sheetjs/xlsx.mjs";
 import { bulkCreateImportantInfo } from "@/services/importantInfoService.js";
 import { PROMO_PARTNER_CATEGORIES } from "@/constants/importantInfo.js";
 
