@@ -280,8 +280,10 @@ export async function enrichDriverNames(rows) {
     const email = (r?.driverEmail || "").toLowerCase();
     const cachedName = _nameCache.get(email);
     // Prefer existing driver/driverName, then cached name, then driverEmail as fallback, then null
-    const driver = r?.driver || r?.driverName || cachedName || r?.driverEmail || null;
-    const driverName = r?.driverName || r?.driver || cachedName || r?.driverEmail || null;
+    const driver =
+      r?.driver || r?.driverName || cachedName || r?.driverEmail || null;
+    const driverName =
+      r?.driverName || r?.driver || cachedName || r?.driverEmail || null;
     return { ...r, driver, driverName };
   });
 }
