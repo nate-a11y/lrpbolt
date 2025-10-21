@@ -70,6 +70,10 @@ export function getTheme(mode = "dark") {
             "--lrp-safe-top": "env(safe-area-inset-top)",
             "--lrp-safe-bottom": "env(safe-area-inset-bottom)",
           },
+          // neutralize any leftover hardcoded dark helpers
+          ".lrp-dark, .lrp-dark-bg, .bg-black": {
+            backgroundColor: `${palette.background.paper} !important`,
+          },
         },
       },
       // Buttons look consistent in both modes
@@ -92,22 +96,34 @@ export function getTheme(mode = "dark") {
           root: ({ theme }) => ({
             backgroundImage: "none",
             border: `1px solid ${theme.palette.divider}`,
+            // prevent rogue black cards in light mode
+            backgroundColor: theme.palette.background.paper,
           }),
         },
       },
-      // TextFields/Selects readable in dark & light
+      // Inputs/Selects readable in both modes
+      MuiInputBase: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? alpha("#ffffff", 0.06)
+                : alpha("#000000", 0.02),
+          }),
+        },
+      },
       MuiFilledInput: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundColor:
               theme.palette.mode === "dark"
                 ? alpha("#ffffff", 0.06)
-                : alpha("#000000", 0.03),
+                : alpha("#000000", 0.02),
             "&:hover": {
               backgroundColor:
                 theme.palette.mode === "dark"
                   ? alpha("#ffffff", 0.1)
-                  : alpha("#000000", 0.06),
+                  : alpha("#000000", 0.05),
             },
             "&.Mui-focused": { backgroundColor: "transparent" },
           }),
@@ -115,6 +131,12 @@ export function getTheme(mode = "dark") {
       },
       MuiOutlinedInput: {
         styleOverrides: {
+          root: ({ theme }) => ({
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? alpha("#ffffff", 0.04)
+                : alpha("#000000", 0.01),
+          }),
           notchedOutline: ({ theme }) => ({
             borderColor: theme.palette.divider,
           }),
@@ -136,7 +158,7 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
-      // DataGrid (MUI X Pro) — kill dark slab toolbar & unify surfaces
+      // DataGrid — unify all surfaces (headers, body, footer)
       MuiDataGrid: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -148,6 +170,23 @@ export function getTheme(mode = "dark") {
               backgroundColor: theme.palette.background.paper,
               borderBottom: `1px solid ${theme.palette.divider}`,
             },
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: theme.palette.background.paper,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              backgroundColor: theme.palette.background.paper,
+            },
+            "& .MuiDataGrid-virtualScrollerContent": {
+              backgroundColor: theme.palette.background.paper,
+            },
+            "& .MuiDataGrid-footerContainer": {
+              backgroundColor: theme.palette.background.paper,
+              borderTop: `1px solid ${theme.palette.divider}`,
+            },
+            "& .MuiDataGrid-cell": {
+              borderColor: theme.palette.divider,
+            },
           }),
         },
       },
@@ -155,6 +194,24 @@ export function getTheme(mode = "dark") {
       MuiMenu: {
         styleOverrides: {
           paper: ({ theme }) => ({
+            backgroundColor: theme.palette.background.paper,
+            border: `1px solid ${theme.palette.divider}`,
+          }),
+        },
+      },
+      // Menus/Autocomplete poppers must match paper
+      MuiPopover: {
+        styleOverrides: {
+          paper: ({ theme }) => ({
+            backgroundColor: theme.palette.background.paper,
+            border: `1px solid ${theme.palette.divider}`,
+          }),
+        },
+      },
+      MuiAutocomplete: {
+        styleOverrides: {
+          paper: ({ theme }) => ({
+            backgroundColor: theme.palette.background.paper,
             border: `1px solid ${theme.palette.divider}`,
           }),
         },
