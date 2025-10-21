@@ -7,7 +7,7 @@ export async function getVehicleEvents({
   calendarIds,
   start,
   end,
-  tz,
+  tz: viewerTimezone,
   signal,
 }) {
   const apiKey = import.meta.env.VITE_CALENDAR_API_KEY;
@@ -20,10 +20,35 @@ export async function getVehicleEvents({
     throw new Error("Missing calendar API config");
   }
 
-  const timezone = tz || dayjs.tz?.guess?.() || DEFAULT_TZ;
-  const day = dayjs(start || end || dayjs()).tz(timezone);
-  const timeMin = day.startOf("day").toISOString();
-  const timeMax = day.endOf("day").add(1, "millisecond").toISOString();
+  const parseDayjs = (value) => {
+    if (!value) return null;
+    if (dayjs.isDayjs?.(value)) {
+      return value;
+    }
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed : null;
+  };
+
+  const startInstance = parseDayjs(start);
+  const endInstance = parseDayjs(end);
+  const baseDay =
+    startInstance ||
+    endInstance ||
+    (typeof dayjs.tz === "function" ? dayjs().tz(DEFAULT_TZ) : dayjs());
+
+  const rangeStart = startInstance || baseDay.startOf("day");
+  const rangeEnd = endInstance || rangeStart.endOf("day");
+
+  const timeMin = rangeStart.toISOString();
+  const timeMax = rangeEnd.add(1, "millisecond").toISOString();
+
+  const normalizedViewerTz =
+    typeof viewerTimezone === "string" ? viewerTimezone.trim() : "";
+  const timezone =
+    normalizedViewerTz &&
+    normalizedViewerTz.toLowerCase() === DEFAULT_TZ.toLowerCase()
+      ? normalizedViewerTz
+      : DEFAULT_TZ;
 
   const fetchForId = async (calendarId) => {
     const url = new URL(
