@@ -27,16 +27,26 @@ if (!$action) {
   exit;
 }
 
-// --- Request metadata (content-type + body) ---
+// --- Request metadata (content-type + lazy body reader) ---
 $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
-$body        = file_get_contents('php://input'); // raw body (JSON, form, etc.)
+$bodyCache   = null;
+$readBody = static function () use (&$bodyCache) {
+  if ($bodyCache === null) {
+    $raw = file_get_contents('php://input');
+    $bodyCache = ($raw === false) ? '' : $raw;
+  }
+  return $bodyCache;
+};
 
 // --- Auth: require secure key (Header, query, or JSON body) ---
 $provided_key = $_GET['key'] ?? ($_SERVER['HTTP_X_LRP_KEY'] ?? '');
-if (!$provided_key && $body !== '') {
-  $payload = json_decode($body, true);
-  if (json_last_error() === JSON_ERROR_NONE && isset($payload['key']) && is_string($payload['key'])) {
-    $provided_key = $payload['key'];
+if (!$provided_key) {
+  $hasJson = stripos($contentType, 'application/json') !== false;
+  if ($hasJson) {
+    $payload = json_decode($readBody(), true);
+    if (json_last_error() === JSON_ERROR_NONE && isset($payload['key']) && is_string($payload['key'])) {
+      $provided_key = $payload['key'];
+    }
   }
 }
 
@@ -81,7 +91,7 @@ curl_setopt_array($ch, [
 
 // only attach body for methods that have one
 if (in_array($method, ['POST','PUT','PATCH','DELETE'], true)) {
-  curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $readBody());
 }
 
 $response  = curl_exec($ch);
