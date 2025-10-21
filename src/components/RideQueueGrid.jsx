@@ -197,7 +197,7 @@ export default function RideQueueGrid() {
     });
 
     try {
-      await moveQueuedToOpen(rideDocId, { userId });
+      await moveQueuedToOpen(rideDocId, { userId, queueId });
       await notifyRideEvent("live", { rideId: rideDocId, userId });
       playFeedbackSound();
     } catch (err) {
