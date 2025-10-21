@@ -280,8 +280,11 @@ function TicketGrid({
         label={label}
         size="small"
         sx={{
-          bgcolor: "#2e2e2e",
-          color: "#4cbb17",
+          bgcolor: (t) =>
+            t.palette.mode === "dark"
+              ? t.palette.grey[900]
+              : t.palette.grey[200],
+          color: (t) => t.palette.primary.main,
           textTransform: isMissing ? "none" : "capitalize",
           fontWeight: 500,
         }}
@@ -336,7 +339,7 @@ function TicketGrid({
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <Avatar
           sx={{
-            bgcolor: "#4cbb17",
+            bgcolor: (t) => t.palette.primary.main,
             width: 26,
             height: 26,
             fontSize: 13,
@@ -467,7 +470,7 @@ function TicketGrid({
         getRowClassName={getRowClassName}
         slots={gridSlots}
         sx={{
-          bgcolor: "#0c0c0c",
+          bgcolor: (t) => t.palette.background.paper,
           color: "#fff",
           border: "none",
           "& .MuiDataGrid-row:hover": {
@@ -486,7 +489,7 @@ function TicketGrid({
             borderLeft: "3px solid #ff9800",
           },
           "& .row-active": {
-            outline: "2px solid #4cbb17",
+            outline: (t) => `2px solid ${t.palette.primary.main}`,
             outlineOffset: -2,
           },
         }}

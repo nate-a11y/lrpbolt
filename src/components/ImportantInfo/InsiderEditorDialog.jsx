@@ -284,7 +284,7 @@ export default function InsiderEditorDialog({ open, onClose, initial = null }) {
           onClick={handleSubmit}
           disabled={!canSave || saving}
           variant="contained"
-          sx={{ bgcolor: "#4cbb17", fontWeight: 600 }}
+          sx={{ bgcolor: (t) => t.palette.primary.main, fontWeight: 600 }}
         >
           {isEdit ? "Save" : "Create"}
         </Button>

@@ -140,7 +140,11 @@ export default function SmsSendDialog({ open, onClose, item }) {
           >
             <Typography
               variant="subtitle2"
-              sx={{ fontWeight: 600, color: "#4cbb17", mb: 1 }}
+              sx={{
+                fontWeight: 600,
+                color: (t) => t.palette.primary.main,
+                mb: 1,
+              }}
             >
               Message preview
             </Typography>
@@ -173,7 +177,7 @@ export default function SmsSendDialog({ open, onClose, item }) {
           loadingText="Sending…"
           variant="contained"
           sx={{
-            bgcolor: "#4cbb17",
+            bgcolor: (t) => t.palette.primary.main,
             "&:hover": { bgcolor: "#3aa40f" },
           }}
           aria-label="Send SMS to entered phone number"

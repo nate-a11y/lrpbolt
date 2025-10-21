@@ -415,7 +415,7 @@ export default function RideCard({
               sx={{
                 borderRadius: 2,
                 bgcolor: "rgba(255,255,255,.06)",
-                border: "1px solid rgba(255,255,255,.12)",
+                border: (t) => `1px solid ${t.palette.divider}`,
                 px: 2,
                 py: 1.25,
               }}

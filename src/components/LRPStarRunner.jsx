@@ -19,9 +19,9 @@ function CanvasShell({ children }) {
         height: "clamp(320px, 56vw, 540px)",
         borderRadius: 2,
         overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: (t) => `1px solid ${t.palette.divider}`,
         flex: "0 0 auto",
-        bgcolor: "#101010",
+        bgcolor: (t) => t.palette.background.paper,
       }}
     >
       {children}

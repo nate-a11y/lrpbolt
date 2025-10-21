@@ -84,7 +84,7 @@ export function buildTimeLogColumns() {
             label="Active"
             sx={{
               bgcolor: "rgba(76,187,23,0.18)",
-              color: "#4cbb17",
+              color: (t) => t.palette.primary.main,
               border: "1px solid rgba(76,187,23,0.35)",
             }}
           />

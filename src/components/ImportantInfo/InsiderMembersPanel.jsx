@@ -258,9 +258,9 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                 <Card
                   key={`${type}-${level}`}
                   sx={{
-                    bgcolor: "#101010",
+                    bgcolor: (t) => t.palette.background.paper,
                     borderRadius: 2,
-                    border: "1px solid rgba(255,255,255,0.04)",
+                    border: (t) => `1px solid ${t.palette.divider}`,
                     minHeight: 180,
                     display: "flex",
                     flexDirection: "column",
@@ -326,7 +326,7 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                                 alignItems: "flex-start",
                                 justifyContent: "space-between",
                                 borderRadius: 1.5,
-                                border: "1px solid rgba(255,255,255,0.06)",
+                                border: (t) => `1px solid ${t.palette.divider}`,
                                 bgcolor: t.palette.background.paper,
                                 p: 1.25,
                               })}

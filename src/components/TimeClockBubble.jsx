@@ -188,8 +188,8 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
             const tooltip = theme.zIndex?.tooltip ?? 1500;
             return Math.max(modal, drawer, snackbar, tooltip) + 4;
           },
-          bgcolor: "#0b0b0b",
-          border: "1px solid rgba(255,255,255,0.12)",
+          bgcolor: (t) => t.palette.background.paper,
+          border: (t) => `1px solid ${t.palette.divider}`,
           borderRadius: "999px",
           display: "flex",
           alignItems: "center",

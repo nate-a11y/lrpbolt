@@ -274,7 +274,7 @@ export default function CalendarHub() {
             right: 16,
             bottom: `calc(88px + env(safe-area-inset-bottom, 0px))`,
             zIndex: (t) => t.zIndex.tooltip + 1,
-            backgroundColor: "#4cbb17",
+            backgroundColor: (t) => t.palette.primary.main,
             "&:hover": { backgroundColor: "#3ea313" },
           }}
           aria-label="Jump to today"
@@ -293,7 +293,7 @@ export default function CalendarHub() {
             right: 16,
             bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
             zIndex: (t) => t.zIndex.tooltip + 1,
-            backgroundColor: "#4cbb17",
+            backgroundColor: (t) => t.palette.primary.main,
             "&:hover": { backgroundColor: "#3ea313" },
           }}
           aria-label="Center to current time"

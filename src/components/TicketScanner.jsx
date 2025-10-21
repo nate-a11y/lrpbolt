@@ -45,7 +45,7 @@ const successOverlaySx = {
   position: "absolute",
   inset: 0,
   bgcolor: "rgba(76,187,23,0.12)",
-  color: "#4cbb17",
+  color: (t) => t.palette.primary.main,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -510,7 +510,10 @@ function TicketScanner({
                 bgcolor: "rgba(6,6,6,0.72)",
               }}
             >
-              <CircularProgress size={28} sx={{ color: "#4cbb17" }} />
+              <CircularProgress
+                size={28}
+                sx={{ color: (t) => t.palette.primary.main }}
+              />
             </Box>
           )}
           {cooldown && (
@@ -535,7 +538,9 @@ function TicketScanner({
                 textAlign: "center",
               }}
             >
-              <CameraAltIcon sx={{ fontSize: 44, color: "#4cbb17" }} />
+              <CameraAltIcon
+                sx={{ fontSize: 44, color: (t) => t.palette.primary.main }}
+              />
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 {cameraDenied
                   ? "Camera access was blocked. Allow access to scan tickets."
@@ -572,7 +577,7 @@ function TicketScanner({
               aria-label={paused ? "Resume scanner" : "Pause scanner"}
             >
               {paused ? (
-                <PlayArrowIcon sx={{ color: "#4cbb17" }} />
+                <PlayArrowIcon sx={{ color: (t) => t.palette.primary.main }} />
               ) : (
                 <PauseIcon />
               )}
@@ -593,7 +598,7 @@ function TicketScanner({
                 aria-label={torchEnabled ? "Disable torch" : "Enable torch"}
               >
                 {torchEnabled ? (
-                  <FlashOffIcon sx={{ color: "#4cbb17" }} />
+                  <FlashOffIcon sx={{ color: (t) => t.palette.primary.main }} />
                 ) : (
                   <FlashOnIcon />
                 )}
@@ -614,7 +619,10 @@ function TicketScanner({
               onChange={handleDeviceChange}
               MenuProps={{
                 PaperProps: {
-                  sx: { bgcolor: "#060606", color: "#fff" },
+                  sx: {
+                    bgcolor: (t) => t.palette.background.paper,
+                    color: "#fff",
+                  },
                 },
               }}
             >
@@ -638,7 +646,7 @@ function TicketScanner({
             component="label"
             sx={{
               borderColor: "rgba(76,187,23,0.4)",
-              color: "#4cbb17",
+              color: (t) => t.palette.primary.main,
               fontWeight: 600,
             }}
           >
@@ -660,7 +668,7 @@ function TicketScanner({
             variant="contained"
             sx={{
               alignSelf: "flex-start",
-              bgcolor: "#4cbb17",
+              bgcolor: (t) => t.palette.primary.main,
               color: "#060606",
             }}
           >
@@ -678,7 +686,10 @@ function TicketScanner({
               border: "1px solid rgba(76,187,23,0.35)",
             }}
           >
-            <Typography variant="subtitle2" sx={{ color: "#4cbb17" }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ color: (t) => t.palette.primary.main }}
+            >
               Last scan
             </Typography>
             <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
@@ -691,7 +702,10 @@ function TicketScanner({
           <Button
             onClick={closeScanner}
             startIcon={<CloseFullscreenIcon />}
-            sx={{ alignSelf: "flex-start", color: "#4cbb17" }}
+            sx={{
+              alignSelf: "flex-start",
+              color: (t) => t.palette.primary.main,
+            }}
           >
             Close scanner
           </Button>

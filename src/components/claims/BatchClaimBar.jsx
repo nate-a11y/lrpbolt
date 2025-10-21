@@ -24,7 +24,7 @@ export default function BatchClaimBar({
         p: 1.5,
         borderRadius: 14,
         backdropFilter: "blur(6px)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: (t) => `1px solid ${t.palette.divider}`,
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between">

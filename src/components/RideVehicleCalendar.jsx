@@ -336,7 +336,13 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
   const showRightShadow = scrollLeft + viewportW < contentWidth - 1;
 
   return (
-    <Box sx={{ borderRadius: 3, bgcolor: "#060606", p: 1.5 }}>
+    <Box
+      sx={{
+        borderRadius: 3,
+        bgcolor: (t) => t.palette.background.paper,
+        p: 1.5,
+      }}
+    >
       <Stack
         direction="row"
         alignItems="center"
@@ -352,7 +358,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
             tabIndex={0}
             onClick={centerNow}
             sx={{
-              color: "#4cbb17",
+              color: (t) => t.palette.primary.main,
               cursor: "pointer",
               "&:hover": { textDecoration: "underline" },
             }}
@@ -364,7 +370,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
             tabIndex={0}
             onClick={onHideClick}
             sx={{
-              color: "#4cbb17",
+              color: (t) => t.palette.primary.main,
               cursor: "pointer",
               "&:hover": { textDecoration: "underline" },
             }}
@@ -531,7 +537,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                 top: 0,
                 bottom: 0,
                 width: "2px",
-                bgcolor: "#4cbb17",
+                bgcolor: (t) => t.palette.primary.main,
                 opacity: 0.9,
                 pointerEvents: "none",
               }}
@@ -1441,9 +1447,9 @@ function RideVehicleCalendar({
               <Box
                 sx={{
                   borderRadius: 3,
-                  bgcolor: "#060606",
+                  bgcolor: (t) => t.palette.background.paper,
                   p: 1.5,
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: (t) => `1px solid ${t.palette.divider}`,
                 }}
               >
                 <Stack

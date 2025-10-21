@@ -60,8 +60,8 @@ const iframeContainerSx = {
   width: "100%",
   borderRadius: 2,
   overflow: "hidden",
-  border: "1px solid rgba(255,255,255,0.06)",
-  bgcolor: "#101010",
+  border: (t) => `1px solid ${t.palette.divider}`,
+  bgcolor: (t) => t.palette.background.paper,
   aspectRatio: { xs: "3 / 4", md: "4 / 3" },
   minHeight: { xs: 420, sm: 480, md: 540 },
 };
@@ -393,9 +393,9 @@ export default function GamesHyperlane() {
           <Card
             sx={{
               flex: { xs: 1, lg: 1.5 },
-              bgcolor: "#0a0a0a",
+              bgcolor: (t) => t.palette.background.paper,
               borderRadius: 2,
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: (t) => `1px solid ${t.palette.divider}`,
               display: "flex",
               flexDirection: "column",
             }}
@@ -438,7 +438,9 @@ export default function GamesHyperlane() {
                     }
                     label={
                       soundOn ? (
-                        <VolumeUpIcon sx={{ color: "#4cbb17" }} />
+                        <VolumeUpIcon
+                          sx={{ color: (t) => t.palette.primary.main }}
+                        />
                       ) : (
                         <VolumeOffIcon sx={{ color: "#777" }} />
                       )
@@ -580,9 +582,9 @@ export default function GamesHyperlane() {
             <Card
               sx={{
                 flex: 1,
-                bgcolor: "#0a0a0a",
+                bgcolor: (t) => t.palette.background.paper,
                 borderRadius: 2,
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: (t) => `1px solid ${t.palette.divider}`,
                 display: "flex",
                 flexDirection: "column",
               }}
@@ -618,9 +620,9 @@ export default function GamesHyperlane() {
             <Card
               sx={{
                 flex: 1,
-                bgcolor: "#0a0a0a",
+                bgcolor: (t) => t.palette.background.paper,
                 borderRadius: 2,
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: (t) => `1px solid ${t.palette.divider}`,
                 display: "flex",
                 flexDirection: "column",
               }}
