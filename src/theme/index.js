@@ -20,9 +20,9 @@ function paletteFor(mode) {
     return {
       mode,
       primary: { main: BRAND.primary, contrastText: "#081208" },
-      background: { default: BRAND.darkBg, paper: "#0c0f0c" },
-      text: { primary: "#e9f0e9", secondary: "#b7c2b7" },
-      divider: alpha("#ffffff", 0.12), // allowed inside palette
+      background: { default: BRAND.darkBg, paper: "#0b0b0b" },
+      text: { primary: "#ffffff", secondary: "rgba(255,255,255,0.72)" },
+      divider: "rgba(255,255,255,0.12)",
       success: { main: "#25c26e" },
       warning: { main: "#f5a524" },
       error: { main: "#f04438" },
@@ -37,9 +37,9 @@ function paletteFor(mode) {
   return {
     mode,
     primary: { main: BRAND.primary, contrastText: "#051105" },
-    background: { default: "#f6faf6", paper: "#ffffff" },
-    text: { primary: "#0b120b", secondary: "#4a5a4a" },
-    divider: alpha("#052005", 0.12),
+    background: { default: "#ffffff", paper: "#f8f9f8" },
+    text: { primary: "#060606", secondary: "rgba(6,6,6,0.7)" },
+    divider: "rgba(6,6,6,0.1)",
     success: { main: "#138a4d" },
     warning: { main: "#b87400" },
     error: { main: "#d12828" },
@@ -94,6 +94,7 @@ export function getTheme(mode = "dark") {
             WebkitFontSmoothing: "antialiased",
             MozOsxFontSmoothing: "grayscale",
             paddingTop: "var(--appbar-h, 64px)",
+            transition: "background-color 0.25s ease, color 0.25s ease",
           },
           ":root": {
             "--lrp-safe-top": "env(safe-area-inset-top)",
@@ -106,11 +107,10 @@ export function getTheme(mode = "dark") {
         },
       },
 
-      // AppBar gets surface + divider via tokens
       MuiAppBar: {
         styleOverrides: {
           root: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor: theme.palette.background.default,
             color: theme.palette.text.primary,
             borderBottom: `1px solid ${theme.palette.divider}`,
           }),
@@ -132,14 +132,13 @@ export function getTheme(mode = "dark") {
         ],
       },
 
-      // Paper stays neutral, no literals
       MuiPaper: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundImage: "none",
-            border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
             color: theme.palette.text.primary,
+            border: `1px solid ${theme.palette.divider}`,
           }),
         },
       },
@@ -211,14 +210,12 @@ export function getTheme(mode = "dark") {
         },
       },
 
-      // DataGrid unified — removed grey[900]/grey[100] literals
       MuiDataGrid: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
             color: theme.palette.text.primary,
             borderColor: theme.palette.divider,
-            border: 0,
             "--DataGrid-rowBorderColor": theme.palette.divider,
             "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent":
               { backgroundColor: theme.palette.background.paper },
@@ -228,7 +225,7 @@ export function getTheme(mode = "dark") {
             borderBottom: `1px solid ${theme.palette.divider}`,
           }),
           columnHeader: ({ theme }) => ({
-            color: theme.palette.text.secondary,
+            color: theme.palette.text.primary,
           }),
           toolbarContainer: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
@@ -242,25 +239,6 @@ export function getTheme(mode = "dark") {
             backgroundColor: theme.palette.background.paper,
             borderTop: `1px solid ${theme.palette.divider}`,
             color: theme.palette.text.secondary,
-          }),
-          row: ({ theme }) => ({
-            "&:nth-of-type(even)": {
-              backgroundColor:
-                theme.palette.mode === "dark"
-                  ? "transparent"
-                  : theme.palette.action.hover,
-            },
-          }),
-          cell: ({ theme }) => ({
-            borderColor: theme.palette.divider,
-          }),
-          filterForm: ({ theme }) => ({
-            color: theme.palette.text.primary,
-          }),
-          panel: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
-            color: theme.palette.text.primary,
-            border: `1px solid ${theme.palette.divider}`,
           }),
         },
       },
@@ -293,11 +271,10 @@ export function getTheme(mode = "dark") {
       MuiTooltip: {
         styleOverrides: {
           tooltip: ({ theme }) => ({
-            // Use background.default then lift with alpha to avoid raw hex
             backgroundColor:
               theme.palette.mode === "dark"
-                ? alpha(theme.palette.background.default, 0.9)
-                : alpha(theme.palette.background.paper, 0.95),
+                ? alpha(theme.palette.common.white, 0.08)
+                : alpha(theme.palette.common.black, 0.9),
             color: theme.palette.text.primary,
             border: `1px solid ${theme.palette.divider}`,
           }),
