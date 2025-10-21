@@ -1,15 +1,24 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
-import { Paper } from "@mui/material";
-import { useGridApiRef } from "@mui/x-data-grid-pro";
+import { writeBatch, doc } from "firebase/firestore";
+import { Button, Paper, Snackbar } from "@mui/material";
+import { GridActionsCellItem, useGridApiRef } from "@mui/x-data-grid-pro";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 
 import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
+import { TRIP_STATES } from "@/constants/tripStates.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
-import { normalizeRideArray } from "@/utils/normalizeRide.js";
 import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
+import { moveQueuedToOpen, cancelRide } from "@/services/tripsService.js";
+import {
+  notifyRideEvent,
+  playFeedbackSound,
+} from "@/services/notificationsService.js";
+import { useTripsByState } from "@/hooks/useTripsByState.js";
+import useStableCallback from "@/hooks/useStableCallback.js";
+import useOptimisticOverlay from "@/hooks/useOptimisticOverlay.js";
+import { db } from "@/services/firebase.js";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import {
@@ -25,24 +34,78 @@ import {
   resolveVehicle,
 } from "../columns/rideColumns.jsx";
 import { deleteRide } from "../services/firestoreService";
-import { db } from "../utils/firebaseInit";
 
+import SmartDataGrid from "./SmartDataGrid.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function RideQueueGrid() {
-  const [rows, setRows] = useState([]);
   const [editRow, setEditRow] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const apiRef = useGridApiRef();
   const [selectionModel, setSelectionModel] = useState([]);
+  const [snack, setSnack] = useState(null);
+  const [pendingMoves, setPendingMoves] = useState(() => new Set());
+  const {
+    rows: subscribedRows,
+    loading,
+    error,
+  } = useTripsByState(TRIP_STATES.QUEUED);
+
+  const getRowId = useStableCallback((row) => row?.id ?? null);
+
+  const {
+    rows: rowsWithOverlay,
+    applyPatch,
+    clearPatch,
+    getPatch,
+  } = useOptimisticOverlay(subscribedRows, getRowId);
+
+  const rows = rowsWithOverlay;
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "rideQueue"),
-      (snap) => setRows(normalizeRideArray(snap.docs)),
-      console.error,
-    );
-    return () => unsub();
+    if (!Array.isArray(subscribedRows) || subscribedRows.length === 0) {
+      return;
+    }
+    subscribedRows.forEach((row) => {
+      const id = getRowId(row);
+      if (!id) return;
+      const patch = getPatch(id);
+      if (!patch) return;
+      const raw = row?._raw;
+      const matches = Object.entries(patch).every(([key, value]) => {
+        const rowValue = row?.[key];
+        const rawValue = raw?.[key];
+        return rowValue === value || rawValue === value;
+      });
+      if (matches) {
+        clearPatch(id);
+      }
+    });
+  }, [subscribedRows, clearPatch, getPatch, getRowId]);
+
+  useEffect(() => {
+    if (!error) return;
+    logError(error, { where: "RideQueueGrid.subscription" });
+  }, [error]);
+
+  const markPending = useCallback((rideId) => {
+    if (!rideId) return;
+    setPendingMoves((prev) => {
+      if (prev.has(rideId)) return prev;
+      const next = new Set(prev);
+      next.add(rideId);
+      return next;
+    });
+  }, []);
+
+  const clearPending = useCallback((rideId) => {
+    if (!rideId) return;
+    setPendingMoves((prev) => {
+      if (!prev.has(rideId)) return prev;
+      const next = new Set(prev);
+      next.delete(rideId);
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -61,12 +124,79 @@ export default function RideQueueGrid() {
     setEditRow(null);
   }, []);
 
+  const handleMoveToLive = useStableCallback(async (row) => {
+    const rideId = getRowId(row);
+    if (!rideId) return;
+
+    markPending(rideId);
+
+    applyPatch(rideId, {
+      status: TRIP_STATES.OPEN,
+      state: TRIP_STATES.OPEN,
+      queueStatus: TRIP_STATES.OPEN,
+      QueueStatus: TRIP_STATES.OPEN,
+    });
+
+    const userId = row?._raw?.updatedBy ?? row?.updatedBy ?? "system";
+    setSnack({ message: "Moved to Live", action: "undo", rideId });
+
+    try {
+      await moveQueuedToOpen(rideId, { userId });
+      await notifyRideEvent("live", { rideId, userId });
+      playFeedbackSound();
+    } catch (err) {
+      clearPatch(rideId);
+      logError(err, { where: "RideQueueGrid.handleMoveToLive", rideId });
+      setSnack({
+        message: err?.message
+          ? `Failed to move: ${err.message}`
+          : "Failed to move ride",
+      });
+    } finally {
+      clearPending(rideId);
+    }
+  });
+
+  const handleUndo = useStableCallback(async (rideId) => {
+    if (!rideId) return;
+
+    markPending(rideId);
+    try {
+      clearPatch(rideId);
+      await cancelRide(rideId, TRIP_STATES.OPEN, {
+        reason: "queue-move-undo",
+        userId: "system",
+      });
+      setSnack({ message: "Move undone" });
+    } catch (err) {
+      logError(err, { where: "RideQueueGrid.handleUndo", rideId });
+      setSnack({
+        message: err?.message ? `Undo failed: ${err.message}` : "Undo failed",
+        action: "undo",
+        rideId,
+      });
+    } finally {
+      clearPending(rideId);
+    }
+  });
+
+  const handleSnackClose = useCallback(
+    (_event, reason) => {
+      if (reason === "clickaway") return;
+      if (snack?.rideId && snack?.action !== "undo") {
+        clearPatch(snack.rideId);
+      }
+      setSnack(null);
+    },
+    [clearPatch, snack],
+  );
+
   const performDelete = useCallback(async (ids) => {
     const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const batch = writeBatch(db);
-        ids.forEach((id) => batch.delete(doc(db, "rideQueue", id)));
+        ids.forEach((id) => batch.delete(doc(db, "rides", id)));
         await batch.commit();
         return;
       } catch (err) {
@@ -75,7 +205,7 @@ export default function RideQueueGrid() {
           throw new AppError(
             err.message || "Bulk delete failed",
             "FIRESTORE_DELETE",
-            { collection: "rideQueue" },
+            { collection: "rides" },
           );
         }
         await backoff(attempt);
@@ -90,8 +220,13 @@ export default function RideQueueGrid() {
         const batch = writeBatch(db);
         rowsToRestore.forEach((r) => {
           if (!r) return;
-          const { id, ...rest } = r;
-          batch.set(doc(db, "rideQueue", id), rest);
+          const { id, _raw, ...rest } = r;
+          const payload = {
+            ...(typeof _raw === "object" && _raw ? _raw : rest),
+            state: TRIP_STATES.QUEUED,
+            status: rest?.status ?? _raw?.status ?? TRIP_STATES.QUEUED,
+          };
+          batch.set(doc(db, "rides", id), payload, { merge: true });
         });
         await batch.commit();
         return;
@@ -141,18 +276,55 @@ export default function RideQueueGrid() {
     () =>
       buildNativeActionsColumn({
         onEdit: (_id, row) => handleEditRide(row),
-        onDelete: async (id) => await deleteRide("rideQueue", id),
+        onDelete: async (id) => await deleteRide("rides", id),
       }),
     [handleEditRide],
   );
 
   const renderActions = useCallback(
     (params) => {
-      const items = actionsColumn.getActions?.(params);
-      if (!items || (Array.isArray(items) && items.length === 0)) return null;
-      return <>{items}</>;
+      const row = params?.row || {};
+      const rideId = getRowId(row);
+      const baseItems = actionsColumn.getActions?.(params) || [];
+      const normalized = Array.isArray(baseItems)
+        ? [...baseItems]
+        : baseItems
+          ? [baseItems]
+          : [];
+
+      const statusCandidate =
+        row?.status ??
+        row?.state ??
+        row?._raw?.status ??
+        row?._raw?.state ??
+        row?.QueueStatus ??
+        row?.queueStatus ??
+        TRIP_STATES.QUEUED;
+      const normalizedStatus =
+        typeof statusCandidate === "string"
+          ? statusCandidate.toLowerCase()
+          : statusCandidate;
+
+      const disableMove =
+        !rideId ||
+        pendingMoves.has(rideId) ||
+        normalizedStatus !== TRIP_STATES.QUEUED;
+
+      const actionItems = [
+        <GridActionsCellItem
+          key="move-to-live"
+          icon={<PlayArrowRoundedIcon fontSize="small" />}
+          label="Move to Live"
+          onClick={() => handleMoveToLive(row)}
+          disabled={disableMove}
+          showInMenu={false}
+        />,
+        ...normalized,
+      ];
+
+      return <>{actionItems}</>;
     },
-    [actionsColumn],
+    [actionsColumn, getRowId, handleMoveToLive, pendingMoves],
   );
 
   const columns = useMemo(
@@ -251,11 +423,11 @@ export default function RideQueueGrid() {
   return (
     <>
       <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
-        <LrpDataGridPro
+        <SmartDataGrid
           id="queue-grid"
           rows={rows}
           columns={columns}
-          getRowId={(row) => row?.id ?? null}
+          getRowId={getRowId}
           checkboxSelection
           disableRowSelectionOnClick
           apiRef={apiRef}
@@ -271,6 +443,7 @@ export default function RideQueueGrid() {
           }}
           density="compact"
           autoHeight={false}
+          loading={loading}
           sx={{ minHeight: 420 }}
         />
         <ConfirmBulkDeleteDialog
@@ -282,11 +455,30 @@ export default function RideQueueGrid() {
           sampleRows={sampleRows}
         />
       </Paper>
+      <Snackbar
+        open={!!snack}
+        message={snack?.message ?? ""}
+        autoHideDuration={snack?.action === "undo" ? 5000 : 3500}
+        onClose={handleSnackClose}
+        action={
+          snack?.action === "undo" && snack?.rideId ? (
+            <Button
+              size="small"
+              onClick={() => handleUndo(snack.rideId)}
+              disabled={pendingMoves.has(snack.rideId)}
+              aria-label="Undo move to Live"
+            >
+              Undo
+            </Button>
+          ) : null
+        }
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
       {editOpen && (
         <EditRideDialog
           open={editOpen}
           onClose={handleEditClose}
-          collectionName="rideQueue"
+          collectionName="rides"
           ride={editRow}
         />
       )}

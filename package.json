@@ -22,6 +22,7 @@
     "images:verify": "node scripts/verify-webp.mjs",
     "lint": "eslint --ext .js,.jsx src",
     "lint:fix": "eslint . --fix",
+    "scan:dark-hardcodes": "grep -R \"rgba(255,255,255\" -n src || true && grep -R \"#060606\" -n src || true",
     "postinstall": "patch-package && (npm run verify:happy-dom || yarn verify:happy-dom || true)",
     "prebuild": "npm run images:verify",
     "preview": "vite preview",
