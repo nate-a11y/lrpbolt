@@ -1483,11 +1483,21 @@ export default function RideEntryForm() {
                     },
                   }}
                   density="compact"
-                  sx={{
-                    "& .MuiDataGrid-columnHeaders": {
-                      bgcolor: theme.palette.background.paper,
+                  sx={(t) => ({
+                    "& .MuiDataGrid-toolbarContainer": {
+                      backgroundColor: t.palette.background.paper,
+                      borderBottom: `1px solid ${t.palette.divider}`,
                     },
-                  }}
+                    "& .MuiDataGrid-columnHeaders": {
+                      backgroundColor: t.palette.background.paper,
+                      borderBottom: `1px solid ${t.palette.divider}`,
+                    },
+                    "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
+                      {
+                        backgroundColor: t.palette.background.paper,
+                      },
+                    "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
+                  })}
                 />
               </Box>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
