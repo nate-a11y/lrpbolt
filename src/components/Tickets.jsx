@@ -1533,7 +1533,7 @@ function Tickets() {
               p: 4,
               width: 360,
               mx: "auto",
-              mt: 8,
+              mt: 1,
               outline: "none",
             }}
           >

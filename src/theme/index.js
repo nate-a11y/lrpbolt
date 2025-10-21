@@ -52,7 +52,14 @@ export function getTheme(mode = "dark") {
       fontFamily:
         'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial',
       h1: { fontWeight: 700 },
-      h2: { fontWeight: 700 },
+      // Keep headings bold but mobile-friendly
+      h2: {
+        fontWeight: 800,
+        letterSpacing: "-0.02em",
+        // ~22px on xs, grows to ~32px on md+
+        fontSize: "clamp(1.375rem, 1.2rem + 1.2vw, 2rem)",
+        lineHeight: 1.2,
+      },
       button: { textTransform: "none", fontWeight: 600 },
     },
     components: {
