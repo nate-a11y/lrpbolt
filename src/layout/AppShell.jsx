@@ -6,8 +6,6 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Header from "../components/Header";
 import MainNav from "../components/MainNav";
 
-import { APP_BAR_HEIGHT } from "./constants";
-
 export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
@@ -51,7 +49,8 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
           minWidth: 0,
           maxWidth: "100%",
           overflowX: "hidden",
-          pt: `calc(${APP_BAR_HEIGHT}px + 6px)`, // nothing hides under blur
+          // The body already reserves --appbar-h via CssBaseline. Keep a small gap for content.
+          pt: "calc(var(--lrp-safe-top, 0px) + 6px)",
           ml: { xs: 0, md: `var(--rail-width)` }, // space for rail when permanent
           pr: { xs: 0, md: 2 }, // horizontal padding when rail visible
           pl: { xs: 0, md: 2 }, // horizontal padding when rail visible

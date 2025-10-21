@@ -64,8 +64,8 @@ export function getTheme(mode = "dark") {
             color: palette.text.primary,
             WebkitFontSmoothing: "antialiased",
             MozOsxFontSmoothing: "grayscale",
-            // Reserve space for the fixed AppBar. BrandHeader sets --appbar-h at runtime.
-            paddingTop: "var(--appbar-h, 64px)",
+            // Reserve space for the fixed AppBar. Header sets --appbar-h at runtime.
+            paddingTop: "var(--appbar-h, 60px)",
           },
           // Mobile safe-area
           ":root": {
