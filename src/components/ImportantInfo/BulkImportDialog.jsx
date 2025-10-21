@@ -368,7 +368,7 @@ export default function BulkImportDialog({ open, onClose }) {
               </Stack>
             </Alert>
           )}
-          <Divider sx={{ borderColor: "#222" }} />
+          <Divider sx={{ borderColor: (t) => t.palette.divider }} />
           <Typography variant="subtitle2">Preview (first 20 rows)</Typography>
           <Table
             size="small"

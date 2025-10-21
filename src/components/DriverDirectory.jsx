@@ -16,6 +16,7 @@ import {
   useTheme,
   TextField,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
@@ -30,10 +31,6 @@ import DRIVER_LIST from "../data/driverDirectory";
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 import VehicleChip from "./VehicleChip";
 import PageContainer from "./PageContainer.jsx";
-
-// Tokens derived from theme (light/dark safe)
-// NOTE: we shadow `LRP` inside the component to read theme dynamically.
-const LRP_BASE = { green: "#4cbb17" };
 
 // helpers
 function getInitials(name = "") {
@@ -82,18 +79,16 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
 });
 
 // shared icon button style
-function iconBtnSx() {
-  return {
-    color: "#fff",
-    border: `1px solid rgba(76,187,23,0.35)`,
-    borderRadius: 2,
-    "&:hover": {
-      borderColor: LRP_BASE.green,
-      boxShadow: `0 0 10px rgba(76,187,23,0.45) inset`,
-      backgroundColor: "rgba(76,187,23,0.06)",
-    },
-  };
-}
+const iconBtnSx = (t) => ({
+  color: "#fff",
+  border: `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
+  borderRadius: 2,
+  "&:hover": {
+    borderColor: t.palette.primary.main,
+    boxShadow: `0 0 10px ${alpha(t.palette.primary.main, 0.45)} inset`,
+    backgroundColor: alpha(t.palette.primary.main, 0.06),
+  },
+});
 
 export default function DriverDirectory({
   disableContainer = false,
@@ -103,7 +98,7 @@ export default function DriverDirectory({
   const theme = useTheme();
   const LRP = React.useMemo(
     () => ({
-      ...LRP_BASE,
+      green: theme.palette.primary.main,
       black: theme.palette.background.paper, // used for local surfaces
       card: theme.palette.background.paper,
       chipBg:
@@ -118,6 +113,7 @@ export default function DriverDirectory({
       theme.palette.divider,
       theme.palette.grey,
       theme.palette.mode,
+      theme.palette.primary.main,
       theme.palette.text.secondary,
     ],
   );
@@ -367,7 +363,7 @@ export default function DriverDirectory({
                           component="a"
                           href={tel}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx}
                         >
                           <PhoneIcon fontSize="small" />
                         </IconButton>
@@ -378,7 +374,7 @@ export default function DriverDirectory({
                           href={sms || undefined}
                           onClick={!sms ? onCopy : undefined}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx}
                         >
                           <SmsIcon fontSize="small" />
                         </IconButton>
@@ -388,7 +384,7 @@ export default function DriverDirectory({
                           component="a"
                           href={email}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx}
                         >
                           <EmailIcon fontSize="small" />
                         </IconButton>
@@ -397,7 +393,7 @@ export default function DriverDirectory({
                         <IconButton
                           onClick={onCopy}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx}
                         >
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
@@ -409,7 +405,7 @@ export default function DriverDirectory({
                           target="_blank"
                           rel="noopener noreferrer"
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx}
                         >
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
@@ -514,7 +510,7 @@ export default function DriverDirectory({
             bgcolor: (t) => t.palette.background.paper,
             color: "#fff",
             borderRadius: 2,
-            border: `1px solid rgba(255,255,255,0.06)`,
+            border: (t) => `1px solid ${t.palette.divider}`,
             boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
             "--DataGrid-containerBackground": (t) => t.palette.background.paper,
             "& .MuiDataGrid-columnHeaders": {

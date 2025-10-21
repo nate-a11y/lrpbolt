@@ -115,6 +115,10 @@ function MainNav({
         {primaryItems.map(({ id, to, label, icon, iconColor }) => {
           const Icon = iconMap[icon] || iconMap.ChevronRight;
           const selected = location.pathname === to;
+          const resolvedIconColor = iconColor || null;
+          const iconSx = resolvedIconColor
+            ? { color: resolvedIconColor }
+            : undefined;
           return (
             <ListItemButton
               key={id}
@@ -129,8 +133,8 @@ function MainNav({
               }}
               end
             >
-              <ListItemIcon sx={{ color: iconColor || "inherit" }}>
-                <Icon sx={iconColor ? { color: iconColor } : undefined} />
+              <ListItemIcon sx={{ color: resolvedIconColor || "inherit" }}>
+                <Icon sx={iconSx} />
               </ListItemIcon>
               <ListItemText primary={label} />
             </ListItemButton>

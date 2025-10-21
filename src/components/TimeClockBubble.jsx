@@ -37,8 +37,6 @@ import logError from "@/utils/logError.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { pickFirst, START_KEYS } from "@/utils/timeGuards.js";
 
-const LRP = { green: "#4cbb17", black: "#060606" };
-
 function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
   const startForTimer = hasActive && startTimeTs ? startTimeTs : null;
   const { start, startMs, elapsedMs } = useElapsedFromTs(startForTimer, {
@@ -204,16 +202,16 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
         role="status"
       >
         <Box
-          sx={{
+          sx={(t) => ({
             width: 36,
             height: 36,
             borderRadius: "50%",
             display: "grid",
             placeItems: "center",
-            bgcolor: LRP.green,
-            color: LRP.black,
+            bgcolor: t.palette.primary.main,
+            color: t.palette.getContrastText(t.palette.primary.main),
             flexShrink: 0,
-          }}
+          })}
         >
           <AccessTimeFilledIcon fontSize="small" />
         </Box>

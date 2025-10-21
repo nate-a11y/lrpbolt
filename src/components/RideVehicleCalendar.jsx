@@ -407,7 +407,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
           <Box
             sx={{
               height: HEADER_H,
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              borderBottom: (t) => `1px solid ${t.palette.divider}`,
             }}
           />
           {/* Vehicle chips list */}

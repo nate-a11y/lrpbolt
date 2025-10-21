@@ -26,7 +26,7 @@ export const NAV_ITEMS = [
     label: "Important Information",
     icon: "Info",
     rolesVisible: ["admin", "driver"],
-    iconColor: "#4cbb17",
+    iconColor: (t) => t.palette.primary.main,
   },
   {
     id: "drop-guides",

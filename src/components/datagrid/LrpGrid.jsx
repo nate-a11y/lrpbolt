@@ -28,8 +28,31 @@ const LrpGrid = ({
   getRowId = defaultGetRowId,
   slots,
   slotProps,
+  sx,
   ...props
 }) => {
+  const baseSx = (t) => ({
+    "& .MuiDataGrid-toolbarContainer": {
+      backgroundColor: t.palette.background.paper,
+      borderBottom: `1px solid ${t.palette.divider}`,
+    },
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: t.palette.background.paper,
+      borderBottom: `1px solid ${t.palette.divider}`,
+    },
+    "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
+      {
+        backgroundColor: t.palette.background.paper,
+      },
+    "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
+  });
+
+  const mergedSx = sx
+    ? Array.isArray(sx)
+      ? [baseSx, ...sx]
+      : [baseSx, sx]
+    : baseSx;
+
   return (
     <DataGridPro
       autoHeight
@@ -39,6 +62,7 @@ const LrpGrid = ({
       getRowId={getRowId}
       slots={{ ...defaultSlots, ...slots }}
       slotProps={{ ...defaultSlotProps, ...slotProps }}
+      sx={mergedSx}
       {...props}
     />
   );
@@ -50,6 +74,7 @@ LrpGrid.propTypes = {
   getRowId: PropTypes.func,
   slots: PropTypes.object,
   slotProps: PropTypes.object,
+  sx: PropTypes.oneOfType([PropTypes.object, PropTypes.func, PropTypes.array]),
 };
 
 export default LrpGrid;

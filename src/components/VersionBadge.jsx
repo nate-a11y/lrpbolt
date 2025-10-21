@@ -2,11 +2,11 @@ import { useMemo, useState, useCallback } from "react";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Box, Chip, IconButton, Stack, Tooltip } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 
 import logError from "../utils/logError.js";
 
-const BRAND_GREEN = "#4cbb17";
 const DARK_BG = "#060606";
 
 function parseBuild(version) {
@@ -27,10 +27,10 @@ function parseBuild(version) {
   };
 }
 
-function channelColor(channel) {
+function channelColor(theme, channel) {
   switch ((channel || "").toLowerCase()) {
     case "prod":
-      return BRAND_GREEN;
+      return theme.palette.primary.main;
     case "release":
       return "#a3ff78";
     case "beta":
@@ -48,6 +48,7 @@ export default function VersionBadge({
   dense = false,
   sx,
 }) {
+  const theme = useTheme();
   const [copied, setCopied] = useState(false);
   const data = useMemo(() => parseBuild(value), [value]);
   const repo = import.meta.env.VITE_GITHUB_REPO_SLUG;
@@ -69,16 +70,18 @@ export default function VersionBadge({
       <Tooltip title={data.raw}>
         <Chip
           size={size}
-          icon={<InfoOutlinedIcon sx={{ color: BRAND_GREEN }} />}
+          icon={
+            <InfoOutlinedIcon sx={{ color: (t) => t.palette.primary.main }} />
+          }
           label={data.raw}
-          sx={{
-            bgcolor: "rgba(76,187,23,0.12)",
-            color: "#e6ffe0",
-            borderColor: BRAND_GREEN,
+          sx={(t) => ({
+            bgcolor: alpha(t.palette.primary.main, 0.12),
+            color: t.palette.getContrastText(t.palette.primary.main),
+            borderColor: t.palette.primary.main,
             borderWidth: 1,
             borderStyle: "solid",
             ...(sx || {}),
-          }}
+          })}
           variant="outlined"
         />
       </Tooltip>
@@ -121,8 +124,8 @@ export default function VersionBadge({
         label={data.channel}
         sx={{
           bgcolor: "transparent",
-          color: channelColor(data.channel),
-          borderColor: channelColor(data.channel),
+          color: channelColor(theme, data.channel),
+          borderColor: channelColor(theme, data.channel),
           borderWidth: 1,
           borderStyle: "solid",
           fontWeight: 600,
@@ -161,12 +164,14 @@ export default function VersionBadge({
             aria-label="Copy full version"
             size="small"
             onClick={handleCopy}
-            sx={{
+            sx={(t) => ({
               ml: dense ? 0 : 0.5,
-              bgcolor: "rgba(255,255,255,0.04)",
-              border: "1px solid #2e7d32",
-              "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
-            }}
+              bgcolor: alpha(t.palette.common.white, 0.04),
+              border: `1px solid ${t.palette.primary.main}`,
+              "&:hover": {
+                bgcolor: alpha(t.palette.common.white, 0.08),
+              },
+            })}
           >
             <ContentCopyIcon fontSize="inherit" />
           </IconButton>
@@ -176,14 +181,14 @@ export default function VersionBadge({
         <Chip
           size="small"
           label="Copied"
-          sx={{
+          sx={(t) => ({
             ml: 0.5,
-            bgcolor: "rgba(76,187,23,0.18)",
-            color: "#e6ffe0",
-            borderColor: BRAND_GREEN,
+            bgcolor: alpha(t.palette.primary.main, 0.18),
+            color: t.palette.getContrastText(t.palette.primary.main),
+            borderColor: t.palette.primary.main,
             borderWidth: 1,
             borderStyle: "solid",
-          }}
+          })}
           variant="outlined"
         />
       ) : null}

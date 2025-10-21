@@ -16,6 +16,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ShareIcon from "@mui/icons-material/Share";
@@ -38,22 +39,25 @@ import {
 import { toNumberOrNull } from "@/services/gamesService.js";
 import useGameSound from "@/hooks/useGameSound.js";
 
-const BRAND_GREEN = "#4cbb17";
 const BACKGROUND = "#060606";
 
-const gridSx = {
+const gridSx = (t) => ({
   bgcolor: "transparent",
   color: "#fff",
   border: 0,
-  "& .MuiDataGrid-cell": { borderColor: "rgba(255,255,255,0.08)" },
-  "& .MuiDataGrid-columnHeaders": { bgcolor: "rgba(255,255,255,0.04)" },
-  "& .MuiDataGrid-row.current-user": {
-    bgcolor: "rgba(76,187,23,0.12)",
-    "&:hover": { bgcolor: "rgba(76,187,23,0.18)" },
+  "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
+  "& .MuiDataGrid-columnHeaders": {
+    bgcolor: alpha(t.palette.common.white, 0.04),
   },
-  "& .MuiDataGrid-row:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+  "& .MuiDataGrid-row.current-user": {
+    bgcolor: alpha(t.palette.primary.main, 0.12),
+    "&:hover": { bgcolor: alpha(t.palette.primary.main, 0.18) },
+  },
+  "& .MuiDataGrid-row:hover": {
+    bgcolor: alpha(t.palette.common.white, 0.06),
+  },
   "& .MuiDataGrid-virtualScroller": { backgroundColor: "transparent" },
-};
+});
 
 const iframeContainerSx = {
   position: "relative",
@@ -379,7 +383,9 @@ export default function GamesHyperlane() {
     >
       <Stack spacing={3} sx={{ flexGrow: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
-          <SportsEsportsIcon sx={{ color: BRAND_GREEN, fontSize: 28 }} />
+          <SportsEsportsIcon
+            sx={{ color: (t) => t.palette.primary.main, fontSize: 28 }}
+          />
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
             LRP Hyperlane — Neon Runner
           </Typography>
@@ -417,7 +423,10 @@ export default function GamesHyperlane() {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: 700, color: BRAND_GREEN }}
+                    sx={{
+                      fontWeight: 700,
+                      color: (t) => t.palette.primary.main,
+                    }}
                   >
                     Pilot Console
                   </Typography>
@@ -429,11 +438,11 @@ export default function GamesHyperlane() {
                         checked={soundOn}
                         onChange={(event) => setSoundOn(event.target.checked)}
                         color="success"
-                        sx={{
+                        sx={(t) => ({
                           "& .MuiSwitch-thumb": {
-                            bgcolor: soundOn ? "#4cbb17" : "#555",
+                            bgcolor: soundOn ? t.palette.primary.main : "#555",
                           },
-                        }}
+                        })}
                       />
                     }
                     label={
@@ -557,16 +566,11 @@ export default function GamesHyperlane() {
               >
                 <Button
                   variant="contained"
+                  color="primary"
                   onClick={handleShare}
                   startIcon={<ShareIcon />}
                   disabled={copying}
-                  sx={{
-                    bgcolor: BRAND_GREEN,
-                    color: "#000",
-                    fontWeight: 700,
-                    px: 2.5,
-                    "&:hover": { bgcolor: "#5fd62c" },
-                  }}
+                  sx={{ fontWeight: 700, px: 2.5 }}
                 >
                   Share score link
                 </Button>
@@ -600,12 +604,15 @@ export default function GamesHyperlane() {
                 <Box>
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: 700, color: BRAND_GREEN }}
+                    sx={{
+                      fontWeight: 700,
+                      color: (t) => t.palette.primary.main,
+                    }}
                   >
                     Top 10 — All Time
                   </Typography>
                   <Divider
-                    sx={{ mt: 1, borderColor: "rgba(255,255,255,0.08)" }}
+                    sx={{ mt: 1, borderColor: (t) => t.palette.divider }}
                   />
                 </Box>
                 {renderLeaderboard(
@@ -638,12 +645,15 @@ export default function GamesHyperlane() {
                 <Box>
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: 700, color: BRAND_GREEN }}
+                    sx={{
+                      fontWeight: 700,
+                      color: (t) => t.palette.primary.main,
+                    }}
                   >
                     Weekly Heat — Reset {startOfWeek.format("MMM D")}
                   </Typography>
                   <Divider
-                    sx={{ mt: 1, borderColor: "rgba(255,255,255,0.08)" }}
+                    sx={{ mt: 1, borderColor: (t) => t.palette.divider }}
                   />
                 </Box>
                 {userBestError ? (

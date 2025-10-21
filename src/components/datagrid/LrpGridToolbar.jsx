@@ -104,7 +104,7 @@ export default function LrpGridToolbar(props = {}) {
           alignItems: "center",
           flexWrap: "wrap",
           bgcolor: (t) => t.palette.background.paper,
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          borderBottom: (t) => `1px solid ${t.palette.divider}`,
           "& .MuiButton-root, & .MuiIconButton-root, & .MuiInputBase-root": {
             color: "rgba(255,255,255,0.92)",
           },

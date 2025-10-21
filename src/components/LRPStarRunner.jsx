@@ -4,11 +4,10 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import * as THREE from "three";
 import { Box, Button, Divider, Stack, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
 import useGameSound from "@/hooks/useGameSound.js";
 import logError from "@/utils/logError.js";
-
-const LRP_GREEN = "#4cbb17";
 
 function CanvasShell({ children }) {
   return (
@@ -29,7 +28,7 @@ function CanvasShell({ children }) {
   );
 }
 
-function Ship({ xRef }) {
+function Ship({ xRef, color }) {
   const ref = useRef(null);
 
   useFrame(() => {
@@ -41,15 +40,22 @@ function Ship({ xRef }) {
     <mesh ref={ref} position={[0, 0, 4]}>
       <coneGeometry args={[0.3, 1, 10]} />
       <meshStandardMaterial
-        color={LRP_GREEN}
-        emissive={LRP_GREEN}
+        color={color}
+        emissive={color}
         emissiveIntensity={0.6}
       />
     </mesh>
   );
 }
 
-function Orbs({ poolSize = 160, speedRef, runningRef, scoreBumpRef, play }) {
+function Orbs({
+  poolSize = 160,
+  speedRef,
+  runningRef,
+  scoreBumpRef,
+  play,
+  color,
+}) {
   const meshRef = useRef(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const hiddenMatrix = useMemo(() => {
@@ -139,15 +145,22 @@ function Orbs({ poolSize = 160, speedRef, runningRef, scoreBumpRef, play }) {
     <instancedMesh ref={meshRef} args={[undefined, undefined, poolSize]}>
       <sphereGeometry args={[0.18, 12, 12]} />
       <meshStandardMaterial
-        color={LRP_GREEN}
-        emissive={LRP_GREEN}
+        color={color}
+        emissive={color}
         emissiveIntensity={0.85}
       />
     </instancedMesh>
   );
 }
 
-function Scene({ runningRef, speedRef, shipXRef, scoreBumpRef, play }) {
+function Scene({
+  runningRef,
+  speedRef,
+  shipXRef,
+  scoreBumpRef,
+  play,
+  primaryColor,
+}) {
   useFrame(() => {
     const target = runningRef.current ? 1 : 0;
     speedRef.current += (target - speedRef.current) * 0.08;
@@ -159,13 +172,14 @@ function Scene({ runningRef, speedRef, shipXRef, scoreBumpRef, play }) {
       <pointLight position={[10, 10, 10]} />
       <fog attach="fog" args={["#060606", 5, 32]} />
       <Stars radius={80} depth={30} count={1500} factor={3} fade speed={0.6} />
-      <Ship xRef={shipXRef} />
+      <Ship xRef={shipXRef} color={primaryColor} />
       <Orbs
         poolSize={150}
         speedRef={speedRef}
         runningRef={runningRef}
         scoreBumpRef={scoreBumpRef}
         play={play}
+        color={primaryColor}
       />
       {[-3, 0, 3].map((x) => (
         <mesh key={x} position={[x, 0, -6]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -179,6 +193,9 @@ function Scene({ runningRef, speedRef, shipXRef, scoreBumpRef, play }) {
 
 export default function LRPStarRunner() {
   const { play } = useGameSound();
+  const theme = useTheme();
+  const primaryColor = theme.palette.primary.main;
+  const primaryContrast = theme.palette.getContrastText(primaryColor);
   const [score, setScore] = useState(0);
   const [running, setRunning] = useState(false);
 
@@ -286,6 +303,7 @@ export default function LRPStarRunner() {
             shipXRef={shipXRef}
             scoreBumpRef={scoreBumpRef}
             play={play}
+            primaryColor={primaryColor}
           />
         </Box>
       </CanvasShell>
@@ -293,7 +311,11 @@ export default function LRPStarRunner() {
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 0.5 }}>
         <Typography
           variant="h6"
-          sx={{ color: LRP_GREEN, fontWeight: 800, minWidth: 120 }}
+          sx={{
+            color: primaryColor,
+            fontWeight: 800,
+            minWidth: 120,
+          }}
         >
           Score: {score}
         </Typography>
@@ -318,10 +340,10 @@ export default function LRPStarRunner() {
             }
           }}
           sx={{
-            bgcolor: LRP_GREEN,
-            color: "#000",
+            bgcolor: primaryColor,
+            color: primaryContrast,
             fontWeight: 900,
-            "&:hover": { bgcolor: "#45a915" },
+            "&:hover": { bgcolor: theme.palette.primary.dark },
           }}
         >
           Start
@@ -329,7 +351,12 @@ export default function LRPStarRunner() {
         <Button
           variant="outlined"
           onClick={() => setRunning(false)}
-          sx={{ borderColor: LRP_GREEN, color: LRP_GREEN, fontWeight: 900 }}
+          sx={{
+            borderColor: primaryColor,
+            color: primaryColor,
+            fontWeight: 900,
+            "&:hover": { borderColor: primaryColor },
+          }}
         >
           Stop
         </Button>

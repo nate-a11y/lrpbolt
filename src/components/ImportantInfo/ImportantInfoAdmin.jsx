@@ -601,12 +601,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                       <Chip
                         size="small"
                         label={categoryLabel}
-                        sx={{
-                          bgcolor: "#143d0a",
-                          color: "#b7ffb7",
-                          border: (t) => `1px solid ${t.palette.primary.main}`,
-                          fontWeight: 600,
-                        }}
+                        color="primary"
+                        sx={{ fontWeight: 600 }}
                       />
                     </Stack>
 
@@ -618,7 +614,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
                     {row?.details ? (
                       <Box>
-                        <Divider sx={{ borderColor: "#222", mb: 1 }} />
+                        <Divider
+                          sx={{ borderColor: (t) => t.palette.divider, mb: 1 }}
+                        />
                         <Typography
                           variant="body2"
                           sx={{ whiteSpace: "pre-wrap", opacity: 0.85 }}
@@ -896,7 +894,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                     Last checked {formatDateTime(healthData.checkedAt)}
                   </Typography>
                 </Stack>
-                <Divider sx={{ borderColor: "#222" }} />
+                <Divider sx={{ borderColor: (t) => t.palette.divider }} />
                 <Stack spacing={0.75} sx={{ color: "white" }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                     Twilio Secrets
@@ -920,7 +918,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                     {healthData.secrets?.TWILIO_FROM?.e164 ? "OK" : "INVALID"}
                   </Typography>
                 </Stack>
-                <Divider sx={{ borderColor: "#222" }} />
+                <Divider sx={{ borderColor: (t) => t.palette.divider }} />
                 <Stack spacing={0.75} sx={{ color: "white" }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                     Last Twilio Error
@@ -948,7 +946,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 </Stack>
                 {localLastSmsError ? (
                   <>
-                    <Divider sx={{ borderColor: "#222" }} />
+                    <Divider sx={{ borderColor: (t) => t.palette.divider }} />
                     <Stack spacing={0.75} sx={{ color: "white" }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                         Last error this session

@@ -348,7 +348,7 @@ function DefaultToolbar({
         alignItems: "center",
         flexWrap: "wrap",
         bgcolor: "rgba(6,6,6,0.92)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: (t) => `1px solid ${t.palette.divider}`,
         "& .MuiSvgIcon-root": { color: (t) => t.palette.primary.main },
         "& .MuiInputBase-root": {
           minWidth: { xs: "100%", sm: 220 },
@@ -688,6 +688,7 @@ function LrpDataGridPro({
           {
             backgroundColor: t.palette.background.paper,
           },
+        "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
       })}
       {...rest}
     />
