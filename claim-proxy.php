@@ -27,8 +27,19 @@ if (!$action) {
   exit;
 }
 
-// --- Auth: require secure key (Header or query) ---
+// --- Request metadata (content-type + body) ---
+$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+$body        = file_get_contents('php://input'); // raw body (JSON, form, etc.)
+
+// --- Auth: require secure key (Header, query, or JSON body) ---
 $provided_key = $_GET['key'] ?? ($_SERVER['HTTP_X_LRP_KEY'] ?? '');
+if (!$provided_key && $body !== '') {
+  $payload = json_decode($body, true);
+  if (json_last_error() === JSON_ERROR_NONE && isset($payload['key']) && is_string($payload['key'])) {
+    $provided_key = $payload['key'];
+  }
+}
+
 if (!$provided_key || !hash_equals($secure_key, $provided_key)) {
   http_response_code(401);
   header("Content-Type: application/json");
@@ -44,10 +55,8 @@ $target = rtrim($firebase_base, '/') . '/' . $action . ($qs ? ('?' . $qs) : '');
 
 // --- Prepare method, body, headers ---
 $method = $_SERVER['REQUEST_METHOD'];
-$body   = file_get_contents('php://input'); // raw body (JSON, form, etc.)
 
 $headers = [];
-$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
 if ($contentType)     $headers[] = 'Content-Type: ' . $contentType;
 $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
 if ($auth)            $headers[] = 'Authorization: ' . $auth;
