@@ -14,6 +14,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditIcon from "@mui/icons-material/Edit";
@@ -222,13 +223,19 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
       ) : null}
 
       {error ? (
-        <Alert severity="error" sx={{ bgcolor: "rgba(244,67,54,0.12)" }}>
+        <Alert
+          severity="error"
+          sx={{ bgcolor: (t) => alpha(t.palette.error.main, 0.12) }}
+        >
           Failed to load insider members. Please try again.
         </Alert>
       ) : null}
 
       {!loading && !hasRows && !error ? (
-        <Alert severity="info" sx={{ bgcolor: "rgba(255,255,255,0.04)" }}>
+        <Alert
+          severity="info"
+          sx={{ bgcolor: (t) => alpha(t.palette.common.white, 0.04) }}
+        >
           No insider members yet.
         </Alert>
       ) : null}
@@ -244,7 +251,9 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
           >
             {type}
           </Typography>
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+          <Divider
+            sx={{ borderColor: (t) => alpha(t.palette.common.white, 0.08) }}
+          />
           <Box
             sx={{
               display: "grid",

@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Box, Button, Chip, Stack } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import { diagShowSwNotification } from "@/pwa/clockNotifications";
 
@@ -138,7 +139,7 @@ export default function NotifDiag() {
         bottom: 8,
         zIndex: 4000,
         p: 1.5,
-        bgcolor: "rgba(0,0,0,0.75)",
+        bgcolor: (t) => alpha(t.palette.common.black, 0.75),
         color: "#fff",
         borderRadius: 1,
         minWidth: 220,

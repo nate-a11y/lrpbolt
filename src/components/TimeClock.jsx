@@ -11,6 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import { PlayArrow, Stop } from "@mui/icons-material";
 
@@ -620,8 +621,9 @@ export default function TimeClock({ setIsTracking }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                bgcolor: "rgba(76,187,23,0.08)",
-                border: "1px solid rgba(76,187,23,0.3)",
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                border: (t) =>
+                  `1px solid ${alpha(t.palette.primary.main, 0.3)}`,
                 borderRadius: 2,
                 px: 2,
                 py: 1,

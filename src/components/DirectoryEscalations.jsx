@@ -9,6 +9,7 @@ import {
   Paper,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ContactEmergencyIcon from "@mui/icons-material/ContactEmergency";
 
 import PageContainer from "./PageContainer.jsx";
@@ -67,9 +68,12 @@ export default function DirectoryEscalations({ initialTab = "directory" }) {
               display: "inline-flex",
               p: 1.25,
               borderRadius: 2,
-              background:
-                "linear-gradient(180deg, rgba(76,187,23,0.28) 0%, rgba(76,187,23,0.08) 100%)",
-              border: "1px solid rgba(76,187,23,0.35)",
+              background: (t) =>
+                `linear-gradient(180deg, ${alpha(t.palette.primary.main, 0.28)} 0%, ${alpha(
+                  t.palette.primary.main,
+                  0.08,
+                )} 100%)`,
+              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
               color: theme.palette.success.main,
             }}
           >
@@ -98,8 +102,8 @@ export default function DirectoryEscalations({ initialTab = "directory" }) {
           elevation={0}
           sx={{
             borderRadius: 2,
-            border: "1px solid rgba(76,187,23,0.25)",
-            background: "rgba(6,6,6,0.85)",
+            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.25)}`,
+            background: (t) => alpha(t.palette.common.black, 0.85),
             "& .MuiTabs-flexContainer": { gap: { xs: 0.5, sm: 1 } },
           }}
         >

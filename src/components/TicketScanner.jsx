@@ -13,6 +13,7 @@ import {
   CircularProgress,
   Tooltip,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -44,7 +45,7 @@ const BASE_CONSTRAINTS = {
 const successOverlaySx = {
   position: "absolute",
   inset: 0,
-  bgcolor: "rgba(76,187,23,0.12)",
+  bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
   color: (t) => t.palette.primary.main,
   display: "flex",
   alignItems: "center",
@@ -458,8 +459,8 @@ function TicketScanner({
             position: "relative",
             borderRadius: 2,
             overflow: "hidden",
-            border: "1px solid rgba(76,187,23,0.45)",
-            bgcolor: "rgba(0,0,0,0.6)",
+            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.45)}`,
+            bgcolor: (t) => alpha(t.palette.common.black, 0.6),
             aspectRatio: { xs: "3 / 4", sm: "16 / 9" },
             maxWidth: 560,
             mx: "auto",
@@ -483,7 +484,7 @@ function TicketScanner({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 2,
-                bgcolor: "rgba(6,6,6,0.72)",
+                bgcolor: (t) => alpha(t.palette.common.black, 0.72),
                 textAlign: "center",
                 px: 3,
               }}
@@ -507,7 +508,7 @@ function TicketScanner({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                bgcolor: "rgba(6,6,6,0.72)",
+                bgcolor: (t) => alpha(t.palette.common.black, 0.72),
               }}
             >
               <CircularProgress
@@ -528,7 +529,7 @@ function TicketScanner({
               sx={{
                 position: "absolute",
                 inset: 0,
-                bgcolor: "rgba(6,6,6,0.88)",
+                bgcolor: (t) => alpha(t.palette.common.black, 0.88),
                 display: "flex",
                 flexDirection: "column",
                 gap: 2,
@@ -568,9 +569,10 @@ function TicketScanner({
               color="inherit"
               onClick={handlePauseToggle}
               sx={{
-                bgcolor: paused
-                  ? "rgba(76,187,23,0.18)"
-                  : "rgba(255,255,255,0.1)",
+                bgcolor: (t) =>
+                  paused
+                    ? alpha(t.palette.primary.main, 0.18)
+                    : alpha(t.palette.common.white, 0.1),
                 borderRadius: 2,
                 alignSelf: "flex-start",
               }}
@@ -590,9 +592,10 @@ function TicketScanner({
                 color="inherit"
                 onClick={handleTorchToggle}
                 sx={{
-                  bgcolor: torchEnabled
-                    ? "rgba(76,187,23,0.18)"
-                    : "rgba(255,255,255,0.1)",
+                  bgcolor: (t) =>
+                    torchEnabled
+                      ? alpha(t.palette.primary.main, 0.18)
+                      : alpha(t.palette.common.white, 0.1),
                   borderRadius: 2,
                 }}
                 aria-label={torchEnabled ? "Disable torch" : "Enable torch"}
@@ -645,7 +648,7 @@ function TicketScanner({
             startIcon={<ImageIcon />}
             component="label"
             sx={{
-              borderColor: "rgba(76,187,23,0.4)",
+              borderColor: (t) => alpha(t.palette.primary.main, 0.4),
               color: (t) => t.palette.primary.main,
               fontWeight: 600,
             }}
@@ -682,8 +685,8 @@ function TicketScanner({
               borderRadius: 2,
               px: 2,
               py: 1.5,
-              bgcolor: "rgba(76,187,23,0.12)",
-              border: "1px solid rgba(76,187,23,0.35)",
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
             }}
           >
             <Typography

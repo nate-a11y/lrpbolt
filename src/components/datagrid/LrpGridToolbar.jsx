@@ -10,6 +10,7 @@ import {
   useGridApiContext,
 } from "@mui/x-data-grid-pro";
 import { Box, Button, Tooltip, Snackbar, Alert } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 
 /**
@@ -139,8 +140,10 @@ export default function LrpGridToolbar(props = {}) {
                 disabled={!selectionCount}
                 sx={{
                   ml: 0.5,
-                  bgcolor: "rgba(76,187,23,0.12)",
-                  "&:hover": { bgcolor: "rgba(76,187,23,0.22)" },
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+                  "&:hover": {
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.22),
+                  },
                   textTransform: "none",
                 }}
               >

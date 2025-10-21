@@ -301,7 +301,7 @@ function TicketGrid({
           label="—"
           size="small"
           sx={{
-            bgcolor: "rgba(255,255,255,0.08)",
+            bgcolor: (t) => alpha(t.palette.common.white, 0.08),
             color: "#bdbdbd",
             fontWeight: 500,
           }}
@@ -477,19 +477,19 @@ function TicketGrid({
           color: "#fff",
           border: "none",
           "& .MuiDataGrid-row:hover": {
-            bgcolor: "rgba(76,187,23,0.05)",
+            bgcolor: (t) => alpha(t.palette.primary.main, 0.05),
           },
           "& .status-breached": {
-            bgcolor: "rgba(244, 67, 54, 0.18)",
+            bgcolor: (t) => alpha(t.palette.error.main, 0.18),
           },
           "& .status-open": {
-            bgcolor: "rgba(76, 187, 23, 0.12)",
+            bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
           },
           "& .priority-urgent": {
-            borderLeft: "3px solid #f44336",
+            borderLeft: (t) => `3px solid ${t.palette.error.main}`,
           },
           "& .priority-high": {
-            borderLeft: "3px solid #ff9800",
+            borderLeft: (t) => `3px solid ${t.palette.warning.main}`,
           },
           "& .row-active": {
             outline: (t) => `2px solid ${t.palette.primary.main}`,

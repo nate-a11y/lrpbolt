@@ -225,21 +225,21 @@ function download(filename, text, type = "text/plain") {
 
 const scanChipSx = {
   Both: {
-    bgcolor: "rgba(76,187,23,0.18)",
+    bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
     color: (t) => t.palette.primary.main,
-    border: "1px solid rgba(76,187,23,0.35)",
+    border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
   },
   Outbound: {
-    bgcolor: "rgba(76,187,23,0.12)",
+    bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
     color: (t) => t.palette.primary.main,
-    border: "1px solid rgba(76,187,23,0.25)",
+    border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.25)}`,
   },
   Return: {
     bgcolor: "action.selected",
     color: "text.primary",
   },
   Unscanned: {
-    bgcolor: "rgba(255,255,255,0.08)",
+    bgcolor: (t) => alpha(t.palette.common.white, 0.08),
     color: "text.secondary",
     border: (t) => `1px solid ${t.palette.divider}`,
   },
@@ -280,7 +280,7 @@ function TicketPreviewCard({ ticket }) {
         display: "flex",
         flexDirection: "column",
         gap: 1.5,
-        boxShadow: "0 0 0 1px rgba(76,187,23,0.28)",
+        boxShadow: (t) => `0 0 0 1px ${alpha(t.palette.primary.main, 0.28)}`,
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "center" }}>
@@ -294,7 +294,9 @@ function TicketPreviewCard({ ticket }) {
       <Typography variant="h6" align="center" fontWeight={600}>
         🎟️ Shuttle Ticket
       </Typography>
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
+      <Divider
+        sx={{ borderColor: (t) => alpha(t.palette.common.white, 0.12) }}
+      />
       <Stack spacing={0.5}>
         <Typography>
           <strong>Passenger:</strong> {ticket.passenger || "N/A"}
@@ -1470,13 +1472,13 @@ function Tickets() {
               autoHeight={false}
               sx={{
                 "& .MuiDataGrid-row:nth-of-type(odd)": {
-                  backgroundColor: "rgba(255,255,255,0.04)",
+                  backgroundColor: (t) => alpha(t.palette.common.white, 0.04),
                 },
                 "& .MuiDataGrid-row:hover": {
-                  backgroundColor: "rgba(76,187,23,0.1)",
+                  backgroundColor: (t) => alpha(t.palette.primary.main, 0.1),
                 },
                 "& .MuiDataGrid-row.Mui-selected": {
-                  backgroundColor: "rgba(76,187,23,0.2)",
+                  backgroundColor: (t) => alpha(t.palette.primary.main, 0.2),
                 },
               }}
               loading={loading}
@@ -1882,11 +1884,11 @@ function Tickets() {
               }
               sx={{
                 fontWeight: 600,
-                borderColor: "rgba(76,187,23,0.6)",
+                borderColor: (t) => alpha(t.palette.primary.main, 0.6),
                 color: "#f5f5f5",
                 "&:hover": { borderColor: (t) => t.palette.primary.main },
                 "&.Mui-disabled": {
-                  borderColor: "rgba(255,255,255,0.24)",
+                  borderColor: (t) => alpha(t.palette.common.white, 0.24),
                   color: "rgba(255,255,255,0.4)",
                 },
               }}

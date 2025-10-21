@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Box, Button, Collapse, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
@@ -126,13 +127,14 @@ export default function ExpandableDetails({
                 px: 1.25,
                 minWidth: 0,
                 color: "primary.main",
-                bgcolor: "rgba(76, 187, 23, 0.12)",
-                border: "1px solid rgba(76, 187, 23, 0.3)",
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+                border: (t) =>
+                  `1px solid ${alpha(t.palette.primary.main, 0.3)}`,
                 fontWeight: 600,
                 textTransform: "none",
                 borderRadius: 999,
                 "&:hover": {
-                  bgcolor: "rgba(76, 187, 23, 0.2)",
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.2),
                 },
               }}
             >

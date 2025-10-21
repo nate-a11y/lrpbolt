@@ -15,6 +15,7 @@ import {
   Typography,
   Grow,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 import BlackoutOverlay, {
@@ -360,10 +361,10 @@ export default function ClaimRides() {
               color="primary"
               variant="outlined"
               sx={{
-                borderColor: "rgba(76,187,23,0.6)",
+                borderColor: (t) => alpha(t.palette.primary.main, 0.6),
                 color: "primary.main",
                 fontWeight: 600,
-                backgroundColor: "rgba(76,187,23,0.08)",
+                backgroundColor: (t) => alpha(t.palette.primary.main, 0.08),
               }}
             />
             <Button
@@ -400,7 +401,7 @@ export default function ClaimRides() {
               height: 3,
               borderRadius: 9999,
               mb: 2.5,
-              backgroundColor: "rgba(255,255,255,0.12)",
+              backgroundColor: (t) => alpha(t.palette.common.white, 0.12),
             }}
           />
         ) : null}

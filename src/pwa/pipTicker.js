@@ -1,5 +1,27 @@
 /* Proprietary and confidential. See LICENSE. */
+import { alpha } from "@mui/material/styles";
+
+import getTheme from "@/theme";
+
 let pipWindow = null;
+
+const themeCache = new Map();
+
+const getColorMode = () => {
+  if (typeof document === "undefined") return "dark";
+  const attr = document.documentElement?.getAttribute("data-color-mode");
+  return attr === "light" ? "light" : "dark";
+};
+
+const getPipTheme = () => {
+  const mode = getColorMode();
+  let theme = themeCache.get(mode);
+  if (!theme) {
+    theme = getTheme(mode);
+    themeCache.set(mode, theme);
+  }
+  return theme;
+};
 
 export function isPiPSupported() {
   return (
@@ -83,21 +105,29 @@ export function stopClockPiP() {
 
 /* ---------- Document PiP (interactive) ---------- */
 function renderDocPiP(doc, labelText, startMs) {
-  doc.body.style.cssText =
-    "margin:0;background:#0b0b0b;font-family:system-ui,Segoe UI,Roboto,Arial";
+  const theme = getPipTheme();
+  const { palette } = theme;
+  const buttonBg =
+    palette.mode === "dark"
+      ? alpha(palette.common.white, 0.08)
+      : alpha(palette.common.black, 0.04);
+  const buttonHoverBg =
+    palette.mode === "dark"
+      ? alpha(palette.common.white, 0.14)
+      : alpha(palette.common.black, 0.08);
+
+  doc.body.style.cssText = `margin:0;background:${palette.background.paper};color:${palette.text.primary};font-family:system-ui,Segoe UI,Roboto,Arial`;
 
   const wrap = doc.createElement("div");
   wrap.style.cssText =
     "display:flex;align-items:center;gap:10px;padding:10px 12px;";
 
   const dot = doc.createElement("div");
-  dot.style.cssText =
-    "width:12px;height:12px;border-radius:50%;background:#4cbb17;flex:0 0 auto;";
+  dot.style.cssText = `width:12px;height:12px;border-radius:50%;background:${palette.primary.main};flex:0 0 auto;`;
 
   const txt = doc.createElement("div");
   txt.id = "lrp-pip-text";
-  txt.style.cssText =
-    "color:#fff;font-weight:700;font-size:13px;white-space:nowrap;letter-spacing:.2px";
+  txt.style.cssText = `color:${palette.text.primary};font-weight:700;font-size:13px;white-space:nowrap;letter-spacing:.2px`;
 
   const spacer = doc.createElement("div");
   spacer.style.cssText = "flex:1 1 auto";
@@ -108,10 +138,9 @@ function renderDocPiP(doc, labelText, startMs) {
   const btn = (label) => {
     const b = doc.createElement("button");
     b.textContent = label;
-    b.style.cssText =
-      "background:#1a1a1a;border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:4px 8px;font-weight:600;font-size:12px;cursor:pointer";
-    b.onmouseenter = () => (b.style.background = "#202020");
-    b.onmouseleave = () => (b.style.background = "#1a1a1a");
+    b.style.cssText = `background:${buttonBg};border:1px solid ${palette.divider};color:${palette.text.primary};border-radius:999px;padding:4px 8px;font-weight:600;font-size:12px;cursor:pointer`;
+    b.onmouseenter = () => (b.style.background = buttonHoverBg);
+    b.onmouseleave = () => (b.style.background = buttonBg);
     return b;
   };
 
@@ -230,17 +259,18 @@ async function ensureVideoPiP(labelText, startMs) {
       const t = h_ > 0 ? `${h_}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
 
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#0b0b0b";
+      const { palette } = getPipTheme();
+      ctx.fillStyle = palette.background.paper;
       ctx.fillRect(0, 0, w, h);
 
       // green dot
-      ctx.fillStyle = "#4cbb17";
+      ctx.fillStyle = palette.primary.main;
       ctx.beginPath();
       ctx.arc(18, 50, 8, 0, Math.PI * 2);
       ctx.fill();
 
       // crisp white text
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = palette.text.primary;
       ctx.font = "700 20px system-ui,Segoe UI,Roboto,Arial";
       ctx.textBaseline = "middle";
       ctx.fillText(`${base} • ${t}`, 36, 50);
