@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { AppBar, Toolbar, Box } from "@mui/material";
+import { AppBar, Toolbar, Box, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
@@ -29,25 +29,24 @@ export default function BrandHeader() {
       }}
     >
       <Toolbar variant="dense" sx={{ minHeight: headerHeight }}>
-        {/* left: menu + logo */}
+        {/* left: menu + logo + title */}
         <Box
           sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
         >
           {/* ... existing left controls ... */}
-        </Box>
-
-        <Box
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            fontWeight: 800,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: { xs: 160, sm: 260, md: 360 },
-          }}
-        >
-          {/* App title */}
+          <Typography
+            variant="h6"
+            noWrap
+            sx={{
+              ml: 1,
+              typography: { xs: "subtitle1", sm: "h6" },
+              maxWidth: { xs: 160, sm: 260, md: 360 },
+              fontWeight: 800,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            LRP Driver Portal
+          </Typography>
         </Box>
 
         {/* right controls */}

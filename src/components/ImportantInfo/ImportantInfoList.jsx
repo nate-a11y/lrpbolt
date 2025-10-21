@@ -139,7 +139,7 @@ export default function ImportantInfoList({
 
   if (showError) {
     return (
-      <Box sx={{ p: 2, color: "white" }}>
+      <Box sx={{ p: 2, color: (t) => t.palette.text.primary }}>
         <Stack
           spacing={1.5}
           sx={{
@@ -174,7 +174,7 @@ export default function ImportantInfoList({
 
   if (showEmpty) {
     return (
-      <Box sx={{ p: 2, color: "white" }}>
+      <Box sx={{ p: 2, color: (t) => t.palette.text.primary }}>
         <Stack
           spacing={1.5}
           sx={{
@@ -210,7 +210,7 @@ export default function ImportantInfoList({
             maxWidth: { md: 640 },
             bgcolor: (t) => t.palette.background.paper,
           }}
-          InputProps={{ sx: { color: "white" } }}
+          InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
           inputProps={{ "aria-label": "Search important information" }}
         />
       </Stack>
@@ -220,12 +220,17 @@ export default function ImportantInfoList({
         sx={{ flexWrap: "wrap", gap: { xs: 1, md: 1.5 } }}
       >
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel sx={{ color: "white" }}>Category</InputLabel>
+          <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+            Category
+          </InputLabel>
           <Select
             label="Category"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
-            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
+            sx={{
+              color: (t) => t.palette.text.primary,
+              bgcolor: (t) => t.palette.background.paper,
+            }}
           >
             {categories.map((item) => (
               <MenuItem key={item} value={item}>
@@ -235,12 +240,17 @@ export default function ImportantInfoList({
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel sx={{ color: "white" }}>Sort</InputLabel>
+          <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+            Sort
+          </InputLabel>
           <Select
             label="Sort"
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value)}
-            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
+            sx={{
+              color: (t) => t.palette.text.primary,
+              bgcolor: (t) => t.palette.background.paper,
+            }}
           >
             <MenuItem value="title">Title (A–Z)</MenuItem>
             <MenuItem value="category">Category (A–Z)</MenuItem>

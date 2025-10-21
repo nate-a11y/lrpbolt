@@ -117,6 +117,14 @@ export function getTheme(mode = "dark") {
             border: `1px solid ${theme.palette.divider}`,
             // prevent rogue black cards in light mode
             backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+          }),
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            color: theme.palette.text.primary,
           }),
         },
       },
