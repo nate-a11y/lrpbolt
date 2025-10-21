@@ -348,9 +348,10 @@ function DefaultToolbar({
         display: "flex",
         alignItems: "center",
         flexWrap: "wrap",
-        bgcolor: (t) => alpha(t.palette.common.black, 0.92),
+        bgcolor: "background.paper",
+        color: "text.secondary",
         borderBottom: (t) => `1px solid ${t.palette.divider}`,
-        "& .MuiSvgIcon-root": { color: (t) => t.palette.primary.main },
+        "& .MuiSvgIcon-root": { color: (t) => t.palette.text.secondary },
         "& .MuiInputBase-root": {
           minWidth: { xs: "100%", sm: 220 },
           maxWidth: { sm: 260, md: 320 },
@@ -463,6 +464,7 @@ function LrpDataGridPro({
   disableRowSelectionOnClick = true,
   ...rest
 }) {
+  const { sx: sxProp, ...gridProps } = rest;
   const missingIdWarnedRef = useRef(false);
   const defaults = useMemo(
     () => ({
@@ -649,6 +651,33 @@ function LrpDataGridPro({
 
   const resolvedDensity = persistedState?.density || density;
 
+  const baseSx = (theme) => ({
+    border: 0,
+    bgcolor: theme.palette.background.paper,
+    color: theme.palette.text.primary,
+    "& .MuiDataGrid-toolbarContainer": {
+      backgroundColor: theme.palette.background.paper,
+      borderBottom: `1px solid ${theme.palette.divider}`,
+      color: theme.palette.text.secondary,
+    },
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: theme.palette.background.paper,
+      borderBottom: `1px solid ${theme.palette.divider}`,
+      color: theme.palette.text.primary,
+    },
+    "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
+      {
+        backgroundColor: theme.palette.background.paper,
+      },
+    "& .MuiDataGrid-cell": { borderColor: theme.palette.divider },
+  });
+
+  const mergedSx = Array.isArray(sxProp)
+    ? [baseSx, ...sxProp]
+    : sxProp
+      ? [baseSx, sxProp]
+      : [baseSx];
+
   const handleStateChange = useCallback(
     (state, event) => {
       persistState(state);
@@ -678,22 +707,8 @@ function LrpDataGridPro({
       slotProps={mergedSlotProps}
       experimentalFeatures={{ ariaV7: true }}
       error={error}
-      sx={(t) => ({
-        "& .MuiDataGrid-toolbarContainer": {
-          backgroundColor: t.palette.background.paper,
-          borderBottom: `1px solid ${t.palette.divider}`,
-        },
-        "& .MuiDataGrid-columnHeaders": {
-          backgroundColor: t.palette.background.paper,
-          borderBottom: `1px solid ${t.palette.divider}`,
-        },
-        "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
-          {
-            backgroundColor: t.palette.background.paper,
-          },
-        "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
-      })}
-      {...rest}
+      sx={mergedSx}
+      {...gridProps}
     />
   );
 }

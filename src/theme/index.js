@@ -231,40 +231,78 @@ export function getTheme(mode = "dark") {
             color: theme.palette.text.primary,
             borderColor: theme.palette.divider,
             "--DataGrid-rowBorderColor": theme.palette.divider,
-            "--DataGrid-containerBackground": theme.palette.background.paper,
+
+            // Make sure internal containers can’t go dark in light mode
             "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent":
-              { backgroundColor: theme.palette.background.paper },
-          }),
-          columnHeaders: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            color: theme.palette.text.primary,
-          }),
-          columnHeader: ({ theme }) => ({
-            color: theme.palette.text.primary,
-          }),
-          toolbarContainer: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root":
               {
+                backgroundColor: theme.palette.background.paper,
+              },
+
+            // cells/rows/borders
+            "& .MuiDataGrid-cell": {
+              borderColor: theme.palette.divider,
+              color: theme.palette.text.primary,
+            },
+            "& .MuiDataGrid-row": {
+              // light zebra only in light mode
+              "&:nth-of-type(even)": {
+                backgroundColor:
+                  theme.palette.mode === "light"
+                    ? theme.palette.action.hover
+                    : "transparent",
+              },
+            },
+
+            // header row
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: theme.palette.background.paper,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              color: theme.palette.text.primary,
+            },
+
+            // toolbar (the black band culprit)
+            "& .MuiDataGrid-toolbarContainer": {
+              backgroundColor: theme.palette.background.paper,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              color: theme.palette.text.secondary,
+              "& .MuiSvgIcon-root": {
                 color: theme.palette.text.secondary,
               },
-            "& .MuiInputBase-root": {
-              backgroundColor: theme.palette.background.paper,
             },
-          }),
-          footerContainer: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
-            borderTop: `1px solid ${theme.palette.divider}`,
-            color: theme.palette.text.secondary,
-          }),
-          cell: ({ theme }) => ({ borderColor: theme.palette.divider }),
-          filterForm: ({ theme }) => ({ color: theme.palette.text.primary }),
-          panel: ({ theme }) => ({
-            backgroundColor: theme.palette.background.paper,
-            color: theme.palette.text.primary,
-            border: `1px solid ${theme.palette.divider}`,
+
+            // footer (pagination/status)
+            "& .MuiDataGrid-footerContainer": {
+              backgroundColor: theme.palette.background.paper,
+              borderTop: `1px solid ${theme.palette.divider}`,
+              color: theme.palette.text.secondary,
+            },
+
+            // quick filter input inside toolbar
+            "& .MuiDataGrid-toolbarQuickFilter": {
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+              borderRadius: 8,
+              border: `1px solid ${theme.palette.divider}`,
+              "& input": { color: theme.palette.text.primary },
+            },
+
+            // column header titles/icons
+            "& .MuiDataGrid-columnHeaderTitle": {
+              color: theme.palette.text.primary,
+            },
+            "& .MuiDataGrid-iconSeparator": {
+              color: theme.palette.divider,
+            },
+
+            // filter panel and forms match the surface
+            "& .MuiDataGrid-panel": {
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.text.primary,
+              border: `1px solid ${theme.palette.divider}`,
+            },
+            "& .MuiDataGrid-filterForm": {
+              color: theme.palette.text.primary,
+            },
           }),
         },
       },
