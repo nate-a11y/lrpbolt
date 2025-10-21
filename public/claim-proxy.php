@@ -1,58 +1,100 @@
 <?php
+// claim-proxy.php
+
+// --- CORS ---
 header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json");
-
-// CORS preflight handler
+header("Vary: Origin");
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-  header("Access-Control-Allow-Headers: Content-Type");
-  exit(0);
+  header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  header("Access-Control-Allow-Headers: Content-Type, Authorization, X-LRP-Key");
+  http_response_code(204);
+  exit;
 }
 
-$google_script_url = 'https://script.google.com/macros/s/AKfycbyWpVh4Sbt3qwsrsZHLnJADTwh71i18uoGBxP6jJqWhAIa7Y4iht0zsFALBeJV-s0Yz/exec';
-$secure_key = 'a9eF12kQvB67xZsT30pL';
+// --- CONFIG ---
+$secure_key     = 'a9eF12kQvB67xZsT30pL'; // keep in env in production
+$firebase_base  = 'https://us-central1-lrp---claim-portal.cloudfunctions.net';
 
-$ch = null;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $input = file_get_contents('php://input');
-  $decoded = json_decode($input, true);
-
-  if (!isset($decoded['key']) || $decoded['key'] !== $secure_key) {
-    http_response_code(403);
-    echo json_encode(["success" => false, "message" => "Unauthorized proxy call"]);
-    exit;
-  }
-
-  $ch = curl_init($google_script_url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_POST, true);
-  curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
-  curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-} else {
-  $query = $_SERVER['QUERY_STRING'] ?? '';
-  $ch = curl_init("$google_script_url?$query");
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+// --- Resolve action/type (support both + PATH_INFO) ---
+$action = $_GET['type'] ?? $_GET['action'] ?? '';
+if (!$action && !empty($_SERVER['PATH_INFO'])) {
+  $action = trim($_SERVER['PATH_INFO'], '/'); // e.g. /notifyLive
+}
+if (!$action) {
+  http_response_code(400);
+  header("Content-Type: application/json");
+  echo json_encode(["success" => false, "message" => "Missing 'action' (or 'type')"]);
+  exit;
 }
 
-$response = curl_exec($ch);
-$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$error = curl_error($ch);
+// --- Auth: require secure key (Header or query) ---
+$provided_key = $_GET['key'] ?? ($_SERVER['HTTP_X_LRP_KEY'] ?? '');
+if (!$provided_key || !hash_equals($secure_key, $provided_key)) {
+  http_response_code(401);
+  header("Content-Type: application/json");
+  echo json_encode(["success" => false, "message" => "Unauthorized"]);
+  exit;
+}
+
+// --- Build target URL (preserve other query params) ---
+parse_str($_SERVER['QUERY_STRING'] ?? '', $params);
+unset($params['type'], $params['action'], $params['key']);
+$qs = http_build_query($params);
+$target = rtrim($firebase_base, '/') . '/' . $action . ($qs ? ('?' . $qs) : '');
+
+// --- Prepare method, body, headers ---
+$method = $_SERVER['REQUEST_METHOD'];
+$body   = file_get_contents('php://input'); // raw body (JSON, form, etc.)
+
+$headers = [];
+$contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+if ($contentType)     $headers[] = 'Content-Type: ' . $contentType;
+$auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+if ($auth)            $headers[] = 'Authorization: ' . $auth;
+// forward our key upstream too, if CF expects it
+$headers[] = 'X-LRP-Key: ' . $secure_key;
+$headers[] = 'Accept: application/json';
+$headers[] = 'Expect:'; // disable 100-continue stalls
+
+// --- Execute request with cURL ---
+$ch = curl_init($target);
+curl_setopt_array($ch, [
+  CURLOPT_CUSTOMREQUEST  => $method,
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_FOLLOWLOCATION => true,
+  CURLOPT_TIMEOUT        => 15,
+  CURLOPT_CONNECTTIMEOUT => 8,
+  CURLOPT_HTTPHEADER     => $headers,
+  CURLOPT_ENCODING       => '', // allow gzip
+  CURLOPT_SSL_VERIFYPEER => true,
+  CURLOPT_SSL_VERIFYHOST => 2,
+]);
+
+// only attach body for methods that have one
+if (in_array($method, ['POST','PUT','PATCH','DELETE'], true)) {
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+}
+
+$response  = curl_exec($ch);
+$httpcode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$ctypeUp   = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+$curlErr   = curl_error($ch);
 curl_close($ch);
 
+// --- Return ---
 if ($response === false) {
-  http_response_code(500);
+  http_response_code(502);
+  header("Content-Type: application/json");
   echo json_encode([
-    "success" => false,
-    "message" => "❌ Proxy CURL request failed",
-    "curl_error" => $error
+    "success"    => false,
+    "message"    => "Proxy request failed",
+    "target"     => $target,
+    "curl_error" => $curlErr
   ]);
   exit;
 }
 
-// Return Google Apps Script response as-is
 http_response_code($httpcode);
-header("Access-Control-Allow-Origin: *"); // Redundant but explicit
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: " . ($ctypeUp ?: "application/json"));
 echo $response;
