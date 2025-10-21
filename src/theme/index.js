@@ -1,8 +1,9 @@
+// src/theme/getTheme.js (replace your file with this)
 import { createTheme, alpha } from "@mui/material/styles";
 
 const BRAND = {
-  primary: "#4cbb17", // LRP green
-  darkBg: "#060606", // LRP dark background
+  primary: "#4cbb17",      // LRP green
+  darkBg: "#060606",       // LRP dark background
 };
 
 const brandTokens = {
@@ -21,7 +22,7 @@ function paletteFor(mode) {
       primary: { main: BRAND.primary, contrastText: "#081208" },
       background: { default: BRAND.darkBg, paper: "#0c0f0c" },
       text: { primary: "#e9f0e9", secondary: "#b7c2b7" },
-      divider: alpha("#ffffff", 0.12),
+      divider: alpha("#ffffff", 0.12), // allowed inside palette
       success: { main: "#25c26e" },
       warning: { main: "#f5a524" },
       error: { main: "#f04438" },
@@ -52,11 +53,9 @@ export function getTheme(mode = "dark") {
       fontFamily:
         'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial',
       h1: { fontWeight: 700 },
-      // Keep headings bold but mobile-friendly
       h2: {
         fontWeight: 800,
         letterSpacing: "-0.02em",
-        // ~22px on xs, grows to ~32px on md+
         fontSize: "clamp(1.375rem, 1.2rem + 1.2vw, 2rem)",
         lineHeight: 1.2,
       },
@@ -71,21 +70,20 @@ export function getTheme(mode = "dark") {
             color: palette.text.primary,
             WebkitFontSmoothing: "antialiased",
             MozOsxFontSmoothing: "grayscale",
-            // Reserve space for the fixed AppBar. BrandHeader sets --appbar-h at runtime.
             paddingTop: "var(--appbar-h, 64px)",
           },
-          // Mobile safe-area
           ":root": {
             "--lrp-safe-top": "env(safe-area-inset-top)",
             "--lrp-safe-bottom": "env(safe-area-inset-bottom)",
           },
-          // neutralize any leftover hardcoded dark helpers
+          // neutralize any leftover hardcoded dark helpers by mapping to tokens
           ".lrp-dark, .lrp-dark-bg, .bg-black": {
             backgroundColor: `${palette.background.paper} !important`,
           },
         },
       },
-      // Give the AppBar a consistent surface & divider
+
+      // AppBar gets surface + divider via tokens
       MuiAppBar: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -95,7 +93,8 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
-      // Buttons look consistent in both modes
+
+      // Buttons themed only via tokens
       MuiButton: {
         variants: [
           {
@@ -109,18 +108,19 @@ export function getTheme(mode = "dark") {
           },
         ],
       },
-      // Paper matches brand, slight border for contrast
+
+      // Paper stays neutral, no literals
       MuiPaper: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundImage: "none",
             border: `1px solid ${theme.palette.divider}`,
-            // prevent rogue black cards in light mode
             backgroundColor: theme.palette.background.paper,
             color: theme.palette.text.primary,
           }),
         },
       },
+
       MuiCard: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -128,14 +128,15 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
-      // Inputs/Selects readable in both modes
+
+      // Inputs use white/black via theme tokens (no raw hex)
       MuiInputBase: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundColor:
               theme.palette.mode === "dark"
-                ? alpha("#ffffff", 0.06)
-                : alpha("#000000", 0.02),
+                ? alpha(theme.palette.common.white, 0.06)
+                : alpha(theme.palette.common.black, 0.02),
           }),
         },
       },
@@ -144,13 +145,13 @@ export function getTheme(mode = "dark") {
           root: ({ theme }) => ({
             backgroundColor:
               theme.palette.mode === "dark"
-                ? alpha("#ffffff", 0.06)
-                : alpha("#000000", 0.02),
+                ? alpha(theme.palette.common.white, 0.06)
+                : alpha(theme.palette.common.black, 0.02),
             "&:hover": {
               backgroundColor:
                 theme.palette.mode === "dark"
-                  ? alpha("#ffffff", 0.1)
-                  : alpha("#000000", 0.05),
+                  ? alpha(theme.palette.common.white, 0.1)
+                  : alpha(theme.palette.common.black, 0.05),
             },
             "&.Mui-focused": { backgroundColor: "transparent" },
           }),
@@ -161,15 +162,16 @@ export function getTheme(mode = "dark") {
           root: ({ theme }) => ({
             backgroundColor:
               theme.palette.mode === "dark"
-                ? alpha("#ffffff", 0.04)
-                : alpha("#000000", 0.01),
+                ? alpha(theme.palette.common.white, 0.04)
+                : alpha(theme.palette.common.black, 0.01),
           }),
           notchedOutline: ({ theme }) => ({
             borderColor: theme.palette.divider,
           }),
         },
       },
-      // Tabs/Chips accent color
+
+      // Tabs/Chips accent color via tokens
       MuiTabs: {
         styleOverrides: {
           indicator: ({ theme }) => ({
@@ -185,7 +187,8 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
-      // DataGrid — unify all surfaces (headers, body, footer)
+
+      // DataGrid unified — removed grey[900]/grey[100] literals
       MuiDataGrid: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -194,39 +197,25 @@ export function getTheme(mode = "dark") {
             borderColor: theme.palette.divider,
             border: 0,
             "--DataGrid-rowBorderColor": theme.palette.divider,
-            "& .MuiDataGrid-virtualScroller": {
-              backgroundColor: theme.palette.background.paper,
-            },
-            "& .MuiDataGrid-virtualScrollerContent": {
-              backgroundColor: theme.palette.background.paper,
-            },
+            "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent":
+              { backgroundColor: theme.palette.background.paper },
           }),
           columnHeaders: ({ theme }) => ({
-            backgroundColor:
-              theme.palette.mode === "dark"
-                ? theme.palette.grey[900]
-                : theme.palette.grey[100],
+            backgroundColor: theme.palette.background.paper,
             borderBottom: `1px solid ${theme.palette.divider}`,
           }),
           columnHeader: ({ theme }) => ({
             color: theme.palette.text.secondary,
           }),
           toolbarContainer: ({ theme }) => ({
-            backgroundColor:
-              theme.palette.mode === "dark"
-                ? theme.palette.grey[900]
-                : theme.palette.background.paper,
+            backgroundColor: theme.palette.background.paper,
             borderBottom: `1px solid ${theme.palette.divider}`,
-            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root":
-              {
-                color: theme.palette.text.secondary,
-              },
+            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root": {
+              color: theme.palette.text.secondary,
+            },
           }),
           footerContainer: ({ theme }) => ({
-            backgroundColor:
-              theme.palette.mode === "dark"
-                ? theme.palette.grey[900]
-                : theme.palette.background.paper,
+            backgroundColor: theme.palette.background.paper,
             borderTop: `1px solid ${theme.palette.divider}`,
             color: theme.palette.text.secondary,
           }),
@@ -251,7 +240,8 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
-      // Menus/Tooltips should be readable
+
+      // Menus/Tooltips/Popovers/Autocomplete — tokens only
       MuiMenu: {
         styleOverrides: {
           paper: ({ theme }) => ({
@@ -260,7 +250,6 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
-      // Menus/Autocomplete poppers must match paper
       MuiPopover: {
         styleOverrides: {
           paper: ({ theme }) => ({
@@ -280,10 +269,17 @@ export function getTheme(mode = "dark") {
       MuiTooltip: {
         styleOverrides: {
           tooltip: ({ theme }) => ({
-            backgroundColor: theme.palette.mode === "dark" ? "#111" : "#2f2f2f",
+            // Use background.default then lift with alpha to avoid raw hex
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? alpha(theme.palette.background.default, 0.9)
+                : alpha(theme.palette.background.paper, 0.95),
+            color: theme.palette.text.primary,
+            border: `1px solid ${theme.palette.divider}`,
           }),
         },
       },
+
       MuiSnackbarContent: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -293,18 +289,20 @@ export function getTheme(mode = "dark") {
           }),
         },
       },
+
       MuiLink: {
         styleOverrides: {
           root: ({ theme }) => ({ color: theme.palette.primary.main }),
         },
       },
+
       MuiMenuItem: {
         styleOverrides: {
           root: ({ theme }) => ({
             "&.Mui-selected": {
               backgroundColor: alpha(
                 theme.palette.primary.main,
-                theme.palette.mode === "dark" ? 0.18 : 0.12,
+                theme.palette.mode === "dark" ? 0.18 : 0.12
               ),
             },
           }),
