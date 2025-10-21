@@ -165,8 +165,25 @@ async function legacyTransition(tx, { rideId, from, to, userId, extra = {} }) {
   }
 
   const fromRef = doc(db, fromCollection, rideId);
+  const toCollection = legacyCollectionForState(to);
+  const toRef = toCollection ? doc(db, toCollection, rideId) : null;
+
   const fromSnap = await tx.get(fromRef);
-  if (!fromSnap.exists()) throw new Error(`Ride ${rideId} not found`);
+  if (!fromSnap.exists()) {
+    if (toRef) {
+      const toSnap = await tx.get(toRef);
+      if (toSnap.exists()) {
+        const existing = toSnap.data() || {};
+        const existingState =
+          existing.state || existing.status || existing.queueStatus || to;
+        if (existingState === to) {
+          return { id: rideId, ...existing };
+        }
+      }
+    }
+
+    throw new Error(`Ride ${rideId} not found`);
+  }
 
   const current = fromSnap.data() || {};
   const timestamp = serverTimestamp();
@@ -198,7 +215,6 @@ async function legacyTransition(tx, { rideId, from, to, userId, extra = {} }) {
     }
   }
 
-  const toCollection = legacyCollectionForState(to);
   const statusValue = isString(extra?.status) ? extra.status : to;
   const queueStatusValue = isString(extra?.queueStatus)
     ? extra.queueStatus
@@ -250,8 +266,6 @@ async function legacyTransition(tx, { rideId, from, to, userId, extra = {} }) {
     next.CreatedAt = current.CreatedAt;
   }
 
-  const toRef = toCollection ? doc(db, toCollection, rideId) : null;
-
   if (toRef) {
     tx.set(toRef, next, { merge: true });
     if (toRef.path !== fromRef.path) {
@@ -266,8 +280,21 @@ async function legacyTransition(tx, { rideId, from, to, userId, extra = {} }) {
 
 async function legacyDriverClaim(tx, { rideId, driverId, vehicleId, userId }) {
   const liveRef = doc(db, COLLECTIONS.LIVE_RIDES, rideId);
+  const claimedRef = doc(db, COLLECTIONS.CLAIMED_RIDES, rideId);
   const snap = await tx.get(liveRef);
-  if (!snap.exists()) throw new Error(`Ride ${rideId} not found`);
+  if (!snap.exists()) {
+    const claimedSnap = await tx.get(claimedRef);
+    if (claimedSnap.exists()) {
+      const claimedData = claimedSnap.data() || {};
+      const claimedBy = legacyClaimer(claimedData);
+      if (claimedBy && claimedBy !== driverId) {
+        throw new Error("Already claimed by another driver");
+      }
+      return { id: rideId, ...claimedData };
+    }
+
+    throw new Error(`Ride ${rideId} not found`);
+  }
 
   const data = snap.data() || {};
   const existingClaimer = legacyClaimer(data);
@@ -300,7 +327,6 @@ async function legacyDriverClaim(tx, { rideId, driverId, vehicleId, userId }) {
     next.CreatedAt = data.CreatedAt;
   }
 
-  const claimedRef = doc(db, COLLECTIONS.CLAIMED_RIDES, rideId);
   tx.set(claimedRef, next, { merge: true });
   tx.delete(liveRef);
 
@@ -309,8 +335,26 @@ async function legacyDriverClaim(tx, { rideId, driverId, vehicleId, userId }) {
 
 async function legacyUndoClaim(tx, { rideId, driverId, userId }) {
   const claimedRef = doc(db, COLLECTIONS.CLAIMED_RIDES, rideId);
+  const liveRef = doc(db, COLLECTIONS.LIVE_RIDES, rideId);
   const snap = await tx.get(claimedRef);
   if (!snap.exists()) {
+    const liveSnap = await tx.get(liveRef);
+    if (liveSnap.exists()) {
+      const liveData = liveSnap.data() || {};
+      const existingClaimer = legacyClaimer(liveData);
+      const liveState =
+        liveData.state ||
+        liveData.status ||
+        liveData.queueStatus ||
+        TRIP_STATES.OPEN;
+
+      const claimerMatches = !existingClaimer || existingClaimer === driverId;
+
+      if (liveState === TRIP_STATES.OPEN && claimerMatches) {
+        return { id: rideId, ...liveData };
+      }
+    }
+
     throw new Error("Ride no longer available to undo");
   }
 
@@ -345,7 +389,6 @@ async function legacyUndoClaim(tx, { rideId, driverId, userId }) {
     next.CreatedAt = data.CreatedAt;
   }
 
-  const liveRef = doc(db, COLLECTIONS.LIVE_RIDES, rideId);
   tx.set(liveRef, next, { merge: true });
   tx.delete(claimedRef);
 
