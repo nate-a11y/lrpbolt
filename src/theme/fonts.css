@@ -1,7 +1,31 @@
-/* Brand font-face declarations for Lake Ride Pros */
+/* src/theme/fonts.css */
+
+/* Temporary zero-network registration:
+   Use local() only so browsers don't attempt to fetch missing URLs.
+   As soon as you drop .woff2 files in /public/assets/fonts, switch to the block below. */
+
+/* ---- Active NOW: local-only (no 404s) ---- */
 @font-face {
   font-family: "Boardson";
-  src: url("/assets/fonts/Boardson.woff2") format("woff2");
+  src: local("Boardson");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CelebriSans";
+  src: local("CelebriSans Bold"), local("CelebriSans-Bold");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---- READY TO ENABLE when files are added ----
+@font-face {
+  font-family: "Boardson";
+  src:
+    local("Boardson"),
+    url("/assets/fonts/Boardson.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -9,8 +33,11 @@
 
 @font-face {
   font-family: "CelebriSans";
-  src: url("/assets/fonts/CelebriSans-Bold.woff2") format("woff2");
+  src:
+    local("CelebriSans Bold"), local("CelebriSans-Bold"),
+    url("/assets/fonts/CelebriSans-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
+*/
