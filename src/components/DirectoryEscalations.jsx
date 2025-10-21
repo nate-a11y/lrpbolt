@@ -84,14 +84,17 @@ export default function DirectoryEscalations({ initialTab = "directory" }) {
               variant="h4"
               sx={{
                 fontWeight: 800,
-                color: "#fff",
+                color: (t) => t.palette.text.primary,
                 textTransform: "none",
                 letterSpacing: 0.5,
               }}
             >
               Directory & Escalations
             </Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
+            <Typography
+              variant="body2"
+              sx={{ color: (t) => t.palette.text.secondary }}
+            >
               Quickly find contact info or escalation paths without leaving this
               page.
             </Typography>
@@ -102,8 +105,11 @@ export default function DirectoryEscalations({ initialTab = "directory" }) {
           elevation={0}
           sx={{
             borderRadius: 2,
-            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.25)}`,
-            background: (t) => alpha(t.palette.common.black, 0.85),
+            border: (t) => `1px solid ${t.palette.divider}`,
+            backgroundColor: (t) =>
+              t.palette.mode === "dark"
+                ? t.palette.grey[900]
+                : t.palette.background.paper,
             "& .MuiTabs-flexContainer": { gap: { xs: 0.5, sm: 1 } },
           }}
         >
@@ -122,9 +128,11 @@ export default function DirectoryEscalations({ initialTab = "directory" }) {
                 minHeight: 56,
                 textTransform: "none",
                 fontWeight: 700,
-                color: "rgba(255,255,255,0.72)",
+                color: (t) => t.palette.text.secondary,
               },
-              "& .MuiTab-root.Mui-selected": { color: "#fff" },
+              "& .MuiTab-root.Mui-selected": {
+                color: (t) => t.palette.text.primary,
+              },
             }}
           >
             {tabs.map((tab) => (

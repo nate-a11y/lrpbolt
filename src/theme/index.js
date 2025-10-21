@@ -191,29 +191,63 @@ export function getTheme(mode = "dark") {
           root: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
             color: theme.palette.text.primary,
+            borderColor: theme.palette.divider,
             border: 0,
             "--DataGrid-rowBorderColor": theme.palette.divider,
-            "& .MuiDataGrid-toolbarContainer": {
-              backgroundColor: theme.palette.background.paper,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: theme.palette.background.paper,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            },
             "& .MuiDataGrid-virtualScroller": {
               backgroundColor: theme.palette.background.paper,
             },
             "& .MuiDataGrid-virtualScrollerContent": {
               backgroundColor: theme.palette.background.paper,
             },
-            "& .MuiDataGrid-footerContainer": {
-              backgroundColor: theme.palette.background.paper,
-              borderTop: `1px solid ${theme.palette.divider}`,
+          }),
+          columnHeaders: ({ theme }) => ({
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? theme.palette.grey[900]
+                : theme.palette.grey[100],
+            borderBottom: `1px solid ${theme.palette.divider}`,
+          }),
+          columnHeader: ({ theme }) => ({
+            color: theme.palette.text.secondary,
+          }),
+          toolbarContainer: ({ theme }) => ({
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? theme.palette.grey[900]
+                : theme.palette.background.paper,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root":
+              {
+                color: theme.palette.text.secondary,
+              },
+          }),
+          footerContainer: ({ theme }) => ({
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? theme.palette.grey[900]
+                : theme.palette.background.paper,
+            borderTop: `1px solid ${theme.palette.divider}`,
+            color: theme.palette.text.secondary,
+          }),
+          row: ({ theme }) => ({
+            "&:nth-of-type(even)": {
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "transparent"
+                  : theme.palette.action.hover,
             },
-            "& .MuiDataGrid-cell": {
-              borderColor: theme.palette.divider,
-            },
+          }),
+          cell: ({ theme }) => ({
+            borderColor: theme.palette.divider,
+          }),
+          filterForm: ({ theme }) => ({
+            color: theme.palette.text.primary,
+          }),
+          panel: ({ theme }) => ({
+            backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+            border: `1px solid ${theme.palette.divider}`,
           }),
         },
       },

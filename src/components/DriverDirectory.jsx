@@ -64,7 +64,7 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
         component="span"
         sx={{
           bgcolor: (t) => alpha(t.palette.primary.main, 0.28),
-          color: "#fff",
+          color: (t) => t.palette.text.primary,
           px: 0.5,
           borderRadius: 0.5,
           fontWeight: 700,
@@ -80,7 +80,7 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
 
 // shared icon button style
 const iconBtnSx = (t) => ({
-  color: "#fff",
+  color: t.palette.text.primary,
   border: `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
   borderRadius: 2,
   "&:hover": {
@@ -100,19 +100,10 @@ export default function DriverDirectory({
     () => ({
       green: theme.palette.primary.main,
       black: theme.palette.background.paper, // used for local surfaces
-      card: theme.palette.background.paper,
-      chipBg:
-        theme.palette.mode === "dark"
-          ? theme.palette.grey[900]
-          : theme.palette.grey[200],
-      chipBorder: theme.palette.divider,
       textDim: theme.palette.text.secondary,
     }),
     [
       theme.palette.background.paper,
-      theme.palette.divider,
-      theme.palette.grey,
-      theme.palette.mode,
       theme.palette.primary.main,
       theme.palette.text.secondary,
     ],
@@ -202,7 +193,7 @@ export default function DriverDirectory({
                     bgcolor: LRP.black,
                     border: `2px solid ${LRP.green}`,
                     fontWeight: 800,
-                    color: "#fff",
+                    color: (t) => t.palette.text.primary,
                   }}
                 >
                   {initials}
@@ -220,7 +211,7 @@ export default function DriverDirectory({
                     <Typography
                       fontWeight={800}
                       sx={{
-                        color: "#fff",
+                        color: (t) => t.palette.text.primary,
                         textShadow: `0 0 6px rgba(76,187,23,0.45)`,
                       }}
                       noWrap
@@ -249,10 +240,14 @@ export default function DriverDirectory({
                               key={`role-${i}`}
                               size="small"
                               label={r}
+                              color="default"
                               sx={{
-                                bgcolor: LRP.chipBg,
-                                color: "#fff",
-                                border: `1px solid ${LRP.chipBorder}`,
+                                backgroundColor: (t) =>
+                                  t.palette.mode === "dark"
+                                    ? t.palette.grey[900]
+                                    : t.palette.grey[200],
+                                color: (t) => t.palette.text.primary,
+                                border: (t) => `1px solid ${t.palette.divider}`,
                                 borderRadius: "999px",
                                 fontWeight: 700,
                                 px: 0.75,
@@ -268,9 +263,13 @@ export default function DriverDirectory({
                               vehicle={v}
                               sx={{
                                 "& .MuiChip-root, &": {
-                                  bgcolor: LRP.chipBg,
-                                  color: "#fff",
-                                  border: `1px solid ${LRP.chipBorder}`,
+                                  backgroundColor: (t) =>
+                                    t.palette.mode === "dark"
+                                      ? t.palette.grey[900]
+                                      : t.palette.grey[200],
+                                  color: (t) => t.palette.text.primary,
+                                  border: (t) =>
+                                    `1px solid ${t.palette.divider}`,
                                   borderRadius: "999px",
                                   fontWeight: 700,
                                   px: 0.75,
@@ -283,10 +282,14 @@ export default function DriverDirectory({
                           <Chip
                             size="small"
                             label={`+${d.vehicles.length - 4}`}
+                            color="default"
                             sx={{
-                              bgcolor: LRP.chipBg,
-                              color: "#fff",
-                              border: `1px solid ${LRP.chipBorder}`,
+                              backgroundColor: (t) =>
+                                t.palette.mode === "dark"
+                                  ? t.palette.grey[900]
+                                  : t.palette.grey[200],
+                              color: (t) => t.palette.text.primary,
+                              border: (t) => `1px solid ${t.palette.divider}`,
                               borderRadius: "999px",
                               fontWeight: 700,
                               height: 24,
@@ -319,7 +322,7 @@ export default function DriverDirectory({
                         "& .MuiButton-root": {
                           borderColor: (t) =>
                             alpha(t.palette.primary.main, 0.45),
-                          color: "#fff",
+                          color: (t) => t.palette.text.primary,
                           textTransform: "none",
                           "&:hover": {
                             borderColor: LRP.green,
@@ -454,7 +457,7 @@ export default function DriverDirectory({
           gutterBottom
           sx={{
             fontWeight: 900,
-            color: "#fff",
+            color: (t) => t.palette.text.primary,
             textShadow: `0 0 12px rgba(76,187,23,0.6)`,
           }}
         >
@@ -485,7 +488,7 @@ export default function DriverDirectory({
             placeholder="Search name, LRP #, email, vehicle…"
             InputProps={{
               disableUnderline: true,
-              sx: { color: "#fff" },
+              sx: { color: (t) => t.palette.text.primary },
             }}
           />
         </Stack>
@@ -517,7 +520,7 @@ export default function DriverDirectory({
           pageSizeOptions={[10, 25, 50, 100]}
           sx={{
             bgcolor: (t) => t.palette.background.paper,
-            color: "#fff",
+            color: (t) => t.palette.text.primary,
             borderRadius: 2,
             border: (t) => `1px solid ${t.palette.divider}`,
             boxShadow: (t) =>
@@ -566,7 +569,9 @@ export default function DriverDirectory({
             },
             "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
             "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
-            "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            "& .MuiButtonBase-root.MuiIconButton-root": {
+              color: (t) => t.palette.text.primary,
+            },
           }}
         />
       </Paper>
