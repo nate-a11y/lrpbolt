@@ -54,6 +54,7 @@ export default function ClaimedRidesGrid() {
 
   useEffect(() => {
     if (window?.__GRID_DEBUG__) {
+      // eslint-disable-next-line no-console
       console.log("[ClaimedRidesGrid sample]", rows?.[0]);
     }
   }, [rows]);

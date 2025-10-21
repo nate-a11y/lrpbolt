@@ -782,6 +782,7 @@ function Tickets() {
       return;
     }
     const sample = Array.isArray(rows) ? rows[0] : null;
+    // eslint-disable-next-line no-console
     console.log("[GridDebug:Tickets] row0", sample);
   }, [rows]);
 

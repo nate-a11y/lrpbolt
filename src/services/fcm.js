@@ -37,6 +37,7 @@ function attachConsoleLogging(instance) {
   if (!instance) return;
   try {
     onMessage(instance, (payload) => {
+      // eslint-disable-next-line no-console
       console.log("\uD83D\uDD25 FCM message:", payload);
     });
     hasConsoleMessageListener = true;
@@ -101,6 +102,7 @@ export async function initMessagingAndToken() {
 
     const token = await retrieveFcmToken(swReg);
     if (token) {
+      // eslint-disable-next-line no-console
       console.info("[LRP] FCM token acquired");
       try {
         localStorage.setItem("lrp_fcm_token_v1", token);
@@ -124,6 +126,7 @@ export async function registerFCM() {
   try {
     const token = await initMessagingAndToken();
     if (token && import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.log("\uD83D\uDCF2 FCM token:", token);
     }
     return token;
@@ -250,6 +253,7 @@ export function listenForegroundMessages(cb) {
       if (!title) return;
       const body = payload.notification.body || "";
       if (typeof window !== "undefined") {
+        // eslint-disable-next-line no-alert
         window.alert(`${title}\n${body}`);
       }
     });

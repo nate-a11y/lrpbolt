@@ -96,6 +96,7 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           <List sx={{ py: 1 }}>
             {(railItems || []).map(({ label, icon: Icon, to }, idx) => (
               <Tooltip
+                // eslint-disable-next-line react/no-array-index-key
                 key={idx}
                 title={label}
                 placement="right"
@@ -128,6 +129,7 @@ export default function LayoutShell({ children, railItems, onNavigate }) {
           <List>
             {(railItems || []).map(({ label, icon: Icon, to }, idx) => (
               <ListItemButton
+                // eslint-disable-next-line react/no-array-index-key
                 key={idx}
                 onClick={() => {
                   onNavigate?.(to);

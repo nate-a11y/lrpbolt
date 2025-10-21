@@ -75,6 +75,7 @@ export default function ContactCard({ contact }) {
         </Typography>
         <Box component="ul" sx={{ pl: 2, m: 0 }}>
           {responsibilities.slice(0, 6).map((r, i) => (
+            // eslint-disable-next-line react/no-array-index-key
             <li key={i}>
               <Typography variant="body2">{r}</Typography>
             </li>

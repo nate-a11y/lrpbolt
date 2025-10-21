@@ -93,6 +93,7 @@ function supportsIndexedDb() {
     );
   } catch (error) {
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.debug("[firebaseInit] indexedDB check failed", error);
     }
     return false;

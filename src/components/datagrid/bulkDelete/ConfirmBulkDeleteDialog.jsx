@@ -40,6 +40,7 @@ export default function ConfirmBulkDeleteDialog({
             </Typography>
             <List dense>
               {sampleRows.slice(0, 5).map((r, idx) => (
+                // eslint-disable-next-line react/no-array-index-key
                 <ListItem key={idx} disableGutters>
                   <ListItemText
                     primary={r?.id ?? "(no id)"}

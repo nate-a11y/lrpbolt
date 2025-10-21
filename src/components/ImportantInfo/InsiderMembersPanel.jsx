@@ -129,6 +129,7 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
   const handleDelete = useCallback(
     async (row) => {
       if (!row?.id) return;
+      // eslint-disable-next-line no-alert
       const confirmed = window.confirm("Delete this insider member?");
       if (!confirmed) return;
       setDeletePending((prev) => new Set(prev).add(row.id));
@@ -356,7 +357,7 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                                   >
                                     {members.map((member, index) => (
                                       <Chip
-                                        key={`${row.id}-member-${index}`}
+                                        key={`${row.id}-member-${index}`} // eslint-disable-line react/no-array-index-key
                                         label={member?.name || "Member"}
                                         size="small"
                                       />

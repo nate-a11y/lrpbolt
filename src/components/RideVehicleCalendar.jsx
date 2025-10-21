@@ -486,6 +486,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                 const left = i * 60 * pxPerMin;
                 return (
                   <Box
+                    // eslint-disable-next-line react/no-array-index-key
                     key={i}
                     sx={{
                       position: "absolute",
@@ -1497,6 +1498,7 @@ function RideVehicleCalendar({
             <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
               {Array.from({ length: 5 }).map((_, i) => (
                 <Box
+                  // eslint-disable-next-line react/no-array-index-key
                   key={i}
                   sx={{
                     p: compactMode ? 1.25 : 2,

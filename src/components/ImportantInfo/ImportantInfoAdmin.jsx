@@ -328,6 +328,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const handleDelete = useCallback(
     async (row) => {
       if (!row?.id) return;
+      // eslint-disable-next-line no-alert
       const confirmed = window.confirm(
         "Delete this item? This cannot be undone.",
       );

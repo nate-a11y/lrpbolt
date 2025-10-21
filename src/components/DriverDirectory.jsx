@@ -60,6 +60,7 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
   return parts.map((part, i) =>
     part.toLowerCase() === keyword.toLowerCase() ? (
       <Box
+        // eslint-disable-next-line react/no-array-index-key
         key={i}
         component="span"
         sx={{
@@ -73,6 +74,7 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
         {part}
       </Box>
     ) : (
+      // eslint-disable-next-line react/no-array-index-key
       <span key={i}>{part}</span>
     ),
   );
@@ -237,7 +239,7 @@ export default function DriverDirectory({
                         {Array.isArray(d.roles) &&
                           d.roles.map((r, i) => (
                             <Chip
-                              key={`role-${i}`}
+                              key={`role-${i}`} // eslint-disable-line react/no-array-index-key
                               size="small"
                               label={r}
                               color="default"
@@ -259,6 +261,7 @@ export default function DriverDirectory({
                         {Array.isArray(d.vehicles) &&
                           d.vehicles.slice(0, 4).map((v, i) => (
                             <VehicleChip
+                              // eslint-disable-next-line react/no-array-index-key
                               key={i}
                               vehicle={v}
                               sx={{

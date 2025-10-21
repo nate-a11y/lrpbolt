@@ -54,6 +54,7 @@ import CalendarHubLazy from "./pages/lazy/CalendarHub.lazy.jsx";
 import GamesHub from "./pages/GamesHub.jsx";
 const APP_VERSION = getAppVersion();
 if (APP_VERSION) {
+  // eslint-disable-next-line no-console
   console.info("LRP version:", APP_VERSION);
 }
 
@@ -228,6 +229,7 @@ function App() {
             access,
           });
           if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
             console.log("Authenticated:", user.email, "role:", access);
           }
           fetchDrivers();

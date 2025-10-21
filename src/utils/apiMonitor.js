@@ -32,6 +32,7 @@ export function startMonitoring() {
         );
       }
     });
+    // eslint-disable-next-line no-console
     console.table(table);
   }, 5000);
 }

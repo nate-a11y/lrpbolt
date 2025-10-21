@@ -152,6 +152,7 @@ export default function ActiveClockProvider({ children }) {
           }
 
           if (DEBUG_TIMECLOCK) {
+            // eslint-disable-next-line no-console
             console.info("[ActiveClock] locked snapshot", {
               schema: s,
               rows: rows.length,
@@ -317,6 +318,7 @@ export default function ActiveClockProvider({ children }) {
                 setLockedSchema(newSchema);
 
                 if (DEBUG_TIMECLOCK) {
+                  // eslint-disable-next-line no-console
                   console.info("[ActiveClock] probe locked schema", newSchema);
                 }
 

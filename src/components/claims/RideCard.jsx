@@ -477,6 +477,7 @@ export default function RideCard({
                   spacing={0.5}
                 >
                   {extras.map((line, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
                     <Typography key={i} component="li" variant="body2">
                       {line}
                     </Typography>

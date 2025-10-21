@@ -60,6 +60,7 @@ export default function DropoffAccordion({ onSelectImage }) {
     <>
       {categorized.map(({ category, places }, idx) => (
         <Accordion
+          // eslint-disable-next-line react/no-array-index-key
           key={idx}
           defaultExpanded={false}
           expanded={acc.is(category)}
@@ -70,6 +71,7 @@ export default function DropoffAccordion({ onSelectImage }) {
           </AccordionSummary>
           <AccordionDetails>
             {places.map((loc, i) => (
+              // eslint-disable-next-line react/no-array-index-key
               <Box key={i} sx={{ mb: 3 }}>
                 <Typography
                   sx={{
