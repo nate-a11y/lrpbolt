@@ -38,7 +38,7 @@ ALLOW_LIST_LINE = re.compile(
     (primary\.main)|
     (palette\.brand)|
     (palette\.lrp)|
-    (theme\.palette\.lrp\.gradient)|
+    (theme\.palette\.lrp\.(gradient|gradientPanel|gradientRing))|
     (palette\.common)|
     (palette\.(?:grey|error|warning|success|info))|
     (grey\.\d{3})|
