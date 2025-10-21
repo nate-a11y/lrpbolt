@@ -51,7 +51,13 @@ export default function BrandHeader() {
 
         {/* right controls */}
         <Box
-          sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            minWidth: 0,
+            ml: "auto",
+          }}
         >
           {/* ... existing right controls ... */}
         </Box>
