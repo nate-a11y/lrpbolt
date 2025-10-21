@@ -9,7 +9,8 @@ import { mapSnapshotToRows } from "../services/normalizers";
 // Realtime listener for timeLogs collection
 export function subscribeTimeLogs(onData, onError) {
   try {
-    const q = query(collection(db, "timeLogs"), orderBy("loggedAt", "desc"));
+    // Use startTime for ordering as it's guaranteed to exist on all time logs
+    const q = query(collection(db, "timeLogs"), orderBy("startTime", "desc"));
     return onSnapshot(
       q,
       (snap) => onData(mapSnapshotToRows("timeLogs", snap)),
