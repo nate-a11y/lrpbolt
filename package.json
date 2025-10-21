@@ -25,7 +25,7 @@
     "scan:dark-hardcodes": "grep -R \"rgba(255,255,255\" -n src || true && grep -R \"#060606\" -n src || true",
     "colors:fix": "python3 ./scripts/replace_colors.py",
     "colors:scan": "python3 ./scripts/scan_colors.py",
-    "postinstall": "patch-package && (npm run verify:happy-dom || yarn verify:happy-dom || true)",
+    "postinstall": "(npm run fonts:check || true) && patch-package && (npm run verify:happy-dom || yarn verify:happy-dom || true)",
     "prebuild": "npm run colors:scan && npm run images:verify",
     "preview": "vite preview",
     "test": "vitest run --coverage",
@@ -49,7 +49,8 @@
     "typecheck": "echo 'JS-only project: skipping TS typecheck'",
     "verify:happy-dom": "node -e \"try{require.resolve('happy-dom/package.json');const v=require('happy-dom/package.json').version; if(parseInt(v.split('.')[0],10)<20) {process.exit(1)} }catch(e){process.exit(1)}\" || (echo 'happy-dom <20 detected. Check overrides/resolutions.' && exit 1)",
     "precommit": "npm run lint && npm run format",
-    "prepare": "husky"
+    "prepare": "husky",
+    "fonts:check": "node ./scripts/check-fonts.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.13.0",
