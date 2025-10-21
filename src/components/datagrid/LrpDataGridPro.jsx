@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import PropTypes from "prop-types";
 import { Box, Button, Tooltip } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
   DataGridPro,
   GridToolbarContainer,
@@ -347,7 +348,7 @@ function DefaultToolbar({
         display: "flex",
         alignItems: "center",
         flexWrap: "wrap",
-        bgcolor: "rgba(6,6,6,0.92)",
+        bgcolor: (t) => alpha(t.palette.common.black, 0.92),
         borderBottom: (t) => `1px solid ${t.palette.divider}`,
         "& .MuiSvgIcon-root": { color: (t) => t.palette.primary.main },
         "& .MuiInputBase-root": {
@@ -387,10 +388,10 @@ function DefaultToolbar({
               disabled={!selectionCount}
               sx={{
                 ml: 0.5,
-                bgcolor: "rgba(76,187,23,0.18)",
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
                 color: "#ffffff",
                 "&:hover": {
-                  bgcolor: "rgba(76,187,23,0.28)",
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.28),
                 },
               }}
             >

@@ -14,6 +14,7 @@ import {
   Tooltip,
   Grow,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import DirectionsCar from "@mui/icons-material/DirectionsCar";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
@@ -230,8 +231,11 @@ export default function RideCard({
             borderRadius: 16,
             padding: "1px",
             pointerEvents: "none",
-            background:
-              "linear-gradient(90deg, rgba(76,187,23,.35), rgba(76,187,23,0) 60%)",
+            background: (t) =>
+              `linear-gradient(90deg, ${alpha(t.palette.primary.main, 0.35)}, ${alpha(
+                t.palette.primary.main,
+                0,
+              )} 60%)`,
             WebkitMask:
               "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
             WebkitMaskComposite: "xor",
@@ -245,15 +249,24 @@ export default function RideCard({
           sx={{
             p: { xs: 1.75, sm: 2 },
             borderRadius: 4,
-            background:
-              "linear-gradient(135deg, rgba(76,187,23,0.14), rgba(6,6,6,0.95))",
+            background: (t) =>
+              `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.14)}, ${alpha(
+                t.palette.common.black,
+                0.95,
+              )})`,
             border: "1px solid",
-            borderColor: selected ? "primary.main" : "rgba(255,255,255,0.08)",
+            borderColor: (t) =>
+              selected
+                ? t.palette.primary.main
+                : alpha(t.palette.common.white, 0.08),
             ...(highlight
               ? {
-                  borderColor: "primary.light",
-                  boxShadow:
-                    "0 0 0 1px rgba(76,187,23,0.75), 0 26px 48px rgba(76,187,23,0.2)",
+                  borderColor: (t) => t.palette.primary.light,
+                  boxShadow: (t) =>
+                    `0 0 0 1px ${alpha(t.palette.primary.main, 0.75)}, 0 26px 48px ${alpha(
+                      t.palette.primary.main,
+                      0.2,
+                    )}`,
                 }
               : {}),
           }}
@@ -279,7 +292,7 @@ export default function RideCard({
                   width: 44,
                   height: 44,
                   borderRadius: "50%",
-                  backgroundColor: "rgba(76,187,23,0.16)",
+                  backgroundColor: (t) => alpha(t.palette.primary.main, 0.16),
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -362,7 +375,7 @@ export default function RideCard({
                 label={durationLabel}
                 size="small"
                 sx={{
-                  bgcolor: "rgba(255,255,255,0.06)",
+                  bgcolor: (t) => alpha(t.palette.common.white, 0.06),
                   color: "common.white",
                   fontWeight: 600,
                   ".MuiChip-icon": { color: "primary.main" },
@@ -372,7 +385,7 @@ export default function RideCard({
                 label={`ID ${ride?.idShort || ride?.id || "N/A"}`}
                 size="small"
                 sx={{
-                  bgcolor: "rgba(255,255,255,0.06)",
+                  bgcolor: (t) => alpha(t.palette.common.white, 0.06),
                   color: "common.white",
                 }}
               />
@@ -381,10 +394,10 @@ export default function RideCard({
                   size="small"
                   label={normalizedStatus.toUpperCase()}
                   sx={{
-                    bgcolor:
+                    bgcolor: (t) =>
                       normalizedStatus === "open"
-                        ? "rgba(76,187,23,0.16)"
-                        : "rgba(255,255,255,0.06)",
+                        ? alpha(t.palette.primary.main, 0.16)
+                        : alpha(t.palette.common.white, 0.06),
                     color:
                       normalizedStatus === "open"
                         ? "primary.main"
@@ -393,7 +406,7 @@ export default function RideCard({
                       `1px solid ${
                         normalizedStatus === "open"
                           ? t.palette.primary.main
-                          : "rgba(255,255,255,0.16)"
+                          : alpha(t.palette.common.white, 0.16)
                       }`,
                     fontWeight: 700,
                   }}
@@ -414,7 +427,7 @@ export default function RideCard({
             <Box
               sx={{
                 borderRadius: 2,
-                bgcolor: "rgba(255,255,255,.06)",
+                bgcolor: (t) => alpha(t.palette.common.white, 0.06),
                 border: (t) => `1px solid ${t.palette.divider}`,
                 px: 2,
                 py: 1.25,
@@ -534,7 +547,8 @@ export default function RideCard({
                     "&:hover": { filter: "brightness(1.08)" },
                     "&.Mui-disabled": {
                       color: "rgba(255,255,255,0.4)",
-                      backgroundColor: "rgba(255,255,255,0.08)",
+                      backgroundColor: (t) =>
+                        alpha(t.palette.common.white, 0.08),
                     },
                   }}
                 >

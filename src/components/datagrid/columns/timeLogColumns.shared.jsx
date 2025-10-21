@@ -1,4 +1,5 @@
 import { Chip } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import { dayjs, toDayjs } from "@/utils/time";
 
@@ -83,9 +84,9 @@ export function buildTimeLogColumns() {
             size="small"
             label="Active"
             sx={{
-              bgcolor: "rgba(76,187,23,0.18)",
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
               color: (t) => t.palette.primary.main,
-              border: "1px solid rgba(76,187,23,0.35)",
+              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
             }}
           />
         ) : (

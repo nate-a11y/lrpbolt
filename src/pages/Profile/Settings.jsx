@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import DiagnosticsPanel from "@/components/DiagnosticsPanel.jsx";
 import VersionBadge from "@/components/VersionBadge.jsx";
@@ -51,8 +52,9 @@ function ProfilePage() {
               dense
               size="small"
               sx={{
-                bgcolor: "rgba(76,187,23,0.1)",
-                border: "1px solid rgba(76,187,23,0.4)",
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
+                border: (t) =>
+                  `1px solid ${alpha(t.palette.primary.main, 0.4)}`,
               }}
             />
           </Stack>

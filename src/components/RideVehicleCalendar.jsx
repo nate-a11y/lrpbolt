@@ -25,7 +25,7 @@ import IconButton from "@mui/material/IconButton";
 import Collapse from "@mui/material/Collapse";
 import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -501,7 +501,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                         top: 0,
                         bottom: 0,
                         width: 1,
-                        bgcolor: "rgba(255,255,255,0.14)",
+                        bgcolor: (t) => alpha(t.palette.common.white, 0.14),
                       }}
                     />
                     {/* label: solid white text, NO gradient background */}
@@ -566,7 +566,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                     height: 6,
                     transform: "translateY(-50%)",
                     borderRadius: 999,
-                    bgcolor: "rgba(255,255,255,0.1)",
+                    bgcolor: (t) => alpha(t.palette.common.white, 0.1),
                   }}
                 />
                 {/* Render your existing bars for this vehicle (absolute left/width via pxPerMin) */}

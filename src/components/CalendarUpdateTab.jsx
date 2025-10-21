@@ -19,7 +19,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import BlockIcon from "@mui/icons-material/Block";
 import StarIcon from "@mui/icons-material/Star";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 
 function CalendarUpdateTab({ compact = false }) {
   const theme = useTheme();
@@ -72,7 +72,12 @@ function CalendarUpdateTab({ compact = false }) {
             Keeping your availability current prevents overbooking. Please
             complete both steps in Google Calendar and Moovs.
           </Typography>
-          <Divider sx={{ mb: 2, borderColor: "rgba(255,255,255,0.08)" }} />
+          <Divider
+            sx={{
+              mb: 2,
+              borderColor: (t) => alpha(t.palette.common.white, 0.08),
+            }}
+          />
         </>
       )}
 

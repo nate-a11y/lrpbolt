@@ -137,7 +137,7 @@ export default function VersionBadge({
           size={size}
           label={data.dateISO}
           sx={{
-            bgcolor: "rgba(255,255,255,0.06)",
+            bgcolor: (t) => alpha(t.palette.common.white, 0.06),
             color: "#eceff1",
             borderColor: "#37474f",
             borderWidth: 1,
@@ -150,7 +150,7 @@ export default function VersionBadge({
         size={size}
         label={`#${data.run}`}
         sx={{
-          bgcolor: "rgba(255,255,255,0.06)",
+          bgcolor: (t) => alpha(t.palette.common.white, 0.06),
           color: "#b0bec5",
           borderColor: "#37474f",
           borderWidth: 1,

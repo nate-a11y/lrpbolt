@@ -481,7 +481,7 @@ export default function GamesHyperlane() {
                 <Chip
                   label={yourBestChipLabel}
                   sx={{
-                    bgcolor: "rgba(76,187,23,0.15)",
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.15),
                     color: "#fff",
                     borderRadius: 1.5,
                     fontWeight: 600,
@@ -490,7 +490,7 @@ export default function GamesHyperlane() {
                 <Chip
                   label={leaderChipLabel}
                   sx={{
-                    bgcolor: "rgba(76,187,23,0.08)",
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
                     color: "#fff",
                     borderRadius: 1.5,
                     fontWeight: 600,
@@ -499,7 +499,7 @@ export default function GamesHyperlane() {
                 <Chip
                   label={lastScoreLabel}
                   sx={{
-                    bgcolor: "rgba(255,255,255,0.08)",
+                    bgcolor: (t) => alpha(t.palette.common.white, 0.08),
                     color: "#fff",
                     borderRadius: 1.5,
                     fontWeight: 600,

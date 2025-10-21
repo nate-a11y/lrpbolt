@@ -14,6 +14,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import ClearIcon from "@mui/icons-material/Clear";
 
@@ -373,7 +374,7 @@ export default function TicketFormDialog({
             label={`Assigned to: ${assigneePreview(category).name}`}
             sx={{
               alignSelf: "flex-start",
-              bgcolor: "rgba(76,187,23,0.12)",
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
               color: (t) => t.palette.primary.main,
             }}
           />

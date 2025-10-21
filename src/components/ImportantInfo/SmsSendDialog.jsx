@@ -11,6 +11,7 @@ import {
   Typography,
   Button,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -134,8 +135,8 @@ export default function SmsSendDialog({ open, onClose, item }) {
             sx={{
               p: 2,
               borderRadius: 2,
-              bgcolor: "rgba(76,187,23,0.08)",
-              border: "1px solid rgba(76,187,23,0.32)",
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.32)}`,
             }}
           >
             <Typography

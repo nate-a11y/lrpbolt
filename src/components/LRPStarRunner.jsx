@@ -4,7 +4,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import * as THREE from "three";
 import { Box, Button, Divider, Stack, Typography } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import useGameSound from "@/hooks/useGameSound.js";
 import logError from "@/utils/logError.js";
@@ -322,7 +322,7 @@ export default function LRPStarRunner() {
         <Divider
           flexItem
           orientation="vertical"
-          sx={{ borderColor: "rgba(255,255,255,0.08)" }}
+          sx={{ borderColor: (t) => alpha(t.palette.common.white, 0.08) }}
         />
         <Button
           variant="contained"

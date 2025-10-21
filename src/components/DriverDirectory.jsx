@@ -63,7 +63,7 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
         key={i}
         component="span"
         sx={{
-          bgcolor: "rgba(76,187,23,0.28)",
+          bgcolor: (t) => alpha(t.palette.primary.main, 0.28),
           color: "#fff",
           px: 0.5,
           borderRadius: 0.5,
@@ -188,7 +188,11 @@ export default function DriverDirectory({
                   position: "relative",
                   borderRadius: "50%",
                   p: 0.5,
-                  background: `radial-gradient(120% 120% at 50% 60%, rgba(76,187,23,0.25) 0%, rgba(76,187,23,0) 70%)`,
+                  background: (t) =>
+                    `radial-gradient(120% 120% at 50% 60%, ${alpha(
+                      t.palette.primary.main,
+                      0.25,
+                    )} 0%, ${alpha(t.palette.primary.main, 0)} 70%)`,
                 }}
               >
                 <Avatar
@@ -313,12 +317,14 @@ export default function DriverDirectory({
                       sx={{
                         display: { xs: "none", md: "inline-flex" },
                         "& .MuiButton-root": {
-                          borderColor: "rgba(76,187,23,0.45)",
+                          borderColor: (t) =>
+                            alpha(t.palette.primary.main, 0.45),
                           color: "#fff",
                           textTransform: "none",
                           "&:hover": {
                             borderColor: LRP.green,
-                            boxShadow: `0 0 12px rgba(76,187,23,0.45) inset`,
+                            boxShadow: (t) =>
+                              `0 0 12px ${alpha(t.palette.primary.main, 0.45)} inset`,
                           },
                         },
                       }}
@@ -462,9 +468,12 @@ export default function DriverDirectory({
           mb: 1,
           borderRadius: 2,
           p: 1,
-          background:
-            "linear-gradient(180deg, rgba(76,187,23,0.15) 0%, rgba(76,187,23,0.06) 100%)",
-          border: `1px solid rgba(76,187,23,0.35)`,
+          background: (t) =>
+            `linear-gradient(180deg, ${alpha(t.palette.primary.main, 0.15)} 0%, ${alpha(
+              t.palette.primary.main,
+              0.06,
+            )} 100%)`,
+          border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1}>
@@ -511,11 +520,13 @@ export default function DriverDirectory({
             color: "#fff",
             borderRadius: 2,
             border: (t) => `1px solid ${t.palette.divider}`,
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+            boxShadow: (t) =>
+              `0 0 0 1px ${alpha(t.palette.common.white, 0.03)} inset`,
             "--DataGrid-containerBackground": (t) => t.palette.background.paper,
             "& .MuiDataGrid-columnHeaders": {
               bgcolor: "transparent",
-              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+              borderBottom: (t) =>
+                `1px dashed ${alpha(t.palette.common.white, 0.12)}`,
               "& .MuiDataGrid-columnHeaderTitle": {
                 fontWeight: 800,
                 letterSpacing: 0.4,
@@ -523,8 +534,11 @@ export default function DriverDirectory({
             },
             "& .MuiDataGrid-row": {
               position: "relative",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)",
+              background: (t) =>
+                `linear-gradient(180deg, ${alpha(t.palette.common.white, 0.03)} 0%, ${alpha(
+                  t.palette.common.white,
+                  0.01,
+                )} 100%)`,
               "&::before": {
                 content: '""',
                 position: "absolute",
@@ -535,14 +549,19 @@ export default function DriverDirectory({
                 background: "transparent",
               },
               "&:hover": {
-                background:
-                  "linear-gradient(180deg, rgba(76,187,23,0.10) 0%, rgba(76,187,23,0.06) 100%)",
-                boxShadow: "0 0 0 1px rgba(76,187,23,0.25) inset",
+                background: (t) =>
+                  `linear-gradient(180deg, ${alpha(t.palette.primary.main, 0.1)} 0%, ${alpha(
+                    t.palette.primary.main,
+                    0.06,
+                  )} 100%)`,
+                boxShadow: (t) =>
+                  `0 0 0 1px ${alpha(t.palette.primary.main, 0.25)} inset`,
                 "&::before": { background: LRP.green },
               },
             },
             "& .MuiDataGrid-cell": {
-              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+              borderBottom: (t) =>
+                `1px dashed ${alpha(t.palette.common.white, 0.1)}`,
               py: 0,
             },
             "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
@@ -552,7 +571,9 @@ export default function DriverDirectory({
         />
       </Paper>
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
+      <Divider
+        sx={{ my: 2, borderColor: (t) => alpha(t.palette.common.white, 0.06) }}
+      />
       <Typography variant="caption" sx={{ color: LRP.textDim }}>
         Lake Ride Pros • Real Rides. Real Pros.
       </Typography>
