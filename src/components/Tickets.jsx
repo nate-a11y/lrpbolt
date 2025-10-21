@@ -225,12 +225,12 @@ function download(filename, text, type = "text/plain") {
 const scanChipSx = {
   Both: {
     bgcolor: "rgba(76,187,23,0.18)",
-    color: "#4cbb17",
+    color: (t) => t.palette.primary.main,
     border: "1px solid rgba(76,187,23,0.35)",
   },
   Outbound: {
     bgcolor: "rgba(76,187,23,0.12)",
-    color: "#4cbb17",
+    color: (t) => t.palette.primary.main,
     border: "1px solid rgba(76,187,23,0.25)",
   },
   Return: {
@@ -240,7 +240,7 @@ const scanChipSx = {
   Unscanned: {
     bgcolor: "rgba(255,255,255,0.08)",
     color: "text.secondary",
-    border: "1px solid rgba(255,255,255,0.12)",
+    border: (t) => `1px solid ${t.palette.divider}`,
   },
 };
 
@@ -940,7 +940,7 @@ function Tickets() {
               <Button
                 onClick={handleUndoDelete}
                 size="small"
-                sx={{ color: "#4cbb17" }}
+                sx={{ color: (t) => t.palette.primary.main }}
                 aria-label="Undo delete"
               >
                 Undo
@@ -1346,7 +1346,7 @@ function Tickets() {
           sx={{
             mb: 2,
             "& .MuiTabs-indicator": {
-              backgroundColor: "#4cbb17",
+              backgroundColor: (t) => t.palette.primary.main,
             },
           }}
         >
@@ -1636,7 +1636,7 @@ function Tickets() {
               aria-labelledby="ticket-scanner-title"
               PaperProps={{
                 sx: {
-                  bgcolor: "#060606",
+                  bgcolor: (t) => t.palette.background.paper,
                   color: "#f5f5f5",
                   ...(scannerFullScreen
                     ? {}
@@ -1651,7 +1651,7 @@ function Tickets() {
               <AppBar
                 position="relative"
                 sx={{
-                  bgcolor: "#060606",
+                  bgcolor: (t) => t.palette.background.paper,
                   color: "#fff",
                   boxShadow: "none",
                   borderBottom: "1px solid rgba(255,255,255,0.1)",
@@ -1695,13 +1695,21 @@ function Tickets() {
                   </IconButton>
                 </Toolbar>
               </AppBar>
-              <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#060606" }}>
+              <Box
+                sx={{
+                  p: { xs: 2, sm: 3 },
+                  bgcolor: (t) => t.palette.background.paper,
+                }}
+              >
                 <Suspense
                   fallback={
                     <Box
                       sx={{ py: 6, display: "flex", justifyContent: "center" }}
                     >
-                      <CircularProgress size={24} sx={{ color: "#4cbb17" }} />
+                      <CircularProgress
+                        size={24}
+                        sx={{ color: (t) => t.palette.primary.main }}
+                      />
                     </Box>
                   }
                 >
@@ -1727,7 +1735,7 @@ function Tickets() {
                   position: "fixed",
                   right: 16,
                   bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-                  bgcolor: "#4cbb17",
+                  bgcolor: (t) => t.palette.primary.main,
                   color: "#060606",
                   display: scannerOpen ? "none" : "inline-flex",
                   "&:hover": { bgcolor: "#43a414" },
@@ -1746,7 +1754,7 @@ function Tickets() {
           aria-labelledby="tickets-scan-confirm"
           PaperProps={{
             sx: {
-              bgcolor: "#060606",
+              bgcolor: (t) => t.palette.background.paper,
               color: "#f5f5f5",
               borderRadius: 2,
               width: "min(420px, 90vw)",
@@ -1763,7 +1771,9 @@ function Tickets() {
           >
             Record ticket scan
           </DialogTitle>
-          <DialogContent sx={{ bgcolor: "#060606", pt: 3 }}>
+          <DialogContent
+            sx={{ bgcolor: (t) => t.palette.background.paper, pt: 3 }}
+          >
             {scanLookupLoading ? (
               <Stack
                 spacing={2}
@@ -1771,7 +1781,10 @@ function Tickets() {
                 justifyContent="center"
                 sx={{ py: 4 }}
               >
-                <CircularProgress size={28} sx={{ color: "#4cbb17" }} />
+                <CircularProgress
+                  size={28}
+                  sx={{ color: (t) => t.palette.primary.main }}
+                />
                 <Typography
                   variant="body2"
                   sx={{ color: "rgba(255,255,255,0.72)" }}
@@ -1838,7 +1851,7 @@ function Tickets() {
           </DialogContent>
           <DialogActions
             sx={{
-              bgcolor: "#060606",
+              bgcolor: (t) => t.palette.background.paper,
               px: 3,
               pb: 3,
               gap: 1,
@@ -1870,7 +1883,7 @@ function Tickets() {
                 fontWeight: 600,
                 borderColor: "rgba(76,187,23,0.6)",
                 color: "#f5f5f5",
-                "&:hover": { borderColor: "#4cbb17" },
+                "&:hover": { borderColor: (t) => t.palette.primary.main },
                 "&.Mui-disabled": {
                   borderColor: "rgba(255,255,255,0.24)",
                   color: "rgba(255,255,255,0.4)",

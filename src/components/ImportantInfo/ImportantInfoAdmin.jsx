@@ -390,14 +390,20 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           <Button
             variant="contained"
             onClick={openCreate}
-            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+            sx={{
+              bgcolor: (t) => t.palette.primary.main,
+              "&:hover": { bgcolor: "#3aa40f" },
+            }}
           >
             New Item
           </Button>
           <Button
             variant="outlined"
             onClick={() => setImportDialogOpen(true)}
-            sx={{ borderColor: "#4cbb17", color: "#b7ffb7" }}
+            sx={{
+              borderColor: (t) => t.palette.primary.main,
+              color: "#b7ffb7",
+            }}
           >
             Import Excel
           </Button>
@@ -406,7 +412,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             onClick={openHealthDialog}
             loading={healthLoading && healthDialogOpen}
             sx={{
-              borderColor: "#4cbb17",
+              borderColor: (t) => t.palette.primary.main,
               color: "#b7ffb7",
               minWidth: 140,
             }}
@@ -427,7 +433,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           fullWidth
-          sx={{ maxWidth: { md: 360 }, bgcolor: "#101010" }}
+          sx={{
+            maxWidth: { md: 360 },
+            bgcolor: (t) => t.palette.background.paper,
+          }}
           InputProps={{ sx: { color: "white" } }}
           inputProps={{ "aria-label": "Search important info admin list" }}
         />
@@ -437,7 +446,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             label="Category"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
-            sx={{ color: "white", bgcolor: "#101010" }}
+            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
           >
             {categories.map((item) => (
               <MenuItem key={item} value={item}>
@@ -452,7 +461,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             label="Sort"
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value)}
-            sx={{ color: "white", bgcolor: "#101010" }}
+            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
           >
             <MenuItem value="updated">Updated (newest)</MenuItem>
             <MenuItem value="title">Title (A–Z)</MenuItem>
@@ -484,7 +493,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               variant="outlined"
               size="small"
               sx={{
-                borderColor: "#4cbb17",
+                borderColor: (t) => t.palette.primary.main,
                 color: "#b7ffb7",
                 width: "fit-content",
               }}
@@ -500,7 +509,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           <Stack
             spacing={1.5}
             sx={{
-              bgcolor: "#0b0f0b",
+              bgcolor: (t) => t.palette.background.paper,
               border: "1px solid #153015",
               p: 2,
               borderRadius: 2,
@@ -516,7 +525,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             <Button
               onClick={openCreate}
               variant="contained"
-              sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+              sx={{
+                bgcolor: (t) => t.palette.primary.main,
+                "&:hover": { bgcolor: "#3aa40f" },
+              }}
             >
               Add first item
             </Button>
@@ -592,7 +604,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                         sx={{
                           bgcolor: "#143d0a",
                           color: "#b7ffb7",
-                          border: "1px solid #4cbb17",
+                          border: (t) => `1px solid ${t.palette.primary.main}`,
                           fontWeight: 600,
                         }}
                       />
@@ -627,7 +639,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                           {telHref ? (
                             <MuiLink
                               href={telHref}
-                              sx={{ color: "#4cbb17", fontWeight: 600 }}
+                              sx={{
+                                color: (t) => t.palette.primary.main,
+                                fontWeight: 600,
+                              }}
                             >
                               {row.phone}
                             </MuiLink>
@@ -643,7 +658,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                             href={row.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            sx={{ color: "#4cbb17", fontWeight: 600 }}
+                            sx={{
+                              color: (t) => t.palette.primary.main,
+                              fontWeight: 600,
+                            }}
                           >
                             View
                           </MuiLink>
@@ -681,7 +699,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                           size="small"
                           onClick={() => openEdit(row)}
                           disabled={disabled}
-                          sx={{ color: "#4cbb17" }}
+                          sx={{ color: (t) => t.palette.primary.main }}
                           aria-label={`Edit ${row?.title || "important info"}`}
                         >
                           <EditIcon fontSize="small" />
@@ -821,7 +839,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             loading={saving}
             loadingText="Saving…"
             variant="contained"
-            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+            sx={{
+              bgcolor: (t) => t.palette.primary.main,
+              "&:hover": { bgcolor: "#3aa40f" },
+            }}
           >
             {dialogMode === "edit" ? "Save Changes" : "Create"}
           </LoadingButtonLite>
@@ -971,7 +992,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             loading={healthLoading}
             loadingText="Refreshing…"
             variant="contained"
-            sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+            sx={{
+              bgcolor: (t) => t.palette.primary.main,
+              "&:hover": { bgcolor: "#3aa40f" },
+            }}
           >
             Refresh
           </LoadingButtonLite>

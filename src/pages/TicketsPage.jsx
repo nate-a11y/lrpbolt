@@ -107,7 +107,10 @@ export default function TicketsPage() {
         <Button
           variant="contained"
           onClick={handleOpen}
-          sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+          sx={{
+            bgcolor: (t) => t.palette.primary.main,
+            "&:hover": { bgcolor: "#3aa40f" },
+          }}
         >
           New Support Ticket
         </Button>

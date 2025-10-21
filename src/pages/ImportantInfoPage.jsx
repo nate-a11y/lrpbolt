@@ -145,7 +145,7 @@ export default function ImportantInfoPage() {
         variant="scrollable"
         sx={{
           borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-          "& .MuiTabs-indicator": { bgcolor: "#4cbb17" },
+          "& .MuiTabs-indicator": { bgcolor: (t) => t.palette.primary.main },
         }}
       >
         <Tab

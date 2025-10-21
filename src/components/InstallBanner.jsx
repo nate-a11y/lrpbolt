@@ -54,7 +54,7 @@ const InstallBanner = () => {
     <Slide direction="down" in={visible} mountOnEnter unmountOnExit>
       <Box
         sx={{
-          backgroundColor: "#4cbb17",
+          backgroundColor: (t) => t.palette.primary.main,
           color: "common.white",
           textAlign: "center",
           p: 2,
@@ -79,7 +79,7 @@ const InstallBanner = () => {
               variant="contained"
               sx={{
                 backgroundColor: "common.white",
-                color: "#4cbb17",
+                color: (t) => t.palette.primary.main,
                 fontWeight: "bold",
                 "&:hover": { backgroundColor: "#eafbe3" },
               }}

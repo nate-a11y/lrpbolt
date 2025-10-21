@@ -67,7 +67,9 @@ export default function EmptyRideState({
           boxShadow: "0 18px 40px rgba(76,187,23,0.18)",
         }}
       >
-        <RefreshIcon sx={{ fontSize: 36, color: "#4cbb17" }} />
+        <RefreshIcon
+          sx={{ fontSize: 36, color: (t) => t.palette.primary.main }}
+        />
       </Box>
 
       <Typography

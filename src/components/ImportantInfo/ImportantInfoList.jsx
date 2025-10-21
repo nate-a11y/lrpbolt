@@ -160,7 +160,7 @@ export default function ImportantInfoList({
             variant="outlined"
             size="small"
             sx={{
-              borderColor: "#4cbb17",
+              borderColor: (t) => t.palette.primary.main,
               color: "#b7ffb7",
               width: "fit-content",
             }}
@@ -178,7 +178,7 @@ export default function ImportantInfoList({
         <Stack
           spacing={1.5}
           sx={{
-            bgcolor: "#0b0f0b",
+            bgcolor: (t) => t.palette.background.paper,
             border: "1px solid #153015",
             p: 2,
             borderRadius: 2,
@@ -206,7 +206,10 @@ export default function ImportantInfoList({
           placeholder="Search partners, promotions, or referral details…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          sx={{ maxWidth: { md: 640 }, bgcolor: "#101010" }}
+          sx={{
+            maxWidth: { md: 640 },
+            bgcolor: (t) => t.palette.background.paper,
+          }}
           InputProps={{ sx: { color: "white" } }}
           inputProps={{ "aria-label": "Search important information" }}
         />
@@ -222,7 +225,7 @@ export default function ImportantInfoList({
             label="Category"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
-            sx={{ color: "white", bgcolor: "#101010" }}
+            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
           >
             {categories.map((item) => (
               <MenuItem key={item} value={item}>
@@ -237,7 +240,7 @@ export default function ImportantInfoList({
             label="Sort"
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value)}
-            sx={{ color: "white", bgcolor: "#101010" }}
+            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
           >
             <MenuItem value="title">Title (A–Z)</MenuItem>
             <MenuItem value="category">Category (A–Z)</MenuItem>
@@ -276,8 +279,8 @@ export default function ImportantInfoList({
                       key={key}
                       variant="outlined"
                       sx={{
-                        bgcolor: "#0b0b0b",
-                        borderColor: "#1c1c1c",
+                        bgcolor: (t) => t.palette.background.paper,
+                        borderColor: (t) => t.palette.divider,
                         borderRadius: 3,
                       }}
                     >
@@ -310,7 +313,8 @@ export default function ImportantInfoList({
                               sx={{
                                 bgcolor: "#143d0a",
                                 color: "#b7ffb7",
-                                border: "1px solid #4cbb17",
+                                border: (t) =>
+                                  `1px solid ${t.palette.primary.main}`,
                                 fontWeight: 600,
                               }}
                             />
@@ -341,7 +345,10 @@ export default function ImportantInfoList({
                                 {telHref ? (
                                   <MuiLink
                                     href={telHref}
-                                    sx={{ color: "#4cbb17", fontWeight: 600 }}
+                                    sx={{
+                                      color: (t) => t.palette.primary.main,
+                                      fontWeight: 600,
+                                    }}
                                   >
                                     {row.phone}
                                   </MuiLink>
@@ -357,7 +364,10 @@ export default function ImportantInfoList({
                                   href={row.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  sx={{ color: "#4cbb17", fontWeight: 600 }}
+                                  sx={{
+                                    color: (t) => t.palette.primary.main,
+                                    fontWeight: 600,
+                                  }}
                                 >
                                   View
                                 </MuiLink>
@@ -375,7 +385,7 @@ export default function ImportantInfoList({
                             variant="contained"
                             onClick={() => handleSendClick(row)}
                             sx={{
-                              bgcolor: "#4cbb17",
+                              bgcolor: (t) => t.palette.primary.main,
                               fontWeight: 600,
                               "&:hover": { bgcolor: "#3aa40f" },
                             }}

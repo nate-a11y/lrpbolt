@@ -103,12 +103,12 @@ export default function LrpGridToolbar(props = {}) {
           display: "flex",
           alignItems: "center",
           flexWrap: "wrap",
-          bgcolor: "#060606",
+          bgcolor: (t) => t.palette.background.paper,
           borderBottom: "1px solid rgba(255,255,255,0.08)",
           "& .MuiButton-root, & .MuiIconButton-root, & .MuiInputBase-root": {
             color: "rgba(255,255,255,0.92)",
           },
-          "& .MuiSvgIcon-root": { color: "#4cbb17" },
+          "& .MuiSvgIcon-root": { color: (t) => t.palette.primary.main },
         }}
       >
         <GridToolbarQuickFilter

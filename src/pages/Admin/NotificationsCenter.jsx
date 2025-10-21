@@ -978,7 +978,7 @@ export default function Notifications() {
                       startIcon={!sending ? <CheckCircleIcon /> : null}
                       sx={{
                         width: { xs: "100%", sm: "auto" },
-                        bgcolor: "#4cbb17",
+                        bgcolor: (t) => t.palette.primary.main,
                         "&:hover": { bgcolor: "#3ea212" },
                         fontWeight: 700,
                       }}

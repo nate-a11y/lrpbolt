@@ -632,7 +632,7 @@ export default function TimeClock({ setIsTracking }) {
               {active ? (
                 <Typography
                   variant="body1"
-                  sx={{ color: "#4cbb17", fontWeight: 600 }}
+                  sx={{ color: (t) => t.palette.primary.main, fontWeight: 600 }}
                 >
                   Active since {formatDateTime(activeSince)} — Duration:{" "}
                   {activeDurationLabel}

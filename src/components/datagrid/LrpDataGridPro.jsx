@@ -349,7 +349,7 @@ function DefaultToolbar({
         flexWrap: "wrap",
         bgcolor: "rgba(6,6,6,0.92)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
-        "& .MuiSvgIcon-root": { color: "#4cbb17" },
+        "& .MuiSvgIcon-root": { color: (t) => t.palette.primary.main },
         "& .MuiInputBase-root": {
           minWidth: { xs: "100%", sm: 220 },
           maxWidth: { sm: 260, md: 320 },

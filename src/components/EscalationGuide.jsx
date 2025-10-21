@@ -141,7 +141,10 @@ export default function EscalationGuide(props = {}) {
   return (
     <Box sx={mergedSx}>
       {showHeading ? (
-        <Typography variant="h5" sx={{ mb: 2, color: "#4cbb17" }}>
+        <Typography
+          variant="h5"
+          sx={{ mb: 2, color: (t) => t.palette.primary.main }}
+        >
           Who to Contact & When
         </Typography>
       ) : null}

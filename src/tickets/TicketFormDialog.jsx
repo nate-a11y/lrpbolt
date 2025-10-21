@@ -374,7 +374,7 @@ export default function TicketFormDialog({
             sx={{
               alignSelf: "flex-start",
               bgcolor: "rgba(76,187,23,0.12)",
-              color: "#4cbb17",
+              color: (t) => t.palette.primary.main,
             }}
           />
         </Stack>
@@ -388,7 +388,7 @@ export default function TicketFormDialog({
           disabled={submitting || !canSubmit}
           variant="contained"
           sx={{
-            backgroundColor: "#4cbb17",
+            backgroundColor: (t) => t.palette.primary.main,
             "&:hover": { backgroundColor: "#3aa40f" },
           }}
         >

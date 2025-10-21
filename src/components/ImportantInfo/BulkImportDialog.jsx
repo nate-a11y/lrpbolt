@@ -304,7 +304,10 @@ export default function BulkImportDialog({ open, onClose }) {
               onClick={handleDownloadSample}
               startIcon={<GetAppIcon />}
               variant="outlined"
-              sx={{ borderColor: "#4cbb17", color: "#b7ffb7" }}
+              sx={{
+                borderColor: (t) => t.palette.primary.main,
+                color: "#b7ffb7",
+              }}
             >
               Download sample file
             </Button>
@@ -312,7 +315,10 @@ export default function BulkImportDialog({ open, onClose }) {
               onClick={handlePick}
               startIcon={<UploadFileIcon />}
               variant="contained"
-              sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#43a814" } }}
+              sx={{
+                bgcolor: (t) => t.palette.primary.main,
+                "&:hover": { bgcolor: "#43a814" },
+              }}
             >
               Choose Excel file
             </Button>
@@ -364,7 +370,10 @@ export default function BulkImportDialog({ open, onClose }) {
           )}
           <Divider sx={{ borderColor: "#222" }} />
           <Typography variant="subtitle2">Preview (first 20 rows)</Typography>
-          <Table size="small" sx={{ bgcolor: "#0b0b0b", borderRadius: 1 }}>
+          <Table
+            size="small"
+            sx={{ bgcolor: (t) => t.palette.background.paper, borderRadius: 1 }}
+          >
             <TableHead>
               <TableRow>
                 <TableCell sx={{ color: "white" }}>Title</TableCell>
@@ -412,7 +421,10 @@ export default function BulkImportDialog({ open, onClose }) {
           onClick={handleImport}
           disabled={!canImport}
           variant="contained"
-          sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#43a814" } }}
+          sx={{
+            bgcolor: (t) => t.palette.primary.main,
+            "&:hover": { bgcolor: "#43a814" },
+          }}
         >
           Import{parsedCount ? ` (${parsedCount})` : ""}
         </Button>

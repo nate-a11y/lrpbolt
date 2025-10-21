@@ -92,7 +92,7 @@ export default function ClockOutConfirm() {
               onClick={handleConfirm}
               disabled={busy}
               sx={{
-                bgcolor: "#4cbb17",
+                bgcolor: (t) => t.palette.primary.main,
                 color: "#060606",
                 ml: 1,
                 "&:hover": { bgcolor: "#46aa15" },

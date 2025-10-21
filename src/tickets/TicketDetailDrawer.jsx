@@ -283,7 +283,7 @@ export default function TicketDetailDrawer({
           const safeTop = `calc(${APP_BAR_HEIGHT}px + env(safe-area-inset-top, 0px))`;
           return {
             width: { xs: 360, sm: 400, md: 420 },
-            bgcolor: "#111",
+            bgcolor: (t) => t.palette.background.paper,
             top: safeTop,
             height: `calc(100% - ${safeTop})`,
             borderLeft: `1px solid ${theme.palette.divider}`,
@@ -462,7 +462,10 @@ export default function TicketDetailDrawer({
                 variant="contained"
                 disabled={!currentUserId || isWatching || watcherBusy}
                 onClick={handleAddWatcher}
-                sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+                sx={{
+                  bgcolor: (t) => t.palette.primary.main,
+                  "&:hover": { bgcolor: "#3aa40f" },
+                }}
               >
                 {isWatching ? "Watching" : watcherBusy ? "Adding..." : "Watch"}
               </Button>
@@ -503,7 +506,10 @@ export default function TicketDetailDrawer({
               variant="contained"
               onClick={handleCommentSubmit}
               disabled={commentBusy || !comment.trim()}
-              sx={{ bgcolor: "#4cbb17", "&:hover": { bgcolor: "#3aa40f" } }}
+              sx={{
+                bgcolor: (t) => t.palette.primary.main,
+                "&:hover": { bgcolor: "#3aa40f" },
+              }}
             >
               {commentBusy ? "Posting..." : "Comment"}
             </Button>

@@ -446,7 +446,7 @@ export default function DriverInfoTab() {
             right: 16,
             bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
             zIndex: (t) => t.zIndex.tooltip + 1,
-            backgroundColor: "#4cbb17",
+            backgroundColor: (t) => t.palette.primary.main,
             "&:hover": { backgroundColor: "#3ea313" },
             px: { xs: 2, sm: 3 },
           }}
