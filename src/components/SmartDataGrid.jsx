@@ -86,6 +86,10 @@ function SmartDataGridBase({
         backgroundColor: theme.palette.background.paper,
         borderBottom: `1px solid ${theme.palette.divider}`,
       },
+      "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
+        {
+          backgroundColor: theme.palette.background.paper,
+        },
       "& .MuiDataGrid-cell": {
         borderColor: theme.palette.divider,
       },
