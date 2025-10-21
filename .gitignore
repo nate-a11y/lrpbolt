@@ -10,6 +10,9 @@ dev-dist/
 # Production build output
 dist/
 
+# Test coverage
+coverage/
+
 # Environment variables
 .env
 .env.*   # Covers .env.production, .env.local, etc.
