@@ -1468,7 +1468,7 @@ function RideVehicleCalendar({
 
           {error && (
             <Alert
-              severity="error"
+              severity="warning"
               action={
                 <Button
                   color="inherit"
@@ -1480,7 +1480,10 @@ function RideVehicleCalendar({
               }
               sx={{ mb: 2, width: "100%" }}
             >
-              Failed to load rides.
+              Failed to load Google Calendar events:
+              <Box sx={{ display: "inline", fontWeight: 600, ml: 0.5 }}>
+                {String(error?.message || error)}
+              </Box>
             </Alert>
           )}
 
