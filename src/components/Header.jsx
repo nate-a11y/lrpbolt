@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -20,6 +21,19 @@ import ThemeToggle from "./ThemeToggle.jsx";
 export default function Header({ onRefresh, leftSlot = null }) {
   const { user } = useAuth?.() || {};
   const { driverName, role } = useDriver?.() || {};
+
+  useEffect(() => {
+    const root =
+      typeof document !== "undefined" ? document.documentElement : null;
+    if (root) {
+      root.style.setProperty("--appbar-h", `${APP_BAR_HEIGHT}px`);
+    }
+    return () => {
+      if (root) {
+        root.style.removeProperty("--appbar-h");
+      }
+    };
+  }, []);
   return (
     <AppBar
       position="fixed"
