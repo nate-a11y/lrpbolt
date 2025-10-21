@@ -75,7 +75,7 @@ const DRIVER_LIST = [
     lrp: "LRP11",
     phone: "573.723.0244",
     email: "mosportsmantravel@gmail.com",
-    vehicles: ["SUV"],
+    vehicles: ["SUV", "Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
     name: "OPEN",
@@ -133,10 +133,10 @@ const DRIVER_LIST = [
     vehicles: ["Limo Bus", "Rescue Squad", "Sprinter", "Shuttle"],
   },
   {
-    name: "Open",
+    name: "Jack Lake",
     lrp: "LRP19",
-    phone: "-",
-    email: "-",
+    phone: "573.694.8770",
+    email: "jack.lake07@hotmail.com",
     vehicles: ["Limo Bus", "Rescue Squad", "Sprinter"],
   },
   {
