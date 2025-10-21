@@ -13,6 +13,21 @@ export default function SanityGrid() {
       sx={(t) => ({ height: 400, bgcolor: t.palette.background.paper, p: 2 })}
     >
       <DataGridPro
+        sx={(t) => ({
+          "& .MuiDataGrid-toolbarContainer": {
+            backgroundColor: t.palette.background.paper,
+            borderBottom: `1px solid ${t.palette.divider}`,
+          },
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: t.palette.background.paper,
+            borderBottom: `1px solid ${t.palette.divider}`,
+          },
+          "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
+            {
+              backgroundColor: t.palette.background.paper,
+            },
+          "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
+        })}
         rows={rows}
         columns={columns}
         getRowId={(r) => r.id}
