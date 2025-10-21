@@ -624,7 +624,7 @@ function TicketScanner({
                 PaperProps: {
                   sx: {
                     bgcolor: (t) => t.palette.background.paper,
-                    color: "#fff",
+                    color: (t) => t.palette.text.primary,
                   },
                 },
               }}

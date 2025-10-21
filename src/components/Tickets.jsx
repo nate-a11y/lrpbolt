@@ -1655,7 +1655,7 @@ function Tickets() {
                 position="relative"
                 sx={{
                   bgcolor: (t) => t.palette.background.paper,
-                  color: "#fff",
+                  color: (t) => t.palette.text.primary,
                   boxShadow: "none",
                   borderBottom: (t) => `1px solid ${t.palette.divider}`,
                 }}
