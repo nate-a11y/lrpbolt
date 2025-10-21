@@ -53,6 +53,42 @@ export default function RideQueueGrid() {
 
   const getRowId = useStableCallback((row) => row?.id ?? null);
 
+  const resolveRideDocumentId = useStableCallback((row) => {
+    if (!row || typeof row !== "object") return null;
+    const raw = row?._raw && typeof row._raw === "object" ? row._raw : {};
+
+    const coerceId = (value) => {
+      if (value == null) return null;
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : null;
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return String(value);
+      }
+      return null;
+    };
+
+    return (
+      coerceId(resolveTripId(row)) ??
+      coerceId(raw?.rideId) ??
+      coerceId(raw?.rideID) ??
+      coerceId(raw?.RideId) ??
+      coerceId(raw?.RideID) ??
+      coerceId(row?.rideId) ??
+      coerceId(row?.rideID) ??
+      coerceId(row?.RideId) ??
+      coerceId(row?.RideID) ??
+      coerceId(raw?.id) ??
+      coerceId(row?.tripId) ??
+      coerceId(row?.tripID) ??
+      coerceId(row?.TripId) ??
+      coerceId(row?.TripID) ??
+      coerceId(row?.id) ??
+      null
+    );
+  });
+
   const {
     rows: rowsWithOverlay,
     applyPatch,
@@ -126,12 +162,26 @@ export default function RideQueueGrid() {
   }, []);
 
   const handleMoveToLive = useStableCallback(async (row) => {
-    const rideId = getRowId(row);
-    if (!rideId) return;
+    const queueId = getRowId(row);
+    const rideDocId = resolveRideDocumentId(row);
 
-    markPending(rideId);
+    if (!queueId || !rideDocId) {
+      const err = new Error("Missing ride identifiers");
+      logError(err, {
+        where: "RideQueueGrid.handleMoveToLive.init",
+        queueId,
+        rideId: rideDocId,
+      });
+      const message = !rideDocId
+        ? "Ride id missing"
+        : "Ride is missing queue reference";
+      setSnack({ message });
+      return;
+    }
 
-    applyPatch(rideId, {
+    markPending(queueId);
+
+    applyPatch(queueId, {
       status: TRIP_STATES.OPEN,
       state: TRIP_STATES.OPEN,
       queueStatus: TRIP_STATES.OPEN,
@@ -139,53 +189,67 @@ export default function RideQueueGrid() {
     });
 
     const userId = row?._raw?.updatedBy ?? row?.updatedBy ?? "system";
-    setSnack({ message: "Moved to Live", action: "undo", rideId });
+    setSnack({
+      message: "Moved to Live",
+      action: "undo",
+      rideId: rideDocId,
+      queueId,
+    });
 
     try {
-      await moveQueuedToOpen(rideId, { userId });
-      await notifyRideEvent("live", { rideId, userId });
+      await moveQueuedToOpen(rideDocId, { userId });
+      await notifyRideEvent("live", { rideId: rideDocId, userId });
       playFeedbackSound();
     } catch (err) {
-      clearPatch(rideId);
-      logError(err, { where: "RideQueueGrid.handleMoveToLive", rideId });
+      clearPatch(queueId);
+      logError(err, {
+        where: "RideQueueGrid.handleMoveToLive",
+        rideId: rideDocId,
+        queueId,
+      });
       setSnack({
         message: err?.message
           ? `Failed to move: ${err.message}`
           : "Failed to move ride",
       });
     } finally {
-      clearPending(rideId);
+      clearPending(queueId);
     }
   });
 
-  const handleUndo = useStableCallback(async (rideId) => {
-    if (!rideId) return;
+  const handleUndo = useStableCallback(async (rideId, queueId) => {
+    if (!rideId || !queueId) return;
 
-    markPending(rideId);
+    markPending(queueId);
     try {
-      clearPatch(rideId);
+      clearPatch(queueId);
       await cancelRide(rideId, TRIP_STATES.OPEN, {
         reason: "queue-move-undo",
         userId: "system",
       });
       setSnack({ message: "Move undone" });
     } catch (err) {
-      logError(err, { where: "RideQueueGrid.handleUndo", rideId });
+      logError(err, {
+        where: "RideQueueGrid.handleUndo",
+        rideId,
+        queueId,
+      });
       setSnack({
         message: err?.message ? `Undo failed: ${err.message}` : "Undo failed",
         action: "undo",
         rideId,
+        queueId,
       });
     } finally {
-      clearPending(rideId);
+      clearPending(queueId);
     }
   });
 
   const handleSnackClose = useCallback(
     (_event, reason) => {
       if (reason === "clickaway") return;
-      if (snack?.rideId && snack?.action !== "undo") {
-        clearPatch(snack.rideId);
+      if (snack?.queueId && snack?.action !== "undo") {
+        clearPatch(snack.queueId);
       }
       setSnack(null);
     },
@@ -462,11 +526,11 @@ export default function RideQueueGrid() {
         autoHideDuration={snack?.action === "undo" ? 5000 : 3500}
         onClose={handleSnackClose}
         action={
-          snack?.action === "undo" && snack?.rideId ? (
+          snack?.action === "undo" && snack?.rideId && snack?.queueId ? (
             <Button
               size="small"
-              onClick={() => handleUndo(snack.rideId)}
-              disabled={pendingMoves.has(snack.rideId)}
+              onClick={() => handleUndo(snack.rideId, snack.queueId)}
+              disabled={pendingMoves.has(snack.queueId)}
               aria-label="Undo move to Live"
             >
               Undo
