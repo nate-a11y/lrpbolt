@@ -67,11 +67,11 @@ function ContactCardImpl({ contact }) {
 
   return (
     <Card
-      sx={{
-        backgroundColor: "#0b0b0b",
-        border: "1px solid rgba(255,255,255,0.12)",
+      sx={(t) => ({
+        backgroundColor: t.palette.background.paper,
+        border: `1px solid ${t.palette.divider}`,
         borderRadius: 3,
-      }}
+      })}
       elevation={0}
     >
       <CardContent sx={{ pb: 1.5 }}>

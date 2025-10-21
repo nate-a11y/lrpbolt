@@ -24,10 +24,12 @@ export async function exportNodeToPng(
 ) {
   if (!node) return;
   try {
+    const bg =
+      (node && window.getComputedStyle(node).backgroundColor) || undefined;
     const dataUrl = await htmlToImage.toPng(node, {
       pixelRatio: 2,
       quality: 0.98,
-      backgroundColor: "#060606",
+      backgroundColor: bg, // follows page/theme
       style: { transform: "scale(1)", transformOrigin: "top left" },
     });
     const a = document.createElement("a");

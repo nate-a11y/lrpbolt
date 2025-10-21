@@ -534,12 +534,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
           {!loading && hasRows && !filteredRows.length ? (
             <Box
-              sx={{
+              sx={(t) => ({
                 p: 2,
                 borderRadius: 2,
-                border: "1px solid #1f1f1f",
-                bgcolor: "#0b0b0b",
-              }}
+                border: `1px solid ${t.palette.divider}`,
+                bgcolor: t.palette.background.paper,
+              })}
             >
               <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
                 No matches for your filters.
@@ -560,11 +560,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               <Card
                 key={id}
                 variant="outlined"
-                sx={{
-                  bgcolor: "#0b0b0b",
-                  borderColor: "#1c1c1c",
+                sx={(t) => ({
+                  bgcolor: t.palette.background.paper,
+                  borderColor: t.palette.divider,
                   borderRadius: 3,
-                }}
+                })}
               >
                 <CardContent sx={{ pb: 1.5 }}>
                   <Stack spacing={1.25}>
