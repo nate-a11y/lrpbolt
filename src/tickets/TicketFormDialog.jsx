@@ -390,7 +390,7 @@ export default function TicketFormDialog({
           variant="contained"
           sx={{
             backgroundColor: (t) => t.palette.primary.main,
-            "&:hover": { backgroundColor: "#3aa40f" },
+            "&:hover": { backgroundColor: (t) => t.palette.primary.dark },
           }}
         >
           {submitting ? busyText || "Working…" : "Create"}

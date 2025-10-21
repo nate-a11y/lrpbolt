@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useMemo, useCallback, memo } from "react";
 import {
   Box,

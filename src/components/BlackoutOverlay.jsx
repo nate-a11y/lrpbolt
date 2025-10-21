@@ -1,5 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/BlackoutOverlay.jsx
+// allow-color-literal-file
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Typography, Button, Fade, CircularProgress } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";

@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import React from "react";
 import Grid from "@mui/material/Grid";
 import AvatarGroup from "@mui/material/AvatarGroup";

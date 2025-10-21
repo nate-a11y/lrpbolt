@@ -43,6 +43,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Run color guard (Python)
+        run: |
+          python3 --version
+          python3 ./scripts/scan_colors.py
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:

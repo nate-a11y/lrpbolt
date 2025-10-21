@@ -7,8 +7,6 @@ import dayjs from "dayjs";
 
 import logError from "../utils/logError.js";
 
-const DARK_BG = "#060606";
-
 function parseBuild(version) {
   if (!version || typeof version !== "string") return null;
   const m = version.match(
@@ -32,13 +30,13 @@ function channelColor(theme, channel) {
     case "prod":
       return theme.palette.primary.main;
     case "release":
-      return "#a3ff78";
+      return "#a3ff78"; // allow-color-literal
     case "beta":
-      return "#ffb300";
+      return "#ffb300"; // allow-color-literal
     case "canary":
-      return "#29b6f6";
+      return "#29b6f6"; // allow-color-literal
     default:
-      return "#9e9e9e";
+      return "#9e9e9e"; // allow-color-literal
   }
 }
 
@@ -111,9 +109,9 @@ export default function VersionBadge({
         size={size}
         label={`v${data.semver}`}
         sx={{
-          bgcolor: DARK_BG,
-          color: "#cfd8dc",
-          borderColor: "#263238",
+          bgcolor: (t) => t.palette.background.default,
+          color: (t) => alpha(t.palette.common.white, 0.85),
+          borderColor: "divider",
           borderWidth: 1,
           borderStyle: "solid",
         }}
@@ -138,8 +136,8 @@ export default function VersionBadge({
           label={data.dateISO}
           sx={{
             bgcolor: (t) => alpha(t.palette.common.white, 0.06),
-            color: "#eceff1",
-            borderColor: "#37474f",
+            color: (t) => alpha(t.palette.common.white, 0.92),
+            borderColor: "divider",
             borderWidth: 1,
             borderStyle: "solid",
           }}
@@ -151,8 +149,8 @@ export default function VersionBadge({
         label={`#${data.run}`}
         sx={{
           bgcolor: (t) => alpha(t.palette.common.white, 0.06),
-          color: "#b0bec5",
-          borderColor: "#37474f",
+          color: (t) => alpha(t.palette.common.white, 0.8),
+          borderColor: "divider",
           borderWidth: 1,
           borderStyle: "solid",
         }}

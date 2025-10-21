@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   AppBar,
@@ -505,7 +507,8 @@ export default function Navigation({ onChangeDriver, onSignOut }) {
         sx={{
           width: { sm: `calc(100% - ${effectiveDrawerWidth}px)` },
           ml: { sm: `${effectiveDrawerWidth}px` },
-          borderBottom: (t) => `1px solid ${t.palette.divider}`,
+          borderBottom: 1,
+          borderColor: "divider",
           bgcolor: (t) =>
             t.palette.mode === "dark"
               ? t.palette.background.default

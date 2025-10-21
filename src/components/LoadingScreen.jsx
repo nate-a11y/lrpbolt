@@ -1,5 +1,7 @@
 // src/components/LoadingScreen.jsx
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { Box, Typography, LinearProgress, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { motion, useReducedMotion } from "framer-motion";

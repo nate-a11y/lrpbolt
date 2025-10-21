@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Container,

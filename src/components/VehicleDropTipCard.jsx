@@ -11,7 +11,7 @@ export default function VehicleDropTipCard({ title, tips, icon }) {
         borderRadius: 2,
         backgroundColor: (theme) =>
           theme.palette.mode === "dark"
-            ? theme.palette.grey[900]
+            ? theme.palette.background.paper
             : theme.palette.grey[50],
       }}
     >

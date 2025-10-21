@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import * as React from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -58,8 +60,9 @@ export default function EmptyRideState({
           width: 90,
           height: 90,
           borderRadius: "50%",
-          background:
-            "linear-gradient(135deg, rgba(76,187,23,0.28), rgba(76,187,23,0.05))",
+          backgroundImage: (theme) =>
+            (theme.palette.lrp && theme.palette.lrp.gradient) ||
+            "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

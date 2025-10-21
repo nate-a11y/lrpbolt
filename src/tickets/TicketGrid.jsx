@@ -46,7 +46,7 @@ function NoTicketsOverlay() {
 
 function TicketsErrorOverlay({ message }) {
   return (
-    <Box sx={{ p: 4, textAlign: "center", color: "#ff5252" }}>
+    <Box sx={{ p: 4, textAlign: "center", color: (t) => t.palette.error.main }}>
       Error loading tickets. Try again.
       {message ? (
         <Typography variant="body2" sx={{ mt: 1, opacity: 0.7 }}>
@@ -302,7 +302,7 @@ function TicketGrid({
           size="small"
           sx={{
             bgcolor: (t) => alpha(t.palette.common.white, 0.08),
-            color: "#bdbdbd",
+            color: (t) => t.palette.text.secondary,
             fontWeight: 500,
           }}
         />
