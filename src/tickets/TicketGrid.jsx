@@ -13,27 +13,26 @@ import { alpha } from "@mui/material/styles";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
+import { formatDateTime } from "@/utils/time.js";
 const cap = (value) => {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "N/A";
   const text = String(value).trim();
-  if (!text) return "—";
+  if (!text) return "N/A";
+  const lower = text.toLowerCase();
+  if (lower === "n/a" || lower === "na") {
+    return "N/A";
+  }
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-const formatFromMillis = (ms) => {
-  const numeric = Number(ms);
-  if (!Number.isFinite(numeric) || numeric <= 0) {
-    return "—";
-  }
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-    }).format(new Date(numeric));
-  } catch (error) {
-    void error;
-    return "—";
-  }
+const formatUpdatedAt = (params) => {
+  const source =
+    params?.row?.updatedAtSource ??
+    params?.row?._source?.updatedAt ??
+    params?.value ??
+    null;
+  const formatted = formatDateTime(source);
+  return formatted || "N/A";
 };
 
 function NoTicketsOverlay() {
@@ -71,13 +70,13 @@ function TicketGrid({
     if (!ticket) {
       return {
         id: "",
-        title: "—",
-        category: "general",
-        status: "open",
-        priority: "normal",
+        title: "N/A",
+        category: "n/a",
+        status: "n/a",
+        priority: "n/a",
         assigneeName: "Unassigned",
         assigneeInitial: "U",
-        updatedAt: 0,
+        updatedAt: null,
         updatedAtSource: null,
         _source: null,
       };
@@ -95,22 +94,22 @@ function TicketGrid({
     const title =
       typeof ticket.title === "string" && ticket.title.trim()
         ? ticket.title.trim()
-        : "—";
+        : "N/A";
 
     const category =
       typeof ticket.category === "string" && ticket.category.trim()
         ? ticket.category.trim().toLowerCase()
-        : "general";
+        : "n/a";
 
     const status =
       typeof ticket.status === "string" && ticket.status.trim()
         ? ticket.status.trim().toLowerCase()
-        : "open";
+        : "n/a";
 
     const priority =
       typeof ticket.priority === "string" && ticket.priority.trim()
         ? ticket.priority.trim().toLowerCase()
-        : "normal";
+        : "n/a";
 
     const assignee = ticket.assignee || null;
     const assigneeName =
@@ -147,8 +146,8 @@ function TicketGrid({
       updatedAtMillis = Number(updatedAtSource);
     }
 
-    if (!Number.isFinite(updatedAtMillis) || updatedAtMillis < 0) {
-      updatedAtMillis = 0;
+    if (!Number.isFinite(updatedAtMillis) || updatedAtMillis <= 0) {
+      updatedAtMillis = null;
     }
 
     return {
@@ -275,7 +274,7 @@ function TicketGrid({
   const renderCategoryChip = useCallback((params) => {
     const value = params?.row?.category;
     const label = cap(value);
-    const isMissing = label === "—";
+    const isMissing = label === "N/A";
     return (
       <Chip
         label={label}
@@ -298,7 +297,7 @@ function TicketGrid({
     if (!statusValue) {
       return (
         <Chip
-          label="—"
+          label="N/A"
           size="small"
           sx={{
             bgcolor: (t) => alpha(t.palette.common.white, 0.08),
@@ -317,7 +316,7 @@ function TicketGrid({
       .join(" ");
     return (
       <Chip
-        label={label || "—"}
+        label={label || "N/A"}
         size="small"
         sx={(t) => ({
           bgcolor: isClosed
@@ -335,7 +334,7 @@ function TicketGrid({
     const label = params?.row?.assigneeName || "Unassigned";
     const firstLetter =
       params?.row?.assigneeInitial ||
-      (label && label !== "—"
+      (label && label !== "N/A"
         ? label.trim().charAt(0)?.toUpperCase() || "?"
         : "?");
     return (
@@ -364,21 +363,29 @@ function TicketGrid({
         headerName: "Title",
         flex: 1,
         minWidth: 220,
-        valueGetter: (params) => params?.row?.title || "—",
+        valueGetter: (params) => params?.row?.title || "N/A",
       },
       {
         field: "category",
         headerName: "Category",
         width: 150,
         renderCell: renderCategoryChip,
-        valueGetter: (params) => params?.row?.category || "general",
+        valueGetter: (params) => {
+          const raw = params?.row?.category;
+          if (!raw) return "N/A";
+          return raw === "n/a" ? "N/A" : raw;
+        },
       },
       {
         field: "status",
         headerName: "Status",
         width: 140,
         renderCell: renderStatusChip,
-        valueGetter: (params) => params?.row?.status || "open",
+        valueGetter: (params) => {
+          const raw = params?.row?.status;
+          if (!raw) return "N/A";
+          return raw === "n/a" ? "N/A" : raw;
+        },
       },
       {
         field: "assignee",
@@ -391,8 +398,25 @@ function TicketGrid({
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
-        valueGetter: (params) => params?.row?.updatedAt ?? 0,
-        valueFormatter: (params) => formatFromMillis(params?.value),
+        valueGetter: (params) => {
+          const direct = params?.row?.updatedAt;
+          if (typeof direct === "number" && Number.isFinite(direct)) {
+            return direct;
+          }
+          const source =
+            params?.row?.updatedAtSource ??
+            params?.row?._source?.updatedAt ??
+            null;
+          if (source && typeof source.valueOf === "function") {
+            const ms = Number(source.valueOf());
+            return Number.isFinite(ms) ? ms : null;
+          }
+          if (typeof source === "number") {
+            return Number.isFinite(source) ? source : null;
+          }
+          return null;
+        },
+        valueFormatter: formatUpdatedAt,
       },
       {
         field: "actions",
