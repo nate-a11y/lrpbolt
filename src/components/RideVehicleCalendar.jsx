@@ -74,7 +74,7 @@ const formatHm = (mins) => {
 function getLuminance(hex) {
   const c = hex.replace("#", "");
   const rgb = [0, 1, 2].map((i) => {
-    let v = parseInt(c.substr(i * 2, 2), 16) / 255;
+    const v = parseInt(c.substr(i * 2, 2), 16) / 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   });
   return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];

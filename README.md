@@ -9,6 +9,155 @@ React 18 + Vite application using Material UI v7 and MUI X Pro (DataGridPro, Dat
 - `src/components/datagrid/SmartAutoGrid.jsx` – responsive DataGridPro wrapper with toolbar and auto-height.
 - `src/components/datagrid/ResponsiveScrollBox.jsx` – touch-friendly scroll container for grids.
 
+## State Management Architecture
+
+This application uses **React Context** for global state management, with module-level caching for performance-critical data.
+
+### Context Providers
+
+The app uses multiple context providers for different concerns:
+
+| Context | Location | Purpose |
+|---------|----------|---------|
+| **AuthContext** | `src/context/AuthContext.jsx` | Firebase authentication state, user profile |
+| **ColorModeContext** | `src/context/ColorModeContext.jsx` | Light/dark theme preference (persisted to localStorage) |
+| **DriverContext** | `src/context/DriverContext.jsx` | Selected driver for admin actions |
+| **ActiveClockContext** | `src/context/ActiveClockContext.jsx` | Time clock session tracking |
+| **NotificationsProvider** | `src/context/NotificationsProvider.jsx` | Push notification permissions and FCM tokens |
+| **SnackbarProvider** | `src/context/SnackbarProvider.jsx` | Toast notifications for user feedback |
+
+### Provider Hierarchy
+
+Contexts are composed in `src/App.jsx`:
+
+```jsx
+<AuthProvider>
+  <ColorModeProvider>
+    <NotificationsProvider>
+      <DriverProvider>
+        <ActiveClockProvider>
+          <SnackbarProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </SnackbarProvider>
+        </ActiveClockProvider>
+      </DriverProvider>
+    </NotificationsProvider>
+  </ColorModeProvider>
+</AuthProvider>
+```
+
+### Module-Level Cache Pattern
+
+For performance-critical data (ride collections), we use **module-level caching** with a listener registry pattern:
+
+**Location**: `src/hooks/useRides.js`
+
+**How it works**:
+1. Module maintains a cache object and listener set outside React
+2. Firebase subscriptions are shared across all components
+3. Changes notify all registered listeners
+4. Automatically cleans up when no components are subscribed
+
+**Example**:
+```jsx
+const { rides, loading, error } = useRides('rideQueue');
+```
+
+**Trade-offs**:
+- ✅ **Pros**: Excellent performance, prevents duplicate Firebase listeners
+- ⚠️ **Cons**: Non-standard React pattern, harder to test, couples state to module scope
+
+**Recommendation**: Consider migrating to **Zustand** or **Context** for better React patterns while maintaining performance.
+
+### Custom Hooks
+
+The app includes 25+ custom hooks for reusable logic:
+
+**Data Fetching**:
+- `useRides()` – Real-time ride data with caching
+- `useFirestoreListener()` – Generic Firestore subscription hook
+- `useUserAccessDrivers()` – Fetch available drivers for admin
+
+**Authentication**:
+- `useAuth()` – Access current user and auth state
+- `useRole()` – Get user role (driver, admin, shootout)
+
+**UI State**:
+- `useIsMobile()` – Responsive breakpoint detection
+- `useClaimSelection()` – Form state for ride claiming
+- `useActiveClockSession()` – Current time clock session
+
+**Device APIs**:
+- `useWakeLock()` – Keep screen awake during active sessions
+- `useGameSound()` – Audio playback for notifications
+
+### Best Practices
+
+#### ✅ DO
+
+- Use Context for global state (auth, theme, notifications)
+- Use local `useState` for component-specific UI state
+- Use `useCallback` and `useMemo` for expensive operations
+- Implement proper cleanup in `useEffect` (return cleanup function)
+
+#### ❌ DON'T
+
+- Don't create new contexts unnecessarily
+- Don't put rapidly-changing state in Context (causes re-renders)
+- Don't forget dependency arrays in `useEffect`
+- Don't access module-level state directly; use the provided hooks
+
+### State Update Patterns
+
+**Context updates**:
+```jsx
+// AuthContext example
+const { user, loading } = useAuth();
+
+// Internal: Updates trigger re-render for all consumers
+const updateUser = (newUser) => {
+  setUser(newUser);
+};
+```
+
+**Module-level updates**:
+```jsx
+// useRides example
+const { rides, loading } = useRides('rideQueue');
+
+// Internal: Notifies all registered listeners
+listeners.forEach(listener => listener(newRides));
+```
+
+### Migration Path
+
+For long-term maintainability, consider:
+
+1. **Phase 1**: Consolidate multiple contexts into a single app context
+2. **Phase 2**: Migrate `useRides` module cache to Context or Zustand
+3. **Phase 3**: Add TypeScript for better type safety
+4. **Phase 4**: Implement React Query for server state management
+
+### Testing State
+
+**Context testing**:
+```jsx
+import { render } from '@testing-library/react';
+import { AuthProvider } from './context/AuthContext';
+
+const wrapper = ({ children }) => (
+  <AuthProvider>{children}</AuthProvider>
+);
+
+render(<MyComponent />, { wrapper });
+```
+
+**Module-level state testing**:
+- Mock Firebase subscriptions with MSW (see `tests/unit/useFirestoreListener.test.jsx`)
+- Reset module cache between tests with `vi.clearAllMocks()`
+
 ## Development
 
 ```bash

@@ -1,9 +1,10 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions/v2");
+
 let twilioFactory = null;
 try {
-  // eslint-disable-next-line global-require
+   
   twilioFactory = require("twilio");
 } catch (error) {
   logger.warn("smsOnCreateV2:twilio-missing", error?.message || error);

@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { logger } = require("firebase-functions/v2");
+
 const { admin } = require("./_admin");
 
 async function dispatchNotification({ title, body, token }) {

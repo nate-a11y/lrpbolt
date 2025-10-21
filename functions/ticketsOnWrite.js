@@ -1,5 +1,6 @@
 const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions, logger } = require("firebase-functions/v2");
+
 const { admin } = require("./_admin");
 const { sendAllTargets } = require("./notifyQueue"); // re-use our unified sender
 const { resolveEmailFromId } = require("./_assignees");

@@ -1,11 +1,14 @@
 {
   "name": "LRP Driver Portal",
   "short_name": "LRP",
+  "description": "Lake Ride Pros driver portal for claiming and managing rides",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#060606",
   "theme_color": "#4cbb17",
+  "categories": ["productivity", "business"],
   "gcm_sender_id": "103953800507",
   "icons": [
     {

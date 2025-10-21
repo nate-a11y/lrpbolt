@@ -249,7 +249,7 @@ export function mapSnapshotToRows(collectionKey, snapshot) {
 }
 
 /** --- User name enrichment (driverEmail -> driver via userAccess) --- */
-let _nameCache = new Map();
+const _nameCache = new Map();
 let _dbRef = null;
 export function bindFirestore(db) {
   _dbRef = db;

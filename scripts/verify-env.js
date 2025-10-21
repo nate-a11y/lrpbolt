@@ -17,7 +17,7 @@ const optional = [
   "SENTRY_PROJECT",
 ];
 
-let missing = [];
+const missing = [];
 required.forEach((k) => {
   if (!process.env[k]) missing.push(k);
 });
