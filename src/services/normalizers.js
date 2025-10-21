@@ -268,17 +268,20 @@ export async function enrichDriverNames(rows) {
         const ref = doc(_dbRef, "userAccess", email);
         const snap = await getDoc(ref);
         const name = snap.exists()
-          ? snap.data()?.name || snap.data()?.displayName || ""
-          : "";
+          ? snap.data()?.name || snap.data()?.displayName || null
+          : null;
         _nameCache.set(email, name);
       } catch {
-        _nameCache.set(email, "");
+        _nameCache.set(email, null);
       }
     }),
   );
   return rows.map((r) => {
     const email = (r?.driverEmail || "").toLowerCase();
-    const driver = r?.driver || _nameCache.get(email) || "";
-    return { ...r, driver };
+    const cachedName = _nameCache.get(email);
+    // Prefer existing driver/driverName, then cached name, then driverEmail as fallback, then null
+    const driver = r?.driver || r?.driverName || cachedName || r?.driverEmail || null;
+    const driverName = r?.driverName || r?.driver || cachedName || r?.driverEmail || null;
+    return { ...r, driver, driverName };
   });
 }

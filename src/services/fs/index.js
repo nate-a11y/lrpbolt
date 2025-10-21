@@ -193,6 +193,11 @@ export function normalizeTimeLog(docSnap) {
     .filter((value) => value != null && value !== "")
     .map((value) => String(value).toLowerCase());
 
+  // Explicitly preserve loggedAt, createdAt, and note fields
+  const loggedAt = data?.loggedAt ?? data?.createdAt ?? null;
+  const createdAt = data?.createdAt ?? null;
+  const note = data?.note ?? null;
+
   return {
     ...data,
     id,
@@ -205,6 +210,9 @@ export function normalizeTimeLog(docSnap) {
     endTime: endTime ?? null,
     clockIn: data?.clockIn ?? startTime ?? null,
     clockOut: data?.clockOut ?? endTime ?? null,
+    loggedAt,
+    createdAt,
+    note,
     driverKey: normalizedDriverKey,
     driverId,
     driverName,

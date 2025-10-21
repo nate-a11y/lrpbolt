@@ -121,12 +121,17 @@ function normalizeTicketInput(input = {}) {
 
 function mapTicketDoc(docSnap) {
   const data = docSnap.data() || {};
+  const createdAt = toDayjs(data.createdAt);
+  const updatedAt = toDayjs(data.updatedAt) || createdAt;
+  const lastCommentAt = toDayjs(data.lastCommentAt);
+
   return {
     ...data,
     id: docSnap.id,
-    createdAt: toDayjs(data.createdAt),
-    updatedAt: toDayjs(data.updatedAt),
-    lastCommentAt: toDayjs(data.lastCommentAt),
+    title: data.title || "",
+    createdAt,
+    updatedAt,
+    lastCommentAt,
   };
 }
 

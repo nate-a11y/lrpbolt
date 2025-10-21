@@ -47,7 +47,8 @@ export default function useWeeklySummary({
             };
             const start = r.startTime;
             const end = r.endTime;
-            const mins = Math.floor((r.durationMs || 0) / 60000);
+            // Use duration field (already in minutes) from normalized data
+            const mins = r.duration || r.durationMin || r.minutes || 0;
             const firstStart =
               !prev.firstStart ||
               (start && start.seconds < prev.firstStart?.seconds)
