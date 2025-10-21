@@ -64,6 +64,8 @@ export function getTheme(mode = "dark") {
             color: palette.text.primary,
             WebkitFontSmoothing: "antialiased",
             MozOsxFontSmoothing: "grayscale",
+            // Reserve space for the fixed AppBar. BrandHeader sets --appbar-h at runtime.
+            paddingTop: "var(--appbar-h, 64px)",
           },
           // Mobile safe-area
           ":root": {
@@ -74,6 +76,16 @@ export function getTheme(mode = "dark") {
           ".lrp-dark, .lrp-dark-bg, .bg-black": {
             backgroundColor: `${palette.background.paper} !important`,
           },
+        },
+      },
+      // Give the AppBar a consistent surface & divider
+      MuiAppBar: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+          }),
         },
       },
       // Buttons look consistent in both modes
