@@ -1,6 +1,14 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/RideEntryForm.jsx
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -49,6 +57,8 @@ import {
 } from "firebase/firestore";
 
 import LrpSelectField from "@/components/inputs/LrpSelectField";
+import { TRIP_STATES } from "@/constants/tripStates.js";
+import { useTripsByState } from "@/hooks/useTripsByState.js";
 
 import { dayjs, toDayjs, formatDateTime, durationSafe } from "../utils/time.js";
 import { formatTripId, isTripIdValid } from "../utils/formatters";
@@ -59,16 +69,15 @@ import {
   getRideTemplateCsv,
   rideCsvTemplateHeaders,
 } from "../utils/csvTemplates";
-import { subscribeRides } from "../services/firestoreService";
 import { withExponentialBackoff } from "../services/retry";
 import { AppError, logError } from "../services/errors";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
 import useAuth from "../hooks/useAuth.js";
 
-import LiveRidesGrid from "./LiveRidesGrid";
-import RideQueueGrid from "./RideQueueGrid";
-import ClaimedRidesGrid from "./ClaimedRidesGrid";
+const LiveRidesGrid = lazy(() => import("./LiveRidesGrid.jsx"));
+const RideQueueGrid = lazy(() => import("./RideQueueGrid.jsx"));
+const ClaimedRidesGrid = lazy(() => import("./ClaimedRidesGrid.jsx"));
 import DropDailyWidget from "./DropDailyWidget";
 import ResponsiveContainer from "./responsive/ResponsiveContainer.jsx";
 
@@ -379,10 +388,6 @@ export default function RideEntryForm() {
   const [isSubmittingSingle, setIsSubmittingSingle] = useState(false);
   const [isSubmittingMulti, setIsSubmittingMulti] = useState(false);
 
-  const [liveCount, setLiveCount] = useState(0);
-  const [queueCount, setQueueCount] = useState(0);
-  const [claimedCount, setClaimedCount] = useState(0);
-
   const [pendingRows, setPendingRows] = useState([]);
   const [multiConfirmOpen, setMultiConfirmOpen] = useState(false);
   const [multiSummary, setMultiSummary] = useState({
@@ -402,6 +407,26 @@ export default function RideEntryForm() {
 
   const fileInputRef = useRef(null);
 
+  const {
+    rows: liveTrips,
+    loading: liveLoading,
+    error: liveError,
+  } = useTripsByState(TRIP_STATES.OPEN);
+  const {
+    rows: queueTrips,
+    loading: queueLoading,
+    error: queueError,
+  } = useTripsByState(TRIP_STATES.QUEUED);
+  const {
+    rows: claimedTrips,
+    loading: claimedLoading,
+    error: claimedError,
+  } = useTripsByState(TRIP_STATES.CLAIMED);
+
+  const liveCount = liveLoading ? undefined : liveTrips.length;
+  const queueCount = queueLoading ? undefined : queueTrips.length;
+  const claimedCount = claimedLoading ? undefined : claimedTrips.length;
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -416,34 +441,25 @@ export default function RideEntryForm() {
   }, [singleRide, multiRows, csvText]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const unsubscribers = [
-      subscribeRides(
-        COLLECTIONS.LIVE_RIDES,
-        (rows) => setLiveCount(rows.length),
-        (error) => logError(error),
-      ),
-      subscribeRides(
-        COLLECTIONS.RIDE_QUEUE,
-        (rows) => setQueueCount(rows.length),
-        (error) => logError(error),
-      ),
-      subscribeRides(
-        COLLECTIONS.CLAIMED_RIDES,
-        (rows) => setClaimedCount(rows.length),
-        (error) => logError(error),
-      ),
-    ];
-    return () => {
-      unsubscribers.forEach((unsubscribe) => {
-        try {
-          unsubscribe?.();
-        } catch (error) {
-          logError(new AppError("ride-count-unsubscribe", { cause: error }));
-        }
+    if (liveError) {
+      logError(liveError, { where: "RideEntryForm", scope: "live-count" });
+    }
+  }, [liveError]);
+
+  useEffect(() => {
+    if (queueError) {
+      logError(queueError, { where: "RideEntryForm", scope: "queue-count" });
+    }
+  }, [queueError]);
+
+  useEffect(() => {
+    if (claimedError) {
+      logError(claimedError, {
+        where: "RideEntryForm",
+        scope: "claimed-count",
       });
-    };
-  }, []);
+    }
+  }, [claimedError]);
 
   const tabItems = useMemo(
     () => [
@@ -454,6 +470,15 @@ export default function RideEntryForm() {
       { label: <TabLabel label="Claimed" count={claimedCount} /> },
     ],
     [claimedCount, liveCount, queueCount],
+  );
+
+  const lazyGridFallback = useMemo(
+    () => (
+      <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1 }}>
+        <CircularProgress size={20} /> Loading…
+      </Box>
+    ),
+    [],
   );
 
   const builderColumns = useMemo(
@@ -1509,19 +1534,25 @@ export default function RideEntryForm() {
       case 2:
         return (
           <Paper elevation={3} sx={SECTION_PAPER_SX}>
-            <LiveRidesGrid />
+            <Suspense fallback={lazyGridFallback}>
+              <LiveRidesGrid />
+            </Suspense>
           </Paper>
         );
       case 3:
         return (
           <Paper elevation={3} sx={SECTION_PAPER_SX}>
-            <RideQueueGrid />
+            <Suspense fallback={lazyGridFallback}>
+              <RideQueueGrid />
+            </Suspense>
           </Paper>
         );
       case 4:
         return (
           <Paper elevation={3} sx={SECTION_PAPER_SX}>
-            <ClaimedRidesGrid />
+            <Suspense fallback={lazyGridFallback}>
+              <ClaimedRidesGrid />
+            </Suspense>
           </Paper>
         );
       default:

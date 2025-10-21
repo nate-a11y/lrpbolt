@@ -11,6 +11,7 @@ import DarkModeIcon from "@mui/icons-material/Brightness4";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import RefreshIcon from "@mui/icons-material/Loop";
 import AccountCircleIcon from "@mui/icons-material/Person";
+import { alpha } from "@mui/material/styles";
 
 import { APP_BAR_HEIGHT } from "../layout/constants";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -30,7 +31,10 @@ export default function Header({ onRefresh, leftSlot = null }) {
       sx={(t) => ({
         backdropFilter: "saturate(180%) blur(8px)",
         WebkitBackdropFilter: "saturate(180%) blur(8px)",
-        backgroundColor: t.palette.background.paper,
+        backgroundColor:
+          t.palette.mode === "dark"
+            ? alpha(t.palette.background.paper, 0.9)
+            : alpha(t.palette.background.paper, 0.85),
         borderBottom: `1px solid ${t.palette.divider}`,
         height: APP_BAR_HEIGHT,
         justifyContent: "center",
@@ -65,7 +69,10 @@ export default function Header({ onRefresh, leftSlot = null }) {
         </Box>
         <Box sx={{ flexGrow: 1 }} />
         <Tooltip title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}>
-          <IconButton onClick={toggle}>
+          <IconButton
+            aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+            onClick={toggle}
+          >
             {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
         </Tooltip>

@@ -1,17 +1,5 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
-import {
-  collection,
-  onSnapshot,
-  writeBatch,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
 import { Paper } from "@mui/material";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 
@@ -22,6 +10,7 @@ import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { normalizeRideArray } from "@/utils/normalizeRide.js";
 import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
+import useUsersMap from "@/hooks/useUsersMap.js";
 
 import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
 import {
@@ -41,72 +30,13 @@ import { db } from "../utils/firebaseInit";
 
 import EditRideDialog from "./EditRideDialog.jsx";
 
-const useUserNameCache = () => {
-  const [cache, setCache] = useState({});
-  const pendingRef = useRef(new Set());
-  const cacheRef = useRef(cache);
-
-  useEffect(() => {
-    cacheRef.current = cache;
-  }, [cache]);
-
-  const fetchUserName = useCallback(async (uid) => {
-    if (!uid) return "N/A";
-    if (cacheRef.current[uid]) {
-      return cacheRef.current[uid];
-    }
-    if (pendingRef.current.has(uid)) {
-      return "Loading...";
-    }
-
-    pendingRef.current.add(uid);
-    try {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (snap.exists()) {
-        const data = snap.data() || {};
-        const name =
-          data.displayName ||
-          data.name ||
-          data.fullName ||
-          data.email ||
-          "Unknown User";
-        setCache((prev) => {
-          if (prev[uid] === name) return prev;
-          return { ...prev, [uid]: name };
-        });
-        return name;
-      }
-      setCache((prev) => {
-        if (prev[uid] === "Unknown User") return prev;
-        return { ...prev, [uid]: "Unknown User" };
-      });
-      return "Unknown User";
-    } catch (error) {
-      logError(error, {
-        where: "ClaimedRidesGrid",
-        action: "fetchUserName",
-        uid,
-      });
-      setCache((prev) => {
-        if (prev[uid] === "Unknown User") return prev;
-        return { ...prev, [uid]: "Unknown User" };
-      });
-      return "Unknown User";
-    } finally {
-      pendingRef.current.delete(uid);
-    }
-  }, []);
-
-  return { cache, fetchUserName };
-};
-
 export default function ClaimedRidesGrid() {
   const [rows, setRows] = useState([]);
   const [editRow, setEditRow] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const apiRef = useGridApiRef();
   const [selectionModel, setSelectionModel] = useState([]);
-  const { cache, fetchUserName } = useUserNameCache();
+  const usersMap = useUsersMap();
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -231,6 +161,52 @@ export default function ClaimedRidesGrid() {
     [actionsColumn],
   );
 
+  const deriveClaimedByDisplay = useMemo(
+    () => (params) => {
+      const row = params?.row || {};
+      const raw = row?._raw || {};
+
+      const directName =
+        row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
+      if (directName) return directName;
+
+      const resolved = resolveClaimedBy(params);
+      if (resolved && typeof resolved === "object") {
+        const objectName =
+          resolved?.displayName ||
+          resolved?.name ||
+          resolved?.fullName ||
+          resolved?.email ||
+          null;
+        if (objectName) return objectName;
+      }
+
+      const resolvedString =
+        typeof resolved === "string" && resolved.trim() !== ""
+          ? resolved.trim()
+          : null;
+
+      const candidateUid =
+        resolvedString ||
+        row?.claimedBy ||
+        raw?.claimedBy ||
+        raw?.ClaimedBy ||
+        row?.ClaimedBy ||
+        null;
+
+      if (candidateUid) {
+        const uid = String(candidateUid).trim();
+        if (uid && usersMap[uid]) {
+          return usersMap[uid];
+        }
+        return uid || null;
+      }
+
+      return null;
+    },
+    [usersMap],
+  );
+
   const columns = useMemo(
     () => [
       {
@@ -294,92 +270,8 @@ export default function ClaimedRidesGrid() {
         headerName: "Claimed By",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => {
-          const { row } = params || {};
-          const raw = row?._raw || {};
-
-          const claimedName =
-            row?.claimedByName ||
-            raw?.claimedByName ||
-            raw?.ClaimedByName ||
-            null;
-          if (claimedName) {
-            return claimedName;
-          }
-
-          const claimedBy = resolveClaimedBy(params);
-          if (claimedBy && typeof claimedBy === "object") {
-            return (
-              claimedBy?.displayName ||
-              claimedBy?.name ||
-              claimedBy?.fullName ||
-              claimedBy?.email ||
-              "Unknown User"
-            );
-          }
-
-          const claimedId =
-            (typeof claimedBy === "string" && claimedBy) ||
-            row?.claimedBy ||
-            raw?.claimedBy ||
-            raw?.ClaimedBy ||
-            row?.ClaimedBy ||
-            null;
-
-          if (claimedId && cache[claimedId]) {
-            return cache[claimedId];
-          }
-
-          if (claimedId) {
-            return claimedId;
-          }
-
-          return "N/A";
-        },
-        renderCell: (params) => {
-          const { row } = params || {};
-          const raw = row?._raw || {};
-
-          const claimedName =
-            row?.claimedByName ||
-            raw?.claimedByName ||
-            raw?.ClaimedByName ||
-            null;
-          if (claimedName) {
-            return claimedName;
-          }
-
-          const claimedBy = resolveClaimedBy(params);
-          if (claimedBy && typeof claimedBy === "object") {
-            return (
-              claimedBy?.displayName ||
-              claimedBy?.name ||
-              claimedBy?.fullName ||
-              claimedBy?.email ||
-              "Unknown User"
-            );
-          }
-
-          const claimedId =
-            (typeof claimedBy === "string" && claimedBy) ||
-            row?.claimedBy ||
-            raw?.claimedBy ||
-            raw?.ClaimedBy ||
-            row?.ClaimedBy ||
-            null;
-
-          if (!claimedId) {
-            return "N/A";
-          }
-
-          const cachedName = cache[claimedId];
-          if (cachedName) {
-            return cachedName;
-          }
-
-          fetchUserName(claimedId);
-          return "Loading...";
-        },
+        valueGetter: (params) => deriveClaimedByDisplay(params),
+        renderCell: (params) => deriveClaimedByDisplay(params) || "N/A",
         valueFormatter: (params) => vfText(params, "N/A"),
       },
       {
@@ -406,7 +298,7 @@ export default function ClaimedRidesGrid() {
         renderCell: renderActions,
       },
     ],
-    [cache, fetchUserName, renderActions],
+    [deriveClaimedByDisplay, renderActions],
   );
 
   return (
