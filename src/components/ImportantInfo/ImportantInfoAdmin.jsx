@@ -437,16 +437,21 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             maxWidth: { md: 360 },
             bgcolor: (t) => t.palette.background.paper,
           }}
-          InputProps={{ sx: { color: "white" } }}
+          InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
           inputProps={{ "aria-label": "Search important info admin list" }}
         />
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel sx={{ color: "white" }}>Category</InputLabel>
+          <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+            Category
+          </InputLabel>
           <Select
             label="Category"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
-            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
+            sx={{
+              color: (t) => t.palette.text.primary,
+              bgcolor: (t) => t.palette.background.paper,
+            }}
           >
             {categories.map((item) => (
               <MenuItem key={item} value={item}>
@@ -456,12 +461,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel sx={{ color: "white" }}>Sort</InputLabel>
+          <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+            Sort
+          </InputLabel>
           <Select
             label="Sort"
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value)}
-            sx={{ color: "white", bgcolor: (t) => t.palette.background.paper }}
+            sx={{
+              color: (t) => t.palette.text.primary,
+              bgcolor: (t) => t.palette.background.paper,
+            }}
           >
             <MenuItem value="updated">Updated (newest)</MenuItem>
             <MenuItem value="title">Title (A–Z)</MenuItem>
