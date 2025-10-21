@@ -306,7 +306,7 @@ export default function BulkImportDialog({ open, onClose }) {
               variant="outlined"
               sx={{
                 borderColor: (t) => t.palette.primary.main,
-                color: "#b7ffb7",
+                color: (t) => t.palette.primary.contrastText,
               }}
             >
               Download sample file
@@ -317,7 +317,7 @@ export default function BulkImportDialog({ open, onClose }) {
               variant="contained"
               sx={{
                 bgcolor: (t) => t.palette.primary.main,
-                "&:hover": { bgcolor: "#43a814" },
+                "&:hover": { bgcolor: (t) => t.palette.primary.dark },
               }}
             >
               Choose Excel file
@@ -336,11 +336,12 @@ export default function BulkImportDialog({ open, onClose }) {
             sx={(t) => ({
               mt: 1,
               p: 2,
-              border: "1px dashed #2a2a2a",
+              border: "1px dashed",
+              borderColor: t.palette.divider,
               borderRadius: 2,
               bgcolor: t.palette.background.paper,
               textAlign: "center",
-              color: (t) => t.palette.text.primary,
+              color: t.palette.text.primary,
             })}
           >
             {fileName ? (
@@ -441,7 +442,7 @@ export default function BulkImportDialog({ open, onClose }) {
           variant="contained"
           sx={{
             bgcolor: (t) => t.palette.primary.main,
-            "&:hover": { bgcolor: "#43a814" },
+            "&:hover": { bgcolor: (t) => t.palette.primary.dark },
           }}
         >
           Import{parsedCount ? ` (${parsedCount})` : ""}

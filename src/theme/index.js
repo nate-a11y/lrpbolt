@@ -2,8 +2,8 @@
 import { createTheme, alpha } from "@mui/material/styles";
 
 const BRAND = {
-  primary: "#4cbb17",      // LRP green
-  darkBg: "#060606",       // LRP dark background
+  primary: "#4cbb17", // LRP green
+  darkBg: "#060606", // LRP dark background
 };
 
 const brandTokens = {
@@ -28,6 +28,10 @@ function paletteFor(mode) {
       error: { main: "#f04438" },
       info: { main: "#3b82f6" },
       brand: brandTokens,
+      lrp: {
+        gradient:
+          "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+      },
     };
   }
   return {
@@ -41,6 +45,10 @@ function paletteFor(mode) {
     error: { main: "#d12828" },
     info: { main: "#1d4ed8" },
     brand: brandTokens,
+    lrp: {
+      gradient:
+        "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+    },
   };
 }
 
@@ -51,13 +59,28 @@ export function getTheme(mode = "dark") {
     shape: { borderRadius: 14 },
     typography: {
       fontFamily:
-        'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial',
-      h1: { fontWeight: 700 },
+        'Inter, system-ui, -apple-system, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif',
+      h1: {
+        fontFamily: '"Boardson", Inter, system-ui, sans-serif',
+        fontWeight: 700,
+        letterSpacing: "-0.02em",
+      },
       h2: {
+        fontFamily: '"Boardson", Inter, system-ui, sans-serif',
         fontWeight: 800,
         letterSpacing: "-0.02em",
         fontSize: "clamp(1.375rem, 1.2rem + 1.2vw, 2rem)",
         lineHeight: 1.2,
+      },
+      h3: {
+        fontFamily: '"Boardson", Inter, system-ui, sans-serif',
+        fontWeight: 700,
+        letterSpacing: "-0.015em",
+      },
+      subtitle1: {
+        fontFamily: '"CelebriSans", Inter, system-ui, sans-serif',
+        fontWeight: 700,
+        letterSpacing: "-0.01em",
       },
       button: { textTransform: "none", fontWeight: 600 },
     },
@@ -210,9 +233,10 @@ export function getTheme(mode = "dark") {
           toolbarContainer: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
             borderBottom: `1px solid ${theme.palette.divider}`,
-            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root": {
-              color: theme.palette.text.secondary,
-            },
+            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root":
+              {
+                color: theme.palette.text.secondary,
+              },
           }),
           footerContainer: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
@@ -302,7 +326,7 @@ export function getTheme(mode = "dark") {
             "&.Mui-selected": {
               backgroundColor: alpha(
                 theme.palette.primary.main,
-                theme.palette.mode === "dark" ? 0.18 : 0.12
+                theme.palette.mode === "dark" ? 0.18 : 0.12,
               ),
             },
           }),

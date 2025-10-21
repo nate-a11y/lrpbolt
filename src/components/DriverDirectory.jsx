@@ -1,5 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // React & vendor
+// allow-color-literal-file
+
 import * as React from "react";
 import {
   Box,

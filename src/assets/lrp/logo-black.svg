@@ -1,0 +1,7 @@
+<svg width="180" height="64" viewBox="0 0 180 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lake Ride Pros black logo</title>
+  <desc id="desc">Monochrome black version of the Lake Ride Pros logomark.</desc>
+  <path fill="#060606" d="M20 14h12v28h26v8H20z" />
+  <path fill="#060606" d="M62 14h24c13.255 0 22 8.072 22 19 0 6.733-3.35 12.323-9.217 15.535L113.4 50H101l-12-15.848V50H62zm12 12v12h12.5c5.83 0 9.5-3.338 9.5-7.5 0-4.287-3.735-7.5-9.5-7.5z" />
+  <path fill="#060606" d="M120 14h24c13.255 0 22 8.072 22 19s-8.745 19-22 19h-12v12h-12zm12 12v14h12c6.075 0 10-3.936 10-7s-3.925-7-10-7z" />
+</svg>

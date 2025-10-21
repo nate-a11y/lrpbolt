@@ -140,7 +140,7 @@ export default function NotifDiag() {
         zIndex: 4000,
         p: 1.5,
         bgcolor: (t) => alpha(t.palette.common.black, 0.75),
-        color: "#fff",
+        color: "text.primary",
         borderRadius: 1,
         minWidth: 220,
       }}

@@ -464,7 +464,7 @@ export default function TicketDetailDrawer({
                 onClick={handleAddWatcher}
                 sx={{
                   bgcolor: (t) => t.palette.primary.main,
-                  "&:hover": { bgcolor: "#3aa40f" },
+                  "&:hover": { bgcolor: (t) => t.palette.primary.dark },
                 }}
               >
                 {isWatching ? "Watching" : watcherBusy ? "Adding..." : "Watch"}
@@ -508,7 +508,7 @@ export default function TicketDetailDrawer({
               disabled={commentBusy || !comment.trim()}
               sx={{
                 bgcolor: (t) => t.palette.primary.main,
-                "&:hover": { bgcolor: "#3aa40f" },
+                "&:hover": { bgcolor: (t) => t.palette.primary.dark },
               }}
             >
               {commentBusy ? "Posting..." : "Comment"}

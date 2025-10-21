@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -237,7 +239,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
               size="small"
               onClick={() => openTimeClockModal()}
               aria-label="Open Time Clock"
-              sx={{ color: "#fff" }}
+              sx={{ color: "text.primary" }}
             >
               <OpenInNewIcon fontSize="small" />
             </IconButton>
@@ -249,7 +251,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
                 size="small"
                 aria-label="Toggle floating mini ticker"
                 onClick={handlePiPToggle}
-                sx={{ color: "#fff" }}
+                sx={{ color: "text.primary" }}
               >
                 <PictureInPictureAltIcon fontSize="small" />
               </IconButton>

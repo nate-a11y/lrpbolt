@@ -1,0 +1,16 @@
+/* Brand font-face declarations for Lake Ride Pros */
+@font-face {
+  font-family: "Boardson";
+  src: url("/assets/fonts/Boardson.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "CelebriSans";
+  src: url("/assets/fonts/CelebriSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

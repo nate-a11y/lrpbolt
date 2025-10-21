@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import React, { useState, useCallback, useEffect } from "react";
 import {
   GridToolbarContainer,

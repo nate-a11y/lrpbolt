@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import { useMemo, useCallback, useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
@@ -144,7 +146,8 @@ export default function ImportantInfoList({
           spacing={1.5}
           sx={{
             bgcolor: "#1a0b0b",
-            border: "1px solid #2a1111",
+            border: 1,
+            borderColor: "divider",
             p: 2,
             borderRadius: 2,
           }}
@@ -179,7 +182,8 @@ export default function ImportantInfoList({
           spacing={1.5}
           sx={{
             bgcolor: (t) => t.palette.background.paper,
-            border: "1px solid #153015",
+            border: 1,
+            borderColor: "divider",
             p: 2,
             borderRadius: 2,
           }}

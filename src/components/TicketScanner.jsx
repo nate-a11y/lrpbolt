@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,

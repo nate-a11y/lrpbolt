@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -32,11 +34,11 @@ import { subscribeTopHyperlaneAllTime } from "@/services/games.js";
 import { toNumberOrNull } from "@/services/gamesService.js";
 import logError from "@/utils/logError.js";
 
-const BACKGROUND = "#060606";
+const BACKGROUND = (theme) => theme.palette.background.default;
 
 const gridSx = (t) => ({
   bgcolor: "transparent",
-  color: "#fff",
+  color: "text.primary",
   border: 0,
   "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
   "& .MuiDataGrid-columnHeaders": {
@@ -194,7 +196,9 @@ function HyperlanePanel() {
                     color="success"
                     sx={(t) => ({
                       "& .MuiSwitch-thumb": {
-                        bgcolor: soundOn ? t.palette.primary.main : "#555",
+                        bgcolor: soundOn
+                          ? t.palette.primary.main
+                          : t.palette.grey[700],
                       },
                     })}
                   />
@@ -205,7 +209,7 @@ function HyperlanePanel() {
                       sx={{ color: (t) => t.palette.primary.main }}
                     />
                   ) : (
-                    <VolumeOffIcon sx={{ color: "#777" }} />
+                    <VolumeOffIcon sx={{ color: (t) => t.palette.grey[500] }} />
                   )
                 }
                 labelPlacement="start"
@@ -213,7 +217,7 @@ function HyperlanePanel() {
               <Tooltip title="Reload game">
                 <IconButton
                   onClick={handleReload}
-                  sx={{ color: "#fff" }}
+                  sx={{ color: "text.primary" }}
                   aria-label="Reload Hyperlane"
                 >
                   <RefreshIcon />
@@ -222,7 +226,7 @@ function HyperlanePanel() {
               <Tooltip title="Fullscreen">
                 <IconButton
                   onClick={handleFullscreen}
-                  sx={{ color: "#fff" }}
+                  sx={{ color: "text.primary" }}
                   aria-label="Open Hyperlane fullscreen"
                 >
                   <OpenInFullIcon />
@@ -312,7 +316,7 @@ function HyperlanePanel() {
             <Alert
               severity="error"
               variant="filled"
-              sx={{ bgcolor: "#b71c1c" }}
+              sx={{ bgcolor: (t) => t.palette.error.dark }}
             >
               {error}
             </Alert>
@@ -434,7 +438,7 @@ export default function GamesHub() {
       maxWidth={1400}
       sx={{
         bgcolor: BACKGROUND,
-        color: "#fff",
+        color: "text.primary",
         minHeight: "100%",
         py: { xs: 3, md: 4 },
       }}

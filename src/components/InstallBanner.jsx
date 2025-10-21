@@ -1,4 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useEffect, useState, memo } from "react";
 import { Box, Typography, Button, IconButton, Slide } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
