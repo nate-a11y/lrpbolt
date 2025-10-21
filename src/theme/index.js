@@ -2,8 +2,8 @@
 import { createTheme, alpha } from "@mui/material/styles";
 
 const BRAND = {
-  primary: "#4cbb17",      // LRP green
-  darkBg: "#060606",       // LRP dark background
+  primary: "#4cbb17", // LRP green
+  darkBg: "#060606", // LRP dark background
 };
 
 const brandTokens = {
@@ -28,6 +28,10 @@ function paletteFor(mode) {
       error: { main: "#f04438" },
       info: { main: "#3b82f6" },
       brand: brandTokens,
+      lrp: {
+        gradient:
+          "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+      },
     };
   }
   return {
@@ -41,6 +45,10 @@ function paletteFor(mode) {
     error: { main: "#d12828" },
     info: { main: "#1d4ed8" },
     brand: brandTokens,
+    lrp: {
+      gradient:
+        "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+    },
   };
 }
 
@@ -210,9 +218,10 @@ export function getTheme(mode = "dark") {
           toolbarContainer: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
             borderBottom: `1px solid ${theme.palette.divider}`,
-            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root": {
-              color: theme.palette.text.secondary,
-            },
+            "& .MuiButtonBase-root, & .MuiIconButton-root, & .MuiSvgIcon-root":
+              {
+                color: theme.palette.text.secondary,
+              },
           }),
           footerContainer: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
@@ -302,7 +311,7 @@ export function getTheme(mode = "dark") {
             "&.Mui-selected": {
               backgroundColor: alpha(
                 theme.palette.primary.main,
-                theme.palette.mode === "dark" ? 0.18 : 0.12
+                theme.palette.mode === "dark" ? 0.18 : 0.12,
               ),
             },
           }),

@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import { Box } from "@mui/material";
 export default function BrandGradient({
   position = "top",

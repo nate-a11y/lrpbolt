@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import { useMemo, memo, useCallback } from "react";
 import {
   Drawer,

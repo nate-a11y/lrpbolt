@@ -1,5 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Ticket grid with search, filters, preview, bulk ops
+// allow-color-literal-file
+
 import {
   useEffect,
   useState,

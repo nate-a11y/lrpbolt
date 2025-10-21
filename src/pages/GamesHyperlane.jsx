@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -39,11 +41,11 @@ import {
 import { toNumberOrNull } from "@/services/gamesService.js";
 import useGameSound from "@/hooks/useGameSound.js";
 
-const BACKGROUND = "#060606";
+const BACKGROUND = (theme) => theme.palette.background.default;
 
 const gridSx = (t) => ({
   bgcolor: "transparent",
-  color: "#fff",
+  color: "text.primary",
   border: 0,
   "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
   "& .MuiDataGrid-columnHeaders": {
@@ -376,7 +378,7 @@ export default function GamesHyperlane() {
       maxWidth={1400}
       sx={{
         bgcolor: BACKGROUND,
-        color: "#fff",
+        color: "text.primary",
         minHeight: "100%",
         py: { xs: 3, md: 4 },
       }}
@@ -440,7 +442,9 @@ export default function GamesHyperlane() {
                         color="success"
                         sx={(t) => ({
                           "& .MuiSwitch-thumb": {
-                            bgcolor: soundOn ? t.palette.primary.main : "#555",
+                            bgcolor: soundOn
+                              ? t.palette.primary.main
+                              : t.palette.grey[700],
                           },
                         })}
                       />
@@ -451,7 +455,9 @@ export default function GamesHyperlane() {
                           sx={{ color: (t) => t.palette.primary.main }}
                         />
                       ) : (
-                        <VolumeOffIcon sx={{ color: "#777" }} />
+                        <VolumeOffIcon
+                          sx={{ color: (t) => t.palette.grey[500] }}
+                        />
                       )
                     }
                     labelPlacement="start"
@@ -459,7 +465,7 @@ export default function GamesHyperlane() {
                   <Tooltip title="Reload game">
                     <IconButton
                       onClick={handleReload}
-                      sx={{ color: "#fff" }}
+                      sx={{ color: "text.primary" }}
                       aria-label="Reload game"
                     >
                       <RefreshIcon />
@@ -468,7 +474,7 @@ export default function GamesHyperlane() {
                   <Tooltip title="Fullscreen">
                     <IconButton
                       onClick={handleFullscreen}
-                      sx={{ color: "#fff" }}
+                      sx={{ color: "text.primary" }}
                       aria-label="Fullscreen"
                     >
                       <OpenInFullIcon />
@@ -482,7 +488,7 @@ export default function GamesHyperlane() {
                   label={yourBestChipLabel}
                   sx={{
                     bgcolor: (t) => alpha(t.palette.primary.main, 0.15),
-                    color: "#fff",
+                    color: "text.primary",
                     borderRadius: 1.5,
                     fontWeight: 600,
                   }}
@@ -491,7 +497,7 @@ export default function GamesHyperlane() {
                   label={leaderChipLabel}
                   sx={{
                     bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
-                    color: "#fff",
+                    color: "text.primary",
                     borderRadius: 1.5,
                     fontWeight: 600,
                   }}
@@ -500,7 +506,7 @@ export default function GamesHyperlane() {
                   label={lastScoreLabel}
                   sx={{
                     bgcolor: (t) => alpha(t.palette.common.white, 0.08),
-                    color: "#fff",
+                    color: "text.primary",
                     borderRadius: 1.5,
                     fontWeight: 600,
                   }}

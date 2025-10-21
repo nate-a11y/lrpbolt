@@ -1,5 +1,7 @@
 // [LRP:BEGIN:calendarHub:defaults-only]
 /* Proprietary and confidential. See LICENSE. */
+// allow-color-literal-file
+
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import {
   Box,

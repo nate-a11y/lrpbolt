@@ -389,7 +389,7 @@ function DefaultToolbar({
               sx={{
                 ml: 0.5,
                 bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
-                color: "#ffffff",
+                color: "text.primary",
                 "&:hover": {
                   bgcolor: (t) => alpha(t.palette.primary.main, 0.28),
                 },

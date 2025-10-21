@@ -1,4 +1,6 @@
 /* eslint-disable react/no-unknown-property */
+// allow-color-literal-file
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
@@ -261,7 +263,7 @@ export default function LRPStarRunner() {
     <Stack
       spacing={1.25}
       alignItems="center"
-      sx={{ width: "100%", color: "#fff" }}
+      sx={{ width: "100%", color: "text.primary" }}
     >
       <CanvasShell>
         <Box

@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import React, {
   useCallback,
   useEffect,

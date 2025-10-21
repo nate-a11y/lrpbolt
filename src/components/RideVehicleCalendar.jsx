@@ -79,29 +79,30 @@ function getLuminance(hex) {
   });
   return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
 }
-const getContrastText = (bg) => (getLuminance(bg) > 0.4 ? "#000" : "#fff");
+const getContrastText = (bg) =>
+  getLuminance(bg) > 0.4 ? "grey.900" : "common.white";
 
 const BASE_COLORS = [
-  "#E6194B",
-  "#3CB44B",
-  "#FFE119",
-  "#4363D8",
-  "#F58231",
-  "#911EB4",
-  "#46F0F0",
-  "#F032E6",
-  "#BCF60C",
-  "#FABEBE",
-  "#008080",
-  "#E6BEFF",
-  "#9A6324",
-  "#FFFAC8",
-  "#800000",
-  "#AAFFC3",
-  "#808000",
-  "#FFD8B1",
-  "#000075",
-  "#808080",
+  "#E6194B", // allow-color-literal
+  "#3CB44B", // allow-color-literal
+  "#FFE119", // allow-color-literal
+  "#4363D8", // allow-color-literal
+  "#F58231", // allow-color-literal
+  "#911EB4", // allow-color-literal
+  "#46F0F0", // allow-color-literal
+  "#F032E6", // allow-color-literal
+  "#BCF60C", // allow-color-literal
+  "#FABEBE", // allow-color-literal
+  "#008080", // allow-color-literal
+  "#E6BEFF", // allow-color-literal
+  "#9A6324", // allow-color-literal
+  "#FFFAC8", // allow-color-literal
+  "#800000", // allow-color-literal
+  "#AAFFC3", // allow-color-literal
+  "#808000", // allow-color-literal
+  "#FFD8B1", // allow-color-literal
+  "#000075", // allow-color-literal
+  "#808080", // allow-color-literal
 ];
 
 const adjustColor = (hex, adjustment) => {
@@ -349,7 +350,10 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
         justifyContent="space-between"
         sx={{ mb: 1 }}
       >
-        <Typography variant="subtitle1" sx={{ color: "#fff", fontWeight: 600 }}>
+        <Typography
+          variant="subtitle1"
+          sx={{ color: "text.primary", fontWeight: 600 }}
+        >
           Vehicle Availability Overview
         </Typography>
         <Stack direction="row" spacing={2} alignItems="center">
@@ -429,8 +433,8 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                     label={chipLabel}
                     size="small"
                     sx={{
-                      bgcolor: v.color || "#1f1f1f",
-                      color: "#fff",
+                      bgcolor: (t) => v.color || t.palette.background.paper,
+                      color: "text.primary",
                       borderRadius: "999px",
                       fontWeight: 700,
                     }}
@@ -439,7 +443,7 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                     <Typography
                       sx={{
                         ml: 1,
-                        color: "rgba(255,255,255,0.72)",
+                        color: (t) => alpha(t.palette.common.white, 0.72),
                         fontSize: 12,
                       }}
                     >
@@ -505,18 +509,19 @@ const AvailabilityOverview = forwardRef(function AvailabilityOverview(
                         bgcolor: (t) => alpha(t.palette.common.white, 0.14),
                       }}
                     />
-                    {/* label: solid white text, NO gradient background */}
+                    {/* label uses solid theme text, no gradient background */}
                     <Box
                       sx={{
                         position: "absolute",
                         top: 6,
                         left: 6,
                         fontSize: 12,
-                        color: "#ffffff",
+                        color: "text.primary",
                         background: "transparent",
                         pointerEvents: "none",
                         userSelect: "none",
-                        textShadow: "0 1px 2px rgba(0,0,0,0.7)",
+                        textShadow: (t) =>
+                          `0 1px 2px ${alpha(t.palette.common.black, 0.7)}`,
                         WebkitFontSmoothing: "antialiased",
                         MozOsxFontSmoothing: "grayscale",
                       }}
@@ -639,7 +644,7 @@ function VehicleLaneBars({ vehicle, pxPerMin, tz, selectedDay, onEventClick }) {
               height: eventHeight,
               borderRadius: 999,
               bgcolor: vehicle.color || "grey.600",
-              color: vehicle.textColor || "#000",
+              color: vehicle.textColor || "common.white",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -649,7 +654,8 @@ function VehicleLaneBars({ vehicle, pxPerMin, tz, selectedDay, onEventClick }) {
               cursor: "pointer",
               transition: "transform 120ms ease",
               overflow: "hidden",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.35)",
+              boxShadow: (t) =>
+                `0 1px 2px ${alpha(t.palette.common.black, 0.35)}`,
               "&:hover": {
                 transform: "translateY(-1px)",
               },
@@ -1460,7 +1466,7 @@ function RideVehicleCalendar({
                 >
                   <Typography
                     variant="subtitle1"
-                    sx={{ color: "#fff", fontWeight: 600 }}
+                    sx={{ color: "text.primary", fontWeight: 600 }}
                   >
                     Vehicle Availability Overview
                   </Typography>
@@ -1504,7 +1510,9 @@ function RideVehicleCalendar({
                     p: compactMode ? 1.25 : 2,
                     borderRadius: 2,
                     bgcolor:
-                      theme.palette.mode === "dark" ? "#1e1e1e" : "#f8f8f8",
+                      theme.palette.mode === "dark"
+                        ? theme.palette.background.paper
+                        : theme.palette.background.default,
                     width: "100%",
                   }}
                 >
@@ -1568,13 +1576,13 @@ function RideVehicleCalendar({
                               borderLeft: `6px solid ${vehicleColors[event.vehicle]}`,
                               backgroundColor:
                                 theme.palette.mode === "dark"
-                                  ? "#1e1e1e"
-                                  : "#f8f8f8",
+                                  ? theme.palette.background.paper
+                                  : theme.palette.background.default,
                               "&:hover": {
                                 backgroundColor:
                                   theme.palette.mode === "dark"
-                                    ? "#2a2a2a"
-                                    : "#f1f1f1",
+                                    ? theme.palette.grey[800]
+                                    : theme.palette.background.paper,
                               },
                               width: "100%",
                             }}
@@ -1600,7 +1608,7 @@ function RideVehicleCalendar({
                               sx={{
                                 mt: 0.5,
                                 backgroundColor: vehicleColors[event.vehicle],
-                                color: vehicleText[event.vehicle],
+                                color: vehicleText[event.vehicle] || "grey.900",
                                 fontWeight: 500,
                                 fontSize: "0.75rem",
                               }}
@@ -1661,7 +1669,7 @@ function RideVehicleCalendar({
                                   label={edgeChipLabel}
                                   sx={{
                                     bgcolor: "primary.main",
-                                    color: "#000",
+                                    color: "grey.900",
                                     fontWeight: 600,
                                     mr: 1,
                                   }}
@@ -1703,7 +1711,7 @@ function RideVehicleCalendar({
                   label={selectedEdgeChip}
                   sx={{
                     bgcolor: "primary.main",
-                    color: "#000",
+                    color: "grey.900",
                     fontWeight: 600,
                   }}
                 />
