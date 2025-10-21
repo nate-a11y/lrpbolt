@@ -1,29 +1,46 @@
-import { Box, Typography } from "@mui/material";
+import React, { useEffect } from "react";
+import { AppBar, Toolbar, Box } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
-import BrandGradient from "./BrandGradient.jsx";
-export default function BrandHeader({ title, right, mb = 2 }) {
+export default function BrandHeader() {
+  const theme = useTheme();
+  const upSm = useMediaQuery(theme.breakpoints.up("sm"));
+  // Compute the dense toolbar height we use
+  const headerHeight = upSm ? 64 : 56;
+
+  // Expose the height globally so CssBaseline can pad content
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--appbar-h",
+      `${headerHeight}px`,
+    );
+  }, [headerHeight]);
+
   return (
-    <Box sx={{ mb }}>
-      <Box
-        sx={(t) => ({
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px",
-          backgroundColor: t.palette.background.paper,
-          borderRadius: t.shape.borderRadius,
-          boxShadow:
-            t.palette.mode === "dark"
-              ? "0 0 0 1px rgba(232,234,237,0.06)"
-              : "0 0 0 1px rgba(0,0,0,0.06)",
-        })}
-      >
-        <Typography variant="h6" fontWeight={800}>
-          {title}
-        </Typography>
-        <Box>{right}</Box>
-      </Box>
-      <BrandGradient glow height={5} />
-    </Box>
+    <AppBar
+      elevation={0}
+      color="default"
+      position="fixed"
+      sx={{
+        bgcolor: (t) => t.palette.background.paper,
+        borderBottom: (t) => `1px solid ${t.palette.divider}`,
+        zIndex: (t) => t.zIndex.drawer + 1,
+      }}
+    >
+      <Toolbar variant="dense" sx={{ minHeight: headerHeight }}>
+        {/* left: menu + logo */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {/* ... existing left controls ... */}
+        </Box>
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* right controls */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {/* ... existing right controls ... */}
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 }
