@@ -118,6 +118,18 @@ export function getTheme(mode = "dark") {
           ".lrp-ring-glow": ({ theme }) => ({
             backgroundImage: theme.palette.lrp.gradientRing,
           }),
+          ".lrp-on-surface": ({ theme }) => ({
+            color: theme.palette.text.primary,
+          }),
+          ".lrp-on-surface-secondary": ({ theme }) => ({
+            color: theme.palette.text.secondary,
+          }),
+          ".lrp-on-surface .MuiSvgIcon-root": ({ theme }) => ({
+            color:
+              theme.palette.mode === "dark"
+                ? theme.palette.common.white
+                : theme.palette.text.secondary,
+          }),
         },
       },
 
