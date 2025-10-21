@@ -58,6 +58,7 @@ export default function EntriesTab() {
 
   const handleDelete = useCallback(
     async (row) => {
+      // eslint-disable-next-line no-alert
       if (!window.confirm("Delete this time log?")) return;
       const id = getRowId(row);
       if (!id) return;

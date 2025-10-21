@@ -47,6 +47,7 @@ export function initSentry() {
 export function logEvent(event, context = {}) {
   const payload = { event, ...context };
   if (import.meta.env.VITE_ENV !== "prod") {
+    // eslint-disable-next-line no-console
     console.info("[LRP:event]", payload);
   }
   if (sentryInited && Sentry) {

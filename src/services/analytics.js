@@ -50,6 +50,7 @@ export async function trackPageView(path) {
     });
   } catch (error) {
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.debug("[Analytics] page_view skipped", error?.message || error);
     }
   }
@@ -62,6 +63,7 @@ export async function setAnalyticsUser(props) {
     setUserProperties(a, props || {});
   } catch (error) {
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.debug(
         "[Analytics] setUserProperties skipped",
         error?.message || error,

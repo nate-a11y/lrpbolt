@@ -246,7 +246,7 @@ export default function InsiderEditorDialog({ open, onClose, initial = null }) {
               <Box sx={{ mt: 1, display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                 {(form.members || []).map((member, index) => (
                   <Chip
-                    key={`${member.name || "member"}-${index}`}
+                    key={`${member.name || "member"}-${index}`} // eslint-disable-line react/no-array-index-key
                     label={member?.name || "Member"}
                     onDelete={() => handleRemoveMember(index)}
                     sx={{ borderRadius: "16px" }}

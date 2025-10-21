@@ -110,6 +110,7 @@ export default function CadillacEVQuickStarts() {
               <Table size="small">
                 <TableBody>
                   {guide.rows.map(([label, desc], i) => (
+                    // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={i} sx={{ verticalAlign: "top" }}>
                       <TableCell sx={{ fontWeight: 500, width: "35%" }}>
                         {label}

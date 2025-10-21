@@ -182,6 +182,7 @@ export function subscribeTickets(filters = {}, callback) {
       (snapshot) => {
         if (snapshot.size) {
           const first = snapshot.docs[0];
+          // eslint-disable-next-line no-console
           console.log("ticket sample", first.id, first.data());
         }
         const rows = snapshot.docs.map(mapTicketDoc);

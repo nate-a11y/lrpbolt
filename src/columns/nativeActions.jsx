@@ -44,12 +44,14 @@ export function buildNativeActionsColumn(opts = {}) {
             icon={<DeleteIcon fontSize="small" />}
             label="Delete"
             onClick={async () => {
+              // eslint-disable-next-line no-alert
               const ok = window.confirm("Delete this record?");
               if (!ok) return;
               try {
                 await onDelete(id, row);
               } catch (err) {
                 console.error("Delete failed in nativeActions:", err);
+                // eslint-disable-next-line no-alert
                 alert("Delete failed. Check console.");
               }
             }}

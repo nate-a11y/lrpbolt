@@ -549,6 +549,7 @@ function LrpDataGridPro({
     }
     const firstRow = rows[0];
     const raw = firstRow?._raw || {};
+    // eslint-disable-next-line no-console
     console.log("[GridProbe]", id, {
       firstRowKeys: Object.keys(firstRow || {}),
       id: firstRow?.id ?? null,
@@ -572,6 +573,7 @@ function LrpDataGridPro({
     const columnFields = (rideAwareColumns || [])
       .map((c) => (c ? c.field : null))
       .filter(Boolean);
+    // eslint-disable-next-line no-console
     console.log("[GridDebug]", {
       id,
       sampleRow,

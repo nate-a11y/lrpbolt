@@ -395,6 +395,7 @@ export default function BulkImportDialog({ open, onClose }) {
             </TableHead>
             <TableBody>
               {previewRows.map((row, index) => (
+                /* eslint-disable-next-line react/no-array-index-key */
                 <TableRow key={`${row.title}-${index}`}>
                   <TableCell sx={{ color: (t) => t.palette.text.primary }}>
                     <Tooltip title={row.details || ""} placement="top-start">

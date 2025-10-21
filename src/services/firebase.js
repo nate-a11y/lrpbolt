@@ -46,6 +46,7 @@ try {
 export const messaging = messagingInstance;
 
 if (import.meta.env.DEV) {
+  // eslint-disable-next-line no-console
   console.log(
     "\uD83D\uDD25 Firebase project:",
     app?.options?.projectId || "unknown",

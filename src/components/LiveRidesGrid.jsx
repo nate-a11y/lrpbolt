@@ -93,6 +93,7 @@ export default function LiveRidesGrid() {
       return;
     }
     const sample = Array.isArray(rows) ? rows[0] : null;
+    // eslint-disable-next-line no-console
     console.log("[GridDebug:LiveRides] row0", sample);
   }, [rows]);
 

@@ -89,6 +89,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
+    // eslint-disable-next-line no-console
     console.info("[LRP][PushSupport]", diagPushSupport());
     return undefined;
   }, []);
@@ -166,20 +167,24 @@ export default function PermissionGate({ user: userProp, children = null }) {
     async (targetUserId, targetEmail) => {
       try {
         if (!supported) {
+          // eslint-disable-next-line no-console
           console.info(
             "[LRP][FCM] messaging not supported in this environment",
           );
           return;
         }
         if (permission !== "granted") {
+          // eslint-disable-next-line no-console
           console.info("[LRP][FCM] notification permission", permission);
           return;
         }
         const swReg = await ensureServiceWorkerRegistered();
         if (!swReg) {
+          // eslint-disable-next-line no-console
           console.info("[LRP][FCM] registration unavailable");
           return;
         }
+        // eslint-disable-next-line no-console
         console.info("[LRP][FCM] registration scope", swReg.scope || "(none)");
         const token = await ensureFcmToken({ registration: swReg });
 
@@ -216,6 +221,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
         });
 
         lastPersistedRef.current = { userId: resolvedUserId, token };
+        // eslint-disable-next-line no-console
         console.info("[LRP][FCM] token persisted for", resolvedUserId);
       } catch (error) {
         logError(error, { where: "PermissionGate", action: "registerPushFor" });

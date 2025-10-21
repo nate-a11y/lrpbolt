@@ -292,11 +292,13 @@ export default function TimeClockBubble() {
   useEffect(() => {
     if (!didLogRef.current) {
       didLogRef.current = true;
+      // eslint-disable-next-line no-console
       console.info("[LRP][TimeClockBubble] mounted");
     }
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line no-console
     console.info("[LRP][TimeClockBubble] state:", {
       hasActive,
       hasValidStart,

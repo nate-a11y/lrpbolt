@@ -105,6 +105,7 @@ export default function DropoffTipsModal() {
               <AccordionDetails>
                 <Box component="ul" sx={{ pl: 3, mb: 0 }}>
                   {v.tips.map((tip, j) => (
+                    /* eslint-disable-next-line react/no-array-index-key */
                     <li key={j}>
                       <Typography variant="body2">{tip}</Typography>
                     </li>

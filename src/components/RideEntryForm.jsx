@@ -1600,6 +1600,7 @@ export default function RideEntryForm() {
               }}
             >
               {tabItems.map((tab, index) => (
+                // eslint-disable-next-line react/no-array-index-key
                 <Tab key={index} label={tab.label} />
               ))}
             </Tabs>

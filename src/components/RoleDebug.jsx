@@ -33,6 +33,7 @@ export default function RoleDebug() {
     // DEV-ONLY: allow seeding admin if missing and env explicitly allows it
     const allow = import.meta.env.VITE_ALLOW_ROLE_SEED === "true";
     if (!allow) {
+      // eslint-disable-next-line no-alert
       alert(
         "Seeding disabled. Set VITE_ALLOW_ROLE_SEED=true to enable in DEV.",
       );
@@ -57,6 +58,7 @@ export default function RoleDebug() {
       );
     }
     await Promise.all(updates);
+    // eslint-disable-next-line no-alert
     alert("Seeded admin role for your account.");
   }
 
@@ -108,9 +110,10 @@ export default function RoleDebug() {
         <Button
           size="small"
           variant="outlined"
-          onClick={async () =>
-            alert(`UID path exists: ${await check(uidPath)}`)
-          }
+          onClick={async () => {
+            // eslint-disable-next-line no-alert
+            alert(`UID path exists: ${await check(uidPath)}`);
+          }}
         >
           Check UID doc
         </Button>
@@ -118,9 +121,10 @@ export default function RoleDebug() {
           <Button
             size="small"
             variant="outlined"
-            onClick={async () =>
-              alert(`Email path exists: ${await check(emailPath)}`)
-            }
+            onClick={async () => {
+              // eslint-disable-next-line no-alert
+              alert(`Email path exists: ${await check(emailPath)}`);
+            }}
           >
             Check Email doc
           </Button>

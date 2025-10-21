@@ -17,6 +17,7 @@ const APP_VERSION = getAppVersion();
 function ProfilePage() {
   const { user, role } = useAuth();
   const handleClearCache = useCallback(() => {
+    // eslint-disable-next-line no-alert
     if (window.confirm("Clear cache and reload? You'll be signed out.")) {
       localStorage.clear();
       sessionStorage.clear();

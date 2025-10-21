@@ -38,6 +38,7 @@ export default function VehicleDropTipCard({ title, tips, icon }) {
         }}
       >
         {tips.map((tip, idx) => (
+          // eslint-disable-next-line react/no-array-index-key
           <li key={idx}>
             <Typography variant="body2" component="span">
               {tip}

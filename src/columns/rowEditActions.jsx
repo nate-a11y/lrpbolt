@@ -37,12 +37,14 @@ export function buildRowEditActionsColumn({
 
   const handleDeleteClick = (id, row) => async () => {
     if (typeof onDelete !== "function") return;
+    // eslint-disable-next-line no-alert
     const ok = window.confirm("Delete this record?");
     if (!ok) return;
     try {
       await onDelete(id, row);
     } catch (err) {
       logError({ where: "rowEditActions.delete", id, row }, err);
+      // eslint-disable-next-line no-alert
       alert("Delete failed. Check console.");
     }
   };

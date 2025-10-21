@@ -21,8 +21,10 @@ export function useGridDoctor({ name, rows, columns, sample = 3 }) {
     if (!rows.length) {
       return;
     }
+    // eslint-disable-next-line no-console
     console.log(`${tag} rows length:`, rows.length);
     const first = rows[0] || {};
+    // eslint-disable-next-line no-console
     console.log(`${tag} first row keys:`, Object.keys(first));
 
     const sampleRows = rows.slice(0, sample);

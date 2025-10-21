@@ -21,6 +21,7 @@ export default function DriverSelect({
     setLoading(true);
     const unsubscribe = subscribeUserAccess(
       (rows) => {
+        // eslint-disable-next-line no-console
         console.debug("[DriverSelect] subscribeUserAccess returned:", rows);
         const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
         setOptions(sorted);

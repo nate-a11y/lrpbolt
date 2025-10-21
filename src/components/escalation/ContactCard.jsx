@@ -184,6 +184,7 @@ function ContactCardImpl({ contact }) {
             <Collapse in={expanded} timeout="auto" unmountOnExit>
               <List dense disablePadding id={`resp-${contact?.id || name}`}>
                 {responsibilities.map((item, idx) => (
+                  // eslint-disable-next-line react/no-array-index-key
                   <ListItem key={idx} sx={{ py: 0.5, pl: 2 }}>
                     <ListItemText
                       primaryTypographyProps={{ variant: "body2" }}

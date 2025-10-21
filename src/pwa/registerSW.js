@@ -18,6 +18,7 @@ export async function registerSW() {
     try {
       await reg.update();
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.debug("[registerSW] update skipped", error);
     }
     if (!navigator.serviceWorker.controller) {

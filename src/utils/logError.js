@@ -16,6 +16,7 @@ export function logError(context = {}, err) {
   const message = error?.message || String(error ?? "Unknown error");
 
   if (isWebChannelNoise(message) && isDev) {
+    // eslint-disable-next-line no-console
     console.debug("[LRP][dev-only webchannel]", message, context);
     return;
   }
