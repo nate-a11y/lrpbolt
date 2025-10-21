@@ -340,7 +340,7 @@ export default function BulkImportDialog({ open, onClose }) {
               borderRadius: 2,
               bgcolor: t.palette.background.paper,
               textAlign: "center",
-              color: "white",
+              color: (t) => t.palette.text.primary,
             })}
           >
             {fileName ? (
@@ -376,34 +376,51 @@ export default function BulkImportDialog({ open, onClose }) {
           >
             <TableHead>
               <TableRow>
-                <TableCell sx={{ color: "white" }}>Title</TableCell>
-                <TableCell sx={{ color: "white" }}>Category</TableCell>
-                <TableCell sx={{ color: "white" }}>Active</TableCell>
-                <TableCell sx={{ color: "white" }}>Phone</TableCell>
-                <TableCell sx={{ color: "white" }}>URL</TableCell>
+                <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                  Title
+                </TableCell>
+                <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                  Category
+                </TableCell>
+                <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                  Active
+                </TableCell>
+                <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                  Phone
+                </TableCell>
+                <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                  URL
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {previewRows.map((row, index) => (
                 <TableRow key={`${row.title}-${index}`}>
-                  <TableCell sx={{ color: "white" }}>
+                  <TableCell sx={{ color: (t) => t.palette.text.primary }}>
                     <Tooltip title={row.details || ""} placement="top-start">
                       <span>{row.title}</span>
                     </Tooltip>
                   </TableCell>
-                  <TableCell sx={{ color: "white" }}>{row.category}</TableCell>
-                  <TableCell sx={{ color: "white" }}>
+                  <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                    {row.category}
+                  </TableCell>
+                  <TableCell sx={{ color: (t) => t.palette.text.primary }}>
                     {row.isActive ? "TRUE" : "FALSE"}
                   </TableCell>
-                  <TableCell sx={{ color: "white" }}>
+                  <TableCell sx={{ color: (t) => t.palette.text.primary }}>
                     {row.phone || ""}
                   </TableCell>
-                  <TableCell sx={{ color: "white" }}>{row.url || ""}</TableCell>
+                  <TableCell sx={{ color: (t) => t.palette.text.primary }}>
+                    {row.url || ""}
+                  </TableCell>
                 </TableRow>
               ))}
               {previewRows.length === 0 && (
                 <TableRow>
-                  <TableCell sx={{ color: "white" }} colSpan={5}>
+                  <TableCell
+                    sx={{ color: (t) => t.palette.text.primary }}
+                    colSpan={5}
+                  >
                     No rows parsed yet.
                   </TableCell>
                 </TableRow>

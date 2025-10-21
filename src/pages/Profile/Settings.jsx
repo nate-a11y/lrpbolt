@@ -34,7 +34,7 @@ function ProfilePage() {
     <PageContainer>
       <NotificationSettingsCard user={user} />
       {showDiagnostics && (
-        <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: 1 }}>
           <DiagnosticsPanel />
         </Box>
       )}
