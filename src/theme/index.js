@@ -31,6 +31,10 @@ function paletteFor(mode) {
       lrp: {
         gradient:
           "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+        gradientPanel:
+          "linear-gradient(180deg, rgba(76,187,23,0.12) 0%, rgba(6,6,6,0) 100%)",
+        gradientRing:
+          "radial-gradient(closest-side, rgba(76,187,23,0.18), rgba(6,6,6,0) 70%)",
       },
     };
   }
@@ -48,6 +52,10 @@ function paletteFor(mode) {
     lrp: {
       gradient:
         "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+      gradientPanel:
+        "linear-gradient(180deg, rgba(76,187,23,0.06) 0%, rgba(255,255,255,0) 100%)",
+      gradientRing:
+        "radial-gradient(closest-side, rgba(76,187,23,0.09), rgba(255,255,255,0) 70%)",
     },
   };
 }
@@ -104,6 +112,12 @@ export function getTheme(mode = "dark") {
           ".lrp-dark, .lrp-dark-bg, .bg-black": {
             backgroundColor: `${palette.background.paper} !important`,
           },
+          ".lrp-panel-glow": ({ theme }) => ({
+            backgroundImage: theme.palette.lrp.gradientPanel,
+          }),
+          ".lrp-ring-glow": ({ theme }) => ({
+            backgroundImage: theme.palette.lrp.gradientRing,
+          }),
         },
       },
 
@@ -217,12 +231,14 @@ export function getTheme(mode = "dark") {
             color: theme.palette.text.primary,
             borderColor: theme.palette.divider,
             "--DataGrid-rowBorderColor": theme.palette.divider,
+            "--DataGrid-containerBackground": theme.palette.background.paper,
             "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent":
               { backgroundColor: theme.palette.background.paper },
           }),
           columnHeaders: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
             borderBottom: `1px solid ${theme.palette.divider}`,
+            color: theme.palette.text.primary,
           }),
           columnHeader: ({ theme }) => ({
             color: theme.palette.text.primary,
@@ -234,11 +250,21 @@ export function getTheme(mode = "dark") {
               {
                 color: theme.palette.text.secondary,
               },
+            "& .MuiInputBase-root": {
+              backgroundColor: theme.palette.background.paper,
+            },
           }),
           footerContainer: ({ theme }) => ({
             backgroundColor: theme.palette.background.paper,
             borderTop: `1px solid ${theme.palette.divider}`,
             color: theme.palette.text.secondary,
+          }),
+          cell: ({ theme }) => ({ borderColor: theme.palette.divider }),
+          filterForm: ({ theme }) => ({ color: theme.palette.text.primary }),
+          panel: ({ theme }) => ({
+            backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+            border: `1px solid ${theme.palette.divider}`,
           }),
         },
       },

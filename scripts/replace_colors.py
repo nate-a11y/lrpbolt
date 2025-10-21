@@ -15,7 +15,7 @@ INCLUDE_EXT = {".js", ".jsx"}
 EXCLUDE_DIRS = {str(SRC / "theme")}
 BINARY_EXT = {".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"}
 
-DEFAULT_GRADIENT = "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)"
+DEFAULT_GRADIENT = "linear-gradient(180deg, rgba(76,187,23,0.12) 0%, rgba(6,6,6,0) 100%)"
 
 # --- Regex patterns ---
 # Anything that looks like a linear-gradient(...) literal (single or double quoted)
@@ -72,7 +72,12 @@ REPLACEMENTS = [
 ]
 
 # Replacement for any detected gradient
-GRADIENT_TOKEN_EXPR = f"(theme) => (theme.palette.lrp && theme.palette.lrp.gradient) || '{DEFAULT_GRADIENT}'"
+GRADIENT_TOKEN_EXPR = (
+    "(theme) => (theme.palette.lrp && (theme.palette.lrp.gradientPanel "
+    "|| theme.palette.lrp.gradient)) || '"
+    + DEFAULT_GRADIENT
+    + "'"
+)
 
 def should_skip(path: pathlib.Path) -> bool:
     p = str(path)
