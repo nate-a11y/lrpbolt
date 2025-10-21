@@ -265,6 +265,9 @@ export function getTheme(mode = "dark") {
               backgroundColor: theme.palette.background.paper,
               borderBottom: `1px solid ${theme.palette.divider}`,
               color: theme.palette.text.secondary,
+              "& .MuiSvgIcon-root": {
+                color: theme.palette.text.secondary,
+              },
             },
 
             // footer (pagination/status)
@@ -289,9 +292,6 @@ export function getTheme(mode = "dark") {
             },
             "& .MuiDataGrid-iconSeparator": {
               color: theme.palette.divider,
-            },
-            "& .MuiSvgIcon-root": {
-              color: theme.palette.text.secondary,
             },
 
             // filter panel and forms match the surface
