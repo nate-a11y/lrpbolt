@@ -82,9 +82,9 @@ const Highlight = React.memo(function Highlight({ text, keyword }) {
 });
 
 // shared icon button style
-function iconBtnSx() {
+function iconBtnSx(theme) {
   return {
-    color: "#fff",
+    color: theme.palette.text.primary,
     border: `1px solid rgba(76,187,23,0.35)`,
     borderRadius: 2,
     "&:hover": {
@@ -367,7 +367,7 @@ export default function DriverDirectory({
                           component="a"
                           href={tel}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx(theme)}
                         >
                           <PhoneIcon fontSize="small" />
                         </IconButton>
@@ -378,7 +378,7 @@ export default function DriverDirectory({
                           href={sms || undefined}
                           onClick={!sms ? onCopy : undefined}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx(theme)}
                         >
                           <SmsIcon fontSize="small" />
                         </IconButton>
@@ -388,7 +388,7 @@ export default function DriverDirectory({
                           component="a"
                           href={email}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx(theme)}
                         >
                           <EmailIcon fontSize="small" />
                         </IconButton>
@@ -397,7 +397,7 @@ export default function DriverDirectory({
                         <IconButton
                           onClick={onCopy}
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx(theme)}
                         >
                           <ContentCopyIcon fontSize="small" />
                         </IconButton>
@@ -409,7 +409,7 @@ export default function DriverDirectory({
                           target="_blank"
                           rel="noopener noreferrer"
                           size="small"
-                          sx={iconBtnSx()}
+                          sx={iconBtnSx(theme)}
                         >
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
@@ -423,7 +423,7 @@ export default function DriverDirectory({
         },
       },
     ],
-    [LRP, search],
+    [LRP, search, theme],
   );
 
   const baseSx = React.useMemo(
@@ -431,7 +431,7 @@ export default function DriverDirectory({
       width: "100%",
       "& *": { fontFamily: theme.typography.fontFamily },
     }),
-    [theme.typography.fontFamily],
+    [theme],
   );
 
   const mergedSx = React.useMemo(() => {
@@ -452,7 +452,7 @@ export default function DriverDirectory({
           gutterBottom
           sx={{
             fontWeight: 900,
-            color: "#fff",
+            color: (t) => t.palette.text.primary,
             textShadow: `0 0 12px rgba(76,187,23,0.6)`,
           }}
         >
@@ -480,7 +480,7 @@ export default function DriverDirectory({
             placeholder="Search name, LRP #, email, vehicle…"
             InputProps={{
               disableUnderline: true,
-              sx: { color: "#fff" },
+              sx: (t) => ({ color: t.palette.text.primary }),
             }}
           />
         </Stack>
@@ -512,14 +512,17 @@ export default function DriverDirectory({
           pageSizeOptions={[10, 25, 50, 100]}
           sx={{
             bgcolor: (t) => t.palette.background.paper,
-            color: "#fff",
+            color: (t) => t.palette.text.primary,
             borderRadius: 2,
-            border: `1px solid rgba(255,255,255,0.06)`,
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.03) inset`,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            boxShadow: (t) =>
+              t.palette.mode === "dark"
+                ? "0 0 0 1px rgba(255,255,255,0.03) inset"
+                : "0 0 0 1px rgba(0,0,0,0.04) inset",
             "--DataGrid-containerBackground": (t) => t.palette.background.paper,
             "& .MuiDataGrid-columnHeaders": {
               bgcolor: "transparent",
-              borderBottom: `1px dashed rgba(255,255,255,0.12)`,
+              borderBottom: (t) => `1px dashed ${t.palette.divider}`,
               "& .MuiDataGrid-columnHeaderTitle": {
                 fontWeight: 800,
                 letterSpacing: 0.4,
@@ -546,17 +549,19 @@ export default function DriverDirectory({
               },
             },
             "& .MuiDataGrid-cell": {
-              borderBottom: `1px dashed rgba(255,255,255,0.10)`,
+              borderBottom: (t) => `1px dashed ${t.palette.divider}`,
               py: 0,
             },
             "& .MuiCheckbox-root.Mui-checked": { color: LRP.green },
             "& .MuiDataGrid-selectedRowCount": { color: LRP.textDim },
-            "& .MuiButtonBase-root.MuiIconButton-root": { color: "#fff" },
+            "& .MuiButtonBase-root.MuiIconButton-root": {
+              color: (t) => t.palette.text.primary,
+            },
           }}
         />
       </Paper>
 
-      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
+      <Divider sx={{ my: 2, borderColor: (t) => t.palette.divider }} />
       <Typography variant="caption" sx={{ color: LRP.textDim }}>
         Lake Ride Pros • Real Rides. Real Pros.
       </Typography>

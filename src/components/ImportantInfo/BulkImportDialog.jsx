@@ -330,11 +330,11 @@ export default function BulkImportDialog({ open, onClose }) {
             sx={(t) => ({
               mt: 1,
               p: 2,
-              border: "1px dashed #2a2a2a",
+              border: `1px dashed ${t.palette.divider}`,
               borderRadius: 2,
               bgcolor: t.palette.background.paper,
               textAlign: "center",
-              color: "white",
+              color: t.palette.text.primary,
             })}
           >
             {fileName ? (
