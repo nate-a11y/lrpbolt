@@ -44,11 +44,14 @@ describe("retry", () => {
 
     const promise = retry(fn, { tries: 3, min: 100, jitter: false });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toThrow(AppError);
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
 
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error.message).toBe("persistent failure");
     expect(fn).toHaveBeenCalledTimes(3);
   });
 
@@ -62,11 +65,13 @@ describe("retry", () => {
       jitter: false,
     });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toThrow();
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
 
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toBeInstanceOf(AppError);
     // Verify exponential backoff occurred
     expect(fn).toHaveBeenCalledTimes(3);
   });
@@ -82,11 +87,13 @@ describe("retry", () => {
       jitter: false,
     });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toThrow();
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
 
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toBeInstanceOf(AppError);
     expect(fn).toHaveBeenCalledTimes(5);
   });
 
@@ -101,10 +108,11 @@ describe("retry", () => {
       onError,
     });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toThrow();
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
+
+    await vi.runAllTimersAsync();
+    await errorPromise;
 
     expect(onError).toHaveBeenCalledTimes(3);
     expect(onError).toHaveBeenNthCalledWith(1, expect.any(AppError), 1);
@@ -117,10 +125,13 @@ describe("retry", () => {
 
     const promise = retry(fn, { tries: 1, min: 100 });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toMatchObject({
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
+
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toMatchObject({
       message: "standard error",
       code: "RETRY_FAIL",
     });
@@ -132,10 +143,13 @@ describe("retry", () => {
 
     const promise = retry(fn, { tries: 1, min: 100 });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toMatchObject({
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
+
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toMatchObject({
       message: "custom message",
       code: "CUSTOM_CODE",
     });
@@ -150,10 +164,13 @@ describe("retry", () => {
 
     const promise = retry(fn, { tries: 3, signal: controller.signal });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toMatchObject({
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
+
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toMatchObject({
       message: "Aborted",
       code: "ABORTED",
     });
@@ -183,11 +200,13 @@ describe("retry", () => {
       jitter: true,
     });
 
-    await expect(async () => {
-      await vi.runAllTimersAsync();
-      await promise;
-    }).rejects.toThrow();
+    // Catch the error to prevent unhandled rejection
+    const errorPromise = promise.catch((err) => err);
 
+    await vi.runAllTimersAsync();
+    const error = await errorPromise;
+
+    expect(error).toBeInstanceOf(AppError);
     // With jitter enabled, delays should vary
     // We can't test exact values, but we can verify it completes
     expect(fn).toHaveBeenCalledTimes(3);
