@@ -36,7 +36,7 @@ export function useTripsByState(state) {
       const ridesRef = collection(db, "rides");
       const q = query(
         ridesRef,
-        where("state", "==", state),
+        where("status", "==", state),
         orderBy("pickupTime", "asc"),
       );
       unsubscribe = onSnapshot(
@@ -45,17 +45,24 @@ export function useTripsByState(state) {
           const next = snapshot.docs.map((docSnap) => {
             const normalized = normalizeRide(docSnap);
             const raw = normalized?._raw || docSnap.data() || {};
+            const statusValue =
+              typeof raw.status === "string"
+                ? raw.status
+                : typeof raw.state === "string"
+                  ? raw.state
+                  : typeof normalized.status === "string"
+                    ? normalized.status
+                    : state;
             const stateValue =
-              typeof raw.state === "string"
+              typeof raw.state === "string" && raw.state.trim()
                 ? raw.state
-                : typeof normalized.status === "string"
-                  ? normalized.status
-                  : state;
+                : statusValue;
 
             return {
               ...normalized,
+              status: statusValue,
               state: stateValue,
-              _raw: { ...raw, state: stateValue },
+              _raw: { ...raw, status: statusValue, state: stateValue },
             };
           });
           setRows(next);

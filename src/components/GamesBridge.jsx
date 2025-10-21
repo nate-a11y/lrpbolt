@@ -7,12 +7,52 @@ import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { submitHighscore } from "@/services/gamesService.js";
 import logError from "@/utils/logError.js";
 
+function resolveFallbackOrigin() {
+  return typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost";
+}
+
+function resolveGamesBase(explicitFallback) {
+  const fallbackOrigin = explicitFallback || resolveFallbackOrigin();
+  const envBase = import.meta.env.VITE_GAMES_ORIGIN;
+  if (envBase) {
+    try {
+      return new URL(envBase, fallbackOrigin).href.replace(/\/+$/, "/");
+    } catch (error) {
+      logError(error, {
+        where: "GamesBridge.resolveGamesBase.env",
+        envBase,
+      });
+    }
+  }
+
+  const basePath = import.meta.env.BASE_URL || "/";
+  try {
+    const root = new URL(basePath, fallbackOrigin);
+    const gamesUrl = new URL("games/", root);
+    return gamesUrl.href.replace(/\/+$/, "/");
+  } catch (error) {
+    logError(error, {
+      where: "GamesBridge.resolveGamesBase.base",
+      basePath,
+    });
+    const originNormalized = fallbackOrigin.replace(/\/+$/, "/");
+    const baseNormalized = String(basePath || "/")
+      .replace(/^\/+/, "")
+      .replace(/\/+$/, "/");
+    const prefix = baseNormalized
+      ? `${originNormalized}/${baseNormalized.replace(/\/$/, "")}`
+      : originNormalized;
+    return `${prefix.replace(/\/+$/, "/")}games/`.replace(/\/+$/, "/");
+  }
+}
+
 function computeGamesOrigin() {
   if (typeof window === "undefined") return "";
-  const raw = import.meta.env.VITE_GAMES_ORIGIN || "/games";
   try {
-    const url = new URL(raw, window.location.origin);
-    return url.origin;
+    const base = resolveGamesBase(window.location.origin);
+    return new URL(base).origin;
   } catch (error) {
     logError(error, { where: "GamesBridge.computeGamesOrigin" });
     return window.location.origin;
@@ -20,28 +60,15 @@ function computeGamesOrigin() {
 }
 
 function buildSrc(path, game) {
-  const rawBase = import.meta.env.VITE_GAMES_ORIGIN || "/games";
-  const fallbackOrigin =
-    typeof window !== "undefined" ? window.location.origin : "http://localhost";
+  const fallbackOrigin = resolveFallbackOrigin();
+  const baseHref = resolveGamesBase(fallbackOrigin);
   const effectivePath = path || (game ? `${game}/index.html` : "");
-
-  try {
-    const baseUrl = new URL(rawBase, fallbackOrigin);
-    const cleanBase = baseUrl.href.replace(/\/+$/, "/");
-    const cleanPath = effectivePath ? effectivePath.replace(/^\/+/, "") : "";
-    return cleanPath
-      ? `${cleanBase}${cleanPath}`
-      : cleanBase.replace(/\/$/, "");
-  } catch (error) {
-    logError(error, {
-      where: "GamesBridge.buildSrc",
-      rawBase,
-      effectivePath,
-    });
-    const cleanBase = (rawBase || "").replace(/\/+$/, "");
-    const cleanPath = effectivePath ? effectivePath.replace(/^\/+/, "") : "";
-    return cleanPath ? `${cleanBase}/${cleanPath}` : cleanBase || "/games";
+  const normalizedBase = baseHref.endsWith("/") ? baseHref : `${baseHref}/`;
+  const cleanPath = effectivePath ? effectivePath.replace(/^\/+/, "") : "";
+  if (!cleanPath) {
+    return normalizedBase.replace(/\/$/, "");
   }
+  return `${normalizedBase}${cleanPath}`;
 }
 
 const GamesBridge = forwardRef(function GamesBridge(
