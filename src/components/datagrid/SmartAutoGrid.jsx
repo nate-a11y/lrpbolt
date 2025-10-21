@@ -408,6 +408,7 @@ export default function SmartAutoGrid(props) {
       return {
         [`& .${gridClasses.cell}`]: { outline: "none" },
         "& .MuiDataGrid-columnHeader:focus": { outline: "none" },
+        "& .MuiDataGrid-cell": { borderColor: theme.palette.divider },
         "& .MuiDataGrid-toolbarContainer": {
           backgroundColor: theme.palette.background.paper,
           color: theme.palette.text.primary,

@@ -15,6 +15,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
@@ -32,17 +33,20 @@ import { toNumberOrNull } from "@/services/gamesService.js";
 import logError from "@/utils/logError.js";
 
 const BACKGROUND = "#060606";
-const BRAND_GREEN = "#4cbb17";
 
-const gridSx = {
+const gridSx = (t) => ({
   bgcolor: "transparent",
   color: "#fff",
   border: 0,
-  "& .MuiDataGrid-cell": { borderColor: "rgba(255,255,255,0.08)" },
-  "& .MuiDataGrid-columnHeaders": { bgcolor: "rgba(255,255,255,0.04)" },
-  "& .MuiDataGrid-row:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+  "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
+  "& .MuiDataGrid-columnHeaders": {
+    bgcolor: alpha(t.palette.common.white, 0.04),
+  },
+  "& .MuiDataGrid-row:hover": {
+    bgcolor: alpha(t.palette.common.white, 0.06),
+  },
   "& .MuiDataGrid-virtualScroller": { backgroundColor: "transparent" },
-};
+});
 
 function HyperlanePanel() {
   const iframeRef = useRef(null);
@@ -174,7 +178,9 @@ function HyperlanePanel() {
             justifyContent="space-between"
           >
             <Stack direction="row" spacing={1} alignItems="center">
-              <SportsEsportsIcon sx={{ color: BRAND_GREEN }} />
+              <SportsEsportsIcon
+                sx={{ color: (t) => t.palette.primary.main }}
+              />
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 LRP Hyperlane — Neon Runner
               </Typography>
@@ -186,11 +192,11 @@ function HyperlanePanel() {
                     checked={soundOn}
                     onChange={(event) => setSoundOn(event.target.checked)}
                     color="success"
-                    sx={{
+                    sx={(t) => ({
                       "& .MuiSwitch-thumb": {
-                        bgcolor: soundOn ? "#4cbb17" : "#555",
+                        bgcolor: soundOn ? t.palette.primary.main : "#555",
                       },
-                    }}
+                    })}
                   />
                 }
                 label={
@@ -284,17 +290,23 @@ function HyperlanePanel() {
         }}
       >
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: BRAND_GREEN }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 800, color: (t) => t.palette.primary.main }}
+          >
             Top 10 — Hyperlane
           </Typography>
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+          <Divider sx={{ borderColor: (t) => t.palette.divider }} />
           {loading ? (
             <Stack
               alignItems="center"
               justifyContent="center"
               sx={{ minHeight: 320 }}
             >
-              <CircularProgress size={48} sx={{ color: BRAND_GREEN }} />
+              <CircularProgress
+                size={48}
+                sx={{ color: (t) => t.palette.primary.main }}
+              />
             </Stack>
           ) : error ? (
             <Alert
@@ -352,12 +364,12 @@ function StarRunnerPanel() {
             spacing={1.5}
             alignItems={{ xs: "flex-start", sm: "center" }}
           >
-            <SportsEsportsIcon sx={{ color: BRAND_GREEN }} />
+            <SportsEsportsIcon sx={{ color: (t) => t.palette.primary.main }} />
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               LRP StarRunner — Prototype
             </Typography>
           </Stack>
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+          <Divider sx={{ borderColor: (t) => t.palette.divider }} />
           <LRPStarRunner />
           <Typography variant="body2" sx={{ opacity: 0.75 }}>
             Dodge debris, collect orbs, and chase a new high score.
@@ -429,7 +441,9 @@ export default function GamesHub() {
     >
       <Stack spacing={3} sx={{ flexGrow: 1 }}>
         <Stack direction="row" alignItems="center" spacing={1.5}>
-          <SportsEsportsIcon sx={{ color: BRAND_GREEN, fontSize: 28 }} />
+          <SportsEsportsIcon
+            sx={{ color: (t) => t.palette.primary.main, fontSize: 28 }}
+          />
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
             LRP Games Hub
           </Typography>
@@ -442,13 +456,15 @@ export default function GamesHub() {
           allowScrollButtonsMobile
           aria-label="Games tabs"
           sx={{
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            borderBottom: (t) => `1px solid ${t.palette.divider}`,
             "& .MuiTab-root": {
               color: "rgba(255,255,255,0.7)",
               fontWeight: 700,
             },
-            "& .Mui-selected": { color: BRAND_GREEN },
-            "& .MuiTabs-indicator": { backgroundColor: BRAND_GREEN },
+            "& .Mui-selected": { color: (t) => t.palette.primary.main },
+            "& .MuiTabs-indicator": {
+              backgroundColor: (t) => t.palette.primary.main,
+            },
           }}
         >
           <Tab label="Hyperlane (2D)" />

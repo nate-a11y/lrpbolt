@@ -8,6 +8,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import { subscribeTickets } from "@/services/tickets.js";
@@ -318,12 +319,14 @@ function TicketGrid({
       <Chip
         label={label || "—"}
         size="small"
-        sx={{
-          bgcolor: isClosed ? "rgba(76,187,23,0.15)" : "rgba(255,193,7,0.15)",
-          color: isClosed ? "#4cbb17" : "#ffc107",
+        sx={(t) => ({
+          bgcolor: isClosed
+            ? alpha(t.palette.primary.main, 0.15)
+            : alpha(t.palette.warning.main, 0.15),
+          color: isClosed ? t.palette.primary.main : t.palette.warning.main,
           textTransform: label ? "capitalize" : "none",
           fontWeight: 600,
-        }}
+        })}
       />
     );
   }, []);

@@ -14,6 +14,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -23,8 +24,6 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
 import useCopy from "./useCopy.js";
 import { downloadVCard } from "./vcard.js";
-
-const GREEN = "#4cbb17";
 
 function initialsFrom(name = "") {
   return (
@@ -43,12 +42,16 @@ function ActionButton(props) {
       {...props}
       variant="outlined"
       size="small"
-      sx={{
+      sx={(t) => ({
         minHeight: 40,
-        borderColor: GREEN,
-        color: GREEN,
-        "&:hover": { bgcolor: GREEN, color: "#060606", borderColor: GREEN },
-      }}
+        borderColor: t.palette.primary.main,
+        color: t.palette.primary.main,
+        "&:hover": {
+          bgcolor: t.palette.primary.main,
+          color: t.palette.getContrastText(t.palette.primary.main),
+          borderColor: t.palette.primary.main,
+        },
+      })}
     />
   );
 }
@@ -76,11 +79,19 @@ function ContactCardImpl({ contact }) {
     >
       <CardContent sx={{ pb: 1.5 }}>
         <Stack direction="row" spacing={2} alignItems="center">
-          <Avatar sx={{ bgcolor: "rgba(76,187,23,0.15)", color: GREEN }}>
+          <Avatar
+            sx={(t) => ({
+              bgcolor: alpha(t.palette.primary.main, 0.15),
+              color: t.palette.primary.main,
+            })}
+          >
             {initialsFrom(name)}
           </Avatar>
           <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography variant="h6" sx={{ color: GREEN, lineHeight: 1.2 }}>
+            <Typography
+              variant="h6"
+              sx={{ color: (t) => t.palette.primary.main, lineHeight: 1.2 }}
+            >
               {name}
             </Typography>
             {role ? (
@@ -158,7 +169,7 @@ function ContactCardImpl({ contact }) {
               onClick={() => setExpanded((v) => !v)}
               endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               sx={{
-                color: GREEN,
+                color: (t) => t.palette.primary.main,
                 px: 0,
                 "&:hover": {
                   background: "transparent",

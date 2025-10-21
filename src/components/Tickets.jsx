@@ -47,6 +47,7 @@ import {
   IconButton,
   Stack,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -1566,10 +1567,10 @@ function Tickets() {
                     variant="contained"
                     color="success"
                     onClick={downloadTicket}
-                    sx={{
-                      boxShadow: "0 0 8px 2px #4cbb17",
+                    sx={(t) => ({
+                      boxShadow: `0 0 8px 2px ${t.palette.primary.main}`,
                       fontWeight: 700,
-                    }}
+                    })}
                   >
                     Download
                   </Button>
@@ -1654,7 +1655,7 @@ function Tickets() {
                   bgcolor: (t) => t.palette.background.paper,
                   color: "#fff",
                   boxShadow: "none",
-                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                  borderBottom: (t) => `1px solid ${t.palette.divider}`,
                 }}
               >
                 <Toolbar sx={{ gap: 2 }}>
@@ -1766,7 +1767,7 @@ function Tickets() {
             sx={{
               fontWeight: 600,
               pb: 1,
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              borderBottom: (t) => `1px solid ${t.palette.divider}`,
             }}
           >
             Record ticket scan
@@ -1904,18 +1905,20 @@ function Tickets() {
                   <CircularProgress size={16} sx={{ color: "inherit" }} />
                 ) : null
               }
-              sx={{
+              sx={(t) => ({
                 fontWeight: 700,
                 boxShadow:
                   savingScan && savingScanType === "return"
-                    ? "0 0 6px #4cbb17"
-                    : "0 0 10px rgba(76,187,23,0.55)",
-                "&:hover": { boxShadow: "0 0 12px rgba(76,187,23,0.75)" },
+                    ? `0 0 6px ${t.palette.primary.main}`
+                    : `0 0 10px ${alpha(t.palette.primary.main, 0.55)}`,
+                "&:hover": {
+                  boxShadow: `0 0 12px ${alpha(t.palette.primary.main, 0.75)}`,
+                },
                 "&.Mui-disabled": {
                   boxShadow: "none",
                   color: "rgba(255,255,255,0.4)",
                 },
-              }}
+              })}
             >
               {savingScan && savingScanType === "return"
                 ? "Saving…"

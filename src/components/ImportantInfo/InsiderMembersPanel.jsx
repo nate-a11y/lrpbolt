@@ -29,7 +29,6 @@ import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
 const MEMBERSHIP_TYPES = ["business", "family", "individual"];
 const LEVELS = ["bronze", "silver", "gold", "diamond"];
-const PRIMARY_COLOR = "#4cbb17";
 
 function formatTitle(value) {
   if (!value) return "";
@@ -201,7 +200,8 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
             startIcon={<AddIcon />}
             onClick={openCreateDialog}
             variant="contained"
-            sx={{ bgcolor: PRIMARY_COLOR, fontWeight: 600 }}
+            color="primary"
+            sx={{ fontWeight: 600 }}
           >
             Add Member
           </Button>

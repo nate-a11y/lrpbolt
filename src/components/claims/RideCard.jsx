@@ -450,7 +450,9 @@ export default function RideCard({
               </Stack>
 
               <Collapse in={detailsOpen} timeout="auto" unmountOnExit>
-                <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,.08)" }} />
+                <Divider
+                  sx={{ my: 1, borderColor: (t) => t.palette.divider }}
+                />
                 <Stack
                   component="ul"
                   sx={{
@@ -476,7 +478,7 @@ export default function RideCard({
               mt: 2,
               px: 0,
               pt: 1.5,
-              borderTop: "1px solid rgba(255,255,255,0.08)",
+              borderTop: (t) => `1px solid ${t.palette.divider}`,
               display: "flex",
               flexDirection: { xs: "column", sm: "row" },
               alignItems: { xs: "stretch", sm: "center" },
