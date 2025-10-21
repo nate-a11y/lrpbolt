@@ -2,7 +2,7 @@ const path = require("path");
 
 function loadExports() {
   const entry = path.join(__dirname, "..", "index.js");
-  // eslint-disable-next-line global-require, import/no-dynamic-require
+   
   const mod = require(entry);
   return Object.keys(mod).sort();
 }

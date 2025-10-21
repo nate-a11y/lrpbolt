@@ -1,5 +1,6 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { logger, setGlobalOptions } = require("firebase-functions/v2");
+
 const { admin } = require("./_admin");
 
 if (!global.__lrpGlobalOptionsSet) {

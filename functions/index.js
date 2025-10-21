@@ -1,11 +1,12 @@
 /* Canonical v2 exports with legacy aliases. */
 const { logger } = require("firebase-functions/v2");
 const { onCall: onCallHttps, HttpsError } = require("firebase-functions/v2/https");
+
 const { admin } = require("./admin");
 
 function attach(name, path, exportName) {
   try {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
+     
     const mod = require(path);
     const fn = exportName ? mod?.[exportName] : mod;
     if (typeof fn !== "function") {

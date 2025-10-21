@@ -2,6 +2,7 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
+
 const { admin } = require("./_admin");
 
 const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
@@ -55,7 +56,7 @@ async function sendSmsSafe(to, body) {
 
   let twilio;
   try {
-    // eslint-disable-next-line global-require
+     
     twilio = require("twilio");
   } catch (error) {
     logger.warn("notifyDriverOnClaim.twilioModuleMissing", error?.message || error);

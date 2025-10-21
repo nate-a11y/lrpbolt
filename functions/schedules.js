@@ -1,5 +1,6 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
+
 const { admin } = require("./_admin");
 const { dropDailyFromQueue } = require("./src/jobs/dropDailyFromQueue");
 

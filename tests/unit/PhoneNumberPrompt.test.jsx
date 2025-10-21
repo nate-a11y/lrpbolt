@@ -1,8 +1,10 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
-import PhoneNumberPrompt from "../../src/components/PhoneNumberPrompt.jsx";
+
 import { saveUserPhoneNumber } from "src/services/users.js";
+
+import PhoneNumberPrompt from "../../src/components/PhoneNumberPrompt.jsx";
 
 vi.mock("src/services/users.js", () => ({
   saveUserPhoneNumber: vi.fn(() => Promise.resolve()),

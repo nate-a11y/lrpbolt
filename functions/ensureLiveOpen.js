@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions, logger } = require("firebase-functions/v2");
+
 const { admin } = require("./_admin");
 
 if (!global.__lrpGlobalOptionsSet) {

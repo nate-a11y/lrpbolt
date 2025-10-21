@@ -1,8 +1,10 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
-import pkg from "./package.json" with { type: "json" };
 
 import react from "@vitejs/plugin-react";
+
+import pkg from "./package.json" with { type: "json" };
+
 
 export default defineConfig({
   plugins: [react()],

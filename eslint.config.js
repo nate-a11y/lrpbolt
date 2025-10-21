@@ -6,7 +6,7 @@ import globals from "globals";
 
 export default [
   // Ignore build artifacts
-  { ignores: ["dist/**", "coverage/**", "node_modules/**", "functions/lib/**", "src/vendor/**"] },
+  { ignores: ["dist/**", "coverage/**", "node_modules/**", "functions/lib/**", "src/vendor/**", ".archive/**", "public/sw.js", "public/firebase-messaging-sw.js"] },
 
   // Base + plugins
   js.configs.recommended,
@@ -53,17 +53,32 @@ export default [
       // Style/sanity
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",            // disable PropTypes across app
-      "import/no-duplicates": "warn",
+      "import/no-duplicates": "error",      // stricter: duplicates are errors
       "import/order": ["warn", {
         "groups": ["builtin","external","internal","parent","sibling","index","object","type"],
         "newlines-between": "always"
       }],
       "import/no-named-as-default": "off",  // silence Lightbox named-as-default warning
-      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+      "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
 
-      // Hooks
+      // Hooks (stricter)
       "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn"
+      "react-hooks/exhaustive-deps": "error",  // stricter: exhaustive deps is now error
+
+      // Code quality
+      "no-debugger": "error",                  // no debugger statements
+      "no-alert": "warn",                      // discourage alert/confirm/prompt
+      "eqeqeq": ["error", "always", { "null": "ignore" }],  // require === and !==
+      "no-var": "error",                       // use const/let instead of var
+      "prefer-const": "error",                 // prefer const when variable is not reassigned
+      "no-implicit-globals": "error",          // prevent accidental globals
+      "no-console": ["warn", { "allow": ["warn", "error"] }],  // warn on console.log, allow warn/error
+
+      // React specific
+      "react/jsx-no-target-blank": ["error", { "allowReferrer": false }],  // require rel="noopener"
+      "react/no-array-index-key": "warn",      // warn when using array index as key
+      "react/jsx-key": "error",                // require key prop in lists
+      "react/no-unescaped-entities": "error"   // prevent unescaped HTML entities
     }
   },
 
@@ -89,6 +104,7 @@ export default [
       "import/namespace": "off",
       "import/default": "off",
       "import/no-named-as-default-member": "off",
+      "no-console": "off",  // allow console in scripts and functions
     }
   },
 

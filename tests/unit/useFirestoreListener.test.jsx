@@ -6,7 +6,7 @@ import { orderBy } from "firebase/firestore";
 import useFirestoreListener from "../../src/hooks/useFirestoreListener.js";
 
 // Mock firebase/firestore
-var onSnapshotMock;
+let onSnapshotMock;
 vi.mock("firebase/firestore", () => {
   onSnapshotMock = vi.fn(() => vi.fn());
   return {

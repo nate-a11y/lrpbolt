@@ -42,7 +42,7 @@ export function clampSegmentToWindow(
     return dayjs(v).tz(tzName);
   };
 
-  let start = toD(startTs);
+  const start = toD(startTs);
   let end = toD(endTs);
   if (!start || !end) {
     return {
@@ -113,7 +113,7 @@ export function buildBusyFreeSegments(rides, windowStart, windowEnd) {
   let cursor = windowStart;
   const normalized = rides
     .map((r) => {
-      let s = r.start;
+      const s = r.start;
       let e = r.end;
       if (e.isSame(s) || e.isBefore(s)) e = e.add(1, "day"); // overnight safe
       // clamp to window for segment building

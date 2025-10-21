@@ -20,7 +20,7 @@ export function formatRange(startTs, endTs, durationMins) {
 
 export function durationHM(startTs, endTs, durationMins) {
   const s = tsToDayjs(startTs);
-  let e = tsToDayjs(endTs);
+  const e = tsToDayjs(endTs);
   let mins;
   if (s && e) mins = Math.max(0, e.diff(s, "minute"));
   else if (s && Number.isFinite(durationMins)) mins = durationMins;
