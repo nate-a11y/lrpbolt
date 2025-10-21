@@ -1,21 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
-import { orderBy } from "firebase/firestore";
 
 import useFirestoreListener from "../../src/hooks/useFirestoreListener.js";
 
 // Mock firebase/firestore
-// Note: Must create the mock function inside the factory to avoid hoisting issues
-vi.mock("firebase/firestore", () => {
-  const mockOnSnapshot = vi.fn(() => vi.fn());
-  return {
-    collection: vi.fn(() => ({})),
-    query: vi.fn(() => ({})),
-    onSnapshot: mockOnSnapshot,
-    orderBy: vi.fn(() => ({})),
-  };
-});
+vi.mock("firebase/firestore", () => ({
+  collection: vi.fn(() => ({})),
+  query: vi.fn(() => ({})),
+  onSnapshot: vi.fn(() => vi.fn()),
+  orderBy: vi.fn(() => ({})),
+}));
 
 // Mock auth context and firebase init
 const authMock = { user: {}, authLoading: false };
@@ -28,17 +23,20 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function TestComponent() {
+function TestComponent({ mockOrderBy }) {
   const [count, setCount] = useState(0);
-  const rideQuery = useMemo(() => [orderBy("pickupTime", "asc")], []);
+  const rideQuery = useMemo(
+    () => [mockOrderBy("pickupTime", "asc")],
+    [mockOrderBy],
+  );
   useFirestoreListener("liveRides", rideQuery);
   return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
 }
 
 describe("useFirestoreListener", () => {
   it("subscribes only once when query constraints are memoized", async () => {
-    const { onSnapshot } = await import("firebase/firestore");
-    const { getByText } = render(<TestComponent />);
+    const { onSnapshot, orderBy } = await import("firebase/firestore");
+    const { getByText } = render(<TestComponent mockOrderBy={orderBy} />);
     expect(onSnapshot).toHaveBeenCalledTimes(1);
     fireEvent.click(getByText("0"));
     expect(onSnapshot).toHaveBeenCalledTimes(1);
