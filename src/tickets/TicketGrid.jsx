@@ -471,7 +471,7 @@ function TicketGrid({
         slots={gridSlots}
         sx={{
           bgcolor: (t) => t.palette.background.paper,
-          color: "#fff",
+          color: (t) => t.palette.text.primary,
           border: "none",
           "& .MuiDataGrid-row:hover": {
             bgcolor: "rgba(76,187,23,0.05)",
