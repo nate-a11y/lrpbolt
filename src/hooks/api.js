@@ -29,6 +29,7 @@ import { normalizeTimeLog } from "../utils/normalizeTimeLog.js";
 import { nullifyMissing } from "../utils/formatters.js";
 import { mapSnapshotToRows } from "../services/normalizers";
 import { normalizeRideArray } from "../services/mappers/rides.js";
+import { buildRange, safeGet } from "../services/q.js";
 
 const lc = (s) => (s || "").toLowerCase();
 const currentEmail = () => lc(getAuth().currentUser?.email || "");
@@ -533,13 +534,26 @@ export function subscribeShootoutStats(onNext, onError) {
 }
 
 export async function fetchWeeklySummary({ startTs, endTs }) {
-  const q = query(
-    collection(db, "timeLogs"),
-    where("startTime", ">=", startTs),
-    where("startTime", "<", endTs),
-    orderBy("startTime", "asc"),
+  const { startTs: normalizedStart, endTs: normalizedEnd } = buildRange(
+    startTs,
+    endTs,
   );
-  const snap = await getDocs(q);
+
+  const constraints = [];
+  if (normalizedStart) {
+    constraints.push(where("startTime", ">=", normalizedStart));
+  }
+  if (normalizedEnd) {
+    constraints.push(where("startTime", "<", normalizedEnd));
+  }
+  constraints.push(orderBy("startTime", "asc"));
+
+  const q = query(collection(db, "timeLogs"), ...constraints);
+  const snap = await safeGet(getDocs(q), {
+    ctx: "fetchWeeklySummary",
+    hasStart: Boolean(normalizedStart),
+    hasEnd: Boolean(normalizedEnd),
+  });
   const byDriver = new Map();
   snap.forEach((doc) => {
     const d = doc.data() || {};

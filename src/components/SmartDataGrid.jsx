@@ -23,6 +23,7 @@ function SmartDataGridBase({
   initialState,
   pageSizeOptions,
   experimentalFeatures,
+  sx: sxProp,
   ...rest
 }) {
   const stableGetRowId = useMemo(
@@ -75,6 +76,22 @@ function SmartDataGridBase({
 
   const safeRows = Array.isArray(rows) ? rows : [];
 
+  const toolbarSx = useMemo(
+    () => (theme) => ({
+      "& .MuiDataGrid-toolbarContainer": {
+        backgroundColor: theme.palette.background.paper,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+      },
+    }),
+    [],
+  );
+
+  const mergedSx = useMemo(() => {
+    if (!sxProp) return toolbarSx;
+    if (Array.isArray(sxProp)) return [toolbarSx, ...sxProp];
+    return [toolbarSx, sxProp];
+  }, [sxProp, toolbarSx]);
+
   return (
     <LrpDataGridPro
       rows={safeRows}
@@ -92,6 +109,7 @@ function SmartDataGridBase({
       disableColumnSelector={false}
       disableDensitySelector={false}
       experimentalFeatures={mergedExperimentalFeatures}
+      sx={mergedSx}
       {...rest}
     />
   );

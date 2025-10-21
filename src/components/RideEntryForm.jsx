@@ -71,6 +71,7 @@ import {
 } from "../utils/csvTemplates";
 import { withExponentialBackoff } from "../services/retry";
 import { AppError, logError } from "../services/errors";
+import { safeGet } from "../services/q.js";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
 import useAuth from "../hooks/useAuth.js";
@@ -918,7 +919,11 @@ export default function RideEntryForm() {
       where("tripId", "==", tripId),
       limit(1),
     );
-    const snap = await getDocs(q);
+    const snap = await safeGet(getDocs(q), {
+      where: "RideEntryForm.tripExistsInCollection",
+      collectionName,
+      tripId,
+    });
     return !snap.empty;
   }, []);
 
