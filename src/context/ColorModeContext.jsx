@@ -1,64 +1,71 @@
-/* Proprietary and confidential. See LICENSE. */
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useContext,
-} from "react";
-import { ThemeProvider, CssBaseline, useMediaQuery } from "@mui/material";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
+import { ThemeProvider, CssBaseline } from "@mui/material";
 
-import { buildTheme } from "../theme";
+import getTheme from "../theme";
 
-export const ColorModeContext = createContext({
-  mode: "dark",
-  toggle: () => {},
-});
+const ColorModeContext = createContext({ mode: "dark", toggle: () => {} });
 export const useColorMode = () => useContext(ColorModeContext);
 
-export default function ColorModeProvider({ children }) {
-  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)", {
-    defaultMatches: true,
-  });
+const prefersDark = () => {
+  if (typeof window === "undefined" || !window.matchMedia) return true;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+};
 
+const readStoredMode = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem("lrp-mode");
+  } catch {
+    return null;
+  }
+};
+
+export function ColorModeProvider({ children }) {
   const [mode, setMode] = useState(() => {
-    if (typeof window === "undefined") return "dark";
-    return localStorage.getItem("lrp:mode") || (prefersDark ? "dark" : "light");
+    const stored = readStoredMode();
+    if (stored === "light" || stored === "dark") return stored;
+    return prefersDark() ? "dark" : "light";
   });
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lrp:mode", mode);
+    try {
+      window.localStorage.setItem("lrp-mode", mode);
+    } catch {
+      /* ignore persistence issues */
+    }
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-color-mode", mode);
     }
   }, [mode]);
 
-  // Optional: react to OS changes only if user never manually toggled
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e) => {
-      const stored = localStorage.getItem("lrp:mode");
-      if (!stored) setMode(e.matches ? "dark" : "light");
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (event) => {
+      const stored = readStoredMode();
+      if (stored === "light" || stored === "dark") return;
+      setMode(event.matches ? "dark" : "light");
     };
-    // modern addEventListener with fallback
-    try {
-      mql.addEventListener("change", onChange);
-      return () => mql.removeEventListener("change", onChange);
-    } catch {
-      mql.addListener(onChange);
-      return () => mql.removeListener(onChange);
+    media.addEventListener?.("change", handleChange);
+    if (!media.addEventListener) {
+      media.addListener(handleChange);
+      return () => media.removeListener(handleChange);
     }
+    return () => media.removeEventListener("change", handleChange);
   }, []);
 
-  const toggle = useCallback(() => {
-    setMode((m) => (m === "light" ? "dark" : "light"));
-  }, []);
+  const value = useMemo(
+    () => ({
+      mode,
+      toggle: () => setMode((m) => (m === "dark" ? "light" : "dark")),
+    }),
+    [mode],
+  );
 
-  const theme = useMemo(() => buildTheme(mode), [mode]);
+  const theme = useMemo(() => getTheme(mode), [mode]);
 
   return (
-    <ColorModeContext.Provider value={{ mode, toggle }}>
+    <ColorModeContext.Provider value={value}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         {children}
@@ -66,3 +73,5 @@ export default function ColorModeProvider({ children }) {
     </ColorModeContext.Provider>
   );
 }
+
+export default ColorModeContext;

@@ -7,22 +7,19 @@ import {
   Chip,
   Tooltip,
 } from "@mui/material";
-import DarkModeIcon from "@mui/icons-material/Brightness4";
-import LightModeIcon from "@mui/icons-material/LightMode";
+import { alpha } from "@mui/material/styles";
 import RefreshIcon from "@mui/icons-material/Loop";
 import AccountCircleIcon from "@mui/icons-material/Person";
-import { alpha } from "@mui/material/styles";
 
 import { APP_BAR_HEIGHT } from "../layout/constants";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useDriver } from "../context/DriverContext.jsx";
-import { useColorMode } from "../context/ColorModeContext.jsx";
+
+import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function Header({ onRefresh, leftSlot = null }) {
   const { user } = useAuth?.() || {};
   const { driverName, role } = useDriver?.() || {};
-  const { mode, toggle } = useColorMode();
-
   return (
     <AppBar
       position="fixed"
@@ -68,14 +65,7 @@ export default function Header({ onRefresh, leftSlot = null }) {
           </Box>
         </Box>
         <Box sx={{ flexGrow: 1 }} />
-        <Tooltip title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}>
-          <IconButton
-            aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
-            onClick={toggle}
-          >
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-        </Tooltip>
+        <ThemeToggle />
         <Tooltip title="Refresh">
           <IconButton onClick={onRefresh}>
             <RefreshIcon />
