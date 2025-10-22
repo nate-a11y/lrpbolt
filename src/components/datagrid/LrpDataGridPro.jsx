@@ -251,39 +251,6 @@ function useSelectedRowIds(apiRef) {
   }, [apiRef]);
 }
 
-const FALLBACK_DISPLAY = "—";
-
-function ensureDisplayValue(value, fallback = FALLBACK_DISPLAY) {
-  if (value === null || value === undefined) return fallback;
-  if (value === "") return fallback;
-  return value;
-}
-
-function createSafeRenderCell(field, renderCell) {
-  if (renderCell?.$lrpSafeWrapped) {
-    return renderCell;
-  }
-
-  const safe = (params) => {
-    try {
-      if (typeof renderCell === "function") {
-        return renderCell(params);
-      }
-      const fallbackValue = params?.formattedValue ?? params?.value;
-      return ensureDisplayValue(fallbackValue);
-    } catch (error) {
-      logError(error, {
-        where: "LrpDataGridPro.renderCell",
-        field,
-      });
-      const fallbackValue = params?.formattedValue ?? params?.value;
-      return ensureDisplayValue(fallbackValue);
-    }
-  };
-  safe.$lrpSafeWrapped = true;
-  return safe;
-}
-
 function DefaultToolbar({
   quickFilterPlaceholder,
   onDeleteSelected,
@@ -466,6 +433,7 @@ function LrpDataGridPro({
 }) {
   const { sx: sxProp, ...gridProps } = rest;
   const missingIdWarnedRef = useRef(false);
+  const normalizedDebugLoggedRef = useRef(false);
   const defaults = useMemo(
     () => ({
       density,
@@ -507,37 +475,44 @@ function LrpDataGridPro({
     return maybeAugmentColumnsForRides(columns, id);
   }, [columns, id]);
 
-  const safeColumns = useMemo(() => {
+  const finalColumns = useMemo(() => {
     return (rideAwareColumns || []).map((col) => {
-      if (!col) return col;
+      const c = { ...col };
 
-      let next = col;
-
-      if (typeof col.renderCell === "function") {
-        const wrapped = createSafeRenderCell(col.field, col.renderCell);
-        if (wrapped !== col.renderCell) {
-          next = { ...next, renderCell: wrapped };
-        }
+      // Never override provided getters/formatters/renderers
+      if (c.valueGetter == null) {
+        // minimal default: just read the raw field; NO "N/A" coercion here
+        c.valueGetter = (params) => params?.row?.[c.field];
       }
 
-      if (
-        typeof next.valueGetter === "function" ||
-        typeof next.valueFormatter === "function"
-      ) {
-        return next;
-      }
+      // Do not apply any global "cap" or "N/A" conversion here.
+      // Leave valueFormatter/renderCell exactly as provided by the caller.
 
-      if (next.naFallback) {
-        const formatter = (params) => {
-          const value = params?.value;
-          return ensureDisplayValue(value, "N/A");
-        };
-        return { ...next, valueFormatter: formatter };
-      }
-
-      return next;
+      return c;
     });
   }, [rideAwareColumns]);
+
+  const isProductionEnv =
+    (typeof globalThis !== "undefined" &&
+      globalThis.process?.env?.NODE_ENV === "production") ||
+    Boolean(import.meta?.env?.PROD);
+
+  if (!isProductionEnv && !normalizedDebugLoggedRef.current) {
+    const dbg = {
+      id,
+      sampleRow: Array.isArray(rows) && rows.length ? rows[0] : undefined,
+      columns: finalColumns.map((c) => ({
+        field: c.field,
+        hasValueGetter: !!c.valueGetter,
+        hasValueFormatter: !!c.valueFormatter,
+        hasRenderCell: !!c.renderCell,
+      })),
+    };
+    normalizedDebugLoggedRef.current = true;
+    // Use console.debug to avoid noisy logs in production
+    // eslint-disable-next-line no-console
+    console.debug("[GridDebug::normalized]", dbg);
+  }
 
   useEffect(() => {
     if (typeof import.meta === "undefined" || import.meta.env?.PROD) {
@@ -691,7 +666,7 @@ function LrpDataGridPro({
   return (
     <DataGridPro
       rows={Array.isArray(rows) ? rows : []}
-      columns={safeColumns}
+      columns={finalColumns}
       getRowId={mergedGetRowId}
       density={resolvedDensity}
       autoHeight={autoHeight}
