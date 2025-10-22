@@ -20,6 +20,9 @@ import ExitToApp from "@mui/icons-material/ExitToApp";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import Notifications from "@mui/icons-material/Notifications";
 import SportsEsports from "@mui/icons-material/SportsEsports";
+import CarRepair from "@mui/icons-material/CarRepair";
+import ContactEmergency from "@mui/icons-material/ContactEmergency";
+import PriorityHigh from "@mui/icons-material/PriorityHigh";
 
 export const iconMap = {
   AssignmentTurnedIn,
@@ -42,4 +45,7 @@ export const iconMap = {
   ChevronRight,
   Notifications,
   SportsEsports,
+  CarRepair,
+  ContactEmergency,
+  PriorityHigh,
 };

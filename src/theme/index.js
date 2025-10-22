@@ -101,7 +101,6 @@ export function getTheme(mode = "dark") {
             color: palette.text.primary,
             WebkitFontSmoothing: "antialiased",
             MozOsxFontSmoothing: "grayscale",
-            paddingTop: "var(--appbar-h, 64px)",
             transition: "background-color 0.25s ease, color 0.25s ease",
           },
           ":root": {
