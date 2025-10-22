@@ -42,6 +42,8 @@ import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 import ContactEmergencyIcon from "@mui/icons-material/ContactEmergency";
+import CarRepairIcon from "@mui/icons-material/CarRepair";
+import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
@@ -86,52 +88,64 @@ const makeActiveCollapsedSX = (theme) => {
 };
 
 const ALL_NAV_ITEMS = [
-  { label: "Claim Rides", icon: <DirectionsCarIcon />, path: "/rides" },
-  { label: "Time Clock", icon: <AccessTimeIcon />, path: "/clock" },
-  { label: "Drop-Off Info", icon: <InfoIcon />, path: "/info" },
+  {
+    label: "Claim Rides",
+    icon: <DirectionsCarIcon sx={{ color: "primary.main" }} />,
+    path: "/rides",
+  },
+  {
+    label: "Time Clock",
+    icon: <AccessTimeIcon sx={{ color: "info.main" }} />,
+    path: "/clock",
+  },
+  {
+    label: "Drop-Off Info",
+    icon: <InfoIcon sx={{ color: "info.main" }} />,
+    path: "/info",
+  },
   {
     label: "Vehicle Tips",
-    icon: <DirectionsCarIcon />,
+    icon: <CarRepairIcon sx={{ color: "warning.main" }} />,
     path: "/drop-guides",
     hidden: true,
   },
   {
     label: "Directory & Escalations",
-    icon: <ContactEmergencyIcon />,
+    icon: <ContactEmergencyIcon sx={{ color: "error.main" }} />,
     path: "/directory",
   },
   {
     label: "Calendar & Availability",
-    icon: <CalendarMonthIcon />,
+    icon: <CalendarMonthIcon sx={{ color: "success.main" }} />,
     path: "/calendar",
   },
   {
     label: "Support Tickets",
-    icon: <ConfirmationNumberIcon />,
+    icon: <ConfirmationNumberIcon sx={{ color: "info.main" }} />,
     path: "/tickets",
   },
   {
     label: "Shuttle Tickets",
-    icon: <ConfirmationNumberIcon />,
+    icon: <AirportShuttleIcon sx={{ color: "warning.main" }} />,
     path: "/tickets/legacy",
   },
 
   // Admin-only
   {
     label: "Admin Logs",
-    icon: <AdminPanelSettingsIcon />,
+    icon: <AdminPanelSettingsIcon sx={{ color: "primary.main" }} />,
     path: "/admin-time-log",
     admin: true,
   },
   {
     label: "User Manager",
-    icon: <ManageAccountsIcon />,
+    icon: <ManageAccountsIcon sx={{ color: "info.main" }} />,
     path: "/admin-user-manager",
     admin: true,
   },
   {
     label: "Add Ride",
-    icon: <AddCircleOutlineIcon />,
+    icon: <AddCircleOutlineIcon sx={{ color: "success.main" }} />,
     path: "/ride-entry",
     admin: true,
   },
