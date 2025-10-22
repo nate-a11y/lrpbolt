@@ -144,8 +144,7 @@ export default function EntriesTab() {
         return {
           ...col,
           editable: true,
-          valueGetter: (value, row) =>
-            row?.driverName ?? row?.driver ?? "N/A",
+          valueGetter: (value, row) => row?.driverName ?? row?.driver ?? "N/A",
           valueSetter: (params) => {
             const next = { ...params.row };
             next.driverName = params.value ?? "";
@@ -173,8 +172,7 @@ export default function EntriesTab() {
           editable: true,
           valueGetter: (value, row) =>
             toDateSafe(row?.startTime ?? row?.clockIn ?? null),
-          valueFormatter: (value) =>
-            value ? formatDateTime(value) : "N/A",
+          valueFormatter: (value) => (value ? formatDateTime(value) : "N/A"),
           valueSetter: (params) => {
             const next = { ...params.row };
             next.startTime = toDateSafe(params.value) ?? null;
@@ -222,8 +220,7 @@ export default function EntriesTab() {
         editable: true,
         valueGetter: (value, row) =>
           toDateSafe(row?.loggedAt ?? row?.createdAt ?? null),
-        valueFormatter: (value) =>
-          value ? formatDateTime(value) : "N/A",
+        valueFormatter: (value) => (value ? formatDateTime(value) : "N/A"),
         valueSetter: (params) => {
           const next = { ...params.row };
           next.loggedAt = toDateSafe(params.value) ?? null;

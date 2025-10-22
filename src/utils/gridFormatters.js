@@ -72,7 +72,9 @@ export function withSafeColumns(columns = []) {
     }
     if (typeof col.valueFormatter === "function") {
       const vf = col.valueFormatter;
-      col.valueFormatter = safeVF((value, row, column, apiRef) => vf(value, row, column, apiRef));
+      col.valueFormatter = safeVF((value, row, column, apiRef) =>
+        vf(value, row, column, apiRef),
+      );
     }
     if (typeof col.renderCell === "function") {
       const rc = col.renderCell;

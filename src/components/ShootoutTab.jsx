@@ -204,10 +204,7 @@ function ShootoutTab() {
         flex: 1,
         minWidth: 160,
         valueGetter: (value, row) =>
-          row?.driver ||
-          row?.driverName ||
-          row?.driverEmail ||
-          "N/A",
+          row?.driver || row?.driverName || row?.driverEmail || "N/A",
       },
       {
         field: "vehicle",

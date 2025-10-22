@@ -59,7 +59,17 @@ export default function Header({ onRefresh, leftSlot = null }) {
                 draggable={false}
               />
             </Box>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                fontSize: { xs: "0.875rem", sm: "1rem", md: "1.25rem" },
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: { xs: "120px", sm: "200px", md: "none" },
+              }}
+            >
               LRP Driver Portal
             </Typography>
           </Box>

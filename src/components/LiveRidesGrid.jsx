@@ -422,7 +422,8 @@ export default function LiveRidesGrid() {
         minWidth: 140,
         flex: 0.8,
         valueGetter: deriveClaimedByDisplay,
-        renderCell: (params) => deriveClaimedByDisplay(params?.value, params?.row) || "N/A",
+        renderCell: (params) =>
+          deriveClaimedByDisplay(params?.value, params?.row) || "N/A",
         valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       {
