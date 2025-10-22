@@ -68,6 +68,12 @@ async function sendAllTargets(targets, ticket, link) {
       .sendEachForMulticast({
         tokens,
         notification: { title, body: ticket?.description || "" },
+        data: {
+          url: link || "/",
+          ticketId: ticket?.id || "",
+          title: ticket?.title || "",
+          status: ticket?.status || "",
+        },
       });
   }
 
