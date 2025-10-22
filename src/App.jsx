@@ -118,6 +118,19 @@ function App() {
   }, [navigate]);
 
   useEffect(() => {
+    const handleTicketNavigation = (event) => {
+      const ticketId = event?.detail?.ticketId;
+      if (ticketId) {
+        navigate(`/tickets?id=${ticketId}`);
+      }
+    };
+    window.addEventListener("lrp:navigate-to-ticket", handleTicketNavigation);
+    return () => {
+      window.removeEventListener("lrp:navigate-to-ticket", handleTicketNavigation);
+    };
+  }, [navigate]);
+
+  useEffect(() => {
     const unsubscribe = on("CLOCK_OUT_REQUEST", async () => {
       if (clockOutInFlightRef.current) return;
 

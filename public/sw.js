@@ -388,7 +388,19 @@ self.addEventListener("notificationclick", (event) => {
           return;
         }
 
-        const target = event.notification?.data?.url || "/";
+        // Handle ticket notifications with special navigation
+        const notifData = event.notification?.data || {};
+        const ticketId = notifData.ticketId;
+        if (ticketId) {
+          await broadcastToClients({
+            type: "SW_NAVIGATE_TO_TICKET",
+            ticketId
+          });
+          await focusOrOpen("/");
+          return;
+        }
+
+        const target = notifData.url || "/";
         await focusOrOpen(target);
       } catch (e) {
         console.error("[sw] notificationclick error", e);
