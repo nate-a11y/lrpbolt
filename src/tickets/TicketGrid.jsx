@@ -9,11 +9,45 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import dayjs from "dayjs";
 
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime } from "@/utils/time.js";
+
+const toMillis = (v) => {
+  try {
+    if (!v) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    if (dayjs.isDayjs?.(v)) return v.valueOf();
+    if (v instanceof Date)
+      return Number.isFinite(v.getTime()) ? v.getTime() : null;
+    if (typeof v === "object") {
+      if (typeof v.toMillis === "function") {
+        const ms = Number(v.toMillis());
+        return Number.isFinite(ms) ? ms : null;
+      }
+      if (v.seconds != null && v.nanoseconds != null) {
+        const ms = v.seconds * 1000 + Math.floor((v.nanoseconds || 0) / 1e6);
+        return Number.isFinite(ms) ? ms : null;
+      }
+      if (typeof v.valueOf === "function") {
+        const ms = Number(v.valueOf());
+        if (Number.isFinite(ms)) return ms;
+      }
+    }
+    if (typeof v === "string") {
+      const parsed = Date.parse(v);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    const coerce = Number(v);
+    return Number.isFinite(coerce) ? coerce : null;
+  } catch {
+    return null;
+  }
+};
+
 const cap = (value) => {
   if (value === null || value === undefined) return "N/A";
   const text = String(value).trim();
@@ -87,10 +121,18 @@ function TicketGrid({
       ticket.documentId ||
       "";
 
-    const title =
-      typeof ticket.title === "string" && ticket.title.trim()
-        ? ticket.title.trim()
-        : "";
+    const titleCandidates = [
+      ticket?.title,
+      ticket?.subject,
+      ticket?.summary,
+      ticket?.name,
+      ticket?.topic,
+      ticket?._source?.title,
+    ];
+    const titleRaw = titleCandidates.find(
+      (x) => typeof x === "string" && x.trim(),
+    );
+    const title = titleRaw ? titleRaw.trim() : "";
 
     const category =
       typeof ticket.category === "string" && ticket.category.trim()
@@ -127,24 +169,10 @@ function TicketGrid({
       ticket.updatedAtTimestamp ||
       ticket.updatedAtRaw ||
       ticket.updatedAt ||
+      ticket?._source?.updatedAt ||
       null;
 
-    let updatedAtMillis = 0;
-    if (updatedAtSource && typeof updatedAtSource.toMillis === "function") {
-      updatedAtMillis = Number(updatedAtSource.toMillis()) || 0;
-    } else if (
-      updatedAtSource &&
-      typeof updatedAtSource.valueOf === "function" &&
-      Number.isFinite(Number(updatedAtSource.valueOf()))
-    ) {
-      updatedAtMillis = Number(updatedAtSource.valueOf()) || 0;
-    } else if (typeof updatedAtSource === "number") {
-      updatedAtMillis = Number(updatedAtSource);
-    }
-
-    if (!Number.isFinite(updatedAtMillis) || updatedAtMillis <= 0) {
-      updatedAtMillis = null;
-    }
+    const updatedAtMillis = toMillis(updatedAtSource);
 
     return {
       ...ticket,
@@ -360,7 +388,7 @@ function TicketGrid({
         flex: 1,
         minWidth: 220,
         valueGetter: (params) => {
-          const t = params?.row?.title ?? params?.row?._source?.title;
+          const t = params?.row?.title ?? params?.row?._source?.title ?? "";
           return typeof t === "string" && t.trim() ? t : "N/A";
         },
       },
@@ -397,11 +425,14 @@ function TicketGrid({
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
-        valueGetter: (params) =>
-          params?.row?.updatedAtSource ??
-          params?.row?.updatedAt ??
-          params?.row?._source?.updatedAt ??
-          null,
+        valueGetter: (params) => {
+          const raw =
+            params?.row?.updatedAtSource ??
+            params?.row?.updatedAt ??
+            params?.row?._source?.updatedAt ??
+            null;
+          return toMillis(raw);
+        },
         valueFormatter: formatUpdatedAt,
       },
       {
