@@ -36,15 +36,60 @@ export function toDayjs(input, tz) {
   return ensureTimezone(toDayjsCore(input, targetTz), targetTz);
 }
 
+function coerceToDayjs(value) {
+  if (value == null) return null;
+
+  if (dayjs.isDayjs?.(value)) {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return dayjs(value);
+  }
+
+  if (value instanceof Date) {
+    return dayjs(value);
+  }
+
+  if (typeof value === "object") {
+    if (typeof value.toMillis === "function") {
+      const millis = value.toMillis();
+      if (Number.isFinite(millis)) {
+        return dayjs(millis);
+      }
+    }
+
+    const seconds = Number(value?.seconds);
+    const nanoseconds = Number(value?.nanoseconds);
+    if (Number.isFinite(seconds) || Number.isFinite(nanoseconds)) {
+      const millisFromSeconds = Number.isFinite(seconds) ? seconds * 1000 : 0;
+      const millisFromNanos = Number.isFinite(nanoseconds)
+        ? Math.floor(nanoseconds / 1e6)
+        : 0;
+      return dayjs(millisFromSeconds + millisFromNanos);
+    }
+  }
+
+  return toDayjs(value);
+}
+
 /** Null-safe datetime string; returns "N/A" when invalid */
 export function formatDateTime(ts, fmt = "MMM D, YYYY h:mm A") {
-  const d = toDayjs(ts);
-  if (!d) return "N/A";
+  const coerced = coerceToDayjs(ts);
+  if (!coerced || !coerced.isValid?.()) {
+    return "N/A";
+  }
+
+  const zoned = ensureTimezone(coerced);
+  if (!zoned || !zoned.isValid?.()) {
+    return "N/A";
+  }
+
   try {
-    return ensureTimezone(d).format(fmt);
+    return zoned.format(fmt);
   } catch (error) {
     void error;
-    return d.format(fmt);
+    return zoned.format(fmt);
   }
 }
 
