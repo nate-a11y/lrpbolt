@@ -59,12 +59,6 @@ const cap = (value) => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-const formatUpdatedAt = (params) => {
-  const v = params?.value ?? null;
-  const formatted = formatDateTime(v);
-  return formatted || "N/A";
-};
-
 function NoTicketsOverlay() {
   return (
     <Box sx={{ p: 4, textAlign: "center", opacity: 0.6 }}>
@@ -387,8 +381,8 @@ function TicketGrid({
         headerName: "Title",
         flex: 1,
         minWidth: 220,
-        valueGetter: (params) => {
-          const t = params?.row?.title ?? params?.row?._source?.title ?? "";
+        valueGetter: (value, row) => {
+          const t = row?.title ?? row?._source?.title ?? "";
           return typeof t === "string" && t.trim() ? t : "N/A";
         },
       },
@@ -397,8 +391,8 @@ function TicketGrid({
         headerName: "Category",
         width: 150,
         renderCell: renderCategoryChip,
-        valueGetter: (params) => {
-          const raw = params?.row?.category;
+        valueGetter: (value, row) => {
+          const raw = row?.category;
           if (!raw) return "N/A";
           return raw === "n/a" ? "N/A" : raw;
         },
@@ -408,8 +402,8 @@ function TicketGrid({
         headerName: "Status",
         width: 140,
         renderCell: renderStatusChip,
-        valueGetter: (params) => {
-          const raw = params?.row?.status;
+        valueGetter: (value, row) => {
+          const raw = row?.status;
           if (!raw) return "N/A";
           return raw === "n/a" ? "N/A" : raw;
         },
@@ -419,21 +413,24 @@ function TicketGrid({
         headerName: "Assignee",
         width: 180,
         renderCell: renderAssigneeCell,
-        valueGetter: (params) => params?.row?.assigneeName || "Unassigned",
+        valueGetter: (value, row) => row?.assigneeName || "Unassigned",
       },
       {
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
-        valueGetter: (params) => {
+        valueGetter: (value, row) => {
           const raw =
-            params?.row?.updatedAtSource ??
-            params?.row?.updatedAt ??
-            params?.row?._source?.updatedAt ??
+            row?.updatedAtSource ??
+            row?.updatedAt ??
+            row?._source?.updatedAt ??
             null;
           return toMillis(raw);
         },
-        valueFormatter: formatUpdatedAt,
+        valueFormatter: (value) => {
+          const formatted = formatDateTime(value);
+          return formatted || "N/A";
+        },
       },
       {
         field: "actions",
