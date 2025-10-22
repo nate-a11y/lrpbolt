@@ -17,6 +17,7 @@ const getDriverName = (row) => {
   return "N/A";
 };
 
+// MUI DataGrid v7 API: valueGetter and valueFormatter use individual parameters
 export const highscoreColumns = [
   {
     field: "idx",
@@ -25,9 +26,9 @@ export const highscoreColumns = [
     sortable: false,
     align: "center",
     headerAlign: "center",
-    valueGetter: (params) => {
-      if (!params || !params.api) return "";
-      const index = params.api.getRowIndex(params.id);
+    valueGetter: (value, row, column, apiRef) => {
+      if (!apiRef) return "";
+      const index = apiRef.current?.getRowIndex?.(row.id);
       return typeof index === "number" && index >= 0 ? index + 1 : "";
     },
   },
@@ -36,7 +37,7 @@ export const highscoreColumns = [
     headerName: "Driver",
     flex: 1,
     minWidth: 180,
-    valueGetter: (params) => getDriverName(params?.row),
+    valueGetter: (value, row) => getDriverName(row),
   },
   {
     field: "score",
@@ -45,9 +46,9 @@ export const highscoreColumns = [
     width: 140,
     align: "right",
     headerAlign: "right",
-    valueGetter: (params) => formatScore(params?.row?.score),
-    valueFormatter: (params) => {
-      const numeric = formatScore(params?.value);
+    valueGetter: (value, row) => formatScore(row?.score),
+    valueFormatter: (value) => {
+      const numeric = formatScore(value);
       return Number.isFinite(numeric) ? numeric.toLocaleString() : "N/A";
     },
     sortComparator: (a, b) => {
@@ -64,7 +65,7 @@ export const highscoreColumns = [
     headerName: "Recorded",
     flex: 1,
     minWidth: 200,
-    valueGetter: (params) => params?.row?.createdAt ?? null,
-    valueFormatter: (params) => formatDateTime(params?.value),
+    valueGetter: (value, row) => row?.createdAt ?? null,
+    valueFormatter: (value) => formatDateTime(value),
   },
 ];

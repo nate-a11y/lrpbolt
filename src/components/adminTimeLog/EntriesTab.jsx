@@ -137,14 +137,15 @@ export default function EntriesTab() {
 
   const sharedColumns = useMemo(() => buildTimeLogColumns(), []);
 
+  // MUI DataGrid Pro v7 API: valueGetter/valueFormatter signature is (value, row, column, apiRef)
   const sharedAdminColumns = useMemo(() => {
     return sharedColumns.map((col) => {
       if (col.field === "driverName") {
         return {
           ...col,
           editable: true,
-          valueGetter: (params) =>
-            params?.row?.driverName ?? params?.row?.driver ?? "N/A",
+          valueGetter: (value, row) =>
+            row?.driverName ?? row?.driver ?? "N/A",
           valueSetter: (params) => {
             const next = { ...params.row };
             next.driverName = params.value ?? "";
@@ -157,7 +158,7 @@ export default function EntriesTab() {
         return {
           ...col,
           editable: true,
-          valueGetter: (params) => params?.row?.rideId ?? "N/A",
+          valueGetter: (value, row) => row?.rideId ?? "N/A",
           valueSetter: (params) => {
             const next = { ...params.row };
             next.rideId = params.value ?? null;
@@ -170,10 +171,10 @@ export default function EntriesTab() {
           ...col,
           type: "dateTime",
           editable: true,
-          valueGetter: (params) =>
-            toDateSafe(params?.row?.startTime ?? params?.row?.clockIn ?? null),
-          valueFormatter: (params) =>
-            params?.value ? formatDateTime(params.value) : "N/A",
+          valueGetter: (value, row) =>
+            toDateSafe(row?.startTime ?? row?.clockIn ?? null),
+          valueFormatter: (value) =>
+            value ? formatDateTime(value) : "N/A",
           valueSetter: (params) => {
             const next = { ...params.row };
             next.startTime = toDateSafe(params.value) ?? null;
@@ -191,10 +192,10 @@ export default function EntriesTab() {
           ...col,
           type: "dateTime",
           editable: true,
-          valueGetter: (params) =>
-            toDateSafe(params?.row?.endTime ?? params?.row?.clockOut ?? null),
-          valueFormatter: (params) =>
-            params?.value ? formatClockOutOrDash(params.value) : "—",
+          valueGetter: (value, row) =>
+            toDateSafe(row?.endTime ?? row?.clockOut ?? null),
+          valueFormatter: (value) =>
+            value ? formatClockOutOrDash(value) : "—",
           valueSetter: (params) => {
             const next = { ...params.row };
             next.endTime = toDateSafe(params.value) ?? null;
@@ -219,10 +220,10 @@ export default function EntriesTab() {
         minWidth: 180,
         type: "dateTime",
         editable: true,
-        valueGetter: (params) =>
-          toDateSafe(params?.row?.loggedAt ?? params?.row?.createdAt ?? null),
-        valueFormatter: (params) =>
-          params?.value ? formatDateTime(params.value) : "N/A",
+        valueGetter: (value, row) =>
+          toDateSafe(row?.loggedAt ?? row?.createdAt ?? null),
+        valueFormatter: (value) =>
+          value ? formatDateTime(value) : "N/A",
         valueSetter: (params) => {
           const next = { ...params.row };
           next.loggedAt = toDateSafe(params.value) ?? null;
@@ -240,8 +241,8 @@ export default function EntriesTab() {
         minWidth: 200,
         flex: 1,
         editable: true,
-        valueGetter: (params) => params?.row?.note ?? "",
-        valueFormatter: (params) => (params?.value ? params.value : "N/A"),
+        valueGetter: (value, row) => row?.note ?? "",
+        valueFormatter: (value) => (value ? value : "N/A"),
         valueSetter: (params) => {
           const next = { ...params.row };
           next.note = params.value ?? "";

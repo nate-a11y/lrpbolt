@@ -5,19 +5,17 @@ import { timestampSortComparator } from "../utils/timeUtils";
 
 import { buildNativeActionsColumn } from "./nativeActions.jsx";
 
+/**
+ * MUI DataGrid v7 API migration:
+ * valueGetter signature changed from (params) to (value, row, column, apiRef)
+ * All resolver functions now accept row directly as parameter
+ */
+
 const firstDefined = (...values) => {
   for (const value of values) {
     if (value !== null && value !== undefined) return value;
   }
   return null;
-};
-
-const asRow = (params) => {
-  if (!params) return {};
-  if (typeof params === "object" && "row" in params) {
-    return params.row ?? {};
-  }
-  return params;
 };
 
 const asRaw = (row) => {
@@ -260,8 +258,7 @@ const resolveClaimBlockName = (candidate) => {
   return null;
 };
 
-const resolveTripId = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveTripId = (_value, row) => {
   const raw = asRaw(row);
   return pickText(
     row?.tripId,
@@ -299,8 +296,7 @@ const resolveTripId = (rowOrParams) => {
   );
 };
 
-const resolvePickupTime = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolvePickupTime = (_value, row) => {
   const raw = asRaw(row);
   return firstDefined(
     row?.pickupTime,
@@ -329,8 +325,7 @@ const resolvePickupTime = (rowOrParams) => {
   );
 };
 
-const resolveDropoffTime = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveDropoffTime = (_value, row) => {
   const raw = asRaw(row);
   return firstDefined(
     row?.dropoffTime,
@@ -362,8 +357,7 @@ const resolveDropoffTime = (rowOrParams) => {
   );
 };
 
-const resolveRideDuration = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveRideDuration = (_value, row) => {
   const raw = asRaw(row);
   const candidate = firstDefined(
     row?.rideDuration,
@@ -393,8 +387,7 @@ const resolveRideDuration = (rowOrParams) => {
   return null;
 };
 
-const resolveRideType = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveRideType = (_value, row) => {
   const raw = asRaw(row);
   return pickText(
     row?.rideType,
@@ -413,8 +406,7 @@ const resolveRideType = (rowOrParams) => {
   );
 };
 
-const resolveVehicle = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveVehicle = (_value, row) => {
   const raw = asRaw(row);
   return (
     vehicleToText(row?.vehicle) ||
@@ -452,8 +444,7 @@ const resolveVehicle = (rowOrParams) => {
   );
 };
 
-const resolveRideNotes = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveRideNotes = (_value, row) => {
   const raw = asRaw(row);
   return notesToText(
     firstDefined(
@@ -476,8 +467,7 @@ const resolveRideNotes = (rowOrParams) => {
   );
 };
 
-const resolveClaimedBy = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveClaimedBy = (_value, row) => {
   const raw = asRaw(row);
   const claimedName = pickDisplayName(
     row?.claimedByName,
@@ -529,8 +519,7 @@ const resolveClaimedBy = (rowOrParams) => {
   );
 };
 
-const resolveClaimedAt = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveClaimedAt = (_value, row) => {
   const raw = asRaw(row);
   return firstDefined(
     row?.claimedAt,
@@ -550,8 +539,7 @@ const resolveClaimedAt = (rowOrParams) => {
   );
 };
 
-const resolveCreatedAt = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveCreatedAt = (_value, row) => {
   const raw = asRaw(row);
   return firstDefined(
     row?.createdAt,
@@ -571,8 +559,7 @@ const resolveCreatedAt = (rowOrParams) => {
   );
 };
 
-const resolveUpdatedAt = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveUpdatedAt = (_value, row) => {
   return firstDefined(
     row?.updatedAt,
     row?.updated,
@@ -585,8 +572,7 @@ const resolveUpdatedAt = (rowOrParams) => {
   );
 };
 
-const resolveStatus = (rowOrParams) => {
-  const row = asRow(rowOrParams);
+const resolveStatus = (_value, row) => {
   const raw = asRaw(row);
   return (
     pickText(
@@ -634,18 +620,18 @@ export function rideColumns(opts = {}) {
       headerName: "Trip ID",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: (params) => resolveTripId(params),
-      valueFormatter: (params) => vfText(params, "—"),
+      valueGetter: resolveTripId,
+      valueFormatter: (value) => vfText(value, null, null, null, "—"),
     },
     {
       field: "pickupTime",
       headerName: "Pickup",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (params) => resolvePickupTime(params),
+      valueGetter: resolvePickupTime,
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        timestampSortComparator(resolvePickupTime(p1), resolvePickupTime(p2)),
+        timestampSortComparator(resolvePickupTime(null, p1.row), resolvePickupTime(null, p2.row)),
     },
     {
       field: "rideDuration",
@@ -653,7 +639,7 @@ export function rideColumns(opts = {}) {
       minWidth: 110,
       flex: 0.5,
       type: "number",
-      valueGetter: (params) => resolveRideDuration(params),
+      valueGetter: resolveRideDuration,
       valueFormatter: vfDurationHM,
     },
     {
@@ -661,57 +647,57 @@ export function rideColumns(opts = {}) {
       headerName: "Type",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: (params) => resolveRideType(params),
-      valueFormatter: (params) => vfText(params, "—"),
+      valueGetter: resolveRideType,
+      valueFormatter: (value) => vfText(value, null, null, null, "—"),
     },
     {
       field: "vehicle",
       headerName: "Vehicle",
       minWidth: 160,
       flex: 0.8,
-      valueGetter: (params) => resolveVehicle(params),
-      valueFormatter: (params) => vfText(params, "—"),
+      valueGetter: resolveVehicle,
+      valueFormatter: (value) => vfText(value, null, null, null, "—"),
     },
     {
       field: "claimedBy",
       headerName: "Claimed By",
       minWidth: 160,
       flex: 0.7,
-      valueGetter: (params) => resolveClaimedBy(params),
-      valueFormatter: (params) => vfText(params, "—"),
+      valueGetter: resolveClaimedBy,
+      valueFormatter: (value) => vfText(value, null, null, null, "—"),
     },
     {
       field: "claimedAt",
       headerName: "Claimed At",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (params) => resolveClaimedAt(params),
+      valueGetter: resolveClaimedAt,
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        timestampSortComparator(resolveClaimedAt(p1), resolveClaimedAt(p2)),
+        timestampSortComparator(resolveClaimedAt(null, p1.row), resolveClaimedAt(null, p2.row)),
     },
     {
       field: "status",
       headerName: "Status",
       minWidth: 120,
       flex: 0.6,
-      valueGetter: (params) => resolveStatus(params),
-      valueFormatter: (params) => vfText(params, "—"),
+      valueGetter: resolveStatus,
+      valueFormatter: (value) => vfText(value, null, null, null, "—"),
     },
     {
       field: "rideNotes",
       headerName: "Notes",
       minWidth: 220,
       flex: 1.2,
-      valueGetter: (params) => resolveRideNotes(params),
-      valueFormatter: (params) => vfText(params, "—"),
+      valueGetter: resolveRideNotes,
+      valueFormatter: (value) => vfText(value, null, null, null, "—"),
     },
     {
       field: "createdAt",
       headerName: "Created",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (params) => resolveCreatedAt(params),
+      valueGetter: resolveCreatedAt,
       valueFormatter: vfTime,
     },
     {
@@ -719,7 +705,7 @@ export function rideColumns(opts = {}) {
       headerName: "Updated",
       minWidth: 170,
       flex: 0.9,
-      valueGetter: (params) => resolveUpdatedAt(params),
+      valueGetter: resolveUpdatedAt,
       valueFormatter: vfTime,
     },
   ];

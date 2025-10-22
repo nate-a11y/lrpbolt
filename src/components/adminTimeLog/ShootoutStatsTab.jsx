@@ -29,6 +29,8 @@ function getShootoutRowId(row) {
   );
 }
 
+// MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
+// and valueFormatter signature is (value, row, column, apiRef)
 function createShootoutColumns({
   apiRef,
   rowModesModel,
@@ -41,7 +43,7 @@ function createShootoutColumns({
       headerName: "Driver",
       minWidth: 160,
       flex: 1,
-      valueGetter: (params) => params?.row?.driver || "N/A",
+      valueGetter: (value, row) => row?.driver || "N/A",
     },
     {
       field: "driverEmail",
@@ -49,7 +51,7 @@ function createShootoutColumns({
       minWidth: 220,
       flex: 1.2,
       editable: true,
-      valueGetter: (params) => params?.row?.driverEmail || "N/A",
+      valueGetter: (value, row) => row?.driverEmail || "N/A",
     },
     {
       field: "vehicle",
@@ -57,7 +59,7 @@ function createShootoutColumns({
       minWidth: 140,
       flex: 1,
       editable: true,
-      valueGetter: (params) => params?.row?.vehicle || "N/A",
+      valueGetter: (value, row) => row?.vehicle || "N/A",
     },
     {
       field: "startTime",
@@ -66,11 +68,11 @@ function createShootoutColumns({
       flex: 1,
       type: "dateTime",
       editable: true,
-      valueGetter: (params) => tsToDate(params?.row?.startTime),
-      valueFormatter: (params) =>
-        params?.value instanceof Date
-          ? formatTz(params.value)
-          : formatTz(tsToDate(params?.row?.startTime)) || "N/A",
+      valueGetter: (value, row) => tsToDate(row?.startTime),
+      valueFormatter: (value, row) =>
+        value instanceof Date
+          ? formatTz(value)
+          : formatTz(tsToDate(row?.startTime)) || "N/A",
       valueSetter: (params) => ({
         ...params.row,
         startTime: params.value ? new Date(params.value) : null,
@@ -88,11 +90,11 @@ function createShootoutColumns({
       flex: 1,
       type: "dateTime",
       editable: true,
-      valueGetter: (params) => tsToDate(params?.row?.endTime),
-      valueFormatter: (params) =>
-        params?.value instanceof Date
-          ? formatTz(params.value)
-          : formatTz(tsToDate(params?.row?.endTime)) || "N/A",
+      valueGetter: (value, row) => tsToDate(row?.endTime),
+      valueFormatter: (value, row) =>
+        value instanceof Date
+          ? formatTz(value)
+          : formatTz(tsToDate(row?.endTime)) || "N/A",
       valueSetter: (params) => ({
         ...params.row,
         endTime: params.value ? new Date(params.value) : null,
@@ -107,10 +109,10 @@ function createShootoutColumns({
       field: "duration",
       headerName: "Duration",
       minWidth: 140,
-      valueGetter: (params) =>
+      valueGetter: (value, row) =>
         durationHm(
-          tsToDate(params?.row?.startTime),
-          tsToDate(params?.row?.endTime),
+          tsToDate(row?.startTime),
+          tsToDate(row?.endTime),
         ) || "N/A",
     },
     {
@@ -119,7 +121,7 @@ function createShootoutColumns({
       minWidth: 120,
       type: "number",
       editable: true,
-      valueGetter: (params) => params?.row?.trips ?? null,
+      valueGetter: (value, row) => row?.trips ?? null,
     },
     {
       field: "passengers",
@@ -127,7 +129,7 @@ function createShootoutColumns({
       minWidth: 120,
       type: "number",
       editable: true,
-      valueGetter: (params) => params?.row?.passengers ?? null,
+      valueGetter: (value, row) => row?.passengers ?? null,
     },
     {
       field: "createdAt",
@@ -136,11 +138,11 @@ function createShootoutColumns({
       flex: 1,
       type: "dateTime",
       editable: true,
-      valueGetter: (params) => tsToDate(params?.row?.createdAt),
-      valueFormatter: (params) =>
-        params?.value instanceof Date
-          ? formatTz(params.value)
-          : formatTz(tsToDate(params?.row?.createdAt)) || "N/A",
+      valueGetter: (value, row) => tsToDate(row?.createdAt),
+      valueFormatter: (value, row) =>
+        value instanceof Date
+          ? formatTz(value)
+          : formatTz(tsToDate(row?.createdAt)) || "N/A",
       valueSetter: (params) => ({
         ...params.row,
         createdAt: params.value ? new Date(params.value) : null,
@@ -155,7 +157,7 @@ function createShootoutColumns({
       field: "id",
       headerName: "id",
       minWidth: 120,
-      valueGetter: (params) => params?.row?.id || "N/A",
+      valueGetter: (value, row) => row?.id || "N/A",
     },
   ];
 

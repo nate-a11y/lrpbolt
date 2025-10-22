@@ -1,11 +1,28 @@
-<Files "registerSW.js">
-  Header set Content-Type "application/javascript"
-</Files>
-
+Options -MultiViews
 RewriteEngine On
-RewriteBase /
-RewriteCond %{REQUEST_URI} ^/__/auth/handler
-RewriteRule ^ - [L]
+
+# === LRP security & isolation headers ===
+# Allow third-party auth popups to interact with opener sufficiently to close.
+Header set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+
+# Keep other safe headers:
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+# Let SW + manifest + icons pass through unchanged
+RewriteRule ^(firebase-messaging-sw\.js|sw\.js|manifest\.webmanifest|icons/icon-192\.png|icons/icon-512\.png)$ - [L]
+
+# SPA fallback for everything else
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.html [L]
+
+# Correct content types
+AddType application/javascript .js
+AddType application/manifest+json .webmanifest
+AddType image/png .png
+
+# Allow SW at root
+Header set Service-Worker-Allowed "/"

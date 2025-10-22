@@ -21,6 +21,7 @@ export default function WeeklySummaryTab() {
     weekStart: weekStart.toDate(),
     refreshKey,
   });
+  // MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
   const columns = useMemo(() => {
     return [
       {
@@ -28,40 +29,40 @@ export default function WeeklySummaryTab() {
         headerName: "Driver",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => params?.row?.driver || "N/A",
+        valueGetter: (value, row) => row?.driver || "N/A",
       },
       {
         field: "driverEmail",
         headerName: "Driver Email",
         minWidth: 220,
         flex: 1.2,
-        valueGetter: (params) => params?.row?.driverEmail || "N/A",
+        valueGetter: (value, row) => row?.driverEmail || "N/A",
       },
       {
         field: "sessions",
         headerName: "Sessions",
         minWidth: 120,
-        valueGetter: (params) => {
-          const value = params?.row?.sessions;
-          return Number.isFinite(value) ? value : "N/A";
+        valueGetter: (value, row) => {
+          const val = row?.sessions;
+          return Number.isFinite(val) ? val : "N/A";
         },
       },
       {
         field: "totalMinutes",
         headerName: "Total Minutes",
         minWidth: 140,
-        valueGetter: (params) => {
-          const value = params?.row?.totalMinutes;
-          return Number.isFinite(value) ? value : "N/A";
+        valueGetter: (value, row) => {
+          const val = row?.totalMinutes;
+          return Number.isFinite(val) ? val : "N/A";
         },
       },
       {
         field: "hours",
         headerName: "Total Hours",
         minWidth: 140,
-        valueGetter: (params) => {
-          const value = params?.row?.hours;
-          return Number.isFinite(value) ? value : "N/A";
+        valueGetter: (value, row) => {
+          const val = row?.hours;
+          return Number.isFinite(val) ? val : "N/A";
         },
       },
       {
@@ -69,14 +70,14 @@ export default function WeeklySummaryTab() {
         headerName: "First In",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatTz(params?.row?.firstStart) || "N/A",
+        valueGetter: (value, row) => formatTz(row?.firstStart) || "N/A",
       },
       {
         field: "lastEnd",
         headerName: "Last Out",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatTz(params?.row?.lastEnd) || "N/A",
+        valueGetter: (value, row) => formatTz(row?.lastEnd) || "N/A",
       },
     ];
   }, []);

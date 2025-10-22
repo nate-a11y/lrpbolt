@@ -1002,6 +1002,7 @@ function Tickets() {
     [handleDeleteRows, showWarnOrErrorSnack],
   );
 
+  // MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
   const columns = useMemo(
     () =>
       withSafeColumns([
@@ -1048,7 +1049,7 @@ function Tickets() {
           minWidth: 140,
           sortable: false,
           naFallback: true,
-          valueGetter: (params) => getScanStatus(params?.row || {}) || "N/A",
+          valueGetter: (value, row) => getScanStatus(row || {}) || "N/A",
           renderCell: ScanStatusCell,
         },
         {
@@ -1056,7 +1057,7 @@ function Tickets() {
           headerName: "Link",
           minWidth: 120,
           sortable: false,
-          valueGetter: (params) => params?.row?.linkUrl || "N/A",
+          valueGetter: (value, row) => row?.linkUrl || "N/A",
           renderCell: (p) => {
             const href = p?.row?.linkUrl;
             if (!href) return "N/A";

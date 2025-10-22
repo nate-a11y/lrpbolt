@@ -18,45 +18,43 @@ export function toDateOrNull(v) {
 }
 
 // ---------- valueFormatters (null-safe) ----------
-export function vfText(params) {
-  const v = params?.value;
-  return v == null ? "" : String(v);
+// MUI DataGrid v7 API: valueFormatter signature is (value, row, column, apiRef)
+export function vfText(value) {
+  return value == null ? "" : String(value);
 }
 
-export function vfNumber(params) {
-  const v = params?.value;
-  return v == null || Number.isNaN(v) ? "" : String(v);
+export function vfNumber(value) {
+  return value == null || Number.isNaN(value) ? "" : String(value);
 }
 
-export function vfDateTime(params) {
-  const d = toDateOrNull(params?.value);
+export function vfDateTime(value) {
+  const d = toDateOrNull(value);
   return d ? fmt(d) : "";
 }
 
-export function vfDuration(params) {
-  const m = params?.value;
-  if (m == null || Number.isNaN(m)) return "";
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
+export function vfDuration(value) {
+  if (value == null || Number.isNaN(value)) return "";
+  const h = Math.floor(value / 60);
+  const mm = value % 60;
   return h ? `${h}h ${mm}m` : `${mm}m`;
 }
 
-// Wrap a valueGetter to be resilient to null params
-export const safeVG = (getter) => (params) => {
+// Wrap a valueGetter to be resilient to errors
+// MUI v7 signature: (value, row, column, apiRef)
+export const safeVG = (getter) => (value, row, column, apiRef) => {
   try {
-    if (!params) return undefined;
-    return getter(params);
+    return getter(value, row, column, apiRef);
   } catch {
     return undefined;
   }
 };
 
 // Wrap a valueFormatter to always return a string and never throw
-export const safeVF = (formatter) => (params) => {
+// MUI v7 signature: (value, row, column, apiRef)
+export const safeVF = (formatter) => (value, row, column, apiRef) => {
   try {
-    const v = params?.value;
-    if (v == null) return "";
-    const res = formatter(params);
+    if (value == null) return "";
+    const res = formatter(value, row, column, apiRef);
     return res == null ? "" : String(res);
   } catch (err) {
     console.warn("[Grid] valueFormatter error:", err);
@@ -65,6 +63,7 @@ export const safeVF = (formatter) => (params) => {
 };
 
 // Safely wrap column callbacks (valueGetter/valueFormatter/renderCell)
+// MUI v7 API: individual parameters instead of params object
 export function withSafeColumns(columns = []) {
   return (columns || []).map((c) => {
     const col = { ...c };
@@ -73,13 +72,13 @@ export function withSafeColumns(columns = []) {
     }
     if (typeof col.valueFormatter === "function") {
       const vf = col.valueFormatter;
-      col.valueFormatter = safeVF((p) => vf(p));
+      col.valueFormatter = safeVF((value, row, column, apiRef) => vf(value, row, column, apiRef));
     }
     if (typeof col.renderCell === "function") {
       const rc = col.renderCell;
-      col.renderCell = (p) => {
+      col.renderCell = (params) => {
         try {
-          return rc(p);
+          return rc(params);
         } catch (err) {
           console.warn("[Grid] renderCell error:", err);
           return null;
