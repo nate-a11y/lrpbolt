@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Box, IconButton, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -6,11 +6,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Header from "../components/Header";
 import MainNav from "../components/MainNav";
 
-import {
-  APP_BAR_HEIGHT,
-  DRAWER_WIDTH_COLLAPSED,
-  DRAWER_WIDTH,
-} from "./constants";
+import { APP_BAR_HEIGHT } from "./constants";
 
 export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const theme = useTheme();
@@ -28,16 +24,6 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
       return false;
     }
   });
-
-  // Update CSS variable for rail width
-  useEffect(() => {
-    const width = mdUp
-      ? navCollapsed
-        ? DRAWER_WIDTH_COLLAPSED
-        : DRAWER_WIDTH
-      : 0;
-    document.documentElement.style.setProperty("--rail-width", `${width}px`);
-  }, [mdUp, navCollapsed]);
 
   return (
     <Box
@@ -78,12 +64,9 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
           maxWidth: "100%",
           overflowX: "hidden",
           pt: `${APP_BAR_HEIGHT}px`, // align with header height
-          ml: { xs: 0, md: `var(--rail-width)` }, // space for rail when permanent
-          pr: { xs: 0, md: 2 }, // horizontal padding when rail visible
-          pl: { xs: 0, md: 2 }, // horizontal padding when rail visible
-          pb: 3, // keep bottom padding
+          px: { xs: 2, md: 3 }, // consistent horizontal padding
+          pb: 3, // bottom padding
           backgroundColor: (t) => t.palette.background.default,
-          borderLeft: (t) => `1px solid ${t.palette.divider}`, // single hairline (drawer has none)
         }}
       >
         {children}
