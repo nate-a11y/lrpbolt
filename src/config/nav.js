@@ -5,6 +5,7 @@ export const NAV_ITEMS = [
     label: "Claim Rides",
     icon: "DirectionsCar",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.primary.main,
   },
   {
     id: "clock",
@@ -12,6 +13,7 @@ export const NAV_ITEMS = [
     label: "Time Clock",
     icon: "AccessTime",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.info.main,
   },
   {
     id: "info",
@@ -19,21 +21,23 @@ export const NAV_ITEMS = [
     label: "Drop-Off Info",
     icon: "Info",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.info.main,
   },
   {
     id: "important-info",
     to: "/important",
     label: "Important Information",
-    icon: "Info",
+    icon: "PriorityHigh",
     rolesVisible: ["admin", "driver"],
-    iconColor: (t) => t.palette.primary.main,
+    iconColor: (t) => t.palette.error.main,
   },
   {
     id: "drop-guides",
     to: "/drop-guides",
     label: "Vehicle Tips",
-    icon: "DirectionsCar",
+    icon: "CarRepair",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.warning.main,
     hidden: true,
   },
   {
@@ -42,6 +46,7 @@ export const NAV_ITEMS = [
     label: "Directory & Escalations",
     icon: "ContactEmergency",
     rolesVisible: ["admin", "driver", "shootout"],
+    iconColor: (t) => t.palette.error.main,
   },
   {
     id: "calendar",
@@ -49,6 +54,7 @@ export const NAV_ITEMS = [
     label: "Calendar & Availability",
     icon: "CalendarMonth",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.success.main,
   },
   {
     id: "games",
@@ -56,6 +62,7 @@ export const NAV_ITEMS = [
     label: "Games",
     icon: "SportsEsports",
     rolesVisible: ["admin", "driver", "shootout", "guest"],
+    iconColor: (t) => t.palette.warning.main,
   },
   {
     id: "tickets",
@@ -63,13 +70,15 @@ export const NAV_ITEMS = [
     label: "Support Tickets",
     icon: "ConfirmationNumber",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.info.main,
   },
   {
     id: "shuttle-tickets",
     to: "/tickets/legacy",
     label: "Shuttle Tickets",
-    icon: "ConfirmationNumber",
+    icon: "AirportShuttle",
     rolesVisible: ["admin", "driver"],
+    iconColor: (t) => t.palette.warning.main,
   },
   {
     id: "admin-time-log",
@@ -77,6 +86,7 @@ export const NAV_ITEMS = [
     label: "Admin Logs",
     icon: "TableChart",
     rolesVisible: ["admin"],
+    iconColor: (t) => t.palette.primary.main,
   },
   {
     id: "admin-user-manager",
@@ -84,6 +94,7 @@ export const NAV_ITEMS = [
     label: "User Manager",
     icon: "ManageAccounts",
     rolesVisible: ["admin"],
+    iconColor: (t) => t.palette.info.main,
   },
   {
     id: "admin-notifications",
@@ -91,6 +102,7 @@ export const NAV_ITEMS = [
     label: "Notifications",
     icon: "Notifications",
     rolesVisible: ["admin"],
+    iconColor: (t) => t.palette.info.main,
   },
   {
     id: "ride-entry",
@@ -98,5 +110,6 @@ export const NAV_ITEMS = [
     label: "Add Ride",
     icon: "AddCircle",
     rolesVisible: ["admin"],
+    iconColor: (t) => t.palette.success.main,
   },
 ];
