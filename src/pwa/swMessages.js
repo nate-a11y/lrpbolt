@@ -41,6 +41,13 @@ export function initServiceWorkerMessageBridge() {
         } else if (t === "SW_CLOCK_OUT_REQUEST") {
           _enqueue(t);
           window.dispatchEvent(new CustomEvent("lrp:clockout-request"));
+        } else if (t === "SW_NAVIGATE_TO_TICKET") {
+          _enqueue(t);
+          window.dispatchEvent(
+            new CustomEvent("lrp:navigate-to-ticket", {
+              detail: { ticketId: e?.data?.ticketId },
+            }),
+          );
         } else if (t === "CLOCKOUT_OK") {
           _enqueue(t);
           window.dispatchEvent(
