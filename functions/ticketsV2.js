@@ -4,6 +4,7 @@ const { logger } = require("firebase-functions/v2");
 
 const { admin } = require("./_admin");
 const { sendAllTargets } = require("./notifyQueue");
+const { resolveEmailFromId } = require("./_assignees");
 
 function diffChanged(before, after, keys = []) {
   if (!before) return true;
@@ -65,17 +66,36 @@ async function targetsForUsers(db, userIds = []) {
   for (const uid of userIds) {
     if (!uid) continue;
     try {
+      const rawId = String(uid).trim();
+
+      // First, try to resolve as an alias or extract email
+      let resolvedEmail = null;
+      if (rawId.includes("@")) {
+        resolvedEmail = rawId.toLowerCase();
+      } else {
+        resolvedEmail = resolveEmailFromId(rawId);
+      }
+
+      // If we got an email from alias resolution, use it
+      let email = resolvedEmail;
+      let phone = null;
+
+      // Also try to look up user by the raw ID in case it's a Firebase UID
       const [userSnap, accessSnap] = await Promise.all([
-        db.doc(`users/${uid}`).get(),
-        db.doc(`userAccess/${uid}`).get(),
+        db.doc(`users/${rawId}`).get(),
+        db.doc(`userAccess/${rawId}`).get(),
       ]);
       const userData = userSnap.exists ? userSnap.data() || {} : {};
       const accessData = accessSnap.exists ? accessSnap.data() || {} : {};
 
-      const email =
-        (userData.email || userData.contactEmail || null) || accessData.email ||
-        null;
-      const phone =
+      // Prefer email from docs if we didn't resolve it from alias
+      if (!email) {
+        email =
+          (userData.email || userData.contactEmail || null) || accessData.email ||
+          null;
+      }
+
+      phone =
         (userData.phone || userData.phoneNumber || null) || accessData.phone ||
         null;
 
@@ -175,8 +195,8 @@ const ticketsOnWrite = onDocumentWritten("issueTickets/{id}", async (event) => {
 
   if (!importantChanged) return;
 
-  const creatorId = after?.createdBy?.userId || null;
-  const assigneeId = after?.assignee?.userId || null;
+  const creatorId = after?.createdBy?.userId || after?.createdBy?.email || null;
+  const assigneeId = after?.assignee?.userId || after?.assignee?.email || null;
   const watcherIds = Array.isArray(after?.watchers) ? after.watchers : [];
   const uniqueUserIds = Array.from(
     new Set([creatorId, assigneeId, ...watcherIds].filter(Boolean)),
