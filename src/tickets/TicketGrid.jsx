@@ -26,12 +26,8 @@ const cap = (value) => {
 };
 
 const formatUpdatedAt = (params) => {
-  const source =
-    params?.row?.updatedAtSource ??
-    params?.row?._source?.updatedAt ??
-    params?.value ??
-    null;
-  const formatted = formatDateTime(source);
+  const v = params?.value ?? null;
+  const formatted = formatDateTime(v);
   return formatted || "N/A";
 };
 
@@ -94,7 +90,7 @@ function TicketGrid({
     const title =
       typeof ticket.title === "string" && ticket.title.trim()
         ? ticket.title.trim()
-        : "N/A";
+        : "";
 
     const category =
       typeof ticket.category === "string" && ticket.category.trim()
@@ -363,7 +359,10 @@ function TicketGrid({
         headerName: "Title",
         flex: 1,
         minWidth: 220,
-        valueGetter: (params) => params?.row?.title || "N/A",
+        valueGetter: (params) => {
+          const t = params?.row?.title ?? params?.row?._source?.title;
+          return typeof t === "string" && t.trim() ? t : "N/A";
+        },
       },
       {
         field: "category",
@@ -398,24 +397,11 @@ function TicketGrid({
         field: "updatedAt",
         headerName: "Updated",
         width: 200,
-        valueGetter: (params) => {
-          const direct = params?.row?.updatedAt;
-          if (typeof direct === "number" && Number.isFinite(direct)) {
-            return direct;
-          }
-          const source =
-            params?.row?.updatedAtSource ??
-            params?.row?._source?.updatedAt ??
-            null;
-          if (source && typeof source.valueOf === "function") {
-            const ms = Number(source.valueOf());
-            return Number.isFinite(ms) ? ms : null;
-          }
-          if (typeof source === "number") {
-            return Number.isFinite(source) ? source : null;
-          }
-          return null;
-        },
+        valueGetter: (params) =>
+          params?.row?.updatedAtSource ??
+          params?.row?.updatedAt ??
+          params?.row?._source?.updatedAt ??
+          null,
         valueFormatter: formatUpdatedAt,
       },
       {
