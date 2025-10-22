@@ -314,15 +314,14 @@ export default function LiveRidesGrid() {
   );
 
   const deriveClaimedByDisplay = useMemo(
-    () => (params) => {
-      const row = params?.row || {};
+    () => (value, row) => {
       const raw = row?._raw || {};
 
       const directName =
         row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
       if (directName) return directName;
 
-      const resolved = resolveClaimedBy(params);
+      const resolved = resolveClaimedBy(value, row);
       if (resolved && typeof resolved === "object") {
         const objectName =
           resolved?.displayName ||
@@ -366,15 +365,15 @@ export default function LiveRidesGrid() {
         headerName: "Trip ID",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => resolveTripId(params),
-        valueFormatter: (params) => vfText(params, "N/A"),
+        valueGetter: resolveTripId,
+        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       {
         field: "pickupTime",
         headerName: "Pickup",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => resolvePickupTime(params),
+        valueGetter: resolvePickupTime,
         valueFormatter: vfTime,
       },
       {
@@ -382,7 +381,7 @@ export default function LiveRidesGrid() {
         headerName: "Duration",
         minWidth: 120,
         flex: 0.6,
-        valueGetter: (params) => resolveRideDuration(params),
+        valueGetter: resolveRideDuration,
         valueFormatter: vfDurationHM,
       },
       {
@@ -390,31 +389,31 @@ export default function LiveRidesGrid() {
         headerName: "Type",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: (params) => resolveRideType(params),
-        valueFormatter: (params) => vfText(params, "N/A"),
+        valueGetter: resolveRideType,
+        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: (params) => resolveVehicle(params),
-        valueFormatter: (params) => vfText(params, "N/A"),
+        valueGetter: resolveVehicle,
+        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       {
         field: "rideNotes",
         headerName: "Notes",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => resolveRideNotes(params),
-        valueFormatter: (params) => vfText(params, "N/A"),
+        valueGetter: resolveRideNotes,
+        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       {
         field: "createdAt",
         headerName: "Created",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: (params) => resolveCreatedAt(params),
+        valueGetter: resolveCreatedAt,
         valueFormatter: vfTime,
       },
       {
@@ -422,16 +421,16 @@ export default function LiveRidesGrid() {
         headerName: "Claimed By",
         minWidth: 140,
         flex: 0.8,
-        valueGetter: (params) => deriveClaimedByDisplay(params),
-        renderCell: (params) => deriveClaimedByDisplay(params) || "N/A",
-        valueFormatter: (params) => vfText(params, "N/A"),
+        valueGetter: deriveClaimedByDisplay,
+        renderCell: (params) => deriveClaimedByDisplay(params?.value, params?.row) || "N/A",
+        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       {
         field: "claimedAt",
         headerName: "Claimed At",
         minWidth: 160,
         flex: 0.9,
-        valueGetter: (params) => resolveClaimedAt(params),
+        valueGetter: resolveClaimedAt,
         valueFormatter: vfTime,
       },
       {
@@ -439,8 +438,8 @@ export default function LiveRidesGrid() {
         headerName: "Status",
         minWidth: 120,
         flex: 0.7,
-        valueGetter: (params) => resolveStatus(params),
-        valueFormatter: (params) => vfText(params, "N/A"),
+        valueGetter: resolveStatus,
+        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       claimColumn,
       {

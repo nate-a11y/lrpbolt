@@ -15,6 +15,7 @@ export default function ShootoutSummaryTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  // MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
   const columns = useMemo(() => {
     return [
       {
@@ -22,54 +23,54 @@ export default function ShootoutSummaryTab() {
         headerName: "Driver",
         minWidth: 160,
         flex: 1,
-        valueGetter: (params) => params?.row?.driver || "N/A",
+        valueGetter: (value, row) => row?.driver || "N/A",
       },
       {
         field: "driverEmail",
         headerName: "Driver Email",
         minWidth: 220,
         flex: 1.2,
-        valueGetter: (params) => params?.row?.driverEmail || "N/A",
+        valueGetter: (value, row) => row?.driverEmail || "N/A",
       },
       {
         field: "vehicle",
         headerName: "Vehicle",
         minWidth: 140,
         flex: 1,
-        valueGetter: (params) => params?.row?.vehicle || "N/A",
+        valueGetter: (value, row) => row?.vehicle || "N/A",
       },
       {
         field: "sessions",
         headerName: "Sessions",
         minWidth: 120,
-        valueGetter: (params) => params?.row?.sessions ?? null,
+        valueGetter: (value, row) => row?.sessions ?? null,
       },
       {
         field: "trips",
         headerName: "Trips",
         minWidth: 120,
-        valueGetter: (params) => params?.row?.trips ?? null,
+        valueGetter: (value, row) => row?.trips ?? null,
       },
       {
         field: "passengers",
         headerName: "PAX",
         minWidth: 120,
-        valueGetter: (params) => params?.row?.passengers ?? null,
+        valueGetter: (value, row) => row?.passengers ?? null,
       },
       {
         field: "totalMinutes",
         headerName: "Minutes",
         minWidth: 140,
-        valueGetter: (params) => params?.row?.totalMinutes ?? null,
+        valueGetter: (value, row) => row?.totalMinutes ?? null,
       },
       {
         field: "hours",
         headerName: "Hours",
         minWidth: 140,
-        valueGetter: (params) => {
-          const value = params?.row?.hours;
-          return Number.isFinite(value)
-            ? Number(value.toFixed?.(2) ?? value)
+        valueGetter: (value, row) => {
+          const val = row?.hours;
+          return Number.isFinite(val)
+            ? Number(val.toFixed?.(2) ?? val)
             : "N/A";
         },
       },
@@ -78,20 +79,20 @@ export default function ShootoutSummaryTab() {
         headerName: "First Start",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatTz(params?.row?.firstStart) || "N/A",
+        valueGetter: (value, row) => formatTz(row?.firstStart) || "N/A",
       },
       {
         field: "lastEnd",
         headerName: "Last End",
         minWidth: 180,
         flex: 1,
-        valueGetter: (params) => formatTz(params?.row?.lastEnd) || "N/A",
+        valueGetter: (value, row) => formatTz(row?.lastEnd) || "N/A",
       },
       {
         field: "id",
         headerName: "id",
         minWidth: 120,
-        valueGetter: (params) => params?.row?.id || "N/A",
+        valueGetter: (value, row) => row?.id || "N/A",
       },
     ];
   }, []);

@@ -264,6 +264,7 @@ export default function TimeClock({ setIsTracking }) {
     });
   }, []);
 
+  // MUI DataGrid Pro v7 API: valueGetter/valueFormatter signature is (value, row, column, apiRef)
   const columns = useMemo(() => {
     const base = buildTimeLogColumns();
     return base.map((col) => {
@@ -272,16 +273,16 @@ export default function TimeClock({ setIsTracking }) {
           ...col,
           type: "dateTime",
           editable: true,
-          valueGetter: (params) => {
+          valueGetter: (value, row) => {
             const source =
-              params?.row?.startTime ??
-              params?.row?.clockIn ??
-              params?.row?.loggedAt ??
+              row?.startTime ??
+              row?.clockIn ??
+              row?.loggedAt ??
               null;
             return parseEditDate(source);
           },
-          valueFormatter: (params) =>
-            params?.value ? formatDateTime(params.value) : "N/A",
+          valueFormatter: (value) =>
+            value ? formatDateTime(value) : "N/A",
           valueSetter: (params) => {
             const baseRow =
               params?.row && typeof params.row === "object" ? params.row : {};
@@ -309,13 +310,13 @@ export default function TimeClock({ setIsTracking }) {
           ...col,
           type: "dateTime",
           editable: true,
-          valueGetter: (params) => {
+          valueGetter: (value, row) => {
             const source =
-              params?.row?.endTime ?? params?.row?.clockOut ?? null;
+              row?.endTime ?? row?.clockOut ?? null;
             return parseEditDate(source);
           },
-          valueFormatter: (params) =>
-            params?.value ? formatDateTime(params.value) : "—",
+          valueFormatter: (value) =>
+            value ? formatDateTime(value) : "—",
           valueSetter: (params) => {
             const baseRow =
               params?.row && typeof params.row === "object" ? params.row : {};

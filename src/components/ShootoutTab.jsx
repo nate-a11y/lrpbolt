@@ -191,6 +191,7 @@ function ShootoutTab() {
     return null;
   }, []);
 
+  // MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
   const columns = useMemo(() => {
     const formatTimestamp = (value) => {
       const dj = tsToDayjs(value);
@@ -202,10 +203,10 @@ function ShootoutTab() {
         headerName: "Driver",
         flex: 1,
         minWidth: 160,
-        valueGetter: (params) =>
-          params?.row?.driver ||
-          params?.row?.driverName ||
-          params?.row?.driverEmail ||
+        valueGetter: (value, row) =>
+          row?.driver ||
+          row?.driverName ||
+          row?.driverEmail ||
           "N/A",
       },
       {
@@ -213,35 +214,34 @@ function ShootoutTab() {
         headerName: "Vehicle",
         flex: 0.8,
         minWidth: 140,
-        valueGetter: (params) => params?.row?.vehicle || "N/A",
+        valueGetter: (value, row) => row?.vehicle || "N/A",
       },
       {
         field: "startTime",
         headerName: "Start",
         flex: 1,
         minWidth: 180,
-        valueGetter: (params) => formatTimestamp(params?.row?.startTime),
+        valueGetter: (value, row) => formatTimestamp(row?.startTime),
       },
       {
         field: "endTime",
         headerName: "End",
         flex: 1,
         minWidth: 180,
-        valueGetter: (params) => formatTimestamp(params?.row?.endTime),
+        valueGetter: (value, row) => formatTimestamp(row?.endTime),
       },
       {
         field: "duration",
         headerName: "Duration",
         flex: 0.6,
         minWidth: 140,
-        valueGetter: (params) => {
-          const row = params?.row || {};
-          const raw = row.duration;
+        valueGetter: (value, row) => {
+          const raw = row?.duration;
           if (raw != null && Number.isFinite(Number(raw))) {
             return formatHMFromMinutes(Number(raw));
           }
-          const start = row.startTime;
-          const end = row.endTime;
+          const start = row?.startTime;
+          const end = row?.endTime;
           const startDj = tsToDayjs(start);
           const endDj = tsToDayjs(end);
           if (!startDj || !endDj) return "N/A";
@@ -256,9 +256,9 @@ function ShootoutTab() {
         headerName: "Trips",
         flex: 0.4,
         minWidth: 100,
-        valueGetter: (params) => {
-          const value = params?.row?.trips;
-          return Number.isFinite(Number(value)) ? Number(value) : "N/A";
+        valueGetter: (value, row) => {
+          const val = row?.trips;
+          return Number.isFinite(Number(val)) ? Number(val) : "N/A";
         },
       },
       {
@@ -266,9 +266,9 @@ function ShootoutTab() {
         headerName: "PAX",
         flex: 0.4,
         minWidth: 100,
-        valueGetter: (params) => {
-          const value = params?.row?.passengers;
-          return Number.isFinite(Number(value)) ? Number(value) : "N/A";
+        valueGetter: (value, row) => {
+          const val = row?.passengers;
+          return Number.isFinite(Number(val)) ? Number(val) : "N/A";
         },
       },
       {
