@@ -631,7 +631,10 @@ export function rideColumns(opts = {}) {
       valueGetter: resolvePickupTime,
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        timestampSortComparator(resolvePickupTime(null, p1.row), resolvePickupTime(null, p2.row)),
+        timestampSortComparator(
+          resolvePickupTime(null, p1.row),
+          resolvePickupTime(null, p2.row),
+        ),
     },
     {
       field: "rideDuration",
@@ -674,7 +677,10 @@ export function rideColumns(opts = {}) {
       valueGetter: resolveClaimedAt,
       valueFormatter: vfTime,
       sortComparator: (v1, v2, p1, p2) =>
-        timestampSortComparator(resolveClaimedAt(null, p1.row), resolveClaimedAt(null, p2.row)),
+        timestampSortComparator(
+          resolveClaimedAt(null, p1.row),
+          resolveClaimedAt(null, p2.row),
+        ),
     },
     {
       field: "status",

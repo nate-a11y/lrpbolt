@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Box, IconButton, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -6,7 +6,11 @@ import MenuIcon from "@mui/icons-material/Menu";
 import Header from "../components/Header";
 import MainNav from "../components/MainNav";
 
-import { APP_BAR_HEIGHT } from "./constants";
+import {
+  APP_BAR_HEIGHT,
+  DRAWER_WIDTH_COLLAPSED,
+  DRAWER_WIDTH,
+} from "./constants";
 
 export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const theme = useTheme();
@@ -14,6 +18,26 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleMobile = useCallback(() => setMobileOpen((v) => !v), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  // Track collapsed state for desktop
+  const [navCollapsed, setNavCollapsed] = useState(() => {
+    try {
+      const raw = localStorage.getItem("lrp:navCollapsed");
+      return raw === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  // Update CSS variable for rail width
+  useEffect(() => {
+    const width = mdUp
+      ? navCollapsed
+        ? DRAWER_WIDTH_COLLAPSED
+        : DRAWER_WIDTH
+      : 0;
+    document.documentElement.style.setProperty("--rail-width", `${width}px`);
+  }, [mdUp, navCollapsed]);
 
   return (
     <Box
@@ -40,6 +64,8 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
         open={!mdUp ? mobileOpen : true}
         onClose={closeMobile}
         onChangeDriver={onChangeDriver}
+        collapsed={mdUp ? navCollapsed : false}
+        onCollapsedChange={setNavCollapsed}
       />
       <Box
         component="main"
@@ -51,7 +77,7 @@ export default function AppShell({ children, onRefresh, onChangeDriver }) {
           minWidth: 0,
           maxWidth: "100%",
           overflowX: "hidden",
-          pt: `calc(${APP_BAR_HEIGHT}px + 6px)`, // nothing hides under blur
+          pt: `${APP_BAR_HEIGHT}px`, // align with header height
           ml: { xs: 0, md: `var(--rail-width)` }, // space for rail when permanent
           pr: { xs: 0, md: 2 }, // horizontal padding when rail visible
           pl: { xs: 0, md: 2 }, // horizontal padding when rail visible

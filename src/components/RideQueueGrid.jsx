@@ -70,7 +70,7 @@ export default function RideQueueGrid() {
     };
 
     return (
-      coerceId(resolveTripId(row)) ??
+      coerceId(resolveTripId(null, row)) ??
       coerceId(raw?.rideId) ??
       coerceId(raw?.rideID) ??
       coerceId(raw?.RideId) ??

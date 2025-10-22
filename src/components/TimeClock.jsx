@@ -275,14 +275,10 @@ export default function TimeClock({ setIsTracking }) {
           editable: true,
           valueGetter: (value, row) => {
             const source =
-              row?.startTime ??
-              row?.clockIn ??
-              row?.loggedAt ??
-              null;
+              row?.startTime ?? row?.clockIn ?? row?.loggedAt ?? null;
             return parseEditDate(source);
           },
-          valueFormatter: (value) =>
-            value ? formatDateTime(value) : "N/A",
+          valueFormatter: (value) => (value ? formatDateTime(value) : "N/A"),
           valueSetter: (params) => {
             const baseRow =
               params?.row && typeof params.row === "object" ? params.row : {};
@@ -311,12 +307,10 @@ export default function TimeClock({ setIsTracking }) {
           type: "dateTime",
           editable: true,
           valueGetter: (value, row) => {
-            const source =
-              row?.endTime ?? row?.clockOut ?? null;
+            const source = row?.endTime ?? row?.clockOut ?? null;
             return parseEditDate(source);
           },
-          valueFormatter: (value) =>
-            value ? formatDateTime(value) : "—",
+          valueFormatter: (value) => (value ? formatDateTime(value) : "—"),
           valueSetter: (params) => {
             const baseRow =
               params?.row && typeof params.row === "object" ? params.row : {};

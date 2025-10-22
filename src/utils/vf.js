@@ -9,7 +9,10 @@ import { formatDateTime, safeNumber, formatHMFromMinutes } from "./timeUtils";
 /** Blank for objects/arrays; "N/A" only for null/undefined. */
 export function vfText(value, _row, _column, _apiRef, fallback = "N/A") {
   // Support direct value calls for backward compatibility
-  const v = arguments.length === 1 || typeof value !== "object" || value === null ? value : value;
+  const v =
+    arguments.length === 1 || typeof value !== "object" || value === null
+      ? value
+      : value;
   if (v === null || v === undefined) return fallback;
   if (typeof v === "object") return fallback; // guard against objects/arrays
   const s = String(v);
@@ -35,7 +38,8 @@ export function vfTime(value) {
 export function vfDurationHM(value) {
   if (typeof value === "number") return formatHMFromMinutes(value);
   if (value && typeof value === "object") {
-    if (typeof value.minutes === "number") return formatHMFromMinutes(value.minutes);
+    if (typeof value.minutes === "number")
+      return formatHMFromMinutes(value.minutes);
     if (typeof value.hours === "number") {
       const mins = (value.hours || 0) * 60 + (value.mins || value.minutes || 0);
       return formatHMFromMinutes(mins);

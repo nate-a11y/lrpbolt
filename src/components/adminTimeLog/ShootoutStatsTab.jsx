@@ -110,10 +110,7 @@ function createShootoutColumns({
       headerName: "Duration",
       minWidth: 140,
       valueGetter: (value, row) =>
-        durationHm(
-          tsToDate(row?.startTime),
-          tsToDate(row?.endTime),
-        ) || "N/A",
+        durationHm(tsToDate(row?.startTime), tsToDate(row?.endTime)) || "N/A",
     },
     {
       field: "trips",

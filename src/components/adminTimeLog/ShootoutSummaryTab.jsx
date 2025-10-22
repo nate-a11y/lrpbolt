@@ -69,9 +69,7 @@ export default function ShootoutSummaryTab() {
         minWidth: 140,
         valueGetter: (value, row) => {
           const val = row?.hours;
-          return Number.isFinite(val)
-            ? Number(val.toFixed?.(2) ?? val)
-            : "N/A";
+          return Number.isFinite(val) ? Number(val.toFixed?.(2) ?? val) : "N/A";
         },
       },
       {
