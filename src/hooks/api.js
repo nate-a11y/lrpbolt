@@ -443,74 +443,11 @@ export async function updateTicketScan(ticketId, scanType, scannedBy) {
   return { success: true };
 }
 
-const globalScope = typeof globalThis !== "undefined" ? globalThis : {};
-const utf8Encoder =
-  typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
-const hasBuffer = typeof globalScope.Buffer !== "undefined";
-
-function bytesToBinaryString(bytes) {
-  if (!bytes) return "";
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const chunk = bytes.subarray(offset, offset + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-  return binary;
-}
-
-function encodeBase64(str) {
-  try {
-    if (utf8Encoder) {
-      const bytes = utf8Encoder.encode(str);
-      if (typeof globalScope.btoa === "function") {
-        return globalScope.btoa(bytesToBinaryString(bytes));
-      }
-      if (hasBuffer) {
-        return globalScope.Buffer.from(bytes).toString("base64");
-      }
-    }
-    if (typeof globalScope.btoa === "function") {
-      const binary = encodeURIComponent(str).replace(
-        /%([0-9A-F]{2})/g,
-        (_, hex) => String.fromCharCode(parseInt(hex, 16)),
-      );
-      return globalScope.btoa(binary);
-    }
-    if (hasBuffer) {
-      return globalScope.Buffer.from(str, "utf-8").toString("base64");
-    }
-  } catch (error) {
-    logError(error, { where: "emailTicket:encodeBase64" });
-    throw error;
-  }
-  throw new Error("Base64 encoding not supported in this environment");
-}
-
-function encodeBase64Url(str) {
-  return encodeBase64(str)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/u, "");
-}
-
-// ---- Email Ticket via Gmail API ----
+// ---- Email Ticket via Firebase Function (using service account) ----
 export async function emailTicket(ticketId, email, attachment) {
   const trimmedEmail = (email || "").trim();
   if (!trimmedEmail) {
     return { success: false, error: "Missing email" };
-  }
-
-  const apiKey = import.meta.env.VITE_CALENDAR_API_KEY;
-  const accessToken =
-    import.meta.env.VITE_GMAIL_ACCESS_TOKEN ||
-    import.meta.env.VITE_CALENDAR_ACCESS_TOKEN ||
-    "";
-
-  if (!accessToken) {
-    const err = new Error("Missing Gmail access token");
-    logError(err, { where: "emailTicket", ticketId });
-    return { success: false, error: err.message };
   }
 
   if (!attachment) {
@@ -519,83 +456,25 @@ export async function emailTicket(ticketId, email, attachment) {
     return { success: false, error: err.message };
   }
 
-  const sender =
-    import.meta.env.VITE_GMAIL_SENDER ||
-    import.meta.env.VITE_CALENDAR_SENDER ||
-    import.meta.env.VITE_DEFAULT_EMAIL_FROM ||
-    "noreply@lakeridepros.com";
-
-  const boundary = `lrp-ticket-${Date.now()}`;
-  const subjectText = `Lake Ride Pros Shuttle Ticket ${ticketId}`;
-  const encodedSubject = `=?UTF-8?B?${encodeBase64(subjectText)}?=`;
-  const bodyText =
-    `Attached is your Lake Ride Pros shuttle ticket ${ticketId}. Please present it during boarding.`;
-
-  const sanitizedAttachment = attachment.replace(/[^A-Za-z0-9+/=]/g, "");
-  const chunkedAttachment = sanitizedAttachment.replace(/(.{76})/g, "$1\r\n");
-
-  const mimeParts = [
-    `From: Lake Ride Pros <${sender}>`,
-    `To: ${trimmedEmail}`,
-    `Subject: ${encodedSubject}`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    "",
-    `--${boundary}`,
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: 7bit",
-    "",
-    bodyText,
-    "",
-    `--${boundary}`,
-    "Content-Type: image/png",
-    "Content-Transfer-Encoding: base64",
-    `Content-Disposition: attachment; filename="${ticketId}.png"`,
-    "",
-    chunkedAttachment,
-    "",
-    `--${boundary}--`,
-    "",
-  ];
-
-  const rawMessage = encodeBase64Url(mimeParts.join("\r\n"));
-
   try {
-    const url = new URL(
-      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-    );
-    if (apiKey) {
-      url.searchParams.set("key", apiKey);
-    }
+    // Dynamically import to avoid circular dependencies
+    const { getLRPFunctions } = await import("../utils/functions.js");
+    const { httpsCallable } = await import("firebase/functions");
 
-    const response = await fetch(url.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ raw: rawMessage }),
+    const sendEmail = httpsCallable(getLRPFunctions(), "sendShuttleTicketEmail");
+    const result = await sendEmail({
+      ticketId,
+      email: trimmedEmail,
+      attachment,
     });
 
-    if (!response.ok) {
-      let details = "";
-      try {
-        const payload = await response.json();
-        details = payload?.error?.message || JSON.stringify(payload);
-      } catch (parseErr) {
-        details = parseErr?.message || "Unknown error";
-      }
-      const error = new Error(
-        `Gmail API request failed (${response.status}): ${details}`,
-      );
-      logError(error, { where: "emailTicket", ticketId, status: response.status });
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
+    return { success: true, messageId: result.data?.messageId };
   } catch (err) {
     logError(err, { where: "emailTicket", ticketId });
-    return { success: false, error: err?.message || JSON.stringify(err) };
+    return {
+      success: false,
+      error: err?.message || "Failed to send email",
+    };
   }
 }
 

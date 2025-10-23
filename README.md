@@ -190,6 +190,56 @@ Authorized Domains: In the Firebase Console → Authentication → Sign-in Metho
 
 Persistence: We use browserLocalPersistence so redirect sign-in survives full reloads.
 
+### Service Account Setup (Calendar & Gmail APIs)
+
+The application uses a Google Cloud service account for server-side API access:
+
+**Required APIs:**
+- Google Calendar API (for reading calendar events)
+- Gmail API (for sending shuttle ticket emails)
+
+**Setup Steps:**
+
+1. **Create or use existing service account** in [GCP Console](https://console.cloud.google.com/iam-admin/serviceaccounts):
+   - Go to IAM & Admin → Service Accounts
+   - Create a new service account (or use existing one)
+   - Download the JSON key file
+
+2. **Enable required APIs** in [GCP Console](https://console.cloud.google.com/apis/library):
+   - Enable **Google Calendar API**
+   - Enable **Gmail API**
+
+3. **Grant Gmail domain-wide delegation** (if using Google Workspace):
+   - Go to your Google Workspace Admin Console
+   - Navigate to Security → API Controls → Domain-wide Delegation
+   - Add your service account client ID with scopes:
+     - `https://www.googleapis.com/auth/calendar.readonly`
+     - `https://www.googleapis.com/auth/gmail.send`
+
+4. **Configure Firebase Functions environment**:
+   ```bash
+   firebase functions:config:set \
+     gcal.sa_email="your-service-account@your-project.iam.gserviceaccount.com" \
+     gcal.sa_private_key="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" \
+     gmail.sender="noreply@lakeridepros.com"
+   ```
+
+   Or set in `.env` (for local development with Firebase emulator):
+   ```
+   GCAL_SA_EMAIL="your-service-account@your-project.iam.gserviceaccount.com"
+   GCAL_SA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+   GMAIL_SENDER="noreply@lakeridepros.com"
+   ```
+
+5. **Deploy functions**:
+   ```bash
+   firebase deploy --only functions
+   ```
+
+**Functions using service account:**
+- `sendShuttleTicketEmail` - Sends shuttle ticket emails via Gmail API
+- `apiCalendarFetch` / `apiCalendarFetchHttp` - Fetches calendar events
+
 ## Environment Setup
 
 This project requires **Node.js 22** or later. If you're using [nvm](https://github.com/nvm-sh/nvm), run `nvm install 22`.
