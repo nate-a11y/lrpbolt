@@ -15,7 +15,10 @@ async function dispatchNotification({ title, body, token }) {
   try {
     await admin.messaging().send({
       token,
-      notification: { title, body: body || "" },
+      data: {
+        title,
+        body: body || "",
+      },
     });
   } catch (error) {
     logger.error("sendPortalNotificationV2:send", error?.message || error);
