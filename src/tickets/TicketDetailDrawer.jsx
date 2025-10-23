@@ -310,9 +310,14 @@ export default function TicketDetailDrawer({
             <Typography variant="h6" sx={{ mb: 0.5 }}>
               {ticket?.title || "Support Ticket"}
             </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              ID: {ticketId || "N/A"}
-            </Typography>
+            <Stack direction="row" spacing={2}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                {ticket?.incidentNumber || "N/A"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                ID: {ticketId || "N/A"}
+              </Typography>
+            </Stack>
           </Box>
           <IconButton
             onClick={handleClose}
