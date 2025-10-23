@@ -1171,8 +1171,9 @@ function Tickets() {
 
   const handleEmailSelected = useCallback(async () => {
     if (!selectedRows.length) return;
-    if (!emailTo) {
-      showWarnOrErrorSnack("Email address required", "warning");
+    const trimmedEmail = (emailTo || "").trim();
+    if (!trimmedEmail || !trimmedEmail.includes("@")) {
+      showWarnOrErrorSnack("Valid email address required", "warning");
       return;
     }
     if (!ticketPreviewContainerRef.current) return;
@@ -1193,34 +1194,23 @@ function Tickets() {
         files.push({ filename, dataUrl });
       }
       if (!files.length) return;
-      const emailEndpoint = import.meta.env.VITE_TICKETS_EMAIL_ENDPOINT;
-      if (emailEndpoint) {
-        try {
-          await sendTicketsEmail({
-            to: emailTo,
-            subject: emailSubject,
-            message: emailMessage,
-            attachments: files,
-          });
-          showSuccessSnack("Tickets emailed");
-        } catch (err) {
-          logError(err, { area: "tickets", action: "emailSelected" });
-          const zipFiles = files.map((file) => ({
-            name: file.filename.replace(/\.png$/i, ""),
-            dataUrl: file.dataUrl,
-          }));
-          const { downloadZipFromPngs } = await import("@/utils/exportTickets");
-          await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
-          showInfoSnack("Email failed — ZIP downloaded");
-        }
-      } else {
+      try {
+        await sendTicketsEmail({
+          to: trimmedEmail,
+          subject: emailSubject,
+          message: emailMessage,
+          attachments: files,
+        });
+        showSuccessSnack("Tickets emailed");
+      } catch (err) {
+        logError(err, { area: "tickets", action: "emailSelected" });
         const zipFiles = files.map((file) => ({
           name: file.filename.replace(/\.png$/i, ""),
           dataUrl: file.dataUrl,
         }));
         const { downloadZipFromPngs } = await import("@/utils/exportTickets");
         await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
-        showInfoSnack("Email not configured — ZIP downloaded");
+        showInfoSnack("Email failed — ZIP downloaded");
       }
     } catch (err) {
       logError(err, { area: "tickets", action: "emailSelected:generate" });
