@@ -59,9 +59,13 @@ function NotificationsProvider({ children }) {
   useEffect(() => {
     if (import.meta.env.VITE_ENABLE_FCM !== "true") return undefined;
     return onForegroundMessageSafe((payload) => {
-      const title = payload.notification?.title || "Notification";
+      const title =
+        payload.notification?.title ||
+        payload.data?.title ||
+        "Notification";
       const body =
         payload.notification?.body ||
+        payload.data?.body ||
         payload.data?.message ||
         "You have a new message.";
       notify({ title, body, data: payload.data });

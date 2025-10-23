@@ -157,12 +157,13 @@ self.addEventListener("message", (event) => {
                   payload?.data?.body ||
                   "LRP — Update";
                 const body = payload?.data?.body || "";
+                const icon = payload?.data?.icon || scopeUrl("icons/icon-192.png");
                 await self.registration.showNotification(title, {
                   body,
                   tag: "lrp-fcm",
                   renotify: true,
                   badge: scopeUrl("icons/icon-192.png"),
-                  icon: scopeUrl("icons/icon-192.png"),
+                  icon,
                   actions: [
                     { action: "open", title: "Open" },
                     { action: "clockout", title: "Clock Out" },
