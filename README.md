@@ -192,11 +192,11 @@ Persistence: We use browserLocalPersistence so redirect sign-in survives full re
 
 ### Service Account Setup (Calendar & Gmail APIs)
 
-The application uses a Google Cloud service account for server-side API access:
+The application uses a Google Cloud service account for server-side API access. **All emails are now sent via Gmail API** (no more Nodemailer/SMTP).
 
 **Required APIs:**
 - Google Calendar API (for reading calendar events)
-- Gmail API (for sending shuttle ticket emails)
+- Gmail API (for all email sending: shuttle tickets, support notifications, etc.)
 
 **Setup Steps:**
 
@@ -209,26 +209,28 @@ The application uses a Google Cloud service account for server-side API access:
    - Enable **Google Calendar API**
    - Enable **Gmail API**
 
-3. **Grant Gmail domain-wide delegation** (if using Google Workspace):
-   - Go to your Google Workspace Admin Console
+3. **Grant Gmail domain-wide delegation** (required for Google Workspace):
+   - Go to your [Google Workspace Admin Console](https://admin.google.com)
    - Navigate to Security → API Controls → Domain-wide Delegation
-   - Add your service account client ID with scopes:
+   - Click "Add new" and enter your service account's Client ID (found in the JSON key file)
+   - Add the following OAuth scopes:
      - `https://www.googleapis.com/auth/calendar.readonly`
      - `https://www.googleapis.com/auth/gmail.send`
+   - Save and wait a few minutes for propagation
 
 4. **Configure Firebase Functions environment**:
    ```bash
    firebase functions:config:set \
      gcal.sa_email="your-service-account@your-project.iam.gserviceaccount.com" \
      gcal.sa_private_key="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" \
-     gmail.sender="noreply@lakeridepros.com"
+     gmail.sender="contactus@lakeridepros.com"
    ```
 
    Or set in `.env` (for local development with Firebase emulator):
    ```
    GCAL_SA_EMAIL="your-service-account@your-project.iam.gserviceaccount.com"
    GCAL_SA_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-   GMAIL_SENDER="noreply@lakeridepros.com"
+   GMAIL_SENDER="contactus@lakeridepros.com"
    ```
 
 5. **Deploy functions**:
@@ -236,8 +238,19 @@ The application uses a Google Cloud service account for server-side API access:
    firebase deploy --only functions
    ```
 
+**Sender Email Configuration:**
+
+The `GMAIL_SENDER` environment variable controls which email address appears in the "From" field:
+- **User emails**: `nate@lakeridepros.com`, `admin@lakeridepros.com`
+- **Group emails**: `contactus@lakeridepros.com`, `support@lakeridepros.com`
+- **Any email in your domain** (requires domain-wide delegation)
+
+With domain-wide delegation, the service account can impersonate any user or send from any group email in your Google Workspace domain.
+
 **Functions using service account:**
-- `sendShuttleTicketEmail` - Sends shuttle ticket emails via Gmail API
+- `sendShuttleTicketEmail` - Sends shuttle ticket emails with PNG attachments
+- `notifyQueueOnCreate` - Sends support ticket notifications
+- `ticketsOnWrite` / `slaSweep` - Sends ticket update and SLA breach notifications
 - `apiCalendarFetch` / `apiCalendarFetchHttp` - Fetches calendar events
 
 ## Environment Setup
