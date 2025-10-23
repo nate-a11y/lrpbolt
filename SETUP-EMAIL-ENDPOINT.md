@@ -1,6 +1,15 @@
 # Email Endpoint Setup Guide
 
-This guide will help you configure and deploy the bulk tickets email feature.
+This guide will help you configure and deploy the email features for sending shuttle tickets.
+
+## Email Functions
+
+This project includes two email Cloud Functions:
+
+1. **sendBulkTicketsEmail** - Sends multiple tickets to multiple recipients
+2. **sendShuttleTicketEmail** - Sends a single ticket to one recipient
+
+Both functions require the same environment variables and Gmail API configuration.
 
 ## Quick Start (Recommended)
 
@@ -8,7 +17,7 @@ This guide will help you configure and deploy the bulk tickets email feature.
 
 1. Add GitHub secret: `VITE_TICKETS_EMAIL_ENDPOINT` = `https://us-central1-lrp---claim-portal.cloudfunctions.net/sendBulkTicketsEmail`
 2. Push changes to main branch
-3. The workflow will automatically deploy and configure the function
+3. The workflow will automatically deploy and configure **both** functions
 
 The rest of this guide is for manual setup or troubleshooting.
 
@@ -74,7 +83,26 @@ Add a new repository secret in GitHub:
 
 This ensures your production builds include the endpoint URL.
 
-**Note:** The CI/CD workflow (`.github/workflows/deploy.yml`) automatically configures the Cloud Run service with the required environment variables (GCAL_SA_EMAIL, GCAL_SA_PRIVATE_KEY, GMAIL_SENDER) when deploying functions. You don't need to manually set these in Firebase Functions config if using the automated deployment.
+**Note:** The CI/CD workflow (`.github/workflows/deploy.yml`) automatically configures **both** Cloud Run services (sendBulkTicketsEmail and sendShuttleTicketEmail) with the required environment variables (GCAL_SA_EMAIL, GCAL_SA_PRIVATE_KEY, GMAIL_SENDER) when deploying functions. You don't need to manually set these in Firebase Functions config if using the automated deployment.
+
+### Manual Configuration (If Not Using CI/CD)
+
+If you need to manually configure the sendShuttleTicketEmail function:
+
+```bash
+# Run from project root
+./scripts/configure-shuttle-email.sh
+```
+
+Or use gcloud directly:
+
+```bash
+gcloud run services update sendshuttleticketemail \
+  --region=us-central1 \
+  --platform=managed \
+  --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}" \
+  --quiet
+```
 
 ## Step 5: Verify the Setup
 
