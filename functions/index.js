@@ -50,6 +50,7 @@ attach("sendPartnerInfoSMS", "./sendPartnerInfoSMS", "sendPartnerInfoSMS");
 attach("smsHealth", "./smsHealth", "smsHealth");
 attach("apiCalendarFetch", "./calendarFetch", "apiCalendarFetch");
 attach("apiCalendarFetchHttp", "./calendarFetch", "apiCalendarFetchHttp");
+attach("sendShuttleTicketEmail", "./sendShuttleTicketEmail", "sendShuttleTicketEmail");
 attach("ensureLiveRideOpen", "./ensureLiveOpen", "ensureLiveRideOpen");
 attach("dailyDropIfLiveRides", "./schedules", "dailyDropIfLiveRides");
 attach("sendDailySms", "./schedules", "sendDailySms");

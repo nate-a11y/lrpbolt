@@ -2,6 +2,7 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { logger, setGlobalOptions } = require("firebase-functions/v2");
 
 const { admin } = require("./_admin");
+const { sendEmail } = require("./gmailHelper");
 
 if (!global.__lrpGlobalOptionsSet) {
   try {
@@ -19,28 +20,11 @@ try {
   logger.warn("notifyQueue:twilio-missing", error?.message || error);
 }
 
-let nodemailer = null;
-try {
-  nodemailer = require("nodemailer");
-} catch (error) {
-  logger.warn("notifyQueue:nodemailer-missing", error?.message || error);
-}
-
 const cfg = process.env;
 
 const smsClient =
   twilio && cfg.TWILIO_ACCOUNT_SID && cfg.TWILIO_AUTH_TOKEN
     ? twilio(cfg.TWILIO_ACCOUNT_SID, cfg.TWILIO_AUTH_TOKEN)
-    : null;
-
-const mailer =
-  nodemailer && cfg.SMTP_HOST && cfg.SMTP_USER
-    ? nodemailer.createTransport({
-        host: cfg.SMTP_HOST,
-        port: Number(cfg.SMTP_PORT || 587),
-        secure: String(cfg.SMTP_PORT || "") === "465",
-        auth: { user: cfg.SMTP_USER, pass: cfg.SMTP_PASS },
-      })
     : null;
 
 function renderHtml(ticket, link) {
@@ -78,14 +62,19 @@ async function sendAllTargets(targets, ticket, link) {
   }
 
   for (const target of targets || []) {
-    if (target.type === "email" && mailer) {
-      await mailer.sendMail({
+    if (target.type === "email") {
+      const result = await sendEmail({
         to: target.to,
-        from: cfg.SMTP_USER,
         subject: title,
         text,
         html: renderHtml(ticket, link),
       });
+      if (!result.success) {
+        logger.error("notifyQueue:sendEmail", {
+          to: target.to,
+          error: result.error,
+        });
+      }
     }
     if (target.type === "sms" && smsClient) {
       await smsClient.messages.create({
