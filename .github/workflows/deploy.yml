@@ -96,6 +96,7 @@ jobs:
           VITE_API_SECRET_KEY:               ${{ secrets.VITE_API_SECRET_KEY }}
           VITE_TIME_LOG_CSV:                 ${{ secrets.VITE_TIME_LOG_CSV }}
           VITE_DROP_DAILY_URL:               ${{ secrets.VITE_DROP_DAILY_URL }}
+          VITE_TICKETS_EMAIL_ENDPOINT:       ${{ secrets.VITE_TICKETS_EMAIL_ENDPOINT }}
           VITE_SMS_TEST_TO:                  ${{ secrets.VITE_SMS_TEST_TO }}
           VITE_ENABLE_FCM:                   ${{ secrets.VITE_ENABLE_FCM }}
           VITE_SHOW_DEBUG_PANELS:            ${{ secrets.VITE_SHOW_DEBUG_PANELS }}
@@ -141,6 +142,7 @@ jobs:
           VITE_API_SECRET_KEY=${{ secrets.VITE_API_SECRET_KEY }}
           VITE_TIME_LOG_CSV=${{ secrets.VITE_TIME_LOG_CSV }}
           VITE_DROP_DAILY_URL=${{ secrets.VITE_DROP_DAILY_URL }}
+          VITE_TICKETS_EMAIL_ENDPOINT=${{ secrets.VITE_TICKETS_EMAIL_ENDPOINT }}
           VITE_SMS_TEST_TO=${{ secrets.VITE_SMS_TEST_TO }}
           VITE_ENABLE_FCM=${{ secrets.VITE_ENABLE_FCM }}
           VITE_SHOW_DEBUG_PANELS=${{ secrets.VITE_SHOW_DEBUG_PANELS }}
@@ -368,6 +370,19 @@ jobs:
             --region=us-central1 \
             --platform=managed \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}" \
+            --quiet
+
+      - name: Pin env vars on Cloud Run (sendBulkTicketsEmail)
+        if: needs.changes.outputs.functions == 'true'
+        env:
+          GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+        run: |
+          gcloud run services update sendbulkticketsemail \
+            --region=us-central1 \
+            --platform=managed \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}" \
             --quiet
 
   rules:
