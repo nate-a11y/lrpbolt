@@ -1193,23 +1193,34 @@ function Tickets() {
         files.push({ filename, dataUrl });
       }
       if (!files.length) return;
-      try {
-        await sendTicketsEmail({
-          to: emailTo,
-          subject: emailSubject,
-          message: emailMessage,
-          attachments: files,
-        });
-        showSuccessSnack("Tickets emailed");
-      } catch (err) {
-        logError(err, { area: "tickets", action: "emailSelected" });
+      const emailEndpoint = import.meta.env.VITE_TICKETS_EMAIL_ENDPOINT;
+      if (emailEndpoint) {
+        try {
+          await sendTicketsEmail({
+            to: emailTo,
+            subject: emailSubject,
+            message: emailMessage,
+            attachments: files,
+          });
+          showSuccessSnack("Tickets emailed");
+        } catch (err) {
+          logError(err, { area: "tickets", action: "emailSelected" });
+          const zipFiles = files.map((file) => ({
+            name: file.filename.replace(/\.png$/i, ""),
+            dataUrl: file.dataUrl,
+          }));
+          const { downloadZipFromPngs } = await import("@/utils/exportTickets");
+          await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
+          showInfoSnack("Email failed — ZIP downloaded");
+        }
+      } else {
         const zipFiles = files.map((file) => ({
           name: file.filename.replace(/\.png$/i, ""),
           dataUrl: file.dataUrl,
         }));
         const { downloadZipFromPngs } = await import("@/utils/exportTickets");
         await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
-        showInfoSnack("Endpoint unavailable — ZIP downloaded");
+        showInfoSnack("Email not configured — ZIP downloaded");
       }
     } catch (err) {
       logError(err, { area: "tickets", action: "emailSelected:generate" });
