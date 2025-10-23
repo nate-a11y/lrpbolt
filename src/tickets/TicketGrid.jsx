@@ -204,8 +204,7 @@ function TicketGrid({
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const filters = statusFilter && statusFilter !== "all" ? { status: statusFilter } : {};
-    const unsubscribe = subscribeTickets(filters, (result) => {
+    const unsubscribe = subscribeTickets({}, (result) => {
       if (result?.error) {
         setError(result.error);
         setRows([]);
@@ -227,7 +226,33 @@ function TicketGrid({
         logError(err, { where: "TicketGrid.cleanup" });
       }
     };
-  }, [normalizeTicketRow, statusFilter]);
+  }, [normalizeTicketRow]);
+
+  const filteredRows = useMemo(() => {
+    if (!Array.isArray(rows) || !rows.length) {
+      return [];
+    }
+    if (!statusFilter || statusFilter === "all") {
+      return rows;
+    }
+    const normalizedFilter = String(statusFilter)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+    return rows.filter((row) => {
+      const rawStatus =
+        row?.status ||
+        row?._source?.status ||
+        row?.statusRaw ||
+        row?.statusValue ||
+        "";
+      const normalizedStatus = String(rawStatus)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+      return normalizedStatus === normalizedFilter;
+    });
+  }, [rows, statusFilter]);
 
   const handleSelect = useCallback(
     (row) => {
@@ -529,7 +554,7 @@ function TicketGrid({
       </Stack>
       <LrpDataGridPro
         id="support-tickets-grid"
-        rows={rows}
+        rows={filteredRows}
         columns={columns}
         getRowId={(row) =>
           row?.id ||
