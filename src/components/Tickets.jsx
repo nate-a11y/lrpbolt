@@ -1187,6 +1187,10 @@ function Tickets() {
         node.dataset.ticketName = String(name);
         nodes.push(node);
       });
+
+      // Wait for React to render the components to DOM
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const files = [];
       for (let i = 0; i < nodes.length; i += 1) {
         const dataUrl = await htmlToImage.toPng(nodes[i], { pixelRatio: 2 });
@@ -1256,6 +1260,10 @@ function Tickets() {
         nodes.push(node);
       });
       if (!nodes.length) return;
+
+      // Wait for React to render the components to DOM
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       await exportTicketNodesAsZip(nodes, {
         zipName: `tickets-${Date.now()}.zip`,
       });
