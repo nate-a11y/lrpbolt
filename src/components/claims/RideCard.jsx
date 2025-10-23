@@ -131,9 +131,9 @@ export default function RideCard({
   highlight = false,
   notes = "",
 }) {
-  const pickupSource = useMemo(() => resolvePickupTime(ride), [ride]);
-  const dropoffSource = useMemo(() => resolveDropoffTime(ride), [ride]);
-  const rawDuration = useMemo(() => resolveRideDuration(ride), [ride]);
+  const pickupSource = useMemo(() => resolvePickupTime(null, ride), [ride]);
+  const dropoffSource = useMemo(() => resolveDropoffTime(null, ride), [ride]);
+  const rawDuration = useMemo(() => resolveRideDuration(null, ride), [ride]);
 
   const startAt = useMemo(() => tsToDayjs(pickupSource), [pickupSource]);
   const dropoffAt = useMemo(() => tsToDayjs(dropoffSource), [dropoffSource]);
