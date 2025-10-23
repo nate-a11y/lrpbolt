@@ -1,27 +1,28 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { defineSecret } = require("firebase-functions/params");
 const { logger } = require("firebase-functions/v2");
 
 let twilioFactory = null;
 try {
-   
+
   twilioFactory = require("twilio");
 } catch (error) {
   logger.warn("smsOnCreateV2:twilio-missing", error?.message || error);
 }
 const { admin } = require("./_admin");
 
-const accountSidSecret = defineSecret("TWILIO_ACCOUNT_SID");
-const authTokenSecret = defineSecret("TWILIO_AUTH_TOKEN");
-const fromNumberSecret = defineSecret("TWILIO_FROM");
-
 async function deliverSms(payload) {
-  const sid = accountSidSecret.value();
-  const token = authTokenSecret.value();
-  const from = fromNumberSecret.value();
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_FROM;
 
   if (!sid || !token || !from) {
-    throw new Error("Twilio secrets are not configured");
+    logger.warn("smsOnCreateV2:twilioMissing", {
+      reason: "Twilio secrets are not configured",
+      hasSid: Boolean(sid),
+      hasToken: Boolean(token),
+      hasFrom: Boolean(from),
+    });
+    return;
   }
 
   if (!twilioFactory) {
@@ -43,7 +44,6 @@ const smsOnCreateV2 = onDocumentCreated(
   {
     document: "outboundMessages/{id}",
     region: "us-central1",
-    secrets: [accountSidSecret, authTokenSecret, fromNumberSecret],
   },
   async (event) => {
     const data = event.data?.data();

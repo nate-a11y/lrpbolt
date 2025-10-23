@@ -1,13 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions/v2");
-const { defineSecret } = require("firebase-functions/params");
 
 const { admin } = require("./_admin");
-
-const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
-const TWILIO_FROM = defineSecret("TWILIO_FROM");
 
 function normalizeEmail(value) {
   return (value || "").toString().trim().toLowerCase();
@@ -41,9 +36,9 @@ function composeSmsBody(rideId, data) {
 }
 
 async function sendSmsSafe(to, body) {
-  const accountSid = TWILIO_ACCOUNT_SID.value();
-  const authToken = TWILIO_AUTH_TOKEN.value();
-  const from = TWILIO_FROM.value();
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_FROM;
 
   if (!accountSid || !authToken || !from) {
     logger.warn("notifyDriverOnClaim.twilioMissing", {
@@ -56,7 +51,7 @@ async function sendSmsSafe(to, body) {
 
   let twilio;
   try {
-     
+
     twilio = require("twilio");
   } catch (error) {
     logger.warn("notifyDriverOnClaim.twilioModuleMissing", error?.message || error);
@@ -86,7 +81,6 @@ async function maybeNotify(rideId, data) {
 
 const handlerOptions = {
   region: "us-central1",
-  secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
 };
 
 const notifyDriverOnClaimCreated = onDocumentCreated(

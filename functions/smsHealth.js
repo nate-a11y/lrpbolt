@@ -1,18 +1,13 @@
 const { onCall } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 
 const { admin } = require("./admin");
 
 const REGION = "us-central1";
 
-const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
-const TWILIO_FROM = defineSecret("TWILIO_FROM");
-
-function readSecret(secret, label) {
+function readSecret(envKey, label) {
   try {
-    const value = secret?.value?.();
+    const value = process.env[envKey];
     if (typeof value !== "string") return { present: false, value: null };
     const trimmed = value.trim();
     if (!trimmed) {
@@ -82,14 +77,13 @@ async function fetchLastError() {
 exports.smsHealth = onCall(
   {
     region: REGION,
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
     cors: true,
     enforceAppCheck: false,
   },
   async (request) => {
-    const sidSecret = readSecret(TWILIO_ACCOUNT_SID, "TWILIO_ACCOUNT_SID");
-    const tokenSecret = readSecret(TWILIO_AUTH_TOKEN, "TWILIO_AUTH_TOKEN");
-    const fromSecret = readSecret(TWILIO_FROM, "TWILIO_FROM");
+    const sidSecret = readSecret("TWILIO_ACCOUNT_SID", "TWILIO_ACCOUNT_SID");
+    const tokenSecret = readSecret("TWILIO_AUTH_TOKEN", "TWILIO_AUTH_TOKEN");
+    const fromSecret = readSecret("TWILIO_FROM", "TWILIO_FROM");
     const fromValid = fromSecret.present && /^\+\d{8,15}$/.test(fromSecret.value);
 
     const runtimeRegion = getRuntimeRegion();
