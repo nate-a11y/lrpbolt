@@ -1,26 +1,8 @@
 /* src/theme/fonts.css */
 
-/* Temporary zero-network registration:
-   Use local() only so browsers don't attempt to fetch missing URLs.
-   As soon as you drop .woff2 files in /public/assets/fonts, switch to the block below. */
+/* Font files are now available in /public/assets/fonts */
 
-/* ---- Active NOW: local-only (no 404s) ---- */
-@font-face {
-  font-family: "Boardson";
-  src: local("Boardson");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "CelebriSans";
-  src: local("CelebriSans Bold"), local("CelebriSans-Bold");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* ---- READY TO ENABLE when files are added ----
+/* ---- Active: Using font files ---- */
 @font-face {
   font-family: "Boardson";
   src:
@@ -40,4 +22,3 @@
   font-style: normal;
   font-display: swap;
 }
-*/

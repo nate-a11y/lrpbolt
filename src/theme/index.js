@@ -85,6 +85,21 @@ export function getTheme(mode = "dark") {
         fontWeight: 700,
         letterSpacing: "-0.015em",
       },
+      h4: {
+        fontFamily: '"Boardson", Inter, system-ui, sans-serif',
+        fontWeight: 700,
+        letterSpacing: "-0.015em",
+      },
+      h5: {
+        fontFamily: '"Boardson", Inter, system-ui, sans-serif',
+        fontWeight: 700,
+        letterSpacing: "-0.01em",
+      },
+      h6: {
+        fontFamily: '"Boardson", Inter, system-ui, sans-serif',
+        fontWeight: 700,
+        letterSpacing: "-0.01em",
+      },
       subtitle1: {
         fontFamily: '"CelebriSans", Inter, system-ui, sans-serif',
         fontWeight: 700,
