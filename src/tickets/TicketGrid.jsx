@@ -296,20 +296,26 @@ function TicketGrid({
     const checkAndOpen = () => {
       const id = extractIdFromLocation();
       if (!id) return;
+      // Only skip if already selected AND drawer is actually open
+      // This prevents issues where URL has ID but drawer is closed
       if (selectedId === id) return;
+      // Wait for data to load before trying to find ticket
+      if (loading) return;
       const match = rows.find((row) => row.id === id);
       if (match) {
         handleSelect(match);
       }
     };
     checkAndOpen();
-  }, [extractIdFromLocation, handleSelect, rows, selectedId]);
+  }, [extractIdFromLocation, handleSelect, rows, selectedId, loading]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const handler = () => {
       const id = extractIdFromLocation();
       if (!id) return;
+      // Wait for data to load before trying to find ticket
+      if (loading) return;
       const match = rows.find((row) => row.id === id);
       if (match) {
         handleSelect(match);
@@ -317,7 +323,7 @@ function TicketGrid({
     };
     window.addEventListener("hashchange", handler);
     return () => window.removeEventListener("hashchange", handler);
-  }, [extractIdFromLocation, handleSelect, rows]);
+  }, [extractIdFromLocation, handleSelect, rows, loading]);
 
   const renderCategoryChip = useCallback((params) => {
     const value = params?.row?.category;
