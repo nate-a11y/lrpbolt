@@ -392,11 +392,13 @@ self.addEventListener("notificationclick", (event) => {
         const notifData = event.notification?.data || {};
         const ticketId = notifData.ticketId;
         if (ticketId) {
+          // Open window directly with ticket ID in URL for reliable navigation
+          await focusOrOpen(`/tickets?id=${ticketId}`);
+          // Also broadcast for any already-open clients
           await broadcastToClients({
             type: "SW_NAVIGATE_TO_TICKET",
             ticketId
           });
-          await focusOrOpen("/");
           return;
         }
 
