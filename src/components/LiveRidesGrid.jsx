@@ -265,15 +265,6 @@ export default function LiveRidesGrid() {
     [handleEditRide],
   );
 
-  const renderActions = useCallback(
-    (params) => {
-      const items = actionsColumn.getActions?.(params);
-      if (!items || (Array.isArray(items) && items.length === 0)) return null;
-      return <>{items}</>;
-    },
-    [actionsColumn],
-  );
-
   const claimColumn = useMemo(
     () => ({
       field: "claimRide",
@@ -443,15 +434,9 @@ export default function LiveRidesGrid() {
         valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       claimColumn,
-      {
-        field: "__actions",
-        headerName: "Actions",
-        minWidth: 120,
-        sortable: false,
-        renderCell: renderActions,
-      },
+      actionsColumn,
     ],
-    [claimColumn, deriveClaimedByDisplay, renderActions],
+    [claimColumn, deriveClaimedByDisplay, actionsColumn],
   );
 
   return (
