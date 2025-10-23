@@ -2,11 +2,21 @@
 
 This guide will help you configure and deploy the bulk tickets email feature.
 
+## Quick Start (Recommended)
+
+**If you're using the automated CI/CD workflow** (which you likely are), you only need to:
+
+1. Add GitHub secret: `VITE_TICKETS_EMAIL_ENDPOINT` = `https://us-central1-lrp---claim-portal.cloudfunctions.net/sendBulkTicketsEmail`
+2. Push changes to main branch
+3. The workflow will automatically deploy and configure the function
+
+The rest of this guide is for manual setup or troubleshooting.
+
 ## Prerequisites
 
-- Firebase CLI installed: `npm install -g firebase-tools`
+- Firebase CLI installed: `npm install -g firebase-tools` (only for manual deployment)
 - Firebase project: `lrp---claim-portal`
-- Google Service Account with Gmail API access
+- Google Service Account with Gmail API access (already configured in GitHub secrets)
 - Domain-wide delegation configured (if sending from workspace email)
 
 ## Step 1: Verify Current Configuration
@@ -19,7 +29,9 @@ firebase functions:config:get
 
 ## Step 2: Set Firebase Functions Environment Variables
 
-The Cloud Functions need these environment variables to send emails via Gmail API:
+**⚠️ SKIP THIS STEP if using automated CI/CD deployment** - The workflow automatically configures these environment variables.
+
+If deploying manually, the Cloud Functions need these environment variables to send emails via Gmail API:
 
 ```bash
 firebase functions:config:set \
@@ -39,8 +51,8 @@ YOUR_PRIVATE_KEY_HERE
 ### Important Notes:
 
 - The private key must include the `\n` characters for line breaks
-- Firebase will automatically store these securely
-- These are separate from your GitHub secrets (used for CI/CD)
+- **Automated CI/CD**: The `.github/workflows/deploy.yml` workflow automatically sets these using `gcloud run services update` after deploying the function
+- **Manual deployment**: Use `firebase functions:config:set` if not using the automated workflow
 
 ## Step 3: Deploy the Cloud Function
 
@@ -61,6 +73,8 @@ Add a new repository secret in GitHub:
 **Value:** `https://us-central1-lrp---claim-portal.cloudfunctions.net/sendBulkTicketsEmail`
 
 This ensures your production builds include the endpoint URL.
+
+**Note:** The CI/CD workflow (`.github/workflows/deploy.yml`) automatically configures the Cloud Run service with the required environment variables (GCAL_SA_EMAIL, GCAL_SA_PRIVATE_KEY, GMAIL_SENDER) when deploying functions. You don't need to manually set these in Firebase Functions config if using the automated deployment.
 
 ## Step 5: Verify the Setup
 
