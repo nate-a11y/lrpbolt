@@ -204,7 +204,23 @@ export function subscribeTickets(filters = {}, callback) {
 
   try {
     let qRef = query(TICKETS_COLLECTION, orderBy("updatedAt", "desc"));
-    if (filters?.status) {
+    if (Array.isArray(filters?.statusIn) && filters.statusIn.length) {
+      const normalizedValues = Array.from(
+        new Set(
+          filters.statusIn
+            .map((value) => (typeof value === "string" ? value.trim() : value))
+            .filter((value) => typeof value === "string" && value),
+        ),
+      );
+      if (normalizedValues.length === 1) {
+        qRef = query(qRef, where("status", "==", normalizedValues[0]));
+      } else if (normalizedValues.length) {
+        qRef = query(
+          qRef,
+          where("status", "in", normalizedValues.slice(0, 10)),
+        );
+      }
+    } else if (filters?.status) {
       qRef = query(qRef, where("status", "==", String(filters.status)));
     }
     if (filters?.assignee) {

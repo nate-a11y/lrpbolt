@@ -51,6 +51,21 @@ const toMillis = (v) => {
   }
 };
 
+const STATUS_QUERY_VARIANTS = Object.freeze({
+  all: Object.freeze([]),
+  open: Object.freeze(["open", "Open", "OPEN"]),
+  inprogress: Object.freeze([
+    "in_progress",
+    "in-progress",
+    "in progress",
+    "In Progress",
+    "IN_PROGRESS",
+  ]),
+  resolved: Object.freeze(["resolved", "Resolved", "RESOLVED"]),
+  closed: Object.freeze(["closed", "Closed", "CLOSED"]),
+  breached: Object.freeze(["breached", "Breached", "BREACHED"]),
+});
+
 const cap = (value) => {
   if (value === null || value === undefined) return "N/A";
   const text = String(value).trim();
@@ -93,6 +108,32 @@ function TicketGrid({
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("open");
+
+  const statusQuery = useMemo(() => {
+    if (!statusFilter || statusFilter === "all") {
+      return { type: "all", key: "all", value: null };
+    }
+
+    const raw = String(statusFilter).trim();
+    const normalizedKey = raw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+
+    if (!normalizedKey) {
+      return { type: "all", key: "all", value: null };
+    }
+
+    const variants = STATUS_QUERY_VARIANTS[normalizedKey];
+    if (!variants || variants.length === 0) {
+      return { type: "single", key: normalizedKey, value: raw };
+    }
+
+    if (variants.length === 1) {
+      return { type: "single", key: normalizedKey, value: variants[0] };
+    }
+
+    return { type: "multi", key: normalizedKey, value: variants };
+  }, [statusFilter]);
 
   const normalizeTicketRow = useCallback((ticket) => {
     if (!ticket) {
@@ -204,7 +245,19 @@ function TicketGrid({
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const unsubscribe = subscribeTickets({}, (result) => {
+
+    const filters = {};
+    if (statusQuery.type === "single" && statusQuery.value) {
+      filters.status = statusQuery.value;
+    } else if (
+      statusQuery.type === "multi" &&
+      Array.isArray(statusQuery.value) &&
+      statusQuery.value.length
+    ) {
+      filters.statusIn = statusQuery.value;
+    }
+
+    const unsubscribe = subscribeTickets(filters, (result) => {
       if (result?.error) {
         setError(result.error);
         setRows([]);
@@ -226,19 +279,16 @@ function TicketGrid({
         logError(err, { where: "TicketGrid.cleanup" });
       }
     };
-  }, [normalizeTicketRow]);
+  }, [normalizeTicketRow, statusQuery]);
 
   const filteredRows = useMemo(() => {
     if (!Array.isArray(rows) || !rows.length) {
       return [];
     }
-    if (!statusFilter || statusFilter === "all") {
+    if (statusQuery.type === "all") {
       return rows;
     }
-    const normalizedFilter = String(statusFilter)
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "");
+    const normalizedFilter = statusQuery.key;
     return rows.filter((row) => {
       const rawStatus =
         row?.status ||
@@ -252,7 +302,7 @@ function TicketGrid({
         .replace(/[^a-z0-9]+/g, "");
       return normalizedStatus === normalizedFilter;
     });
-  }, [rows, statusFilter]);
+  }, [rows, statusQuery]);
 
   const handleSelect = useCallback(
     (row) => {
