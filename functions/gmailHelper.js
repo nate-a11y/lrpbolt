@@ -72,7 +72,7 @@ async function sendEmail({
     }
 
     const senderEmail =
-      from || process.env.GMAIL_SENDER || "noreply@lakeridepros.com";
+      from || process.env.GMAIL_SENDER || "contactus@lakeridepros.com";
 
     // Construct MIME message
     const encodedSubject = `=?UTF-8?B?${encodeBase64(subject)}?=`;
@@ -189,7 +189,7 @@ async function sendEmailWithAttachment({
     }
 
     const senderEmail =
-      from || process.env.GMAIL_SENDER || "noreply@lakeridepros.com";
+      from || process.env.GMAIL_SENDER || "contactus@lakeridepros.com";
 
     const boundary = `lrp-attachment-${Date.now()}`;
     const encodedSubject = `=?UTF-8?B?${encodeBase64(subject)}?=`;
