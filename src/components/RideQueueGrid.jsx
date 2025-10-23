@@ -338,58 +338,52 @@ export default function RideQueueGrid() {
   );
 
   const actionsColumn = useMemo(
-    () =>
-      buildNativeActionsColumn({
+    () => {
+      const baseColumn = buildNativeActionsColumn({
         onEdit: (_id, row) => handleEditRide(row),
         onDelete: async (id) => await deleteRide("rides", id),
-      }),
-    [handleEditRide],
-  );
+      });
 
-  const renderActions = useCallback(
-    (params) => {
-      const row = params?.row || {};
-      const rideId = getRowId(row);
-      const baseItems = actionsColumn.getActions?.(params) || [];
-      const normalized = Array.isArray(baseItems)
-        ? [...baseItems]
-        : baseItems
-          ? [baseItems]
-          : [];
+      return {
+        ...baseColumn,
+        getActions: (params) => {
+          const row = params?.row || {};
+          const rideId = getRowId(row);
+          const baseItems = baseColumn.getActions?.(params) || [];
 
-      const statusCandidate =
-        row?.status ??
-        row?.state ??
-        row?._raw?.status ??
-        row?._raw?.state ??
-        row?.QueueStatus ??
-        row?.queueStatus ??
-        TRIP_STATES.QUEUED;
-      const normalizedStatus =
-        typeof statusCandidate === "string"
-          ? statusCandidate.toLowerCase()
-          : statusCandidate;
+          const statusCandidate =
+            row?.status ??
+            row?.state ??
+            row?._raw?.status ??
+            row?._raw?.state ??
+            row?.QueueStatus ??
+            row?.queueStatus ??
+            TRIP_STATES.QUEUED;
+          const normalizedStatus =
+            typeof statusCandidate === "string"
+              ? statusCandidate.toLowerCase()
+              : statusCandidate;
 
-      const disableMove =
-        !rideId ||
-        pendingMoves.has(rideId) ||
-        normalizedStatus !== TRIP_STATES.QUEUED;
+          const disableMove =
+            !rideId ||
+            pendingMoves.has(rideId) ||
+            normalizedStatus !== TRIP_STATES.QUEUED;
 
-      const actionItems = [
-        <GridActionsCellItem
-          key="move-to-live"
-          icon={<PlayArrowRoundedIcon fontSize="small" />}
-          label="Move to Live"
-          onClick={() => handleMoveToLive(row)}
-          disabled={disableMove}
-          showInMenu={false}
-        />,
-        ...normalized,
-      ];
-
-      return <>{actionItems}</>;
+          return [
+            <GridActionsCellItem
+              key="move-to-live"
+              icon={<PlayArrowRoundedIcon fontSize="small" />}
+              label="Move to Live"
+              onClick={() => handleMoveToLive(row)}
+              disabled={disableMove}
+              showInMenu={false}
+            />,
+            ...baseItems,
+          ];
+        },
+      };
     },
-    [actionsColumn, getRowId, handleMoveToLive, pendingMoves],
+    [handleEditRide, getRowId, handleMoveToLive, pendingMoves],
   );
 
   const columns = useMemo(
@@ -474,15 +468,9 @@ export default function RideQueueGrid() {
         valueGetter: resolveStatus,
         valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
-      {
-        field: "__actions",
-        headerName: "Actions",
-        minWidth: 120,
-        sortable: false,
-        renderCell: renderActions,
-      },
+      actionsColumn,
     ],
-    [renderActions],
+    [actionsColumn],
   );
 
   return (
