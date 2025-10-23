@@ -34,6 +34,51 @@ async function shouldRunDailyDrop() {
   return true;
 }
 
+async function notifyRidesAvailable(stats) {
+  try {
+    // Get all FCM tokens to notify all users
+    const tokensSnap = await db.collection("fcmTokens").get();
+    const targets = [];
+    const dedupTokens = new Set();
+
+    tokensSnap.forEach((doc) => {
+      const tokenId = doc.id;
+      if (tokenId && !dedupTokens.has(tokenId)) {
+        dedupTokens.add(tokenId);
+        targets.push({ type: "fcm", to: tokenId });
+      }
+    });
+
+    if (targets.length === 0) {
+      logger.info("notifyRidesAvailable: no FCM tokens found");
+      return;
+    }
+
+    const totalRides = stats.imported + stats.updatedExisting;
+    const title = "New Rides Available";
+    const body = `${totalRides} ride${totalRides > 1 ? "s" : ""} available to claim`;
+
+    await db.collection("notifyQueue").add({
+      targets,
+      context: {
+        ticket: { title, description: body },
+        link: "/",
+      },
+      status: "pending",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info("notifyRidesAvailable: queued", {
+      targets: targets.length,
+      rides: totalRides,
+    });
+  } catch (error) {
+    logger.error("notifyRidesAvailable failed", {
+      err: error && (error.stack || error.message || error),
+    });
+  }
+}
+
 async function runDropDaily(trigger) {
   if (!(await shouldRunDailyDrop())) {
     logger.info("dropDailyRides skipped by config", { trigger });
@@ -44,6 +89,11 @@ async function runDropDaily(trigger) {
     const stats = await dropDailyFromQueue({ dryRun: false });
     await writeDropResult(stats, trigger);
     logger.info("dropDailyRides complete", { trigger, stats });
+
+    // Send notification if rides were imported
+    if (stats.imported > 0 || stats.updatedExisting > 0) {
+      await notifyRidesAvailable(stats);
+    }
   } catch (error) {
     logger.error("dropDailyRides failed", {
       trigger,
@@ -110,7 +160,7 @@ const sendDailySms = onSchedule(
 );
 
 const scheduleDropDailyRides = onSchedule(
-  { region: REGION, schedule: "30 19 * * *", timeZone: TIME_ZONE },
+  { region: REGION, schedule: "0 20 * * *", timeZone: TIME_ZONE },
   async () => {
     await runDropDaily("evening-schedule");
   },

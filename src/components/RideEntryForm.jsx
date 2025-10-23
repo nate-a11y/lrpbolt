@@ -1580,7 +1580,7 @@ export default function RideEntryForm() {
       <ResponsiveContainer maxWidth={1240}>
         <Stack spacing={{ xs: 2.5, md: 3 }}>
           <Paper elevation={3} sx={SECTION_PAPER_SX}>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
               🚐 Ride Entry
             </Typography>
             <Tabs

@@ -58,7 +58,7 @@ export default function VehicleDropGuides({ compact = false }) {
   return (
     <Wrapper pb={compact ? 0 : 4}>
       {!compact && (
-        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
           🚐 Vehicle Drop-off Instructions
         </Typography>
       )}

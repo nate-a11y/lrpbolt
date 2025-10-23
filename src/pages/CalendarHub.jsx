@@ -134,9 +134,9 @@ export default function CalendarHub() {
         >
           <Typography
             variant="h5"
-            sx={{ fontWeight: 700, lineHeight: 1.2, mb: 1 }}
+            sx={{ fontWeight: 700, mb: 1 }}
           >
-            Ride &amp; Vehicle Calendar
+            📅 Ride &amp; Vehicle Calendar
           </Typography>
 
           <Stack

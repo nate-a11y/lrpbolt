@@ -5,6 +5,9 @@ import {
   Box,
   Chip,
   IconButton,
+  MenuItem,
+  Select,
+  Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -89,6 +92,7 @@ function TicketGrid({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("open");
 
   const normalizeTicketRow = useCallback((ticket) => {
     if (!ticket) {
@@ -200,7 +204,8 @@ function TicketGrid({
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const unsubscribe = subscribeTickets({}, (result) => {
+    const filters = statusFilter && statusFilter !== "all" ? { status: statusFilter } : {};
+    const unsubscribe = subscribeTickets(filters, (result) => {
       if (result?.error) {
         setError(result.error);
         setRows([]);
@@ -222,7 +227,7 @@ function TicketGrid({
         logError(err, { where: "TicketGrid.cleanup" });
       }
     };
-  }, [normalizeTicketRow]);
+  }, [normalizeTicketRow, statusFilter]);
 
   const handleSelect = useCallback(
     (row) => {
@@ -377,6 +382,15 @@ function TicketGrid({
   const columns = useMemo(() => {
     return [
       {
+        field: "incidentNumber",
+        headerName: "Incident #",
+        width: 130,
+        valueGetter: (value, row) => {
+          const inc = row?.incidentNumber ?? row?._source?.incidentNumber ?? "";
+          return typeof inc === "string" && inc.trim() ? inc : "N/A";
+        },
+      },
+      {
         field: "title",
         headerName: "Title",
         flex: 1,
@@ -491,6 +505,28 @@ function TicketGrid({
 
   return (
     <Box sx={{ width: "100%", minHeight: 320 }}>
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Filter:
+        </Typography>
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          size="small"
+          sx={{ minWidth: 150 }}
+        >
+          <MenuItem value="all">All Tickets</MenuItem>
+          <MenuItem value="open">Open</MenuItem>
+          <MenuItem value="in_progress">In Progress</MenuItem>
+          <MenuItem value="resolved">Resolved</MenuItem>
+          <MenuItem value="closed">Closed</MenuItem>
+        </Select>
+      </Stack>
       <LrpDataGridPro
         id="support-tickets-grid"
         rows={rows}

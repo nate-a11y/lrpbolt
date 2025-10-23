@@ -1,6 +1,5 @@
 // functions/src/index.js
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -28,25 +27,4 @@ exports.dropDailyRidesNow = onCall({ region: "us-central1" }, async (req) => {
     throw new HttpsError("internal", err?.message || "Internal error");
   }
 });
-
-// Daily schedule: 7:30 PM Central
-exports.scheduleDropDailyRides = onSchedule(
-  { region: "us-central1", schedule: "30 19 * * *", timeZone: "America/Chicago" },
-  async () => {
-    try {
-      const cfg = await db.doc("AdminMeta/config").get();
-      const dropEnabled = cfg.exists ? cfg.data().dropEnabled !== false : true;
-      if (!dropEnabled) { console.log("dropDailyRides skipped by config"); return; }
-
-      const stats = await dropDailyFromQueue({ dryRun: false });
-      await db.doc("AdminMeta/lastDropDaily").set(
-        { ranAt: admin.firestore.FieldValue.serverTimestamp(), stats, v: 1, trigger: "schedule" },
-        { merge: true }
-      );
-      console.log("dropDailyRides complete", stats);
-    } catch (e) {
-      console.error("scheduleDropDailyRides error", e);
-    }
-  }
-);
 

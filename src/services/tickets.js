@@ -5,9 +5,11 @@ import {
   collection,
   doc,
   getDoc,
+  increment,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -166,6 +168,34 @@ function subscribeTicketsLegacy(options = {}) {
   );
 }
 
+async function getNextIncidentNumber() {
+  const counterRef = doc(db, "AdminMeta", "ticketCounter");
+
+  try {
+    const incidentNumber = await runTransaction(db, async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+
+      let nextNumber = 1;
+      if (counterDoc.exists()) {
+        nextNumber = (counterDoc.data()?.lastIncidentNumber || 0) + 1;
+      }
+
+      transaction.set(counterRef, {
+        lastIncidentNumber: nextNumber,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      return `INC-${String(nextNumber).padStart(4, "0")}`;
+    });
+
+    return incidentNumber;
+  } catch (error) {
+    logError(error, { where: "tickets.getNextIncidentNumber" });
+    // Fallback to timestamp-based number if transaction fails
+    return `INC-${Date.now()}`;
+  }
+}
+
 export function subscribeTickets(filters = {}, callback) {
   if (isLegacySubscribeOptions(filters)) {
     return subscribeTicketsLegacy(filters);
@@ -208,6 +238,11 @@ export function subscribeTickets(filters = {}, callback) {
 export async function createTicket(input = {}) {
   try {
     const { payload, assignee } = normalizeTicketInput(input);
+
+    // Generate incident number
+    const incidentNumber = await getNextIncidentNumber();
+    payload.incidentNumber = incidentNumber;
+
     const refId = await withExponentialBackoff(async () => {
       const ref = await addDoc(TICKETS_COLLECTION, payload);
       return ref.id;
@@ -225,6 +260,7 @@ export async function createTicket(input = {}) {
         category: payload.category,
         priority: payload.priority,
         status: payload.status,
+        incidentNumber,
         createdBy: payload.createdBy,
       },
     };

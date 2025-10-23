@@ -180,7 +180,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
         sx={{
           position: "fixed",
           right: 16,
-          bottom: 16,
+          bottom: 80,
           zIndex: (theme) => {
             const modal = theme.zIndex?.modal ?? 1300;
             const drawer = theme.zIndex?.drawer ?? 1200;

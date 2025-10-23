@@ -87,14 +87,6 @@ export default function Header({ onRefresh, leftSlot = null }) {
           icon={<AccountCircleIcon />}
           sx={{ fontWeight: 600 }}
         />
-        {role?.toLowerCase?.() === "admin" && (
-          <Chip
-            size="small"
-            color="success"
-            label="Admin"
-            sx={{ fontWeight: 700 }}
-          />
-        )}
       </Toolbar>
     </AppBar>
   );

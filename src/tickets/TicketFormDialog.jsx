@@ -348,14 +348,17 @@ export default function TicketFormDialog({
           <Stack direction="row" spacing={1} alignItems="center">
             <Button
               component="label"
+              htmlFor="ticket-form-file-upload"
               startIcon={<AttachFileIcon />}
               variant="outlined"
             >
               Attach files
               <input
-                hidden
+                id="ticket-form-file-upload"
+                style={{ display: "none" }}
                 type="file"
                 multiple
+                accept="image/*,.pdf,.doc,.docx,.txt,.log"
                 onChange={(event) =>
                   setFiles(Array.from(event.target.files || []))
                 }

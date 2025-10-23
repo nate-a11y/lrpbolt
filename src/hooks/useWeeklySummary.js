@@ -12,7 +12,7 @@ const inWeek = (d, startOfWeek) => {
   const day = dayjs(d);
   const start = dayjs(startOfWeek).startOf("week");
   const end = start.add(1, "week");
-  return day.isAfter(start) && day.isBefore(end);
+  return (day.isSame(start) || day.isAfter(start)) && day.isBefore(end);
 };
 
 export default function useWeeklySummary({

@@ -12,9 +12,10 @@ import { dayjs } from "@/utils/time";
 import { TIMEZONE } from "../constants";
 
 const CST = TIMEZONE; // e.g., "America/Chicago"
-export const BLACKOUT_START_HOUR = 19; // 7 PM
-export const BLACKOUT_END_HOUR = 20; // 8 PM
-const WINDOW_SECONDS = (BLACKOUT_END_HOUR - BLACKOUT_START_HOUR) * 3600; // 3600
+// Blackout disabled: rides now drop at 8 PM, no need to block claims
+export const BLACKOUT_START_HOUR = 24; // Disabled (invalid hour)
+export const BLACKOUT_END_HOUR = 24; // Disabled (invalid hour)
+const WINDOW_SECONDS = (BLACKOUT_END_HOUR - BLACKOUT_START_HOUR) * 3600; // 0
 
 /**
  * Props:
