@@ -19,7 +19,7 @@ import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function Header({ onRefresh, leftSlot = null }) {
   const { user } = useAuth?.() || {};
-  const { driverName, role } = useDriver?.() || {};
+  const { driverName } = useDriver?.() || {};
   return (
     <AppBar
       position="fixed"
