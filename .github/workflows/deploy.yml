@@ -385,6 +385,19 @@ jobs:
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}" \
             --quiet
 
+      - name: Pin env vars on Cloud Run (sendShuttleTicketEmail)
+        if: needs.changes.outputs.functions == 'true'
+        env:
+          GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+        run: |
+          gcloud run services update sendshuttleticketemail \
+            --region=us-central1 \
+            --platform=managed \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}" \
+            --quiet
+
   rules:
     name: Deploy Firestore Rules (rules-only path)
     runs-on: ubuntu-latest

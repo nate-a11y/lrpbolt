@@ -7,6 +7,7 @@ import AppError from "@/utils/AppError.js";
 import logError from "@/utils/logError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
+import { COLLECTIONS } from "@/constants.js";
 import { TRIP_STATES } from "@/constants/tripStates.js";
 import { useTripsByState } from "@/hooks/useTripsByState.js";
 import useAuth from "@/hooks/useAuth.js";
@@ -180,7 +181,7 @@ export default function LiveRidesGrid() {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const batch = writeBatch(db);
-        ids.forEach((id) => batch.delete(doc(db, "rides", id)));
+        ids.forEach((id) => batch.delete(doc(db, COLLECTIONS.LIVE_RIDES, id)));
         await batch.commit();
         return;
       } catch (err) {
@@ -189,7 +190,7 @@ export default function LiveRidesGrid() {
           throw new AppError(
             err.message || "Bulk delete failed",
             "FIRESTORE_DELETE",
-            { collection: "rides" },
+            { collection: COLLECTIONS.LIVE_RIDES },
           );
         }
         await backoff(attempt);
@@ -210,7 +211,7 @@ export default function LiveRidesGrid() {
             state: TRIP_STATES.OPEN,
             status: rest?.status ?? _raw?.status ?? TRIP_STATES.OPEN,
           };
-          batch.set(doc(db, "rides", id), payload, { merge: true });
+          batch.set(doc(db, COLLECTIONS.LIVE_RIDES, id), payload, { merge: true });
         });
         await batch.commit();
         return;
@@ -260,9 +261,18 @@ export default function LiveRidesGrid() {
     () =>
       buildNativeActionsColumn({
         onEdit: (_id, row) => handleEditRide(row),
-        onDelete: async (id) => await deleteRide("rides", id),
+        onDelete: async (id) => await deleteRide(COLLECTIONS.LIVE_RIDES, id),
       }),
     [handleEditRide],
+  );
+
+  const renderActions = useCallback(
+    (params) => {
+      const items = actionsColumn.getActions?.(params);
+      if (!items || (Array.isArray(items) && items.length === 0)) return null;
+      return <>{items}</>;
+    },
+    [actionsColumn],
   );
 
   const claimColumn = useMemo(
@@ -434,9 +444,15 @@ export default function LiveRidesGrid() {
         valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
       claimColumn,
-      actionsColumn,
+      {
+        field: "__actions",
+        headerName: "Actions",
+        minWidth: 120,
+        sortable: false,
+        renderCell: renderActions,
+      },
     ],
-    [claimColumn, deriveClaimedByDisplay, actionsColumn],
+    [claimColumn, deriveClaimedByDisplay, renderActions],
   );
 
   return (
@@ -499,7 +515,7 @@ export default function LiveRidesGrid() {
         <EditRideDialog
           open={editOpen}
           onClose={handleEditClose}
-          collectionName="rides"
+          collectionName={COLLECTIONS.LIVE_RIDES}
           ride={editRow}
         />
       )}

@@ -6,6 +6,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 
 import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
+import { COLLECTIONS } from "@/constants.js";
 import { TRIP_STATES } from "@/constants/tripStates.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
@@ -261,7 +262,7 @@ export default function RideQueueGrid() {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const batch = writeBatch(db);
-        ids.forEach((id) => batch.delete(doc(db, "rides", id)));
+        ids.forEach((id) => batch.delete(doc(db, COLLECTIONS.RIDE_QUEUE, id)));
         await batch.commit();
         return;
       } catch (err) {
@@ -270,7 +271,7 @@ export default function RideQueueGrid() {
           throw new AppError(
             err.message || "Bulk delete failed",
             "FIRESTORE_DELETE",
-            { collection: "rides" },
+            { collection: COLLECTIONS.RIDE_QUEUE },
           );
         }
         await backoff(attempt);
@@ -291,7 +292,7 @@ export default function RideQueueGrid() {
             state: TRIP_STATES.QUEUED,
             status: rest?.status ?? _raw?.status ?? TRIP_STATES.QUEUED,
           };
-          batch.set(doc(db, "rides", id), payload, { merge: true });
+          batch.set(doc(db, COLLECTIONS.RIDE_QUEUE, id), payload, { merge: true });
         });
         await batch.commit();
         return;
@@ -338,52 +339,58 @@ export default function RideQueueGrid() {
   );
 
   const actionsColumn = useMemo(
-    () => {
-      const baseColumn = buildNativeActionsColumn({
+    () =>
+      buildNativeActionsColumn({
         onEdit: (_id, row) => handleEditRide(row),
-        onDelete: async (id) => await deleteRide("rides", id),
-      });
+        onDelete: async (id) => await deleteRide(COLLECTIONS.RIDE_QUEUE, id),
+      }),
+    [handleEditRide],
+  );
 
-      return {
-        ...baseColumn,
-        getActions: (params) => {
-          const row = params?.row || {};
-          const rideId = getRowId(row);
-          const baseItems = baseColumn.getActions?.(params) || [];
+  const renderActions = useCallback(
+    (params) => {
+      const row = params?.row || {};
+      const rideId = getRowId(row);
+      const baseItems = actionsColumn.getActions?.(params) || [];
+      const normalized = Array.isArray(baseItems)
+        ? [...baseItems]
+        : baseItems
+          ? [baseItems]
+          : [];
 
-          const statusCandidate =
-            row?.status ??
-            row?.state ??
-            row?._raw?.status ??
-            row?._raw?.state ??
-            row?.QueueStatus ??
-            row?.queueStatus ??
-            TRIP_STATES.QUEUED;
-          const normalizedStatus =
-            typeof statusCandidate === "string"
-              ? statusCandidate.toLowerCase()
-              : statusCandidate;
+      const statusCandidate =
+        row?.status ??
+        row?.state ??
+        row?._raw?.status ??
+        row?._raw?.state ??
+        row?.QueueStatus ??
+        row?.queueStatus ??
+        TRIP_STATES.QUEUED;
+      const normalizedStatus =
+        typeof statusCandidate === "string"
+          ? statusCandidate.toLowerCase()
+          : statusCandidate;
 
-          const disableMove =
-            !rideId ||
-            pendingMoves.has(rideId) ||
-            normalizedStatus !== TRIP_STATES.QUEUED;
+      const disableMove =
+        !rideId ||
+        pendingMoves.has(rideId) ||
+        normalizedStatus !== TRIP_STATES.QUEUED;
 
-          return [
-            <GridActionsCellItem
-              key="move-to-live"
-              icon={<PlayArrowRoundedIcon fontSize="small" />}
-              label="Move to Live"
-              onClick={() => handleMoveToLive(row)}
-              disabled={disableMove}
-              showInMenu={false}
-            />,
-            ...baseItems,
-          ];
-        },
-      };
+      const actionItems = [
+        <GridActionsCellItem
+          key="move-to-live"
+          icon={<PlayArrowRoundedIcon fontSize="small" />}
+          label="Move to Live"
+          onClick={() => handleMoveToLive(row)}
+          disabled={disableMove}
+          showInMenu={false}
+        />,
+        ...normalized,
+      ];
+
+      return <>{actionItems}</>;
     },
-    [handleEditRide, getRowId, handleMoveToLive, pendingMoves],
+    [actionsColumn, getRowId, handleMoveToLive, pendingMoves],
   );
 
   const columns = useMemo(
@@ -468,9 +475,15 @@ export default function RideQueueGrid() {
         valueGetter: resolveStatus,
         valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
       },
-      actionsColumn,
+      {
+        field: "__actions",
+        headerName: "Actions",
+        minWidth: 120,
+        sortable: false,
+        renderCell: renderActions,
+      },
     ],
-    [actionsColumn],
+    [renderActions],
   );
 
   return (
@@ -531,7 +544,7 @@ export default function RideQueueGrid() {
         <EditRideDialog
           open={editOpen}
           onClose={handleEditClose}
-          collectionName="rides"
+          collectionName={COLLECTIONS.RIDE_QUEUE}
           ride={editRow}
         />
       )}
