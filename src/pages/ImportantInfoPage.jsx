@@ -130,8 +130,8 @@ export default function ImportantInfoPage() {
       }}
     >
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Important Information
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          📋 Important Information
         </Typography>
         <Typography variant="body1" sx={{ color: "text.secondary" }}>
           Effortlessly share official Lake Ride Pros promotions, premier

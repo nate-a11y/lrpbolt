@@ -333,15 +333,13 @@ export default function ClaimRides() {
         >
           <Box sx={{ minWidth: 0 }}>
             <Typography
-              variant="h4"
+              variant="h5"
               sx={{
-                fontWeight: 800,
+                fontWeight: 700,
                 color: "common.white",
-                letterSpacing: 1,
-                textTransform: "uppercase",
               }}
             >
-              Live ride queue
+              🚗 Live Ride Queue
             </Typography>
             <Typography
               variant="body2"

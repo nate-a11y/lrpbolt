@@ -1287,7 +1287,7 @@ function Tickets() {
   return (
     <ErrorBoundary>
       <PageContainer maxWidth={960}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
+        <Typography variant="h5" sx={{ fontWeight: 700 }} gutterBottom>
           🎟️ Shuttle Ticket Overview
         </Typography>
 

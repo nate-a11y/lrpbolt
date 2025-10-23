@@ -81,15 +81,13 @@ export default function DirectoryEscalations({ initialTab = "directory" }) {
           </Box>
           <Box>
             <Typography
-              variant="h4"
+              variant="h5"
               sx={{
-                fontWeight: 800,
+                fontWeight: 700,
                 color: (t) => t.palette.text.primary,
-                textTransform: "none",
-                letterSpacing: 0.5,
               }}
             >
-              Directory & Escalations
+              📞 Directory & Escalations
             </Typography>
             <Typography
               variant="body2"
