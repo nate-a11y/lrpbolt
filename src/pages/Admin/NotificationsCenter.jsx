@@ -285,8 +285,13 @@ export default function Notifications() {
       const payloadData =
         dataJson && !dataError ? JSON.parse(dataJson) : undefined;
       const recipients = directRecipients;
-      if (!recipients.length && !(segmentIsCustom && customTopic)) return;
 
+      if (!recipients.length && !(segmentIsCustom && customTopic)) {
+        show("No recipients selected", "warning");
+        return;
+      }
+
+      let results = [];
       if (mode === "push") {
         const base = {
           title,
@@ -296,30 +301,54 @@ export default function Notifications() {
         };
         if (segment === "custom" && customTopic) {
           await sendPortalNotification({ topic: customTopic, ...base });
+          results = [{ status: "fulfilled" }];
         } else {
-          await Promise.all(
-            recipients
-              .filter((u) => u?.email)
-              .map((u) => sendPortalNotification({ email: u.email, ...base })),
+          const emailRecipients = recipients.filter((u) => u?.email);
+          results = await Promise.allSettled(
+            emailRecipients.map((u) => sendPortalNotification({ email: u.email, ...base })),
           );
         }
       } else {
-        await Promise.all(
-          recipients
-            .filter((u) => u?.phone)
-            .map((u) =>
-              enqueueSms({
-                to: u.phone,
-                body,
-                context: { email: u.email },
-              }),
-            ),
+        const phoneRecipients = recipients.filter((u) => u?.phone);
+        results = await Promise.allSettled(
+          phoneRecipients.map((u) =>
+            enqueueSms({
+              to: u.phone,
+              body,
+              context: { email: u.email },
+            }),
+          ),
         );
       }
-      show("Notification sent", "success");
-      resetComposer(false);
+
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (failed === 0) {
+        show(`Notification sent to ${succeeded} recipient${succeeded === 1 ? "" : "s"}`, "success");
+        resetComposer(false);
+      } else if (succeeded > 0) {
+        show(`Partially sent: ${succeeded} succeeded, ${failed} failed`, "warning");
+        logError(new Error("Partial send failure"), {
+          where: "Notifications",
+          action: "handleSend",
+          mode,
+          succeeded,
+          failed,
+          errors: results.filter((r) => r.status === "rejected").map((r) => r.reason?.message || r.reason)
+        });
+      } else {
+        const firstError = results.find((r) => r.status === "rejected")?.reason;
+        show(`Send failed: ${firstError?.message || "Unknown error"}`, "error");
+        logError(firstError || new Error("All sends failed"), {
+          where: "Notifications",
+          action: "handleSend",
+          mode,
+          errors: results.filter((r) => r.status === "rejected").map((r) => r.reason?.message || r.reason)
+        });
+      }
     } catch (err) {
-      show("Send failed", "error");
+      show(`Send failed: ${err?.message || "Unknown error"}`, "error");
       logError(err, { where: "Notifications", action: "handleSend", mode });
     } finally {
       setSending(false);
