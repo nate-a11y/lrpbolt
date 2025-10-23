@@ -103,8 +103,8 @@ export default function TicketsPage() {
           gap: 1.5,
         }}
       >
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Support Tickets
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          🎫 Support Tickets
         </Typography>
         <Button
           variant="contained"

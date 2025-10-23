@@ -392,6 +392,7 @@ export default function TicketDetailDrawer({
         <Stack direction="row" spacing={1} alignItems="center">
           <Button
             component="label"
+            htmlFor="ticket-file-upload"
             startIcon={
               uploadBusy ? <CircularProgress size={16} /> : <UploadIcon />
             }
@@ -399,7 +400,14 @@ export default function TicketDetailDrawer({
             disabled={uploadBusy}
           >
             Upload
-            <input hidden multiple type="file" onChange={handleUploadFiles} />
+            <input
+              id="ticket-file-upload"
+              style={{ display: "none" }}
+              multiple
+              type="file"
+              accept="image/*,.pdf,.doc,.docx,.txt,.log"
+              onChange={handleUploadFiles}
+            />
           </Button>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Attach screenshots, PDFs, or logs.
