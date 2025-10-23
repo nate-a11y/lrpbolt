@@ -30,29 +30,28 @@ async function dispatchNotification({ title, body, token, icon, data }) {
   }
 
   try {
-    const messageData = {
-      title,
-      body: body || "",
+    const message = {
+      token,
+      notification: {
+        title,
+        body: body || "",
+      },
     };
+
+    // Add icon to notification if provided
+    if (icon) {
+      message.notification.icon = icon;
+    }
 
     // Add custom data fields if provided
     if (data && typeof data === "object") {
+      message.data = {};
       Object.keys(data).forEach((key) => {
-        if (key !== "title" && key !== "body") {
-          messageData[key] = String(data[key]);
-        }
+        message.data[key] = String(data[key]);
       });
     }
 
-    // Add icon if provided
-    if (icon) {
-      messageData.icon = icon;
-    }
-
-    await admin.messaging().send({
-      token,
-      data: messageData,
-    });
+    await admin.messaging().send(message);
   } catch (error) {
     logger.error("sendPortalNotificationV2:send", error?.message || error);
     throw new HttpsError("internal", error?.message || "notification-failed");
@@ -69,29 +68,28 @@ async function sendToTopic({ title, body, topic, icon, data }) {
   }
 
   try {
-    const messageData = {
-      title,
-      body: body || "",
+    const message = {
+      topic,
+      notification: {
+        title,
+        body: body || "",
+      },
     };
+
+    // Add icon to notification if provided
+    if (icon) {
+      message.notification.icon = icon;
+    }
 
     // Add custom data fields if provided
     if (data && typeof data === "object") {
+      message.data = {};
       Object.keys(data).forEach((key) => {
-        if (key !== "title" && key !== "body") {
-          messageData[key] = String(data[key]);
-        }
+        message.data[key] = String(data[key]);
       });
     }
 
-    // Add icon if provided
-    if (icon) {
-      messageData.icon = icon;
-    }
-
-    await admin.messaging().send({
-      topic,
-      data: messageData,
-    });
+    await admin.messaging().send(message);
   } catch (error) {
     logger.error("sendPortalNotificationV2:sendToTopic", error?.message || error);
     throw new HttpsError("internal", error?.message || "notification-failed");
