@@ -12,7 +12,7 @@ self.addEventListener("push", (event) => {
       self.registration.showNotification(title, {
         body,
         icon,
-        data: { url, ...data.data },
+        data: { url, ...(data.data || {}) },
       }),
     );
   } catch (error) {
