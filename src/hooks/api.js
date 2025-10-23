@@ -19,7 +19,6 @@ import {
 import { getAuth } from "firebase/auth";
 
 import { db } from "../utils/firebaseInit";
-import { apiFetch } from "../api";
 import { COLLECTIONS } from "../constants";
 import { ensureTicketShapeOnCreate } from "../services/db";
 import { subscribeFirestore } from "../utils/listenerRegistry";
@@ -37,11 +36,6 @@ const currentEmail = () => lc(getAuth().currentUser?.email || "");
 // Helper to strip undefined values before sending to Firestore
 const cleanData = (obj) =>
   Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
-
-export const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://lakeridepros.xyz/claim-proxy.php";
-export const SECURE_KEY = import.meta.env.VITE_API_SECRET_KEY;
 
 /**
  * -----------------------------
@@ -449,22 +443,158 @@ export async function updateTicketScan(ticketId, scanType, scannedBy) {
   return { success: true };
 }
 
-// ---- Email Ticket (temporary - still uses old API) ----
-export async function emailTicket(ticketId, email, attachment) {
+const globalScope = typeof globalThis !== "undefined" ? globalThis : {};
+const utf8Encoder =
+  typeof TextEncoder !== "undefined" ? new TextEncoder() : null;
+const hasBuffer = typeof globalScope.Buffer !== "undefined";
+
+function bytesToBinaryString(bytes) {
+  if (!bytes) return "";
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return binary;
+}
+
+function encodeBase64(str) {
   try {
-    return await apiFetch(BASE_URL, {
+    if (utf8Encoder) {
+      const bytes = utf8Encoder.encode(str);
+      if (typeof globalScope.btoa === "function") {
+        return globalScope.btoa(bytesToBinaryString(bytes));
+      }
+      if (hasBuffer) {
+        return globalScope.Buffer.from(bytes).toString("base64");
+      }
+    }
+    if (typeof globalScope.btoa === "function") {
+      const binary = encodeURIComponent(str).replace(
+        /%([0-9A-F]{2})/g,
+        (_, hex) => String.fromCharCode(parseInt(hex, 16)),
+      );
+      return globalScope.btoa(binary);
+    }
+    if (hasBuffer) {
+      return globalScope.Buffer.from(str, "utf-8").toString("base64");
+    }
+  } catch (error) {
+    logError(error, { where: "emailTicket:encodeBase64" });
+    throw error;
+  }
+  throw new Error("Base64 encoding not supported in this environment");
+}
+
+function encodeBase64Url(str) {
+  return encodeBase64(str)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/u, "");
+}
+
+// ---- Email Ticket via Gmail API ----
+export async function emailTicket(ticketId, email, attachment) {
+  const trimmedEmail = (email || "").trim();
+  if (!trimmedEmail) {
+    return { success: false, error: "Missing email" };
+  }
+
+  const apiKey = import.meta.env.VITE_CALENDAR_API_KEY;
+  const accessToken =
+    import.meta.env.VITE_GMAIL_ACCESS_TOKEN ||
+    import.meta.env.VITE_CALENDAR_ACCESS_TOKEN ||
+    "";
+
+  if (!accessToken) {
+    const err = new Error("Missing Gmail access token");
+    logError(err, { where: "emailTicket", ticketId });
+    return { success: false, error: err.message };
+  }
+
+  if (!attachment) {
+    const err = new Error("Missing ticket attachment");
+    logError(err, { where: "emailTicket", ticketId });
+    return { success: false, error: err.message };
+  }
+
+  const sender =
+    import.meta.env.VITE_GMAIL_SENDER ||
+    import.meta.env.VITE_CALENDAR_SENDER ||
+    import.meta.env.VITE_DEFAULT_EMAIL_FROM ||
+    "noreply@lakeridepros.com";
+
+  const boundary = `lrp-ticket-${Date.now()}`;
+  const subjectText = `Lake Ride Pros Shuttle Ticket ${ticketId}`;
+  const encodedSubject = `=?UTF-8?B?${encodeBase64(subjectText)}?=`;
+  const bodyText =
+    `Attached is your Lake Ride Pros shuttle ticket ${ticketId}. Please present it during boarding.`;
+
+  const sanitizedAttachment = attachment.replace(/[^A-Za-z0-9+/=]/g, "");
+  const chunkedAttachment = sanitizedAttachment.replace(/(.{76})/g, "$1\r\n");
+
+  const mimeParts = [
+    `From: Lake Ride Pros <${sender}>`,
+    `To: ${trimmedEmail}`,
+    `Subject: ${encodedSubject}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    bodyText,
+    "",
+    `--${boundary}`,
+    "Content-Type: image/png",
+    "Content-Transfer-Encoding: base64",
+    `Content-Disposition: attachment; filename="${ticketId}.png"`,
+    "",
+    chunkedAttachment,
+    "",
+    `--${boundary}--`,
+    "",
+  ];
+
+  const rawMessage = encodeBase64Url(mimeParts.join("\r\n"));
+
+  try {
+    const url = new URL(
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    );
+    if (apiKey) {
+      url.searchParams.set("key", apiKey);
+    }
+
+    const response = await fetch(url.toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key: SECURE_KEY,
-        type: "emailticket",
-        ticketId,
-        email,
-        attachment,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ raw: rawMessage }),
     });
+
+    if (!response.ok) {
+      let details = "";
+      try {
+        const payload = await response.json();
+        details = payload?.error?.message || JSON.stringify(payload);
+      } catch (parseErr) {
+        details = parseErr?.message || "Unknown error";
+      }
+      const error = new Error(
+        `Gmail API request failed (${response.status}): ${details}`,
+      );
+      logError(error, { where: "emailTicket", ticketId, status: response.status });
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
   } catch (err) {
-    logError(err, "Email ticket failed");
+    logError(err, { where: "emailTicket", ticketId });
     return { success: false, error: err?.message || JSON.stringify(err) };
   }
 }

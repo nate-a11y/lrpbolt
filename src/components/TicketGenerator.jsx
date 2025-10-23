@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/TicketGenerator.jsx
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Box,
   Button,
@@ -20,7 +20,7 @@ import { toPng } from "html-to-image";
 import { v4 as uuidv4 } from "uuid";
 import { Timestamp } from "firebase/firestore";
 
-import { dayjs } from "@/utils/time";
+import { dayjs, formatDate, formatDateTime } from "@/utils/time";
 
 import {
   addTicket as apiAddTicket,
@@ -128,7 +128,10 @@ export default function TicketGenerator() {
 
     try {
       await apiAddTicket(newTicket);
-      setTicket(newTicket);
+      setTicket({
+        ...newTicket,
+        passengerCount: Number(formData.passengerCount),
+      });
       setFormData({
         passenger: "",
         date: "",
@@ -142,7 +145,7 @@ export default function TicketGenerator() {
       storeLocation("lrp_dropoff", newTicket.dropoff);
       setOpenPreview(true);
     } catch (err) {
-      logError(err, "TicketGenerator:save");
+      logError(err, { where: "TicketGenerator:save" });
       setSnackbar({
         open: true,
         message: "🚨 Error saving ticket to Firestore",
@@ -153,12 +156,31 @@ export default function TicketGenerator() {
     }
   };
 
+  const backgroundPaper = theme.palette.background.paper;
+
+  const ensureTicketImage = useCallback(async () => {
+    if (!ticketRef.current || !ticket) {
+      throw new Error("Ticket preview unavailable");
+    }
+
+    const raf =
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame
+        : (cb) => setTimeout(cb, 16);
+
+    await new Promise((resolve) => raf(() => raf(resolve)));
+
+    return toPng(ticketRef.current, {
+      backgroundColor: backgroundPaper,
+      pixelRatio: 2,
+      cacheBust: true,
+    });
+  }, [backgroundPaper, ticket]);
+
   const downloadTicket = async () => {
-    if (!ticketRef.current || !ticket) return;
     try {
-      const dataUrl = await toPng(ticketRef.current, {
-        backgroundColor: theme.palette.background.paper,
-      });
+      const dataUrl = await ensureTicketImage();
       const link = document.createElement("a");
       link.download = `${ticket.ticketId}.png`;
       link.href = dataUrl;
@@ -169,7 +191,7 @@ export default function TicketGenerator() {
         severity: "success",
       });
     } catch (err) {
-      logError(err, "TicketGenerator:download");
+      logError(err, { where: "TicketGenerator:download" });
       setSnackbar({
         open: true,
         message: "❌ Failed to generate image",
@@ -179,13 +201,11 @@ export default function TicketGenerator() {
   };
 
   const emailTicket = async () => {
-    if (!ticketRef.current || !ticket || !emailAddress) return;
+    if (!emailAddress) return;
     setEmailSending(true);
+    let succeeded = false;
     try {
-      await new Promise((res) => setTimeout(res, 250)); // Ensure DOM is rendered
-      const dataUrl = await toPng(ticketRef.current, {
-        backgroundColor: theme.palette.background.paper,
-      });
+      const dataUrl = await ensureTicketImage();
       const base64 = dataUrl.split(",")[1];
 
       const result = await apiEmailTicket(
@@ -199,9 +219,10 @@ export default function TicketGenerator() {
           message: "📧 Ticket emailed",
           severity: "success",
         });
+        succeeded = true;
       } else throw new Error("Failed");
     } catch (err) {
-      logError(err, "TicketGenerator:email");
+      logError(err, { where: "TicketGenerator:email" });
       setSnackbar({
         open: true,
         message: "❌ Email failed",
@@ -209,8 +230,10 @@ export default function TicketGenerator() {
       });
     } finally {
       setEmailSending(false);
-      setEmailDialogOpen(false);
-      setEmailAddress("");
+      if (succeeded) {
+        setEmailDialogOpen(false);
+        setEmailAddress("");
+      }
     }
   };
 
@@ -233,6 +256,27 @@ export default function TicketGenerator() {
     setOpenPreview(false);
     setTicket(null);
   };
+  const rawPickupTime =
+    ticket?.pickupTime ?? ticket?.pickupAt ?? ticket?.pickupTimestamp ?? null;
+  const computedPickupDate = rawPickupTime
+    ? formatDate(rawPickupTime)
+    : "N/A";
+  const computedPickupTime = rawPickupTime
+    ? formatDateTime(rawPickupTime, "h:mm A z")
+    : "N/A";
+  const pickupDateLabel =
+    computedPickupDate && computedPickupDate !== "N/A"
+      ? computedPickupDate
+      : ticket?.date || "N/A";
+  const pickupTimeLabel =
+    computedPickupTime && computedPickupTime !== "N/A"
+      ? computedPickupTime
+      : ticket?.time
+        ? `${ticket.time}`
+        : "N/A";
+  const passengerCountLabel =
+    ticket?.passengerCount ?? ticket?.passengercount ?? "N/A";
+
   return (
     <PageContainer maxWidth={500}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -341,12 +385,14 @@ export default function TicketGenerator() {
           sx={{
             bgcolor: "background.paper",
             borderRadius: 2,
-            p: 4,
-            width: 360,
+            p: { xs: 3, sm: 4 },
+            width: { xs: "calc(100vw - 32px)", sm: 360 },
             mx: "auto",
-            mt: "10vh",
+            mt: { xs: 4, sm: "10vh" },
             boxShadow: 24,
             outline: "none",
+            maxHeight: "90vh",
+            overflowY: "auto",
           }}
         >
           {ticket ? (
@@ -364,10 +410,11 @@ export default function TicketGenerator() {
                 }}
               >
                 <Box display="flex" justifyContent="center" mb={2}>
-                  <img
-                    src="./android-chrome-512x512.png"
+                  <Box
+                    component="img"
+                    src="/android-chrome-512x512.png"
                     alt="Lake Ride Pros"
-                    style={{ height: 48, objectFit: "contain" }}
+                    sx={{ height: 48, objectFit: "contain" }}
                   />
                 </Box>
                 <Typography variant="h6" fontWeight="bold" align="center">
@@ -378,13 +425,13 @@ export default function TicketGenerator() {
                   <strong>Passenger:</strong> {ticket.passenger}
                 </Typography>
                 <Typography>
-                  <strong>Passenger Count:</strong> {ticket.passengercount}
+                  <strong>Passenger Count:</strong> {passengerCountLabel}
                 </Typography>
                 <Typography>
-                  <strong>Date:</strong> {ticket.date}
+                  <strong>Date:</strong> {pickupDateLabel}
                 </Typography>
                 <Typography>
-                  <strong>Time:</strong> {ticket.time} CST
+                  <strong>Time:</strong> {pickupTimeLabel}
                 </Typography>
                 <Typography>
                   <strong>Pickup:</strong> {ticket.pickup}
@@ -409,7 +456,12 @@ export default function TicketGenerator() {
                   </Box>
                 </Box>
               </Box>
-              <Stack spacing={1} direction={{ xs: "column", sm: "row" }} mt={3}>
+              <Stack
+                spacing={1}
+                direction={{ xs: "column", sm: "row" }}
+                mt={3}
+                sx={{ width: "100%" }}
+              >
                 <Button variant="outlined" onClick={handlePrint}>
                   Print
                 </Button>

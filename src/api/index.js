@@ -29,7 +29,7 @@ export async function apiFetch(
       return responseType === "text" ? await res.text() : await res.json();
     } catch (err) {
       if (attempt === retries) {
-        logError(err, "apiFetch");
+        logError(err, { where: "apiFetch", url });
         throw err;
       }
     } finally {
