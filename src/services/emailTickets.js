@@ -1,29 +1,25 @@
 /* LRP Portal enhancement: email tickets via endpoint, 2025-10-03. */
 import { AppError, logError } from "@/services/errors";
+import { httpsCallable } from "firebase/functions";
+import { getLRPFunctions } from "@/utils/functions";
 
-/** Sends a payload of PNG dataUrls to a server endpoint (POST).
- * Env: VITE_TICKETS_EMAIL_ENDPOINT (optional). If missing, throw AppError.
+/** Sends a payload of PNG dataUrls to Firebase callable function.
+ * Uses Firebase callable function instead of direct HTTP endpoint.
  * payload: { to, subject, message, attachments: [{ filename, dataUrl }] }
  */
 export async function sendTicketsEmail(payload) {
-  const url = import.meta.env.VITE_TICKETS_EMAIL_ENDPOINT;
-  if (!url)
-    throw new AppError("Email endpoint not configured", {
-      code: "email_endpoint_missing",
-    });
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok)
-      throw new AppError(`Email request failed ${res.status}`, {
-        code: "email_failed",
-      });
-    return true;
+    const sendBulkEmail = httpsCallable(
+      getLRPFunctions(),
+      "sendBulkTicketsEmail",
+    );
+    const result = await sendBulkEmail(payload);
+    return result.data;
   } catch (err) {
     logError(err, { where: "sendTicketsEmail" });
-    throw err;
+    throw new AppError(
+      err?.message || "Failed to send bulk tickets email",
+      { code: "email_failed" },
+    );
   }
 }

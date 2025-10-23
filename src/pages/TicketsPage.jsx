@@ -75,10 +75,16 @@ export default function TicketsPage() {
     if (typeof window !== "undefined") {
       try {
         const url = new URL(window.location.href);
-        if (url.hash.startsWith("#/tickets")) {
+        // Clear query parameters that trigger auto-open
+        url.searchParams.delete("id");
+        url.searchParams.delete("ticketId");
+        // Clear hash-based query if present
+        if (url.hash.includes("?")) {
+          url.hash = url.hash.split("?")[0];
+        } else if (url.hash.startsWith("#/tickets")) {
           url.hash = "#/tickets";
-          window.history.replaceState(null, "", url.toString());
         }
+        window.history.replaceState(null, "", url.toString());
       } catch (err) {
         logError(err, { where: "TicketsPage.clearHash" });
       }

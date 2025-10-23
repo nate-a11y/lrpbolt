@@ -201,7 +201,15 @@ export default function TicketGenerator() {
   };
 
   const emailTicket = async () => {
-    if (!emailAddress) return;
+    const trimmedEmail = (emailAddress || "").trim();
+    if (!trimmedEmail || !trimmedEmail.includes("@")) {
+      setSnackbar({
+        open: true,
+        message: "❌ Please enter a valid email address",
+        severity: "error",
+      });
+      return;
+    }
     setEmailSending(true);
     let succeeded = false;
     try {
@@ -210,7 +218,7 @@ export default function TicketGenerator() {
 
       const result = await apiEmailTicket(
         ticket.ticketId,
-        emailAddress,
+        trimmedEmail,
         base64,
       );
       if (result.success) {
