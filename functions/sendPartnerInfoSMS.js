@@ -1,15 +1,16 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
-const twilio = require("twilio");
+
+let twilio = null;
+try {
+  twilio = require("twilio");
+} catch (error) {
+  logger.warn("sendPartnerInfoSMS:twilio-missing", error?.message || error);
+}
 
 const { admin } = require("./admin");
 
 const REGION = "us-central1";
-
-const TWILIO_ACCOUNT_SID = defineSecret("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = defineSecret("TWILIO_AUTH_TOKEN");
-const TWILIO_FROM = defineSecret("TWILIO_FROM");
 
 const SMS_FOOTER =
   "— Sent from a Lake Ride Pros automated number. Replies are not monitored.";
@@ -47,9 +48,9 @@ function buildMessage(item) {
   return message.length > 840 ? `${message.slice(0, 837)}…` : message;
 }
 
-function loadSecretValue(secret, label) {
+function loadSecretValue(envKey, label) {
   try {
-    const value = secret?.value?.();
+    const value = process.env[envKey];
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
     if (!trimmed) {
@@ -115,7 +116,6 @@ async function logSmsAttempt(payload) {
 exports.sendPartnerInfoSMS = onCall(
   {
     region: REGION,
-    secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM],
     cors: true,
     enforceAppCheck: false,
   },
@@ -156,7 +156,7 @@ exports.sendPartnerInfoSMS = onCall(
       throw new HttpsError("failed-precondition", "Item is inactive.");
     }
 
-    const from = loadSecretValue(TWILIO_FROM, "TWILIO_FROM");
+    const from = loadSecretValue("TWILIO_FROM", "TWILIO_FROM");
     if (!from) {
       throw new HttpsError(
         "failed-precondition",
@@ -170,12 +170,19 @@ exports.sendPartnerInfoSMS = onCall(
       );
     }
 
-    const accountSid = loadSecretValue(TWILIO_ACCOUNT_SID, "TWILIO_ACCOUNT_SID");
-    const authToken = loadSecretValue(TWILIO_AUTH_TOKEN, "TWILIO_AUTH_TOKEN");
+    const accountSid = loadSecretValue("TWILIO_ACCOUNT_SID", "TWILIO_ACCOUNT_SID");
+    const authToken = loadSecretValue("TWILIO_AUTH_TOKEN", "TWILIO_AUTH_TOKEN");
     if (!accountSid || !authToken) {
       throw new HttpsError(
         "failed-precondition",
         "Missing Twilio credentials. Verify bound secrets.",
+      );
+    }
+
+    if (!twilio) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Twilio client library is not available.",
       );
     }
 
