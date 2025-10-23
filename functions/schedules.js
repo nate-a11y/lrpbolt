@@ -106,12 +106,7 @@ const dailyDropIfLiveRides = onSchedule(
   { region: REGION, schedule: "0 12 * * *", timeZone: TIME_ZONE },
   async () => {
     try {
-      const liveSnapshot = await db.collection("liveRides").limit(1).get();
-      if (liveSnapshot.empty) {
-        logger.info("dailyDropIfLiveRides skipped", { reason: "no-live-rides" });
-        return;
-      }
-      await runDropDaily("conditional-schedule");
+      await runDropDaily("noon-schedule");
     } catch (error) {
       logger.error("dailyDropIfLiveRides error", error && (error.stack || error.message || error));
     }

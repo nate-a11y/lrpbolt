@@ -4,8 +4,16 @@ self.addEventListener("push", (event) => {
     const data = event.data ? event.data.json() : {};
     const notification = data.notification || {};
     const title = notification.title || "Lake Ride Pros";
+    const body = notification.body || "";
+    const icon = notification.icon || data.data?.icon;
+    const url = data.data?.url || "/notifications";
+
     event.waitUntil(
-      self.registration.showNotification(title, notification),
+      self.registration.showNotification(title, {
+        body,
+        icon,
+        data: { url, ...data.data },
+      }),
     );
   } catch (error) {
     void error;
@@ -14,5 +22,6 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow("/notifications"));
+  const url = event.notification.data?.url || "/notifications";
+  event.waitUntil(clients.openWindow(url));
 });
