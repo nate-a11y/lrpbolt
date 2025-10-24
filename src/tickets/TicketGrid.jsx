@@ -12,8 +12,8 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import dayjs from "dayjs";
 
+import dayjs from "@/utils/dayjsSetup.js";
 import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
 import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
