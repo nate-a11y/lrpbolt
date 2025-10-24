@@ -536,12 +536,7 @@ function TicketGrid({
 
   return (
     <Box sx={{ width: "100%", minHeight: 320 }}>
-      <Stack
-        direction="row"
-        spacing={2}
-        alignItems="center"
-        sx={{ mb: 2 }}
-      >
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           Filter:
         </Typography>

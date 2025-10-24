@@ -126,7 +126,10 @@ function App() {
     };
     window.addEventListener("lrp:navigate-to-ticket", handleTicketNavigation);
     return () => {
-      window.removeEventListener("lrp:navigate-to-ticket", handleTicketNavigation);
+      window.removeEventListener(
+        "lrp:navigate-to-ticket",
+        handleTicketNavigation,
+      );
     };
   }, [navigate]);
 

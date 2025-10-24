@@ -292,7 +292,9 @@ export default function RideQueueGrid() {
             state: TRIP_STATES.QUEUED,
             status: rest?.status ?? _raw?.status ?? TRIP_STATES.QUEUED,
           };
-          batch.set(doc(db, COLLECTIONS.RIDE_QUEUE, id), payload, { merge: true });
+          batch.set(doc(db, COLLECTIONS.RIDE_QUEUE, id), payload, {
+            merge: true,
+          });
         });
         await batch.commit();
         return;

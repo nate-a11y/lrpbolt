@@ -211,7 +211,9 @@ export default function LiveRidesGrid() {
             state: TRIP_STATES.OPEN,
             status: rest?.status ?? _raw?.status ?? TRIP_STATES.OPEN,
           };
-          batch.set(doc(db, COLLECTIONS.LIVE_RIDES, id), payload, { merge: true });
+          batch.set(doc(db, COLLECTIONS.LIVE_RIDES, id), payload, {
+            merge: true,
+          });
         });
         await batch.commit();
         return;
