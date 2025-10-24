@@ -43,20 +43,16 @@ export default defineConfig({
         // Prevent hoisting to preserve module initialization order
         hoistTransitiveImports: false,
         manualChunks: (id) => {
-          // React + Emotion must be in same chunk to prevent initialization errors
+          // React + Emotion + MUI must be in same chunk to prevent initialization errors
           if (id.includes("node_modules/react") ||
               id.includes("node_modules/react-dom") ||
               id.includes("node_modules/react-is") ||
               id.includes("node_modules/scheduler") ||
               id.includes("node_modules/@emotion") ||
-              id.includes("node_modules/hoist-non-react-statics")) {
-            return "react-vendor";
-          }
-
-          // MUI Core
-          if (id.includes("node_modules/@mui/material") ||
+              id.includes("node_modules/hoist-non-react-statics") ||
+              id.includes("node_modules/@mui/material") ||
               id.includes("node_modules/@mui/system")) {
-            return "mui-core";
+            return "react-vendor";
           }
 
           // Large libraries that should be separate chunks
