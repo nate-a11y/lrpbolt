@@ -49,9 +49,10 @@ export default defineConfig({
             return "react-router";
           }
 
-          // MUI Core (Material-UI base)
+          // MUI Core (Material-UI base) - bundled with Emotion to prevent initialization errors
           if (id.includes("node_modules/@mui/material") ||
-              id.includes("node_modules/@mui/system")) {
+              id.includes("node_modules/@mui/system") ||
+              id.includes("node_modules/@emotion")) {
             return "mui-core";
           }
 
@@ -73,11 +74,6 @@ export default defineConfig({
           // MUI X Charts
           if (id.includes("node_modules/@mui/x-charts")) {
             return "mui-charts";
-          }
-
-          // Emotion (styling library used by MUI)
-          if (id.includes("node_modules/@emotion")) {
-            return "emotion";
           }
 
           // Firebase
