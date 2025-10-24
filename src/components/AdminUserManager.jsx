@@ -192,7 +192,7 @@ export default function AdminUserManager() {
         ),
       },
     ],
-    [isAdmin],
+    [isAdmin, handleDeleteClick],
   );
 
   const { dedupeRows } = useGridDoctor({

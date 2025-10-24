@@ -11,7 +11,6 @@ import {
   where,
   limit,
   setDoc,
-  deleteDoc,
 } from "firebase/firestore";
 
 import { db } from "./firebaseInit";
