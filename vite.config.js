@@ -18,6 +18,36 @@ export default defineConfig({
     alias: [
       { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
       { find: "src", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
+      {
+        find:
+          "@mui/x-data-grid/hooks/features/virtualization/gridFocusedVirtualCellSelector.js",
+        replacement: fileURLToPath(
+          new URL(
+            "./src/muiOverrides/gridFocusedVirtualCellSelector.js",
+            import.meta.url,
+          ),
+        ),
+      },
+      {
+        find:
+          "@mui/x-data-grid/modern/hooks/features/virtualization/gridFocusedVirtualCellSelector.js",
+        replacement: fileURLToPath(
+          new URL(
+            "./src/muiOverrides/gridFocusedVirtualCellSelector.js",
+            import.meta.url,
+          ),
+        ),
+      },
+      {
+        find:
+          "@mui/x-data-grid/node/hooks/features/virtualization/gridFocusedVirtualCellSelector.js",
+        replacement: fileURLToPath(
+          new URL(
+            "./src/muiOverrides/gridFocusedVirtualCellSelector.js",
+            import.meta.url,
+          ),
+        ),
+      },
     ],
     dedupe: ["react", "react-dom", "react-is", "use-sync-external-store"],
     extensions: [".js", ".jsx"],
