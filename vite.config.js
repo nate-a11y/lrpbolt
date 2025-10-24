@@ -25,7 +25,7 @@ export default defineConfig({
         ),
       },
     ],
-    dedupe: ["react", "react-dom"],
+    dedupe: ["react", "react-dom", "react-is"],
     extensions: [".js", ".jsx"],
   },
   build: {
