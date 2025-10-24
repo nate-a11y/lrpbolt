@@ -41,18 +41,19 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         manualChunks: (id) => {
-          // React core libraries
-          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+          // React core libraries + Emotion (Emotion depends on React hooks, must load together)
+          if (id.includes("node_modules/react") ||
+              id.includes("node_modules/react-dom") ||
+              id.includes("node_modules/@emotion")) {
             return "react-core";
           }
           if (id.includes("node_modules/react-router-dom")) {
             return "react-router";
           }
 
-          // MUI Core (Material-UI base) - bundled with Emotion to prevent initialization errors
+          // MUI Core (Material-UI base)
           if (id.includes("node_modules/@mui/material") ||
-              id.includes("node_modules/@mui/system") ||
-              id.includes("node_modules/@emotion")) {
+              id.includes("node_modules/@mui/system")) {
             return "mui-core";
           }
 
