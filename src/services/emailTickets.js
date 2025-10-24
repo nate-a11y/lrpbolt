@@ -1,6 +1,7 @@
 /* LRP Portal enhancement: email tickets via endpoint, 2025-10-03. */
-import { AppError, logError } from "@/services/errors";
 import { httpsCallable } from "firebase/functions";
+
+import { AppError, logError } from "@/services/errors";
 import { getLRPFunctions } from "@/utils/functions";
 
 /** Sends a payload of PNG dataUrls to Firebase callable function.
