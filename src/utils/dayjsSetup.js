@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-import dayjs from "dayjs/esm/index.js";
+import dayjsImport from "dayjs/esm/index.js";
 import utc from "dayjs/esm/plugin/utc/index.js";
 import timezone from "dayjs/esm/plugin/timezone/index.js";
 import isSameOrBefore from "dayjs/esm/plugin/isSameOrBefore/index.js";
@@ -10,6 +10,12 @@ import localizedFormat from "dayjs/esm/plugin/localizedFormat/index.js";
 import customParseFormat from "dayjs/esm/plugin/customParseFormat/index.js";
 import duration from "dayjs/esm/plugin/duration/index.js";
 import relativeTime from "dayjs/esm/plugin/relativeTime/index.js";
+
+// Ensure dayjs is defined before setup
+const dayjs = dayjsImport;
+if (!dayjs) {
+  throw new Error("dayjs failed to load");
+}
 
 if (!dayjs.__lrpSetupDone) {
   dayjs.extend(utc);

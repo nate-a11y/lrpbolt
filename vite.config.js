@@ -75,6 +75,11 @@ export default defineConfig({
             return "three";
           }
 
+          // dayjs must be in vendor chunk with proper initialization
+          if (id.includes("node_modules/dayjs")) {
+            return "vendor";
+          }
+
           // Other vendors
           if (id.includes("node_modules")) {
             return "vendor";
