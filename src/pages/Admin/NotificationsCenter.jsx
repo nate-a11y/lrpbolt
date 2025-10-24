@@ -305,7 +305,9 @@ export default function Notifications() {
         } else {
           const emailRecipients = recipients.filter((u) => u?.email);
           results = await Promise.allSettled(
-            emailRecipients.map((u) => sendPortalNotification({ email: u.email, ...base })),
+            emailRecipients.map((u) =>
+              sendPortalNotification({ email: u.email, ...base }),
+            ),
           );
         }
       } else {
@@ -325,17 +327,25 @@ export default function Notifications() {
       const failed = results.filter((r) => r.status === "rejected").length;
 
       if (failed === 0) {
-        show(`Notification sent to ${succeeded} recipient${succeeded === 1 ? "" : "s"}`, "success");
+        show(
+          `Notification sent to ${succeeded} recipient${succeeded === 1 ? "" : "s"}`,
+          "success",
+        );
         resetComposer(false);
       } else if (succeeded > 0) {
-        show(`Partially sent: ${succeeded} succeeded, ${failed} failed`, "warning");
+        show(
+          `Partially sent: ${succeeded} succeeded, ${failed} failed`,
+          "warning",
+        );
         logError(new Error("Partial send failure"), {
           where: "Notifications",
           action: "handleSend",
           mode,
           succeeded,
           failed,
-          errors: results.filter((r) => r.status === "rejected").map((r) => r.reason?.message || r.reason)
+          errors: results
+            .filter((r) => r.status === "rejected")
+            .map((r) => r.reason?.message || r.reason),
         });
       } else {
         const firstError = results.find((r) => r.status === "rejected")?.reason;
@@ -344,7 +354,9 @@ export default function Notifications() {
           where: "Notifications",
           action: "handleSend",
           mode,
-          errors: results.filter((r) => r.status === "rejected").map((r) => r.reason?.message || r.reason)
+          errors: results
+            .filter((r) => r.status === "rejected")
+            .map((r) => r.reason?.message || r.reason),
         });
       }
     } catch (err) {

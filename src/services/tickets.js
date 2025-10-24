@@ -179,10 +179,14 @@ async function getNextIncidentNumber() {
         nextNumber = (counterDoc.data()?.lastIncidentNumber || 0) + 1;
       }
 
-      transaction.set(counterRef, {
-        lastIncidentNumber: nextNumber,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      transaction.set(
+        counterRef,
+        {
+          lastIncidentNumber: nextNumber,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
 
       return `INC-${String(nextNumber).padStart(4, "0")}`;
     });

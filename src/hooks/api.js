@@ -461,7 +461,10 @@ export async function emailTicket(ticketId, email, attachment) {
     const { getLRPFunctions } = await import("../utils/functions.js");
     const { httpsCallable } = await import("firebase/functions");
 
-    const sendEmail = httpsCallable(getLRPFunctions(), "sendShuttleTicketEmail");
+    const sendEmail = httpsCallable(
+      getLRPFunctions(),
+      "sendShuttleTicketEmail",
+    );
     const result = await sendEmail({
       ticketId,
       email: trimmedEmail,

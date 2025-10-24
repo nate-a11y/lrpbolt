@@ -605,7 +605,9 @@ export default function TimeClock({ setIsTracking }) {
             sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
             <Stack spacing={0.5}>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>⏰ Time Clock</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                ⏰ Time Clock
+              </Typography>
               <Typography variant="body2" color="text.secondary">
                 Start a session to begin tracking your time.
               </Typography>

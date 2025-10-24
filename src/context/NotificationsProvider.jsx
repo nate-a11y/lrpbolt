@@ -60,9 +60,7 @@ function NotificationsProvider({ children }) {
     if (import.meta.env.VITE_ENABLE_FCM !== "true") return undefined;
     return onForegroundMessageSafe((payload) => {
       const title =
-        payload.notification?.title ||
-        payload.data?.title ||
-        "Notification";
+        payload.notification?.title || payload.data?.title || "Notification";
       const body =
         payload.notification?.body ||
         payload.data?.body ||

@@ -266,9 +266,7 @@ export default function TicketGenerator() {
   };
   const rawPickupTime =
     ticket?.pickupTime ?? ticket?.pickupAt ?? ticket?.pickupTimestamp ?? null;
-  const computedPickupDate = rawPickupTime
-    ? formatDate(rawPickupTime)
-    : "N/A";
+  const computedPickupDate = rawPickupTime ? formatDate(rawPickupTime) : "N/A";
   const computedPickupTime = rawPickupTime
     ? formatDateTime(rawPickupTime, "h:mm A z")
     : "N/A";

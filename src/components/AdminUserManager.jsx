@@ -27,7 +27,11 @@ import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { db } from "../utils/firebaseInit";
-import { createUser, updateUser, deleteUser } from "../utils/firestoreService.js";
+import {
+  createUser,
+  updateUser,
+  deleteUser,
+} from "../utils/firestoreService.js";
 import logError from "../utils/logError.js";
 import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
@@ -132,8 +136,7 @@ export default function AdminUserManager() {
       });
     } catch (err) {
       logError(err, "AdminUserManager:deleteUser");
-      const errorMessage =
-        err?.message || err?.toString() || "Delete failed";
+      const errorMessage = err?.message || err?.toString() || "Delete failed";
       setSnackbar({
         open: true,
         message: errorMessage,
@@ -482,7 +485,10 @@ export default function AdminUserManager() {
 
         {/* Add Single User Section */}
         <Stack spacing={2}>
-          <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+          <Typography
+            variant="h6"
+            sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+          >
             Add New User
           </Typography>
           <Stack
@@ -528,7 +534,10 @@ export default function AdminUserManager() {
               onChange={(e) =>
                 setNewUser((u) => ({ ...u, access: e.target.value }))
               }
-              sx={{ minWidth: { xs: "100%", sm: 160 }, flex: { sm: "0 0 160px" } }}
+              sx={{
+                minWidth: { xs: "100%", sm: 160 },
+                flex: { sm: "0 0 160px" },
+              }}
               helperText="Shootout = only Shootout Ride & Time Tracker"
               size="small"
             >
@@ -551,7 +560,10 @@ export default function AdminUserManager() {
 
         {/* Bulk Add Users Section */}
         <Stack spacing={2}>
-          <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+          <Typography
+            variant="h6"
+            sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+          >
             Bulk Add Users (CSV)
           </Typography>
           <TextField
@@ -576,91 +588,94 @@ export default function AdminUserManager() {
 
         {/* User List Section */}
         <Stack spacing={2}>
-          <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+          <Typography
+            variant="h6"
+            sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+          >
             User List
           </Typography>
           {isSmall ? (
-          <Stack spacing={1}>
-            {rows.map((r) => (
-              <Stack
-                key={r.id}
-                spacing={1}
-                sx={{
-                  p: 1,
-                  border: 1,
-                  borderColor: "divider",
-                  borderRadius: 1,
-                }}
-              >
-                <TextField
-                  label="Name"
-                  value={r.name}
-                  disabled={!isAdmin}
-                  onChange={(e) =>
-                    handleMobileFieldChange(r.id, "name", e.target.value)
-                  }
-                  onBlur={() => handleMobileUpdate(r.id)}
-                />
-                <TextField label="Email" value={r.email} disabled />
-                <TextField
-                  label="Phone"
-                  value={r.phone}
-                  disabled={!isAdmin}
-                  onChange={(e) =>
-                    handleMobileFieldChange(r.id, "phone", e.target.value)
-                  }
-                  onBlur={() => handleMobileUpdate(r.id)}
-                />
-                <TextField
-                  label="Access"
-                  select
-                  value={r.access}
-                  disabled={!isAdmin}
-                  onChange={(e) => {
-                    handleMobileFieldChange(r.id, "access", e.target.value);
-                    handleMobileUpdate(r.id);
+            <Stack spacing={1}>
+              {rows.map((r) => (
+                <Stack
+                  key={r.id}
+                  spacing={1}
+                  sx={{
+                    p: 1,
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: 1,
                   }}
                 >
-                  {ROLES.map((r0) => (
-                    <MenuItem key={r0} value={r0}>
-                      {ROLE_LABELS[r0]}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteIcon />}
-                  onClick={() => handleDeleteClick(r)}
-                  disabled={!isAdmin}
-                  fullWidth
-                >
-                  Delete User
-                </Button>
-              </Stack>
-            ))}
-          </Stack>
-        ) : (
-          <Paper sx={{ width: "100%" }}>
-            <SmartAutoGrid
-              rows={rows || []}
-              columnsCompat={columns}
-              autoHeight
-              loading={loading}
-              checkboxSelection
-              disableRowSelectionOnClick
-              processRowUpdate={handleProcessRowUpdate}
-              isCellEditable={(params) => isAdmin && params.field !== "email"}
-              pageSizeOptions={[5, 10, 25]}
-              getRowId={(r) =>
-                r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
-              }
-              experimentalFeatures={{ newEditingApi: true }}
-              columnVisibilityModel={
-                isSmall ? { access: false, phone: false } : undefined
-              }
-            />
-          </Paper>
+                  <TextField
+                    label="Name"
+                    value={r.name}
+                    disabled={!isAdmin}
+                    onChange={(e) =>
+                      handleMobileFieldChange(r.id, "name", e.target.value)
+                    }
+                    onBlur={() => handleMobileUpdate(r.id)}
+                  />
+                  <TextField label="Email" value={r.email} disabled />
+                  <TextField
+                    label="Phone"
+                    value={r.phone}
+                    disabled={!isAdmin}
+                    onChange={(e) =>
+                      handleMobileFieldChange(r.id, "phone", e.target.value)
+                    }
+                    onBlur={() => handleMobileUpdate(r.id)}
+                  />
+                  <TextField
+                    label="Access"
+                    select
+                    value={r.access}
+                    disabled={!isAdmin}
+                    onChange={(e) => {
+                      handleMobileFieldChange(r.id, "access", e.target.value);
+                      handleMobileUpdate(r.id);
+                    }}
+                  >
+                    {ROLES.map((r0) => (
+                      <MenuItem key={r0} value={r0}>
+                        {ROLE_LABELS[r0]}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={() => handleDeleteClick(r)}
+                    disabled={!isAdmin}
+                    fullWidth
+                  >
+                    Delete User
+                  </Button>
+                </Stack>
+              ))}
+            </Stack>
+          ) : (
+            <Paper sx={{ width: "100%" }}>
+              <SmartAutoGrid
+                rows={rows || []}
+                columnsCompat={columns}
+                autoHeight
+                loading={loading}
+                checkboxSelection
+                disableRowSelectionOnClick
+                processRowUpdate={handleProcessRowUpdate}
+                isCellEditable={(params) => isAdmin && params.field !== "email"}
+                pageSizeOptions={[5, 10, 25]}
+                getRowId={(r) =>
+                  r?.id ?? r?.uid ?? r?._id ?? r?.docId ?? JSON.stringify(r)
+                }
+                experimentalFeatures={{ newEditingApi: true }}
+                columnVisibilityModel={
+                  isSmall ? { access: false, phone: false } : undefined
+                }
+              />
+            </Paper>
           )}
         </Stack>
       </Stack>

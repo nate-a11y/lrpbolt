@@ -18,9 +18,8 @@ export async function sendTicketsEmail(payload) {
     return result.data;
   } catch (err) {
     logError(err, { where: "sendTicketsEmail" });
-    throw new AppError(
-      err?.message || "Failed to send bulk tickets email",
-      { code: "email_failed" },
-    );
+    throw new AppError(err?.message || "Failed to send bulk tickets email", {
+      code: "email_failed",
+    });
   }
 }

@@ -132,10 +132,7 @@ export default function CalendarHub() {
             backdropFilter: "saturate(1.2) blur(6px)",
           }}
         >
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: 700, mb: 1 }}
-          >
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
             📅 Ride &amp; Vehicle Calendar
           </Typography>
 
