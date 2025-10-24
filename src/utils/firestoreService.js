@@ -11,10 +11,12 @@ import {
   where,
   limit,
   setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
 import { db } from "./firebaseInit";
 import logError from "./logError.js";
+import { callDeleteUser } from "./functions.js";
 
 /**
  * Normalize a shootoutStats document snapshot.
@@ -147,4 +149,23 @@ export async function updateUser({ email, access, name, phone, active }) {
   if (typeof active === "boolean") patch.active = active;
   patch.updatedAt = new Date();
   await updateDoc(doc(db, COLL, lcEmail), patch);
+}
+
+/**
+ * Deletes a user from both Firestore and Firebase Authentication.
+ * Uses a Firebase callable function that requires admin privileges.
+ * @param {string} email - The user's email address
+ * @returns {Promise<{success: boolean, email: string, deletedAuth: boolean, message: string}>}
+ */
+export async function deleteUser(email) {
+  const lcEmail = (email || "").toLowerCase();
+  try {
+    // Call the Firebase callable function to delete the user
+    // This will delete from both Firestore and Firebase Auth
+    const result = await callDeleteUser(lcEmail);
+    return result;
+  } catch (error) {
+    logError(error, "firestoreService:deleteUser");
+    throw error;
+  }
 }

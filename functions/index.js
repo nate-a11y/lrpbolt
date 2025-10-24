@@ -72,6 +72,7 @@ attach(
   "./notifyDriverOnClaim",
   "notifyDriverOnClaimUpdated",
 );
+attach("deleteUser", "./deleteUser", "deleteUser");
 
 // Legacy aliases → canonical v2 implementations
 attach("sendPortalNotification", "./sendPortalNotificationV2", "sendPortalNotificationV2");

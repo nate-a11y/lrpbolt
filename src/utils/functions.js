@@ -24,3 +24,9 @@ export async function callDropDailyRidesNow(payload = {}) {
   const res = await fn(payload);
   return res.data; // { ok, dryRun, stats }
 }
+
+export async function callDeleteUser(email) {
+  const fn = httpsCallable(getLRPFunctions(), "deleteUser");
+  const res = await fn({ email });
+  return res.data; // { success, email, deletedAuth, message }
+}

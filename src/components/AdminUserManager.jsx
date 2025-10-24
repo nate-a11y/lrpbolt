@@ -12,7 +12,14 @@ import {
   Stack,
   useMediaQuery,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  IconButton,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { doc, setDoc } from "firebase/firestore";
 
 import { ROLES, ROLE_LABELS } from "../constants/roles";
@@ -20,7 +27,7 @@ import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { db } from "../utils/firebaseInit";
-import { createUser, updateUser } from "../utils/firestoreService.js";
+import { createUser, updateUser, deleteUser } from "../utils/firestoreService.js";
 import logError from "../utils/logError.js";
 import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
@@ -70,6 +77,70 @@ export default function AdminUserManager() {
     severity: "success",
   });
 
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    email: "",
+    name: "",
+  });
+
+  // 🗑️ Delete user handlers
+  const handleDeleteClick = (row) => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      return;
+    }
+    setDeleteDialog({
+      open: true,
+      email: row.email,
+      name: row.name,
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({
+      open: false,
+      email: "",
+      name: "",
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      handleDeleteCancel();
+      return;
+    }
+
+    const { email, name } = deleteDialog;
+    try {
+      const result = await deleteUser(email);
+      setSnackbar({
+        open: true,
+        message: result.message || `User ${name} deleted successfully`,
+        severity: "success",
+      });
+    } catch (err) {
+      logError(err, "AdminUserManager:deleteUser");
+      const errorMessage =
+        err?.message || err?.toString() || "Delete failed";
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
+    } finally {
+      handleDeleteCancel();
+    }
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -100,6 +171,25 @@ export default function AdminUserManager() {
         editable: isAdmin,
         type: "singleSelect",
         valueOptions: ROLES,
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 100,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params) => (
+          <IconButton
+            color="error"
+            onClick={() => handleDeleteClick(params.row)}
+            disabled={!isAdmin}
+            size="small"
+            title="Delete user"
+          >
+            <DeleteIcon />
+          </IconButton>
+        ),
       },
     ],
     [isAdmin],
@@ -479,6 +569,16 @@ export default function AdminUserManager() {
                     </MenuItem>
                   ))}
                 </TextField>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => handleDeleteClick(r)}
+                  disabled={!isAdmin}
+                  fullWidth
+                >
+                  Delete User
+                </Button>
               </Stack>
             ))}
           </Stack>
@@ -520,6 +620,43 @@ export default function AdminUserManager() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">Confirm Delete User</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete user{" "}
+            <strong>{deleteDialog.name}</strong> ({deleteDialog.email})?
+            <br />
+            <br />
+            This will permanently remove:
+            <ul>
+              <li>User data from the database</li>
+              <li>Firebase authentication account</li>
+              <li>All associated records</li>
+            </ul>
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }
