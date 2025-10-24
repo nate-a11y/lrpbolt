@@ -12,7 +12,14 @@ import {
   Stack,
   useMediaQuery,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  IconButton,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { doc, setDoc } from "firebase/firestore";
 
 import { ROLES, ROLE_LABELS } from "../constants/roles";
@@ -20,7 +27,7 @@ import { subscribeUserAccess } from "../hooks/api";
 import { useDriver } from "../context/DriverContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { db } from "../utils/firebaseInit";
-import { createUser, updateUser } from "../utils/firestoreService.js";
+import { createUser, updateUser, deleteUser } from "../utils/firestoreService.js";
 import logError from "../utils/logError.js";
 import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
@@ -70,6 +77,70 @@ export default function AdminUserManager() {
     severity: "success",
   });
 
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    email: "",
+    name: "",
+  });
+
+  // 🗑️ Delete user handlers
+  const handleDeleteClick = (row) => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      return;
+    }
+    setDeleteDialog({
+      open: true,
+      email: row.email,
+      name: row.name,
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialog({
+      open: false,
+      email: "",
+      name: "",
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!isAdmin) {
+      setSnackbar({
+        open: true,
+        message: "Admin access required",
+        severity: "error",
+      });
+      handleDeleteCancel();
+      return;
+    }
+
+    const { email, name } = deleteDialog;
+    try {
+      const result = await deleteUser(email);
+      setSnackbar({
+        open: true,
+        message: result.message || `User ${name} deleted successfully`,
+        severity: "success",
+      });
+    } catch (err) {
+      logError(err, "AdminUserManager:deleteUser");
+      const errorMessage =
+        err?.message || err?.toString() || "Delete failed";
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
+    } finally {
+      handleDeleteCancel();
+    }
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -100,6 +171,25 @@ export default function AdminUserManager() {
         editable: isAdmin,
         type: "singleSelect",
         valueOptions: ROLES,
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 100,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (params) => (
+          <IconButton
+            color="error"
+            onClick={() => handleDeleteClick(params.row)}
+            disabled={!isAdmin}
+            size="small"
+            title="Delete user"
+          >
+            <DeleteIcon />
+          </IconButton>
+        ),
       },
     ],
     [isAdmin],
@@ -357,81 +447,136 @@ export default function AdminUserManager() {
   };
 
   return (
-    <Card sx={{ p: 2, m: "auto", maxWidth: 900 }}>
-      <Stack spacing={2}>
-        {!isAdmin && (
-          <Typography color="error">
-            Admin access required to modify users
-          </Typography>
-        )}
-
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-          <TextField
-            label="Name"
-            value={newUser.name}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, name: e.target.value }))
-            }
-            fullWidth
-          />
-          <TextField
-            label="Email"
-            value={newUser.email}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, email: e.target.value }))
-            }
-            fullWidth
-          />
-          <TextField
-            label="Phone"
-            value={newUser.phone}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, phone: e.target.value }))
-            }
-            fullWidth
-          />
-          <TextField
-            label="Access"
-            select
-            value={newUser.access}
-            onChange={(e) =>
-              setNewUser((u) => ({ ...u, access: e.target.value }))
-            }
-            sx={{ minWidth: 160 }}
-            helperText="Shootout = only Shootout Ride & Time Tracker"
+    <Card sx={{ p: { xs: 2, sm: 3 }, m: "auto", maxWidth: 1200 }}>
+      <Stack spacing={3}>
+        {/* Page Header */}
+        <Stack spacing={1}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{
+              fontWeight: 600,
+              fontSize: { xs: "1.75rem", sm: "2.125rem" },
+            }}
           >
-            {ROLES.map((r) => (
-              <MenuItem key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </MenuItem>
-            ))}
-          </TextField>
+            User Manager
+          </Typography>
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
+            Manage user accounts and permissions. Add new users, update access
+            levels, and remove accounts. All changes sync with Firebase
+            Authentication.
+          </Typography>
+          {!isAdmin && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Admin access required to modify users
+            </Alert>
+          )}
+        </Stack>
+
+        {/* Add Single User Section */}
+        <Stack spacing={2}>
+          <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+            Add New User
+          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems={{ xs: "stretch", sm: "flex-start" }}
+            flexWrap="wrap"
+          >
+            <TextField
+              label="Name"
+              value={newUser.name}
+              onChange={(e) =>
+                setNewUser((u) => ({ ...u, name: e.target.value }))
+              }
+              fullWidth
+              sx={{ flex: { sm: "1 1 200px" } }}
+              size="small"
+            />
+            <TextField
+              label="Email"
+              value={newUser.email}
+              onChange={(e) =>
+                setNewUser((u) => ({ ...u, email: e.target.value }))
+              }
+              fullWidth
+              sx={{ flex: { sm: "1 1 200px" } }}
+              size="small"
+            />
+            <TextField
+              label="Phone"
+              value={newUser.phone}
+              onChange={(e) =>
+                setNewUser((u) => ({ ...u, phone: e.target.value }))
+              }
+              fullWidth
+              sx={{ flex: { sm: "1 1 150px" } }}
+              size="small"
+            />
+            <TextField
+              label="Access"
+              select
+              value={newUser.access}
+              onChange={(e) =>
+                setNewUser((u) => ({ ...u, access: e.target.value }))
+              }
+              sx={{ minWidth: { xs: "100%", sm: 160 }, flex: { sm: "0 0 160px" } }}
+              helperText="Shootout = only Shootout Ride & Time Tracker"
+              size="small"
+            >
+              {ROLES.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              variant="contained"
+              onClick={handleManualAdd}
+              disabled={!isAdmin}
+              sx={{ minWidth: { xs: "100%", sm: "120px" } }}
+            >
+              Add User
+            </Button>
+          </Stack>
+        </Stack>
+
+        {/* Bulk Add Users Section */}
+        <Stack spacing={2}>
+          <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+            Bulk Add Users (CSV)
+          </Typography>
+          <TextField
+            label="Users CSV"
+            placeholder="Name,email,phone,access"
+            multiline
+            minRows={4}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            helperText="Format: Name,email,phone,access (one user per line)"
+            size="small"
+          />
           <Button
             variant="contained"
-            onClick={handleManualAdd}
+            onClick={handleAddUsers}
             disabled={!isAdmin}
+            sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }}
           >
-            Add User
+            Add Users
           </Button>
         </Stack>
 
-        <TextField
-          label="Users CSV"
-          placeholder="Name,email,phone,access"
-          multiline
-          minRows={4}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <Button
-          variant="contained"
-          onClick={handleAddUsers}
-          disabled={!isAdmin}
-        >
-          Add Users
-        </Button>
-
-        {isSmall ? (
+        {/* User List Section */}
+        <Stack spacing={2}>
+          <Typography variant="h6" sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+            User List
+          </Typography>
+          {isSmall ? (
           <Stack spacing={1}>
             {rows.map((r) => (
               <Stack
@@ -479,6 +624,16 @@ export default function AdminUserManager() {
                     </MenuItem>
                   ))}
                 </TextField>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => handleDeleteClick(r)}
+                  disabled={!isAdmin}
+                  fullWidth
+                >
+                  Delete User
+                </Button>
               </Stack>
             ))}
           </Stack>
@@ -503,7 +658,8 @@ export default function AdminUserManager() {
               }
             />
           </Paper>
-        )}
+          )}
+        </Stack>
       </Stack>
 
       <Snackbar
@@ -520,6 +676,43 @@ export default function AdminUserManager() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">Confirm Delete User</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete user{" "}
+            <strong>{deleteDialog.name}</strong> ({deleteDialog.email})?
+            <br />
+            <br />
+            This will permanently remove:
+            <ul>
+              <li>User data from the database</li>
+              <li>Firebase authentication account</li>
+              <li>All associated records</li>
+            </ul>
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }
