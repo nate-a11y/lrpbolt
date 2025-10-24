@@ -13,10 +13,11 @@ import {
   ListItemText,
   Toolbar,
   Tooltip,
-  useMediaQuery,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const APP_BAR_HEIGHT = 64;
 const RAIL_WIDTH = 72; // collapsed

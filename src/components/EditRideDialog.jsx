@@ -8,7 +8,6 @@ import {
   Button,
   Stack,
   TextField,
-  useMediaQuery,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -17,6 +16,7 @@ import { useTheme } from "@mui/material/styles";
 import { isValidDayjs, tsToDayjs } from "../utils/dates"; // extended dayjs with tz
 import { patchRide } from "../services/rides";
 import useAuth from "../hooks/useAuth";
+import useMediaQuery from "../hooks/useMediaQuery";
 import { RIDE_FIELDS } from "../constants/schemaFields";
 
 import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";

@@ -10,7 +10,6 @@ import {
   Alert,
   Typography,
   Stack,
-  useMediaQuery,
   MenuItem,
   Dialog,
   DialogTitle,
@@ -35,6 +34,7 @@ import {
 import logError from "../utils/logError.js";
 import { warnMissingFields } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";
 

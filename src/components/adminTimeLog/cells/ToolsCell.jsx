@@ -1,8 +1,10 @@
 /* Proprietary and confidential. See LICENSE. */
-import { Stack, IconButton, Tooltip, useMediaQuery } from "@mui/material";
+import { Stack, IconButton, Tooltip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+
+import useMediaQuery from "../../../hooks/useMediaQuery";
 
 export default function ToolsCell({ row, onEdit, onDelete }) {
   const theme = useTheme();

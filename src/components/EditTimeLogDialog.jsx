@@ -8,7 +8,6 @@ import {
   Button,
   Stack,
   TextField,
-  useMediaQuery,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -18,6 +17,8 @@ import { updateTimeLog } from "@/services/fs";
 
 import dayjs, { isValidDayjs } from "../utils/dates";
 import { TIMELOG_FIELDS } from "../constants/schemaFields";
+import useMediaQuery from "../hooks/useMediaQuery";
+import logError from "../utils/logError.js";
 
 import DateTimeFieldPro from "./fields/DateTimeFieldPro.jsx";
 
@@ -60,7 +61,7 @@ export default function EditTimeLogDialog({ open, log, onClose }) {
       });
       onClose(true);
     } catch (err) {
-      console.error(err);
+      logError({ where: "EditTimeLogDialog.save", logId: log?.id }, err);
       onClose(false);
     }
   };

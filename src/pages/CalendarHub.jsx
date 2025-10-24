@@ -11,7 +11,6 @@ import {
   Button,
   Divider,
   Tooltip,
-  useMediaQuery,
   CircularProgress,
   Fab,
   Drawer,
@@ -23,6 +22,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 
+import useMediaQuery from "@/hooks/useMediaQuery.js";
 import dayjs from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";

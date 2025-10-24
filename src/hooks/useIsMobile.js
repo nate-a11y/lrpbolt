@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
+
+import useMediaQuery from "./useMediaQuery";
 
 /** Returns { isXs, isSm, isMdDown } for responsive logic. */
 export default function useIsMobile() {

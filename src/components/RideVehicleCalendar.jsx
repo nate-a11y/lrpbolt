@@ -17,7 +17,6 @@ import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import TextField from "@mui/material/TextField";
 import Switch from "@mui/material/Switch";
 import Tooltip from "@mui/material/Tooltip";
@@ -35,6 +34,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
+import useMediaQuery from "@/hooks/useMediaQuery.js";
 import dayjs, { toDayjs, isD } from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
 import {

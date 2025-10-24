@@ -42,7 +42,6 @@ import {
   OutlinedInput,
   Toolbar,
   useTheme,
-  useMediaQuery,
   CircularProgress,
   Chip,
   Fab,
@@ -84,6 +83,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { withSafeColumns } from "../utils/gridFormatters";
 import { useGridDoctor } from "../utils/useGridDoctor";
 import { updateTicketScan } from "../hooks/api";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 import {
   LoadingOverlay,

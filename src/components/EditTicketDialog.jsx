@@ -8,7 +8,6 @@ import {
   Button,
   TextField,
   Stack,
-  useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
@@ -18,6 +17,7 @@ import { dayjs } from "@/utils/time";
 
 import { updateTicket } from "../hooks/api";
 import logError from "../utils/logError.js";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 export default function EditTicketDialog({ open, ticket, onClose }) {
   const theme = useTheme();

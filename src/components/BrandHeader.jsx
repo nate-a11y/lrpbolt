@@ -1,7 +1,8 @@
 import React, { useEffect } from "react";
 import { AppBar, Toolbar, Box, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
+
+import useMediaQuery from "../hooks/useMediaQuery";
 
 import LogoSwitcher from "./LogoSwitcher.jsx";
 
