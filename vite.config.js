@@ -150,6 +150,11 @@ export default defineConfig(({ mode }) => {
     base: "/",
     optimizeDeps: {
       include: [
+        "react",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+        "react-dom",
+        "react-dom/client",
         "@mui/material",
         "@mui/icons-material",
         "@emotion/react",
@@ -161,6 +166,11 @@ export default defineConfig(({ mode }) => {
         "firebase/auth",
         "firebase/firestore",
         "firebase/functions",
+      ],
+      needsInterop: [
+        "react",
+        "react-dom",
+        "react-dom/client",
       ],
     },
     server: {
