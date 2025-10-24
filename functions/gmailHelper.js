@@ -5,11 +5,19 @@ const { logger } = require("firebase-functions/v2");
 /**
  * Get JWT auth client using service account credentials
  * Supports optional impersonation for domain-wide delegation
+ *
+ * Environment variables are set via gcloud run services update (Cloud Functions v2)
+ * NOT via firebase functions:config:set (that only works for v1)
  */
 function getGmailJwt(impersonateEmail = null) {
   const email = process.env.GCAL_SA_EMAIL;
   const key = (process.env.GCAL_SA_PRIVATE_KEY || "").replace(/\\n/g, "\n");
   if (!email || !key) {
+    logger.error("Gmail API configuration missing", {
+      hasEmail: !!email,
+      hasKey: !!key,
+      note: "Environment variables must be set via gcloud run services update"
+    });
     throw new Error("Missing GCAL_SA_EMAIL / GCAL_SA_PRIVATE_KEY");
   }
 
