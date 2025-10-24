@@ -30,7 +30,6 @@ import {
   TextField,
   Tooltip,
   Typography,
-  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
@@ -75,6 +74,7 @@ import { safeGet } from "../services/q.js";
 import { callDropDailyRidesNow } from "../utils/functions";
 import { useDriver } from "../context/DriverContext.jsx";
 import useAuth from "../hooks/useAuth.js";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const LiveRidesGrid = lazy(() => import("./LiveRidesGrid.jsx"));
 const RideQueueGrid = lazy(() => import("./RideQueueGrid.jsx"));

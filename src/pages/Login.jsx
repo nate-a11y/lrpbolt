@@ -1,6 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
 // allow-color-literal-file
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Container,
@@ -21,7 +20,6 @@ import {
   DialogActions,
   Stack,
   LinearProgress,
-  useMediaQuery,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import MailIcon from "@mui/icons-material/Mail";
@@ -32,6 +30,7 @@ import GoogleIcon from "@mui/icons-material/Google";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
+import useMediaQuery from "../hooks/useMediaQuery";
 import {
   loginWithPopup,
   loginWithEmail,

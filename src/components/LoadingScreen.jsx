@@ -2,11 +2,13 @@
 /* Proprietary and confidential. See LICENSE. */
 // allow-color-literal-file
 
-import { Box, Typography, LinearProgress, useMediaQuery } from "@mui/material";
+import { Box, Typography, LinearProgress } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { imageSetFor } from "@/utils/assetVariant";
+
+import useMediaQuery from "../hooks/useMediaQuery";
 
 /**
  * Props:

@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
-import { Box, IconButton, useMediaQuery } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 
+import useMediaQuery from "../hooks/useMediaQuery";
 import Header from "../components/Header";
 import MainNav from "../components/MainNav";
 

@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useCallback } from "react";
-import { Paper, useMediaQuery, useTheme, IconButton } from "@mui/material";
+import { Paper, useTheme, IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
@@ -9,6 +9,7 @@ import { durationMinutes } from "@/utils/datetime";
 import { actionsCol } from "@/utils/gridFormatters";
 import { vfTime, vfDurationHM } from "@/utils/vf";
 
+import useMediaQuery from "../hooks/useMediaQuery";
 import { useGridDoctor } from "../utils/useGridDoctor";
 
 import SmartAutoGrid from "./datagrid/SmartAutoGrid.jsx";

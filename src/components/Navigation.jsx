@@ -14,7 +14,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  useMediaQuery,
   Tooltip,
   Divider,
   Chip,
@@ -49,6 +48,7 @@ import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
 import { useColorMode } from "../context/ColorModeContext.jsx";
 import useFcmEnable from "../hooks/useFcmEnable";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const DRAWER_WIDTH = 260;
 const MINI_WIDTH = 72;

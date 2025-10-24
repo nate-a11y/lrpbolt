@@ -19,7 +19,6 @@ import {
   Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import { GridToolbarExport as _GridToolbarExport } from "@mui/x-data-grid-pro";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -34,6 +33,8 @@ import QRCode from "react-qr-code";
 import SmartAutoGrid from "src/components/datagrid/SmartAutoGrid.jsx";
 import useIsMobile from "src/hooks/useIsMobile";
 import PictureWebp from "@/components/media/PictureWebp";
+
+import useMediaQuery from "../hooks/useMediaQuery";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";

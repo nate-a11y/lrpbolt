@@ -1,6 +1,8 @@
 import * as React from "react";
 import { DateTimePicker } from "@mui/x-date-pickers-pro";
-import { useMediaQuery, useTheme } from "@mui/material";
+import { useTheme } from "@mui/material";
+
+import useMediaQuery from "../../hooks/useMediaQuery";
 
 export default function DateTimeFieldPro({
   value,
