@@ -1,5 +1,5 @@
 // scripts/verify-env.js
-/* eslint-disable no-console */
+ 
 const required = [
   "VITE_MUIX_LICENSE_KEY",
   "VITE_FIREBASE_API_KEY",

@@ -1,5 +1,6 @@
 import { Tooltip, Typography } from "@mui/material";
-import dayjs from "dayjs";
+
+import dayjs from "../utils/dayjsSetup.js";
 
 function parse(version) {
   if (typeof version !== "string") return { raw: version };

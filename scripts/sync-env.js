@@ -1,5 +1,5 @@
 // scripts/sync-env.js
-/* eslint-disable no-console */
+ 
 import fs from "fs";
 
 const required = [

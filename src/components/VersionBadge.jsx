@@ -3,8 +3,8 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Box, Chip, IconButton, Stack, Tooltip } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import dayjs from "dayjs";
 
+import dayjs from "../utils/dayjsSetup.js";
 import logError from "../utils/logError.js";
 
 function parseBuild(version) {
