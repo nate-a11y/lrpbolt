@@ -43,15 +43,15 @@ export default defineConfig({
         // Prevent hoisting to preserve module initialization order
         hoistTransitiveImports: false,
         manualChunks: (id) => {
-          // React + Emotion + MUI must be in same chunk to prevent initialization errors
+          // React + Emotion + ALL MUI packages must be in same chunk to prevent initialization errors
+          // This ensures all MUI components have access to the same React instance
           if (id.includes("node_modules/react") ||
               id.includes("node_modules/react-dom") ||
               id.includes("node_modules/react-is") ||
               id.includes("node_modules/scheduler") ||
               id.includes("node_modules/@emotion") ||
               id.includes("node_modules/hoist-non-react-statics") ||
-              id.includes("node_modules/@mui/material") ||
-              id.includes("node_modules/@mui/system")) {
+              id.includes("node_modules/@mui/")) {
             return "react-vendor";
           }
 
@@ -63,10 +63,6 @@ export default defineConfig({
           if (id.includes("node_modules/three") ||
               id.includes("node_modules/@react-three")) {
             return "three";
-          }
-
-          if (id.includes("node_modules/@mui/x-data-grid")) {
-            return "mui-datagrid";
           }
 
           // Other vendors
