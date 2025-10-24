@@ -41,9 +41,11 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         manualChunks: (id) => {
-          // React core libraries + Emotion (Emotion depends on React hooks, must load together)
+          // React core libraries + Emotion + react-is + hoist-non-react-statics (must all initialize together)
           if (id.includes("node_modules/react") ||
               id.includes("node_modules/react-dom") ||
+              id.includes("node_modules/react-is") ||
+              id.includes("node_modules/hoist-non-react-statics") ||
               id.includes("node_modules/@emotion")) {
             return "react-core";
           }
