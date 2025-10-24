@@ -40,8 +40,48 @@ export default defineConfig({
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
-        // Temporarily disable manual chunking to fix React initialization order issues
-        manualChunks: undefined,
+        // Prevent hoisting to preserve module initialization order
+        hoistTransitiveImports: false,
+        manualChunks: (id) => {
+          // React ecosystem (must initialize first)
+          if (id.includes("node_modules/react") ||
+              id.includes("node_modules/react-dom") ||
+              id.includes("node_modules/react-is") ||
+              id.includes("node_modules/scheduler")) {
+            return "react-vendor";
+          }
+
+          // Emotion + hoist-non-react-statics (depends on React)
+          if (id.includes("node_modules/@emotion") ||
+              id.includes("node_modules/hoist-non-react-statics")) {
+            return "emotion";
+          }
+
+          // MUI Core
+          if (id.includes("node_modules/@mui/material") ||
+              id.includes("node_modules/@mui/system")) {
+            return "mui-core";
+          }
+
+          // Large libraries that should be separate chunks
+          if (id.includes("node_modules/firebase")) {
+            return "firebase";
+          }
+
+          if (id.includes("node_modules/three") ||
+              id.includes("node_modules/@react-three")) {
+            return "three";
+          }
+
+          if (id.includes("node_modules/@mui/x-data-grid")) {
+            return "mui-datagrid";
+          }
+
+          // Other vendors
+          if (id.includes("node_modules")) {
+            return "vendor";
+          }
+        },
       },
     },
   },
