@@ -43,18 +43,14 @@ export default defineConfig({
         // Prevent hoisting to preserve module initialization order
         hoistTransitiveImports: false,
         manualChunks: (id) => {
-          // React ecosystem (must initialize first)
+          // React + Emotion must be in same chunk to prevent initialization errors
           if (id.includes("node_modules/react") ||
               id.includes("node_modules/react-dom") ||
               id.includes("node_modules/react-is") ||
-              id.includes("node_modules/scheduler")) {
-            return "react-vendor";
-          }
-
-          // Emotion + hoist-non-react-statics (depends on React)
-          if (id.includes("node_modules/@emotion") ||
+              id.includes("node_modules/scheduler") ||
+              id.includes("node_modules/@emotion") ||
               id.includes("node_modules/hoist-non-react-statics")) {
-            return "emotion";
+            return "react-vendor";
           }
 
           // MUI Core
