@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/AdminUserManager.jsx
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Card,
   Paper,
@@ -84,31 +84,34 @@ export default function AdminUserManager() {
   });
 
   // 🗑️ Delete user handlers
-  const handleDeleteClick = (row) => {
-    if (!isAdmin) {
-      setSnackbar({
+  const handleDeleteClick = useCallback(
+    (row) => {
+      if (!isAdmin) {
+        setSnackbar({
+          open: true,
+          message: "Admin access required",
+          severity: "error",
+        });
+        return;
+      }
+      setDeleteDialog({
         open: true,
-        message: "Admin access required",
-        severity: "error",
+        email: row.email,
+        name: row.name,
       });
-      return;
-    }
-    setDeleteDialog({
-      open: true,
-      email: row.email,
-      name: row.name,
-    });
-  };
+    },
+    [isAdmin],
+  );
 
-  const handleDeleteCancel = () => {
+  const handleDeleteCancel = useCallback(() => {
     setDeleteDialog({
       open: false,
       email: "",
       name: "",
     });
-  };
+  }, []);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!isAdmin) {
       setSnackbar({
         open: true,
@@ -139,7 +142,7 @@ export default function AdminUserManager() {
     } finally {
       handleDeleteCancel();
     }
-  };
+  }, [isAdmin, deleteDialog, handleDeleteCancel]);
 
   const columns = useMemo(
     () => [
