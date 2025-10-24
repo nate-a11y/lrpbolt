@@ -1,16 +1,16 @@
 /* Proprietary and confidential. See LICENSE. */
-// Import from dayjs/esm to bypass the vite alias and prevent circular dependency
-import dayjsImport from "dayjs/esm";
-import utc from "dayjs/esm/plugin/utc";
-import timezone from "dayjs/esm/plugin/timezone";
-import isSameOrBefore from "dayjs/esm/plugin/isSameOrBefore";
-import isSameOrAfter from "dayjs/esm/plugin/isSameOrAfter";
-import isBetween from "dayjs/esm/plugin/isBetween";
-import advancedFormat from "dayjs/esm/plugin/advancedFormat";
-import localizedFormat from "dayjs/esm/plugin/localizedFormat";
-import customParseFormat from "dayjs/esm/plugin/customParseFormat";
-import duration from "dayjs/esm/plugin/duration";
-import relativeTime from "dayjs/esm/plugin/relativeTime";
+// Standard dayjs imports - no alias needed, files import this module directly
+import dayjsImport from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isBetween from "dayjs/plugin/isBetween";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import localizedFormat from "dayjs/plugin/localizedFormat";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import duration from "dayjs/plugin/duration";
+import relativeTime from "dayjs/plugin/relativeTime";
 
 // Ensure dayjs is defined before setup
 const dayjs = dayjsImport;
