@@ -91,9 +91,48 @@ exports.seedImportantInfoOnce = onCallHttps(
   },
   async (req) => {
     const { auth } = req;
-    if (!auth || auth.token?.admin !== true) {
+
+    // Verify authentication exists
+    if (!auth) {
+      throw new HttpsError("unauthenticated", "Authentication required");
+    }
+
+    // Check admin access via custom claim OR Firestore role
+    const hasAdminClaim = auth.token?.admin === true;
+    const hasAdminRole = auth.token?.role === "admin";
+    let isAdmin = hasAdminClaim || hasAdminRole;
+
+    // If no admin access from token, check Firestore
+    if (!isAdmin && auth.token?.email) {
+      try {
+        const db = admin.firestore();
+        const lcEmail = auth.token.email.toLowerCase();
+
+        // Check userAccess collection
+        const userAccessDoc = await db.collection("userAccess").doc(lcEmail).get();
+        if (userAccessDoc.exists && userAccessDoc.data()?.access === "admin") {
+          isAdmin = true;
+        }
+
+        // If not found in userAccess, check users collection
+        if (!isAdmin) {
+          const userDoc = await db.collection("users").doc(auth.uid).get();
+          if (userDoc.exists && userDoc.data()?.role === "admin") {
+            isAdmin = true;
+          }
+        }
+      } catch (error) {
+        logger.warn("Error checking Firestore role for seedImportantInfoOnce", {
+          uid: auth.uid,
+          error: error.message,
+        });
+      }
+    }
+
+    if (!isAdmin) {
       throw new HttpsError("permission-denied", "Admin only.");
     }
+
     const db = admin.firestore();
     const existing = await db.collection("importantInfo").limit(1).get();
     if (!existing.empty) {
