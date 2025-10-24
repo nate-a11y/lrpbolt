@@ -34,8 +34,9 @@ export default defineConfig({
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
-        // Prevent hoisting to preserve module initialization order
-        hoistTransitiveImports: false,
+        // Allow Rollup to hoist transitive imports so selector factories from
+        // @mui/x-data-grid load in the correct order during production builds.
+        hoistTransitiveImports: true,
         manualChunks: (id) => {
           // React core must load first to ensure React.version is available
           if (id.includes("node_modules/react/") ||
