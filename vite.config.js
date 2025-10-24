@@ -43,23 +43,26 @@ export default defineConfig({
         // Prevent hoisting to preserve module initialization order
         hoistTransitiveImports: false,
         manualChunks: (id) => {
-          // React + ALL React ecosystem packages must be in same chunk
-          // This ensures proper initialization order and shared React instance
-          if (id.includes("node_modules/react") ||
-              id.includes("node_modules/react-dom") ||
-              id.includes("node_modules/react-is") ||
-              id.includes("node_modules/scheduler") ||
-              id.includes("node_modules/use-sync-external-store") ||
+          // React core must load first to ensure React.version is available
+          if (id.includes("node_modules/react/") ||
+              id.includes("node_modules/react-dom/") ||
+              id.includes("node_modules/react-is/") ||
+              id.includes("node_modules/scheduler/")) {
+            return "react-core";
+          }
+
+          // React ecosystem packages that depend on React
+          // These load after react-core is initialized
+          if (id.includes("node_modules/use-sync-external-store") ||
               id.includes("node_modules/react-transition-group") ||
               id.includes("node_modules/react-router") ||
-              id.includes("node_modules/react-router-dom") ||
               id.includes("node_modules/react-error-boundary") ||
               id.includes("node_modules/notistack") ||
               id.includes("node_modules/@emotion") ||
               id.includes("node_modules/hoist-non-react-statics") ||
               id.includes("node_modules/prop-types") ||
               id.includes("node_modules/@mui/")) {
-            return "react-vendor";
+            return "react-ecosystem";
           }
 
           // Large libraries that should be separate chunks
