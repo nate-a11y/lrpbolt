@@ -74,13 +74,66 @@ exports.deleteUser = onCall(
         );
       }
 
-      // Delete FCM tokens
-      const fcmTokenRef = db.collection("fcmTokens").doc(lcEmail);
+      // Delete ALL FCM tokens for this user (query by email)
+      // A user can have multiple tokens (one per device/browser)
       deletions.push(
-        fcmTokenRef.delete().then(() => {
-          logger.info(`Deleted fcmTokens doc: ${lcEmail}`);
-        }),
+        (async () => {
+          try {
+            const fcmTokensSnap = await db
+              .collection("fcmTokens")
+              .where("email", "==", lcEmail)
+              .get();
+
+            const tokenDeletions = [];
+            fcmTokensSnap.forEach((doc) => {
+              tokenDeletions.push(
+                doc.ref.delete().then(() => {
+                  logger.info(`Deleted FCM token: ${doc.id}`);
+                }),
+              );
+            });
+
+            await Promise.all(tokenDeletions);
+            logger.info(
+              `Deleted ${tokenDeletions.length} FCM token(s) for ${lcEmail}`,
+            );
+          } catch (error) {
+            logger.error(`Error deleting FCM tokens for ${lcEmail}`, error);
+            throw error;
+          }
+        })(),
       );
+
+      // Also delete FCM tokens by userId (if exists)
+      if (authUser) {
+        deletions.push(
+          (async () => {
+            try {
+              const fcmTokensByUidSnap = await db
+                .collection("fcmTokens")
+                .where("userId", "==", authUser.uid)
+                .get();
+
+              const tokenDeletionsByUid = [];
+              fcmTokensByUidSnap.forEach((doc) => {
+                tokenDeletionsByUid.push(
+                  doc.ref.delete().then(() => {
+                    logger.info(`Deleted FCM token by UID: ${doc.id}`);
+                  }),
+                );
+              });
+
+              await Promise.all(tokenDeletionsByUid);
+              logger.info(
+                `Deleted ${tokenDeletionsByUid.length} FCM token(s) by UID for ${authUser.uid}`,
+              );
+            } catch (error) {
+              logger.error(`Error deleting FCM tokens by UID for ${authUser.uid}`, error);
+              throw error;
+            }
+          })(),
+        );
+      }
 
       // Wait for all Firestore deletions
       await Promise.all(deletions);
