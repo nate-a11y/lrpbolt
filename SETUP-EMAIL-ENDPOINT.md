@@ -152,9 +152,29 @@ After the function is deployed and the GitHub secret is added:
 
 ## Troubleshooting
 
+### Quick Fix: Email Not Working
+
+If shuttle ticket emails are not sending, see the comprehensive troubleshooting guide:
+**[TROUBLESHOOT-SHUTTLE-EMAIL.md](./TROUBLESHOOT-SHUTTLE-EMAIL.md)**
+
+The quickest fix is usually to trigger CI/CD:
+```bash
+git commit --allow-empty -m "Trigger function deployment to fix email"
+git push
+```
+
 ### Error: "Missing GCAL_SA_EMAIL / GCAL_SA_PRIVATE_KEY"
 
-**Solution:** The Firebase Functions environment variables are not set. Run Step 2 again.
+**Solution:** The Cloud Run service environment variables are not set.
+
+For Cloud Functions v2 (Gen 2), you MUST use `gcloud run services update`, not `firebase functions:config:set`.
+
+Run the fix script:
+```bash
+./scripts/fix-shuttle-email.sh
+```
+
+Or trigger CI/CD which will automatically configure it.
 
 ### Error: "Failed to send email" or 403 errors
 
@@ -163,6 +183,8 @@ After the function is deployed and the GitHub secret is added:
 2. Domain-wide delegation is configured (if using workspace email)
 3. Service account email is correct
 4. Private key is properly formatted with `\n` characters
+
+See [TROUBLESHOOT-SHUTTLE-EMAIL.md](./TROUBLESHOOT-SHUTTLE-EMAIL.md) for detailed steps.
 
 ### Email still downloads as ZIP
 
@@ -175,9 +197,18 @@ After the function is deployed and the GitHub secret is added:
 ### Function times out or fails silently
 
 **Solution:**
-1. Check Firebase Functions logs: `firebase functions:log`
+1. Check Cloud Function logs: `gcloud functions logs read sendshuttleticketemail --region=us-central1`
 2. Ensure functions have sufficient memory and timeout (configured in firebase.json)
 3. Test with a single small attachment first
+
+### Environment variables not persisting after deployment
+
+**Solution:** Cloud Functions v2 use Cloud Run. Environment variables must be set using `gcloud run services update`.
+
+The CI/CD workflow handles this automatically. If you're deploying manually, use:
+```bash
+./scripts/fix-shuttle-email.sh
+```
 
 ## Environment Variable Reference
 

@@ -6,6 +6,11 @@ const { sendEmailWithAttachment } = require("./gmailHelper");
 /**
  * Send shuttle ticket email via Gmail API
  *
+ * Environment Variables Required (set via gcloud run services update):
+ *   - GCAL_SA_EMAIL: Service account email
+ *   - GCAL_SA_PRIVATE_KEY: Service account private key
+ *   - GMAIL_SENDER: Sender email address (e.g., contactus@lakeridepros.com)
+ *
  * @param {Object} data
  * @param {string} data.ticketId - Ticket ID
  * @param {string} data.email - Recipient email address
