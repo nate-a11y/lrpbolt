@@ -96,54 +96,6 @@ export default defineConfig(({ mode }) => {
           entryFileNames: "assets/[name]-[hash].js",
           chunkFileNames: "assets/[name]-[hash].js",
           hoistTransitiveImports: true,
-          manualChunks: (id) => {
-            if (id.includes("node_modules/react/")) {
-              return "react-core";
-            }
-
-            if (
-              id.includes("node_modules/@mui/x-data-grid") ||
-              id.includes("node_modules/@mui/x-data-grid-pro") ||
-              id.includes("node_modules/@mui/x-data-grid-premium") ||
-              id.includes("node_modules/reselect") ||
-              id.includes("src/muiOverrides/gridFocusedVirtualCellSelector.js")
-            ) {
-              return "mui-x-data-grid";
-            }
-
-            if (
-              id.includes("node_modules/@mui/") ||
-              id.includes("node_modules/@emotion/") ||
-              id.includes("node_modules/notistack") ||
-              id.includes("node_modules/dayjs") ||
-              id.includes("node_modules/@babel/runtime") ||
-              id.includes("node_modules/clsx") ||
-              id.includes("node_modules/dom-helpers") ||
-              id.includes("node_modules/hoist-non-react-statics") ||
-              id.includes("node_modules/prop-types") ||
-              id.includes("node_modules/react-transition-group") ||
-              id.includes("node_modules/react-router") ||
-              id.includes("node_modules/react-error-boundary") ||
-              id.includes("node_modules/use-sync-external-store")
-            ) {
-              return "react-ecosystem";
-            }
-
-            if (id.includes("node_modules/firebase")) {
-              return "firebase";
-            }
-
-            if (
-              id.includes("node_modules/three") ||
-              id.includes("node_modules/@react-three")
-            ) {
-              return "three";
-            }
-
-            if (id.includes("node_modules")) {
-              return "vendor";
-            }
-          },
         },
       },
     },
