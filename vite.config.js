@@ -25,7 +25,7 @@ export default defineConfig({
         ),
       },
     ],
-    dedupe: ["react", "react-dom", "react-is"],
+    dedupe: ["react", "react-dom", "react-is", "use-sync-external-store"],
     extensions: [".js", ".jsx"],
   },
   build: {
@@ -43,14 +43,21 @@ export default defineConfig({
         // Prevent hoisting to preserve module initialization order
         hoistTransitiveImports: false,
         manualChunks: (id) => {
-          // React + Emotion + ALL MUI packages must be in same chunk to prevent initialization errors
-          // This ensures all MUI components have access to the same React instance
+          // React + ALL React ecosystem packages must be in same chunk
+          // This ensures proper initialization order and shared React instance
           if (id.includes("node_modules/react") ||
               id.includes("node_modules/react-dom") ||
               id.includes("node_modules/react-is") ||
               id.includes("node_modules/scheduler") ||
+              id.includes("node_modules/use-sync-external-store") ||
+              id.includes("node_modules/react-transition-group") ||
+              id.includes("node_modules/react-router") ||
+              id.includes("node_modules/react-router-dom") ||
+              id.includes("node_modules/react-error-boundary") ||
+              id.includes("node_modules/notistack") ||
               id.includes("node_modules/@emotion") ||
               id.includes("node_modules/hoist-non-react-statics") ||
+              id.includes("node_modules/prop-types") ||
               id.includes("node_modules/@mui/")) {
             return "react-vendor";
           }
