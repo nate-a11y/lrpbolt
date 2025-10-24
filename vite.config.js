@@ -47,7 +47,7 @@ export default defineConfig({
 
           // React ecosystem packages that depend on React
           // These load after react-core is initialized
-          // dayjs is bundled here because MUI's AdapterDayjs imports it
+          // Bundle ALL packages used by React/MUI to prevent CJS/ESM mismatches
           if (id.includes("node_modules/use-sync-external-store") ||
               id.includes("node_modules/react-transition-group") ||
               id.includes("node_modules/react-router") ||
@@ -57,6 +57,9 @@ export default defineConfig({
               id.includes("node_modules/hoist-non-react-statics") ||
               id.includes("node_modules/prop-types") ||
               id.includes("node_modules/dayjs") ||
+              id.includes("node_modules/@babel/runtime") ||
+              id.includes("node_modules/clsx") ||
+              id.includes("node_modules/dom-helpers") ||
               id.includes("node_modules/@mui/")) {
             return "react-ecosystem";
           }
