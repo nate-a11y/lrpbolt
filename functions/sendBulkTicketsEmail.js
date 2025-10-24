@@ -17,7 +17,11 @@ const { sendEmailWithAttachment } = require("./gmailHelper");
  * @returns {Object} { success: boolean, messageId?: string, error?: string }
  */
 const sendBulkTicketsEmail = onCall(
-  { region: "us-central1" },
+  {
+    region: "us-central1",
+    memory: "512MiB",
+    timeoutSeconds: 300
+  },
   async (request) => {
     try {
       const { to, subject, message, attachments } = request.data || {};

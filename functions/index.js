@@ -75,9 +75,10 @@ attach(
 attach("deleteUser", "./deleteUser", "deleteUser");
 
 // Legacy aliases → canonical v2 implementations
-attach("sendPortalNotification", "./sendPortalNotificationV2", "sendPortalNotificationV2");
+// Removed problematic aliases that were causing Cloud Run deployment errors:
+// - sendPortalNotification (use sendPortalNotificationV2 instead)
+// - notifyQueue (use notifyQueueOnCreate instead)
 attach("smsOnCreate", "./smsOnCreateV2", "smsOnCreateV2");
-attach("notifyQueue", "./notifyQueue", "notifyQueueOnCreate");
 attach("calendarFetch", "./calendarFetch", "apiCalendarFetch");
 attach("ensureLiveOpen", "./ensureLiveOpen", "ensureLiveRideOpen");
 
