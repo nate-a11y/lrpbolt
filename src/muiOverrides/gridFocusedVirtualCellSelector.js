@@ -1,8 +1,6 @@
 import _extends from "@babel/runtime/helpers/esm/extends";
-import {
-  createSelector,
-  createSelectorMemoized,
-} from "@mui/x-data-grid-pro/internals";
+import { createSelector } from "reselect";
+import { createSelectorMemoized } from "@mui/x-data-grid/utils/createSelector.js";
 import { gridVisibleColumnDefinitionsSelector } from "@mui/x-data-grid/hooks/features/columns/gridColumnsSelector.js";
 import { gridRenderContextSelector } from "@mui/x-data-grid/hooks/features/virtualization/gridVirtualizationSelectors.js";
 import { gridFocusCellSelector } from "@mui/x-data-grid/hooks/features/focus/index.js";
