@@ -29,6 +29,7 @@ import {
   deleteTicketsByIds,
   snapshotTicketsByIds,
   restoreTickets,
+  subscribeTicketComments,
 } from "@/services/tickets.js";
 import { getUserContacts, fetchAllUsersAccess } from "@/services/users.js";
 import { dayjs, formatDateTime } from "@/utils/time";
@@ -70,6 +71,9 @@ export default function TicketDetailDrawer({
   const [usersLoading, setUsersLoading] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [comments, setComments] = React.useState([]);
+  const [commentsLoading, setCommentsLoading] = React.useState(false);
+  const [commentsError, setCommentsError] = React.useState(null);
   const { show } = useSnack();
   const lastDeletedRef = React.useRef([]);
 
@@ -108,6 +112,33 @@ export default function TicketDetailDrawer({
       return;
     }
     setComment("");
+  }, [open, ticketId]);
+
+  React.useEffect(() => {
+    if (!open || !ticketId) {
+      setComments([]);
+      setCommentsError(null);
+      setCommentsLoading(false);
+      return () => {};
+    }
+    setCommentsLoading(true);
+    setCommentsError(null);
+    const unsubscribe = subscribeTicketComments(ticketId, ({ rows, error }) => {
+      if (error) {
+        setCommentsError(error);
+        setCommentsLoading(false);
+        return;
+      }
+      setComments(Array.isArray(rows) ? rows : []);
+      setCommentsLoading(false);
+    });
+    return () => {
+      try {
+        unsubscribe?.();
+      } catch (err) {
+        logError(err, { where: "TicketDetailDrawer.cleanup.comments" });
+      }
+    };
   }, [open, ticketId]);
 
   React.useEffect(() => {
@@ -684,6 +715,70 @@ export default function TicketDetailDrawer({
               })
             )}
           </Stack>
+
+          <Divider light />
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Comments
+            </Typography>
+            {commentsLoading ? (
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ color: "text.secondary" }}
+              >
+                <CircularProgress size={16} />
+                <Typography variant="body2">Loading comments…</Typography>
+              </Stack>
+            ) : commentsError ? (
+              <Typography variant="body2" sx={{ color: "error.light" }}>
+                Failed to load comments.
+              </Typography>
+            ) : comments.length === 0 ? (
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                No comments yet.
+              </Typography>
+            ) : (
+              <Stack spacing={1}>
+                {comments.map((entry) => {
+                  const authorLabel =
+                    entry?.author?.displayName ||
+                    entry?.author?.email ||
+                    entry?.author?.userId ||
+                    "Unknown";
+                  return (
+                    <Box
+                      key={entry.id}
+                      sx={{
+                        borderRadius: 1,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        px: 1.5,
+                        py: 1,
+                        bgcolor: (t) => t.palette.background.default,
+                      }}
+                    >
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="subtitle2">
+                          {authorLabel}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          {formatDateTime(entry?.createdAt)}
+                        </Typography>
+                      </Stack>
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {entry?.body || "N/A"}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
 
           <Divider light />
 
