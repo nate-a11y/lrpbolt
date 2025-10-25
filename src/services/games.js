@@ -17,7 +17,11 @@ import {
 } from "./firestoreCore";
 
 const HYPERLANE_COLLECTION_SEGMENTS = ["games", "hyperlane", "highscores"];
-const LAKECROSSING_COLLECTION_SEGMENTS = ["games", "lakecrossing", "highscores"];
+const LAKECROSSING_COLLECTION_SEGMENTS = [
+  "games",
+  "lakecrossing",
+  "highscores",
+];
 const WEEKLY_BUFFER_SIZE = 200;
 
 function getHyperlaneCollectionRef(db) {

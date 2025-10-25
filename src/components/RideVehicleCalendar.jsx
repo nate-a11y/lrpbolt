@@ -1297,7 +1297,7 @@ function RideVehicleCalendar({
             mb={2}
             sx={{
               flexWrap: { xs: "wrap", sm: "nowrap" },
-              gap: 1
+              gap: 1,
             }}
           >
             <Stack direction="row" spacing={0.5} alignItems="center">
@@ -1337,8 +1337,8 @@ function RideVehicleCalendar({
                 slotProps={{
                   textField: { size: "small", fullWidth: isMobile },
                   popper: {
-                    sx: { zIndex: (t) => t.zIndex.modal }
-                  }
+                    sx: { zIndex: (t) => t.zIndex.modal },
+                  },
                 }}
               />
               <Autocomplete
@@ -1390,7 +1390,10 @@ function RideVehicleCalendar({
                 renderInput={(params) => (
                   <TextField {...params} label="Filter Vehicles" size="small" />
                 )}
-                sx={{ minWidth: isMobile ? "100%" : 260, flex: isMobile ? undefined : 1 }}
+                sx={{
+                  minWidth: isMobile ? "100%" : 260,
+                  flex: isMobile ? undefined : 1,
+                }}
               />
             </Stack>
           </Box>
