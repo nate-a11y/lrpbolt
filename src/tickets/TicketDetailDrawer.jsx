@@ -55,6 +55,7 @@ export default function TicketDetailDrawer({
   ticket,
   currentUser,
   onTicketUpdated,
+  isAdmin = false,
 }) {
   const [comment, setComment] = React.useState("");
   const [commentBusy, setCommentBusy] = React.useState(false);
@@ -168,8 +169,9 @@ export default function TicketDetailDrawer({
   }, [open, ticketId, watchers]);
 
   React.useEffect(() => {
-    if (!open) {
+    if (!open || !isAdmin) {
       setAllUsers([]);
+      setUsersLoading(false);
       return;
     }
     setUsersLoading(true);
@@ -184,7 +186,7 @@ export default function TicketDetailDrawer({
       .finally(() => {
         setUsersLoading(false);
       });
-  }, [open]);
+  }, [isAdmin, open]);
 
   const handleCommentSubmit = React.useCallback(async () => {
     const trimmed = comment.trim();
@@ -228,7 +230,7 @@ export default function TicketDetailDrawer({
 
   const handleFieldChange = React.useCallback(
     async (field, value) => {
-      if (!ticketId) return;
+      if (!ticketId || !isAdmin) return;
       setUpdateBusy(true);
       try {
         const updatePayload = { [field]: value };
@@ -266,7 +268,7 @@ export default function TicketDetailDrawer({
         setUpdateBusy(false);
       }
     },
-    [allUsers, onTicketUpdated, show, ticket, ticketId],
+    [allUsers, isAdmin, onTicketUpdated, show, ticket, ticketId],
   );
 
   const handleUploadFiles = React.useCallback(
@@ -495,7 +497,7 @@ export default function TicketDetailDrawer({
                 onChange={(event) =>
                   handleFieldChange("status", event.target.value)
                 }
-                disabled={updateBusy}
+                disabled={updateBusy || !isAdmin}
                 sx={{ minWidth: 180 }}
               >
                 {STATUS_OPTIONS.map((status) => (
@@ -512,7 +514,7 @@ export default function TicketDetailDrawer({
                 onChange={(event) =>
                   handleFieldChange("priority", event.target.value)
                 }
-                disabled={updateBusy}
+                disabled={updateBusy || !isAdmin}
                 sx={{ minWidth: 180 }}
               >
                 {PRIORITY_OPTIONS.map((priority) => (
@@ -536,7 +538,7 @@ export default function TicketDetailDrawer({
                 onChange={(event) =>
                   handleFieldChange("category", event.target.value)
                 }
-                disabled={updateBusy}
+                disabled={updateBusy || !isAdmin}
                 sx={{ minWidth: 180 }}
               >
                 {CATEGORY_OPTIONS.map((category) => (
@@ -553,7 +555,7 @@ export default function TicketDetailDrawer({
                 onChange={(event) =>
                   handleFieldChange("assignee", event.target.value)
                 }
-                disabled={updateBusy || usersLoading}
+                disabled={updateBusy || usersLoading || !isAdmin}
                 sx={{ minWidth: 180 }}
                 helperText={
                   usersLoading

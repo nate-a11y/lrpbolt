@@ -11,7 +11,7 @@ import TicketDetailDrawer from "@/tickets/TicketDetailDrawer.jsx";
 import logError from "@/utils/logError.js";
 
 export default function TicketsPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { show } = useSnack();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -142,6 +142,7 @@ export default function TicketsPage() {
         onClose={handleDrawerClose}
         ticket={selectedTicket}
         currentUser={user}
+        isAdmin={role === "admin"}
         onTicketUpdated={handleTicketUpdated}
       />
     </Box>
