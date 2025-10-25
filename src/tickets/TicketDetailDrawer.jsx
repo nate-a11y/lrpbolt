@@ -223,7 +223,7 @@ export default function TicketDetailDrawer({
       if (!ticketId) return;
       setUpdateBusy(true);
       try {
-        let updatePayload = { [field]: value };
+        const updatePayload = { [field]: value };
 
         // If changing assignee, create proper assignee object
         if (field === "assignee") {
@@ -308,8 +308,9 @@ export default function TicketDetailDrawer({
   const handleDeleteTicket = React.useCallback(async () => {
     if (!ticketId) return;
 
+    // eslint-disable-next-line no-alert
     const confirmed = window.confirm(
-      `Are you sure you want to delete ticket ${ticket?.incidentNumber || ticketId}? This action cannot be undone.`
+      `Are you sure you want to delete ticket ${ticket?.incidentNumber || ticketId}? This action cannot be undone.`,
     );
 
     if (!confirmed) return;
@@ -317,7 +318,7 @@ export default function TicketDetailDrawer({
     setDeleteBusy(true);
     try {
       // Snapshot the ticket before deleting for potential restore
-      const snapshots = await snapshotTicketsByIds([ticketId]);
+      const _snapshots = await snapshotTicketsByIds([ticketId]);
 
       await deleteTicketsByIds([ticketId]);
       show("Ticket deleted successfully.", "success");
