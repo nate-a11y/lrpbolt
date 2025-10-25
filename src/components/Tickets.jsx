@@ -398,6 +398,7 @@ function Tickets() {
   const theme = useTheme();
   const isSmall = useMediaQuery(theme.breakpoints.down("sm"));
   const scannerFullScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const isAdmin = role === "admin";
   const canGenerate = role === "admin";
   const canScanTickets = role === "admin" || role === "driver";
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -1410,9 +1411,11 @@ function Tickets() {
             </Tooltip>
             <Tooltip
               title={
-                selectedIds.length
-                  ? "Delete selected tickets"
-                  : "Select tickets to enable"
+                !isAdmin
+                  ? "Only admins can delete tickets"
+                  : selectedIds.length
+                    ? "Delete selected tickets"
+                    : "Select tickets to enable"
               }
             >
               <span>
@@ -1420,7 +1423,7 @@ function Tickets() {
                   variant="contained"
                   color="error"
                   startIcon={<DeleteIcon />}
-                  disabled={!selectedIds.length}
+                  disabled={!isAdmin || !selectedIds.length}
                   loading={deleting}
                   loadingText="Deleting…"
                   onClick={() => handleDeleteRows(selectedIds)}
