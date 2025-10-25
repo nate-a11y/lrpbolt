@@ -108,7 +108,9 @@ export default function ClockOutConfirm() {
         <DialogTitle>Clock Out</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {busy ? "Clocking out..." : "Are you sure you want to clock out now?"}
+            {busy
+              ? "Clocking out..."
+              : "Are you sure you want to clock out now?"}
           </DialogContentText>
           {busy && (
             <CircularProgress
