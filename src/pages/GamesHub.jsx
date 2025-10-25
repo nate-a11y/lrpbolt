@@ -145,7 +145,7 @@ function HyperlanePanel() {
         setUserBest(row);
         setUserBestLoading(false);
       },
-      onError: (err) => {
+      onError: (_err) => {
         setUserBest(null);
         setUserBestLoading(false);
       },
