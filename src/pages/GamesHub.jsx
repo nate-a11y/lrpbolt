@@ -483,7 +483,10 @@ function HyperlanePanel() {
             />
           </Box>
 
-          <Typography variant="body2" sx={{ opacity: 0.85, fontSize: "0.875rem" }}>
+          <Typography
+            variant="body2"
+            sx={{ opacity: 0.85, fontSize: "0.875rem" }}
+          >
             Controls: ← / → keys or tap. Collect neon rings for +100. Dodge red
             blocks and chase the leaderboard!
           </Typography>
@@ -520,9 +523,7 @@ function HyperlanePanel() {
               >
                 Top 10 — All Time
               </Typography>
-              <Divider
-                sx={{ mt: 1, borderColor: (t) => t.palette.divider }}
-              />
+              <Divider sx={{ mt: 1, borderColor: (t) => t.palette.divider }} />
             </Box>
             {renderLeaderboard(
               allTimeLoading,
@@ -562,9 +563,7 @@ function HyperlanePanel() {
               >
                 Weekly Heat — Reset {startOfWeek.format("MMM D")}
               </Typography>
-              <Divider
-                sx={{ mt: 1, borderColor: (t) => t.palette.divider }}
-              />
+              <Divider sx={{ mt: 1, borderColor: (t) => t.palette.divider }} />
             </Box>
             {renderLeaderboard(
               weeklyLoading,

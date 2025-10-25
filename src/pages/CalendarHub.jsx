@@ -204,7 +204,9 @@ export default function CalendarHub() {
             >
               <LazyCalendar
                 dateISO={dateISO}
+                onDateChange={setDateISO}
                 hideHeader={true}
+                hideDatePicker={true}
                 stickyTopOffset={stickyTopCss}
                 onCenterNow={filters?.scrollToNow ? "init" : undefined}
                 hideQuickActions={!isMdUp}

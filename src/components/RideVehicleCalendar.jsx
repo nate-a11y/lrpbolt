@@ -684,8 +684,10 @@ function RideVehicleCalendar({
   dateISO,
   data,
   hideHeader = false,
+  hideDatePicker = false,
   stickyTopOffset = DEFAULT_STICKY_TOP,
   onCenterNow,
+  onDateChange,
   persistedFilters,
   onFiltersChange,
   hideQuickActions = false,
@@ -1208,11 +1210,19 @@ function RideVehicleCalendar({
   const vehicleOptions = useMemo(() => ["ALL", ...vehicles], [vehicles]);
 
   const handlePrevDay = useCallback(() => {
-    setDate((d) => d.subtract(1, "day"));
-  }, []);
+    setDate((d) => {
+      const newDate = d.subtract(1, "day");
+      onDateChange?.(newDate.format("YYYY-MM-DD"));
+      return newDate;
+    });
+  }, [onDateChange]);
   const handleNextDay = useCallback(() => {
-    setDate((d) => d.add(1, "day"));
-  }, []);
+    setDate((d) => {
+      const newDate = d.add(1, "day");
+      onDateChange?.(newDate.format("YYYY-MM-DD"));
+      return newDate;
+    });
+  }, [onDateChange]);
   const handleToggleSection = (v) => {
     setSectionState((s) => ({ ...s, [v]: !s[v] }));
   };
@@ -1297,7 +1307,7 @@ function RideVehicleCalendar({
             mb={2}
             sx={{
               flexWrap: { xs: "wrap", sm: "nowrap" },
-              gap: 1
+              gap: 1,
             }}
           >
             <Stack direction="row" spacing={0.5} alignItems="center">
@@ -1324,76 +1334,95 @@ function RideVehicleCalendar({
             </Stack>
           </Stack>
 
-          <Box sx={{ width: "100%", mb: 2 }}>
-            <Stack
-              direction={isMobile ? "column" : "row"}
-              spacing={isMobile ? 1.5 : 2}
-              alignItems={isMobile ? "stretch" : "center"}
-              sx={{ width: "100%" }}
-            >
-              <DatePicker
-                value={date}
-                onChange={(newDate) => newDate && setDate(dayjs(newDate))}
-                slotProps={{
-                  textField: { size: "small", fullWidth: isMobile },
-                  popper: {
-                    sx: { zIndex: (t) => t.zIndex.modal }
+          {!hideDatePicker && (
+            <Box sx={{ width: "100%", mb: 2 }}>
+              <Stack
+                direction={isMobile ? "column" : "row"}
+                spacing={isMobile ? 1.5 : 2}
+                alignItems={isMobile ? "stretch" : "center"}
+                sx={{ width: "100%" }}
+              >
+                <DatePicker
+                  value={date}
+                  onChange={(newDate) => {
+                    if (newDate) {
+                      const parsed = dayjs(newDate);
+                      setDate(parsed);
+                      onDateChange?.(parsed.format("YYYY-MM-DD"));
+                    }
+                  }}
+                  slotProps={{
+                    textField: { size: "small", fullWidth: isMobile },
+                    popper: {
+                      sx: { zIndex: (t) => t.zIndex.modal },
+                    },
+                  }}
+                />
+                <Autocomplete
+                  multiple
+                  options={vehicleOptions}
+                  value={vehicleFilter}
+                  onChange={(e, val) => {
+                    const list = Array.isArray(val) ? val : [];
+                    let next = list;
+                    if (next.includes("ALL") && next.length > 1) {
+                      next = next.filter((v) => v !== "ALL");
+                    }
+                    updateFilters({
+                      vehicles:
+                        next.length === 0
+                          ? [...DEFAULT_FILTERS.vehicles]
+                          : next,
+                    });
+                  }}
+                  filterSelectedOptions
+                  disableCloseOnSelect
+                  getOptionLabel={(option) =>
+                    option === "ALL" ? "All Vehicles" : option
                   }
-                }}
-              />
-              <Autocomplete
-                multiple
-                options={vehicleOptions}
-                value={vehicleFilter}
-                onChange={(e, val) => {
-                  const list = Array.isArray(val) ? val : [];
-                  let next = list;
-                  if (next.includes("ALL") && next.length > 1) {
-                    next = next.filter((v) => v !== "ALL");
-                  }
-                  updateFilters({
-                    vehicles:
-                      next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
-                  });
-                }}
-                filterSelectedOptions
-                disableCloseOnSelect
-                getOptionLabel={(option) =>
-                  option === "ALL" ? "All Vehicles" : option
-                }
-                renderOption={(props, option) => {
-                  const { key, ...rest } = props;
-                  return (
-                    <Box
-                      component="li"
-                      key={key}
-                      {...rest}
-                      sx={{
-                        backgroundColor:
-                          option === "ALL" ? undefined : vehicleColors[option],
-                        color:
-                          option === "ALL" ? undefined : vehicleText[option],
-                        fontWeight: 500,
-                        "&:hover": {
+                  renderOption={(props, option) => {
+                    const { key, ...rest } = props;
+                    return (
+                      <Box
+                        component="li"
+                        key={key}
+                        {...rest}
+                        sx={{
                           backgroundColor:
                             option === "ALL"
                               ? undefined
                               : vehicleColors[option],
-                          opacity: 0.9,
-                        },
-                      }}
-                    >
-                      {option === "ALL" ? "All Vehicles" : option}
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Filter Vehicles" size="small" />
-                )}
-                sx={{ minWidth: isMobile ? "100%" : 260, flex: isMobile ? undefined : 1 }}
-              />
-            </Stack>
-          </Box>
+                          color:
+                            option === "ALL" ? undefined : vehicleText[option],
+                          fontWeight: 500,
+                          "&:hover": {
+                            backgroundColor:
+                              option === "ALL"
+                                ? undefined
+                                : vehicleColors[option],
+                            opacity: 0.9,
+                          },
+                        }}
+                      >
+                        {option === "ALL" ? "All Vehicles" : option}
+                      </Box>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Filter Vehicles"
+                      size="small"
+                    />
+                  )}
+                  sx={{
+                    minWidth: isMobile ? "100%" : 260,
+                    flex: isMobile ? undefined : 1,
+                  }}
+                />
+              </Stack>
+            </Box>
+          )}
 
           {!hideQuickActions && (
             <Box
@@ -1422,7 +1451,14 @@ function RideVehicleCalendar({
                   {plural(summary.overlap, "overlap")}
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Button size="small" onClick={() => setDate(dayjs().tz(CST))}>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      const today = dayjs().tz(CST);
+                      setDate(today);
+                      onDateChange?.(today.format("YYYY-MM-DD"));
+                    }}
+                  >
                     Today
                   </Button>
                   <Button

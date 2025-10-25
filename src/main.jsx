@@ -34,15 +34,19 @@ if (typeof window !== "undefined" && !window.__LRP_OBS__) {
   );
 }
 
+// Initialize service worker message bridge immediately to catch early messages
+// from push notification clicks (SW_NAVIGATE_TO_TICKET, SW_CLOCK_OUT_REQUEST, etc.)
+initServiceWorkerMessageBridge();
+
 // Defer non-critical initializations until after first render
 // Polyfill for browsers without requestIdleCallback
-const scheduleIdleTask = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+const scheduleIdleTask =
+  window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
 
 scheduleIdleTask(
   () => {
     initAnalyticsIfEnabled?.();
     initAnalytics(); // fire-and-forget; guarded internally
-    initServiceWorkerMessageBridge();
     initEruda();
 
     if (typeof window !== "undefined" && !window.__LRP_FCM_BOOT__) {
@@ -50,7 +54,7 @@ scheduleIdleTask(
       initMessagingAndToken();
     }
   },
-  { timeout: 2000 }
+  { timeout: 2000 },
 );
 
 const Root = () => {
