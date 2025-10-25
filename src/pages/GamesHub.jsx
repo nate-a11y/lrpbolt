@@ -26,7 +26,6 @@ import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 
 import GamesBridge from "@/components/GamesBridge.jsx";
-import LRPStarRunner from "@/components/LRPStarRunner.jsx";
 import PageContainer from "@/components/PageContainer.jsx";
 import LrpGrid from "@/components/datagrid/LrpGrid.jsx";
 import { highscoreColumns } from "@/columns/highscoreColumns.js";
@@ -577,14 +576,48 @@ function HyperlanePanel() {
   );
 }
 
-function StarRunnerPanel() {
+function LakeCrossingPanel() {
+  const iframeRef = useRef(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const { enabled: soundOn, setEnabled: setSoundOn, play } = useGameSound();
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const onSound = (event) => {
+      const data = event?.data;
+      if (data?.type === "SOUND" && data?.name) {
+        play(data.name);
+      }
+    };
+    window.addEventListener("message", onSound);
+    return () => {
+      window.removeEventListener("message", onSound);
+    };
+  }, [play]);
+
+  const handleReload = useCallback(() => {
+    play("click");
+    setReloadKey((prev) => prev + 1);
+  }, [play]);
+
+  const handleFullscreen = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (iframe?.requestFullscreen) {
+      iframe
+        .requestFullscreen()
+        .catch((err) =>
+          logError(err, { where: "GamesHub.lakeCrossingFullscreen" }),
+        );
+    }
+  }, []);
+
   return (
-    <Stack spacing={2.5} sx={{ width: "100%" }}>
+    <Stack spacing={{ xs: 2, sm: 2.5 }} sx={{ width: "100%" }}>
       <Card
         sx={{
           flex: { xs: "0 1 auto", md: 2 },
-          maxHeight: 680,
-          overflow: "hidden",
           bgcolor: (t) => t.palette.background.paper,
           borderRadius: 2,
           border: (t) => `1px solid ${t.palette.divider}`,
@@ -594,26 +627,131 @@ function StarRunnerPanel() {
       >
         <CardContent
           sx={{
-            p: { xs: 1.5, sm: 2 },
+            p: { xs: 2, sm: 2.5 },
             display: "flex",
             flexDirection: "column",
-            gap: 1.5,
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1.5}
             alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
           >
-            <SportsEsportsIcon sx={{ color: (t) => t.palette.primary.main }} />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              LRP StarRunner — Prototype
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  color: (t) => t.palette.primary.main,
+                  fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                }}
+              >
+                Lake Crossing
+              </Typography>
+            </Stack>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ flexWrap: "wrap", gap: 0.5 }}
+            >
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={soundOn}
+                    onChange={(event) => setSoundOn(event.target.checked)}
+                    color="success"
+                    sx={(t) => ({
+                      "& .MuiSwitch-thumb": {
+                        bgcolor: soundOn
+                          ? t.palette.primary.main
+                          : t.palette.grey[700],
+                      },
+                    })}
+                  />
+                }
+                label={
+                  soundOn ? (
+                    <VolumeUpIcon
+                      sx={{ color: (t) => t.palette.primary.main }}
+                    />
+                  ) : (
+                    <VolumeOffIcon sx={{ color: (t) => t.palette.grey[500] }} />
+                  )
+                }
+                labelPlacement="start"
+              />
+              <Tooltip title="Reload game">
+                <IconButton
+                  onClick={handleReload}
+                  sx={{ color: "text.primary" }}
+                  size="small"
+                  aria-label="Reload Lake Crossing"
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Fullscreen">
+                <IconButton
+                  onClick={handleFullscreen}
+                  sx={{ color: "text.primary" }}
+                  size="small"
+                  aria-label="Open Lake Crossing fullscreen"
+                >
+                  <OpenInFullIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Stack>
+
           <Divider sx={{ borderColor: (t) => t.palette.divider }} />
-          <LRPStarRunner />
-          <Typography variant="body2" sx={{ opacity: 0.75 }}>
-            Dodge debris, collect orbs, and chase a new high score.
+
+          <Box
+            sx={{
+              position: "relative",
+              width: "100%",
+              borderRadius: 2,
+              overflow: "hidden",
+              border: (t) => `1px solid ${t.palette.divider}`,
+              bgcolor: (t) => t.palette.background.paper,
+              aspectRatio: { xs: "3 / 4", md: "4 / 3" },
+              minHeight: { xs: 360, sm: 420, md: 480 },
+            }}
+          >
+            <GamesBridge
+              key={`lakecrossing-${reloadKey}`}
+              ref={iframeRef}
+              game="lakecrossing"
+              path="lakecrossing/index.html"
+              title="LRP Lake Crossing"
+              height="100%"
+              onError={(event) => {
+                logError(new Error("Lake Crossing iframe failed"), {
+                  where: "GamesHub.lakeCrossingIframeError",
+                });
+                if (event?.target?.removeAttribute) {
+                  try {
+                    event.target.removeAttribute("src");
+                  } catch (error) {
+                    logError(error, { where: "GamesHub.lakeCrossingCleanup" });
+                  }
+                }
+              }}
+              allowFullScreen
+              sx={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          </Box>
+
+          <Typography variant="body2" sx={{ opacity: 0.85, fontSize: "0.875rem" }}>
+            Navigate from parking lot to marina! Use arrow keys or tap buttons
+            to dodge traffic and boats. Reach all 5 marina spots to level up!
           </Typography>
         </CardContent>
       </Card>
@@ -630,7 +768,7 @@ export default function GamesHub() {
       const url = new URL(window.location.href);
       const qp = url.searchParams.get("tab");
       const normalizedPath = url.pathname.replace(/\/+$/, "");
-      if (qp === "starrunner" || normalizedPath === "/games/starrunner") {
+      if (qp === "lakecrossing" || normalizedPath === "/games/lakecrossing") {
         setTab(1);
       }
       if (url.searchParams.has("tab")) {
@@ -646,7 +784,7 @@ export default function GamesHub() {
     if (typeof window === "undefined") return;
     try {
       const url = new URL(window.location.href);
-      const targetPath = tab === 1 ? "/games/starrunner" : "/games";
+      const targetPath = tab === 1 ? "/games/lakecrossing" : "/games";
       let changed = false;
       if (url.pathname !== targetPath) {
         url.pathname = targetPath;
@@ -708,11 +846,11 @@ export default function GamesHub() {
             },
           }}
         >
-          <Tab label="Hyperlane (2D)" />
-          <Tab label="StarRunner (3D)" />
+          <Tab label="Hyperlane" />
+          <Tab label="Lake Crossing" />
         </Tabs>
 
-        {tab === 0 ? <HyperlanePanel /> : <StarRunnerPanel />}
+        {tab === 0 ? <HyperlanePanel /> : <LakeCrossingPanel />}
       </Stack>
     </PageContainer>
   );
