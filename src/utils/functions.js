@@ -15,8 +15,7 @@ export function getLRPFunctions() {
   return _functions;
 }
 
-/** Named export for modules that just import { functions } */
-export const functions = getLRPFunctions();
+/** Named export for modules that just import { functions } - removed to prevent initialization order issues */
 
 /** Callable wrapper(s) */
 export async function callDropDailyRidesNow(payload = {}) {
