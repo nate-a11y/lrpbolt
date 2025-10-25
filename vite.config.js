@@ -99,10 +99,8 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'mui-core': ['@mui/material', '@emotion/react', '@emotion/styled'],
             'mui-x': ['@mui/x-data-grid-pro', '@mui/x-data-grid', '@mui/x-date-pickers-pro', '@mui/x-date-pickers'],
-            'mui-x-license': ['@mui/x-license'],
             'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions'],
             'vendor': ['react', 'react-dom', 'react-router-dom'],
-            'framer-motion': ['framer-motion'],
           },
         },
       },

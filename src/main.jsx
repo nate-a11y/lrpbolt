@@ -23,6 +23,7 @@ import AuthProvider from "./context/AuthContext.jsx";
 import { ColorModeProvider } from "./context/ColorModeContext.jsx";
 import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import { initAnalyticsIfEnabled } from "./utils/firebaseInit.js";
+import "./muix-license.js";
 import initEruda from "./utils/initEruda.js";
 
 // Initialize Sentry immediately for error tracking
@@ -47,11 +48,6 @@ scheduleIdleTask(
     initAnalyticsIfEnabled?.();
     initAnalytics(); // fire-and-forget; guarded internally
     initEruda();
-
-    // Defer MUI-X license loading - not needed for initial render
-    import("./muix-license.js").catch((err) => {
-      console.warn("[LRP] Failed to load MUI-X license:", err);
-    });
 
     if (typeof window !== "undefined" && !window.__LRP_FCM_BOOT__) {
       // Flag is set inside initMessagingAndToken, but keep external guard for early calls/HMR
