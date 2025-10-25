@@ -8,10 +8,7 @@ export function asWebpIfPresent(pngPath) {
     // For DropOffPics, WebP files are in /webp/DropOffPics/
     let webp;
     if (base.includes("/DropOffPics/")) {
-      webp =
-        base
-          .replace(/\/DropOffPics\//i, "/webp/DropOffPics/")
-          .replace(/\.png$/i, ".webp") + q;
+      webp = base.replace(/\/DropOffPics\//i, "/webp/DropOffPics/").replace(/\.png$/i, ".webp") + q;
     } else {
       webp = base.replace(/\.png$/i, ".webp") + q;
     }
