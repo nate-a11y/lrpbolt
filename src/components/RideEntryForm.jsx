@@ -1071,7 +1071,7 @@ export default function RideEntryForm() {
             </Typography>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12}>
             <TextField
               label="Trip ID"
               value={singleRide.tripId}
@@ -1097,7 +1097,7 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12}>
             <DateTimePicker
               label="Pickup Time"
               value={singleRide.pickupAt}
@@ -1342,7 +1342,7 @@ export default function RideEntryForm() {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField
                 label="Trip ID"
                 value={builderRide.tripId}
@@ -1355,7 +1355,7 @@ export default function RideEntryForm() {
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <DateTimePicker
                 label="Pickup Time"
                 value={builderRide.pickupAt}
