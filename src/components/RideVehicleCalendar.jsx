@@ -1290,38 +1290,51 @@ function RideVehicleCalendar({
             </Typography>
           )}
 
-          <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-            <IconButton
-              size="small"
-              onClick={handlePrevDay}
-              aria-label="Previous day"
-            >
-              <ChevronLeftIcon fontSize="small" />
-            </IconButton>
-            <Typography variant="subtitle1">
-              {date.format("dddd, MMMM D")}
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={handleNextDay}
-              aria-label="Next day"
-            >
-              <ChevronRightIcon fontSize="small" />
-            </IconButton>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            mb={2}
+            sx={{
+              flexWrap: { xs: "wrap", sm: "nowrap" },
+              gap: 1
+            }}
+          >
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <IconButton
+                size="small"
+                onClick={handlePrevDay}
+                aria-label="Previous day"
+              >
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+              <Typography
+                variant={isMobile ? "body1" : "subtitle1"}
+                sx={{ minWidth: { xs: "auto", sm: 200 }, textAlign: "center" }}
+              >
+                {date.format(isMobile ? "MMM D" : "dddd, MMMM D")}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={handleNextDay}
+                aria-label="Next day"
+              >
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Stack>
           </Stack>
 
-          <Box sx={{ width: "100%" }}>
+          <Box sx={{ width: "100%", mb: 2 }}>
             <Stack
               direction={isMobile ? "column" : "row"}
-              spacing={2}
-              alignItems="center"
-              mb={2}
-              sx={{ width: "100%", flexWrap: "wrap", rowGap: 1 }}
+              spacing={isMobile ? 1.5 : 2}
+              alignItems={isMobile ? "stretch" : "center"}
+              sx={{ width: "100%" }}
             >
               <DatePicker
                 value={date}
                 onChange={(newDate) => newDate && setDate(dayjs(newDate))}
-                slotProps={{ textField: { size: "small" } }}
+                slotProps={{ textField: { size: "small", fullWidth: isMobile } }}
               />
               <Autocomplete
                 multiple
@@ -1372,7 +1385,7 @@ function RideVehicleCalendar({
                 renderInput={(params) => (
                   <TextField {...params} label="Filter Vehicles" size="small" />
                 )}
-                sx={{ minWidth: 260, width: { xs: "100%", sm: "auto" } }}
+                sx={{ minWidth: isMobile ? "100%" : 260, flex: isMobile ? undefined : 1 }}
               />
             </Stack>
           </Box>
