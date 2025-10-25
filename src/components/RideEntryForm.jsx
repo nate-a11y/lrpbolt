@@ -93,8 +93,8 @@ const SINGLE_DEFAULT = {
   pickupAt: null,
   rideType: "",
   vehicle: "",
-  durationHours: 0,
-  durationMinutes: 45,
+  durationHours: "",
+  durationMinutes: "",
   notes: "",
 };
 
@@ -103,8 +103,8 @@ const BUILDER_DEFAULT = {
   pickupAt: null,
   rideType: "",
   vehicle: "",
-  durationHours: 0,
-  durationMinutes: 45,
+  durationHours: "",
+  durationMinutes: "",
   notes: "",
 };
 
@@ -213,16 +213,17 @@ function clearStoredDraft() {
 function parseDraftSingle(rawSingle) {
   if (!rawSingle) return { ...SINGLE_DEFAULT };
   const pickupAt = rawSingle.pickupAt ? toDayjs(rawSingle.pickupAt) : null;
+
+  // Handle both empty string and numeric values for duration
+  const hours = rawSingle.durationHours;
+  const minutes = rawSingle.durationMinutes;
+
   return {
     ...SINGLE_DEFAULT,
     ...rawSingle,
     pickupAt: pickupAt?.isValid?.() ? pickupAt : null,
-    durationHours: Number.isFinite(Number(rawSingle.durationHours))
-      ? Number(rawSingle.durationHours)
-      : SINGLE_DEFAULT.durationHours,
-    durationMinutes: Number.isFinite(Number(rawSingle.durationMinutes))
-      ? Number(rawSingle.durationMinutes)
-      : SINGLE_DEFAULT.durationMinutes,
+    durationHours: hours === "" || hours == null ? "" : Number(hours),
+    durationMinutes: minutes === "" || minutes == null ? "" : Number(minutes),
   };
 }
 
@@ -246,12 +247,13 @@ function parseDraftRows(rawRows) {
 }
 
 function getDurationMinutes(hours, minutes) {
-  const safeHours = Number.isFinite(Number(hours))
-    ? Math.max(0, Number(hours))
-    : 0;
-  const safeMinutes = Number.isFinite(Number(minutes))
-    ? Math.max(0, Number(minutes))
-    : 0;
+  // Handle empty strings as 0
+  const hoursNum = hours === "" || hours == null ? 0 : Number(hours);
+  const minutesNum = minutes === "" || minutes == null ? 0 : Number(minutes);
+
+  const safeHours = Number.isFinite(hoursNum) ? Math.max(0, hoursNum) : 0;
+  const safeMinutes = Number.isFinite(minutesNum) ? Math.max(0, minutesNum) : 0;
+
   return safeHours * 60 + safeMinutes;
 }
 
@@ -1118,16 +1120,17 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={6}>
             <TextField
               label="Hours"
               type="number"
               value={singleRide.durationHours}
-              onChange={(event) =>
+              onChange={(event) => {
+                const val = event.target.value;
                 updateSingleRide({
-                  durationHours: Math.max(0, Number(event.target.value ?? 0)),
-                })
-              }
+                  durationHours: val === "" ? "" : Math.max(0, Number(val)),
+                });
+              }}
               error={Boolean(singleErrors.duration) && showSingleValidation}
               helperText={
                 showSingleValidation && singleErrors.duration
@@ -1143,16 +1146,17 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={6}>
             <TextField
               label="Minutes"
               type="number"
               value={singleRide.durationMinutes}
-              onChange={(event) =>
+              onChange={(event) => {
+                const val = event.target.value;
                 updateSingleRide({
-                  durationMinutes: Math.max(0, Number(event.target.value ?? 0)),
-                })
-              }
+                  durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
+                });
+              }}
               error={Boolean(singleErrors.duration) && showSingleValidation}
               helperText={
                 showSingleValidation && singleErrors.duration
@@ -1168,7 +1172,7 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6}>
             <LrpSelectField
               label="Ride Type"
               name="rideType"
@@ -1196,7 +1200,7 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6}>
             <LrpSelectField
               label="Vehicle"
               name="vehicle"
@@ -1361,39 +1365,41 @@ export default function RideEntryForm() {
               />
             </Grid>
 
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={6}>
               <TextField
                 label="Hours"
                 type="number"
                 value={builderRide.durationHours}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const val = event.target.value;
                   handleBuilderChange({
-                    durationHours: Math.max(0, Number(event.target.value ?? 0)),
-                  })
-                }
+                    durationHours: val === "" ? "" : Math.max(0, Number(val)),
+                  });
+                }}
                 size="small"
                 fullWidth
                 inputProps={{ min: 0 }}
               />
             </Grid>
 
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={6}>
               <TextField
                 label="Minutes"
                 type="number"
                 value={builderRide.durationMinutes}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const val = event.target.value;
                   handleBuilderChange({
-                    durationMinutes: Math.max(0, Number(event.target.value ?? 0)),
-                  })
-                }
+                    durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
+                  });
+                }}
                 size="small"
                 fullWidth
                 inputProps={{ min: 0, max: 59 }}
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <LrpSelectField
                 label="Ride Type"
                 name="builderRideType"
@@ -1410,7 +1416,7 @@ export default function RideEntryForm() {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={6}>
               <LrpSelectField
                 label="Vehicle"
                 name="builderVehicle"
