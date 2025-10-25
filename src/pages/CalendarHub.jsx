@@ -51,12 +51,11 @@ export default function CalendarHub() {
         JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {
           vehicles: [],
           scrollToNow: true,
-          showHeader: true, // default ON
         }
       );
     } catch (e) {
       logError(e, { area: "CalendarHub", action: "hydrate-filters" });
-      return { vehicles: [], scrollToNow: true, showHeader: true };
+      return { vehicles: [], scrollToNow: true };
     }
   });
 
@@ -170,18 +169,6 @@ export default function CalendarHub() {
                 />
               }
             />
-            <FormControlLabel
-              sx={{ ml: 1 }}
-              label="Show header row"
-              control={
-                <Switch
-                  checked={!!filters?.showHeader}
-                  onChange={(_, v) =>
-                    setFilters((p) => ({ ...p, showHeader: v }))
-                  }
-                />
-              }
-            />
 
             <Box sx={{ flexGrow: 1 }} />
 
@@ -217,9 +204,10 @@ export default function CalendarHub() {
             >
               <LazyCalendar
                 dateISO={dateISO}
-                hideHeader={!filters?.showHeader}
+                hideHeader={true}
                 stickyTopOffset={stickyTopCss}
                 onCenterNow={filters?.scrollToNow ? "init" : undefined}
+                hideQuickActions={!isMdUp}
               />
             </Suspense>
           </Grid>
