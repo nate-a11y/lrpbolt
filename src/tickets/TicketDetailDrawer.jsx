@@ -21,12 +21,15 @@ import {
   addTicketComment,
   updateTicket,
   addWatcher,
+  deleteTicketsByIds,
+  snapshotTicketsByIds,
 } from "@/services/tickets.js";
-import { getUserContacts } from "@/services/users.js";
+import { getUserContacts, fetchAllUsersAccess } from "@/services/users.js";
 import { dayjs, formatDateTime } from "@/utils/time";
 import logError from "@/utils/logError.js";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { APP_BAR_HEIGHT } from "@/layout/constants.js";
+import { formatAssigneeLabel } from "@/lib/assignees.js";
 
 import { subscribeTicketAttachments, uploadTicketFiles } from "./attachments";
 
@@ -38,6 +41,7 @@ const STATUS_OPTIONS = [
   "breached",
 ];
 const PRIORITY_OPTIONS = ["low", "normal", "high", "urgent"];
+const CATEGORY_OPTIONS = ["vehicle", "marketing", "tech", "moovs"];
 
 export default function TicketDetailDrawer({
   open,
@@ -55,6 +59,9 @@ export default function TicketDetailDrawer({
   const [attachmentsLoading, setAttachmentsLoading] = React.useState(false);
   const [attachmentsError, setAttachmentsError] = React.useState(null);
   const [watcherContacts, setWatcherContacts] = React.useState({});
+  const [allUsers, setAllUsers] = React.useState([]);
+  const [usersLoading, setUsersLoading] = React.useState(false);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
   const { show } = useSnack();
 
   const ticketId = ticket?.id || null;
@@ -152,6 +159,25 @@ export default function TicketDetailDrawer({
     };
   }, [open, ticketId, watchers]);
 
+  React.useEffect(() => {
+    if (!open) {
+      setAllUsers([]);
+      return;
+    }
+    setUsersLoading(true);
+    fetchAllUsersAccess()
+      .then((users) => {
+        setAllUsers(users || []);
+      })
+      .catch((err) => {
+        logError(err, { where: "TicketDetailDrawer.fetchUsers" });
+        setAllUsers([]);
+      })
+      .finally(() => {
+        setUsersLoading(false);
+      });
+  }, [open]);
+
   const handleCommentSubmit = React.useCallback(async () => {
     const trimmed = comment.trim();
     if (!ticketId || !trimmed) return;
@@ -197,12 +223,29 @@ export default function TicketDetailDrawer({
       if (!ticketId) return;
       setUpdateBusy(true);
       try {
-        await updateTicket(ticketId, { [field]: value });
-        onTicketUpdated?.({
+        let updatePayload = { [field]: value };
+
+        // If changing assignee, create proper assignee object
+        if (field === "assignee") {
+          const selectedUser = allUsers.find((u) => u.email === value);
+          if (selectedUser) {
+            updatePayload.assignee = {
+              userId: selectedUser.email.split("@")[0],
+              email: selectedUser.email,
+              displayName: selectedUser.name || selectedUser.email,
+            };
+          }
+        }
+
+        await updateTicket(ticketId, updatePayload);
+
+        const optimisticUpdate = {
           ...ticket,
-          [field]: value,
+          ...updatePayload,
           updatedAt: dayjs(),
-        });
+        };
+
+        onTicketUpdated?.(optimisticUpdate);
         show(`Support ticket ${field} updated.`, "success");
       } catch (error) {
         logError(error, {
@@ -215,7 +258,7 @@ export default function TicketDetailDrawer({
         setUpdateBusy(false);
       }
     },
-    [onTicketUpdated, show, ticket, ticketId],
+    [allUsers, onTicketUpdated, show, ticket, ticketId],
   );
 
   const handleUploadFiles = React.useCallback(
@@ -262,10 +305,45 @@ export default function TicketDetailDrawer({
     }
   }, [currentUserId, onTicketUpdated, show, ticket, ticketId]);
 
+  const handleDeleteTicket = React.useCallback(async () => {
+    if (!ticketId) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ticket ${ticket?.incidentNumber || ticketId}? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDeleteBusy(true);
+    try {
+      // Snapshot the ticket before deleting for potential restore
+      const snapshots = await snapshotTicketsByIds([ticketId]);
+
+      await deleteTicketsByIds([ticketId]);
+      show("Ticket deleted successfully.", "success");
+      onClose?.();
+    } catch (error) {
+      logError(error, { where: "TicketDetailDrawer.deleteTicket", ticketId });
+      show(error?.message || "Failed to delete ticket.", "error");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }, [onClose, show, ticket?.incidentNumber, ticketId]);
+
   const handleClose = React.useCallback(() => {
-    if (commentBusy || updateBusy || uploadBusy || watcherBusy) return;
+    if (commentBusy || updateBusy || uploadBusy || watcherBusy || deleteBusy)
+      return;
     onClose?.();
-  }, [commentBusy, onClose, updateBusy, uploadBusy, watcherBusy]);
+  }, [commentBusy, deleteBusy, onClose, updateBusy, uploadBusy, watcherBusy]);
+
+  const isNate = React.useMemo(() => {
+    const userEmail = (
+      currentUser?.email ||
+      currentUser?.uid ||
+      ""
+    ).toLowerCase();
+    return userEmail === "nate@lakeridepros.com";
+  }, [currentUser?.email, currentUser?.uid]);
 
   const formattedCreated = formatDateTime(ticket?.createdAt);
   const formattedUpdated = formatDateTime(ticket?.updatedAt);
@@ -351,45 +429,95 @@ export default function TicketDetailDrawer({
           ) : null}
         </Stack>
 
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1.5}
-          alignItems={{ sm: "center" }}
-        >
-          <TextField
-            select
-            size="small"
-            label="Status"
-            value={ticket?.status || "open"}
-            onChange={(event) =>
-              handleFieldChange("status", event.target.value)
-            }
-            disabled={updateBusy}
-            sx={{ minWidth: 180 }}
+        <Stack spacing={1.5}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ sm: "center" }}
           >
-            {STATUS_OPTIONS.map((status) => (
-              <MenuItem key={status} value={status}>
-                {status}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            size="small"
-            label="Priority"
-            value={ticket?.priority || "normal"}
-            onChange={(event) =>
-              handleFieldChange("priority", event.target.value)
-            }
-            disabled={updateBusy}
-            sx={{ minWidth: 180 }}
+            <TextField
+              select
+              size="small"
+              label="Status"
+              value={ticket?.status || "open"}
+              onChange={(event) =>
+                handleFieldChange("status", event.target.value)
+              }
+              disabled={updateBusy}
+              sx={{ minWidth: 180 }}
+            >
+              {STATUS_OPTIONS.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {status}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="Priority"
+              value={ticket?.priority || "normal"}
+              onChange={(event) =>
+                handleFieldChange("priority", event.target.value)
+              }
+              disabled={updateBusy}
+              sx={{ minWidth: 180 }}
+            >
+              {PRIORITY_OPTIONS.map((priority) => (
+                <MenuItem key={priority} value={priority}>
+                  {priority}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ sm: "center" }}
           >
-            {PRIORITY_OPTIONS.map((priority) => (
-              <MenuItem key={priority} value={priority}>
-                {priority}
-              </MenuItem>
-            ))}
-          </TextField>
+            <TextField
+              select
+              size="small"
+              label="Category"
+              value={ticket?.category || "tech"}
+              onChange={(event) =>
+                handleFieldChange("category", event.target.value)
+              }
+              disabled={updateBusy}
+              sx={{ minWidth: 180 }}
+            >
+              {CATEGORY_OPTIONS.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="Assignee"
+              value={ticket?.assignee?.email || ""}
+              onChange={(event) =>
+                handleFieldChange("assignee", event.target.value)
+              }
+              disabled={updateBusy || usersLoading}
+              sx={{ minWidth: 180 }}
+              helperText={
+                usersLoading
+                  ? "Loading users..."
+                  : ticket?.assignee?.displayName
+                    ? formatAssigneeLabel(ticket.assignee)
+                    : ""
+              }
+            >
+              {allUsers.map((user) => (
+                <MenuItem key={user.email} value={user.email}>
+                  {user.name || user.email}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
         </Stack>
 
         <Divider light />
@@ -536,6 +664,29 @@ export default function TicketDetailDrawer({
         </Box>
 
         <Divider light />
+
+        {isNate && (
+          <>
+            <Box>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleDeleteTicket}
+                disabled={deleteBusy}
+                fullWidth
+              >
+                {deleteBusy ? "Deleting..." : "Delete Ticket"}
+              </Button>
+              <Typography
+                variant="caption"
+                sx={{ display: "block", color: "text.secondary", mt: 0.5 }}
+              >
+                Only you (Nate) can delete tickets.
+              </Typography>
+            </Box>
+            <Divider light />
+          </>
+        )}
 
         <Box sx={{ mt: "auto" }}>
           <Typography
