@@ -1120,112 +1120,120 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={6}>
-            <TextField
-              label="Hours"
-              type="number"
-              value={singleRide.durationHours}
-              onChange={(event) => {
-                const val = event.target.value;
-                updateSingleRide({
-                  durationHours: val === "" ? "" : Math.max(0, Number(val)),
-                });
-              }}
-              error={Boolean(singleErrors.duration) && showSingleValidation}
-              helperText={
-                showSingleValidation && singleErrors.duration
-                  ? singleErrors.duration
-                  : ""
-              }
-              size="small"
-              fullWidth
-              inputProps={{ min: 0, "aria-label": "Duration hours" }}
-              sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.duration),
-              )}
-            />
+          <Grid item xs={12}>
+            <Grid container spacing={GRID_SPACING}>
+              <Grid item xs={6}>
+                <TextField
+                  label="Hours"
+                  type="number"
+                  value={singleRide.durationHours}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    updateSingleRide({
+                      durationHours: val === "" ? "" : Math.max(0, Number(val)),
+                    });
+                  }}
+                  error={Boolean(singleErrors.duration) && showSingleValidation}
+                  helperText={
+                    showSingleValidation && singleErrors.duration
+                      ? singleErrors.duration
+                      : ""
+                  }
+                  size="small"
+                  fullWidth
+                  inputProps={{ min: 0, "aria-label": "Duration hours" }}
+                  sx={singleShakeSx(
+                    showSingleValidation && Boolean(singleErrors.duration),
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  label="Minutes"
+                  type="number"
+                  value={singleRide.durationMinutes}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    updateSingleRide({
+                      durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
+                    });
+                  }}
+                  error={Boolean(singleErrors.duration) && showSingleValidation}
+                  helperText={
+                    showSingleValidation && singleErrors.duration
+                      ? singleErrors.duration
+                      : ""
+                  }
+                  size="small"
+                  fullWidth
+                  inputProps={{ min: 0, max: 59, "aria-label": "Duration minutes" }}
+                  sx={singleShakeSx(
+                    showSingleValidation && Boolean(singleErrors.duration),
+                  )}
+                />
+              </Grid>
+            </Grid>
           </Grid>
 
-          <Grid item xs={6}>
-            <TextField
-              label="Minutes"
-              type="number"
-              value={singleRide.durationMinutes}
-              onChange={(event) => {
-                const val = event.target.value;
-                updateSingleRide({
-                  durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
-                });
-              }}
-              error={Boolean(singleErrors.duration) && showSingleValidation}
-              helperText={
-                showSingleValidation && singleErrors.duration
-                  ? singleErrors.duration
-                  : ""
-              }
-              size="small"
-              fullWidth
-              inputProps={{ min: 0, max: 59, "aria-label": "Duration minutes" }}
-              sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.duration),
-              )}
-            />
-          </Grid>
+          <Grid item xs={12}>
+            <Grid container spacing={GRID_SPACING}>
+              <Grid item xs={6}>
+                <LrpSelectField
+                  label="Ride Type"
+                  name="rideType"
+                  value={singleRide.rideType ?? ""}
+                  onChange={(event) =>
+                    updateSingleRide({ rideType: event.target.value })
+                  }
+                  placeholder="Choose type…"
+                  options={RIDE_TYPES.map((type) => ({
+                    value: type,
+                    label: type,
+                  }))}
+                  helperText={
+                    showSingleValidation && singleErrors.rideType
+                      ? singleErrors.rideType
+                      : ""
+                  }
+                  size="small"
+                  FormControlProps={{
+                    error: Boolean(singleErrors.rideType) && showSingleValidation,
+                    sx: singleShakeSx(
+                      showSingleValidation && Boolean(singleErrors.rideType),
+                    ),
+                  }}
+                />
+              </Grid>
 
-          <Grid item xs={6}>
-            <LrpSelectField
-              label="Ride Type"
-              name="rideType"
-              value={singleRide.rideType ?? ""}
-              onChange={(event) =>
-                updateSingleRide({ rideType: event.target.value })
-              }
-              placeholder="Choose type…"
-              options={RIDE_TYPES.map((type) => ({
-                value: type,
-                label: type,
-              }))}
-              helperText={
-                showSingleValidation && singleErrors.rideType
-                  ? singleErrors.rideType
-                  : ""
-              }
-              size="small"
-              FormControlProps={{
-                error: Boolean(singleErrors.rideType) && showSingleValidation,
-                sx: singleShakeSx(
-                  showSingleValidation && Boolean(singleErrors.rideType),
-                ),
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={6}>
-            <LrpSelectField
-              label="Vehicle"
-              name="vehicle"
-              value={singleRide.vehicle ?? ""}
-              onChange={(event) =>
-                updateSingleRide({ vehicle: event.target.value })
-              }
-              placeholder="Choose vehicle…"
-              options={VEHICLES.map((vehicle) => ({
-                value: vehicle.id || vehicle.name || vehicle,
-                label: vehicle.name || vehicle.label || String(vehicle),
-              }))}
-              helperText={
-                showSingleValidation && singleErrors.vehicle
-                  ? singleErrors.vehicle
-                  : ""
-              }
-              size="small"
-              FormControlProps={{
-                error: Boolean(singleErrors.vehicle) && showSingleValidation,
-                sx: singleShakeSx(
-                  showSingleValidation && Boolean(singleErrors.vehicle),
-                ),
-              }}
-            />
+              <Grid item xs={6}>
+                <LrpSelectField
+                  label="Vehicle"
+                  name="vehicle"
+                  value={singleRide.vehicle ?? ""}
+                  onChange={(event) =>
+                    updateSingleRide({ vehicle: event.target.value })
+                  }
+                  placeholder="Choose vehicle…"
+                  options={VEHICLES.map((vehicle) => ({
+                    value: vehicle.id || vehicle.name || vehicle,
+                    label: vehicle.name || vehicle.label || String(vehicle),
+                  }))}
+                  helperText={
+                    showSingleValidation && singleErrors.vehicle
+                      ? singleErrors.vehicle
+                      : ""
+                  }
+                  size="small"
+                  FormControlProps={{
+                    error: Boolean(singleErrors.vehicle) && showSingleValidation,
+                    sx: singleShakeSx(
+                      showSingleValidation && Boolean(singleErrors.vehicle),
+                    ),
+                  }}
+                />
+              </Grid>
+            </Grid>
           </Grid>
 
           <Grid item xs={12}>
@@ -1365,72 +1373,80 @@ export default function RideEntryForm() {
               />
             </Grid>
 
-            <Grid item xs={6}>
-              <TextField
-                label="Hours"
-                type="number"
-                value={builderRide.durationHours}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  handleBuilderChange({
-                    durationHours: val === "" ? "" : Math.max(0, Number(val)),
-                  });
-                }}
-                size="small"
-                fullWidth
-                inputProps={{ min: 0 }}
-              />
+            <Grid item xs={12}>
+              <Grid container spacing={GRID_SPACING}>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Hours"
+                    type="number"
+                    value={builderRide.durationHours}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      handleBuilderChange({
+                        durationHours: val === "" ? "" : Math.max(0, Number(val)),
+                      });
+                    }}
+                    size="small"
+                    fullWidth
+                    inputProps={{ min: 0 }}
+                  />
+                </Grid>
+
+                <Grid item xs={6}>
+                  <TextField
+                    label="Minutes"
+                    type="number"
+                    value={builderRide.durationMinutes}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      handleBuilderChange({
+                        durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
+                      });
+                    }}
+                    size="small"
+                    fullWidth
+                    inputProps={{ min: 0, max: 59 }}
+                  />
+                </Grid>
+              </Grid>
             </Grid>
 
-            <Grid item xs={6}>
-              <TextField
-                label="Minutes"
-                type="number"
-                value={builderRide.durationMinutes}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  handleBuilderChange({
-                    durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
-                  });
-                }}
-                size="small"
-                fullWidth
-                inputProps={{ min: 0, max: 59 }}
-              />
-            </Grid>
+            <Grid item xs={12}>
+              <Grid container spacing={GRID_SPACING}>
+                <Grid item xs={6}>
+                  <LrpSelectField
+                    label="Ride Type"
+                    name="builderRideType"
+                    value={builderRide.rideType ?? ""}
+                    onChange={(event) =>
+                      handleBuilderChange({ rideType: event.target.value })
+                    }
+                    placeholder="Choose type…"
+                    options={RIDE_TYPES.map((type) => ({
+                      value: type,
+                      label: type,
+                    }))}
+                    size="small"
+                  />
+                </Grid>
 
-            <Grid item xs={6}>
-              <LrpSelectField
-                label="Ride Type"
-                name="builderRideType"
-                value={builderRide.rideType ?? ""}
-                onChange={(event) =>
-                  handleBuilderChange({ rideType: event.target.value })
-                }
-                placeholder="Choose type…"
-                options={RIDE_TYPES.map((type) => ({
-                  value: type,
-                  label: type,
-                }))}
-                size="small"
-              />
-            </Grid>
-
-            <Grid item xs={6}>
-              <LrpSelectField
-                label="Vehicle"
-                name="builderVehicle"
-                value={builderRide.vehicle ?? ""}
-                onChange={(event) =>
-                  handleBuilderChange({ vehicle: event.target.value })
-                }
-                placeholder="Choose vehicle…"
-                options={VEHICLES.map((vehicle) => ({
-                  value: vehicle.id || vehicle.name || vehicle,
-                  label: vehicle.name || vehicle.label || String(vehicle),
-                }))}
-                size="small"
-              />
+                <Grid item xs={6}>
+                  <LrpSelectField
+                    label="Vehicle"
+                    name="builderVehicle"
+                    value={builderRide.vehicle ?? ""}
+                    onChange={(event) =>
+                      handleBuilderChange({ vehicle: event.target.value })
+                    }
+                    placeholder="Choose vehicle…"
+                    options={VEHICLES.map((vehicle) => ({
+                      value: vehicle.id || vehicle.name || vehicle,
+                      label: vehicle.name || vehicle.label || String(vehicle),
+                    }))}
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
             </Grid>
 
             <Grid item xs={12}>
