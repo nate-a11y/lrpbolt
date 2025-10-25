@@ -96,6 +96,12 @@ export default defineConfig(({ mode }) => {
           entryFileNames: "assets/[name]-[hash].js",
           chunkFileNames: "assets/[name]-[hash].js",
           hoistTransitiveImports: true,
+          manualChunks: {
+            'mui-core': ['@mui/material', '@emotion/react', '@emotion/styled'],
+            'mui-x': ['@mui/x-data-grid-pro', '@mui/x-data-grid', '@mui/x-date-pickers-pro', '@mui/x-date-pickers'],
+            'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions'],
+            'vendor': ['react', 'react-dom', 'react-router-dom'],
+          },
         },
       },
     },

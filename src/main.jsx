@@ -26,23 +26,32 @@ import { initAnalyticsIfEnabled } from "./utils/firebaseInit.js";
 import "./muix-license.js";
 import initEruda from "./utils/initEruda.js";
 
-initAnalyticsIfEnabled?.();
-initAnalytics(); // fire-and-forget; guarded internally
-initServiceWorkerMessageBridge();
-initEruda();
-
-if (typeof window !== "undefined") {
-  if (!window.__LRP_OBS__) {
-    window.__LRP_OBS__ = true;
-    Promise.resolve(initSentry()).then(() =>
-      logEvent("app_start", { ts: Date.now() }),
-    );
-  }
-  if (!window.__LRP_FCM_BOOT__) {
-    // Flag is set inside initMessagingAndToken, but keep external guard for early calls/HMR
-    initMessagingAndToken();
-  }
+// Initialize Sentry immediately for error tracking
+if (typeof window !== "undefined" && !window.__LRP_OBS__) {
+  window.__LRP_OBS__ = true;
+  Promise.resolve(initSentry()).then(() =>
+    logEvent("app_start", { ts: Date.now() }),
+  );
 }
+
+// Defer non-critical initializations until after first render
+// Polyfill for browsers without requestIdleCallback
+const scheduleIdleTask = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+
+scheduleIdleTask(
+  () => {
+    initAnalyticsIfEnabled?.();
+    initAnalytics(); // fire-and-forget; guarded internally
+    initServiceWorkerMessageBridge();
+    initEruda();
+
+    if (typeof window !== "undefined" && !window.__LRP_FCM_BOOT__) {
+      // Flag is set inside initMessagingAndToken, but keep external guard for early calls/HMR
+      initMessagingAndToken();
+    }
+  },
+  { timeout: 2000 }
+);
 
 const Root = () => {
   const [liveMessage, setLiveMessage] = useState(() => {
