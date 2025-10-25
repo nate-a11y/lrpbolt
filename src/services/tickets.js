@@ -319,6 +319,53 @@ export async function addTicketComment(ticketId, comment = {}) {
   }
 }
 
+export function subscribeTicketComments(ticketId, callback) {
+  const safeId = String(ticketId || "").trim();
+  if (!safeId) {
+    return () => {};
+  }
+
+  const cb = typeof callback === "function" ? callback : () => {};
+
+  try {
+    const commentsRef = collection(
+      db,
+      COLLECTIONS.ISSUE_TICKETS,
+      safeId,
+      "comments",
+    );
+    const q = query(commentsRef, orderBy("createdAt", "desc"));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const rows = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data() || {};
+          return {
+            id: docSnap.id,
+            ...data,
+            createdAt: toDayjs(data.createdAt),
+          };
+        });
+        cb({ rows });
+      },
+      (error) => {
+        logError(error, {
+          where: "tickets.subscribeTicketComments",
+          ticketId: safeId,
+        });
+        cb({ error });
+      },
+    );
+  } catch (error) {
+    logError(error, {
+      where: "tickets.subscribeTicketComments",
+      ticketId: safeId,
+    });
+    cb({ error });
+    return () => {};
+  }
+}
+
 export async function updateTicket(ticketId, updates = {}) {
   const safeId = String(ticketId || "").trim();
   if (!safeId) {
