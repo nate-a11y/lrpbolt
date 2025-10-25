@@ -1121,7 +1121,7 @@ export default function RideEntryForm() {
           </Grid>
 
           <Grid item xs={12}>
-            <Grid container spacing={GRID_SPACING}>
+            <Grid container spacing={1.5}>
               <Grid item xs={6}>
                 <TextField
                   label="Hours"
@@ -1177,7 +1177,7 @@ export default function RideEntryForm() {
           </Grid>
 
           <Grid item xs={12}>
-            <Grid container spacing={GRID_SPACING}>
+            <Grid container spacing={1.5}>
               <Grid item xs={6}>
                 <LrpSelectField
                   label="Ride Type"
@@ -1374,7 +1374,7 @@ export default function RideEntryForm() {
             </Grid>
 
             <Grid item xs={12}>
-              <Grid container spacing={GRID_SPACING}>
+              <Grid container spacing={1.5}>
                 <Grid item xs={6}>
                   <TextField
                     label="Hours"
@@ -1412,7 +1412,7 @@ export default function RideEntryForm() {
             </Grid>
 
             <Grid item xs={12}>
-              <Grid container spacing={GRID_SPACING}>
+              <Grid container spacing={1.5}>
                 <Grid item xs={6}>
                   <LrpSelectField
                     label="Ride Type"
