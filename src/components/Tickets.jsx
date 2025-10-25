@@ -1116,14 +1116,15 @@ function Tickets() {
             <GridActionsCellItem
               key="edit"
               icon={<EditIcon />}
-              label="Edit"
+              label={isAdmin ? "Edit" : "Edit (Admin only)"}
+              disabled={!isAdmin}
               onClick={() => handleEditClick(params.row)}
             />,
             <GridActionsCellItem
               key="delete"
               icon={<DeleteIcon />}
-              label="Delete"
-              disabled={deleting}
+              label={isAdmin ? "Delete" : "Delete (Admin only)"}
+              disabled={!isAdmin || deleting}
               onClick={() => handleDeleteClick(params.row)}
             />,
           ],
@@ -1136,6 +1137,7 @@ function Tickets() {
       getRowId,
       handleDeleteClick,
       handleEditClick,
+      isAdmin,
       openLink,
       setEmailOpen,
       setEmailTo,
