@@ -201,114 +201,114 @@ export default function CalendarHub() {
             </Stack>
           </Box>
 
-        {!isMdUp && <Divider sx={{ my: 2 }} />}
+          {!isMdUp && <Divider sx={{ my: 2 }} />}
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={8}>
-            <Suspense
-              fallback={
-                <Box
-                  sx={{
-                    py: 6,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <CircularProgress size={32} />
-                </Box>
-              }
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={8}>
+              <Suspense
+                fallback={
+                  <Box
+                    sx={{
+                      py: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CircularProgress size={32} />
+                  </Box>
+                }
+              >
+                <LazyCalendar
+                  dateISO={dateISO}
+                  onDateChange={setDateISO}
+                  hideHeader={true}
+                  hideDatePicker={true}
+                  stickyTopOffset={stickyTopCss}
+                  onCenterNow={filters?.scrollToNow ? "init" : undefined}
+                  hideQuickActions={!isMdUp}
+                  persistedFilters={filters}
+                  onFiltersChange={setFilters}
+                />
+              </Suspense>
+            </Grid>
+
+            <Grid
+              item
+              xs={12}
+              xl={4}
+              sx={{ display: { xs: "none", xl: "block" } }}
             >
-              <LazyCalendar
-                dateISO={dateISO}
-                onDateChange={setDateISO}
-                hideHeader={true}
-                hideDatePicker={true}
-                stickyTopOffset={stickyTopCss}
-                onCenterNow={filters?.scrollToNow ? "init" : undefined}
-                hideQuickActions={!isMdUp}
-                persistedFilters={filters}
-                onFiltersChange={setFilters}
-              />
-            </Suspense>
+              {!useDrawer && <CalendarUpdateTab compact />}
+            </Grid>
           </Grid>
-
-          <Grid
-            item
-            xs={12}
-            xl={4}
-            sx={{ display: { xs: "none", xl: "block" } }}
-          >
-            {!useDrawer && <CalendarUpdateTab compact />}
-          </Grid>
-        </Grid>
-      </Box>
-
-      {/* Help Drawer */}
-      <Drawer
-        anchor="right"
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        ModalProps={{ keepMounted: true }}
-        PaperProps={{
-          sx: {
-            mt: {
-              xs: `calc(56px + env(safe-area-inset-top, 0px))`,
-              sm: `calc(64px + env(safe-area-inset-top, 0px))`,
-            },
-            height: {
-              xs: `calc(100% - calc(56px + env(safe-area-inset-top, 0px)))`,
-              sm: `calc(100% - calc(64px + env(safe-area-inset-top, 0px)))`,
-            },
-            width: { xs: "94vw", sm: 420 },
-            overflow: "auto",
-            pt: 1,
-          },
-        }}
-      >
-        <Box sx={{ px: 2, pb: 2 }}>
-          <CalendarUpdateTab compact />
         </Box>
-      </Drawer>
 
-      {/* Mobile reach FABs */}
-      <Tooltip title="Today">
-        <Fab
-          size="medium"
-          color="primary"
-          onClick={actions.onToday}
-          sx={{
-            position: "fixed",
-            right: 16,
-            bottom: `calc(88px + env(safe-area-inset-bottom, 0px))`,
-            zIndex: (t) => t.zIndex.tooltip + 1,
-            backgroundColor: (t) => t.palette.primary.main,
-            "&:hover": { backgroundColor: "#3ea313" },
+        {/* Help Drawer */}
+        <Drawer
+          anchor="right"
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          PaperProps={{
+            sx: {
+              mt: {
+                xs: `calc(56px + env(safe-area-inset-top, 0px))`,
+                sm: `calc(64px + env(safe-area-inset-top, 0px))`,
+              },
+              height: {
+                xs: `calc(100% - calc(56px + env(safe-area-inset-top, 0px)))`,
+                sm: `calc(100% - calc(64px + env(safe-area-inset-top, 0px)))`,
+              },
+              width: { xs: "94vw", sm: 420 },
+              overflow: "auto",
+              pt: 1,
+            },
           }}
-          aria-label="Jump to today"
         >
-          <TodayIcon />
-        </Fab>
-      </Tooltip>
+          <Box sx={{ px: 2, pb: 2 }}>
+            <CalendarUpdateTab compact />
+          </Box>
+        </Drawer>
 
-      <Tooltip title="Center to now">
-        <Fab
-          size="medium"
-          color="primary"
-          onClick={actions.onCenterNow}
-          sx={{
-            position: "fixed",
-            right: 16,
-            bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-            zIndex: (t) => t.zIndex.tooltip + 1,
-            backgroundColor: (t) => t.palette.primary.main,
-            "&:hover": { backgroundColor: "#3ea313" },
-          }}
-          aria-label="Center to current time"
-        >
-          <CenterFocusStrongIcon />
-        </Fab>
-      </Tooltip>
+        {/* Mobile reach FABs */}
+        <Tooltip title="Today">
+          <Fab
+            size="medium"
+            color="primary"
+            onClick={actions.onToday}
+            sx={{
+              position: "fixed",
+              right: 16,
+              bottom: `calc(88px + env(safe-area-inset-bottom, 0px))`,
+              zIndex: (t) => t.zIndex.tooltip + 1,
+              backgroundColor: (t) => t.palette.primary.main,
+              "&:hover": { backgroundColor: "#3ea313" },
+            }}
+            aria-label="Jump to today"
+          >
+            <TodayIcon />
+          </Fab>
+        </Tooltip>
+
+        <Tooltip title="Center to now">
+          <Fab
+            size="medium"
+            color="primary"
+            onClick={actions.onCenterNow}
+            sx={{
+              position: "fixed",
+              right: 16,
+              bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+              zIndex: (t) => t.zIndex.tooltip + 1,
+              backgroundColor: (t) => t.palette.primary.main,
+              "&:hover": { backgroundColor: "#3ea313" },
+            }}
+            aria-label="Center to current time"
+          >
+            <CenterFocusStrongIcon />
+          </Fab>
+        </Tooltip>
       </Box>
     </LocalizationProvider>
   );
