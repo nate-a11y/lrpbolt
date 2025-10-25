@@ -1334,7 +1334,12 @@ function RideVehicleCalendar({
               <DatePicker
                 value={date}
                 onChange={(newDate) => newDate && setDate(dayjs(newDate))}
-                slotProps={{ textField: { size: "small", fullWidth: isMobile } }}
+                slotProps={{
+                  textField: { size: "small", fullWidth: isMobile },
+                  popper: {
+                    sx: { zIndex: (t) => t.zIndex.modal }
+                  }
+                }}
               />
               <Autocomplete
                 multiple

@@ -208,6 +208,8 @@ export default function CalendarHub() {
                 stickyTopOffset={stickyTopCss}
                 onCenterNow={filters?.scrollToNow ? "init" : undefined}
                 hideQuickActions={!isMdUp}
+                persistedFilters={filters}
+                onFiltersChange={setFilters}
               />
             </Suspense>
           </Grid>

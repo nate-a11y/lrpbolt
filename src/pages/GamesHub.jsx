@@ -35,6 +35,9 @@ import {
   subscribeTopHyperlaneAllTime,
   subscribeTopHyperlaneWeekly,
   subscribeUserWeeklyHyperlaneBest,
+  subscribeTopLakeCrossingAllTime,
+  subscribeTopLakeCrossingWeekly,
+  subscribeUserWeeklyLakeCrossingBest,
 } from "@/services/games.js";
 import { toNumberOrNull } from "@/services/gamesService.js";
 import { startOfWeekLocal } from "@/utils/timeUtils.js";
@@ -578,8 +581,20 @@ function HyperlanePanel() {
 
 function LakeCrossingPanel() {
   const iframeRef = useRef(null);
+  const { user } = useAuth();
   const [reloadKey, setReloadKey] = useState(0);
+  const [allTimeScores, setAllTimeScores] = useState([]);
+  const [allTimeLoading, setAllTimeLoading] = useState(true);
+  const [allTimeError, setAllTimeError] = useState(null);
+  const [weeklyScores, setWeeklyScores] = useState([]);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [weeklyError, setWeeklyError] = useState(null);
+  const [userBest, setUserBest] = useState(null);
+  const [userBestLoading, setUserBestLoading] = useState(true);
+  const [lastScore, setLastScore] = useState(null);
   const { enabled: soundOn, setEnabled: setSoundOn, play } = useGameSound();
+
+  const startOfWeek = useMemo(() => startOfWeekLocal(), []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -597,6 +612,128 @@ function LakeCrossingPanel() {
     };
   }, [play]);
 
+  useEffect(() => {
+    setAllTimeLoading(true);
+    const unsubscribe = subscribeTopLakeCrossingAllTime({
+      topN: 10,
+      onData: (rows) => {
+        setAllTimeScores(Array.isArray(rows) ? rows : []);
+        setAllTimeLoading(false);
+        setAllTimeError(null);
+      },
+      onError: (error) => {
+        setAllTimeError(error?.message || "Failed to load high scores.");
+        setAllTimeLoading(false);
+      },
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    setWeeklyLoading(true);
+    const unsubscribe = subscribeTopLakeCrossingWeekly({
+      topN: 10,
+      onData: (rows) => {
+        setWeeklyScores(Array.isArray(rows) ? rows : []);
+        setWeeklyLoading(false);
+        setWeeklyError(null);
+      },
+      onError: (error) => {
+        setWeeklyError(error?.message || "Failed to load weekly leaderboard.");
+        setWeeklyLoading(false);
+      },
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setUserBest(null);
+      setUserBestLoading(false);
+      return undefined;
+    }
+    setUserBestLoading(true);
+    const unsubscribe = subscribeUserWeeklyLakeCrossingBest({
+      uid: user.uid,
+      startAt: startOfWeek,
+      onData: (row) => {
+        setUserBest(row);
+        setUserBestLoading(false);
+      },
+      onError: (error) => {
+        logError(error, { where: "LakeCrossingPanel.userBest" });
+        setUserBestLoading(false);
+      },
+    });
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [startOfWeek, user?.uid]);
+
+  const currentUid = user?.uid || null;
+
+  const buildLeaderboardRows = useCallback(
+    (rows, prefix) =>
+      (Array.isArray(rows) ? rows : [])
+        .map((row, index) => {
+          const fallbackId = `${prefix}-${index}`;
+          const rawId = row?.id ?? fallbackId;
+          const id =
+            typeof rawId === "string" || typeof rawId === "number"
+              ? rawId
+              : fallbackId;
+          const driverName =
+            typeof row?.driver === "string" && row.driver.trim()
+              ? row.driver.trim()
+              : typeof row?.displayName === "string" && row.displayName.trim()
+                ? row.displayName.trim()
+                : "Anonymous";
+          const score = toNumberOrNull(row?.score);
+          const createdAt =
+            row?.createdAt && typeof row.createdAt.toDate === "function"
+              ? row.createdAt
+              : null;
+          if (!Number.isFinite(score) || score < 0 || !createdAt) {
+            return null;
+          }
+          const isCurrentUser =
+            currentUid && row?.uid && row.uid === currentUid ? true : false;
+
+          return {
+            ...row,
+            id,
+            driver: driverName,
+            displayName: driverName,
+            score,
+            createdAt,
+            isCurrentUser,
+          };
+        })
+        .filter(Boolean),
+    [currentUid],
+  );
+
+  const allTimeRows = useMemo(
+    () => buildLeaderboardRows(allTimeScores, "lakecrossing-all-time"),
+    [allTimeScores, buildLeaderboardRows],
+  );
+
+  const weeklyRows = useMemo(
+    () => buildLeaderboardRows(weeklyScores, "lakecrossing-weekly"),
+    [weeklyScores, buildLeaderboardRows],
+  );
+
+  const columns = useMemo(() => highscoreColumns, []);
+
+  const getRowClassName = useCallback(
+    (params) => (params?.row?.isCurrentUser ? "current-user" : ""),
+    [],
+  );
+
   const handleReload = useCallback(() => {
     play("click");
     setReloadKey((prev) => prev + 1);
@@ -613,11 +750,84 @@ function LakeCrossingPanel() {
     }
   }, []);
 
+  const yourBestScore = toNumberOrNull(userBest?.score);
+  const globalBestScore = toNumberOrNull(allTimeRows?.[0]?.score);
+  const weeklyBestScore = toNumberOrNull(weeklyRows?.[0]?.score);
+
+  const yourBestChipLabel = useMemo(() => {
+    if (!user) return "Sign in to track your best this week";
+    if (userBestLoading) return "Your best this week: Loading…";
+    return Number.isFinite(yourBestScore)
+      ? `Your best this week: ${yourBestScore.toLocaleString()}`
+      : "Your best this week: No score yet";
+  }, [user, userBestLoading, yourBestScore]);
+
+  const leaderChipLabel = useMemo(() => {
+    const activeScore = Number.isFinite(weeklyBestScore)
+      ? weeklyBestScore
+      : Number.isFinite(globalBestScore)
+        ? globalBestScore
+        : null;
+    if (Number.isFinite(activeScore)) {
+      return `Leader: ${activeScore.toLocaleString()}`;
+    }
+    if (weeklyLoading || allTimeLoading) return "Leader: Loading…";
+    if (weeklyError && allTimeError) return "Leader: N/A";
+    return "Leader: No scores yet";
+  }, [
+    globalBestScore,
+    allTimeError,
+    allTimeLoading,
+    weeklyBestScore,
+    weeklyError,
+    weeklyLoading,
+  ]);
+
+  const lastScoreLabel = useMemo(() => {
+    if (!Number.isFinite(Number(lastScore))) return "Last run: N/A";
+    return `Last run: ${Math.floor(Number(lastScore)).toLocaleString()}`;
+  }, [lastScore]);
+
+  const renderLeaderboard = useCallback(
+    (loading, errorMessage, rows, emptyMessage) => {
+      if (loading) {
+        return (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+            <CircularProgress size={32} color="inherit" />
+          </Box>
+        );
+      }
+      if (errorMessage) {
+        return <Alert severity="error">{errorMessage}</Alert>;
+      }
+      const safeRows = Array.isArray(rows) ? rows : [];
+      if (safeRows.length === 0) {
+        return <Alert severity="info">{emptyMessage}</Alert>;
+      }
+      return (
+        <LrpGrid
+          rows={safeRows}
+          columns={columns}
+          disableColumnMenu
+          hideFooter
+          disableRowSelectionOnClick
+          sx={gridSx}
+          getRowClassName={getRowClassName}
+        />
+      );
+    },
+    [columns, getRowClassName],
+  );
+
   return (
-    <Stack spacing={{ xs: 2, sm: 2.5 }} sx={{ width: "100%" }}>
+    <Stack
+      direction={{ xs: "column", lg: "row" }}
+      spacing={2.5}
+      sx={{ width: "100%" }}
+    >
       <Card
         sx={{
-          flex: { xs: "0 1 auto", md: 2 },
+          flex: { xs: 1, lg: 1.5 },
           bgcolor: (t) => t.palette.background.paper,
           borderRadius: 2,
           border: (t) => `1px solid ${t.palette.divider}`,
@@ -627,10 +837,10 @@ function LakeCrossingPanel() {
       >
         <CardContent
           sx={{
-            p: { xs: 2, sm: 2.5 },
+            flexGrow: 1,
             display: "flex",
             flexDirection: "column",
-            gap: { xs: 1.5, sm: 2 },
+            gap: 2,
           }}
         >
           <Stack
@@ -645,18 +855,12 @@ function LakeCrossingPanel() {
                 sx={{
                   fontWeight: 700,
                   color: (t) => t.palette.primary.main,
-                  fontSize: { xs: "1.1rem", sm: "1.25rem" },
                 }}
               >
                 Lake Crossing
               </Typography>
             </Stack>
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ flexWrap: "wrap", gap: 0.5 }}
-            >
+            <Stack direction="row" spacing={1.5} alignItems="center">
               <FormControlLabel
                 control={
                   <Switch
@@ -687,26 +891,52 @@ function LakeCrossingPanel() {
                 <IconButton
                   onClick={handleReload}
                   sx={{ color: "text.primary" }}
-                  size="small"
-                  aria-label="Reload Lake Crossing"
+                  aria-label="Reload game"
                 >
-                  <RefreshIcon fontSize="small" />
+                  <RefreshIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Fullscreen">
                 <IconButton
                   onClick={handleFullscreen}
                   sx={{ color: "text.primary" }}
-                  size="small"
-                  aria-label="Open Lake Crossing fullscreen"
+                  aria-label="Fullscreen"
                 >
-                  <OpenInFullIcon fontSize="small" />
+                  <OpenInFullIcon />
                 </IconButton>
               </Tooltip>
             </Stack>
           </Stack>
 
-          <Divider sx={{ borderColor: (t) => t.palette.divider }} />
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+            <Chip
+              label={yourBestChipLabel}
+              sx={{
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.15),
+                color: "text.primary",
+                borderRadius: 1.5,
+                fontWeight: 600,
+              }}
+            />
+            <Chip
+              label={leaderChipLabel}
+              sx={{
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                color: "text.primary",
+                borderRadius: 1.5,
+                fontWeight: 600,
+              }}
+            />
+            <Chip
+              label={lastScoreLabel}
+              sx={{
+                bgcolor: (t) => alpha(t.palette.common.white, 0.08),
+                color: "text.primary",
+                borderRadius: 1.5,
+                fontWeight: 600,
+              }}
+            />
+          </Stack>
 
           <Box
             sx={{
@@ -717,7 +947,7 @@ function LakeCrossingPanel() {
               border: (t) => `1px solid ${t.palette.divider}`,
               bgcolor: (t) => t.palette.background.paper,
               aspectRatio: { xs: "3 / 4", md: "4 / 3" },
-              minHeight: { xs: 360, sm: 420, md: 480 },
+              minHeight: { xs: 420, sm: 480, md: 540 },
             }}
           >
             <GamesBridge
@@ -727,6 +957,10 @@ function LakeCrossingPanel() {
               path="lakecrossing/index.html"
               title="LRP Lake Crossing"
               height="100%"
+              onScore={(value) => setLastScore(value)}
+              onSaveError={(error) => {
+                logError(error, { where: "LakeCrossingPanel.saveScore" });
+              }}
               onError={(event) => {
                 logError(new Error("Lake Crossing iframe failed"), {
                   where: "GamesHub.lakeCrossingIframeError",
@@ -749,12 +983,92 @@ function LakeCrossingPanel() {
             />
           </Box>
 
-          <Typography variant="body2" sx={{ opacity: 0.85, fontSize: "0.875rem" }}>
+          <Typography variant="body2" sx={{ opacity: 0.85 }}>
             Navigate from parking lot to marina! Use arrow keys or tap buttons
             to dodge traffic and boats. Reach all 5 marina spots to level up!
           </Typography>
         </CardContent>
       </Card>
+
+      <Stack direction="column" spacing={2.5} sx={{ flex: 1 }}>
+        <Card
+          sx={{
+            flex: 1,
+            bgcolor: (t) => t.palette.background.paper,
+            borderRadius: 2,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <CardContent
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  color: (t) => t.palette.primary.main,
+                }}
+              >
+                Top 10 — All Time
+              </Typography>
+              <Divider sx={{ mt: 1, borderColor: (t) => t.palette.divider }} />
+            </Box>
+            {renderLeaderboard(
+              allTimeLoading,
+              allTimeError,
+              allTimeRows,
+              "No Lake Crossing scores yet. Be the first to set a record!",
+            )}
+          </CardContent>
+        </Card>
+
+        <Card
+          sx={{
+            flex: 1,
+            bgcolor: (t) => t.palette.background.paper,
+            borderRadius: 2,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <CardContent
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  color: (t) => t.palette.primary.main,
+                }}
+              >
+                Weekly Heat — Reset {startOfWeek.format("MMM D")}
+              </Typography>
+              <Divider sx={{ mt: 1, borderColor: (t) => t.palette.divider }} />
+            </Box>
+            {renderLeaderboard(
+              weeklyLoading,
+              weeklyError,
+              weeklyRows,
+              "No weekly scores yet. Hit the lake to claim the crown!",
+            )}
+          </CardContent>
+        </Card>
+      </Stack>
     </Stack>
   );
 }
