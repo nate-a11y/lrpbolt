@@ -93,8 +93,7 @@ const SINGLE_DEFAULT = {
   pickupAt: null,
   rideType: "",
   vehicle: "",
-  durationHours: 0,
-  durationMinutes: 0,
+  durationMinutes: DEFAULT_DURATION_MINUTES,
   notes: "",
 };
 
@@ -103,24 +102,23 @@ const BUILDER_DEFAULT = {
   pickupAt: null,
   rideType: "",
   vehicle: "",
-  durationHours: 0,
-  durationMinutes: 0,
+  durationMinutes: DEFAULT_DURATION_MINUTES,
   notes: "",
 };
 
 const SECTION_PAPER_SX = {
-  borderRadius: 3,
-  p: { xs: 2, sm: 3 },
+  borderRadius: 2,
+  p: { xs: 1.5, sm: 2.5 },
   bgcolor: (theme) =>
     theme.palette.mode === "dark"
       ? theme.palette.background.default
       : theme.palette.background.paper,
   display: "flex",
   flexDirection: "column",
-  gap: { xs: 2, sm: 2.5 },
+  gap: { xs: 1.5, sm: 2 },
 };
 
-const GRID_SPACING = 2;
+const GRID_SPACING = { xs: 1.5, sm: 2 };
 
 function DailyDrop({ isAdmin, expanded, onToggle, dropRunning, onDrop }) {
   if (!isAdmin) {
@@ -133,7 +131,7 @@ function DailyDrop({ isAdmin, expanded, onToggle, dropRunning, onDrop }) {
       onChange={(_, nextExpanded) => onToggle?.(nextExpanded)}
       sx={{
         bgcolor: "transparent",
-        borderRadius: 3,
+        borderRadius: 2,
         overflow: "hidden",
       }}
     >
@@ -141,7 +139,7 @@ function DailyDrop({ isAdmin, expanded, onToggle, dropRunning, onDrop }) {
         Daily Drop
       </AccordionSummary>
       <AccordionDetails>
-        <Stack spacing={2}>
+        <Stack spacing={1.5}>
           <Typography variant="body2" color="text.secondary">
             Admin-only: run the Drop Daily process to pull rides from the
             scheduling sheet.
@@ -149,6 +147,7 @@ function DailyDrop({ isAdmin, expanded, onToggle, dropRunning, onDrop }) {
           <Button
             variant="contained"
             color="primary"
+            size="medium"
             onClick={onDrop}
             disabled={dropRunning}
             startIcon={
@@ -212,16 +211,24 @@ function clearStoredDraft() {
 function parseDraftSingle(rawSingle) {
   if (!rawSingle) return { ...SINGLE_DEFAULT };
   const pickupAt = rawSingle.pickupAt ? toDayjs(rawSingle.pickupAt) : null;
+
+  // Handle legacy format with separate hours/minutes
+  let durationMinutes = SINGLE_DEFAULT.durationMinutes;
+  if (Number.isFinite(Number(rawSingle.durationMinutes))) {
+    durationMinutes = Number(rawSingle.durationMinutes);
+  }
+  if (Number.isFinite(Number(rawSingle.durationHours))) {
+    durationMinutes += Number(rawSingle.durationHours) * 60;
+  }
+
   return {
     ...SINGLE_DEFAULT,
-    ...rawSingle,
+    tripId: rawSingle.tripId || SINGLE_DEFAULT.tripId,
+    rideType: rawSingle.rideType || SINGLE_DEFAULT.rideType,
+    vehicle: rawSingle.vehicle || SINGLE_DEFAULT.vehicle,
+    notes: rawSingle.notes || SINGLE_DEFAULT.notes,
     pickupAt: pickupAt?.isValid?.() ? pickupAt : null,
-    durationHours: Number.isFinite(Number(rawSingle.durationHours))
-      ? Number(rawSingle.durationHours)
-      : SINGLE_DEFAULT.durationHours,
-    durationMinutes: Number.isFinite(Number(rawSingle.durationMinutes))
-      ? Number(rawSingle.durationMinutes)
-      : SINGLE_DEFAULT.durationMinutes,
+    durationMinutes: durationMinutes > 0 ? durationMinutes : SINGLE_DEFAULT.durationMinutes,
   };
 }
 
@@ -575,12 +582,9 @@ export default function RideEntryForm() {
       errors.pickupAt = "Pickup time required";
     }
 
-    const durationMinutes = getDurationMinutes(
-      ride.durationHours,
-      ride.durationMinutes,
-    );
-    if (!durationMinutes || durationMinutes <= 0) {
-      errors.duration = "Duration must be greater than 0";
+    const durationMinutes = Number(ride.durationMinutes);
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      errors.durationMinutes = "Duration must be greater than 0";
     }
 
     if (!ride.rideType) {
@@ -623,10 +627,6 @@ export default function RideEntryForm() {
       return;
     }
 
-    const totalMinutes = getDurationMinutes(
-      singleRide.durationHours,
-      singleRide.durationMinutes,
-    );
     const pickupAt = ensureLocalPickup(singleRide.pickupAt);
     const payload = rowToPayload(
       {
@@ -634,7 +634,7 @@ export default function RideEntryForm() {
         pickupAt,
         rideType: singleRide.rideType,
         vehicle: singleRide.vehicle,
-        durationMinutes: totalMinutes,
+        durationMinutes: Number(singleRide.durationMinutes),
         notes: singleRide.notes,
       },
       currentUser,
@@ -703,11 +703,8 @@ export default function RideEntryForm() {
   }, []);
 
   const appendBuilderRide = useCallback(() => {
-    const durationMinutes = getDurationMinutes(
-      builderRide.durationHours,
-      builderRide.durationMinutes,
-    );
     const pickupAt = ensureLocalPickup(builderRide.pickupAt);
+    const durationMinutes = Number(builderRide.durationMinutes);
     const candidate = {
       tempId:
         typeof crypto !== "undefined" && crypto.randomUUID
@@ -717,7 +714,7 @@ export default function RideEntryForm() {
       pickupAt: pickupAt?.toISOString?.() ?? null,
       rideType: builderRide.rideType,
       vehicle: builderRide.vehicle,
-      durationMinutes: durationMinutes || DEFAULT_DURATION_MINUTES,
+      durationMinutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : DEFAULT_DURATION_MINUTES,
       notes: builderRide.notes || "",
     };
     const payload = rowToPayload({ ...candidate, pickupAt }, currentUser);
@@ -1043,12 +1040,9 @@ export default function RideEntryForm() {
     const pickupAtFormatted = singleRide.pickupAt?.isValid?.()
       ? singleRide.pickupAt
       : null;
-    const totalMinutes = getDurationMinutes(
-      singleRide.durationHours,
-      singleRide.durationMinutes,
-    );
+    const totalMinutes = Number(singleRide.durationMinutes) || 0;
     const provisionalEnd = pickupAtFormatted
-      ? pickupAtFormatted.add(totalMinutes || 0, "minute")
+      ? pickupAtFormatted.add(totalMinutes, "minute")
       : null;
     const safeDuration =
       pickupAtFormatted && provisionalEnd
@@ -1060,7 +1054,7 @@ export default function RideEntryForm() {
         : "N/A";
 
     return (
-      <Paper elevation={3} sx={SECTION_PAPER_SX}>
+      <Paper elevation={2} sx={SECTION_PAPER_SX}>
         <Grid container spacing={GRID_SPACING}>
           <Grid item xs={12}>
             <Typography variant="h6" fontWeight={700}>
@@ -1068,7 +1062,7 @@ export default function RideEntryForm() {
             </Typography>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} sm={6}>
             <TextField
               label="Trip ID"
               value={singleRide.tripId}
@@ -1086,6 +1080,7 @@ export default function RideEntryForm() {
                   : "Format XXXX-XX"
               }
               inputProps={{ maxLength: 7, "aria-label": "Trip ID" }}
+              size="small"
               fullWidth
               sx={singleShakeSx(
                 showSingleValidation && Boolean(singleErrors.tripId),
@@ -1093,7 +1088,7 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} sm={6}>
             <DateTimePicker
               label="Pickup Time"
               value={singleRide.pickupAt}
@@ -1101,6 +1096,7 @@ export default function RideEntryForm() {
               minutesStep={5}
               slotProps={{
                 textField: {
+                  size: "small",
                   fullWidth: true,
                   error: Boolean(singleErrors.pickupAt) && showSingleValidation,
                   helperText:
@@ -1115,33 +1111,9 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} sm={3}>
             <TextField
-              label="Hours"
-              type="number"
-              value={singleRide.durationHours}
-              onChange={(event) =>
-                updateSingleRide({
-                  durationHours: Math.max(0, Number(event.target.value ?? 0)),
-                })
-              }
-              error={Boolean(singleErrors.duration) && showSingleValidation}
-              helperText={
-                showSingleValidation && singleErrors.duration
-                  ? singleErrors.duration
-                  : ""
-              }
-              fullWidth
-              inputProps={{ min: 0, "aria-label": "Duration hours" }}
-              sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.duration),
-              )}
-            />
-          </Grid>
-
-          <Grid item xs={6} md={3}>
-            <TextField
-              label="Minutes"
+              label="Duration (min)"
               type="number"
               value={singleRide.durationMinutes}
               onChange={(event) =>
@@ -1149,21 +1121,22 @@ export default function RideEntryForm() {
                   durationMinutes: Math.max(0, Number(event.target.value ?? 0)),
                 })
               }
-              error={Boolean(singleErrors.duration) && showSingleValidation}
+              error={Boolean(singleErrors.durationMinutes) && showSingleValidation}
               helperText={
-                showSingleValidation && singleErrors.duration
-                  ? singleErrors.duration
+                showSingleValidation && singleErrors.durationMinutes
+                  ? singleErrors.durationMinutes
                   : ""
               }
+              size="small"
               fullWidth
-              inputProps={{ min: 0, max: 59, "aria-label": "Duration minutes" }}
+              inputProps={{ min: 0, "aria-label": "Duration in minutes" }}
               sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.duration),
+                showSingleValidation && Boolean(singleErrors.durationMinutes),
               )}
             />
           </Grid>
 
-          <Grid item xs={12} md={3}>
+          <Grid item xs={6} sm={3}>
             <LrpSelectField
               label="Ride Type"
               name="rideType"
@@ -1179,8 +1152,9 @@ export default function RideEntryForm() {
               helperText={
                 showSingleValidation && singleErrors.rideType
                   ? singleErrors.rideType
-                  : " "
+                  : ""
               }
+              size="small"
               FormControlProps={{
                 error: Boolean(singleErrors.rideType) && showSingleValidation,
                 sx: singleShakeSx(
@@ -1190,7 +1164,7 @@ export default function RideEntryForm() {
             />
           </Grid>
 
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} sm={6}>
             <LrpSelectField
               label="Vehicle"
               name="vehicle"
@@ -1206,8 +1180,9 @@ export default function RideEntryForm() {
               helperText={
                 showSingleValidation && singleErrors.vehicle
                   ? singleErrors.vehicle
-                  : " "
+                  : ""
               }
+              size="small"
               FormControlProps={{
                 error: Boolean(singleErrors.vehicle) && showSingleValidation,
                 sx: singleShakeSx(
@@ -1225,25 +1200,27 @@ export default function RideEntryForm() {
                 updateSingleRide({ notes: event.target.value })
               }
               multiline
-              minRows={3}
+              minRows={2}
+              size="small"
               fullWidth
             />
           </Grid>
 
           <Grid item xs={12}>
-            <Alert severity="info" variant="outlined">
+            <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
               Estimated end: {endDisplay}
             </Alert>
           </Grid>
 
           <Grid item xs={12}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button
                 variant="outlined"
                 color="primary"
                 onClick={handleSingleReset}
                 disabled={isSubmittingSingle}
                 fullWidth
+                size="medium"
               >
                 Reset
               </Button>
@@ -1253,6 +1230,7 @@ export default function RideEntryForm() {
                 onClick={handleSingleSubmit}
                 disabled={isSubmittingSingle}
                 fullWidth
+                size="medium"
                 startIcon={
                   isSubmittingSingle ? (
                     <CircularProgress size={18} />
@@ -1273,19 +1251,19 @@ export default function RideEntryForm() {
   const renderBuilder = () => {
     return (
       <>
-        <Paper elevation={3} sx={SECTION_PAPER_SX}>
+        <Paper elevation={2} sx={SECTION_PAPER_SX}>
           <Grid container spacing={GRID_SPACING}>
             <Grid item xs={12}>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
-                spacing={2}
+                spacing={1.5}
                 justifyContent="space-between"
                 alignItems={{ xs: "stretch", sm: "center" }}
               >
                 <Typography variant="h6" fontWeight={700}>
                   Multi-Ride Builder
                 </Typography>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <input
                     hidden
                     type="file"
@@ -1296,6 +1274,7 @@ export default function RideEntryForm() {
                   <Button
                     variant="contained"
                     color="primary"
+                    size="small"
                     startIcon={<UploadFileIcon />}
                     onClick={openFilePicker}
                   >
@@ -1304,10 +1283,11 @@ export default function RideEntryForm() {
                   <Button
                     variant="outlined"
                     color="primary"
+                    size="small"
                     startIcon={<DownloadIcon />}
                     onClick={downloadCsvTemplate}
                   >
-                    Download CSV Template
+                    CSV Template
                   </Button>
                 </Stack>
               </Stack>
@@ -1319,13 +1299,14 @@ export default function RideEntryForm() {
                 value={csvText}
                 onChange={(event) => setCsvText(event.target.value)}
                 multiline
-                minRows={4}
+                minRows={3}
+                size="small"
                 fullWidth
                 placeholder="Optional: paste CSV rows here and import via button"
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Trip ID"
                 value={builderRide.tripId}
@@ -1334,50 +1315,36 @@ export default function RideEntryForm() {
                     tripId: formatTripId(event.target.value),
                   })
                 }
+                size="small"
                 fullWidth
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} sm={6}>
               <DateTimePicker
                 label="Pickup Time"
                 value={builderRide.pickupAt}
                 onChange={(value) => handleBuilderChange({ pickupAt: value })}
                 minutesStep={5}
-                slotProps={{ textField: { fullWidth: true } }}
+                slotProps={{ textField: { size: "small", fullWidth: true } }}
               />
             </Grid>
 
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} sm={3}>
               <TextField
-                label="Hours"
-                type="number"
-                value={builderRide.durationHours}
-                onChange={(event) =>
-                  handleBuilderChange({
-                    durationHours: Math.max(0, Number(event.target.value ?? 0)),
-                  })
-                }
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={6} md={3}>
-              <TextField
-                label="Minutes"
+                label="Duration (min)"
                 type="number"
                 value={builderRide.durationMinutes}
                 onChange={(event) =>
                   handleBuilderChange({
-                    durationMinutes: Math.max(
-                      0,
-                      Number(event.target.value ?? 0),
-                    ),
+                    durationMinutes: Math.max(0, Number(event.target.value ?? 0)),
                   })
                 }
+                size="small"
                 fullWidth
               />
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid item xs={6} sm={3}>
               <LrpSelectField
                 label="Ride Type"
                 name="builderRideType"
@@ -1390,11 +1357,11 @@ export default function RideEntryForm() {
                   value: type,
                   label: type,
                 }))}
-                helperText=" "
+                size="small"
               />
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} sm={6}>
               <LrpSelectField
                 label="Vehicle"
                 name="builderVehicle"
@@ -1407,7 +1374,7 @@ export default function RideEntryForm() {
                   value: vehicle.id || vehicle.name || vehicle,
                   label: vehicle.name || vehicle.label || String(vehicle),
                 }))}
-                helperText=" "
+                size="small"
               />
             </Grid>
 
@@ -1419,16 +1386,18 @@ export default function RideEntryForm() {
                   handleBuilderChange({ notes: event.target.value })
                 }
                 multiline
-                minRows={3}
+                minRows={2}
+                size="small"
                 fullWidth
               />
             </Grid>
 
             <Grid item xs={12}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 <Button
                   variant="outlined"
                   color="primary"
+                  size="medium"
                   onClick={() => {
                     if (!csvText.trim()) {
                       setSnackbar({
@@ -1444,11 +1413,12 @@ export default function RideEntryForm() {
                   startIcon={<UploadFileIcon />}
                   fullWidth
                 >
-                  Import from Pasted CSV
+                  Import Pasted CSV
                 </Button>
                 <Button
                   variant="contained"
                   color="primary"
+                  size="medium"
                   startIcon={<AddIcon />}
                   onClick={appendBuilderRide}
                   fullWidth
@@ -1461,8 +1431,8 @@ export default function RideEntryForm() {
         </Paper>
 
         {multiRows.length > 0 && (
-          <Paper elevation={3} sx={SECTION_PAPER_SX}>
-            <Stack spacing={2.5}>
+          <Paper elevation={2} sx={SECTION_PAPER_SX}>
+            <Stack spacing={2}>
               <Typography variant="subtitle1" fontWeight={700}>
                 Preview ({multiRows.length})
               </Typography>
@@ -1500,10 +1470,11 @@ export default function RideEntryForm() {
                   })}
                 />
               </Box>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 <Button
                   variant="outlined"
                   color="primary"
+                  size="medium"
                   onClick={() => setMultiRows([])}
                   disabled={isSubmittingMulti}
                   fullWidth
@@ -1515,6 +1486,7 @@ export default function RideEntryForm() {
                     <Button
                       variant="contained"
                       color="primary"
+                      size="medium"
                       onClick={handlePrepareCommit}
                       disabled={isSubmittingMulti}
                       fullWidth
@@ -1548,7 +1520,7 @@ export default function RideEntryForm() {
         return renderBuilder();
       case 2:
         return (
-          <Paper elevation={3} sx={SECTION_PAPER_SX}>
+          <Paper elevation={2} sx={SECTION_PAPER_SX}>
             <Suspense fallback={lazyGridFallback}>
               <LiveRidesGrid />
             </Suspense>
@@ -1556,7 +1528,7 @@ export default function RideEntryForm() {
         );
       case 3:
         return (
-          <Paper elevation={3} sx={SECTION_PAPER_SX}>
+          <Paper elevation={2} sx={SECTION_PAPER_SX}>
             <Suspense fallback={lazyGridFallback}>
               <RideQueueGrid />
             </Suspense>
@@ -1564,7 +1536,7 @@ export default function RideEntryForm() {
         );
       case 4:
         return (
-          <Paper elevation={3} sx={SECTION_PAPER_SX}>
+          <Paper elevation={2} sx={SECTION_PAPER_SX}>
             <Suspense fallback={lazyGridFallback}>
               <ClaimedRidesGrid />
             </Suspense>
@@ -1578,8 +1550,8 @@ export default function RideEntryForm() {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <ResponsiveContainer maxWidth={1240}>
-        <Stack spacing={{ xs: 2.5, md: 3 }}>
-          <Paper elevation={3} sx={SECTION_PAPER_SX}>
+        <Stack spacing={{ xs: 2, md: 2.5 }}>
+          <Paper elevation={2} sx={SECTION_PAPER_SX}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               🚐 Ride Entry
             </Typography>
@@ -1594,8 +1566,9 @@ export default function RideEntryForm() {
               }}
               sx={{
                 "& .MuiTab-root": {
-                  minWidth: { xs: "auto", sm: 160 },
+                  minWidth: { xs: "auto", sm: 140 },
                   fontWeight: 600,
+                  py: 1.5,
                 },
               }}
             >
@@ -1610,7 +1583,7 @@ export default function RideEntryForm() {
             <Alert
               severity="info"
               onClose={() => setDraftRestoredAlert(false)}
-              sx={{ borderRadius: 3 }}
+              sx={{ borderRadius: 2, py: 0.5 }}
             >
               Draft restored from last session.
             </Alert>
@@ -1619,7 +1592,7 @@ export default function RideEntryForm() {
           {renderTabContent()}
 
           {isAdmin && (
-            <Box sx={{ mt: 2 }}>
+            <Box sx={{ mt: 1 }}>
               <DailyDrop
                 isAdmin={isAdmin}
                 expanded={dropExpanded}

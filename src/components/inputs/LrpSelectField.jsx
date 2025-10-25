@@ -18,6 +18,7 @@ import {
  *  - options: [{ value, label, disabled? }]
  *  - placeholder (string) shown only when value === '' (renderValue)
  *  - helperText (string)
+ *  - size (string) 'small' | 'medium' (default: 'medium')
  *  - name, id (optional)
  *  - SelectProps/FormControlProps/InputLabelProps (optional pass-through)
  */
@@ -28,6 +29,7 @@ export default function LrpSelectField({
   options = [],
   placeholder = "Select…",
   helperText = " ",
+  size = "medium",
   name,
   id,
   SelectProps: selectProps = {},
@@ -39,7 +41,7 @@ export default function LrpSelectField({
   const labelId = `${selectId}-label`;
 
   return (
-    <FormControl fullWidth size="medium" {...FormControlProps}>
+    <FormControl fullWidth size={size} {...FormControlProps}>
       <InputLabel
         id={labelId}
         shrink // force float so label never overlaps renderValue
