@@ -93,7 +93,8 @@ const SINGLE_DEFAULT = {
   pickupAt: null,
   rideType: "",
   vehicle: "",
-  durationMinutes: DEFAULT_DURATION_MINUTES,
+  durationHours: 0,
+  durationMinutes: 45,
   notes: "",
 };
 
@@ -102,7 +103,8 @@ const BUILDER_DEFAULT = {
   pickupAt: null,
   rideType: "",
   vehicle: "",
-  durationMinutes: DEFAULT_DURATION_MINUTES,
+  durationHours: 0,
+  durationMinutes: 45,
   notes: "",
 };
 
@@ -211,24 +213,16 @@ function clearStoredDraft() {
 function parseDraftSingle(rawSingle) {
   if (!rawSingle) return { ...SINGLE_DEFAULT };
   const pickupAt = rawSingle.pickupAt ? toDayjs(rawSingle.pickupAt) : null;
-
-  // Handle legacy format with separate hours/minutes
-  let durationMinutes = SINGLE_DEFAULT.durationMinutes;
-  if (Number.isFinite(Number(rawSingle.durationMinutes))) {
-    durationMinutes = Number(rawSingle.durationMinutes);
-  }
-  if (Number.isFinite(Number(rawSingle.durationHours))) {
-    durationMinutes += Number(rawSingle.durationHours) * 60;
-  }
-
   return {
     ...SINGLE_DEFAULT,
-    tripId: rawSingle.tripId || SINGLE_DEFAULT.tripId,
-    rideType: rawSingle.rideType || SINGLE_DEFAULT.rideType,
-    vehicle: rawSingle.vehicle || SINGLE_DEFAULT.vehicle,
-    notes: rawSingle.notes || SINGLE_DEFAULT.notes,
+    ...rawSingle,
     pickupAt: pickupAt?.isValid?.() ? pickupAt : null,
-    durationMinutes: durationMinutes > 0 ? durationMinutes : SINGLE_DEFAULT.durationMinutes,
+    durationHours: Number.isFinite(Number(rawSingle.durationHours))
+      ? Number(rawSingle.durationHours)
+      : SINGLE_DEFAULT.durationHours,
+    durationMinutes: Number.isFinite(Number(rawSingle.durationMinutes))
+      ? Number(rawSingle.durationMinutes)
+      : SINGLE_DEFAULT.durationMinutes,
   };
 }
 
@@ -582,9 +576,12 @@ export default function RideEntryForm() {
       errors.pickupAt = "Pickup time required";
     }
 
-    const durationMinutes = Number(ride.durationMinutes);
-    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-      errors.durationMinutes = "Duration must be greater than 0";
+    const durationMinutes = getDurationMinutes(
+      ride.durationHours,
+      ride.durationMinutes,
+    );
+    if (!durationMinutes || durationMinutes <= 0) {
+      errors.duration = "Duration must be greater than 0";
     }
 
     if (!ride.rideType) {
@@ -627,6 +624,10 @@ export default function RideEntryForm() {
       return;
     }
 
+    const totalMinutes = getDurationMinutes(
+      singleRide.durationHours,
+      singleRide.durationMinutes,
+    );
     const pickupAt = ensureLocalPickup(singleRide.pickupAt);
     const payload = rowToPayload(
       {
@@ -634,7 +635,7 @@ export default function RideEntryForm() {
         pickupAt,
         rideType: singleRide.rideType,
         vehicle: singleRide.vehicle,
-        durationMinutes: Number(singleRide.durationMinutes),
+        durationMinutes: totalMinutes,
         notes: singleRide.notes,
       },
       currentUser,
@@ -703,8 +704,11 @@ export default function RideEntryForm() {
   }, []);
 
   const appendBuilderRide = useCallback(() => {
+    const durationMinutes = getDurationMinutes(
+      builderRide.durationHours,
+      builderRide.durationMinutes,
+    );
     const pickupAt = ensureLocalPickup(builderRide.pickupAt);
-    const durationMinutes = Number(builderRide.durationMinutes);
     const candidate = {
       tempId:
         typeof crypto !== "undefined" && crypto.randomUUID
@@ -714,7 +718,7 @@ export default function RideEntryForm() {
       pickupAt: pickupAt?.toISOString?.() ?? null,
       rideType: builderRide.rideType,
       vehicle: builderRide.vehicle,
-      durationMinutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : DEFAULT_DURATION_MINUTES,
+      durationMinutes: durationMinutes || DEFAULT_DURATION_MINUTES,
       notes: builderRide.notes || "",
     };
     const payload = rowToPayload({ ...candidate, pickupAt }, currentUser);
@@ -1040,9 +1044,12 @@ export default function RideEntryForm() {
     const pickupAtFormatted = singleRide.pickupAt?.isValid?.()
       ? singleRide.pickupAt
       : null;
-    const totalMinutes = Number(singleRide.durationMinutes) || 0;
+    const totalMinutes = getDurationMinutes(
+      singleRide.durationHours,
+      singleRide.durationMinutes,
+    );
     const provisionalEnd = pickupAtFormatted
-      ? pickupAtFormatted.add(totalMinutes, "minute")
+      ? pickupAtFormatted.add(totalMinutes || 0, "minute")
       : null;
     const safeDuration =
       pickupAtFormatted && provisionalEnd
@@ -1113,7 +1120,32 @@ export default function RideEntryForm() {
 
           <Grid item xs={6} sm={3}>
             <TextField
-              label="Duration (min)"
+              label="Hours"
+              type="number"
+              value={singleRide.durationHours}
+              onChange={(event) =>
+                updateSingleRide({
+                  durationHours: Math.max(0, Number(event.target.value ?? 0)),
+                })
+              }
+              error={Boolean(singleErrors.duration) && showSingleValidation}
+              helperText={
+                showSingleValidation && singleErrors.duration
+                  ? singleErrors.duration
+                  : ""
+              }
+              size="small"
+              fullWidth
+              inputProps={{ min: 0, "aria-label": "Duration hours" }}
+              sx={singleShakeSx(
+                showSingleValidation && Boolean(singleErrors.duration),
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={6} sm={3}>
+            <TextField
+              label="Minutes"
               type="number"
               value={singleRide.durationMinutes}
               onChange={(event) =>
@@ -1121,22 +1153,22 @@ export default function RideEntryForm() {
                   durationMinutes: Math.max(0, Number(event.target.value ?? 0)),
                 })
               }
-              error={Boolean(singleErrors.durationMinutes) && showSingleValidation}
+              error={Boolean(singleErrors.duration) && showSingleValidation}
               helperText={
-                showSingleValidation && singleErrors.durationMinutes
-                  ? singleErrors.durationMinutes
+                showSingleValidation && singleErrors.duration
+                  ? singleErrors.duration
                   : ""
               }
               size="small"
               fullWidth
-              inputProps={{ min: 0, "aria-label": "Duration in minutes" }}
+              inputProps={{ min: 0, max: 59, "aria-label": "Duration minutes" }}
               sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.durationMinutes),
+                showSingleValidation && Boolean(singleErrors.duration),
               )}
             />
           </Grid>
 
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={12} sm={6}>
             <LrpSelectField
               label="Ride Type"
               name="rideType"
@@ -1331,7 +1363,23 @@ export default function RideEntryForm() {
 
             <Grid item xs={6} sm={3}>
               <TextField
-                label="Duration (min)"
+                label="Hours"
+                type="number"
+                value={builderRide.durationHours}
+                onChange={(event) =>
+                  handleBuilderChange({
+                    durationHours: Math.max(0, Number(event.target.value ?? 0)),
+                  })
+                }
+                size="small"
+                fullWidth
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+
+            <Grid item xs={6} sm={3}>
+              <TextField
+                label="Minutes"
                 type="number"
                 value={builderRide.durationMinutes}
                 onChange={(event) =>
@@ -1341,10 +1389,11 @@ export default function RideEntryForm() {
                 }
                 size="small"
                 fullWidth
+                inputProps={{ min: 0, max: 59 }}
               />
             </Grid>
 
-            <Grid item xs={6} sm={3}>
+            <Grid item xs={12} sm={6}>
               <LrpSelectField
                 label="Ride Type"
                 name="builderRideType"
