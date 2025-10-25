@@ -4,7 +4,7 @@
 import { httpsCallable } from "firebase/functions";
 
 import { logRequest } from "../utils/apiMonitor";
-import { functions } from "../utils/functions";
+import { getLRPFunctions } from "../utils/functions";
 import logError from "../utils/logError.js";
 
 /**
@@ -45,7 +45,7 @@ export async function apiFetch(
  */
 export async function callFunction(name, data) {
   logRequest("POST", `function:${name}`);
-  const callable = httpsCallable(functions, name);
+  const callable = httpsCallable(getLRPFunctions(), name);
   const result = await callable(data);
   return result.data;
 }
