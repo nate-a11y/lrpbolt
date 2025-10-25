@@ -356,7 +356,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(ticketAllowed())
         && ticketUpdateValid(request.resource.data);
 
-      allow delete: if authed();
+      allow delete: if isAdmin();
     }
 
     // ---------- claim logs ----------

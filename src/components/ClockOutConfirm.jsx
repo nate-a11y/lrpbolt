@@ -2,7 +2,16 @@
 // allow-color-literal-file
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Snackbar } from "@mui/material";
+import {
+  Button,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  CircularProgress,
+} from "@mui/material";
 
 import { clockOutActiveSession } from "@/services/timeclockActions";
 import { clearClockNotification } from "@/pwa/clockNotifications";
@@ -77,37 +86,53 @@ export default function ClockOutConfirm() {
 
   return (
     <>
-      <Snackbar
+      <Dialog
         open={open}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        message={busy ? "Clocking out..." : "Clock out now?"}
-        action={
-          <>
-            <Button
-              onClick={() => setOpen(false)}
-              disabled={busy}
-              sx={{ color: "rgba(255,255,255,0.85)" }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={busy}
-              sx={{
-                bgcolor: (t) => t.palette.primary.main,
-                color: "#060606",
-                ml: 1,
-                "&:hover": { bgcolor: "#46aa15" },
-              }}
-            >
-              Confirm
-            </Button>
-          </>
-        }
-        onClose={(_, r) => {
-          if (r !== "clickaway") setOpen(false);
+        onClose={(_, reason) => {
+          if (reason !== "backdropClick" && !busy) {
+            setOpen(false);
+          }
         }}
-      />
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            m: 0,
+          },
+        }}
+      >
+        <DialogTitle>Clock Out</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {busy ? "Clocking out..." : "Are you sure you want to clock out now?"}
+          </DialogContentText>
+          {busy && (
+            <CircularProgress
+              size={24}
+              sx={{ display: "block", mx: "auto", mt: 2 }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={busy}
+            variant="contained"
+            color="primary"
+            autoFocus
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={result === "ok"}
         autoHideDuration={2500}

@@ -18,6 +18,8 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
@@ -108,81 +110,96 @@ export default function CalendarHub() {
   }, [actions]);
 
   return (
-    <Box
-      sx={{
-        pt: 0,
-        pb: `env(safe-area-inset-bottom, 0px)`,
-        px: { xs: 1, sm: 2 },
-      }}
-    >
-      <Box sx={{ maxWidth: 1280, mx: "auto", width: "100%" }}>
-        {/* Sticky command bar */}
-        <Box
-          sx={{
-            position: "sticky",
-            top: stickyTopCss,
-            zIndex: (t) => t.zIndex.appBar,
-            pt: 0.5,
-            pb: 1,
-            background:
-              theme.palette.mode === "dark"
-                ? "rgba(6,6,6,0.9)"
-                : theme.palette.background.paper,
-            backdropFilter: "saturate(1.2) blur(6px)",
-          }}
-        >
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-            📅 Ride &amp; Vehicle Calendar
-          </Typography>
-
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            flexWrap="wrap"
-            rowGap={1}
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box
+        sx={{
+          pt: 0,
+          pb: `env(safe-area-inset-bottom, 0px)`,
+          px: { xs: 1, sm: 2 },
+        }}
+      >
+        <Box sx={{ maxWidth: 1280, mx: "auto", width: "100%" }}>
+          {/* Sticky command bar */}
+          <Box
+            sx={{
+              position: "sticky",
+              top: stickyTopCss,
+              zIndex: (t) => t.zIndex.appBar,
+              pt: 0,
+              pb: 1,
+              background:
+                theme.palette.mode === "dark"
+                  ? "rgba(6,6,6,0.9)"
+                  : theme.palette.background.paper,
+              backdropFilter: "saturate(1.2) blur(6px)",
+            }}
           >
-            <Button
-              size="small"
-              startIcon={<TodayIcon />}
-              onClick={actions.onToday}
-            >
-              Today
-            </Button>
-            <Button
-              size="small"
-              startIcon={<CenterFocusStrongIcon />}
-              onClick={actions.onCenterNow}
-            >
-              Center Now
-            </Button>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, mt: 0 }}>
+              📅 Ride &amp; Vehicle Calendar
+            </Typography>
 
-            <FormControlLabel
-              sx={{ ml: 1 }}
-              label="Center on load"
-              control={
-                <Switch
-                  checked={!!filters?.scrollToNow}
-                  onChange={(_, v) =>
-                    setFilters((p) => ({ ...p, scrollToNow: v }))
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              rowGap={1}
+            >
+              <DatePicker
+                value={dayjs(dateISO)}
+                onChange={(newDate) => {
+                  if (newDate) {
+                    setDateISO(newDate.format("YYYY-MM-DD"));
                   }
-                />
-              }
-            />
-
-            <Box sx={{ flexGrow: 1 }} />
-
-            <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
+                }}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    sx: { minWidth: 140 },
+                  },
+                }}
+              />
               <Button
                 size="small"
-                onClick={() => setHelpOpen(true)}
-                startIcon={<HelpOutlineIcon />}
+                startIcon={<TodayIcon />}
+                onClick={actions.onToday}
               >
-                Availability Help
+                Today
               </Button>
-            </Tooltip>
-          </Stack>
-        </Box>
+              <Button
+                size="small"
+                startIcon={<CenterFocusStrongIcon />}
+                onClick={actions.onCenterNow}
+              >
+                Center Now
+              </Button>
+
+              <FormControlLabel
+                sx={{ ml: 1 }}
+                label="Center on load"
+                control={
+                  <Switch
+                    checked={!!filters?.scrollToNow}
+                    onChange={(_, v) =>
+                      setFilters((p) => ({ ...p, scrollToNow: v }))
+                    }
+                  />
+                }
+              />
+
+              <Box sx={{ flexGrow: 1 }} />
+
+              <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
+                <Button
+                  size="small"
+                  onClick={() => setHelpOpen(true)}
+                  startIcon={<HelpOutlineIcon />}
+                >
+                  Availability Help
+                </Button>
+              </Tooltip>
+            </Stack>
+          </Box>
 
         {!isMdUp && <Divider sx={{ my: 2 }} />}
 
@@ -292,7 +309,8 @@ export default function CalendarHub() {
           <CenterFocusStrongIcon />
         </Fab>
       </Tooltip>
-    </Box>
+      </Box>
+    </LocalizationProvider>
   );
 }
 // [LRP:END:calendarHub:defaults-only]

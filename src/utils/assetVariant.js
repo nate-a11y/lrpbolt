@@ -4,7 +4,15 @@ export function asWebpIfPresent(pngPath) {
     if (typeof pngPath !== "string") return { webp: null, png: pngPath };
     const [base, query = ""] = pngPath.split("?");
     const q = query ? `?${query}` : "";
-    const webp = base.replace(/\.png$/i, ".webp") + q;
+
+    // For DropOffPics, WebP files are in /webp/DropOffPics/
+    let webp;
+    if (base.includes("/DropOffPics/")) {
+      webp = base.replace(/\/DropOffPics\//i, "/webp/DropOffPics/").replace(/\.png$/i, ".webp") + q;
+    } else {
+      webp = base.replace(/\.png$/i, ".webp") + q;
+    }
+
     return { webp, png: pngPath };
   } catch {
     return { webp: null, png: pngPath };
