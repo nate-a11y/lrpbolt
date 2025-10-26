@@ -85,8 +85,16 @@ export default function EntriesTab() {
           : (newRow.driver ?? null);
 
       // Parse timestamps - always include both for proper duration calculation
-      const parsedStart = toDateSafe(newRow.startTime ?? oldRow.startTime);
-      const parsedEnd = toDateSafe(newRow.endTime ?? oldRow.endTime);
+      const hasNewStart = Object.prototype.hasOwnProperty.call(
+        newRow,
+        "startTime",
+      );
+      const hasNewEnd = Object.prototype.hasOwnProperty.call(newRow, "endTime");
+
+      const parsedStart = toDateSafe(
+        hasNewStart ? newRow.startTime : oldRow.startTime,
+      );
+      const parsedEnd = toDateSafe(hasNewEnd ? newRow.endTime : oldRow.endTime);
 
       const updates = {
         driver: driverName ?? null,
