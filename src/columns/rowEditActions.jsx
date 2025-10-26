@@ -63,7 +63,7 @@ export function buildRowEditActionsColumn({
         return [];
       }
 
-      const { id } = params;
+      const { id, row: paramsRow } = params;
       if (id == null) {
         logError({
           where: "rowEditActions.getActions",
@@ -73,7 +73,7 @@ export function buildRowEditActionsColumn({
         return [];
       }
 
-      const resolvedRow = params.row ?? apiRef?.current?.getRow?.(id) ?? null;
+      const resolvedRow = paramsRow ?? apiRef?.current?.getRow?.(id) ?? null;
       if (!resolvedRow) {
         logError(
           { where: "rowEditActions.getActions", reason: "missing-row", id },

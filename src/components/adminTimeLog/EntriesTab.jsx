@@ -87,7 +87,6 @@ export default function EntriesTab() {
         driver: driverName ?? null,
         driverName: driverName ?? null,
         rideId: newRow.rideId ?? null,
-        note: newRow.note ?? null,
       };
       if (Object.prototype.hasOwnProperty.call(newRow, "startTime")) {
         const parsedStart = toDateSafe(newRow.startTime);
@@ -96,10 +95,6 @@ export default function EntriesTab() {
       if (Object.prototype.hasOwnProperty.call(newRow, "endTime")) {
         const parsedEnd = toDateSafe(newRow.endTime);
         updates.endTime = parsedEnd ?? null;
-      }
-      if (Object.prototype.hasOwnProperty.call(newRow, "loggedAt")) {
-        const parsedLogged = toDateSafe(newRow.loggedAt);
-        updates.loggedAt = parsedLogged ?? null;
       }
 
       try {
@@ -211,44 +206,8 @@ export default function EntriesTab() {
   }, [sharedColumns, toDateSafe]);
 
   const columns = useMemo(() => {
-    const extras = [
-      {
-        field: "loggedAt",
-        headerName: "Logged At",
-        minWidth: 180,
-        type: "dateTime",
-        editable: true,
-        valueGetter: (value, row) =>
-          toDateSafe(row?.loggedAt ?? row?.createdAt ?? null),
-        valueFormatter: (value) => (value ? formatDateTime(value) : "N/A"),
-        valueSetter: (params) => {
-          const next = { ...params.row };
-          next.loggedAt = toDateSafe(params.value) ?? null;
-          return next;
-        },
-        sortComparator: (v1, v2, cellParams1, cellParams2) =>
-          timestampSortComparator(
-            cellParams1?.row?.loggedAt,
-            cellParams2?.row?.loggedAt,
-          ),
-      },
-      {
-        field: "note",
-        headerName: "Note",
-        minWidth: 200,
-        flex: 1,
-        editable: true,
-        valueGetter: (value, row) => row?.note ?? "",
-        valueFormatter: (value) => (value ? value : "N/A"),
-        valueSetter: (params) => {
-          const next = { ...params.row };
-          next.note = params.value ?? "";
-          return next;
-        },
-      },
-    ];
-    return [...sharedAdminColumns, ...extras];
-  }, [sharedAdminColumns, toDateSafe]);
+    return sharedAdminColumns;
+  }, [sharedAdminColumns]);
 
   const gridColumns = useMemo(
     () => [...columns, actionsColumn],
@@ -334,9 +293,7 @@ export default function EntriesTab() {
         r.rideId,
         formatDateTime(s),
         formatDateTime(e),
-        formatDateTime(toDateSafe(r.loggedAt)),
         r.duration ?? r.minutes ?? Math.round((r.durationMs || 0) / 60000),
-        r.note,
       ]
         .filter(Boolean)
         .map((v) => String(v).toLowerCase());
