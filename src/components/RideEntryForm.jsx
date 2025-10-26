@@ -1163,7 +1163,11 @@ export default function RideEntryForm() {
                 }
                 size="small"
                 fullWidth
-                inputProps={{ min: 0, max: 59, "aria-label": "Duration minutes" }}
+                inputProps={{
+                  min: 0,
+                  max: 59,
+                  "aria-label": "Duration minutes",
+                }}
                 sx={singleShakeSx(
                   showSingleValidation && Boolean(singleErrors.duration),
                 )}
@@ -1193,7 +1197,8 @@ export default function RideEntryForm() {
                   }
                   size="small"
                   FormControlProps={{
-                    error: Boolean(singleErrors.rideType) && showSingleValidation,
+                    error:
+                      Boolean(singleErrors.rideType) && showSingleValidation,
                     sx: singleShakeSx(
                       showSingleValidation && Boolean(singleErrors.rideType),
                     ),
@@ -1220,7 +1225,8 @@ export default function RideEntryForm() {
                   }
                   size="small"
                   FormControlProps={{
-                    error: Boolean(singleErrors.vehicle) && showSingleValidation,
+                    error:
+                      Boolean(singleErrors.vehicle) && showSingleValidation,
                     sx: singleShakeSx(
                       showSingleValidation && Boolean(singleErrors.vehicle),
                     ),
@@ -1390,7 +1396,8 @@ export default function RideEntryForm() {
                   onChange={(event) => {
                     const val = event.target.value;
                     handleBuilderChange({
-                      durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
+                      durationMinutes:
+                        val === "" ? "" : Math.max(0, Number(val)),
                     });
                   }}
                   size="small"

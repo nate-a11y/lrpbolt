@@ -25,7 +25,7 @@ export function buildRowEditActionsColumn({
   };
 
   const handleSaveClick = (id) => () => {
-    apiRef.current.stopRowEditMode({ id });
+    setRowModesModel((m) => ({ ...m, [id]: { mode: GridRowModes.View } }));
   };
 
   const handleCancelClick = (id) => () => {
