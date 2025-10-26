@@ -83,30 +83,30 @@ export default function EntriesTab() {
         typeof newRow.driverName === "string" && newRow.driverName.trim() !== ""
           ? newRow.driverName
           : (newRow.driver ?? null);
+
+      // Parse timestamps - always include both for proper duration calculation
+      const parsedStart = toDateSafe(newRow.startTime ?? oldRow.startTime);
+      const parsedEnd = toDateSafe(newRow.endTime ?? oldRow.endTime);
+
       const updates = {
         driver: driverName ?? null,
         driverName: driverName ?? null,
         rideId: newRow.rideId ?? null,
+        startTime: parsedStart ?? null,
+        endTime: parsedEnd ?? null,
       };
-      if (Object.prototype.hasOwnProperty.call(newRow, "startTime")) {
-        const parsedStart = toDateSafe(newRow.startTime);
-        updates.startTime = parsedStart ?? null;
-      }
-      if (Object.prototype.hasOwnProperty.call(newRow, "endTime")) {
-        const parsedEnd = toDateSafe(newRow.endTime);
-        updates.endTime = parsedEnd ?? null;
-      }
 
       try {
         await updateTimeLog(id, updates);
 
-        const start = toDateSafe(newRow.startTime);
-        const end = toDateSafe(newRow.endTime);
-        const durationMs = durationSafe(start, end);
+        // Calculate duration from the parsed timestamps
+        const durationMs = durationSafe(parsedStart, parsedEnd);
         const duration = durationMs > 0 ? Math.floor(durationMs / 60000) : 0;
 
         return {
           ...newRow,
+          startTime: parsedStart,
+          endTime: parsedEnd,
           duration,
           driverName: driverName ?? newRow.driverName,
         };
