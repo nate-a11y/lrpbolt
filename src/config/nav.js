@@ -32,6 +32,14 @@ export const NAV_ITEMS = [
     iconColor: (t) => t.palette.error.main,
   },
   {
+    id: "notes",
+    to: "/notes",
+    label: "Notes",
+    icon: "Notes",
+    rolesVisible: ["admin"],
+    iconColor: (t) => t.palette.secondary.main,
+  },
+  {
     id: "drop-guides",
     to: "/drop-guides",
     label: "Vehicle Tips",
