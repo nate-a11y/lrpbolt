@@ -72,6 +72,7 @@ const TicketViewer = lazy(() => import("./components/TicketViewer"));
 const Tickets = lazy(() => import("./components/Tickets"));
 const TicketsPage = lazy(() => import("./pages/TicketsPage.jsx"));
 const ImportantInfoPage = lazy(() => import("./pages/ImportantInfoPage.jsx"));
+const NotesPage = lazy(() => import("./pages/NotesPage.jsx"));
 
 function App() {
   const { driver, setDriver } = useDriver();
@@ -356,6 +357,10 @@ function App() {
               <Route path="/shootout" element={<ShootoutTab />} />
               <Route path="/info" element={<DriverInfoTab />} />
               <Route path="/important" element={<ImportantInfoPage />} />
+              <Route
+                path="/notes"
+                element={isAdmin ? <NotesPage /> : <Navigate to="/" />}
+              />
               <Route
                 path="/drop-guides"
                 element={<Navigate to="/info" replace />}
