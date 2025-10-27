@@ -1,0 +1,147 @@
+name: Manual Deploy Functions & Rules
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'What to deploy'
+        required: true
+        type: choice
+        options:
+          - 'functions'
+          - 'firestore:rules'
+          - 'both'
+        default: 'functions'
+      force_rebuild:
+        description: 'Force rebuild all functions (ignore cache)'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    name: Manual Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Cache Firebase emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-v1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            functions/package-lock.json
+
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools@latest
+
+      - name: Install Functions deps
+        if: contains(inputs.deploy_target, 'functions')
+        working-directory: functions
+        run: npm ci
+
+      - name: Set Twilio secrets in Firebase (idempotent)
+        if: contains(inputs.deploy_target, 'functions')
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:  ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM:        ${{ secrets.TWILIO_FROM }}
+        run: |
+          firebase functions:secrets:set TWILIO_ACCOUNT_SID --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_ACCOUNT_SID"
+          firebase functions:secrets:set TWILIO_AUTH_TOKEN  --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_AUTH_TOKEN"
+          firebase functions:secrets:set TWILIO_FROM        --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_FROM"
+
+      - name: Force rebuild by modifying package.json
+        if: inputs.force_rebuild && contains(inputs.deploy_target, 'functions')
+        working-directory: functions
+        run: |
+          # Add a build timestamp to force Firebase to rebuild
+          BUILD_TIME=$(date +%s)
+          echo "// Build timestamp: $BUILD_TIME" >> index.js
+          echo "Forced rebuild with timestamp: $BUILD_TIME"
+
+      - name: Deploy Functions
+        if: inputs.deploy_target == 'functions' || inputs.deploy_target == 'both'
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive --force
+
+      - name: Deploy Firestore Rules
+        if: inputs.deploy_target == 'firestore:rules' || inputs.deploy_target == 'both'
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Setup gcloud
+        if: contains(inputs.deploy_target, 'functions')
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Pin env vars on Cloud Run (apiCalendarFetch)
+        if: contains(inputs.deploy_target, 'functions')
+        env:
+          GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
+        run: |
+          gcloud run services update apicalendarfetch \
+            --region=us-central1 \
+            --platform=managed \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}" \
+            --quiet
+
+      - name: Pin env vars on Cloud Run (sendBulkTicketsEmail)
+        if: contains(inputs.deploy_target, 'functions')
+        env:
+          GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+        run: |
+          gcloud run services update sendbulkticketsemail \
+            --region=us-central1 \
+            --platform=managed \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
+            --quiet
+
+      - name: Pin env vars on Cloud Run (sendShuttleTicketEmail)
+        if: contains(inputs.deploy_target, 'functions')
+        env:
+          GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
+          GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
+          GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+        run: |
+          gcloud run services update sendshuttleticketemail \
+            --region=us-central1 \
+            --platform=managed \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
+            --quiet
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ Manual deployment complete!"
+          echo ""
+          echo "Deployed: ${{ inputs.deploy_target }}"
+          echo "Force rebuild: ${{ inputs.force_rebuild }}"
+          echo ""
+          echo "Check the deployed services:"
+          echo "  gcloud run services describe sendbulkticketsemail --region=us-central1 --format=yaml | grep 'image:'"
