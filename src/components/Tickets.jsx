@@ -388,6 +388,8 @@ function Tickets() {
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  const [emailPreviews, setEmailPreviews] = useState([]);
+  const [generatingPreviews, setGeneratingPreviews] = useState(false);
   const undoTimerRef = useRef(null);
   const previewRef = useRef(null);
   const ticketPreviewContainerRef = useRef(null);
@@ -1175,6 +1177,64 @@ function Tickets() {
     showWarnOrErrorSnack,
   ]);
 
+  const generateEmailPreviews = useCallback(async () => {
+    if (!selectedRows.length || !ticketPreviewContainerRef.current) return;
+    setGeneratingPreviews(true);
+    const nodes = [];
+    try {
+      selectedRows.forEach((ticket, index) => {
+        const node = renderTicketPreviewNode(ticket);
+        if (!node) return;
+        const name = ticket?.ticketId || ticket?.id || `ticket-${index + 1}`;
+        node.dataset.ticketName = String(name);
+        nodes.push(node);
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const previews = [];
+      for (let i = 0; i < nodes.length; i += 1) {
+        try {
+          const dataUrl = await htmlToImage.toPng(nodes[i], {
+            pixelRatio: 2,
+            backgroundColor: "#FFFFFF",
+            cacheBust: true,
+          });
+          const filename = `${nodes[i].dataset.ticketName}.png`;
+          previews.push({ dataUrl, filename });
+        } catch (err) {
+          logError(err, { area: "tickets", action: "generatePreview" });
+        }
+      }
+      setEmailPreviews(previews);
+    } catch (err) {
+      logError(err, { area: "tickets", action: "generatePreviews" });
+    } finally {
+      nodes.forEach((node) => {
+        if (node?.__lrpRoot) {
+          try {
+            node.__lrpRoot.unmount();
+          } catch (error) {
+            logError(error, { area: "tickets", action: "previewCleanup" });
+          }
+        }
+      });
+      if (ticketPreviewContainerRef.current) {
+        ticketPreviewContainerRef.current.innerHTML = "";
+      }
+      setGeneratingPreviews(false);
+    }
+  }, [selectedRows, renderTicketPreviewNode]);
+
+  // Generate previews when email dialog opens
+  useEffect(() => {
+    if (emailOpen && selectedRows.length > 0) {
+      generateEmailPreviews();
+    } else if (!emailOpen) {
+      setEmailPreviews([]);
+    }
+  }, [emailOpen, selectedRows.length, generateEmailPreviews]);
+
   const handleEmailSelected = useCallback(async () => {
     if (!selectedRows.length) return;
     const trimmedEmail = (emailTo || "").trim();
@@ -1672,6 +1732,56 @@ function Tickets() {
                 value={emailMessage}
                 onChange={(e) => setEmailMessage(e.target.value)}
               />
+
+              {generatingPreviews && (
+                <Box display="flex" alignItems="center" gap={1}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2">Generating ticket previews...</Typography>
+                </Box>
+              )}
+
+              {emailPreviews.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Ticket Previews ({emailPreviews.length}):
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      maxHeight: 300,
+                      overflowY: "auto",
+                      p: 1,
+                      bgcolor: "background.default",
+                      borderRadius: 1,
+                    }}
+                  >
+                    {emailPreviews.map((preview, idx) => (
+                      <Box
+                        key={idx}
+                        component="img"
+                        src={preview.dataUrl}
+                        alt={preview.filename}
+                        sx={{
+                          maxWidth: 200,
+                          height: "auto",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 1,
+                          cursor: "pointer",
+                          "&:hover": {
+                            boxShadow: 2,
+                          },
+                        }}
+                        onClick={() => {
+                          window.open(preview.dataUrl, "_blank");
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
             </Stack>
           </DialogContent>
           <DialogActions>
