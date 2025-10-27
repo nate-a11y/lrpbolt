@@ -1204,7 +1204,9 @@ function Tickets() {
           message: emailMessage,
           attachments: files,
         });
-        showSuccessSnack(`${files.length} ticket${files.length > 1 ? "s" : ""} emailed to ${trimmedEmail}`);
+        showSuccessSnack(
+          `${files.length} ticket${files.length > 1 ? "s" : ""} emailed to ${trimmedEmail}`,
+        );
       } catch (err) {
         logError(err, { area: "tickets", action: "emailSelected" });
 
@@ -1220,7 +1222,7 @@ function Tickets() {
         const errorMsg = err?.message || "Email service unavailable";
         showWarnOrErrorSnack(
           `${errorMsg}. Tickets downloaded as ZIP instead.`,
-          "warning"
+          "warning",
         );
       }
     } catch (err) {
@@ -1248,7 +1250,6 @@ function Tickets() {
     emailTo,
     renderTicketPreviewNode,
     selectedRows,
-    showInfoSnack,
     showSuccessSnack,
     showWarnOrErrorSnack,
   ]);

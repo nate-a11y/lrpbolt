@@ -44,7 +44,6 @@ const useResolvedStickyTop = () => {
 export default function CalendarHub() {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
-  const useDrawer = useMediaQuery(theme.breakpoints.down("lg"));
   const stickyTopCss = useResolvedStickyTop();
 
   const [filters, setFilters] = useState(() => {

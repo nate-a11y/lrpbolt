@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { dayjs } from "@/utils/time";
 
@@ -23,6 +23,12 @@ export default function useWeeklySummary({
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Extract complex expression for stable dependency checking
+  const weekStartKey = useMemo(
+    () => weekStart?.toISOString?.() || String(weekStart),
+    [weekStart],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -106,9 +112,9 @@ export default function useWeeklySummary({
         unsub();
       }
     };
-    // Convert weekStart to ISO string for stable dependency
+    // weekStart is safely captured via weekStartKey memo
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driverFilter, refreshKey, weekStart?.toISOString?.() || String(weekStart)]);
+  }, [driverFilter, refreshKey, weekStartKey]);
 
   return { rows, loading, error };
 }
