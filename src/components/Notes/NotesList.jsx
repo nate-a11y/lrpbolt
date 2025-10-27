@@ -7,8 +7,11 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Tooltip,
@@ -17,56 +20,76 @@ import {
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
-import { formatDateTime } from "@/utils/time.js";
 
-function ensureString(value) {
-  if (value == null) return "";
-  return String(value);
-}
+const TRIP_TYPES = ["One-Way", "Round Trip (Point-to-Point)", "Hourly"];
 
-function matchesQuery(note, query) {
-  if (!query) return true;
-  const haystack = [
-    note?.title,
-    note?.tripType,
-    note?.vehicleType,
-    note?.noteText,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(query);
+function generateNote(template, tripType, passengerCount, vehicleType) {
+  if (!template) return "";
+
+  const lines = [];
+
+  // Add vehicle type line if available
+  if (vehicleType) {
+    lines.push(vehicleType);
+    lines.push("");
+  }
+
+  // Add trip type
+  lines.push(tripType);
+
+  // Add passenger count
+  const passengerLabel = passengerCount === 1 ? "Passenger" : "Passengers";
+  lines.push(`${passengerCount} ${passengerLabel}`);
+  lines.push("");
+
+  // Add template content
+  lines.push(template);
+
+  return lines.join("\n");
 }
 
 export default function NotesList({ notes, loading, error }) {
   const { show } = useSnack();
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [tripType, setTripType] = useState("One-Way");
+  const [passengerCount, setPassengerCount] = useState(1);
+  const [generatedNote, setGeneratedNote] = useState("");
 
   const hasNotes = notes.length > 0;
   const showError = Boolean(error) && !loading;
   const showEmpty = !showError && !loading && !hasNotes;
 
+  const activeNotes = useMemo(() => {
+    return notes.filter((note) => note && note.isActive !== false);
+  }, [notes]);
+
+  const selectedTemplate = useMemo(() => {
+    return activeNotes.find((note) => note.id === selectedTemplateId);
+  }, [activeNotes, selectedTemplateId]);
+
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 300);
-    return () => window.clearTimeout(timeout);
-  }, [query]);
+    if (selectedTemplate) {
+      const note = generateNote(
+        selectedTemplate.noteTemplate,
+        tripType,
+        passengerCount,
+        selectedTemplate.vehicleType,
+      );
+      setGeneratedNote(note);
+    } else {
+      setGeneratedNote("");
+    }
+  }, [selectedTemplate, tripType, passengerCount]);
 
-  const filteredNotes = useMemo(() => {
-    const q = debouncedQuery.trim().toLowerCase();
-    return notes.filter((note) => {
-      if (!note) return false;
-      return matchesQuery(note, q);
-    });
-  }, [notes, debouncedQuery]);
-
-  const handleCopy = async (noteText, title) => {
+  const handleCopy = async () => {
+    if (!generatedNote) {
+      show("No note to copy", "warning");
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(noteText);
-      show(`Copied "${title}" to clipboard`, "success");
-    } catch (err) {
+      await navigator.clipboard.writeText(generatedNote);
+      show("Copied note to clipboard", "success");
+    } catch {
       show("Failed to copy note", "error");
     }
   };
@@ -124,7 +147,7 @@ export default function NotesList({ notes, loading, error }) {
             No notes yet.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.85 }}>
-            Once admins add reservation notes, they'll show here for quick
+            Once admins add reservation notes, they&apos;ll show here for quick
             reference.
           </Typography>
         </Stack>
@@ -134,130 +157,121 @@ export default function NotesList({ notes, loading, error }) {
 
   return (
     <Box
-      sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
+      sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 3 }}
     >
-      <Stack spacing={1.5} sx={{ mb: 0.5 }}>
-        <TextField
-          size="small"
-          placeholder="Search notes by title, vehicle type, or content…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          sx={{
-            maxWidth: { md: 640 },
-            bgcolor: (t) => t.palette.background.paper,
-          }}
-          InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
-          inputProps={{ "aria-label": "Search notes" }}
-        />
-      </Stack>
+      <Card
+        variant="outlined"
+        sx={{
+          bgcolor: (t) => t.palette.background.paper,
+          borderColor: (t) => t.palette.divider,
+          borderRadius: 3,
+        }}
+      >
+        <CardContent>
+          <Stack spacing={3}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Generate Note
+            </Typography>
 
-      <Stack spacing={2.5}>
-        {loading && !filteredNotes.length ? (
-          <Typography variant="body2" sx={{ opacity: 0.7 }}>
-            Loading notes…
-          </Typography>
-        ) : null}
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+                Select Template
+              </InputLabel>
+              <Select
+                label="Select Template"
+                value={selectedTemplateId}
+                onChange={(event) => setSelectedTemplateId(event.target.value)}
+                sx={{
+                  color: (t) => t.palette.text.primary,
+                  bgcolor: (t) => t.palette.background.paper,
+                }}
+              >
+                <MenuItem value="">
+                  <em>Choose a template...</em>
+                </MenuItem>
+                {activeNotes.map((note) => (
+                  <MenuItem key={note.id} value={note.id}>
+                    {note.title}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-        {filteredNotes.map((note) => {
-          const updatedLabel = formatDateTime(note?.updatedAt);
-          const key = note?.id ?? `note-${note?.title}`;
-
-          return (
-            <Card
-              key={key}
-              variant="outlined"
-              sx={{
-                bgcolor: (t) => t.palette.background.paper,
-                borderColor: (t) => t.palette.divider,
-                borderRadius: 3,
-              }}
-            >
-              <CardContent>
-                <Stack spacing={2}>
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "flex-start", sm: "center" }}
-                  >
-                    <Stack spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 700 }}
-                      >
-                        {note?.title || "Untitled"}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{ opacity: 0.7 }}
-                      >
-                        Updated {updatedLabel}
-                      </Typography>
-                    </Stack>
-                    <Tooltip title="Copy note to clipboard">
-                      <IconButton
-                        onClick={() => handleCopy(note?.noteText || "", note?.title || "note")}
-                        size="small"
-                        sx={{
-                          color: (t) => t.palette.primary.main,
-                          "&:hover": { bgcolor: "rgba(76, 175, 80, 0.08)" },
-                        }}
-                      >
-                        <ContentCopyIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    sx={{ flexWrap: "wrap", gap: 1 }}
-                  >
-                    <Chip
-                      size="small"
-                      label={note?.tripType || "Point to Point"}
+            {selectedTemplateId && (
+              <>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <FormControl fullWidth>
+                    <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+                      Trip Type
+                    </InputLabel>
+                    <Select
+                      label="Trip Type"
+                      value={tripType}
+                      onChange={(event) => setTripType(event.target.value)}
                       sx={{
-                        bgcolor: "#143d0a",
-                        color: "#b7ffb7",
-                        border: (t) => `1px solid ${t.palette.primary.main}`,
-                        fontWeight: 600,
+                        color: (t) => t.palette.text.primary,
+                        bgcolor: (t) => t.palette.background.paper,
                       }}
-                    />
-                    {note?.vehicleType ? (
-                      <Chip
-                        size="small"
-                        label={note.vehicleType}
-                        sx={{
-                          bgcolor: (t) => t.palette.info.dark,
-                          color: (t) => t.palette.info.light,
-                          border: (t) => `1px solid ${t.palette.info.main}`,
-                          fontWeight: 600,
-                        }}
-                      />
-                    ) : null}
-                    {note?.passengerCount ? (
-                      <Chip
-                        size="small"
-                        label={`${note.passengerCount} Passenger${note.passengerCount !== 1 ? "s" : ""}`}
-                        sx={{
-                          bgcolor: (t) => t.palette.warning.dark,
-                          color: (t) => t.palette.warning.light,
-                          border: (t) => `1px solid ${t.palette.warning.main}`,
-                          fontWeight: 600,
-                        }}
-                      />
-                    ) : null}
-                  </Stack>
+                    >
+                      {TRIP_TYPES.map((type) => (
+                        <MenuItem key={type} value={type}>
+                          {type}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                  <Box
+                  <TextField
+                    label="Passenger Count"
+                    type="number"
+                    value={passengerCount}
+                    onChange={(event) =>
+                      setPassengerCount(parseInt(event.target.value, 10) || 1)
+                    }
+                    fullWidth
+                    inputProps={{ min: 1 }}
                     sx={{
-                      bgcolor: (t) => t.palette.action.hover,
-                      p: 2,
-                      borderRadius: 2,
-                      border: 1,
-                      borderColor: "divider",
+                      bgcolor: (t) => t.palette.background.paper,
                     }}
-                  >
+                    InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
+                  />
+                </Stack>
+
+                <Box
+                  sx={{
+                    bgcolor: (t) => t.palette.action.hover,
+                    p: 3,
+                    borderRadius: 2,
+                    border: 1,
+                    borderColor: "divider",
+                    position: "relative",
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: 700, opacity: 0.7 }}
+                      >
+                        Generated Note
+                      </Typography>
+                      <Tooltip title="Copy to clipboard">
+                        <IconButton
+                          onClick={handleCopy}
+                          size="small"
+                          sx={{
+                            color: (t) => t.palette.primary.main,
+                            "&:hover": { bgcolor: "rgba(76, 175, 80, 0.08)" },
+                          }}
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                     <Typography
                       variant="body2"
                       sx={{
@@ -266,30 +280,15 @@ export default function NotesList({ notes, loading, error }) {
                         lineHeight: 1.6,
                       }}
                     >
-                      {note?.noteText || "No note content"}
+                      {generatedNote || "No note generated"}
                     </Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {!filteredNotes.length && !loading ? (
-          <Box
-            sx={(t) => ({
-              p: 2,
-              borderRadius: 2,
-              border: `1px solid ${t.palette.divider}`,
-              bgcolor: t.palette.background.paper,
-            })}
-          >
-            <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
-              No matches for your search.
-            </Typography>
-          </Box>
-        ) : null}
-      </Stack>
+                  </Stack>
+                </Box>
+              </>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
     </Box>
   );
 }

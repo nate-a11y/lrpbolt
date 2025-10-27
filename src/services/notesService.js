@@ -9,7 +9,6 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from "firebase/firestore";
 
 import { db } from "@/services/firebase.js";
@@ -23,20 +22,30 @@ function safeTrim(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function nullable(value) {
-  const trimmed = safeTrim(value);
-  return trimmed ? trimmed : null;
-}
+function sanitizePayload(payload = {}, isPartialUpdate = false) {
+  if (isPartialUpdate) {
+    // For partial updates (like toggling active status), only include provided fields
+    const result = {};
+    if ("title" in payload) {
+      result.title = safeTrim(payload.title) || "Untitled";
+    }
+    if ("vehicleType" in payload) {
+      result.vehicleType = safeTrim(payload.vehicleType);
+    }
+    if ("noteTemplate" in payload) {
+      result.noteTemplate = safeTrim(payload.noteTemplate);
+    }
+    if ("isActive" in payload) {
+      result.isActive = typeof payload.isActive === "boolean" ? payload.isActive : true;
+    }
+    return result;
+  }
 
-function sanitizePayload(payload = {}) {
+  // For full document creation/replacement
   return {
     title: safeTrim(payload.title) || "Untitled",
-    tripType: safeTrim(payload.tripType) || "Point to Point",
     vehicleType: safeTrim(payload.vehicleType) || "",
-    passengerCount: typeof payload.passengerCount === "number"
-      ? payload.passengerCount
-      : parseInt(payload.passengerCount, 10) || 0,
-    noteText: safeTrim(payload.noteText),
+    noteTemplate: safeTrim(payload.noteTemplate),
     isActive: typeof payload.isActive === "boolean" ? payload.isActive : true,
   };
 }
@@ -54,7 +63,6 @@ export function subscribeNotes({ onData, onError } = {}) {
   const ref = collection(db, COLLECTION);
   const q = query(
     ref,
-    where("isActive", "==", true),
     orderBy("updatedAt", "desc"),
   );
   try {
@@ -129,7 +137,7 @@ export async function updateNote(id, changes) {
       code: "notes_missing_id",
     });
   }
-  const patch = sanitizePayload(changes);
+  const patch = sanitizePayload(changes, true); // Pass true for partial update
   try {
     await withExponentialBackoff(async () => {
       await updateDoc(doc(db, COLLECTION, id), {
