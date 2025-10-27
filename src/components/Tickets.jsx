@@ -1194,9 +1194,25 @@ function Tickets() {
       for (let i = 0; i < nodes.length; i += 1) {
         const dataUrl = await htmlToImage.toPng(nodes[i], { pixelRatio: 2 });
         const filename = `${nodes[i].dataset.ticketName}.png`;
+
+        // Log data URL format for debugging
+        console.log(`[Ticket Email Debug] File ${i + 1}/${nodes.length}:`, {
+          filename,
+          dataUrlLength: dataUrl?.length,
+          dataUrlPrefix: dataUrl?.substring(0, 50),
+          dataUrlSuffix: dataUrl?.substring(dataUrl.length - 50),
+          isValidFormat: /^data:image\/png;base64,/.test(dataUrl)
+        });
+
         files.push({ filename, dataUrl });
       }
       if (!files.length) return;
+
+      // Log total payload size
+      const totalSize = files.reduce((sum, file) => sum + (file.dataUrl?.length || 0), 0);
+      const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+      console.log(`[Ticket Email Debug] Total payload: ${totalSizeMB}MB for ${files.length} files`);
+
       try {
         await sendTicketsEmail({
           to: trimmedEmail,

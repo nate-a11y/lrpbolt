@@ -65,19 +65,28 @@ const sendBulkTicketsEmail = onCall(
       const errors = [];
 
       for (const attachment of attachments) {
-        if (!attachment.filename || !attachment.dataUrl) {
-          logger.warn("Skipping invalid attachment", { attachment });
-          continue;
-        }
-
         // Log data URL details for debugging
         const dataUrlLength = attachment.dataUrl?.length || 0;
         const dataUrlPrefix = attachment.dataUrl?.substring(0, 50) || "";
+        const dataUrlType = typeof attachment.dataUrl;
+
         logger.info("Processing attachment", {
           filename: attachment.filename,
           dataUrlLength,
+          dataUrlType,
           dataUrlPrefix,
+          hasFilename: !!attachment.filename,
+          hasDataUrl: !!attachment.dataUrl,
         });
+
+        if (!attachment.filename || !attachment.dataUrl) {
+          logger.warn("Skipping invalid attachment - missing filename or dataUrl", {
+            filename: attachment.filename,
+            hasDataUrl: !!attachment.dataUrl,
+            dataUrlType,
+          });
+          continue;
+        }
 
         // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
         const base64Match = attachment.dataUrl.match(/^data:image\/png;base64,(.+)$/);
