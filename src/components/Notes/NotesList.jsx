@@ -27,7 +27,19 @@ import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
 const TRIP_CATEGORIES = ["Point to Point, Round Trip", "Hourly Reservation"];
 
-const VEHICLES = ["Limo Bus", "Rescue Squad", "Luxury Sprint", "LRP1-8"];
+const VEHICLES = [
+  "Limo Bus",
+  "Rescue Squad",
+  "Luxury Sprint",
+  "LRP1",
+  "LRP2",
+  "LRP3",
+  "LRP4",
+  "LRP5",
+  "LRP6",
+  "LRP7",
+  "LRP8",
+];
 
 function generateNote(template, tripCategory, tripType, totalPassengers, vehicles, miscellaneous) {
   if (!template) return "";
