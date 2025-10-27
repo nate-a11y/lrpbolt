@@ -34,14 +34,16 @@ function AdminTimeLog() {
         >
           <Tab label="Logs" />
           <Tab label="Weekly Summary" />
-          <Tab label="Shootout Sessions" />
-          <Tab label="Shootout Summary" />
+          {/* Temporarily hidden - can be re-enabled later if needed */}
+          {/* <Tab label="Shootout Sessions" /> */}
+          {/* <Tab label="Shootout Summary" /> */}
         </Tabs>
         <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
           {tab === 0 && <EntriesTab />}
           {tab === 1 && <WeeklySummaryTab />}
-          {tab === 2 && <ShootoutStatsTab />}
-          {tab === 3 && <ShootoutSummaryTab />}
+          {/* Temporarily hidden - can be re-enabled later if needed */}
+          {/* {tab === 2 && <ShootoutStatsTab />} */}
+          {/* {tab === 3 && <ShootoutSummaryTab />} */}
         </Box>
       </PageContainer>
     </ErrorBoundary>

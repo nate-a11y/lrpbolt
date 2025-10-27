@@ -106,7 +106,9 @@ export default function useWeeklySummary({
         unsub();
       }
     };
-  }, [driverFilter, refreshKey, weekStart]);
+    // Convert weekStart to ISO string for stable dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driverFilter, refreshKey, weekStart?.toISOString?.() || String(weekStart)]);
 
   return { rows, loading, error };
 }
