@@ -347,6 +347,13 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
 
+      - name: Force rebuild by touching function files
+        if: needs.changes.outputs.functions == 'true'
+        run: |
+          # Touch all function files to force Firebase to detect changes
+          find functions -name '*.js' -type f -exec touch {} +
+          echo "Touched all JS files in functions directory to force rebuild"
+
       - name: Deploy Functions
         if: needs.changes.outputs.functions == 'true'
         env:
