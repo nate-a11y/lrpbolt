@@ -48,7 +48,7 @@ import {
   IconButton,
   Stack,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, ThemeProvider } from "@mui/material/styles";
 import { GridActionsCellItem } from "@mui/x-data-grid-pro";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -850,10 +850,14 @@ function Tickets() {
     const wrapper = document.createElement("div");
     ticketPreviewContainerRef.current.appendChild(wrapper);
     const root = ReactDOM.createRoot(wrapper);
-    root.render(<TicketPreviewCard ticket={ticket} />);
+    root.render(
+      <ThemeProvider theme={theme}>
+        <TicketPreviewCard ticket={ticket} />
+      </ThemeProvider>
+    );
     wrapper.__lrpRoot = root;
     return wrapper;
-  }, []);
+  }, [theme]);
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
@@ -1192,7 +1196,7 @@ function Tickets() {
 
       // Wait for React to finish rendering all nodes
       // (ReactDOM.createRoot().render() is async and returns immediately)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const files = [];
       for (let i = 0; i < nodes.length; i += 1) {
@@ -1200,7 +1204,6 @@ function Tickets() {
           const dataUrl = await htmlToImage.toPng(nodes[i], {
             pixelRatio: 2,
             backgroundColor: "#FFFFFF",
-            skipFonts: true,
             cacheBust: true,
           });
           const filename = `${nodes[i].dataset.ticketName}.png`;
@@ -1302,7 +1305,7 @@ function Tickets() {
       if (!nodes.length) return;
 
       // Wait for React to finish rendering all nodes
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       await exportTicketNodesAsZip(nodes, {
         zipName: `tickets-${Date.now()}.zip`,
