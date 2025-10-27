@@ -13,13 +13,12 @@ import {
   CircularProgress,
 } from "@mui/material";
 
-import { clockOutActiveSession } from "@/services/timeclockActions";
 import { clearClockNotification } from "@/pwa/clockNotifications";
 import { openTimeClockModal } from "@/services/uiBus";
 import { consumePendingSwEvent } from "@/pwa/swMessages";
 import logError from "@/utils/logError.js";
 
-export default function ClockOutConfirm() {
+export default function ClockOutConfirm({ activeTimeLogId, performClockOut }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
@@ -67,14 +66,30 @@ export default function ClockOutConfirm() {
   const handleConfirm = useCallback(async () => {
     try {
       setBusy(true);
-      await clockOutActiveSession();
-      try {
-        await clearClockNotification();
-      } catch (error) {
-        logError(error, { where: "ClockOutConfirm", action: "clearClock" });
+
+      if (!activeTimeLogId) {
+        logError(new Error("No active time log ID"), {
+          where: "ClockOutConfirm",
+          action: "clockOut",
+        });
+        setBusy(false);
+        setResult("err");
+        setOpen(false);
+        return;
       }
+
+      const success = await performClockOut(activeTimeLogId);
+
+      if (success) {
+        try {
+          await clearClockNotification();
+        } catch (error) {
+          logError(error, { where: "ClockOutConfirm", action: "clearClock" });
+        }
+      }
+
       setBusy(false);
-      setResult("ok");
+      setResult(success ? "ok" : "err");
       setOpen(false);
     } catch (e) {
       logError(e, { where: "ClockOutConfirm", action: "clockOut" });
@@ -82,7 +97,7 @@ export default function ClockOutConfirm() {
       setResult("err");
       setOpen(false);
     }
-  }, []);
+  }, [activeTimeLogId, performClockOut]);
 
   return (
     <>
