@@ -74,17 +74,18 @@ jobs:
         working-directory: functions
         run: |
           # Make a real code change to force Firebase to rebuild the container
-          BUILD_TIME=$(date +%Y%m%d%H%M%S)
-          echo "Adding build ID to gmailHelper.js: $BUILD_TIME"
+          BUILD_TIME=$(date +%Y%m%d_%H%M%S)
+          echo "Adding build comment to force rebuild: $BUILD_TIME"
 
-          # Add build version comment after first line
+          # Add a comment at the top of gmailHelper.js to change the file hash
           sed -i "1a /* Build: $BUILD_TIME */" gmailHelper.js
 
           # Verify the change
-          echo "Modified gmailHelper.js:"
+          echo "Modified gmailHelper.js (first 5 lines):"
           head -5 gmailHelper.js
 
-          echo "This will force Firebase to create a new container image (version_2+)"
+          echo ""
+          echo "✅ Source code modified - Firebase will be forced to create a new container image"
 
       - name: Deploy Functions
         if: inputs.deploy_target == 'functions' || inputs.deploy_target == 'both'
