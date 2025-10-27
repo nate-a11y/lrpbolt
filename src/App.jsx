@@ -443,7 +443,10 @@ function App() {
         <NotificationsOptInDialog user={user} />
         {!authLoading && <PermissionGate user={user} />}
         <GlobalChrome />
-        <ClockOutConfirm />
+        <ClockOutConfirm
+          activeTimeLogId={activeTimeLogId}
+          performClockOut={performClockOut}
+        />
         <NotifDiag />
       </AppShell>
     </LocalizationProvider>

@@ -116,7 +116,7 @@ export function getTheme(mode = "dark") {
             color: palette.text.primary,
             WebkitFontSmoothing: "antialiased",
             MozOsxFontSmoothing: "grayscale",
-            transition: "background-color 0.25s ease, color 0.25s ease",
+            transition: "background-color 0.05s ease, color 0.05s ease",
           },
           ":root": {
             "--lrp-safe-top": "env(safe-area-inset-top)",

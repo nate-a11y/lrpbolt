@@ -19,29 +19,17 @@ export default function LoadingScreen({ progress = null }) {
   const prefersReducedMotion = useReducedMotion();
   const upMd = useMediaQuery(theme.breakpoints.up("md"));
 
-  // Brand palette — tuned for light/dark
+  // Simplified brand colors - static instead of theme-calculated
+  const isDark = theme.palette.mode === "dark";
   const brand = {
-    primary: theme.palette.mode === "dark" ? "#60A5FA" : "#2563EB", // LRP blue
-    accent: theme.palette.mode === "dark" ? "#34D399" : "#059669", // emerald
-    bg0: theme.palette.mode === "dark" ? "#0B0F19" : "#F6F8FC",
-    bg1:
-      theme.palette.mode === "dark"
-        ? "rgba(96,165,250,.12)"
-        : "rgba(37,99,235,.10)",
-    bg2:
-      theme.palette.mode === "dark"
-        ? "rgba(52,211,153,.10)"
-        : "rgba(5,150,105,.10)",
+    primary: isDark ? "#60A5FA" : "#2563EB",
+    accent: isDark ? "#34D399" : "#059669",
   };
 
-  const gradient =
-    theme.palette.mode === "dark"
-      ? `radial-gradient(900px 600px at 20% -10%, ${brand.bg1}, transparent 60%),
-         radial-gradient(900px 700px at 120% 120%, ${brand.bg2}, transparent 60%),
-         linear-gradient(180deg, ${brand.bg0}, ${brand.bg0})`
-      : `radial-gradient(900px 600px at 0% -20%, ${brand.bg1}, transparent 60%),
-         radial-gradient(900px 700px at 120% 120%, ${brand.bg2}, transparent 60%),
-         linear-gradient(180deg, ${brand.bg0}, ${brand.bg0})`;
+  // Simplified gradient - single linear gradient instead of multiple radials
+  const gradient = isDark
+    ? "linear-gradient(135deg, #0B0F19 0%, #0F1729 50%, #0B0F19 100%)"
+    : "linear-gradient(135deg, #F6F8FC 0%, #EEF2F9 50%, #F6F8FC 100%)";
 
   const MotionBox = motion(Box);
 
@@ -60,8 +48,8 @@ export default function LoadingScreen({ progress = null }) {
         overflow: "hidden",
       }}
     >
-      {/* Faint watermark logo */}
-      <MotionBox
+      {/* Faint watermark logo - simplified animation */}
+      <Box
         aria-hidden
         sx={{
           position: "absolute",
@@ -74,19 +62,6 @@ export default function LoadingScreen({ progress = null }) {
           backgroundPosition: "center",
           filter: "grayscale(100%)",
         }}
-        animate={
-          prefersReducedMotion
-            ? {}
-            : {
-                y: [0, -8, 0],
-                rotate: [0, 2, 0],
-                transition: {
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                },
-              }
-        }
       />
 
       {/* Cardless center stack */}
@@ -163,18 +138,15 @@ export default function LoadingScreen({ progress = null }) {
           }}
         />
 
-        {/* Tiny tips rotate */}
-        <MotionBox
+        {/* Tiny tips - static for better performance */}
+        <Box
           aria-live="polite"
           sx={{ mt: 1.5, minHeight: 24, color: theme.palette.text.secondary }}
-          key="tip-rotator"
-          animate={prefersReducedMotion ? {} : { opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2.2, repeat: Infinity }}
         >
           <Typography variant="caption">
             Pro tip: press <b>Ctrl/⌘+K</b> to toggle dark mode anytime.
           </Typography>
-        </MotionBox>
+        </Box>
       </MotionBox>
     </Box>
   );
