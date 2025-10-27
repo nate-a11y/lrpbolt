@@ -1198,7 +1198,12 @@ function Tickets() {
       const files = [];
       for (let i = 0; i < nodes.length; i += 1) {
         try {
-          const dataUrl = await htmlToImage.toPng(nodes[i], { pixelRatio: 2 });
+          const dataUrl = await htmlToImage.toPng(nodes[i], {
+            pixelRatio: 2,
+            backgroundColor: theme.palette.background.paper,
+            skipFonts: true,
+            cacheBust: true,
+          });
           const filename = `${nodes[i].dataset.ticketName}.png`;
 
           // Validate data URL format
