@@ -1204,16 +1204,24 @@ function Tickets() {
           message: emailMessage,
           attachments: files,
         });
-        showSuccessSnack("Tickets emailed");
+        showSuccessSnack(`${files.length} ticket${files.length > 1 ? "s" : ""} emailed to ${trimmedEmail}`);
       } catch (err) {
         logError(err, { area: "tickets", action: "emailSelected" });
+
+        // Graceful fallback: download ZIP when email fails
         const zipFiles = files.map((file) => ({
           name: file.filename.replace(/\.png$/i, ""),
           dataUrl: file.dataUrl,
         }));
         const { downloadZipFromPngs } = await import("@/utils/exportTickets");
         await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
-        showInfoSnack("Email failed — ZIP downloaded");
+
+        // Show helpful error message
+        const errorMsg = err?.message || "Email service unavailable";
+        showWarnOrErrorSnack(
+          `${errorMsg}. Tickets downloaded as ZIP instead.`,
+          "warning"
+        );
       }
     } catch (err) {
       logError(err, { area: "tickets", action: "emailSelected:generate" });
