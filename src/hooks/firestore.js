@@ -1,5 +1,5 @@
 // src/hooks/firestore.js
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
 
