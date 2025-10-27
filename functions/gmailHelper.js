@@ -182,6 +182,7 @@ async function sendEmail({
  * @param {string} options.filename - Attachment filename (e.g., "ticket.png")
  * @param {string} [options.from] - Sender email (defaults to env var)
  * @param {string} [options.fromName] - Sender name
+ * @param {string} [options.replyTo] - Reply-to address (optional)
  * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
  */
 async function sendEmailWithAttachment({
@@ -192,6 +193,7 @@ async function sendEmailWithAttachment({
   filename,
   from = null,
   fromName = "Lake Ride Pros",
+  replyTo = null,
 }) {
   try {
     if (!to || !subject || !attachment || !filename) {
@@ -218,6 +220,13 @@ async function sendEmailWithAttachment({
       `To: ${to}`,
       `Subject: ${encodedSubject}`,
       "MIME-Version: 1.0",
+    ];
+
+    if (replyTo) {
+      mimeParts.push(`Reply-To: ${replyTo}`);
+    }
+
+    mimeParts.push(
       `Content-Type: multipart/mixed; boundary="${boundary}"`,
       "",
       `--${boundary}`,
@@ -235,7 +244,7 @@ async function sendEmailWithAttachment({
       "",
       `--${boundary}--`,
       "",
-    ];
+    );
 
     const rawMessage = encodeBase64Url(mimeParts.join("\r\n"));
 
