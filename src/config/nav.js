@@ -34,7 +34,7 @@ export const NAV_ITEMS = [
   {
     id: "notes",
     to: "/notes",
-    label: "Notes",
+    label: "Quote Notes",
     icon: "Notes",
     rolesVisible: ["admin"],
     iconColor: (t) => t.palette.secondary.main,

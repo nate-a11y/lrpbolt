@@ -46,7 +46,6 @@ function ensureString(value) {
 function buildPayload(values) {
   return {
     title: ensureString(values.title),
-    vehicleType: ensureString(values.vehicleType),
     noteTemplate: ensureString(values.noteTemplate),
     isActive: values.isActive !== false,
   };
@@ -54,14 +53,13 @@ function buildPayload(values) {
 
 const DEFAULT_FORM = {
   title: "",
-  vehicleType: "",
   noteTemplate: "",
   isActive: true,
 };
 
 function matchesQuery(note, query) {
   if (!query) return true;
-  const haystack = [note?.title, note?.vehicleType, note?.noteTemplate]
+  const haystack = [note?.title, note?.noteTemplate]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -126,7 +124,6 @@ export default function NotesAdmin({ notes, loading, error }) {
     setActiveId(row.id || null);
     setFormValues({
       title: ensureString(row.title),
-      vehicleType: ensureString(row.vehicleType),
       noteTemplate: ensureString(row.noteTemplate),
       isActive: row.isActive !== false,
     });
@@ -424,36 +421,17 @@ export default function NotesAdmin({ notes, loading, error }) {
               >
                 <CardContent sx={{ pb: 1.5 }}>
                   <Stack spacing={1.25}>
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1}
-                      justifyContent="space-between"
-                      alignItems={{ xs: "flex-start", sm: "center" }}
-                    >
-                      <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ fontWeight: 700 }}
-                          noWrap
-                        >
-                          {row?.title || "Untitled"}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                          Updated {updatedLabel}
-                        </Typography>
-                      </Stack>
-                      {row?.vehicleType ? (
-                        <Chip
-                          size="small"
-                          label={row.vehicleType}
-                          sx={{
-                            bgcolor: "#143d0a",
-                            color: "#b7ffb7",
-                            border: (t) => `1px solid ${t.palette.primary.main}`,
-                            fontWeight: 600,
-                          }}
-                        />
-                      ) : null}
+                    <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 700 }}
+                        noWrap
+                      >
+                        {row?.title || "Untitled"}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                        Updated {updatedLabel}
+                      </Typography>
                     </Stack>
 
                     {row?.noteTemplate ? (
@@ -561,16 +539,7 @@ export default function NotesAdmin({ notes, loading, error }) {
               }
               required
               fullWidth
-              helperText="e.g., 'Limo Bus Reservation', 'SUV Standard Ride'"
-            />
-            <TextField
-              label="Vehicle Type (Optional)"
-              value={formValues.vehicleType}
-              onChange={(event) =>
-                handleFieldChange("vehicleType", event.target.value)
-              }
-              fullWidth
-              helperText="Will be shown at the top of the generated note if provided"
+              helperText="e.g., 'Standard Reservation', 'Hourly Reservation'"
             />
             <TextField
               label="Note Template"
@@ -581,7 +550,7 @@ export default function NotesAdmin({ notes, loading, error }) {
               fullWidth
               multiline
               minRows={10}
-              helperText="The template text. Trip type and passenger count will be added automatically when users generate notes."
+              helperText="The main template text. Users will select trip category, vehicles, and other details when generating notes."
             />
             <Stack direction="row" spacing={1} alignItems="center">
               <Switch
