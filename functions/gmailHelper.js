@@ -132,7 +132,9 @@ async function sendEmail({
     const rawMessage = encodeBase64Url(mimeParts.join("\r\n"));
 
     // Authorize and send
-    const auth = getGmailJwt(senderEmail);
+    // Only use domain-wide delegation if explicitly configured
+    const useDomainWideDelegation = process.env.GMAIL_USE_DOMAIN_DELEGATION === "true";
+    const auth = getGmailJwt(useDomainWideDelegation ? senderEmail : null);
     await auth.authorize();
     const gmail = google.gmail({ version: "v1", auth });
 
@@ -237,7 +239,9 @@ async function sendEmailWithAttachment({
 
     const rawMessage = encodeBase64Url(mimeParts.join("\r\n"));
 
-    const auth = getGmailJwt(senderEmail);
+    // Only use domain-wide delegation if explicitly configured
+    const useDomainWideDelegation = process.env.GMAIL_USE_DOMAIN_DELEGATION === "true";
+    const auth = getGmailJwt(useDomainWideDelegation ? senderEmail : null);
     await auth.authorize();
     const gmail = google.gmail({ version: "v1", auth });
 

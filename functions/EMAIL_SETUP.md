@@ -47,12 +47,17 @@ gcloud run services update sendBulkTicketsEmail \
 2. Search for "Gmail API"
 3. Click **Enable**
 
-### Step 4: Domain-Wide Delegation (if needed)
-If using domain-wide delegation to send emails on behalf of users:
+### Step 4: Domain-Wide Delegation (Optional)
+By default, emails are sent directly from the service account without impersonation.
+
+If you want to use domain-wide delegation to send emails on behalf of specific users:
 
 1. Go to [Google Workspace Admin Console](https://admin.google.com)
 2. Navigate to **Security** → **API Controls** → **Domain-wide Delegation**
 3. Add the service account client ID with scope: `https://www.googleapis.com/auth/gmail.send`
+4. Set environment variable: `GMAIL_USE_DOMAIN_DELEGATION=true`
+
+**Note:** Domain-wide delegation is NOT required for basic email sending. Only enable it if you need to send emails as specific domain users.
 
 ## Testing
 After configuration, test the function:
