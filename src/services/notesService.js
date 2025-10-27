@@ -29,9 +29,6 @@ function sanitizePayload(payload = {}, isPartialUpdate = false) {
     if ("title" in payload) {
       result.title = safeTrim(payload.title) || "Untitled";
     }
-    if ("vehicleType" in payload) {
-      result.vehicleType = safeTrim(payload.vehicleType);
-    }
     if ("noteTemplate" in payload) {
       result.noteTemplate = safeTrim(payload.noteTemplate);
     }
@@ -44,7 +41,6 @@ function sanitizePayload(payload = {}, isPartialUpdate = false) {
   // For full document creation/replacement
   return {
     title: safeTrim(payload.title) || "Untitled",
-    vehicleType: safeTrim(payload.vehicleType) || "",
     noteTemplate: safeTrim(payload.noteTemplate),
     isActive: typeof payload.isActive === "boolean" ? payload.isActive : true,
   };
