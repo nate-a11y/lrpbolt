@@ -65,28 +65,46 @@ const sendBulkTicketsEmail = onCall(
       const errors = [];
 
       for (const attachment of attachments) {
-        if (!attachment.filename || !attachment.dataUrl) {
-          logger.warn("Skipping invalid attachment", { attachment });
-          continue;
-        }
-
         // Log data URL details for debugging
         const dataUrlLength = attachment.dataUrl?.length || 0;
         const dataUrlPrefix = attachment.dataUrl?.substring(0, 50) || "";
+        const dataUrlType = typeof attachment.dataUrl;
+
         logger.info("Processing attachment", {
           filename: attachment.filename,
           dataUrlLength,
+          dataUrlType,
           dataUrlPrefix,
+          hasFilename: !!attachment.filename,
+          hasDataUrl: !!attachment.dataUrl,
         });
 
-        // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
-        const base64Match = attachment.dataUrl.match(/^data:image\/png;base64,(.+)$/);
+        if (!attachment.filename || !attachment.dataUrl) {
+          logger.warn("Skipping invalid attachment - missing filename or dataUrl", {
+            filename: attachment.filename,
+            hasDataUrl: !!attachment.dataUrl,
+            dataUrlType,
+          });
+          continue;
+        }
+
+        // Extract base64 data from data URL (support png, jpeg, jpg)
+        // Regex explanation: match "data:image/<type>;base64,<data>"
+        const base64Match = attachment.dataUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
         if (!base64Match) {
-          logger.warn("Invalid data URL format", {
+          logger.error("Invalid data URL format - regex failed", {
             filename: attachment.filename,
             dataUrlLength,
+            dataUrlType,
             dataUrlPrefix,
-            dataUrlSuffix: attachment.dataUrl?.substring(attachment.dataUrl.length - 50) || "",
+            dataUrlSuffix: attachment.dataUrl?.substring(Math.max(0, attachment.dataUrl.length - 50)) || "",
+            hasComma: attachment.dataUrl?.includes(','),
+            hasBase64: attachment.dataUrl?.includes('base64'),
+            hasDataPrefix: attachment.dataUrl?.startsWith('data:'),
+          });
+          errors.push({
+            filename: attachment.filename,
+            error: `Invalid data URL format: ${dataUrlPrefix}...`
           });
           continue;
         }

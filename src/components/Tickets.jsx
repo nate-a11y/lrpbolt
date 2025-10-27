@@ -1190,13 +1190,56 @@ function Tickets() {
         node.dataset.ticketName = String(name);
         nodes.push(node);
       });
+
+      // Wait for React to finish rendering all nodes
+      // (ReactDOM.createRoot().render() is async and returns immediately)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const files = [];
       for (let i = 0; i < nodes.length; i += 1) {
-        const dataUrl = await htmlToImage.toPng(nodes[i], { pixelRatio: 2 });
-        const filename = `${nodes[i].dataset.ticketName}.png`;
-        files.push({ filename, dataUrl });
+        try {
+          const dataUrl = await htmlToImage.toPng(nodes[i], { pixelRatio: 2 });
+          const filename = `${nodes[i].dataset.ticketName}.png`;
+
+          // Validate data URL format
+          const isValidFormat = /^data:image\/png;base64,/.test(dataUrl);
+          const isValidLength = dataUrl && dataUrl.length > 100;
+
+          // Log data URL format for debugging
+          console.log(`[Ticket Email Debug] File ${i + 1}/${nodes.length}:`, {
+            filename,
+            dataUrlLength: dataUrl?.length,
+            dataUrlPrefix: dataUrl?.substring(0, 50),
+            dataUrlSuffix: dataUrl?.substring(Math.max(0, dataUrl.length - 50)),
+            isValidFormat,
+            isValidLength,
+          });
+
+          // Skip invalid data URLs (html-to-image failed to render)
+          if (!isValidFormat || !isValidLength) {
+            console.error(`[Ticket Email Debug] Skipping invalid data URL for ${filename}`, {
+              dataUrl: dataUrl?.substring(0, 100),
+              nodeWidth: nodes[i].offsetWidth,
+              nodeHeight: nodes[i].offsetHeight,
+            });
+            continue;
+          }
+
+          files.push({ filename, dataUrl });
+        } catch (err) {
+          console.error(`[Ticket Email Debug] Failed to generate image for ${nodes[i].dataset.ticketName}:`, err);
+        }
       }
-      if (!files.length) return;
+      if (!files.length) {
+        showWarnOrErrorSnack("Failed to generate ticket images", "error");
+        return;
+      }
+
+      // Log total payload size
+      const totalSize = files.reduce((sum, file) => sum + (file.dataUrl?.length || 0), 0);
+      const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+      console.log(`[Ticket Email Debug] Total payload: ${totalSizeMB}MB for ${files.length} files`);
+
       try {
         await sendTicketsEmail({
           to: trimmedEmail,
@@ -1268,6 +1311,10 @@ function Tickets() {
         nodes.push(node);
       });
       if (!nodes.length) return;
+
+      // Wait for React to finish rendering all nodes
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       await exportTicketNodesAsZip(nodes, {
         zipName: `tickets-${Date.now()}.zip`,
       });
