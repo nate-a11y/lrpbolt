@@ -1560,8 +1560,9 @@ function Tickets() {
             position: "fixed",
             left: -9999,
             top: -9999,
-            width: 0,
-            height: 0,
+            opacity: 0,
+            pointerEvents: "none",
+            visibility: "hidden",
           }}
         />
 
