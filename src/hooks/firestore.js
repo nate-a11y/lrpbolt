@@ -1,5 +1,5 @@
 // src/hooks/firestore.js
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 
 import { db } from "src/utils/firebaseInit";
 
@@ -9,8 +9,10 @@ import { mapSnapshotToRows } from "../services/normalizers";
 // Realtime listener for timeLogs collection
 export function subscribeTimeLogs(onData, onError) {
   try {
-    // Use startTime for ordering as it's guaranteed to exist on all time logs
-    const q = query(collection(db, "timeLogs"), orderBy("startTime", "desc"));
+    // Query without orderBy to handle time logs with varying field names
+    // (startTime, clockIn, start, etc. - see timeclockSchema.js)
+    // Sorting will be handled in memory by consuming components if needed
+    const q = query(collection(db, "timeLogs"));
     return onSnapshot(
       q,
       (snap) => onData(mapSnapshotToRows("timeLogs", snap)),
