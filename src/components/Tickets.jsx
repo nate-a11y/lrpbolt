@@ -1285,6 +1285,7 @@ function Tickets() {
     selectedRows,
     showSuccessSnack,
     showWarnOrErrorSnack,
+    theme,
   ]);
 
   const handleExportSelected = useCallback(async () => {
