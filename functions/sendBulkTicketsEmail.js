@@ -43,6 +43,21 @@ const sendBulkTicketsEmail = onCall(
 
       const trimmedEmail = to.trim();
 
+      // Check total payload size (Firebase callable functions have a ~10MB limit)
+      const totalSize = attachments.reduce((sum, att) => sum + (att.dataUrl?.length || 0), 0);
+      const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+      logger.info("Payload size check", {
+        attachmentCount: attachments.length,
+        totalSizeMB,
+      });
+
+      if (totalSize > 9 * 1024 * 1024) {  // 9MB threshold for safety
+        throw new HttpsError(
+          "invalid-argument",
+          `Payload too large (${totalSizeMB}MB). Try sending fewer tickets or reducing image quality.`
+        );
+      }
+
       // For now, send each ticket as a separate email since gmailHelper.sendEmailWithAttachment
       // only supports a single attachment. In the future, we could enhance gmailHelper to support
       // multiple attachments in one email.
@@ -55,10 +70,24 @@ const sendBulkTicketsEmail = onCall(
           continue;
         }
 
+        // Log data URL details for debugging
+        const dataUrlLength = attachment.dataUrl?.length || 0;
+        const dataUrlPrefix = attachment.dataUrl?.substring(0, 50) || "";
+        logger.info("Processing attachment", {
+          filename: attachment.filename,
+          dataUrlLength,
+          dataUrlPrefix,
+        });
+
         // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
         const base64Match = attachment.dataUrl.match(/^data:image\/png;base64,(.+)$/);
         if (!base64Match) {
-          logger.warn("Invalid data URL format", { filename: attachment.filename });
+          logger.warn("Invalid data URL format", {
+            filename: attachment.filename,
+            dataUrlLength,
+            dataUrlPrefix,
+            dataUrlSuffix: attachment.dataUrl?.substring(attachment.dataUrl.length - 50) || "",
+          });
           continue;
         }
         const base64Data = base64Match[1];
