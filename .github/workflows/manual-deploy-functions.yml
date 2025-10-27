@@ -69,14 +69,22 @@ jobs:
           firebase functions:secrets:set TWILIO_AUTH_TOKEN  --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_AUTH_TOKEN"
           firebase functions:secrets:set TWILIO_FROM        --project "$FIREBASE_PROJECT_ID" <<< "$TWILIO_FROM"
 
-      - name: Force rebuild by modifying package.json
+      - name: Force rebuild by modifying source code
         if: inputs.force_rebuild && contains(inputs.deploy_target, 'functions')
         working-directory: functions
         run: |
-          # Add a build timestamp to force Firebase to rebuild
-          BUILD_TIME=$(date +%s)
-          echo "// Build timestamp: $BUILD_TIME" >> index.js
-          echo "Forced rebuild with timestamp: $BUILD_TIME"
+          # Make a real code change to force Firebase to rebuild the container
+          BUILD_TIME=$(date +%Y%m%d%H%M%S)
+          echo "Adding build ID to gmailHelper.js: $BUILD_TIME"
+
+          # Add build version comment after first line
+          sed -i "1a /* Build: $BUILD_TIME */" gmailHelper.js
+
+          # Verify the change
+          echo "Modified gmailHelper.js:"
+          head -5 gmailHelper.js
+
+          echo "This will force Firebase to create a new container image (version_2+)"
 
       - name: Deploy Functions
         if: inputs.deploy_target == 'functions' || inputs.deploy_target == 'both'
@@ -136,12 +144,34 @@ jobs:
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
             --quiet
 
+      - name: Verify deployment and check image version
+        if: contains(inputs.deploy_target, 'functions')
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 10
+
+          echo ""
+          echo "Checking deployed image version for sendBulkTicketsEmail:"
+          gcloud run services describe sendbulkticketsemail \
+            --region=us-central1 \
+            --format=yaml | grep -E '(image:|revisionName:)'
+
+          echo ""
+          echo "Checking deployed image version for sendShuttleTicketEmail:"
+          gcloud run services describe sendshuttleticketemail \
+            --region=us-central1 \
+            --format=yaml | grep -E '(image:|revisionName:)'
+
       - name: Deployment Summary
         run: |
+          echo ""
           echo "✅ Manual deployment complete!"
           echo ""
           echo "Deployed: ${{ inputs.deploy_target }}"
           echo "Force rebuild: ${{ inputs.force_rebuild }}"
           echo ""
-          echo "Check the deployed services:"
-          echo "  gcloud run services describe sendbulkticketsemail --region=us-central1 --format=yaml | grep 'image:'"
+          echo "⚠️  IMPORTANT: Check that image version is NOT 'version_1'"
+          echo "   If you see version_2 or higher, the new code is deployed!"
+          echo ""
+          echo "To check logs:"
+          echo "  gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.service_name=sendbulkticketsemail' --limit=5 --project=lrp---claim-portal"
