@@ -1205,16 +1205,6 @@ function Tickets() {
           const isValidFormat = /^data:image\/png;base64,/.test(dataUrl);
           const isValidLength = dataUrl && dataUrl.length > 100;
 
-          // Log data URL format for debugging
-          console.log(`[Ticket Email Debug] File ${i + 1}/${nodes.length}:`, {
-            filename,
-            dataUrlLength: dataUrl?.length,
-            dataUrlPrefix: dataUrl?.substring(0, 50),
-            dataUrlSuffix: dataUrl?.substring(Math.max(0, dataUrl.length - 50)),
-            isValidFormat,
-            isValidLength,
-          });
-
           // Skip invalid data URLs (html-to-image failed to render)
           if (!isValidFormat || !isValidLength) {
             console.error(`[Ticket Email Debug] Skipping invalid data URL for ${filename}`, {
@@ -1234,11 +1224,6 @@ function Tickets() {
         showWarnOrErrorSnack("Failed to generate ticket images", "error");
         return;
       }
-
-      // Log total payload size
-      const totalSize = files.reduce((sum, file) => sum + (file.dataUrl?.length || 0), 0);
-      const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-      console.log(`[Ticket Email Debug] Total payload: ${totalSizeMB}MB for ${files.length} files`);
 
       try {
         await sendTicketsEmail({
@@ -1575,8 +1560,9 @@ function Tickets() {
             position: "fixed",
             left: -9999,
             top: -9999,
-            width: 0,
-            height: 0,
+            opacity: 0,
+            pointerEvents: "none",
+            visibility: "hidden",
           }}
         />
 
