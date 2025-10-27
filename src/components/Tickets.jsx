@@ -388,8 +388,8 @@ function Tickets() {
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
-  const [emailPreviews, setEmailPreviews] = useState([]);
-  const [generatingPreviews, setGeneratingPreviews] = useState(false);
+  const [previewTicketsForEmail, setPreviewTicketsForEmail] = useState([]);
+  const previewRefsMap = useRef(new Map());
   const undoTimerRef = useRef(null);
   const previewRef = useRef(null);
   const ticketPreviewContainerRef = useRef(null);
@@ -1177,116 +1177,61 @@ function Tickets() {
     showWarnOrErrorSnack,
   ]);
 
-  const generateEmailPreviews = useCallback(async () => {
-    if (!selectedRows.length || !ticketPreviewContainerRef.current) return;
-    setGeneratingPreviews(true);
-    const nodes = [];
-    try {
-      selectedRows.forEach((ticket, index) => {
-        const node = renderTicketPreviewNode(ticket);
-        if (!node) return;
-        const name = ticket?.ticketId || ticket?.id || `ticket-${index + 1}`;
-        node.dataset.ticketName = String(name);
-        nodes.push(node);
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const previews = [];
-      for (let i = 0; i < nodes.length; i += 1) {
-        try {
-          const dataUrl = await htmlToImage.toPng(nodes[i], {
-            pixelRatio: 2,
-            backgroundColor: "#FFFFFF",
-            cacheBust: true,
-          });
-          const filename = `${nodes[i].dataset.ticketName}.png`;
-          previews.push({ dataUrl, filename });
-        } catch (err) {
-          logError(err, { area: "tickets", action: "generatePreview" });
-        }
-      }
-      setEmailPreviews(previews);
-    } catch (err) {
-      logError(err, { area: "tickets", action: "generatePreviews" });
-    } finally {
-      nodes.forEach((node) => {
-        if (node?.__lrpRoot) {
-          try {
-            node.__lrpRoot.unmount();
-          } catch (error) {
-            logError(error, { area: "tickets", action: "previewCleanup" });
-          }
-        }
-      });
-      if (ticketPreviewContainerRef.current) {
-        ticketPreviewContainerRef.current.innerHTML = "";
-      }
-      setGeneratingPreviews(false);
-    }
-  }, [selectedRows, renderTicketPreviewNode]);
-
-  // Generate previews when email dialog opens
+  // Set preview tickets when email dialog opens
   useEffect(() => {
     if (emailOpen && selectedRows.length > 0) {
-      generateEmailPreviews();
+      setPreviewTicketsForEmail(selectedRows);
+      previewRefsMap.current.clear();
     } else if (!emailOpen) {
-      setEmailPreviews([]);
+      setPreviewTicketsForEmail([]);
+      previewRefsMap.current.clear();
     }
-  }, [emailOpen, selectedRows.length, generateEmailPreviews]);
+  }, [emailOpen, selectedRows]);
 
   const handleEmailSelected = useCallback(async () => {
-    if (!selectedRows.length) return;
+    if (!previewTicketsForEmail.length) return;
     const trimmedEmail = (emailTo || "").trim();
     if (!trimmedEmail || !trimmedEmail.includes("@")) {
       showWarnOrErrorSnack("Valid email address required", "warning");
       return;
     }
-    if (!ticketPreviewContainerRef.current) return;
     setEmailSending(true);
-    const nodes = [];
     try {
-      selectedRows.forEach((ticket, index) => {
-        const node = renderTicketPreviewNode(ticket);
-        if (!node) return;
-        const name = ticket?.ticketId || ticket?.id || `ticket-${index + 1}`;
-        node.dataset.ticketName = String(name);
-        nodes.push(node);
-      });
+      // Use requestAnimationFrame like TicketGenerator to ensure elements are painted
+      const raf =
+        typeof window !== "undefined" &&
+        typeof window.requestAnimationFrame === "function"
+          ? window.requestAnimationFrame
+          : (cb) => setTimeout(cb, 16);
 
-      // Wait for React to finish rendering all nodes
-      // (ReactDOM.createRoot().render() is async and returns immediately)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => raf(() => raf(resolve)));
 
       const files = [];
-      for (let i = 0; i < nodes.length; i += 1) {
+      for (const ticket of previewTicketsForEmail) {
+        const ticketId = ticket?.ticketId || ticket?.id;
+        if (!ticketId) continue;
+
+        const ref = previewRefsMap.current.get(ticketId);
+        if (!ref) {
+          console.error(`No ref found for ticket ${ticketId}`);
+          continue;
+        }
+
         try {
-          const dataUrl = await htmlToImage.toPng(nodes[i], {
+          const dataUrl = await htmlToImage.toPng(ref, {
+            backgroundColor: theme.palette.background.paper,
             pixelRatio: 2,
-            backgroundColor: "#FFFFFF",
             cacheBust: true,
           });
-          const filename = `${nodes[i].dataset.ticketName}.png`;
 
-          // Validate data URL format
-          const isValidFormat = /^data:image\/png;base64,/.test(dataUrl);
-          const isValidLength = dataUrl && dataUrl.length > 100;
-
-          // Skip invalid data URLs (html-to-image failed to render)
-          if (!isValidFormat || !isValidLength) {
-            console.error(`[Ticket Email Debug] Skipping invalid data URL for ${filename}`, {
-              dataUrl: dataUrl?.substring(0, 100),
-              nodeWidth: nodes[i].offsetWidth,
-              nodeHeight: nodes[i].offsetHeight,
-            });
-            continue;
-          }
-
+          const filename = `${ticketId}.png`;
           files.push({ filename, dataUrl });
         } catch (err) {
-          console.error(`[Ticket Email Debug] Failed to generate image for ${nodes[i].dataset.ticketName}:`, err);
+          console.error(`Failed to generate image for ${ticketId}:`, err);
+          logError(err, { area: "tickets", action: "captureTicket", ticketId });
         }
       }
+
       if (!files.length) {
         showWarnOrErrorSnack("Failed to generate ticket images", "error");
         return;
@@ -1302,6 +1247,7 @@ function Tickets() {
         showSuccessSnack(
           `${files.length} ticket${files.length > 1 ? "s" : ""} emailed to ${trimmedEmail}`,
         );
+        setEmailOpen(false);
       } catch (err) {
         logError(err, { area: "tickets", action: "emailSelected" });
 
@@ -1313,7 +1259,6 @@ function Tickets() {
         const { downloadZipFromPngs } = await import("@/utils/exportTickets");
         await downloadZipFromPngs(zipFiles, `tickets-${Date.now()}.zip`);
 
-        // Show helpful error message
         const errorMsg = err?.message || "Email service unavailable";
         showWarnOrErrorSnack(
           `${errorMsg}. Tickets downloaded as ZIP instead.`,
@@ -1324,29 +1269,16 @@ function Tickets() {
       logError(err, { area: "tickets", action: "emailSelected:generate" });
       showWarnOrErrorSnack("Failed to prepare tickets", "error");
     } finally {
-      nodes.forEach((node) => {
-        if (node?.__lrpRoot) {
-          try {
-            node.__lrpRoot.unmount();
-          } catch (error) {
-            logError(error, { area: "tickets", action: "emailCleanup" });
-          }
-        }
-      });
-      if (ticketPreviewContainerRef.current) {
-        ticketPreviewContainerRef.current.innerHTML = "";
-      }
       setEmailSending(false);
-      setEmailOpen(false);
     }
   }, [
     emailMessage,
     emailSubject,
     emailTo,
-    renderTicketPreviewNode,
-    selectedRows,
+    previewTicketsForEmail,
     showSuccessSnack,
     showWarnOrErrorSnack,
+    theme.palette.background.paper,
   ]);
 
   const handleExportSelected = useCallback(async () => {
@@ -1733,52 +1665,38 @@ function Tickets() {
                 onChange={(e) => setEmailMessage(e.target.value)}
               />
 
-              {generatingPreviews && (
-                <Box display="flex" alignItems="center" gap={1}>
-                  <CircularProgress size={20} />
-                  <Typography variant="body2">Generating ticket previews...</Typography>
-                </Box>
-              )}
-
-              {emailPreviews.length > 0 && (
+              {previewTicketsForEmail.length > 0 && (
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
-                    Ticket Previews ({emailPreviews.length}):
+                    Ticket Previews ({previewTicketsForEmail.length}):
                   </Typography>
                   <Box
                     sx={{
                       display: "flex",
-                      flexWrap: "wrap",
-                      gap: 1,
-                      maxHeight: 300,
+                      flexDirection: "column",
+                      gap: 2,
+                      maxHeight: 400,
                       overflowY: "auto",
                       p: 1,
                       bgcolor: "background.default",
                       borderRadius: 1,
                     }}
                   >
-                    {emailPreviews.map((preview, idx) => (
-                      <Box
-                        key={idx}
-                        component="img"
-                        src={preview.dataUrl}
-                        alt={preview.filename}
-                        sx={{
-                          maxWidth: 200,
-                          height: "auto",
-                          border: "1px solid",
-                          borderColor: "divider",
-                          borderRadius: 1,
-                          cursor: "pointer",
-                          "&:hover": {
-                            boxShadow: 2,
-                          },
-                        }}
-                        onClick={() => {
-                          window.open(preview.dataUrl, "_blank");
-                        }}
-                      />
-                    ))}
+                    {previewTicketsForEmail.map((ticket, idx) => {
+                      const ticketId = ticket?.ticketId || ticket?.id;
+                      return (
+                        <Box
+                          key={ticketId || idx}
+                          ref={(el) => {
+                            if (el && ticketId) {
+                              previewRefsMap.current.set(ticketId, el);
+                            }
+                          }}
+                        >
+                          <TicketPreviewCard ticket={ticket} />
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </Box>
               )}
