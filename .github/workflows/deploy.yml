@@ -390,6 +390,7 @@ jobs:
           gcloud run services update sendbulkticketsemail \
             --region=us-central1 \
             --platform=managed \
+            --allow-unauthenticated \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_REPLY_TO=${GMAIL_REPLY_TO}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
             --quiet
 
@@ -404,6 +405,7 @@ jobs:
           gcloud run services update sendshuttleticketemail \
             --region=us-central1 \
             --platform=managed \
+            --allow-unauthenticated \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_REPLY_TO=${GMAIL_REPLY_TO}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
             --quiet
 
