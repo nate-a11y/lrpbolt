@@ -8,8 +8,6 @@ import useIsMobile from "@/hooks/useIsMobile.js";
 import PageContainer from "./PageContainer.jsx";
 import EntriesTab from "./adminTimeLog/EntriesTab.jsx";
 import WeeklySummaryTab from "./adminTimeLog/WeeklySummaryTab.jsx";
-import ShootoutStatsTab from "./adminTimeLog/ShootoutStatsTab.jsx";
-import ShootoutSummaryTab from "./adminTimeLog/ShootoutSummaryTab.jsx";
 
 function AdminTimeLog() {
   const [tab, setTab] = useState(0);
