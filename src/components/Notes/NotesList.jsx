@@ -382,11 +382,11 @@ export default function NotesList({ notes, loading, error }) {
                       </Tooltip>
                     </Stack>
                     <Typography
-                      variant="body2"
+                      variant="body1"
                       sx={{
                         whiteSpace: "pre-wrap",
-                        fontFamily: "monospace",
-                        lineHeight: 1.6,
+                        lineHeight: 1.8,
+                        letterSpacing: "0.01em",
                       }}
                     >
                       {generatedNote || "No note generated"}
