@@ -204,7 +204,7 @@ export default function CalendarHub() {
           {!isMdUp && <Divider sx={{ my: 2 }} />}
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12}>
               <Suspense
                 fallback={
                   <Box
@@ -232,15 +232,7 @@ export default function CalendarHub() {
                 />
               </Suspense>
             </Grid>
-
-            <Grid
-              item
-              xs={12}
-              xl={4}
-              sx={{ display: { xs: "none", xl: "block" } }}
-            >
-              {!useDrawer && <CalendarUpdateTab compact />}
-            </Grid>
+            {/* Availability Help sidebar removed - now only available via drawer (Help button) */}
           </Grid>
         </Box>
 

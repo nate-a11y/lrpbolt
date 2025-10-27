@@ -18,8 +18,25 @@ export async function sendTicketsEmail(payload) {
     return result.data;
   } catch (err) {
     logError(err, { where: "sendTicketsEmail" });
-    throw new AppError(err?.message || "Failed to send bulk tickets email", {
+
+    // Provide more specific error messages based on the error type
+    let errorMessage = "Email service unavailable";
+
+    if (err?.code === "unauthenticated") {
+      errorMessage = "Authentication failed - please sign in again";
+    } else if (err?.code === "permission-denied") {
+      errorMessage = "You don't have permission to send emails";
+    } else if (err?.code === "unavailable" || err?.code === "internal") {
+      errorMessage = "Email service is temporarily unavailable";
+    } else if (err?.message?.includes("Failed to send any ticket emails")) {
+      errorMessage = "Email delivery failed - check Gmail API configuration";
+    } else if (err?.message) {
+      errorMessage = err.message;
+    }
+
+    throw new AppError(errorMessage, {
       code: "email_failed",
+      originalError: err?.message,
     });
   }
 }

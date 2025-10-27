@@ -200,7 +200,6 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
           pointerEvents: isVisible ? "auto" : "none",
         }}
         aria-label="On the clock bubble"
-        aria-hidden={!isVisible}
         role="status"
       >
         <Box

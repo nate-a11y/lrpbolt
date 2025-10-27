@@ -47,6 +47,8 @@ const sendBulkTicketsEmail = onCall(
       // only supports a single attachment. In the future, we could enhance gmailHelper to support
       // multiple attachments in one email.
       const results = [];
+      const errors = [];
+
       for (const attachment of attachments) {
         if (!attachment.filename || !attachment.dataUrl) {
           logger.warn("Skipping invalid attachment", { attachment });
@@ -73,14 +75,26 @@ const sendBulkTicketsEmail = onCall(
           logger.error("Failed to send attachment", {
             filename: attachment.filename,
             error: result.error,
+            to: trimmedEmail,
           });
+          errors.push({ filename: attachment.filename, error: result.error });
         } else {
           results.push(result.messageId);
         }
       }
 
       if (results.length === 0) {
-        throw new HttpsError("internal", "Failed to send any ticket emails");
+        // Log detailed error information for troubleshooting
+        logger.error("All email sends failed", {
+          to: trimmedEmail,
+          totalAttachments: attachments.length,
+          errors: errors,
+          hint: "Check GCAL_SA_EMAIL, GCAL_SA_PRIVATE_KEY, and GMAIL_SENDER environment variables",
+        });
+        throw new HttpsError(
+          "internal",
+          `Failed to send any ticket emails. ${errors.length > 0 ? `Errors: ${errors.map(e => e.error).join(", ")}` : "Check server logs for details."}`
+        );
       }
 
       logger.info("Bulk ticket emails sent", {
