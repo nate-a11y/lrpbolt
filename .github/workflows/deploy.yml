@@ -385,11 +385,12 @@ jobs:
           GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
           GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
           GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_REPLY_TO: ${{ secrets.GMAIL_REPLY_TO }}
         run: |
           gcloud run services update sendbulkticketsemail \
             --region=us-central1 \
             --platform=managed \
-            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_REPLY_TO=${GMAIL_REPLY_TO}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
             --quiet
 
       - name: Pin env vars on Cloud Run (sendShuttleTicketEmail)
@@ -398,11 +399,12 @@ jobs:
           GCAL_SA_EMAIL: ${{ secrets.GCAL_SA_EMAIL }}
           GCAL_SA_PRIVATE_KEY: ${{ secrets.GCAL_SA_PRIVATE_KEY }}
           GMAIL_SENDER: ${{ secrets.GMAIL_SENDER }}
+          GMAIL_REPLY_TO: ${{ secrets.GMAIL_REPLY_TO }}
         run: |
           gcloud run services update sendshuttleticketemail \
             --region=us-central1 \
             --platform=managed \
-            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
+            --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_REPLY_TO=${GMAIL_REPLY_TO}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
             --quiet
 
   rules:

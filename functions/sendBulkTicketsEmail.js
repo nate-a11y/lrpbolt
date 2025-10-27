@@ -116,6 +116,7 @@ const sendBulkTicketsEmail = onCall(
           text: message,
           attachment: base64Data,
           filename: attachment.filename,
+          replyTo: process.env.GMAIL_REPLY_TO || null,
         });
 
         if (!result.success) {
