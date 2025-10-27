@@ -1154,7 +1154,7 @@ function Tickets() {
     try {
       const dataUrl = await htmlToImage.toPng(node, {
         pixelRatio: 2,
-        backgroundColor: theme.palette.background.paper,
+        backgroundColor: "#FFFFFF",
       });
       const link = document.createElement("a");
       link.download = `${t.ticketId}.png`;
@@ -1167,7 +1167,6 @@ function Tickets() {
     }
   }, [
     previewTicket,
-    theme.palette.background.paper,
     showSuccessSnack,
     showWarnOrErrorSnack,
   ]);
@@ -1200,7 +1199,7 @@ function Tickets() {
         try {
           const dataUrl = await htmlToImage.toPng(nodes[i], {
             pixelRatio: 2,
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor: "#FFFFFF",
             skipFonts: true,
             cacheBust: true,
           });
@@ -1285,7 +1284,6 @@ function Tickets() {
     selectedRows,
     showSuccessSnack,
     showWarnOrErrorSnack,
-    theme,
   ]);
 
   const handleExportSelected = useCallback(async () => {
@@ -1588,13 +1586,14 @@ function Tickets() {
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.3 }}
             sx={{
-              backgroundColor: "background.paper",
+              backgroundColor: "transparent",
               borderRadius: 2,
-              p: 4,
-              width: 360,
+              width: "fit-content",
+              maxWidth: "90vw",
               mx: "auto",
               mt: 1,
               outline: "none",
+              overflow: "visible",
             }}
           >
             {previewTicket && (
@@ -1603,7 +1602,7 @@ function Tickets() {
                   <TicketPreviewCard ticket={previewTicket} />
                 </Box>
 
-                <Box mt={3} display="flex" justifyContent="space-between">
+                <Box mt={2} px={2} display="flex" justifyContent="space-between">
                   <Button
                     variant="outlined"
                     color="info"

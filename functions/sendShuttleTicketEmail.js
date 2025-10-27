@@ -19,7 +19,10 @@ const { sendEmailWithAttachment } = require("./gmailHelper");
  * @returns {Object} { success: boolean, messageId?: string, error?: string }
  */
 const sendShuttleTicketEmail = onCall(
-  { region: "us-central1" },
+  {
+    region: "us-central1",
+    cors: true,
+  },
   async (request) => {
     try {
       const { ticketId, email, attachment } = request.data || {};
@@ -45,6 +48,7 @@ const sendShuttleTicketEmail = onCall(
         text,
         attachment,
         filename: `${ticketId}.png`,
+        replyTo: process.env.GMAIL_REPLY_TO || null,
       });
 
       if (!result.success) {
