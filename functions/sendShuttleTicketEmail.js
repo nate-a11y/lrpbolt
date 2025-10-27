@@ -21,7 +21,6 @@ const { sendEmailWithAttachment } = require("./gmailHelper");
 const sendShuttleTicketEmail = onCall(
   {
     region: "us-central1",
-    cors: true,
   },
   async (request) => {
     try {
