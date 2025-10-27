@@ -38,8 +38,6 @@ import {
 import logError from "@/utils/logError.js";
 import { formatDateTime } from "@/utils/time.js";
 
-const TRIP_TYPES = ["Point to Point", "Round Trip"];
-
 function ensureString(value) {
   if (value == null) return "";
   return String(value);
@@ -48,33 +46,22 @@ function ensureString(value) {
 function buildPayload(values) {
   return {
     title: ensureString(values.title),
-    tripType: ensureString(values.tripType) || "Point to Point",
     vehicleType: ensureString(values.vehicleType),
-    passengerCount: typeof values.passengerCount === "number"
-      ? values.passengerCount
-      : parseInt(values.passengerCount, 10) || 0,
-    noteText: ensureString(values.noteText),
+    noteTemplate: ensureString(values.noteTemplate),
     isActive: values.isActive !== false,
   };
 }
 
 const DEFAULT_FORM = {
   title: "",
-  tripType: "Point to Point",
   vehicleType: "",
-  passengerCount: 0,
-  noteText: "",
+  noteTemplate: "",
   isActive: true,
 };
 
 function matchesQuery(note, query) {
   if (!query) return true;
-  const haystack = [
-    note?.title,
-    note?.tripType,
-    note?.vehicleType,
-    note?.noteText,
-  ]
+  const haystack = [note?.title, note?.vehicleType, note?.noteTemplate]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -139,12 +126,8 @@ export default function NotesAdmin({ notes, loading, error }) {
     setActiveId(row.id || null);
     setFormValues({
       title: ensureString(row.title),
-      tripType: ensureString(row.tripType) || "Point to Point",
       vehicleType: ensureString(row.vehicleType),
-      passengerCount: typeof row.passengerCount === "number"
-        ? row.passengerCount
-        : parseInt(row.passengerCount, 10) || 0,
-      noteText: ensureString(row.noteText),
+      noteTemplate: ensureString(row.noteTemplate),
       isActive: row.isActive !== false,
     });
     setDialogOpen(true);
@@ -168,10 +151,10 @@ export default function NotesAdmin({ notes, loading, error }) {
         setSaving(true);
         if (dialogMode === "edit" && activeId) {
           await updateNote(activeId, payload);
-          show("Note updated.", "success");
+          show("Template updated.", "success");
         } else {
           await createNote(payload);
-          show("Note created.", "success");
+          show("Template created.", "success");
         }
         setDialogOpen(false);
         setActiveId(null);
@@ -226,14 +209,14 @@ export default function NotesAdmin({ notes, loading, error }) {
       if (!row?.id) return;
       // eslint-disable-next-line no-alert
       const confirmed = window.confirm(
-        "Delete this note? This cannot be undone.",
+        "Delete this template? This cannot be undone.",
       );
       if (!confirmed) return;
       setRowPending(row.id, true);
       const snapshot = { ...row };
       try {
         await deleteNote(row.id);
-        show(`Deleted "${row.title || "note"}".`, "info", {
+        show(`Deleted "${row.title || "template"}".`, "info", {
           autoHideDuration: 6000,
           action: (
             <Button
@@ -262,7 +245,7 @@ export default function NotesAdmin({ notes, loading, error }) {
           where: "NotesAdmin.handleDelete",
           id: row.id,
         });
-        show("Failed to delete note.", "error");
+        show("Failed to delete template.", "error");
       } finally {
         setRowPending(row.id, false);
       }
@@ -281,7 +264,7 @@ export default function NotesAdmin({ notes, loading, error }) {
         justifyContent="space-between"
       >
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Notes — Admin
+          Note Templates — Admin
         </Typography>
         <Button
           variant="contained"
@@ -291,7 +274,7 @@ export default function NotesAdmin({ notes, loading, error }) {
             "&:hover": { bgcolor: "#3aa40f" },
           }}
         >
-          New Note
+          New Template
         </Button>
       </Stack>
 
@@ -302,7 +285,7 @@ export default function NotesAdmin({ notes, loading, error }) {
       >
         <TextField
           size="small"
-          placeholder="Search notes by title, vehicle type, or content…"
+          placeholder="Search templates by title or content…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           fullWidth
@@ -311,7 +294,7 @@ export default function NotesAdmin({ notes, loading, error }) {
             bgcolor: (t) => t.palette.background.paper,
           }}
           InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
-          inputProps={{ "aria-label": "Search notes admin list" }}
+          inputProps={{ "aria-label": "Search note templates admin list" }}
         />
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
@@ -345,10 +328,11 @@ export default function NotesAdmin({ notes, loading, error }) {
             }}
           >
             <Typography variant="subtitle1" sx={{ color: "#ffb4b4" }}>
-              Unable to load notes.
+              Unable to load templates.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              Try refreshing the page. If the issue persists, check your Firestore access.
+              Try refreshing the page. If the issue persists, check your
+              Firestore access.
             </Typography>
             <Button
               onClick={() => window.location.reload()}
@@ -379,10 +363,11 @@ export default function NotesAdmin({ notes, loading, error }) {
             }}
           >
             <Typography variant="subtitle1" sx={{ color: "#b7ffb7" }}>
-              No notes yet.
+              No templates yet.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.85 }}>
-              Add reservation notes to provide quick reference templates for common scenarios.
+              Add note templates to provide quick reference for common
+              reservation scenarios.
             </Typography>
             <Button
               onClick={openCreate}
@@ -393,7 +378,7 @@ export default function NotesAdmin({ notes, loading, error }) {
                 width: "fit-content",
               }}
             >
-              Add first note
+              Add first template
             </Button>
           </Stack>
         </Box>
@@ -403,7 +388,7 @@ export default function NotesAdmin({ notes, loading, error }) {
         <Stack spacing={1.25} sx={{ width: "100%" }}>
           {loading && !filteredRows.length ? (
             <Typography variant="body2" sx={{ opacity: 0.7 }}>
-              Loading notes…
+              Loading templates…
             </Typography>
           ) : null}
 
@@ -457,50 +442,21 @@ export default function NotesAdmin({ notes, loading, error }) {
                           Updated {updatedLabel}
                         </Typography>
                       </Stack>
-                    </Stack>
-
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1}
-                      sx={{ flexWrap: "wrap", gap: 1 }}
-                    >
-                      <Chip
-                        size="small"
-                        label={row?.tripType || "Point to Point"}
-                        sx={{
-                          bgcolor: "#143d0a",
-                          color: "#b7ffb7",
-                          border: (t) => `1px solid ${t.palette.primary.main}`,
-                          fontWeight: 600,
-                        }}
-                      />
                       {row?.vehicleType ? (
                         <Chip
                           size="small"
                           label={row.vehicleType}
                           sx={{
-                            bgcolor: (t) => t.palette.info.dark,
-                            color: (t) => t.palette.info.light,
-                            border: (t) => `1px solid ${t.palette.info.main}`,
-                            fontWeight: 600,
-                          }}
-                        />
-                      ) : null}
-                      {row?.passengerCount ? (
-                        <Chip
-                          size="small"
-                          label={`${row.passengerCount} Passenger${row.passengerCount !== 1 ? "s" : ""}`}
-                          sx={{
-                            bgcolor: (t) => t.palette.warning.dark,
-                            color: (t) => t.palette.warning.light,
-                            border: (t) => `1px solid ${t.palette.warning.main}`,
+                            bgcolor: "#143d0a",
+                            color: "#b7ffb7",
+                            border: (t) => `1px solid ${t.palette.primary.main}`,
                             fontWeight: 600,
                           }}
                         />
                       ) : null}
                     </Stack>
 
-                    {row?.noteText ? (
+                    {row?.noteTemplate ? (
                       <Box
                         sx={{
                           bgcolor: (t) => t.palette.action.hover,
@@ -520,7 +476,7 @@ export default function NotesAdmin({ notes, loading, error }) {
                             lineHeight: 1.6,
                           }}
                         >
-                          {row.noteText}
+                          {row.noteTemplate}
                         </Typography>
                       </Box>
                     ) : null}
@@ -556,7 +512,7 @@ export default function NotesAdmin({ notes, loading, error }) {
                           onClick={() => openEdit(row)}
                           disabled={disabled}
                           sx={{ color: (t) => t.palette.primary.main }}
-                          aria-label={`Edit ${row?.title || "note"}`}
+                          aria-label={`Edit ${row?.title || "template"}`}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -569,7 +525,7 @@ export default function NotesAdmin({ notes, loading, error }) {
                           onClick={() => handleDelete(row)}
                           disabled={disabled}
                           sx={{ color: "#ff6b6b" }}
-                          aria-label={`Delete ${row?.title || "note"}`}
+                          aria-label={`Delete ${row?.title || "template"}`}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -593,67 +549,39 @@ export default function NotesAdmin({ notes, loading, error }) {
         sx={{ "& .MuiPaper-root": { bgcolor: "background.paper" } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          {dialogMode === "edit" ? "Edit Note" : "Create Note"}
+          {dialogMode === "edit" ? "Edit Template" : "Create Template"}
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="Title"
+              label="Template Name"
               value={formValues.title}
               onChange={(event) =>
                 handleFieldChange("title", event.target.value)
               }
               required
               fullWidth
-              helperText="e.g., 'Limo Bus Reservation'"
+              helperText="e.g., 'Limo Bus Reservation', 'SUV Standard Ride'"
             />
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Trip Type</InputLabel>
-                <Select
-                  label="Trip Type"
-                  value={formValues.tripType}
-                  onChange={(event) =>
-                    handleFieldChange("tripType", event.target.value)
-                  }
-                >
-                  {TRIP_TYPES.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                label="Vehicle Type"
-                value={formValues.vehicleType}
-                onChange={(event) =>
-                  handleFieldChange("vehicleType", event.target.value)
-                }
-                fullWidth
-                helperText="e.g., 'Limo Bus', 'SUV'"
-              />
-              <TextField
-                label="Passenger Count"
-                type="number"
-                value={formValues.passengerCount}
-                onChange={(event) =>
-                  handleFieldChange("passengerCount", event.target.value)
-                }
-                fullWidth
-                inputProps={{ min: 0 }}
-              />
-            </Stack>
             <TextField
-              label="Note Text"
-              value={formValues.noteText}
+              label="Vehicle Type (Optional)"
+              value={formValues.vehicleType}
               onChange={(event) =>
-                handleFieldChange("noteText", event.target.value)
+                handleFieldChange("vehicleType", event.target.value)
+              }
+              fullWidth
+              helperText="Will be shown at the top of the generated note if provided"
+            />
+            <TextField
+              label="Note Template"
+              value={formValues.noteTemplate}
+              onChange={(event) =>
+                handleFieldChange("noteTemplate", event.target.value)
               }
               fullWidth
               multiline
-              minRows={8}
-              helperText="The full note template to copy and paste."
+              minRows={10}
+              helperText="The template text. Trip type and passenger count will be added automatically when users generate notes."
             />
             <Stack direction="row" spacing={1} alignItems="center">
               <Switch
