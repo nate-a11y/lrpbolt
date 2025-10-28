@@ -17,6 +17,8 @@ import {
   TextField,
   Typography,
   Link as MuiLink,
+  ImageList,
+  ImageListItem,
 } from "@mui/material";
 
 import {
@@ -347,6 +349,41 @@ export default function ImportantInfoList({
                             blurb={row?.blurb ? String(row.blurb) : ""}
                             details={row?.details ? String(row.details) : ""}
                           />
+
+                          {row?.images && row.images.length > 0 ? (
+                            <Box>
+                              <ImageList
+                                sx={{ width: "100%", maxHeight: 200 }}
+                                cols={3}
+                                rowHeight={120}
+                              >
+                                {row.images.slice(0, 6).map((image) => (
+                                  <ImageListItem key={image.id}>
+                                    <img
+                                      src={image.url}
+                                      alt={image.name || "Image"}
+                                      loading="lazy"
+                                      style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                        borderRadius: 4,
+                                      }}
+                                    />
+                                  </ImageListItem>
+                                ))}
+                              </ImageList>
+                              {row.images.length > 6 ? (
+                                <Typography
+                                  variant="caption"
+                                  sx={{ opacity: 0.7, display: "block", mt: 0.5 }}
+                                >
+                                  +{row.images.length - 6} more image
+                                  {row.images.length - 6 > 1 ? "s" : ""}
+                                </Typography>
+                              ) : null}
+                            </Box>
+                          ) : null}
 
                           <Stack
                             direction={{ xs: "column", sm: "row" }}

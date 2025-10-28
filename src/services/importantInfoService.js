@@ -11,6 +11,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  getDoc,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
@@ -20,6 +21,7 @@ import { AppError } from "@/services/errors";
 import logError from "@/utils/logError.js";
 import { getLRPFunctions } from "@/utils/functions.js";
 import { PROMO_PARTNER_CATEGORIES } from "@/constants/importantInfo.js";
+import { deleteImportantInfoImage } from "@/services/importantInfoImageService.js";
 
 const COLLECTION = "importantInfo";
 
@@ -41,7 +43,7 @@ function nullable(value) {
 }
 
 function sanitizePayload(payload = {}) {
-  return {
+  const base = {
     title: safeTrim(payload.title) || "Untitled",
     blurb: safeTrim(payload.blurb),
     details: safeTrim(payload.details),
@@ -51,6 +53,13 @@ function sanitizePayload(payload = {}) {
     smsTemplate: nullable(payload.smsTemplate),
     isActive: typeof payload.isActive === "boolean" ? payload.isActive : true,
   };
+
+  // Only include images if provided (don't overwrite existing with empty array)
+  if (payload.images !== undefined) {
+    base.images = Array.isArray(payload.images) ? payload.images : [];
+  }
+
+  return base;
 }
 
 function mapSnapshot(docSnap) {
@@ -177,9 +186,31 @@ export async function deleteImportantInfo(id) {
     });
   }
   try {
+    // Get the document to check if it has images
+    const docRef = doc(db, COLLECTION, id);
+    const docSnap = await getDoc(docRef);
+    const data = docSnap.exists() ? docSnap.data() : null;
+
     await withExponentialBackoff(async () => {
-      await deleteDoc(doc(db, COLLECTION, id));
+      await deleteDoc(docRef);
     });
+
+    // Delete associated images from storage if they exist
+    if (data?.images && Array.isArray(data.images)) {
+      for (const image of data.images) {
+        if (image?.storagePath) {
+          try {
+            await deleteImportantInfoImage(image.storagePath);
+          } catch (imageError) {
+            // Log but don't fail the delete operation if image deletion fails
+            logError(imageError, {
+              where: "importantInfoService.delete.image",
+              payload: { id, storagePath: image.storagePath },
+            });
+          }
+        }
+      }
+    }
   } catch (error) {
     const appErr =
       error instanceof AppError

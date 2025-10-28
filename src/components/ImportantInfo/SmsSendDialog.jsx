@@ -12,6 +12,9 @@ import {
   TextField,
   Typography,
   Button,
+  ImageList,
+  ImageListItem,
+  Chip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
@@ -141,16 +144,43 @@ export default function SmsSendDialog({ open, onClose, item }) {
               border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.32)}`,
             }}
           >
-            <Typography
-              variant="subtitle2"
-              sx={{
-                fontWeight: 600,
-                color: (t) => t.palette.primary.main,
-                mb: 1,
-              }}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mb: 1 }}
             >
-              Message preview
-            </Typography>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 600,
+                  color: (t) => t.palette.primary.main,
+                }}
+              >
+                Message preview
+              </Typography>
+              {item?.images && item.images.length > 0 ? (
+                <Chip
+                  size="small"
+                  label={`MMS • ${item.images.length} image${item.images.length > 1 ? "s" : ""}`}
+                  sx={{
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.2),
+                    color: (t) => t.palette.primary.main,
+                    fontWeight: 600,
+                  }}
+                />
+              ) : (
+                <Chip
+                  size="small"
+                  label="SMS"
+                  sx={{
+                    bgcolor: (t) => alpha(t.palette.text.secondary, 0.1),
+                    color: (t) => t.palette.text.secondary,
+                    fontWeight: 600,
+                  }}
+                />
+              )}
+            </Stack>
             <Typography
               component="pre"
               sx={{
@@ -159,10 +189,55 @@ export default function SmsSendDialog({ open, onClose, item }) {
                 fontFamily: "inherit",
                 fontSize: "0.95rem",
                 color: "text.primary",
+                mb: item?.images && item.images.length > 0 ? 2 : 0,
               }}
             >
               {preview || "No message available."}
             </Typography>
+            {item?.images && item.images.length > 0 ? (
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 600,
+                    color: (t) => t.palette.primary.main,
+                    display: "block",
+                    mb: 1,
+                  }}
+                >
+                  Attached images:
+                </Typography>
+                <ImageList
+                  sx={{ width: "100%", maxHeight: 200 }}
+                  cols={3}
+                  rowHeight={120}
+                >
+                  {item.images.slice(0, 10).map((image) => (
+                    <ImageListItem key={image.id}>
+                      <img
+                        src={image.url}
+                        alt={image.name || "Image"}
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          borderRadius: 4,
+                        }}
+                      />
+                    </ImageListItem>
+                  ))}
+                </ImageList>
+                {item.images.length > 10 ? (
+                  <Typography
+                    variant="caption"
+                    sx={{ opacity: 0.7, display: "block", mt: 0.5 }}
+                  >
+                    Note: Only the first 10 images will be sent via MMS.
+                  </Typography>
+                ) : null}
+              </Box>
+            ) : null}
           </Box>
         </Stack>
       </DialogContent>
@@ -203,5 +278,12 @@ SmsSendDialog.propTypes = {
     phone: PropTypes.string,
     url: PropTypes.string,
     smsTemplate: PropTypes.string,
+    images: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string,
+        url: PropTypes.string,
+        name: PropTypes.string,
+      }),
+    ),
   }),
 };
