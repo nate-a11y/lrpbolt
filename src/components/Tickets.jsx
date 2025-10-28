@@ -847,19 +847,22 @@ function Tickets() {
       .filter((row) => Boolean(row));
   }, [rows, selectedIds, getRowId]);
 
-  const renderTicketPreviewNode = useCallback((ticket) => {
-    if (!ticket || !ticketPreviewContainerRef.current) return null;
-    const wrapper = document.createElement("div");
-    ticketPreviewContainerRef.current.appendChild(wrapper);
-    const root = ReactDOM.createRoot(wrapper);
-    root.render(
-      <ThemeProvider theme={theme}>
-        <TicketPreviewCard ticket={ticket} />
-      </ThemeProvider>
-    );
-    wrapper.__lrpRoot = root;
-    return wrapper;
-  }, [theme]);
+  const renderTicketPreviewNode = useCallback(
+    (ticket) => {
+      if (!ticket || !ticketPreviewContainerRef.current) return null;
+      const wrapper = document.createElement("div");
+      ticketPreviewContainerRef.current.appendChild(wrapper);
+      const root = ReactDOM.createRoot(wrapper);
+      root.render(
+        <ThemeProvider theme={theme}>
+          <TicketPreviewCard ticket={ticket} />
+        </ThemeProvider>,
+      );
+      wrapper.__lrpRoot = root;
+      return wrapper;
+    },
+    [theme],
+  );
 
   const handleEditClick = useCallback((row) => setEditingTicket(row), []);
   const handleEditClose = useCallback(() => setEditingTicket(null), []);
@@ -1171,11 +1174,7 @@ function Tickets() {
       logError(err, { area: "tickets", action: "downloadTicket" });
       showWarnOrErrorSnack("Failed to generate image", "error");
     }
-  }, [
-    previewTicket,
-    showSuccessSnack,
-    showWarnOrErrorSnack,
-  ]);
+  }, [previewTicket, showSuccessSnack, showWarnOrErrorSnack]);
 
   // Set preview tickets when email dialog opens
   useEffect(() => {
@@ -1297,7 +1296,7 @@ function Tickets() {
       if (!nodes.length) return;
 
       // Wait for React to finish rendering all nodes
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       await exportTicketNodesAsZip(nodes, {
         zipName: `tickets-${Date.now()}.zip`,
@@ -1597,7 +1596,12 @@ function Tickets() {
                   <TicketPreviewCard ticket={previewTicket} />
                 </Box>
 
-                <Box mt={2} px={2} display="flex" justifyContent="space-between">
+                <Box
+                  mt={2}
+                  px={2}
+                  display="flex"
+                  justifyContent="space-between"
+                >
                   <Button
                     variant="outlined"
                     color="info"

@@ -52,7 +52,6 @@ export async function uploadImportantInfoImage(itemId, file) {
 
     // Create unique ID for each image to support multiple images
     const imageId = createImageId(file);
-    const extension = file.name.split(".").pop() || "jpg";
     const storagePath = `importantInfo/${safeId}/${imageId}`;
     const storageRef = ref(storage, storagePath);
 

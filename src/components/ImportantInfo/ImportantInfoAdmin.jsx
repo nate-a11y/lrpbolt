@@ -1045,7 +1045,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                     </ImageListItem>
                   ))}
                   {pendingFiles.map((file, index) => (
-                    <ImageListItem key={`pending-${index}`}>
+                    <ImageListItem
+                      key={`pending-${file.name}-${file.size}-${file.lastModified || index}`}
+                    >
                       <img
                         src={URL.createObjectURL(file)}
                         alt={file.name}

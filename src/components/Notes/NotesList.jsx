@@ -86,7 +86,14 @@ const VEHICLES = [
   "LRP8",
 ];
 
-function generateNote(template, tripType, orderType, totalPassengers, vehicles, miscellaneous) {
+function generateNote(
+  template,
+  tripType,
+  orderType,
+  totalPassengers,
+  vehicles,
+  miscellaneous,
+) {
   if (!template) return "";
 
   const lines = [];
@@ -114,7 +121,9 @@ function generateNote(template, tripType, orderType, totalPassengers, vehicles, 
   if (vehicles && vehicles.length > 0) {
     lines.push(vehicles.join(", "));
   } else {
-    lines.push("(If more than 1 vehicle, Enter that here and which vehicle(s))");
+    lines.push(
+      "(If more than 1 vehicle, Enter that here and which vehicle(s))",
+    );
   }
 
   // Add miscellaneous only if provided
@@ -157,7 +166,8 @@ export default function NotesList({ notes, loading, error }) {
   useEffect(() => {
     if (selectedTemplate) {
       // Use custom order type if "Custom" is selected, otherwise use the selected orderType
-      const finalOrderType = orderType === "Custom" ? customOrderType : orderType;
+      const finalOrderType =
+        orderType === "Custom" ? customOrderType : orderType;
       const note = generateNote(
         selectedTemplate.noteTemplate,
         tripType,
@@ -170,7 +180,15 @@ export default function NotesList({ notes, loading, error }) {
     } else {
       setGeneratedNote("");
     }
-  }, [selectedTemplate, tripType, orderType, customOrderType, totalPassengers, selectedVehicles, miscellaneous]);
+  }, [
+    selectedTemplate,
+    tripType,
+    orderType,
+    customOrderType,
+    totalPassengers,
+    selectedVehicles,
+    miscellaneous,
+  ]);
 
   const handleCopy = async () => {
     if (!generatedNote) {
@@ -346,7 +364,9 @@ export default function NotesList({ notes, loading, error }) {
                     sx={{
                       bgcolor: (t) => t.palette.background.paper,
                     }}
-                    InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
+                    InputProps={{
+                      sx: { color: (t) => t.palette.text.primary },
+                    }}
                   />
                 )}
 
@@ -371,7 +391,9 @@ export default function NotesList({ notes, loading, error }) {
                     multiple
                     label="Select Vehicle(s)"
                     value={selectedVehicles}
-                    onChange={(event) => setSelectedVehicles(event.target.value)}
+                    onChange={(event) =>
+                      setSelectedVehicles(event.target.value)
+                    }
                     sx={{
                       color: (t) => t.palette.text.primary,
                       bgcolor: (t) => t.palette.background.paper,

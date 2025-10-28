@@ -376,7 +376,11 @@ export default function ImportantInfoList({
                               {row.images.length > 6 ? (
                                 <Typography
                                   variant="caption"
-                                  sx={{ opacity: 0.7, display: "block", mt: 0.5 }}
+                                  sx={{
+                                    opacity: 0.7,
+                                    display: "block",
+                                    mt: 0.5,
+                                  }}
                                 >
                                   +{row.images.length - 6} more image
                                   {row.images.length - 6 > 1 ? "s" : ""}
