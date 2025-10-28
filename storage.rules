@@ -15,5 +15,12 @@ service firebase.storage {
       allow read: if isAuthed();
       allow write: if isAuthed();
     }
+
+    // Important Info images - admin only for write, all authenticated users can read
+    match /importantInfo/{itemId}/{fileName} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

@@ -26,9 +26,14 @@ import {
   Tooltip,
   Typography,
   Link as MuiLink,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import CloseIcon from "@mui/icons-material/Close";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -39,6 +44,10 @@ import {
   restoreImportantInfo,
 } from "@/services/importantInfoService.js";
 import { getSmsHealth, getLastSmsError } from "@/services/smsService.js";
+import {
+  uploadMultipleImages,
+  deleteImportantInfoImage,
+} from "@/services/importantInfoImageService.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
 import {
@@ -82,6 +91,7 @@ const DEFAULT_FORM = {
   url: "",
   smsTemplate: "",
   isActive: true,
+  images: [],
 };
 
 function toTelHref(phone) {
@@ -131,6 +141,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [healthData, setHealthData] = useState(null);
   const [healthError, setHealthError] = useState("");
   const [localLastSmsError, setLocalLastSmsError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState([]);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -251,8 +263,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       phone: ensureString(row.phone),
       url: ensureString(row.url),
       smsTemplate: ensureString(row.smsTemplate),
+      images: Array.isArray(row.images) ? row.images : [],
       isActive: row.isActive !== false,
     });
+    setPendingFiles([]);
     setDialogOpen(true);
   }, []);
 
@@ -266,29 +280,113 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  const handleFileSelect = useCallback((event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length > 0) {
+      setPendingFiles((prev) => [...prev, ...files]);
+    }
+    // Reset the input so the same file can be selected again
+    event.target.value = "";
+  }, []);
+
+  const handleRemovePendingFile = useCallback((index) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleRemoveExistingImage = useCallback(
+    async (image) => {
+      if (!image) return;
+      // eslint-disable-next-line no-alert
+      const confirmed = window.confirm(
+        "Remove this image? This cannot be undone.",
+      );
+      if (!confirmed) return;
+
+      try {
+        // Remove from form state
+        setFormValues((prev) => ({
+          ...prev,
+          images: (prev.images || []).filter((img) => img.id !== image.id),
+        }));
+
+        // If editing an existing item, also delete from storage
+        if (activeId && image.storagePath) {
+          await deleteImportantInfoImage(image.storagePath);
+          show("Image removed.", "success");
+        }
+      } catch (err) {
+        logError(err, {
+          where: "ImportantInfoAdmin.handleRemoveExistingImage",
+          imageId: image.id,
+        });
+        show("Failed to remove image.", "error");
+      }
+    },
+    [activeId, show],
+  );
+
   const handleSubmit = useCallback(
     async (event) => {
       event?.preventDefault();
-      const payload = buildPayload(formValues);
       try {
         setSaving(true);
+
+        let itemId = activeId;
+        let updatedImages = [...(formValues.images || [])];
+
+        // If creating a new item, create it first to get an ID
+        if (dialogMode === "create" && !itemId) {
+          const payload = buildPayload(formValues);
+          itemId = await createImportantInfo(payload);
+        }
+
+        // Upload pending files if we have any
+        if (pendingFiles.length > 0 && itemId) {
+          setUploading(true);
+          try {
+            const uploadedImages = await uploadMultipleImages(
+              itemId,
+              pendingFiles,
+            );
+            updatedImages = [...updatedImages, ...uploadedImages];
+          } catch (uploadErr) {
+            logError(uploadErr, {
+              where: "ImportantInfoAdmin.handleSubmit.upload",
+              itemId,
+            });
+            show("Some images failed to upload.", "warning");
+          } finally {
+            setUploading(false);
+          }
+        }
+
+        // Update with final payload including images
+        const finalPayload = {
+          ...buildPayload(formValues),
+          images: updatedImages,
+        };
+
         if (dialogMode === "edit" && activeId) {
-          await updateImportantInfo(activeId, payload);
+          await updateImportantInfo(activeId, finalPayload);
           show("Important info updated.", "success");
-        } else {
-          await createImportantInfo(payload);
+        } else if (dialogMode === "create" && itemId) {
+          // Update the newly created item with images
+          await updateImportantInfo(itemId, { images: updatedImages });
           show("Important info created.", "success");
         }
+
         setDialogOpen(false);
         setActiveId(null);
+        setPendingFiles([]);
       } catch (err) {
         logError(err, { where: "ImportantInfoAdmin.handleSubmit", activeId });
         show("Failed to save. Please try again.", "error");
       } finally {
         setSaving(false);
+        setUploading(false);
       }
     },
-    [activeId, dialogMode, formValues, show],
+    [activeId, dialogMode, formValues, pendingFiles, show],
   );
 
   const setRowPending = useCallback((id, value) => {
@@ -627,6 +725,41 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                       </Typography>
                     ) : null}
 
+                    {row?.images && row.images.length > 0 ? (
+                      <Box>
+                        <ImageList
+                          sx={{ width: "100%", maxHeight: 200 }}
+                          cols={3}
+                          rowHeight={120}
+                        >
+                          {row.images.slice(0, 6).map((image) => (
+                            <ImageListItem key={image.id}>
+                              <img
+                                src={image.url}
+                                alt={image.name || "Image"}
+                                loading="lazy"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  borderRadius: 4,
+                                }}
+                              />
+                            </ImageListItem>
+                          ))}
+                        </ImageList>
+                        {row.images.length > 6 ? (
+                          <Typography
+                            variant="caption"
+                            sx={{ opacity: 0.7, display: "block", mt: 0.5 }}
+                          >
+                            +{row.images.length - 6} more image
+                            {row.images.length - 6 > 1 ? "s" : ""}
+                          </Typography>
+                        ) : null}
+                      </Box>
+                    ) : null}
+
                     {row?.details ? (
                       <Box>
                         <Divider
@@ -832,6 +965,132 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               minRows={3}
               helperText="Leave blank to auto-generate a message."
             />
+            <Divider sx={{ borderColor: (t) => t.palette.divider, my: 1 }} />
+            <Box>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ mb: 1.5 }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  Images
+                </Typography>
+                <Chip
+                  size="small"
+                  label={`${(formValues.images || []).length + pendingFiles.length}`}
+                  sx={{ fontWeight: 600, fontSize: "0.75rem" }}
+                />
+              </Stack>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<AddPhotoAlternateIcon />}
+                disabled={saving || uploading}
+                sx={{
+                  borderColor: (t) => t.palette.primary.main,
+                  color: "#b7ffb7",
+                  mb: 2,
+                }}
+              >
+                Add Images
+                <input
+                  type="file"
+                  hidden
+                  multiple
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleFileSelect}
+                />
+              </Button>
+              <Typography variant="caption" sx={{ display: "block", mb: 2 }}>
+                Upload images to include in SMS (MMS). Max 5MB per image.
+              </Typography>
+              {((formValues.images || []).length > 0 ||
+                pendingFiles.length > 0) && (
+                <ImageList
+                  sx={{ width: "100%", maxHeight: 300 }}
+                  cols={3}
+                  rowHeight={164}
+                >
+                  {(formValues.images || []).map((image) => (
+                    <ImageListItem key={image.id}>
+                      <img
+                        src={image.url}
+                        alt={image.name || "Uploaded"}
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                      <ImageListItemBar
+                        sx={{
+                          background:
+                            "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0) 100%)",
+                        }}
+                        position="top"
+                        actionIcon={
+                          <IconButton
+                            sx={{ color: "rgba(255, 255, 255, 0.85)" }}
+                            aria-label={`Delete ${image.name || "image"}`}
+                            onClick={() => handleRemoveExistingImage(image)}
+                            disabled={saving || uploading}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        }
+                        actionPosition="right"
+                      />
+                    </ImageListItem>
+                  ))}
+                  {pendingFiles.map((file, index) => (
+                    <ImageListItem key={`pending-${index}`}>
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={file.name}
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                      <ImageListItemBar
+                        sx={{
+                          background:
+                            "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0) 100%)",
+                        }}
+                        position="top"
+                        title={
+                          <Chip
+                            size="small"
+                            label="Pending"
+                            sx={{
+                              bgcolor: "warning.main",
+                              color: "warning.contrastText",
+                              fontWeight: 600,
+                            }}
+                          />
+                        }
+                        actionIcon={
+                          <IconButton
+                            sx={{ color: "rgba(255, 255, 255, 0.85)" }}
+                            aria-label={`Remove ${file.name}`}
+                            onClick={() => handleRemovePendingFile(index)}
+                            disabled={saving || uploading}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        }
+                        actionPosition="right"
+                      />
+                    </ImageListItem>
+                  ))}
+                </ImageList>
+              )}
+            </Box>
+            <Divider sx={{ borderColor: (t) => t.palette.divider, my: 1 }} />
             <Stack direction="row" spacing={1} alignItems="center">
               <Switch
                 checked={formValues.isActive}

@@ -188,6 +188,16 @@ exports.sendPartnerInfoSMS = onCall(
 
     const messageBody = buildMessage(item);
 
+    // Prepare media URLs for MMS (Twilio supports up to 10 media attachments)
+    const mediaUrls = [];
+    if (item?.images && Array.isArray(item.images)) {
+      for (const image of item.images.slice(0, 10)) {
+        if (image?.url && typeof image.url === "string") {
+          mediaUrls.push(image.url);
+        }
+      }
+    }
+
     if (dryRun) {
       await logSmsAttempt({
         type: "partnerInfo",
@@ -195,6 +205,7 @@ exports.sendPartnerInfoSMS = onCall(
         to: normalizedTo,
         from,
         status: "dry-run",
+        mediaCount: mediaUrls.length,
         userId: auth?.uid || "unknown",
       });
       return {
@@ -202,13 +213,25 @@ exports.sendPartnerInfoSMS = onCall(
         dryRun: true,
         to: normalizedTo,
         bodyPreview: messageBody,
+        mediaCount: mediaUrls.length,
       };
     }
 
     const client = twilio(accountSid, authToken);
 
     try {
-      const resp = await client.messages.create({ to: normalizedTo, from, body: messageBody });
+      const messageParams = {
+        to: normalizedTo,
+        from,
+        body: messageBody,
+      };
+
+      // Add mediaUrl parameter if we have images (for MMS)
+      if (mediaUrls.length > 0) {
+        messageParams.mediaUrl = mediaUrls;
+      }
+
+      const resp = await client.messages.create(messageParams);
       await logSmsAttempt({
         type: "partnerInfo",
         itemId,
@@ -216,9 +239,15 @@ exports.sendPartnerInfoSMS = onCall(
         from,
         sid: resp?.sid || null,
         status: resp?.status || "queued",
+        mediaCount: mediaUrls.length,
         userId: auth?.uid || "unknown",
       });
-      return { ok: true, sid: resp?.sid || null, status: resp?.status || "queued" };
+      return {
+        ok: true,
+        sid: resp?.sid || null,
+        status: resp?.status || "queued",
+        mediaCount: mediaUrls.length,
+      };
     } catch (error) {
       const mapped = mapTwilioError(error);
       logger.error("sendPartnerInfoSMS.twilioError", {
