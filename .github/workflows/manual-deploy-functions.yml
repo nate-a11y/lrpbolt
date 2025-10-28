@@ -10,7 +10,9 @@ on:
         options:
           - 'functions'
           - 'firestore:rules'
-          - 'both'
+          - 'storage'
+          - 'rules' # Both firestore and storage rules
+          - 'both' # Functions + all rules
         default: 'functions'
       force_rebuild:
         description: 'Force rebuild all functions (ignore cache)'
@@ -95,11 +97,18 @@ jobs:
         run: firebase deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive --force
 
       - name: Deploy Firestore Rules
-        if: inputs.deploy_target == 'firestore:rules' || inputs.deploy_target == 'both'
+        if: inputs.deploy_target == 'firestore:rules' || inputs.deploy_target == 'rules' || inputs.deploy_target == 'both'
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
         run: firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Deploy Storage Rules
+        if: inputs.deploy_target == 'storage' || inputs.deploy_target == 'rules' || inputs.deploy_target == 'both'
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+        run: firebase deploy --only storage --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Setup gcloud
         if: contains(inputs.deploy_target, 'functions')
