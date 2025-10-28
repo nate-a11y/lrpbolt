@@ -47,7 +47,7 @@ function sanitizePayload(payload = {}) {
     title: safeTrim(payload.title) || "Untitled",
     blurb: safeTrim(payload.blurb),
     details: safeTrim(payload.details),
-    category: safeTrim(payload.category) || "General",
+    category: safeTrim(payload.category) || PROMO_PARTNER_CATEGORIES[0] || "Promotions",
     phone: nullable(payload.phone),
     url: nullable(payload.url),
     smsTemplate: nullable(payload.smsTemplate),

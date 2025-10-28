@@ -349,7 +349,7 @@ jobs:
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        run: firebase deploy --only firestore:rules,storage --project "$FIREBASE_PROJECT_ID" --non-interactive
+        run: firebase deploy --only firestore:rules,firestore:indexes,storage --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Force rebuild by touching function files
         if: needs.changes.outputs.functions == 'true'
@@ -441,5 +441,5 @@ jobs:
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-        run: firebase deploy --only firestore:rules,storage --project "$FIREBASE_PROJECT_ID" --non-interactive
+        run: firebase deploy --only firestore:rules,firestore:indexes,storage --project "$FIREBASE_PROJECT_ID" --non-interactive
 
