@@ -370,8 +370,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           await updateImportantInfo(activeId, finalPayload);
           show("Important info updated.", "success");
         } else if (dialogMode === "create" && itemId) {
-          // Update the newly created item with images
-          await updateImportantInfo(itemId, { images: updatedImages });
+          // Update the newly created item with full payload including images
+          await updateImportantInfo(itemId, finalPayload);
           show("Important info created.", "success");
         }
 
