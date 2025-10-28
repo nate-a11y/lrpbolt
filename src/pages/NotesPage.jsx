@@ -80,13 +80,7 @@ export default function NotesPage() {
     }
 
     if (tab === "view") {
-      return (
-        <NotesList
-          notes={activeNotes}
-          loading={loading}
-          error={error}
-        />
-      );
+      return <NotesList notes={activeNotes} loading={loading} error={error} />;
     }
 
     return <NotesAdmin notes={notes} loading={loading} error={error} />;
@@ -120,11 +114,7 @@ export default function NotesPage() {
           "& .MuiTabs-indicator": { bgcolor: (t) => t.palette.primary.main },
         }}
       >
-        <Tab
-          label="View Notes"
-          value="view"
-          sx={{ fontWeight: 600 }}
-        />
+        <Tab label="View Notes" value="view" sx={{ fontWeight: 600 }} />
         {isAdmin ? (
           <Tab label="Admin" value="admin" sx={{ fontWeight: 600 }} />
         ) : null}

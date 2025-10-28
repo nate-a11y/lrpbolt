@@ -33,7 +33,8 @@ function sanitizePayload(payload = {}, isPartialUpdate = false) {
       result.noteTemplate = safeTrim(payload.noteTemplate);
     }
     if ("isActive" in payload) {
-      result.isActive = typeof payload.isActive === "boolean" ? payload.isActive : true;
+      result.isActive =
+        typeof payload.isActive === "boolean" ? payload.isActive : true;
     }
     return result;
   }
@@ -57,10 +58,7 @@ function mapSnapshot(docSnap) {
 
 export function subscribeNotes({ onData, onError } = {}) {
   const ref = collection(db, COLLECTION);
-  const q = query(
-    ref,
-    orderBy("updatedAt", "desc"),
-  );
+  const q = query(ref, orderBy("updatedAt", "desc"));
   try {
     return onSnapshot(
       q,
