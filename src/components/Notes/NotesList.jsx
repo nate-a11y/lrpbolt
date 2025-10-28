@@ -7,11 +7,7 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   FormControl,
-  FormControlLabel,
-  FormGroup,
-  FormLabel,
   IconButton,
   InputLabel,
   MenuItem,
@@ -25,7 +21,56 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
-const TRIP_CATEGORIES = ["Point to Point, Round Trip", "Hourly Reservation"];
+const TRIP_TYPES = ["One-Way", "Round Trip (Point-to-Point)", "Hourly"];
+
+const ORDER_TYPES = [
+  "21st Birthday",
+  "Airport",
+  "Airport Drop Off",
+  "Airport Pick Up",
+  "Anniversary",
+  "Bachelor/Bachelorette",
+  "Bar",
+  "Bar/Bat Mitzvah",
+  "Baseball",
+  "Basketball",
+  "Birthday",
+  "Brew Tour",
+  "Bridal Party",
+  "Bride/Groom",
+  "Business Trip",
+  "Concert",
+  "Corporate",
+  "Corporate Event",
+  "Day Tour",
+  "Family Reunion",
+  "Field Trip",
+  "Football",
+  "Funeral",
+  "Golf",
+  "Graduation",
+  "Hockey",
+  "Holiday",
+  "Kids Birthday",
+  "Leisure",
+  "Medical",
+  "Night Out",
+  "Other",
+  "Personal Trip",
+  "Point-to-Point",
+  "Prom/Homecoming",
+  "Quinceanera",
+  "School",
+  "School Fundraiser",
+  "Seaport",
+  "Special Occasion",
+  "Sporting Event",
+  "Sweet 16",
+  "Train Station",
+  "Wedding",
+  "Wine Tour",
+  "Custom", // This will trigger the custom text field
+];
 
 const VEHICLES = [
   "Limo Bus",
@@ -41,21 +86,21 @@ const VEHICLES = [
   "LRP8",
 ];
 
-function generateNote(template, tripCategory, tripType, totalPassengers, vehicles, miscellaneous) {
+function generateNote(template, tripType, orderType, totalPassengers, vehicles, miscellaneous) {
   if (!template) return "";
 
   const lines = [];
 
-  // Add trip category
-  if (tripCategory) {
-    lines.push(tripCategory);
-  }
-
   // Add trip type
   if (tripType) {
     lines.push(tripType);
+  }
+
+  // Add order type
+  if (orderType) {
+    lines.push(orderType);
   } else {
-    lines.push("(Enter Trip Type Here) Ex. Golf Trip");
+    lines.push("(Enter Order Type Here) Ex. Golf Trip");
   }
 
   // Add total passengers
@@ -65,24 +110,20 @@ function generateNote(template, tripCategory, tripType, totalPassengers, vehicle
     lines.push("(Enter Total Number of Passengers Here)");
   }
 
-  // Add vehicles
+  // Add vehicles - just the names comma-separated
   if (vehicles && vehicles.length > 0) {
-    const vehicleText = vehicles.join(", ");
-    if (vehicles.length > 1) {
-      lines.push(`(If more than 1 vehicle, Enter that here and which vehicle(s): ${vehicleText})`);
-    } else {
-      lines.push(vehicleText);
-    }
+    lines.push(vehicles.join(", "));
   } else {
     lines.push("(If more than 1 vehicle, Enter that here and which vehicle(s))");
   }
 
-  // Add miscellaneous
+  // Add miscellaneous only if provided
   if (miscellaneous) {
     lines.push(miscellaneous);
-  } else {
-    lines.push("(Any other Miscellaneous Service or Items, if nothing else, delete this line)");
   }
+
+  // Add blank line before template
+  lines.push("");
 
   // Add template content
   lines.push(template);
@@ -93,8 +134,9 @@ function generateNote(template, tripCategory, tripType, totalPassengers, vehicle
 export default function NotesList({ notes, loading, error }) {
   const { show } = useSnack();
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [tripCategory, setTripCategory] = useState("Point to Point, Round Trip");
-  const [tripType, setTripType] = useState("");
+  const [tripType, setTripType] = useState("One-Way");
+  const [orderType, setOrderType] = useState("");
+  const [customOrderType, setCustomOrderType] = useState("");
   const [totalPassengers, setTotalPassengers] = useState("");
   const [selectedVehicles, setSelectedVehicles] = useState([]);
   const [miscellaneous, setMiscellaneous] = useState("");
@@ -114,10 +156,12 @@ export default function NotesList({ notes, loading, error }) {
 
   useEffect(() => {
     if (selectedTemplate) {
+      // Use custom order type if "Custom" is selected, otherwise use the selected orderType
+      const finalOrderType = orderType === "Custom" ? customOrderType : orderType;
       const note = generateNote(
         selectedTemplate.noteTemplate,
-        tripCategory,
         tripType,
+        finalOrderType,
         totalPassengers,
         selectedVehicles,
         miscellaneous,
@@ -126,16 +170,7 @@ export default function NotesList({ notes, loading, error }) {
     } else {
       setGeneratedNote("");
     }
-  }, [selectedTemplate, tripCategory, tripType, totalPassengers, selectedVehicles, miscellaneous]);
-
-  const handleVehicleToggle = (vehicle) => {
-    setSelectedVehicles((prev) => {
-      if (prev.includes(vehicle)) {
-        return prev.filter((v) => v !== vehicle);
-      }
-      return [...prev, vehicle];
-    });
-  };
+  }, [selectedTemplate, tripType, orderType, customOrderType, totalPassengers, selectedVehicles, miscellaneous]);
 
   const handleCopy = async () => {
     if (!generatedNote) {
@@ -257,37 +292,63 @@ export default function NotesList({ notes, loading, error }) {
               <>
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
-                    Trip Category
+                    Trip Type
                   </InputLabel>
                   <Select
-                    label="Trip Category"
-                    value={tripCategory}
-                    onChange={(event) => setTripCategory(event.target.value)}
+                    label="Trip Type"
+                    value={tripType}
+                    onChange={(event) => setTripType(event.target.value)}
                     sx={{
                       color: (t) => t.palette.text.primary,
                       bgcolor: (t) => t.palette.background.paper,
                     }}
                   >
-                    {TRIP_CATEGORIES.map((category) => (
-                      <MenuItem key={category} value={category}>
-                        {category}
+                    {TRIP_TYPES.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
 
-                <TextField
-                  label="Trip Type"
-                  placeholder="e.g., Golf Trip"
-                  value={tripType}
-                  onChange={(event) => setTripType(event.target.value)}
-                  fullWidth
-                  helperText="Leave blank to show placeholder in note"
-                  sx={{
-                    bgcolor: (t) => t.palette.background.paper,
-                  }}
-                  InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
-                />
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
+                    Order Type
+                  </InputLabel>
+                  <Select
+                    label="Order Type"
+                    value={orderType}
+                    onChange={(event) => setOrderType(event.target.value)}
+                    sx={{
+                      color: (t) => t.palette.text.primary,
+                      bgcolor: (t) => t.palette.background.paper,
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Select an order type...</em>
+                    </MenuItem>
+                    {ORDER_TYPES.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {orderType === "Custom" && (
+                  <TextField
+                    label="Custom Order Type"
+                    placeholder="e.g., Golf Trip"
+                    value={customOrderType}
+                    onChange={(event) => setCustomOrderType(event.target.value)}
+                    fullWidth
+                    helperText="Enter your custom order type"
+                    sx={{
+                      bgcolor: (t) => t.palette.background.paper,
+                    }}
+                    InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
+                  />
+                )}
 
                 <TextField
                   label="Total Passengers"
@@ -302,33 +363,27 @@ export default function NotesList({ notes, loading, error }) {
                   InputProps={{ sx: { color: (t) => t.palette.text.primary } }}
                 />
 
-                <FormControl component="fieldset">
-                  <FormLabel component="legend" sx={{ color: (t) => t.palette.text.primary, mb: 1 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: (t) => t.palette.text.primary }}>
                     Select Vehicle(s)
-                  </FormLabel>
-                  <FormGroup>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} flexWrap="wrap">
-                      {VEHICLES.map((vehicle) => (
-                        <FormControlLabel
-                          key={vehicle}
-                          control={
-                            <Checkbox
-                              checked={selectedVehicles.includes(vehicle)}
-                              onChange={() => handleVehicleToggle(vehicle)}
-                              sx={{
-                                color: (t) => t.palette.text.secondary,
-                                "&.Mui-checked": {
-                                  color: (t) => t.palette.primary.main,
-                                },
-                              }}
-                            />
-                          }
-                          label={vehicle}
-                          sx={{ color: (t) => t.palette.text.primary }}
-                        />
-                      ))}
-                    </Stack>
-                  </FormGroup>
+                  </InputLabel>
+                  <Select
+                    multiple
+                    label="Select Vehicle(s)"
+                    value={selectedVehicles}
+                    onChange={(event) => setSelectedVehicles(event.target.value)}
+                    sx={{
+                      color: (t) => t.palette.text.primary,
+                      bgcolor: (t) => t.palette.background.paper,
+                    }}
+                    renderValue={(selected) => selected.join(", ")}
+                  >
+                    {VEHICLES.map((vehicle) => (
+                      <MenuItem key={vehicle} value={vehicle}>
+                        {vehicle}
+                      </MenuItem>
+                    ))}
+                  </Select>
                 </FormControl>
 
                 <TextField
@@ -339,7 +394,7 @@ export default function NotesList({ notes, loading, error }) {
                   fullWidth
                   multiline
                   rows={2}
-                  helperText="Leave blank to show placeholder in note"
+                  helperText="Optional - leave blank if not needed"
                   sx={{
                     bgcolor: (t) => t.palette.background.paper,
                   }}
