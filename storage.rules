@@ -6,21 +6,17 @@ service firebase.storage {
 
     // Ticket attachments live under tickets/{ticketId}/{filename}
     match /tickets/{ticketId}/{fileName} {
-      allow read: if isAuthed();
-      allow write: if isAuthed();
+      allow read, write, delete: if isAuthed();
     }
 
     // New Issue Tracker attachments
     match /issueTickets/{ticketId}/{fileName} {
-      allow read: if isAuthed();
-      allow write: if isAuthed();
+      allow read, write, delete: if isAuthed();
     }
 
-    // Important Info images - admin only for write, all authenticated users can read
+    // Important Info images - all authenticated users have full access
     match /importantInfo/{itemId}/{fileName} {
-      allow read: if isAuthed();
-      allow write: if isAdmin();
-      allow delete: if isAdmin();
+      allow read, write, delete: if isAuthed();
     }
   }
 }
