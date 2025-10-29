@@ -36,6 +36,8 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
@@ -65,6 +67,18 @@ const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
 // Draft persistence key for admin form
 const ADMIN_DRAFT_KEY = "important_info_admin_draft";
+
+// Search history key
+const SEARCH_HISTORY_KEY = "important_info_search_history";
+const MAX_SEARCH_HISTORY = 5;
+
+// Category colors for visual distinction
+const CATEGORY_COLORS = {
+  "Promotions": { bg: "#1a3d1a", border: "#4caf50", text: "#81c784" },
+  "Partners": { bg: "#1a1a3d", border: "#3f51b5", text: "#9fa8da" },
+  "Referrals": { bg: "#3d1a1a", border: "#f44336", text: "#e57373" },
+  "General": { bg: "#2a2a2a", border: "#757575", text: "#bdbdbd" },
+};
 
 // Load draft from localStorage
 function loadAdminDraft() {
@@ -128,6 +142,65 @@ function clearAdminDraft(mode = "create", itemId = null) {
   } catch {
     // Ignore errors
   }
+}
+
+// Search history helpers
+function loadSearchHistory() {
+  try {
+    const saved = localStorage.getItem(SEARCH_HISTORY_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSearchHistory(query) {
+  if (!query || !query.trim()) return;
+  try {
+    const history = loadSearchHistory();
+    const trimmed = query.trim();
+    // Remove if already exists
+    const filtered = history.filter(h => h !== trimmed);
+    // Add to front
+    const updated = [trimmed, ...filtered].slice(0, MAX_SEARCH_HISTORY);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore errors
+  }
+}
+
+// CSV export helper
+function exportToCSV(rows, filename = "important-info.csv") {
+  if (!rows || rows.length === 0) return;
+
+  const headers = ["Title", "Category", "Blurb", "Details", "Phone", "URL", "SMS Template", "Active", "Updated"];
+  const csvRows = [
+    headers.join(","),
+    ...rows.map(row => [
+      `"${(row.title || "").replace(/"/g, '""')}"`,
+      `"${(row.category || "").replace(/"/g, '""')}"`,
+      `"${(row.blurb || "").replace(/"/g, '""')}"`,
+      `"${(row.details || "").replace(/"/g, '""')}"`,
+      `"${(row.phone || "").replace(/"/g, '""')}"`,
+      `"${(row.url || "").replace(/"/g, '""')}"`,
+      `"${(row.smsTemplate || "").replace(/"/g, '""')}"`,
+      row.isActive !== false ? "Yes" : "No",
+      row.updatedAt ? new Date(row.updatedAt.toMillis ? row.updatedAt.toMillis() : row.updatedAt).toLocaleString() : "",
+    ].join(","))
+  ];
+
+  const csvContent = csvRows.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+// Get category color
+function getCategoryColor(category) {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS["General"];
 }
 
 function ensureString(value) {
@@ -711,6 +784,46 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     [setRowPending, show],
   );
 
+  const handleDuplicate = useCallback(
+    async (row) => {
+      if (!row) return;
+      setRowPending(row.id, true);
+      try {
+        const duplicateData = {
+          title: `${row.title} (Copy)`,
+          blurb: row.blurb,
+          details: row.details,
+          category: row.category,
+          phone: row.phone,
+          url: row.url,
+          smsTemplate: row.smsTemplate,
+          isActive: false, // Start as inactive
+          images: row.images || [], // Copy images array
+        };
+        await createImportantInfo(duplicateData);
+        show(`Duplicated "${row.title}".`, "success");
+      } catch (err) {
+        logError(err, {
+          where: "ImportantInfoAdmin.handleDuplicate",
+          id: row.id,
+        });
+        show("Failed to duplicate item.", "error");
+      } finally {
+        setRowPending(row.id, false);
+      }
+    },
+    [setRowPending, show],
+  );
+
+  const handleExportCSV = useCallback(() => {
+    exportToCSV(filteredRows);
+    show(`Exported ${filteredRows.length} item${filteredRows.length !== 1 ? "s" : ""} to CSV.`, "success");
+  }, [filteredRows, show]);
+
+  const handleSearchSubmit = useCallback(() => {
+    saveSearchHistory(query);
+  }, [query]);
+
   return (
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
@@ -757,6 +870,18 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           >
             SMS Health
           </LoadingButtonLite>
+          <Button
+            variant="outlined"
+            onClick={handleExportCSV}
+            startIcon={<FileDownloadIcon />}
+            disabled={!filteredRows.length}
+            sx={{
+              borderColor: (t) => t.palette.primary.main,
+              color: "#b7ffb7",
+            }}
+          >
+            Export CSV
+          </Button>
         </Stack>
       </Stack>
 
@@ -951,8 +1076,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                       <Chip
                         size="small"
                         label={categoryLabel}
-                        color="primary"
-                        sx={{ fontWeight: 600 }}
+                        sx={{
+                          fontWeight: 600,
+                          bgcolor: getCategoryColor(categoryLabel).bg,
+                          color: getCategoryColor(categoryLabel).text,
+                          border: `1px solid ${getCategoryColor(categoryLabel).border}`,
+                        }}
                       />
                     </Stack>
 
@@ -1101,6 +1230,19 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                           aria-label={`Edit ${row?.title || "important info"}`}
                         >
                           <EditIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Duplicate">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDuplicate(row)}
+                          disabled={disabled}
+                          sx={{ color: (t) => t.palette.info.main }}
+                          aria-label={`Duplicate ${row?.title || "important info"}`}
+                        >
+                          <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </span>
                     </Tooltip>
