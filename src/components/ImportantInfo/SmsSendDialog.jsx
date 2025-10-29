@@ -15,6 +15,7 @@ import {
   ImageList,
   ImageListItem,
   Chip,
+  Alert,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
@@ -23,8 +24,47 @@ import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { sendPartnerInfo } from "@/services/smsService.js";
 import logError from "@/utils/logError.js";
 
+// Draft persistence key
+const DRAFT_KEY = "sms_send_draft_phone";
+
 const SMS_FOOTER =
   "— Sent from a Lake Ride Pros automated number. Replies are not monitored.";
+
+// MMS attachment size limit (conservative estimate: 5MB total for all attachments)
+const MMS_SIZE_LIMIT_MB = 5;
+const MMS_SIZE_LIMIT_BYTES = MMS_SIZE_LIMIT_MB * 1024 * 1024;
+
+// Load draft from localStorage
+function loadDraft() {
+  try {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    return saved ? saved.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+// Save draft to localStorage
+function saveDraft(phone) {
+  try {
+    if (phone && phone.trim()) {
+      localStorage.setItem(DRAFT_KEY, phone.trim());
+    } else {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+// Clear draft from localStorage
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Ignore localStorage errors
+  }
+}
 
 function buildMessagePreview(item) {
   if (!item) return "";
@@ -49,22 +89,62 @@ function buildMessagePreview(item) {
 
 export default function SmsSendDialog({ open, onClose, item }) {
   const { show } = useSnack();
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(() => loadDraft());
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [attachmentWarning, setAttachmentWarning] = useState("");
 
+  // Load draft when dialog opens for the first time
   useEffect(() => {
-    setPhone("");
-    setSending(false);
-    setError("");
+    if (open) {
+      const draft = loadDraft();
+      if (draft) {
+        setPhone(draft);
+      }
+      // Reset sending and error states on open
+      setSending(false);
+      setError("");
+    }
   }, [open]);
 
   const preview = useMemo(() => buildMessagePreview(item), [item]);
 
+  // Check attachment sizes when item changes
+  useEffect(() => {
+    if (!item?.images || item.images.length === 0) {
+      setAttachmentWarning("");
+      return;
+    }
+
+    // Note: We can't check actual file sizes from URLs without fetching them
+    // This is a simplified warning based on image count
+    const imageCount = Math.min(item.images.length, 10);
+    if (imageCount > 5) {
+      setAttachmentWarning(
+        `You have ${imageCount} images. If they are large, MMS may fail due to carrier size limits (~${MMS_SIZE_LIMIT_MB}MB total). Consider reducing image count or size.`
+      );
+    } else if (item.images.length > 10) {
+      setAttachmentWarning(
+        `Only the first 10 images will be sent via MMS. ${item.images.length - 10} image(s) will be excluded.`
+      );
+    } else {
+      setAttachmentWarning("");
+    }
+  }, [item]);
+
   const handleClose = useCallback(() => {
     if (sending) return;
+    // Save draft before closing
+    saveDraft(phone);
     if (onClose) onClose();
-  }, [onClose, sending]);
+  }, [onClose, sending, phone]);
+
+  const handlePhoneChange = useCallback((event) => {
+    const newPhone = event.target.value;
+    setPhone(newPhone);
+    saveDraft(newPhone);
+    if (error) setError("");
+  }, [error]);
 
   const handleSubmit = useCallback(
     async (event) => {
@@ -80,6 +160,9 @@ export default function SmsSendDialog({ open, onClose, item }) {
       try {
         await sendPartnerInfo({ to: trimmed, itemId: item.id });
         show("SMS sent successfully.", "success");
+        // Clear draft and phone on successful send
+        clearDraft();
+        setPhone("");
         if (onClose) onClose();
       } catch (error) {
         logError(error, {
@@ -88,11 +171,14 @@ export default function SmsSendDialog({ open, onClose, item }) {
         });
         const message =
           error?.message || "Failed to send SMS. Please try again.";
+
+        // Keep the phone number in the dialog so user can retry or correct it
         if (error?.code === "sms_invalid_phone") {
           setError(message);
           show(message, "warning");
         } else {
-          setError("");
+          // For other errors, show inline error too
+          setError(message);
           show(message, "error");
         }
       } finally {
@@ -105,23 +191,26 @@ export default function SmsSendDialog({ open, onClose, item }) {
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
+      onClose={null}
       fullWidth
       maxWidth="sm"
       component="form"
       onSubmit={handleSubmit}
+      disableEscapeKeyDown={sending}
       sx={{ "& .MuiPaper-root": { bgcolor: "background.paper" } }}
     >
       <DialogTitle sx={{ fontWeight: 700 }}>Text to Customer</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
+          {attachmentWarning && (
+            <Alert severity="warning" sx={{ mb: 1 }}>
+              {attachmentWarning}
+            </Alert>
+          )}
           <TextField
             label="Destination phone"
             value={phone}
-            onChange={(event) => {
-              setPhone(event.target.value);
-              if (error) setError("");
-            }}
+            onChange={handlePhoneChange}
             autoFocus
             placeholder="e.g. +15551234567 or 5551234567"
             disabled={sending}
@@ -129,7 +218,7 @@ export default function SmsSendDialog({ open, onClose, item }) {
             error={Boolean(error)}
             helperText={
               error ||
-              "Enter the customer’s phone. This is not stored, and replies are not monitored."
+              "Enter the customer's phone. This is not stored, and replies are not monitored."
             }
             inputProps={{
               inputMode: "tel",

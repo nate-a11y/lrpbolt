@@ -56,8 +56,66 @@ import {
 } from "@/constants/importantInfo.js";
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
+import SmsSendDialog from "./SmsSendDialog.jsx";
 
 const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
+
+// Draft persistence key for admin form
+const ADMIN_DRAFT_KEY = "important_info_admin_draft";
+
+// Load draft from localStorage
+function loadAdminDraft() {
+  try {
+    const saved = localStorage.getItem(ADMIN_DRAFT_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Don't restore if it's old (more than 7 days)
+      if (parsed.savedAt && Date.now() - parsed.savedAt < 7 * 24 * 60 * 60 * 1000) {
+        return parsed.formValues || null;
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+}
+
+// Save draft to localStorage
+function saveAdminDraft(formValues, mode) {
+  try {
+    // Only save drafts, not when editing existing items
+    if (mode === "create") {
+      localStorage.setItem(
+        ADMIN_DRAFT_KEY,
+        JSON.stringify({
+          formValues: {
+            title: formValues.title,
+            blurb: formValues.blurb,
+            details: formValues.details,
+            category: formValues.category,
+            phone: formValues.phone,
+            url: formValues.url,
+            smsTemplate: formValues.smsTemplate,
+            isActive: formValues.isActive,
+            // Don't save images in draft
+          },
+          savedAt: Date.now(),
+        })
+      );
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+// Clear draft from localStorage
+function clearAdminDraft() {
+  try {
+    localStorage.removeItem(ADMIN_DRAFT_KEY);
+  } catch {
+    // Ignore errors
+  }
+}
 
 function ensureString(value) {
   if (value == null) return "";
@@ -143,6 +201,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [localLastSmsError, setLocalLastSmsError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [pendingFiles, setPendingFiles] = useState([]);
+  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [selectedItemForSms, setSelectedItemForSms] = useState(null);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -207,8 +267,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
   const openCreate = useCallback(() => {
     setDialogMode("create");
-    setFormValues(DEFAULT_FORM);
+    // Try to load draft
+    const draft = loadAdminDraft();
+    if (draft) {
+      setFormValues({ ...DEFAULT_FORM, ...draft });
+    } else {
+      setFormValues(DEFAULT_FORM);
+    }
     setActiveId(null);
+    setPendingFiles([]);
     setDialogOpen(true);
   }, []);
 
@@ -239,6 +306,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     if (healthLoading) return;
     setHealthDialogOpen(false);
   }, [healthLoading]);
+
+  const handleOpenSmsDialog = useCallback((item) => {
+    if (!item) return;
+    setSelectedItemForSms(item);
+    setSmsDialogOpen(true);
+  }, []);
+
+  const handleCloseSmsDialog = useCallback(() => {
+    setSmsDialogOpen(false);
+    setSelectedItemForSms(null);
+  }, []);
 
   const handleImportClose = useCallback(
     (result) => {
@@ -271,14 +349,25 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   }, []);
 
   const closeDialog = useCallback(() => {
-    if (saving) return;
+    if (saving || uploading) return;
+    // Save draft before closing (only for create mode)
+    if (dialogMode === "create") {
+      saveAdminDraft(formValues, dialogMode);
+    }
     setDialogOpen(false);
     setActiveId(null);
-  }, [saving]);
+  }, [saving, uploading, dialogMode, formValues]);
 
   const handleFieldChange = useCallback((field, value) => {
-    setFormValues((prev) => ({ ...prev, [field]: value }));
-  }, []);
+    setFormValues((prev) => {
+      const updated = { ...prev, [field]: value };
+      // Auto-save draft as user types (only in create mode)
+      if (dialogMode === "create") {
+        saveAdminDraft(updated, dialogMode);
+      }
+      return updated;
+    });
+  }, [dialogMode]);
 
   const handleFileSelect = useCallback((event) => {
     const files = Array.from(event.target.files || []);
@@ -373,6 +462,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           // Update the newly created item with full payload including images
           await updateImportantInfo(itemId, finalPayload);
           show("Important info created.", "success");
+          // Clear draft on successful creation
+          clearAdminDraft();
         }
 
         setDialogOpen(false);
@@ -838,7 +929,22 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                       {row?.isActive !== false ? "Active" : "Inactive"}
                     </Typography>
                   </Stack>
-                  <Stack direction="row" spacing={0.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleOpenSmsDialog(row)}
+                      disabled={disabled}
+                      sx={{
+                        borderColor: (t) => t.palette.primary.main,
+                        color: "#b7ffb7",
+                        fontWeight: 600,
+                        textTransform: "none",
+                      }}
+                      aria-label={`Test SMS for ${row?.title || "item"}`}
+                    >
+                      Test SMS
+                    </Button>
                     <Tooltip title="Edit">
                       <span>
                         <IconButton
@@ -877,11 +983,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
       <Dialog
         open={dialogOpen}
-        onClose={closeDialog}
+        onClose={null}
         fullWidth
         maxWidth="md"
         component="form"
         onSubmit={handleSubmit}
+        disableEscapeKeyDown={saving || uploading}
         sx={{ "& .MuiPaper-root": { bgcolor: "background.paper" } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
@@ -1287,6 +1394,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           </LoadingButtonLite>
         </DialogActions>
       </Dialog>
+
+      <SmsSendDialog
+        open={smsDialogOpen}
+        onClose={handleCloseSmsDialog}
+        item={selectedItemForSms}
+      />
     </Box>
   );
 }
