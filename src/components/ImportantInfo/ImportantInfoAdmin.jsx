@@ -9,6 +9,7 @@ import {
   Card,
   CardActions,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   MenuItem,
@@ -292,10 +294,50 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [draftStatus, setDraftStatus] = useState("idle"); // idle, saving, saved
   const [draftSaveTimeout, setDraftSaveTimeout] = useState(null);
   const [frozenOrder, setFrozenOrder] = useState(null); // Freeze list order during edit
+  const [selectedIds, setSelectedIds] = useState([]); // Bulk selection
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
   const showError = Boolean(error) && !loading;
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+        // Allow "/" to focus search even in inputs
+        if (e.key === "/" && e.target.tagName !== "INPUT") {
+          e.preventDefault();
+          document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+        }
+        return;
+      }
+
+      // N = New Item
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        openCreate();
+      }
+
+      // / = Focus Search
+      if (e.key === "/") {
+        e.preventDefault();
+        document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+      }
+
+      // Escape = Clear selection or close dialog
+      if (e.key === "Escape") {
+        if (selectedIds.length > 0) {
+          setSelectedIds([]);
+        } else if (dialogOpen) {
+          closeDialog();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [openCreate, selectedIds.length, dialogOpen, closeDialog]);
   const showEmpty = !showError && !loading && !hasRows;
 
   const categories = useMemo(() => {
@@ -824,6 +866,64 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     saveSearchHistory(query);
   }, [query]);
 
+  const handleSelectAll = useCallback((event) => {
+    if (event.target.checked) {
+      setSelectedIds(filteredRows.map(r => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  }, [filteredRows]);
+
+  const handleSelectOne = useCallback((id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleBulkActivate = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await Promise.all(selectedIds.map(id =>
+        updateImportantInfo(id, { isActive: true })
+      ));
+      show(`Activated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "success");
+      setSelectedIds([]);
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleBulkActivate" });
+      show("Failed to activate items.", "error");
+    }
+  }, [selectedIds, show]);
+
+  const handleBulkDeactivate = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await Promise.all(selectedIds.map(id =>
+        updateImportantInfo(id, { isActive: false })
+      ));
+      show(`Deactivated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "success");
+      setSelectedIds([]);
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleBulkDeactivate" });
+      show("Failed to deactivate items.", "error");
+    }
+  }, [selectedIds, show]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(`Delete ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await Promise.all(selectedIds.map(id => deleteImportantInfo(id)));
+      show(`Deleted ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "info");
+      setSelectedIds([]);
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleBulkDelete" });
+      show("Failed to delete items.", "error");
+    }
+  }, [selectedIds, show]);
+
   return (
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
@@ -943,6 +1043,57 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         </FormControl>
       </Stack>
 
+      {selectedIds.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{
+            p: 1.5,
+            bgcolor: (t) => t.palette.background.paper,
+            border: 1,
+            borderColor: (t) => t.palette.primary.main,
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {selectedIds.length} selected
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleBulkActivate}
+            sx={{ textTransform: "none" }}
+          >
+            Activate
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleBulkDeactivate}
+            sx={{ textTransform: "none" }}
+          >
+            Deactivate
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            onClick={handleBulkDelete}
+            sx={{ textTransform: "none" }}
+          >
+            Delete
+          </Button>
+          <Button
+            size="small"
+            onClick={() => setSelectedIds([])}
+            sx={{ textTransform: "none", ml: "auto" }}
+          >
+            Clear Selection
+          </Button>
+        </Stack>
+      )}
+
       {showError ? (
         <Box sx={{ p: 2 }}>
           <Stack
@@ -1013,6 +1164,20 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
       {!showError && !showEmpty ? (
         <Stack spacing={1.25} sx={{ width: "100%" }}>
+          {filteredRows.length > 0 && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectedIds.length === filteredRows.length && filteredRows.length > 0}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredRows.length}
+                  onChange={handleSelectAll}
+                />
+              }
+              label={`Select All (${filteredRows.length})`}
+              sx={{ ml: 0.5 }}
+            />
+          )}
+
           {loading && !filteredRows.length ? (
             <Typography variant="body2" sx={{ opacity: 0.7 }}>
               Loading important info…
@@ -1056,33 +1221,46 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 <CardContent sx={{ pb: 1.5 }}>
                   <Stack spacing={1.25}>
                     <Stack
-                      direction={{ xs: "column", sm: "row" }}
+                      direction="row"
                       spacing={1}
-                      justifyContent="space-between"
-                      alignItems={{ xs: "flex-start", sm: "center" }}
+                      alignItems="flex-start"
                     >
-                      <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ fontWeight: 700 }}
-                          noWrap
-                        >
-                          {row?.title || "Untitled"}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                          Updated {updatedLabel}
-                        </Typography>
-                      </Stack>
-                      <Chip
-                        size="small"
-                        label={categoryLabel}
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: getCategoryColor(categoryLabel).bg,
-                          color: getCategoryColor(categoryLabel).text,
-                          border: `1px solid ${getCategoryColor(categoryLabel).border}`,
-                        }}
+                      <Checkbox
+                        checked={selectedIds.includes(id)}
+                        onChange={() => handleSelectOne(id)}
+                        disabled={disabled}
+                        sx={{ mt: -0.5 }}
                       />
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        sx={{ flex: 1 }}
+                      >
+                        <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 700 }}
+                            noWrap
+                          >
+                            {row?.title || "Untitled"}
+                          </Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                            Updated {updatedLabel}
+                          </Typography>
+                        </Stack>
+                        <Chip
+                          size="small"
+                          label={categoryLabel}
+                          sx={{
+                            fontWeight: 600,
+                            bgcolor: getCategoryColor(categoryLabel).bg,
+                            color: getCategoryColor(categoryLabel).text,
+                            border: `1px solid ${getCategoryColor(categoryLabel).border}`,
+                          }}
+                        />
+                      </Stack>
                     </Stack>
 
                     {row?.blurb ? (
