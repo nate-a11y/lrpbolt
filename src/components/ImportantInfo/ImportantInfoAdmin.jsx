@@ -218,6 +218,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [selectedItemForSms, setSelectedItemForSms] = useState(null);
   const [draftStatus, setDraftStatus] = useState("idle"); // idle, saving, saved
   const [draftSaveTimeout, setDraftSaveTimeout] = useState(null);
+  const [frozenOrder, setFrozenOrder] = useState(null); // Freeze list order during edit
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -263,22 +264,40 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       return matchesQuery(row, q);
     });
 
-    filtered.sort((a, b) => {
-      if (sortBy === "title") {
-        return ensureString(a?.title).localeCompare(ensureString(b?.title));
-      }
-      if (sortBy === "category") {
-        const aLabel = ensureString(a?.category) || "General";
-        const bLabel = ensureString(b?.category) || "General";
-        return aLabel.localeCompare(bLabel);
-      }
-      const aTs = getUpdatedAtValue(a?.updatedAt);
-      const bTs = getUpdatedAtValue(b?.updatedAt);
-      return bTs - aTs;
-    });
+    // If we have a frozen order (during edit), maintain that order
+    if (frozenOrder && frozenOrder.length > 0) {
+      // Sort by frozen order, putting new items at the end
+      filtered.sort((a, b) => {
+        const aIndex = frozenOrder.indexOf(a.id);
+        const bIndex = frozenOrder.indexOf(b.id);
+        // If both in frozen order, maintain that order
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        // If only a is in frozen order, a comes first
+        if (aIndex !== -1) return -1;
+        // If only b is in frozen order, b comes first
+        if (bIndex !== -1) return 1;
+        // Neither in frozen order, use normal sorting
+        return 0;
+      });
+    } else {
+      // Normal sorting
+      filtered.sort((a, b) => {
+        if (sortBy === "title") {
+          return ensureString(a?.title).localeCompare(ensureString(b?.title));
+        }
+        if (sortBy === "category") {
+          const aLabel = ensureString(a?.category) || "General";
+          const bLabel = ensureString(b?.category) || "General";
+          return aLabel.localeCompare(bLabel);
+        }
+        const aTs = getUpdatedAtValue(a?.updatedAt);
+        const bTs = getUpdatedAtValue(b?.updatedAt);
+        return bTs - aTs;
+      });
+    }
 
     return filtered;
-  }, [rows, debouncedQuery, categoryFilter, sortBy]);
+  }, [rows, debouncedQuery, categoryFilter, sortBy, frozenOrder]);
 
   const openCreate = useCallback(() => {
     setDialogMode("create");
@@ -360,8 +379,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       isActive: row.isActive !== false,
     });
     setPendingFiles([]);
+    // Freeze the current list order to prevent jumping during auto-save
+    setFrozenOrder(filteredRows.map(r => r.id));
     setDialogOpen(true);
-  }, []);
+  }, [filteredRows]);
 
   const closeDialog = useCallback(() => {
     if (saving || uploading) return;
@@ -375,6 +396,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       clearTimeout(draftSaveTimeout);
       setDraftSaveTimeout(null);
     }
+    // Unfreeze list order to resume normal sorting
+    setFrozenOrder(null);
   }, [saving, uploading, dialogMode, formValues, activeId, draftSaveTimeout]);
 
   const handleFieldChange = useCallback((field, value) => {
@@ -392,15 +415,14 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       // Debounce the save
       const timeout = setTimeout(async () => {
         if (dialogMode === "edit" && activeId) {
-          // EDIT MODE: Actually save to Firestore (without updating timestamp)
+          // EDIT MODE: Actually save to Firestore (updates timestamp but list stays frozen)
           try {
             const payload = buildPayload(updated);
             // Preserve existing images
             if (formValues.images) {
               payload.images = formValues.images;
             }
-            // Skip timestamp update for auto-saves to prevent list reordering
-            await updateImportantInfo(activeId, payload, { skipTimestamp: true });
+            await updateImportantInfo(activeId, payload);
             setDraftStatus("saved");
             // Reset to idle after 2 seconds
             setTimeout(() => setDraftStatus("idle"), 2000);
@@ -457,8 +479,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         const uploadedImages = await uploadMultipleImages(activeId, files);
         const updatedImages = [...(formValues.images || []), ...uploadedImages];
 
-        // Update Firestore immediately (skip timestamp to prevent list reordering)
-        await updateImportantInfo(activeId, { images: updatedImages }, { skipTimestamp: true });
+        // Update Firestore immediately (updates timestamp but list stays frozen)
+        await updateImportantInfo(activeId, { images: updatedImages });
 
         // Update form state
         setFormValues((prev) => ({
@@ -513,8 +535,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           if (image.storagePath) {
             await deleteImportantInfoImage(image.storagePath);
           }
-          // Update Firestore with new images array (skip timestamp to prevent list reordering)
-          await updateImportantInfo(activeId, { images: updatedImages }, { skipTimestamp: true });
+          // Update Firestore with new images array (updates timestamp but list stays frozen)
+          await updateImportantInfo(activeId, { images: updatedImages });
           setDraftStatus("saved");
           setTimeout(() => setDraftStatus("idle"), 2000);
           show("Image removed.", "success");
@@ -591,6 +613,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         setActiveId(null);
         setPendingFiles([]);
         setDraftStatus("idle");
+        // Unfreeze list order to allow item to move to top
+        setFrozenOrder(null);
       } catch (err) {
         logError(err, { where: "ImportantInfoAdmin.handleSubmit", activeId });
         show("Failed to save. Please try again.", "error");
