@@ -390,14 +390,34 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       setDraftStatus("saving");
 
       // Debounce the save
-      const timeout = setTimeout(() => {
-        const success = saveAdminDraft(updated, dialogMode, activeId);
-        if (success) {
-          setDraftStatus("saved");
-          // Reset to idle after 2 seconds
-          setTimeout(() => setDraftStatus("idle"), 2000);
+      const timeout = setTimeout(async () => {
+        if (dialogMode === "edit" && activeId) {
+          // EDIT MODE: Actually save to Firestore
+          try {
+            const payload = buildPayload(updated);
+            // Preserve existing images
+            if (formValues.images) {
+              payload.images = formValues.images;
+            }
+            await updateImportantInfo(activeId, payload);
+            setDraftStatus("saved");
+            // Reset to idle after 2 seconds
+            setTimeout(() => setDraftStatus("idle"), 2000);
+          } catch (err) {
+            logError(err, { where: "ImportantInfoAdmin.handleFieldChange.autoSave", activeId });
+            setDraftStatus("idle");
+            show("Auto-save failed. Changes not saved.", "error");
+          }
         } else {
-          setDraftStatus("idle");
+          // CREATE MODE: Save to localStorage as draft
+          const success = saveAdminDraft(updated, dialogMode, activeId);
+          if (success) {
+            setDraftStatus("saved");
+            // Reset to idle after 2 seconds
+            setTimeout(() => setDraftStatus("idle"), 2000);
+          } else {
+            setDraftStatus("idle");
+          }
         }
       }, 800); // 800ms debounce
 
@@ -405,7 +425,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
       return updated;
     });
-  }, [dialogMode, activeId, draftSaveTimeout]);
+  }, [dialogMode, activeId, draftSaveTimeout, formValues.images, show]);
 
   const handleResetDraft = useCallback(() => {
     // eslint-disable-next-line no-alert
@@ -421,14 +441,48 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     show("Draft cleared.", "info");
   }, [dialogMode, activeId, show]);
 
-  const handleFileSelect = useCallback((event) => {
+  const handleFileSelect = useCallback(async (event) => {
     const files = Array.from(event.target.files || []);
-    if (files.length > 0) {
-      setPendingFiles((prev) => [...prev, ...files]);
-    }
+    if (files.length === 0) return;
+
     // Reset the input so the same file can be selected again
     event.target.value = "";
-  }, []);
+
+    // EDIT MODE: Upload and save immediately
+    if (dialogMode === "edit" && activeId) {
+      setUploading(true);
+      setDraftStatus("saving");
+      try {
+        const uploadedImages = await uploadMultipleImages(activeId, files);
+        const updatedImages = [...(formValues.images || []), ...uploadedImages];
+
+        // Update Firestore immediately
+        await updateImportantInfo(activeId, { images: updatedImages });
+
+        // Update form state
+        setFormValues((prev) => ({
+          ...prev,
+          images: updatedImages,
+        }));
+
+        setDraftStatus("saved");
+        setTimeout(() => setDraftStatus("idle"), 2000);
+        show(`${files.length} image${files.length > 1 ? "s" : ""} uploaded.`, "success");
+      } catch (err) {
+        logError(err, {
+          where: "ImportantInfoAdmin.handleFileSelect.autoUpload",
+          itemId: activeId,
+        });
+        setDraftStatus("idle");
+        show("Failed to upload images.", "error");
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      // CREATE MODE: Add to pending files
+      setPendingFiles((prev) => [...prev, ...files]);
+    }
+  }, [dialogMode, activeId, formValues.images, show]);
 
   const handleRemovePendingFile = useCallback((index) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== index));
@@ -443,27 +497,39 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       );
       if (!confirmed) return;
 
+      setDraftStatus("saving");
       try {
-        // Remove from form state
+        const updatedImages = (formValues.images || []).filter((img) => img.id !== image.id);
+
+        // Update form state
         setFormValues((prev) => ({
           ...prev,
-          images: (prev.images || []).filter((img) => img.id !== image.id),
+          images: updatedImages,
         }));
 
-        // If editing an existing item, also delete from storage
-        if (activeId && image.storagePath) {
-          await deleteImportantInfoImage(image.storagePath);
+        // If editing an existing item, delete from storage and update Firestore
+        if (dialogMode === "edit" && activeId) {
+          if (image.storagePath) {
+            await deleteImportantInfoImage(image.storagePath);
+          }
+          // Update Firestore with new images array
+          await updateImportantInfo(activeId, { images: updatedImages });
+          setDraftStatus("saved");
+          setTimeout(() => setDraftStatus("idle"), 2000);
           show("Image removed.", "success");
+        } else {
+          setDraftStatus("idle");
         }
       } catch (err) {
         logError(err, {
           where: "ImportantInfoAdmin.handleRemoveExistingImage",
           imageId: image.id,
         });
+        setDraftStatus("idle");
         show("Failed to remove image.", "error");
       }
     },
-    [activeId, show],
+    [activeId, dialogMode, formValues.images, show],
   );
 
   const handleSubmit = useCallback(
@@ -1059,14 +1125,14 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                   <>
                     <CircularProgress size={16} sx={{ color: (t) => t.palette.text.secondary }} />
                     <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      Saving draft...
+                      {dialogMode === "edit" ? "Auto-saving..." : "Saving draft..."}
                     </Typography>
                   </>
                 ) : draftStatus === "saved" ? (
                   <>
                     <CheckCircleIcon sx={{ fontSize: 16, color: (t) => t.palette.primary.main }} />
                     <Typography variant="caption" sx={{ color: (t) => t.palette.primary.main }}>
-                      Draft saved
+                      {dialogMode === "edit" ? "Auto-saved" : "Draft saved"}
                     </Typography>
                   </>
                 ) : null}
