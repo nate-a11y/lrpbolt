@@ -392,14 +392,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       // Debounce the save
       const timeout = setTimeout(async () => {
         if (dialogMode === "edit" && activeId) {
-          // EDIT MODE: Actually save to Firestore
+          // EDIT MODE: Actually save to Firestore (without updating timestamp)
           try {
             const payload = buildPayload(updated);
             // Preserve existing images
             if (formValues.images) {
               payload.images = formValues.images;
             }
-            await updateImportantInfo(activeId, payload);
+            // Skip timestamp update for auto-saves to prevent list reordering
+            await updateImportantInfo(activeId, payload, { skipTimestamp: true });
             setDraftStatus("saved");
             // Reset to idle after 2 seconds
             setTimeout(() => setDraftStatus("idle"), 2000);
@@ -456,8 +457,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         const uploadedImages = await uploadMultipleImages(activeId, files);
         const updatedImages = [...(formValues.images || []), ...uploadedImages];
 
-        // Update Firestore immediately
-        await updateImportantInfo(activeId, { images: updatedImages });
+        // Update Firestore immediately (skip timestamp to prevent list reordering)
+        await updateImportantInfo(activeId, { images: updatedImages }, { skipTimestamp: true });
 
         // Update form state
         setFormValues((prev) => ({
@@ -512,8 +513,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           if (image.storagePath) {
             await deleteImportantInfoImage(image.storagePath);
           }
-          // Update Firestore with new images array
-          await updateImportantInfo(activeId, { images: updatedImages });
+          // Update Firestore with new images array (skip timestamp to prevent list reordering)
+          await updateImportantInfo(activeId, { images: updatedImages }, { skipTimestamp: true });
           setDraftStatus("saved");
           setTimeout(() => setDraftStatus("idle"), 2000);
           show("Image removed.", "success");

@@ -148,19 +148,23 @@ export async function createImportantInfo(payload) {
   }
 }
 
-export async function updateImportantInfo(id, changes) {
+export async function updateImportantInfo(id, changes, options = {}) {
   if (!id) {
     throw new AppError("Missing important info id", {
       code: "importantinfo_missing_id",
     });
   }
   const patch = sanitizePayload(changes);
+  const { skipTimestamp = false } = options;
+
   try {
     await withExponentialBackoff(async () => {
-      await updateDoc(doc(db, COLLECTION, id), {
-        ...patch,
-        updatedAt: serverTimestamp(),
-      });
+      const updateData = { ...patch };
+      // Only update timestamp if not explicitly skipped (for auto-saves)
+      if (!skipTimestamp) {
+        updateData.updatedAt = serverTimestamp();
+      }
+      await updateDoc(doc(db, COLLECTION, id), updateData);
     });
   } catch (error) {
     const appErr =
