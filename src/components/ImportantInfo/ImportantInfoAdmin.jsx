@@ -9,6 +9,7 @@ import {
   Card,
   CardActions,
   CardContent,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   MenuItem,
@@ -36,6 +38,8 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
@@ -65,6 +69,18 @@ const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
 // Draft persistence key for admin form
 const ADMIN_DRAFT_KEY = "important_info_admin_draft";
+
+// Search history key
+const SEARCH_HISTORY_KEY = "important_info_search_history";
+const MAX_SEARCH_HISTORY = 5;
+
+// Category colors for visual distinction
+const CATEGORY_COLORS = {
+  "Promotions": { bg: "#1a3d1a", border: "#4caf50", text: "#81c784" },
+  "Partners": { bg: "#1a1a3d", border: "#3f51b5", text: "#9fa8da" },
+  "Referrals": { bg: "#3d1a1a", border: "#f44336", text: "#e57373" },
+  "General": { bg: "#2a2a2a", border: "#757575", text: "#bdbdbd" },
+};
 
 // Load draft from localStorage
 function loadAdminDraft() {
@@ -128,6 +144,65 @@ function clearAdminDraft(mode = "create", itemId = null) {
   } catch {
     // Ignore errors
   }
+}
+
+// Search history helpers
+function loadSearchHistory() {
+  try {
+    const saved = localStorage.getItem(SEARCH_HISTORY_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSearchHistory(query) {
+  if (!query || !query.trim()) return;
+  try {
+    const history = loadSearchHistory();
+    const trimmed = query.trim();
+    // Remove if already exists
+    const filtered = history.filter(h => h !== trimmed);
+    // Add to front
+    const updated = [trimmed, ...filtered].slice(0, MAX_SEARCH_HISTORY);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore errors
+  }
+}
+
+// CSV export helper
+function exportToCSV(rows, filename = "important-info.csv") {
+  if (!rows || rows.length === 0) return;
+
+  const headers = ["Title", "Category", "Blurb", "Details", "Phone", "URL", "SMS Template", "Active", "Updated"];
+  const csvRows = [
+    headers.join(","),
+    ...rows.map(row => [
+      `"${(row.title || "").replace(/"/g, '""')}"`,
+      `"${(row.category || "").replace(/"/g, '""')}"`,
+      `"${(row.blurb || "").replace(/"/g, '""')}"`,
+      `"${(row.details || "").replace(/"/g, '""')}"`,
+      `"${(row.phone || "").replace(/"/g, '""')}"`,
+      `"${(row.url || "").replace(/"/g, '""')}"`,
+      `"${(row.smsTemplate || "").replace(/"/g, '""')}"`,
+      row.isActive !== false ? "Yes" : "No",
+      row.updatedAt ? new Date(row.updatedAt.toMillis ? row.updatedAt.toMillis() : row.updatedAt).toLocaleString() : "",
+    ].join(","))
+  ];
+
+  const csvContent = csvRows.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+// Get category color
+function getCategoryColor(category) {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS["General"];
 }
 
 function ensureString(value) {
@@ -218,10 +293,51 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [selectedItemForSms, setSelectedItemForSms] = useState(null);
   const [draftStatus, setDraftStatus] = useState("idle"); // idle, saving, saved
   const [draftSaveTimeout, setDraftSaveTimeout] = useState(null);
+  const [frozenOrder, setFrozenOrder] = useState(null); // Freeze list order during edit
+  const [selectedIds, setSelectedIds] = useState([]); // Bulk selection
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
   const showError = Boolean(error) && !loading;
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+        // Allow "/" to focus search even in inputs
+        if (e.key === "/" && e.target.tagName !== "INPUT") {
+          e.preventDefault();
+          document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+        }
+        return;
+      }
+
+      // N = New Item
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        openCreate();
+      }
+
+      // / = Focus Search
+      if (e.key === "/") {
+        e.preventDefault();
+        document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+      }
+
+      // Escape = Clear selection or close dialog
+      if (e.key === "Escape") {
+        if (selectedIds.length > 0) {
+          setSelectedIds([]);
+        } else if (dialogOpen) {
+          closeDialog();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [openCreate, selectedIds.length, dialogOpen, closeDialog]);
   const showEmpty = !showError && !loading && !hasRows;
 
   const categories = useMemo(() => {
@@ -263,22 +379,40 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       return matchesQuery(row, q);
     });
 
-    filtered.sort((a, b) => {
-      if (sortBy === "title") {
-        return ensureString(a?.title).localeCompare(ensureString(b?.title));
-      }
-      if (sortBy === "category") {
-        const aLabel = ensureString(a?.category) || "General";
-        const bLabel = ensureString(b?.category) || "General";
-        return aLabel.localeCompare(bLabel);
-      }
-      const aTs = getUpdatedAtValue(a?.updatedAt);
-      const bTs = getUpdatedAtValue(b?.updatedAt);
-      return bTs - aTs;
-    });
+    // If we have a frozen order (during edit), maintain that order
+    if (frozenOrder && frozenOrder.length > 0) {
+      // Sort by frozen order, putting new items at the end
+      filtered.sort((a, b) => {
+        const aIndex = frozenOrder.indexOf(a.id);
+        const bIndex = frozenOrder.indexOf(b.id);
+        // If both in frozen order, maintain that order
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        // If only a is in frozen order, a comes first
+        if (aIndex !== -1) return -1;
+        // If only b is in frozen order, b comes first
+        if (bIndex !== -1) return 1;
+        // Neither in frozen order, use normal sorting
+        return 0;
+      });
+    } else {
+      // Normal sorting
+      filtered.sort((a, b) => {
+        if (sortBy === "title") {
+          return ensureString(a?.title).localeCompare(ensureString(b?.title));
+        }
+        if (sortBy === "category") {
+          const aLabel = ensureString(a?.category) || "General";
+          const bLabel = ensureString(b?.category) || "General";
+          return aLabel.localeCompare(bLabel);
+        }
+        const aTs = getUpdatedAtValue(a?.updatedAt);
+        const bTs = getUpdatedAtValue(b?.updatedAt);
+        return bTs - aTs;
+      });
+    }
 
     return filtered;
-  }, [rows, debouncedQuery, categoryFilter, sortBy]);
+  }, [rows, debouncedQuery, categoryFilter, sortBy, frozenOrder]);
 
   const openCreate = useCallback(() => {
     setDialogMode("create");
@@ -360,8 +494,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       isActive: row.isActive !== false,
     });
     setPendingFiles([]);
+    // Freeze the current list order to prevent jumping during auto-save
+    setFrozenOrder(filteredRows.map(r => r.id));
     setDialogOpen(true);
-  }, []);
+  }, [filteredRows]);
 
   const closeDialog = useCallback(() => {
     if (saving || uploading) return;
@@ -375,6 +511,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       clearTimeout(draftSaveTimeout);
       setDraftSaveTimeout(null);
     }
+    // Unfreeze list order to resume normal sorting
+    setFrozenOrder(null);
   }, [saving, uploading, dialogMode, formValues, activeId, draftSaveTimeout]);
 
   const handleFieldChange = useCallback((field, value) => {
@@ -392,7 +530,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       // Debounce the save
       const timeout = setTimeout(async () => {
         if (dialogMode === "edit" && activeId) {
-          // EDIT MODE: Actually save to Firestore
+          // EDIT MODE: Actually save to Firestore (updates timestamp but list stays frozen)
           try {
             const payload = buildPayload(updated);
             // Preserve existing images
@@ -456,7 +594,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         const uploadedImages = await uploadMultipleImages(activeId, files);
         const updatedImages = [...(formValues.images || []), ...uploadedImages];
 
-        // Update Firestore immediately
+        // Update Firestore immediately (updates timestamp but list stays frozen)
         await updateImportantInfo(activeId, { images: updatedImages });
 
         // Update form state
@@ -512,7 +650,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           if (image.storagePath) {
             await deleteImportantInfoImage(image.storagePath);
           }
-          // Update Firestore with new images array
+          // Update Firestore with new images array (updates timestamp but list stays frozen)
           await updateImportantInfo(activeId, { images: updatedImages });
           setDraftStatus("saved");
           setTimeout(() => setDraftStatus("idle"), 2000);
@@ -590,6 +728,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         setActiveId(null);
         setPendingFiles([]);
         setDraftStatus("idle");
+        // Unfreeze list order to allow item to move to top
+        setFrozenOrder(null);
       } catch (err) {
         logError(err, { where: "ImportantInfoAdmin.handleSubmit", activeId });
         show("Failed to save. Please try again.", "error");
@@ -686,6 +826,104 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     [setRowPending, show],
   );
 
+  const handleDuplicate = useCallback(
+    async (row) => {
+      if (!row) return;
+      setRowPending(row.id, true);
+      try {
+        const duplicateData = {
+          title: `${row.title} (Copy)`,
+          blurb: row.blurb,
+          details: row.details,
+          category: row.category,
+          phone: row.phone,
+          url: row.url,
+          smsTemplate: row.smsTemplate,
+          isActive: false, // Start as inactive
+          images: row.images || [], // Copy images array
+        };
+        await createImportantInfo(duplicateData);
+        show(`Duplicated "${row.title}".`, "success");
+      } catch (err) {
+        logError(err, {
+          where: "ImportantInfoAdmin.handleDuplicate",
+          id: row.id,
+        });
+        show("Failed to duplicate item.", "error");
+      } finally {
+        setRowPending(row.id, false);
+      }
+    },
+    [setRowPending, show],
+  );
+
+  const handleExportCSV = useCallback(() => {
+    exportToCSV(filteredRows);
+    show(`Exported ${filteredRows.length} item${filteredRows.length !== 1 ? "s" : ""} to CSV.`, "success");
+  }, [filteredRows, show]);
+
+  const handleSearchSubmit = useCallback(() => {
+    saveSearchHistory(query);
+  }, [query]);
+
+  const handleSelectAll = useCallback((event) => {
+    if (event.target.checked) {
+      setSelectedIds(filteredRows.map(r => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  }, [filteredRows]);
+
+  const handleSelectOne = useCallback((id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleBulkActivate = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await Promise.all(selectedIds.map(id =>
+        updateImportantInfo(id, { isActive: true })
+      ));
+      show(`Activated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "success");
+      setSelectedIds([]);
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleBulkActivate" });
+      show("Failed to activate items.", "error");
+    }
+  }, [selectedIds, show]);
+
+  const handleBulkDeactivate = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await Promise.all(selectedIds.map(id =>
+        updateImportantInfo(id, { isActive: false })
+      ));
+      show(`Deactivated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "success");
+      setSelectedIds([]);
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleBulkDeactivate" });
+      show("Failed to deactivate items.", "error");
+    }
+  }, [selectedIds, show]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(`Delete ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await Promise.all(selectedIds.map(id => deleteImportantInfo(id)));
+      show(`Deleted ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "info");
+      setSelectedIds([]);
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleBulkDelete" });
+      show("Failed to delete items.", "error");
+    }
+  }, [selectedIds, show]);
+
   return (
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
@@ -732,6 +970,18 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           >
             SMS Health
           </LoadingButtonLite>
+          <Button
+            variant="outlined"
+            onClick={handleExportCSV}
+            startIcon={<FileDownloadIcon />}
+            disabled={!filteredRows.length}
+            sx={{
+              borderColor: (t) => t.palette.primary.main,
+              color: "#b7ffb7",
+            }}
+          >
+            Export CSV
+          </Button>
         </Stack>
       </Stack>
 
@@ -792,6 +1042,57 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           </Select>
         </FormControl>
       </Stack>
+
+      {selectedIds.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{
+            p: 1.5,
+            bgcolor: (t) => t.palette.background.paper,
+            border: 1,
+            borderColor: (t) => t.palette.primary.main,
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {selectedIds.length} selected
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleBulkActivate}
+            sx={{ textTransform: "none" }}
+          >
+            Activate
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleBulkDeactivate}
+            sx={{ textTransform: "none" }}
+          >
+            Deactivate
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            onClick={handleBulkDelete}
+            sx={{ textTransform: "none" }}
+          >
+            Delete
+          </Button>
+          <Button
+            size="small"
+            onClick={() => setSelectedIds([])}
+            sx={{ textTransform: "none", ml: "auto" }}
+          >
+            Clear Selection
+          </Button>
+        </Stack>
+      )}
 
       {showError ? (
         <Box sx={{ p: 2 }}>
@@ -863,6 +1164,20 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
       {!showError && !showEmpty ? (
         <Stack spacing={1.25} sx={{ width: "100%" }}>
+          {filteredRows.length > 0 && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectedIds.length === filteredRows.length && filteredRows.length > 0}
+                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredRows.length}
+                  onChange={handleSelectAll}
+                />
+              }
+              label={`Select All (${filteredRows.length})`}
+              sx={{ ml: 0.5 }}
+            />
+          )}
+
           {loading && !filteredRows.length ? (
             <Typography variant="body2" sx={{ opacity: 0.7 }}>
               Loading important info…
@@ -906,29 +1221,46 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 <CardContent sx={{ pb: 1.5 }}>
                   <Stack spacing={1.25}>
                     <Stack
-                      direction={{ xs: "column", sm: "row" }}
+                      direction="row"
                       spacing={1}
-                      justifyContent="space-between"
-                      alignItems={{ xs: "flex-start", sm: "center" }}
+                      alignItems="flex-start"
                     >
-                      <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ fontWeight: 700 }}
-                          noWrap
-                        >
-                          {row?.title || "Untitled"}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                          Updated {updatedLabel}
-                        </Typography>
-                      </Stack>
-                      <Chip
-                        size="small"
-                        label={categoryLabel}
-                        color="primary"
-                        sx={{ fontWeight: 600 }}
+                      <Checkbox
+                        checked={selectedIds.includes(id)}
+                        onChange={() => handleSelectOne(id)}
+                        disabled={disabled}
+                        sx={{ mt: -0.5 }}
                       />
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        sx={{ flex: 1 }}
+                      >
+                        <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 700 }}
+                            noWrap
+                          >
+                            {row?.title || "Untitled"}
+                          </Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                            Updated {updatedLabel}
+                          </Typography>
+                        </Stack>
+                        <Chip
+                          size="small"
+                          label={categoryLabel}
+                          sx={{
+                            fontWeight: 600,
+                            bgcolor: getCategoryColor(categoryLabel).bg,
+                            color: getCategoryColor(categoryLabel).text,
+                            border: `1px solid ${getCategoryColor(categoryLabel).border}`,
+                          }}
+                        />
+                      </Stack>
                     </Stack>
 
                     {row?.blurb ? (
@@ -1076,6 +1408,19 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                           aria-label={`Edit ${row?.title || "important info"}`}
                         >
                           <EditIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Duplicate">
+                      <span>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDuplicate(row)}
+                          disabled={disabled}
+                          sx={{ color: (t) => t.palette.info.main }}
+                          aria-label={`Duplicate ${row?.title || "important info"}`}
+                        >
+                          <ContentCopyIcon fontSize="small" />
                         </IconButton>
                       </span>
                     </Tooltip>
