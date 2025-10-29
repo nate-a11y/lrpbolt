@@ -32,7 +32,6 @@ const SMS_FOOTER =
 
 // MMS attachment size limit (conservative estimate: 5MB total for all attachments)
 const MMS_SIZE_LIMIT_MB = 5;
-const MMS_SIZE_LIMIT_BYTES = MMS_SIZE_LIMIT_MB * 1024 * 1024;
 
 // Load draft from localStorage
 function loadDraft() {
