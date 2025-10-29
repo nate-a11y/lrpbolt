@@ -56,6 +56,7 @@ import {
 } from "@/constants/importantInfo.js";
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
+import SmsSendDialog from "./SmsSendDialog.jsx";
 
 const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
@@ -200,6 +201,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [localLastSmsError, setLocalLastSmsError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [pendingFiles, setPendingFiles] = useState([]);
+  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [selectedItemForSms, setSelectedItemForSms] = useState(null);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -303,6 +306,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     if (healthLoading) return;
     setHealthDialogOpen(false);
   }, [healthLoading]);
+
+  const handleOpenSmsDialog = useCallback((item) => {
+    if (!item) return;
+    setSelectedItemForSms(item);
+    setSmsDialogOpen(true);
+  }, []);
+
+  const handleCloseSmsDialog = useCallback(() => {
+    setSmsDialogOpen(false);
+    setSelectedItemForSms(null);
+  }, []);
 
   const handleImportClose = useCallback(
     (result) => {
@@ -915,7 +929,22 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                       {row?.isActive !== false ? "Active" : "Inactive"}
                     </Typography>
                   </Stack>
-                  <Stack direction="row" spacing={0.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleOpenSmsDialog(row)}
+                      disabled={disabled}
+                      sx={{
+                        borderColor: (t) => t.palette.primary.main,
+                        color: "#b7ffb7",
+                        fontWeight: 600,
+                        textTransform: "none",
+                      }}
+                      aria-label={`Test SMS for ${row?.title || "item"}`}
+                    >
+                      Test SMS
+                    </Button>
                     <Tooltip title="Edit">
                       <span>
                         <IconButton
@@ -1365,6 +1394,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           </LoadingButtonLite>
         </DialogActions>
       </Dialog>
+
+      <SmsSendDialog
+        open={smsDialogOpen}
+        onClose={handleCloseSmsDialog}
+        item={selectedItemForSms}
+      />
     </Box>
   );
 }
