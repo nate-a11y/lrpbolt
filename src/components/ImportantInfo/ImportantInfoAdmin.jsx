@@ -34,6 +34,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -81,37 +84,47 @@ function loadAdminDraft() {
 }
 
 // Save draft to localStorage
-function saveAdminDraft(formValues, mode) {
+function saveAdminDraft(formValues, mode, itemId = null) {
   try {
-    // Only save drafts, not when editing existing items
-    if (mode === "create") {
-      localStorage.setItem(
-        ADMIN_DRAFT_KEY,
-        JSON.stringify({
-          formValues: {
-            title: formValues.title,
-            blurb: formValues.blurb,
-            details: formValues.details,
-            category: formValues.category,
-            phone: formValues.phone,
-            url: formValues.url,
-            smsTemplate: formValues.smsTemplate,
-            isActive: formValues.isActive,
-            // Don't save images in draft
-          },
-          savedAt: Date.now(),
-        })
-      );
-    }
+    // Save for both create and edit modes
+    const key = mode === "edit" && itemId
+      ? `${ADMIN_DRAFT_KEY}_edit_${itemId}`
+      : ADMIN_DRAFT_KEY;
+
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        formValues: {
+          title: formValues.title,
+          blurb: formValues.blurb,
+          details: formValues.details,
+          category: formValues.category,
+          phone: formValues.phone,
+          url: formValues.url,
+          smsTemplate: formValues.smsTemplate,
+          isActive: formValues.isActive,
+          // Don't save images in draft
+        },
+        savedAt: Date.now(),
+        mode,
+        itemId,
+      })
+    );
+    return true;
   } catch {
     // Ignore localStorage errors
+    return false;
   }
 }
 
 // Clear draft from localStorage
-function clearAdminDraft() {
+function clearAdminDraft(mode = "create", itemId = null) {
   try {
-    localStorage.removeItem(ADMIN_DRAFT_KEY);
+    if (mode === "edit" && itemId) {
+      localStorage.removeItem(`${ADMIN_DRAFT_KEY}_edit_${itemId}`);
+    } else {
+      localStorage.removeItem(ADMIN_DRAFT_KEY);
+    }
   } catch {
     // Ignore errors
   }
@@ -203,6 +216,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [pendingFiles, setPendingFiles] = useState([]);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
   const [selectedItemForSms, setSelectedItemForSms] = useState(null);
+  const [draftStatus, setDraftStatus] = useState("idle"); // idle, saving, saved
+  const [draftSaveTimeout, setDraftSaveTimeout] = useState(null);
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -350,24 +365,61 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
   const closeDialog = useCallback(() => {
     if (saving || uploading) return;
-    // Save draft before closing (only for create mode)
-    if (dialogMode === "create") {
-      saveAdminDraft(formValues, dialogMode);
-    }
+    // Save draft before closing
+    saveAdminDraft(formValues, dialogMode, activeId);
     setDialogOpen(false);
     setActiveId(null);
-  }, [saving, uploading, dialogMode, formValues]);
+    setDraftStatus("idle");
+    // Clear any pending save timeout
+    if (draftSaveTimeout) {
+      clearTimeout(draftSaveTimeout);
+      setDraftSaveTimeout(null);
+    }
+  }, [saving, uploading, dialogMode, formValues, activeId, draftSaveTimeout]);
 
   const handleFieldChange = useCallback((field, value) => {
     setFormValues((prev) => {
       const updated = { ...prev, [field]: value };
-      // Auto-save draft as user types (only in create mode)
-      if (dialogMode === "create") {
-        saveAdminDraft(updated, dialogMode);
+
+      // Clear any existing timeout
+      if (draftSaveTimeout) {
+        clearTimeout(draftSaveTimeout);
       }
+
+      // Show "saving" status immediately
+      setDraftStatus("saving");
+
+      // Debounce the save
+      const timeout = setTimeout(() => {
+        const success = saveAdminDraft(updated, dialogMode, activeId);
+        if (success) {
+          setDraftStatus("saved");
+          // Reset to idle after 2 seconds
+          setTimeout(() => setDraftStatus("idle"), 2000);
+        } else {
+          setDraftStatus("idle");
+        }
+      }, 800); // 800ms debounce
+
+      setDraftSaveTimeout(timeout);
+
       return updated;
     });
-  }, [dialogMode]);
+  }, [dialogMode, activeId, draftSaveTimeout]);
+
+  const handleResetDraft = useCallback(() => {
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(
+      "Clear this draft? All unsaved changes will be lost."
+    );
+    if (!confirmed) return;
+
+    clearAdminDraft(dialogMode, activeId);
+    setFormValues(DEFAULT_FORM);
+    setPendingFiles([]);
+    setDraftStatus("idle");
+    show("Draft cleared.", "info");
+  }, [dialogMode, activeId, show]);
 
   const handleFileSelect = useCallback((event) => {
     const files = Array.from(event.target.files || []);
@@ -458,17 +510,20 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         if (dialogMode === "edit" && activeId) {
           await updateImportantInfo(activeId, finalPayload);
           show("Important info updated.", "success");
+          // Clear draft on successful edit
+          clearAdminDraft("edit", activeId);
         } else if (dialogMode === "create" && itemId) {
           // Update the newly created item with full payload including images
           await updateImportantInfo(itemId, finalPayload);
           show("Important info created.", "success");
           // Clear draft on successful creation
-          clearAdminDraft();
+          clearAdminDraft("create");
         }
 
         setDialogOpen(false);
         setActiveId(null);
         setPendingFiles([]);
+        setDraftStatus("idle");
       } catch (err) {
         logError(err, { where: "ImportantInfoAdmin.handleSubmit", activeId });
         show("Failed to save. Please try again.", "error");
@@ -992,9 +1047,32 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         sx={{ "& .MuiPaper-root": { bgcolor: "background.paper" } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          {dialogMode === "edit"
-            ? "Edit Important Info"
-            : "Create Important Info"}
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {dialogMode === "edit"
+                ? "Edit Important Info"
+                : "Create Important Info"}
+            </Typography>
+            {draftStatus !== "idle" && (
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                {draftStatus === "saving" ? (
+                  <>
+                    <CircularProgress size={16} sx={{ color: (t) => t.palette.text.secondary }} />
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      Saving draft...
+                    </Typography>
+                  </>
+                ) : draftStatus === "saved" ? (
+                  <>
+                    <CheckCircleIcon sx={{ fontSize: 16, color: (t) => t.palette.primary.main }} />
+                    <Typography variant="caption" sx={{ color: (t) => t.palette.primary.main }}>
+                      Draft saved
+                    </Typography>
+                  </>
+                ) : null}
+              </Stack>
+            )}
+          </Stack>
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1211,22 +1289,36 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             </Stack>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={closeDialog} disabled={saving}>
-            Cancel
-          </Button>
-          <LoadingButtonLite
-            type="submit"
-            loading={saving}
-            loadingText="Saving…"
-            variant="contained"
-            sx={{
-              bgcolor: (t) => t.palette.primary.main,
-              "&:hover": { bgcolor: "#3aa40f" },
-            }}
-          >
-            {dialogMode === "edit" ? "Save Changes" : "Create"}
-          </LoadingButtonLite>
+        <DialogActions sx={{ px: 3, py: 2, justifyContent: "space-between" }}>
+          <Box>
+            {dialogMode === "create" && (
+              <Button
+                onClick={handleResetDraft}
+                disabled={saving || uploading}
+                startIcon={<RestartAltIcon />}
+                sx={{ color: (t) => t.palette.text.secondary }}
+              >
+                Clear Draft
+              </Button>
+            )}
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Button onClick={closeDialog} disabled={saving || uploading}>
+              Cancel
+            </Button>
+            <LoadingButtonLite
+              type="submit"
+              loading={saving}
+              loadingText="Saving…"
+              variant="contained"
+              sx={{
+                bgcolor: (t) => t.palette.primary.main,
+                "&:hover": { bgcolor: "#3aa40f" },
+              }}
+            >
+              {dialogMode === "edit" ? "Save Changes" : "Create"}
+            </LoadingButtonLite>
+          </Stack>
         </DialogActions>
       </Dialog>
       <Dialog
