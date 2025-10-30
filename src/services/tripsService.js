@@ -17,6 +17,8 @@ import { db } from "./firebase.js"; // must point to your initialized Firestore
 const RIDES_COLLECTION = "rides";
 /** Optional shadow collection when OPEN: comment out if unused. */
 const LIVE_RIDES_COLLECTION = "liveRides";
+/** Optional shadow collection when CLAIMED: comment out if unused. */
+const CLAIMED_RIDES_COLLECTION = "claimedRides";
 const QUEUE_COLLECTION = COLLECTIONS.RIDE_QUEUE || "rideQueue";
 
 /** Get a ride by id (throws if missing). */
@@ -33,7 +35,9 @@ export async function getRideById(rideId) {
  * - rides/{rideId}.state = to
  * - rides/{rideId}.updatedAt = serverTimestamp()
  * - rides/{rideId}.updatedBy = userId (if provided)
- * Mirrors to LIVE_RIDES_COLLECTION when to===OPEN; removes when leaving OPEN.
+ * Shadow collections:
+ * - Mirrors to LIVE_RIDES_COLLECTION when to===OPEN; removes when leaving OPEN.
+ * - Mirrors to CLAIMED_RIDES_COLLECTION when to===CLAIMED; removes when leaving CLAIMED.
  */
 export async function transitionRideState(
   rideId,
@@ -53,6 +57,9 @@ export async function transitionRideState(
   const rideRef = doc(db, RIDES_COLLECTION, rideId);
   const liveRef = LIVE_RIDES_COLLECTION
     ? doc(db, LIVE_RIDES_COLLECTION, rideId)
+    : null;
+  const claimedRef = CLAIMED_RIDES_COLLECTION
+    ? doc(db, CLAIMED_RIDES_COLLECTION, rideId)
     : null;
   const queueId = providedQueueId || rideId;
   const queueRef =
@@ -145,6 +152,30 @@ export async function transitionRideState(
       }
     }
 
+    // Shadow handling for claimedRides
+    if (claimedRef) {
+      if (normalizedTo === TRIP_STATES.CLAIMED) {
+        const claimedPayload = {
+          ...next,
+          id: rideId,
+          rideId,
+          queueId,
+          createdAt:
+            current?.createdAt ||
+            current?.created_at ||
+            current?.created ||
+            timestamp,
+          updatedAt: timestamp,
+          state: TRIP_STATES.CLAIMED,
+          status: TRIP_STATES.CLAIMED,
+        };
+        tx.set(claimedRef, claimedPayload, { merge: true });
+      } else if (normalizedFrom === TRIP_STATES.CLAIMED) {
+        // Leaving CLAIMED removes shadow, if it exists
+        tx.delete(claimedRef);
+      }
+    }
+
     return { id: rideId, ...next };
   }).catch((err) => {
     logError(err, {
@@ -185,6 +216,9 @@ export async function driverClaimRide(
   const liveRef = LIVE_RIDES_COLLECTION
     ? doc(db, LIVE_RIDES_COLLECTION, rideId)
     : null;
+  const claimedRef = CLAIMED_RIDES_COLLECTION
+    ? doc(db, CLAIMED_RIDES_COLLECTION, rideId)
+    : null;
 
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(rideRef);
@@ -196,20 +230,35 @@ export async function driverClaimRide(
     if (data.claimedBy && data.claimedBy !== driverId)
       throw new Error("Already claimed by another driver");
 
+    const timestamp = serverTimestamp();
     const next = {
       ...data,
       state: TRIP_STATES.CLAIMED,
+      status: TRIP_STATES.CLAIMED,
       claimedBy: driverId,
-      claimedAt: serverTimestamp(),
+      claimedAt: timestamp,
       claimedVehicle: vehicleId,
       updatedBy: userId,
-      updatedAt: serverTimestamp(),
+      updatedAt: timestamp,
     };
 
     tx.set(rideRef, next, { merge: true });
 
     if (liveRef) {
       tx.delete(liveRef);
+    }
+
+    // Create shadow document in claimedRides collection
+    if (claimedRef) {
+      const claimedPayload = {
+        ...next,
+        id: rideId,
+        rideId,
+        createdAt:
+          data?.createdAt || data?.created_at || data?.created || timestamp,
+        updatedAt: timestamp,
+      };
+      tx.set(claimedRef, claimedPayload, { merge: true });
     }
 
     return { id: rideId, ...next };
@@ -229,6 +278,9 @@ export async function undoDriverClaim(
   const liveRef = LIVE_RIDES_COLLECTION
     ? doc(db, LIVE_RIDES_COLLECTION, rideId)
     : null;
+  const claimedRef = CLAIMED_RIDES_COLLECTION
+    ? doc(db, CLAIMED_RIDES_COLLECTION, rideId)
+    : null;
 
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(rideRef);
@@ -240,28 +292,37 @@ export async function undoDriverClaim(
       throw new Error("Cannot undo — not claimed by this driver");
     }
 
+    const timestamp = serverTimestamp();
     const next = {
       ...data,
       state: TRIP_STATES.OPEN,
+      status: TRIP_STATES.OPEN,
       claimedBy: null,
       claimedAt: null,
+      claimedVehicle: null,
       updatedBy: userId,
-      updatedAt: serverTimestamp(),
+      updatedAt: timestamp,
     };
 
     tx.set(rideRef, next, { merge: true });
 
+    // Delete from claimedRides shadow collection
+    if (claimedRef) {
+      tx.delete(claimedRef);
+    }
+
+    // Recreate in liveRides shadow collection
     if (liveRef) {
-      tx.set(
-        liveRef,
-        {
-          rideId,
-          state: TRIP_STATES.OPEN,
-          createdAt: data?.createdAt || serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      const livePayload = {
+        ...next,
+        id: rideId,
+        rideId,
+        state: TRIP_STATES.OPEN,
+        status: TRIP_STATES.OPEN,
+        createdAt: data?.createdAt || data?.created_at || data?.created || timestamp,
+        updatedAt: timestamp,
+      };
+      tx.set(liveRef, livePayload, { merge: true });
     }
 
     return { id: rideId, ...next };
