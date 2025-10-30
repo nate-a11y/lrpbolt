@@ -16,7 +16,7 @@ import {
   Tooltip,
   Button,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
@@ -29,6 +29,7 @@ import { queryChatbot } from "@/services/chatbotService.js";
 import logError from "@/utils/logError.js";
 
 export default function ChatbotWidget({ settings, isPreview = false }) {
+  const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -43,11 +44,14 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
     name = "Johnny",
     welcomeMessage = "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
     placeholder = "Ask about our rides, availability, pricing...",
-    primaryColor = "#4CAF50",
+    primaryColor,
     position = "bottom-right",
     facebookPageUrl = "https://m.me/lakeridepros",
     bookingUrl = "https://customer.moovs.app/lake-ride-pros/new/info",
   } = settings || {};
+
+  // Use theme default if no custom color provided
+  const effectiveColor = primaryColor || theme.palette.lrp?.chatbotPrimary || theme.palette.primary.main;
 
   // Add welcome message when chat opens
   useEffect(() => {
@@ -188,7 +192,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
           {/* Header */}
           <Box
             sx={{
-              bgcolor: primaryColor,
+              bgcolor: effectiveColor,
               color: "common.white",
               p: 2,
               display: "flex",
@@ -245,11 +249,11 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                       sx={{
                         justifyContent: "flex-start",
                         textTransform: "none",
-                        borderColor: alpha(primaryColor, 0.3),
-                        color: primaryColor,
+                        borderColor: alpha(effectiveColor, 0.3),
+                        color: effectiveColor,
                         "&:hover": {
-                          borderColor: primaryColor,
-                          bgcolor: alpha(primaryColor, 0.05),
+                          borderColor: effectiveColor,
+                          bgcolor: alpha(effectiveColor, 0.05),
                         },
                       }}
                     >
@@ -263,11 +267,11 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                       sx={{
                         justifyContent: "flex-start",
                         textTransform: "none",
-                        borderColor: alpha(primaryColor, 0.3),
-                        color: primaryColor,
+                        borderColor: alpha(effectiveColor, 0.3),
+                        color: effectiveColor,
                         "&:hover": {
-                          borderColor: primaryColor,
-                          bgcolor: alpha(primaryColor, 0.05),
+                          borderColor: effectiveColor,
+                          bgcolor: alpha(effectiveColor, 0.05),
                         },
                       }}
                     >
@@ -293,13 +297,13 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                       sx={{
                         width: 32,
                         height: 32,
-                        bgcolor: msg.role === "user" ? "primary.main" : alpha(primaryColor, 0.15),
+                        bgcolor: msg.role === "user" ? "primary.main" : alpha(effectiveColor, 0.15),
                       }}
                     >
                       {msg.role === "user" ? (
                         <PersonIcon fontSize="small" />
                       ) : (
-                        <SmartToyIcon fontSize="small" sx={{ color: primaryColor }} />
+                        <SmartToyIcon fontSize="small" sx={{ color: effectiveColor }} />
                       )}
                     </Avatar>
                     <Paper
@@ -308,7 +312,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                         p: 1.5,
                         bgcolor:
                           msg.role === "user"
-                            ? primaryColor
+                            ? effectiveColor
                             : (theme) => theme.palette.background.paper,
                         color: msg.role === "user" ? "common.white" : "text.primary",
                         borderRadius: 2,
@@ -329,10 +333,10 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                       sx={{
                         width: 32,
                         height: 32,
-                        bgcolor: alpha(primaryColor, 0.15),
+                        bgcolor: alpha(effectiveColor, 0.15),
                       }}
                     >
-                      <SmartToyIcon fontSize="small" sx={{ color: primaryColor }} />
+                      <SmartToyIcon fontSize="small" sx={{ color: effectiveColor }} />
                     </Avatar>
                     <Paper
                       elevation={1}
@@ -342,7 +346,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                         borderRadius: 2,
                       }}
                     >
-                      <CircularProgress size={20} sx={{ color: primaryColor }} />
+                      <CircularProgress size={20} sx={{ color: effectiveColor }} />
                     </Paper>
                   </Stack>
                 </Box>
@@ -376,9 +380,9 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                   size="small"
                   onClick={handleBookingClick}
                   sx={{
-                    color: primaryColor,
+                    color: effectiveColor,
                     "&:hover": {
-                      bgcolor: alpha(primaryColor, 0.1),
+                      bgcolor: alpha(effectiveColor, 0.1),
                     },
                   }}
                 >
@@ -390,9 +394,9 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                   size="small"
                   onClick={handleMessengerClick}
                   sx={{
-                    color: primaryColor,
+                    color: effectiveColor,
                     "&:hover": {
-                      bgcolor: alpha(primaryColor, 0.1),
+                      bgcolor: alpha(effectiveColor, 0.1),
                     },
                   }}
                 >
@@ -423,10 +427,10 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                 onClick={handleSend}
                 disabled={!input.trim() || loading}
                 sx={{
-                  bgcolor: primaryColor,
+                  bgcolor: effectiveColor,
                   color: "common.white",
                   "&:hover": {
-                    bgcolor: alpha(primaryColor, 0.8),
+                    bgcolor: alpha(effectiveColor, 0.8),
                   },
                   "&:disabled": {
                     bgcolor: "action.disabledBackground",
@@ -446,14 +450,14 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
           <Fab
             onClick={handleToggle}
             sx={{
-              bgcolor: primaryColor,
+              bgcolor: effectiveColor,
               color: "common.white",
               "&:hover": {
-                bgcolor: alpha(primaryColor, 0.8),
+                bgcolor: alpha(effectiveColor, 0.8),
                 transform: "scale(1.1)",
               },
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: `0 4px 20px ${alpha(primaryColor, 0.4)}`,
+              boxShadow: `0 4px 20px ${alpha(effectiveColor, 0.4)}`,
             }}
             aria-label="Open chat"
           >
@@ -471,7 +475,7 @@ ChatbotWidget.propTypes = {
     name: PropTypes.string,
     welcomeMessage: PropTypes.string,
     placeholder: PropTypes.string,
-    primaryColor: PropTypes.string,
+    effectiveColor: PropTypes.string,
     position: PropTypes.oneOf(["bottom-left", "bottom-right", "top-left", "top-right"]),
   }),
   isPreview: PropTypes.bool,
