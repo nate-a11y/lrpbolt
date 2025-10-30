@@ -91,7 +91,7 @@ export default function ChatBotSettings() {
   const [name, setName] = useState("Johnny");
   const [welcomeMessage, setWelcomeMessage] = useState("Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?");
   const [placeholder, setPlaceholder] = useState("Ask about our rides, availability, pricing...");
-  const [primaryColor, setPrimaryColor] = useState(theme.palette.primary.main);
+  const [primaryColor, setPrimaryColor] = useState("#4CAF50"); // Store actual hex color, not theme path
   const [position, setPosition] = useState("bottom-right");
   const [facebookPageUrl, setFacebookPageUrl] = useState("https://m.me/lakeridepros");
   const [bookingUrl, setBookingUrl] = useState("https://customer.moovs.app/lake-ride-pros/new/info");
@@ -146,9 +146,6 @@ If the user needs more personalized help or wants to speak with a human, direct 
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsDateRange, setAnalyticsDateRange] = useState(7); // days
 
-  // Default color value (stable reference)
-  const defaultPrimaryColor = theme.palette.primary.main;
-
   // Load initial data
   useEffect(() => {
     let mounted = true;
@@ -170,7 +167,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
           chatbotData.welcomeMessage || "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?"
         );
         setPlaceholder(chatbotData.placeholder || "Ask about our rides, availability, pricing...");
-        setPrimaryColor(chatbotData.primaryColor || defaultPrimaryColor);
+        setPrimaryColor(chatbotData.primaryColor || "#4CAF50");
         setPosition(chatbotData.position || "bottom-right");
         setFacebookPageUrl(chatbotData.facebookPageUrl || "https://m.me/lakeridepros");
         setBookingUrl(chatbotData.bookingUrl || "https://customer.moovs.app/lake-ride-pros/new/info");
@@ -195,7 +192,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
     return () => {
       mounted = false;
     };
-  }, [show, defaultPrimaryColor]);
+  }, [show]);
 
   // Subscribe to knowledge base updates
   useEffect(() => {
