@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback, useState, useEffect } from "react";
 import PropTypes from "prop-types";
+import dayjs from "dayjs";
 import {
   Box,
   Button,
@@ -30,8 +31,23 @@ import ExpandableDetails from "@/components/ExpandableDetails.jsx";
 
 function normalizeRows(items) {
   if (!Array.isArray(items)) return [];
+  const now = dayjs();
+
   return items
-    .filter((item) => item && item.isActive !== false)
+    .filter((item) => {
+      // Filter out inactive items
+      if (!item || item.isActive === false) return false;
+
+      // Filter out items scheduled for future publication
+      if (item.publishDate) {
+        const publishDate = dayjs(item.publishDate);
+        if (publishDate.isValid() && publishDate.isAfter(now)) {
+          return false;
+        }
+      }
+
+      return true;
+    })
     .map((item) => {
       const rawCategory = item?.category ? String(item.category) : "";
       const normalizedCategory = PROMO_PARTNER_CATEGORIES.includes(rawCategory)

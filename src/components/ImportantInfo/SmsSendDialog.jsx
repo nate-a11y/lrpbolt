@@ -120,11 +120,11 @@ export default function SmsSendDialog({ open, onClose, item, onSuccess }) {
     const imageCount = Math.min(item.images.length, 10);
     if (imageCount > 5) {
       setAttachmentWarning(
-        `You have ${imageCount} images. If they are large, MMS may fail due to carrier size limits (~${MMS_SIZE_LIMIT_MB}MB total). Consider reducing image count or size.`
+        `You have ${imageCount} images. If they are large, MMS may fail due to carrier size limits (~${MMS_SIZE_LIMIT_MB}MB total). Consider reducing image count or size.`,
       );
     } else if (item.images.length > 10) {
       setAttachmentWarning(
-        `Only the first 10 images will be sent via MMS. ${item.images.length - 10} image(s) will be excluded.`
+        `Only the first 10 images will be sent via MMS. ${item.images.length - 10} image(s) will be excluded.`,
       );
     } else {
       setAttachmentWarning("");
@@ -138,12 +138,15 @@ export default function SmsSendDialog({ open, onClose, item, onSuccess }) {
     if (onClose) onClose();
   }, [onClose, sending, phone]);
 
-  const handlePhoneChange = useCallback((event) => {
-    const newPhone = event.target.value;
-    setPhone(newPhone);
-    saveDraft(newPhone);
-    if (error) setError("");
-  }, [error]);
+  const handlePhoneChange = useCallback(
+    (event) => {
+      const newPhone = event.target.value;
+      setPhone(newPhone);
+      saveDraft(newPhone);
+      if (error) setError("");
+    },
+    [error],
+  );
 
   const handleSubmit = useCallback(
     async (event) => {

@@ -103,10 +103,10 @@ const MAX_TEMPLATES = 10;
 
 // Category colors for visual distinction
 const CATEGORY_COLORS = {
-  "Promotions": { bg: "#1a3d1a", border: "#4caf50", text: "#81c784" },
-  "Partners": { bg: "#1a1a3d", border: "#3f51b5", text: "#9fa8da" },
-  "Referrals": { bg: "#3d1a1a", border: "#f44336", text: "#e57373" },
-  "General": { bg: "#2a2a2a", border: "#757575", text: "#bdbdbd" },
+  Promotions: { bg: "#1a3d1a", border: "#4caf50", text: "#81c784" },
+  Partners: { bg: "#1a1a3d", border: "#3f51b5", text: "#9fa8da" },
+  Referrals: { bg: "#3d1a1a", border: "#f44336", text: "#e57373" },
+  General: { bg: "#2a2a2a", border: "#757575", text: "#bdbdbd" },
 };
 
 // Load draft from localStorage
@@ -116,7 +116,10 @@ function loadAdminDraft() {
     if (saved) {
       const parsed = JSON.parse(saved);
       // Don't restore if it's old (more than 7 days)
-      if (parsed.savedAt && Date.now() - parsed.savedAt < 7 * 24 * 60 * 60 * 1000) {
+      if (
+        parsed.savedAt &&
+        Date.now() - parsed.savedAt < 7 * 24 * 60 * 60 * 1000
+      ) {
         return parsed.formValues || null;
       }
     }
@@ -130,9 +133,10 @@ function loadAdminDraft() {
 function saveAdminDraft(formValues, mode, itemId = null) {
   try {
     // Save for both create and edit modes
-    const key = mode === "edit" && itemId
-      ? `${ADMIN_DRAFT_KEY}_edit_${itemId}`
-      : ADMIN_DRAFT_KEY;
+    const key =
+      mode === "edit" && itemId
+        ? `${ADMIN_DRAFT_KEY}_edit_${itemId}`
+        : ADMIN_DRAFT_KEY;
 
     localStorage.setItem(
       key,
@@ -151,7 +155,7 @@ function saveAdminDraft(formValues, mode, itemId = null) {
         savedAt: Date.now(),
         mode,
         itemId,
-      })
+      }),
     );
     return true;
   } catch {
@@ -189,7 +193,7 @@ function _saveSearchHistory(query) {
     const history = loadSearchHistory();
     const trimmed = query.trim();
     // Remove if already exists
-    const filtered = history.filter(h => h !== trimmed);
+    const filtered = history.filter((h) => h !== trimmed);
     // Add to front
     const updated = [trimmed, ...filtered].slice(0, MAX_SEARCH_HISTORY);
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
@@ -216,12 +220,12 @@ function saveTemplate(name, content) {
     const trimmedContent = content.trim();
 
     // Remove if template with same name exists
-    const filtered = templates.filter(t => t.name !== trimmedName);
+    const filtered = templates.filter((t) => t.name !== trimmedName);
 
     // Add new template
     const updated = [
       { name: trimmedName, content: trimmedContent, savedAt: Date.now() },
-      ...filtered
+      ...filtered,
     ].slice(0, MAX_TEMPLATES);
 
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
@@ -235,7 +239,7 @@ function deleteTemplate(name) {
   if (!name) return false;
   try {
     const templates = loadTemplates();
-    const filtered = templates.filter(t => t.name !== name);
+    const filtered = templates.filter((t) => t.name !== name);
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(filtered));
     return true;
   } catch {
@@ -247,20 +251,36 @@ function deleteTemplate(name) {
 function exportToCSV(rows, filename = "important-info.csv") {
   if (!rows || rows.length === 0) return;
 
-  const headers = ["Title", "Category", "Blurb", "Details", "Phone", "URL", "SMS Template", "Active", "Updated"];
+  const headers = [
+    "Title",
+    "Category",
+    "Blurb",
+    "Details",
+    "Phone",
+    "URL",
+    "SMS Template",
+    "Active",
+    "Updated",
+  ];
   const csvRows = [
     headers.join(","),
-    ...rows.map(row => [
-      `"${(row.title || "").replace(/"/g, '""')}"`,
-      `"${(row.category || "").replace(/"/g, '""')}"`,
-      `"${(row.blurb || "").replace(/"/g, '""')}"`,
-      `"${(row.details || "").replace(/"/g, '""')}"`,
-      `"${(row.phone || "").replace(/"/g, '""')}"`,
-      `"${(row.url || "").replace(/"/g, '""')}"`,
-      `"${(row.smsTemplate || "").replace(/"/g, '""')}"`,
-      row.isActive !== false ? "Yes" : "No",
-      row.updatedAt ? new Date(row.updatedAt.toMillis ? row.updatedAt.toMillis() : row.updatedAt).toLocaleString() : "",
-    ].join(","))
+    ...rows.map((row) =>
+      [
+        `"${(row.title || "").replace(/"/g, '""')}"`,
+        `"${(row.category || "").replace(/"/g, '""')}"`,
+        `"${(row.blurb || "").replace(/"/g, '""')}"`,
+        `"${(row.details || "").replace(/"/g, '""')}"`,
+        `"${(row.phone || "").replace(/"/g, '""')}"`,
+        `"${(row.url || "").replace(/"/g, '""')}"`,
+        `"${(row.smsTemplate || "").replace(/"/g, '""')}"`,
+        row.isActive !== false ? "Yes" : "No",
+        row.updatedAt
+          ? new Date(
+              row.updatedAt.toMillis ? row.updatedAt.toMillis() : row.updatedAt,
+            ).toLocaleString()
+          : "",
+      ].join(","),
+    ),
   ];
 
   const csvContent = csvRows.join("\n");
@@ -298,9 +318,10 @@ function generateSmsPreview(item) {
   }
 
   if (item.details) {
-    const truncated = item.details.length > 100
-      ? item.details.substring(0, 100) + "..."
-      : item.details;
+    const truncated =
+      item.details.length > 100
+        ? item.details.substring(0, 100) + "..."
+        : item.details;
     parts.push(`\n\n${truncated}`);
   }
 
@@ -313,7 +334,9 @@ function generateSmsPreview(item) {
   }
 
   if (item.images && item.images.length > 0) {
-    parts.push(`\n\n📷 ${item.images.length} image${item.images.length > 1 ? "s" : ""} attached`);
+    parts.push(
+      `\n\n📷 ${item.images.length} image${item.images.length > 1 ? "s" : ""} attached`,
+    );
   }
 
   return parts.join("");
@@ -469,7 +492,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // Load templates when dialog opens
@@ -613,18 +636,22 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setSelectedItemForSms(null);
   }, []);
 
-  const handleSmsSent = useCallback(async (itemId) => {
-    if (!itemId) return;
-    try {
-      // Increment sendCount
-      const item = rows.find(r => r.id === itemId);
-      const currentCount = typeof item?.sendCount === "number" ? item.sendCount : 0;
-      await updateImportantInfo(itemId, { sendCount: currentCount + 1 });
-    } catch (err) {
-      logError(err, { where: "ImportantInfoAdmin.handleSmsSent", itemId });
-      // Don't show error to user - this is a background operation
-    }
-  }, [rows]);
+  const handleSmsSent = useCallback(
+    async (itemId) => {
+      if (!itemId) return;
+      try {
+        // Increment sendCount
+        const item = rows.find((r) => r.id === itemId);
+        const currentCount =
+          typeof item?.sendCount === "number" ? item.sendCount : 0;
+        await updateImportantInfo(itemId, { sendCount: currentCount + 1 });
+      } catch (err) {
+        logError(err, { where: "ImportantInfoAdmin.handleSmsSent", itemId });
+        // Don't show error to user - this is a background operation
+      }
+    },
+    [rows],
+  );
 
   const handleImportClose = useCallback(
     (result) => {
@@ -637,27 +664,30 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     [show],
   );
 
-  const openEdit = useCallback((row) => {
-    if (!row) return;
-    setDialogMode("edit");
-    setActiveId(row.id || null);
-    setFormValues({
-      title: ensureString(row.title),
-      blurb: ensureString(row.blurb),
-      details: ensureString(row.details),
-      category: normalizeCategory(row.category),
-      phone: ensureString(row.phone),
-      url: ensureString(row.url),
-      smsTemplate: ensureString(row.smsTemplate),
-      images: Array.isArray(row.images) ? row.images : [],
-      isActive: row.isActive !== false,
-      publishDate: row.publishDate ? dayjs(row.publishDate) : null,
-    });
-    setPendingFiles([]);
-    // Freeze the current list order to prevent jumping during auto-save
-    setFrozenOrder(filteredRows.map(r => r.id));
-    setDialogOpen(true);
-  }, [filteredRows]);
+  const openEdit = useCallback(
+    (row) => {
+      if (!row) return;
+      setDialogMode("edit");
+      setActiveId(row.id || null);
+      setFormValues({
+        title: ensureString(row.title),
+        blurb: ensureString(row.blurb),
+        details: ensureString(row.details),
+        category: normalizeCategory(row.category),
+        phone: ensureString(row.phone),
+        url: ensureString(row.url),
+        smsTemplate: ensureString(row.smsTemplate),
+        images: Array.isArray(row.images) ? row.images : [],
+        isActive: row.isActive !== false,
+        publishDate: row.publishDate ? dayjs(row.publishDate) : null,
+      });
+      setPendingFiles([]);
+      // Freeze the current list order to prevent jumping during auto-save
+      setFrozenOrder(filteredRows.map((r) => r.id));
+      setDialogOpen(true);
+    },
+    [filteredRows],
+  );
 
   const closeDialog = useCallback(() => {
     if (saving || uploading) return;
@@ -679,11 +709,19 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ignore if user is typing in an input
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+      if (
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        e.target.isContentEditable
+      ) {
         // Allow "/" to focus search even in inputs
         if (e.key === "/" && e.target.tagName !== "INPUT") {
           e.preventDefault();
-          document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+          document
+            .querySelector(
+              'input[aria-label="Search important info admin list"]',
+            )
+            ?.focus();
         }
         return;
       }
@@ -697,7 +735,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       // / = Focus Search
       if (e.key === "/") {
         e.preventDefault();
-        document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+        document
+          .querySelector('input[aria-label="Search important info admin list"]')
+          ?.focus();
       }
 
       // Escape = Clear selection or close dialog
@@ -714,60 +754,66 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [openCreate, selectedIds.length, dialogOpen, closeDialog]);
 
-  const handleFieldChange = useCallback((field, value) => {
-    setFormValues((prev) => {
-      const updated = { ...prev, [field]: value };
+  const handleFieldChange = useCallback(
+    (field, value) => {
+      setFormValues((prev) => {
+        const updated = { ...prev, [field]: value };
 
-      // Clear any existing timeout
-      if (draftSaveTimeout) {
-        clearTimeout(draftSaveTimeout);
-      }
-
-      // Show "saving" status immediately
-      setDraftStatus("saving");
-
-      // Debounce the save
-      const timeout = setTimeout(async () => {
-        if (dialogMode === "edit" && activeId) {
-          // EDIT MODE: Actually save to Firestore (updates timestamp but list stays frozen)
-          try {
-            const payload = buildPayload(updated);
-            // Preserve existing images
-            if (formValues.images) {
-              payload.images = formValues.images;
-            }
-            await updateImportantInfo(activeId, payload);
-            setDraftStatus("saved");
-            // Reset to idle after 2 seconds
-            setTimeout(() => setDraftStatus("idle"), 2000);
-          } catch (err) {
-            logError(err, { where: "ImportantInfoAdmin.handleFieldChange.autoSave", activeId });
-            setDraftStatus("idle");
-            show("Auto-save failed. Changes not saved.", "error");
-          }
-        } else {
-          // CREATE MODE: Save to localStorage as draft
-          const success = saveAdminDraft(updated, dialogMode, activeId);
-          if (success) {
-            setDraftStatus("saved");
-            // Reset to idle after 2 seconds
-            setTimeout(() => setDraftStatus("idle"), 2000);
-          } else {
-            setDraftStatus("idle");
-          }
+        // Clear any existing timeout
+        if (draftSaveTimeout) {
+          clearTimeout(draftSaveTimeout);
         }
-      }, 800); // 800ms debounce
 
-      setDraftSaveTimeout(timeout);
+        // Show "saving" status immediately
+        setDraftStatus("saving");
 
-      return updated;
-    });
-  }, [dialogMode, activeId, draftSaveTimeout, formValues.images, show]);
+        // Debounce the save
+        const timeout = setTimeout(async () => {
+          if (dialogMode === "edit" && activeId) {
+            // EDIT MODE: Actually save to Firestore (updates timestamp but list stays frozen)
+            try {
+              const payload = buildPayload(updated);
+              // Preserve existing images
+              if (formValues.images) {
+                payload.images = formValues.images;
+              }
+              await updateImportantInfo(activeId, payload);
+              setDraftStatus("saved");
+              // Reset to idle after 2 seconds
+              setTimeout(() => setDraftStatus("idle"), 2000);
+            } catch (err) {
+              logError(err, {
+                where: "ImportantInfoAdmin.handleFieldChange.autoSave",
+                activeId,
+              });
+              setDraftStatus("idle");
+              show("Auto-save failed. Changes not saved.", "error");
+            }
+          } else {
+            // CREATE MODE: Save to localStorage as draft
+            const success = saveAdminDraft(updated, dialogMode, activeId);
+            if (success) {
+              setDraftStatus("saved");
+              // Reset to idle after 2 seconds
+              setTimeout(() => setDraftStatus("idle"), 2000);
+            } else {
+              setDraftStatus("idle");
+            }
+          }
+        }, 800); // 800ms debounce
+
+        setDraftSaveTimeout(timeout);
+
+        return updated;
+      });
+    },
+    [dialogMode, activeId, draftSaveTimeout, formValues.images, show],
+  );
 
   const handleResetDraft = useCallback(() => {
     // eslint-disable-next-line no-alert
     const confirmed = window.confirm(
-      "Clear this draft? All unsaved changes will be lost."
+      "Clear this draft? All unsaved changes will be lost.",
     );
     if (!confirmed) return;
 
@@ -778,48 +824,57 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     show("Draft cleared.", "info");
   }, [dialogMode, activeId, show]);
 
-  const handleFileSelect = useCallback(async (event) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+  const handleFileSelect = useCallback(
+    async (event) => {
+      const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
-    // Reset the input so the same file can be selected again
-    event.target.value = "";
+      // Reset the input so the same file can be selected again
+      event.target.value = "";
 
-    // EDIT MODE: Upload and save immediately
-    if (dialogMode === "edit" && activeId) {
-      setUploading(true);
-      setDraftStatus("saving");
-      try {
-        const uploadedImages = await uploadMultipleImages(activeId, files);
-        const updatedImages = [...(formValues.images || []), ...uploadedImages];
+      // EDIT MODE: Upload and save immediately
+      if (dialogMode === "edit" && activeId) {
+        setUploading(true);
+        setDraftStatus("saving");
+        try {
+          const uploadedImages = await uploadMultipleImages(activeId, files);
+          const updatedImages = [
+            ...(formValues.images || []),
+            ...uploadedImages,
+          ];
 
-        // Update Firestore immediately (updates timestamp but list stays frozen)
-        await updateImportantInfo(activeId, { images: updatedImages });
+          // Update Firestore immediately (updates timestamp but list stays frozen)
+          await updateImportantInfo(activeId, { images: updatedImages });
 
-        // Update form state
-        setFormValues((prev) => ({
-          ...prev,
-          images: updatedImages,
-        }));
+          // Update form state
+          setFormValues((prev) => ({
+            ...prev,
+            images: updatedImages,
+          }));
 
-        setDraftStatus("saved");
-        setTimeout(() => setDraftStatus("idle"), 2000);
-        show(`${files.length} image${files.length > 1 ? "s" : ""} uploaded.`, "success");
-      } catch (err) {
-        logError(err, {
-          where: "ImportantInfoAdmin.handleFileSelect.autoUpload",
-          itemId: activeId,
-        });
-        setDraftStatus("idle");
-        show("Failed to upload images.", "error");
-      } finally {
-        setUploading(false);
+          setDraftStatus("saved");
+          setTimeout(() => setDraftStatus("idle"), 2000);
+          show(
+            `${files.length} image${files.length > 1 ? "s" : ""} uploaded.`,
+            "success",
+          );
+        } catch (err) {
+          logError(err, {
+            where: "ImportantInfoAdmin.handleFileSelect.autoUpload",
+            itemId: activeId,
+          });
+          setDraftStatus("idle");
+          show("Failed to upload images.", "error");
+        } finally {
+          setUploading(false);
+        }
+      } else {
+        // CREATE MODE: Add to pending files
+        setPendingFiles((prev) => [...prev, ...files]);
       }
-    } else {
-      // CREATE MODE: Add to pending files
-      setPendingFiles((prev) => [...prev, ...files]);
-    }
-  }, [dialogMode, activeId, formValues.images, show]);
+    },
+    [dialogMode, activeId, formValues.images, show],
+  );
 
   const handleRemovePendingFile = useCallback((index) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== index));
@@ -836,7 +891,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
       setDraftStatus("saving");
       try {
-        const updatedImages = (formValues.images || []).filter((img) => img.id !== image.id);
+        const updatedImages = (formValues.images || []).filter(
+          (img) => img.id !== image.id,
+        );
 
         // Update form state
         setFormValues((prev) => ({
@@ -1058,30 +1115,39 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
   const handleExportCSV = useCallback(() => {
     exportToCSV(filteredRows);
-    show(`Exported ${filteredRows.length} item${filteredRows.length !== 1 ? "s" : ""} to CSV.`, "success");
+    show(
+      `Exported ${filteredRows.length} item${filteredRows.length !== 1 ? "s" : ""} to CSV.`,
+      "success",
+    );
   }, [filteredRows, show]);
 
-  const handleSelectAll = useCallback((event) => {
-    if (event.target.checked) {
-      setSelectedIds(filteredRows.map(r => r.id));
-    } else {
-      setSelectedIds([]);
-    }
-  }, [filteredRows]);
+  const handleSelectAll = useCallback(
+    (event) => {
+      if (event.target.checked) {
+        setSelectedIds(filteredRows.map((r) => r.id));
+      } else {
+        setSelectedIds([]);
+      }
+    },
+    [filteredRows],
+  );
 
   const handleSelectOne = useCallback((id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   }, []);
 
   const handleBulkActivate = useCallback(async () => {
     if (selectedIds.length === 0) return;
     try {
-      await Promise.all(selectedIds.map(id =>
-        updateImportantInfo(id, { isActive: true })
-      ));
-      show(`Activated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "success");
+      await Promise.all(
+        selectedIds.map((id) => updateImportantInfo(id, { isActive: true })),
+      );
+      show(
+        `Activated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`,
+        "success",
+      );
       setSelectedIds([]);
     } catch (err) {
       logError(err, { where: "ImportantInfoAdmin.handleBulkActivate" });
@@ -1092,10 +1158,13 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const handleBulkDeactivate = useCallback(async () => {
     if (selectedIds.length === 0) return;
     try {
-      await Promise.all(selectedIds.map(id =>
-        updateImportantInfo(id, { isActive: false })
-      ));
-      show(`Deactivated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "success");
+      await Promise.all(
+        selectedIds.map((id) => updateImportantInfo(id, { isActive: false })),
+      );
+      show(
+        `Deactivated ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`,
+        "success",
+      );
       setSelectedIds([]);
     } catch (err) {
       logError(err, { where: "ImportantInfoAdmin.handleBulkDeactivate" });
@@ -1106,12 +1175,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.length === 0) return;
     // eslint-disable-next-line no-alert
-    const confirmed = window.confirm(`Delete ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}? This cannot be undone.`);
+    const confirmed = window.confirm(
+      `Delete ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}? This cannot be undone.`,
+    );
     if (!confirmed) return;
 
     try {
-      await Promise.all(selectedIds.map(id => deleteImportantInfo(id)));
-      show(`Deleted ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`, "info");
+      await Promise.all(selectedIds.map((id) => deleteImportantInfo(id)));
+      show(
+        `Deleted ${selectedIds.length} item${selectedIds.length !== 1 ? "s" : ""}.`,
+        "info",
+      );
       setSelectedIds([]);
     } catch (err) {
       logError(err, { where: "ImportantInfoAdmin.handleBulkDelete" });
@@ -1138,11 +1212,14 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setTemplatesAnchor(null);
   }, []);
 
-  const handleLoadTemplate = useCallback((template) => {
-    handleFieldChange("smsTemplate", template.content);
-    handleCloseTemplatesMenu();
-    show(`Template "${template.name}" loaded.`, "success");
-  }, [handleFieldChange, handleCloseTemplatesMenu, show]);
+  const handleLoadTemplate = useCallback(
+    (template) => {
+      handleFieldChange("smsTemplate", template.content);
+      handleCloseTemplatesMenu();
+      show(`Template "${template.name}" loaded.`, "success");
+    },
+    [handleFieldChange, handleCloseTemplatesMenu, show],
+  );
 
   const handleSaveTemplate = useCallback(() => {
     const content = formValues.smsTemplate?.trim();
@@ -1164,20 +1241,23 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     }
   }, [formValues.smsTemplate, show]);
 
-  const handleDeleteTemplate = useCallback((event, templateName) => {
-    event.stopPropagation();
-    // eslint-disable-next-line no-alert
-    const confirmed = window.confirm(`Delete template "${templateName}"?`);
-    if (!confirmed) return;
+  const handleDeleteTemplate = useCallback(
+    (event, templateName) => {
+      event.stopPropagation();
+      // eslint-disable-next-line no-alert
+      const confirmed = window.confirm(`Delete template "${templateName}"?`);
+      if (!confirmed) return;
 
-    const success = deleteTemplate(templateName);
-    if (success) {
-      setTemplates(loadTemplates());
-      show(`Template "${templateName}" deleted.`, "info");
-    } else {
-      show("Failed to delete template.", "error");
-    }
-  }, [show]);
+      const success = deleteTemplate(templateName);
+      if (success) {
+        setTemplates(loadTemplates());
+        show(`Template "${templateName}" deleted.`, "info");
+      } else {
+        show("Failed to delete template.", "error");
+      }
+    },
+    [show],
+  );
 
   const handleDragStart = useCallback(() => {
     setIsDragging(true);
@@ -1186,36 +1266,39 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setPreviewItem(null);
   }, []);
 
-  const handleDragEnd = useCallback(async (event) => {
-    setIsDragging(false);
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    async (event) => {
+      setIsDragging(false);
+      const { active, over } = event;
 
-    if (!active || !over || active.id === over.id) {
-      return;
-    }
+      if (!active || !over || active.id === over.id) {
+        return;
+      }
 
-    const oldIndex = filteredRows.findIndex((item) => item.id === active.id);
-    const newIndex = filteredRows.findIndex((item) => item.id === over.id);
+      const oldIndex = filteredRows.findIndex((item) => item.id === active.id);
+      const newIndex = filteredRows.findIndex((item) => item.id === over.id);
 
-    if (oldIndex === -1 || newIndex === -1) return;
+      if (oldIndex === -1 || newIndex === -1) return;
 
-    // Reorder the items
-    const reordered = arrayMove(filteredRows, oldIndex, newIndex);
+      // Reorder the items
+      const reordered = arrayMove(filteredRows, oldIndex, newIndex);
 
-    // Update the order field for all affected items
-    try {
-      // Update each item with its new order
-      await Promise.all(
-        reordered.map((item, index) =>
-          updateImportantInfo(item.id, { order: index })
-        )
-      );
-      show("Order updated successfully.", "success");
-    } catch (err) {
-      logError(err, { where: "ImportantInfoAdmin.handleDragEnd" });
-      show("Failed to update order.", "error");
-    }
-  }, [filteredRows, show]);
+      // Update the order field for all affected items
+      try {
+        // Update each item with its new order
+        await Promise.all(
+          reordered.map((item, index) =>
+            updateImportantInfo(item.id, { order: index }),
+          ),
+        );
+        show("Order updated successfully.", "success");
+      } catch (err) {
+        logError(err, { where: "ImportantInfoAdmin.handleDragEnd" });
+        show("Failed to update order.", "error");
+      }
+    },
+    [filteredRows, show],
+  );
 
   return (
     <Box
@@ -1461,8 +1544,14 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={selectedIds.length === filteredRows.length && filteredRows.length > 0}
-                  indeterminate={selectedIds.length > 0 && selectedIds.length < filteredRows.length}
+                  checked={
+                    selectedIds.length === filteredRows.length &&
+                    filteredRows.length > 0
+                  }
+                  indeterminate={
+                    selectedIds.length > 0 &&
+                    selectedIds.length < filteredRows.length
+                  }
                   onChange={handleSelectAll}
                 />
               }
@@ -1499,300 +1588,339 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={filteredRows.map(r => r.id)}
+              items={filteredRows.map((r) => r.id)}
               strategy={verticalListSortingStrategy}
             >
               {filteredRows.map((row) => {
-            const id = row?.id;
-            const disabled = !!pendingMap[id];
-            const updatedLabel = formatDateTime(row?.updatedAt);
-            const categoryLabel = row?.category
-              ? String(row.category)
-              : DEFAULT_CATEGORY;
-            const telHref = toTelHref(row?.phone);
+                const id = row?.id;
+                const disabled = !!pendingMap[id];
+                const updatedLabel = formatDateTime(row?.updatedAt);
+                const categoryLabel = row?.category
+                  ? String(row.category)
+                  : DEFAULT_CATEGORY;
+                const telHref = toTelHref(row?.phone);
 
-            return (
-              <SortableItem key={id} id={id} disabled={disabled || isDragging}>
-                {({ attributes, listeners, isDragging: itemIsDragging }) => (
-                  <Card
-                    variant="outlined"
-                    onMouseEnter={(e) => !itemIsDragging && handlePreviewOpen(e, row)}
-                    onMouseLeave={handlePreviewClose}
-                    sx={(t) => ({
-                      bgcolor: t.palette.background.paper,
-                      borderColor: t.palette.divider,
-                      borderRadius: 3,
-                      cursor: itemIsDragging ? "grabbing" : "default",
-                    })}
+                return (
+                  <SortableItem
+                    key={id}
+                    id={id}
+                    disabled={disabled || isDragging}
                   >
-                    <CardContent sx={{ pb: 1.5 }}>
-                      <Stack spacing={1.25}>
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="flex-start"
-                        >
-                          <IconButton
-                            size="small"
-                            sx={{
-                              mt: -0.5,
-                              cursor: disabled ? "not-allowed" : "grab",
-                              "&:active": { cursor: "grabbing" },
-                              color: (t) => t.palette.text.secondary
-                            }}
-                            disabled={disabled}
-                            {...attributes}
-                            {...listeners}
-                          >
-                            <DragIndicatorIcon fontSize="small" />
-                          </IconButton>
-                          <Checkbox
-                            checked={selectedIds.includes(id)}
-                            onChange={() => handleSelectOne(id)}
-                            disabled={disabled}
-                            sx={{ mt: -0.5 }}
-                          />
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", sm: "center" }}
-                        sx={{ flex: 1 }}
+                    {({
+                      attributes,
+                      listeners,
+                      isDragging: itemIsDragging,
+                    }) => (
+                      <Card
+                        variant="outlined"
+                        onMouseEnter={(e) =>
+                          !itemIsDragging && handlePreviewOpen(e, row)
+                        }
+                        onMouseLeave={handlePreviewClose}
+                        sx={(t) => ({
+                          bgcolor: t.palette.background.paper,
+                          borderColor: t.palette.divider,
+                          borderRadius: 3,
+                          cursor: itemIsDragging ? "grabbing" : "default",
+                        })}
                       >
-                        <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                          <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: 700 }}
-                            noWrap
-                          >
-                            {row?.title || "Untitled"}
-                          </Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                            Updated {updatedLabel}
-                          </Typography>
-                        </Stack>
-                        <Stack direction="column" spacing={0.5} alignItems="flex-end">
-                          <Chip
-                            size="small"
-                            label={categoryLabel}
-                            sx={{
-                              fontWeight: 600,
-                              bgcolor: getCategoryColor(categoryLabel).bg,
-                              color: getCategoryColor(categoryLabel).text,
-                              border: `1px solid ${getCategoryColor(categoryLabel).border}`,
-                            }}
-                          />
-                          {row?.publishDate && dayjs(row.publishDate).isAfter(dayjs()) && (
-                            <Chip
-                              size="small"
-                              label={`📅 Scheduled: ${dayjs(row.publishDate).format("MMM D, YYYY h:mm A")}`}
-                              sx={{
-                                fontWeight: 600,
-                                fontSize: "0.7rem",
-                                bgcolor: "#2a1f11",
-                                color: "#ffdca8",
-                                border: "1px solid #ff9800",
-                              }}
-                            />
-                          )}
-                          {typeof row?.sendCount === "number" && row.sendCount > 0 && (
-                            <Chip
-                              size="small"
-                              label={`📊 ${row.sendCount} SMS sent`}
-                              sx={{
-                                fontWeight: 600,
-                                fontSize: "0.7rem",
-                                bgcolor: "#1a1a3d",
-                                color: "#9fa8da",
-                                border: "1px solid #3f51b5",
-                              }}
-                            />
-                          )}
-                        </Stack>
-                      </Stack>
-                    </Stack>
-
-                    {row?.blurb ? (
-                      <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                        {row.blurb}
-                      </Typography>
-                    ) : null}
-
-                    {row?.images && row.images.length > 0 ? (
-                      <Box>
-                        <ImageList
-                          sx={{ width: "100%", maxHeight: 200 }}
-                          cols={3}
-                          rowHeight={120}
-                        >
-                          {row.images.slice(0, 6).map((image) => (
-                            <ImageListItem key={image.id}>
-                              <img
-                                src={image.url}
-                                alt={image.name || "Image"}
-                                loading="lazy"
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                  borderRadius: 4,
-                                }}
-                              />
-                            </ImageListItem>
-                          ))}
-                        </ImageList>
-                        {row.images.length > 6 ? (
-                          <Typography
-                            variant="caption"
-                            sx={{ opacity: 0.7, display: "block", mt: 0.5 }}
-                          >
-                            +{row.images.length - 6} more image
-                            {row.images.length - 6 > 1 ? "s" : ""}
-                          </Typography>
-                        ) : null}
-                      </Box>
-                    ) : null}
-
-                    {row?.details ? (
-                      <Box>
-                        <Divider
-                          sx={{ borderColor: (t) => t.palette.divider, mb: 1 }}
-                        />
-                        <Typography
-                          variant="body2"
-                          sx={{ whiteSpace: "pre-wrap", opacity: 0.85 }}
-                        >
-                          {row.details}
-                        </Typography>
-                      </Box>
-                    ) : null}
-
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1}
-                      sx={{ opacity: 0.85 }}
-                    >
-                      {row?.phone ? (
-                        <Typography variant="body2">
-                          Phone:{" "}
-                          {telHref ? (
-                            <MuiLink
-                              href={telHref}
-                              sx={{
-                                color: (t) => t.palette.primary.main,
-                                fontWeight: 600,
-                              }}
+                        <CardContent sx={{ pb: 1.5 }}>
+                          <Stack spacing={1.25}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="flex-start"
                             >
-                              {row.phone}
-                            </MuiLink>
-                          ) : (
-                            row.phone
-                          )}
-                        </Typography>
-                      ) : null}
-                      {row?.url ? (
-                        <Typography variant="body2">
-                          Link:{" "}
-                          <MuiLink
-                            href={row.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{
-                              color: (t) => t.palette.primary.main,
-                              fontWeight: 600,
-                            }}
+                              <IconButton
+                                size="small"
+                                sx={{
+                                  mt: -0.5,
+                                  cursor: disabled ? "not-allowed" : "grab",
+                                  "&:active": { cursor: "grabbing" },
+                                  color: (t) => t.palette.text.secondary,
+                                }}
+                                disabled={disabled}
+                                {...attributes}
+                                {...listeners}
+                              >
+                                <DragIndicatorIcon fontSize="small" />
+                              </IconButton>
+                              <Checkbox
+                                checked={selectedIds.includes(id)}
+                                onChange={() => handleSelectOne(id)}
+                                disabled={disabled}
+                                sx={{ mt: -0.5 }}
+                              />
+                              <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={1}
+                                justifyContent="space-between"
+                                alignItems={{ xs: "flex-start", sm: "center" }}
+                                sx={{ flex: 1 }}
+                              >
+                                <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{ fontWeight: 700 }}
+                                    noWrap
+                                  >
+                                    {row?.title || "Untitled"}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ opacity: 0.7 }}
+                                  >
+                                    Updated {updatedLabel}
+                                  </Typography>
+                                </Stack>
+                                <Stack
+                                  direction="column"
+                                  spacing={0.5}
+                                  alignItems="flex-end"
+                                >
+                                  <Chip
+                                    size="small"
+                                    label={categoryLabel}
+                                    sx={{
+                                      fontWeight: 600,
+                                      bgcolor:
+                                        getCategoryColor(categoryLabel).bg,
+                                      color:
+                                        getCategoryColor(categoryLabel).text,
+                                      border: `1px solid ${getCategoryColor(categoryLabel).border}`,
+                                    }}
+                                  />
+                                  {row?.publishDate &&
+                                    dayjs(row.publishDate).isAfter(dayjs()) && (
+                                      <Chip
+                                        size="small"
+                                        label={`📅 Scheduled: ${dayjs(row.publishDate).format("MMM D, YYYY h:mm A")}`}
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: "0.7rem",
+                                          bgcolor: "#2a1f11",
+                                          color: "#ffdca8",
+                                          border: "1px solid #ff9800",
+                                        }}
+                                      />
+                                    )}
+                                  {typeof row?.sendCount === "number" &&
+                                    row.sendCount > 0 && (
+                                      <Chip
+                                        size="small"
+                                        label={`📊 ${row.sendCount} SMS sent`}
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: "0.7rem",
+                                          bgcolor: "#1a1a3d",
+                                          color: "#9fa8da",
+                                          border: "1px solid #3f51b5",
+                                        }}
+                                      />
+                                    )}
+                                </Stack>
+                              </Stack>
+                            </Stack>
+
+                            {row?.blurb ? (
+                              <Typography
+                                variant="body2"
+                                sx={{ opacity: 0.85 }}
+                              >
+                                {row.blurb}
+                              </Typography>
+                            ) : null}
+
+                            {row?.images && row.images.length > 0 ? (
+                              <Box>
+                                <ImageList
+                                  sx={{ width: "100%", maxHeight: 200 }}
+                                  cols={3}
+                                  rowHeight={120}
+                                >
+                                  {row.images.slice(0, 6).map((image) => (
+                                    <ImageListItem key={image.id}>
+                                      <img
+                                        src={image.url}
+                                        alt={image.name || "Image"}
+                                        loading="lazy"
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                          objectFit: "cover",
+                                          borderRadius: 4,
+                                        }}
+                                      />
+                                    </ImageListItem>
+                                  ))}
+                                </ImageList>
+                                {row.images.length > 6 ? (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      opacity: 0.7,
+                                      display: "block",
+                                      mt: 0.5,
+                                    }}
+                                  >
+                                    +{row.images.length - 6} more image
+                                    {row.images.length - 6 > 1 ? "s" : ""}
+                                  </Typography>
+                                ) : null}
+                              </Box>
+                            ) : null}
+
+                            {row?.details ? (
+                              <Box>
+                                <Divider
+                                  sx={{
+                                    borderColor: (t) => t.palette.divider,
+                                    mb: 1,
+                                  }}
+                                />
+                                <Typography
+                                  variant="body2"
+                                  sx={{ whiteSpace: "pre-wrap", opacity: 0.85 }}
+                                >
+                                  {row.details}
+                                </Typography>
+                              </Box>
+                            ) : null}
+
+                            <Stack
+                              direction={{ xs: "column", sm: "row" }}
+                              spacing={1}
+                              sx={{ opacity: 0.85 }}
+                            >
+                              {row?.phone ? (
+                                <Typography variant="body2">
+                                  Phone:{" "}
+                                  {telHref ? (
+                                    <MuiLink
+                                      href={telHref}
+                                      sx={{
+                                        color: (t) => t.palette.primary.main,
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {row.phone}
+                                    </MuiLink>
+                                  ) : (
+                                    row.phone
+                                  )}
+                                </Typography>
+                              ) : null}
+                              {row?.url ? (
+                                <Typography variant="body2">
+                                  Link:{" "}
+                                  <MuiLink
+                                    href={row.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      color: (t) => t.palette.primary.main,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    View
+                                  </MuiLink>
+                                </Typography>
+                              ) : null}
+                            </Stack>
+                          </Stack>
+                        </CardContent>
+                        <CardActions
+                          sx={{
+                            px: 2,
+                            pb: 2,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
                           >
-                            View
-                          </MuiLink>
-                        </Typography>
-                      ) : null}
-                    </Stack>
-                  </Stack>
-                </CardContent>
-                <CardActions
-                  sx={{
-                    px: 2,
-                    pb: 2,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Switch
-                      size="small"
-                      checked={row?.isActive !== false}
-                      onChange={(event) =>
-                        handleToggleActive(row, event.target.checked)
-                      }
-                      disabled={disabled}
-                    />
-                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                      {row?.isActive !== false ? "Active" : "Inactive"}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => handleOpenSmsDialog(row)}
-                      disabled={disabled}
-                      sx={{
-                        borderColor: (t) => t.palette.primary.main,
-                        color: "#b7ffb7",
-                        fontWeight: 600,
-                        textTransform: "none",
-                      }}
-                      aria-label={`Test SMS for ${row?.title || "item"}`}
-                    >
-                      Test SMS
-                    </Button>
-                    <Tooltip title="Edit">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={() => openEdit(row)}
-                          disabled={disabled}
-                          sx={{ color: (t) => t.palette.primary.main }}
-                          aria-label={`Edit ${row?.title || "important info"}`}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Duplicate">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDuplicate(row)}
-                          disabled={disabled}
-                          sx={{ color: (t) => t.palette.info.main }}
-                          aria-label={`Duplicate ${row?.title || "important info"}`}
-                        >
-                          <ContentCopyIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDelete(row)}
-                          disabled={disabled}
-                          sx={{ color: "#ff6b6b" }}
-                          aria-label={`Delete ${row?.title || "important info"}`}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </Stack>
-                </CardActions>
-              </Card>
-                )}
-              </SortableItem>
-            );
-          })}
+                            <Switch
+                              size="small"
+                              checked={row?.isActive !== false}
+                              onChange={(event) =>
+                                handleToggleActive(row, event.target.checked)
+                              }
+                              disabled={disabled}
+                            />
+                            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                              {row?.isActive !== false ? "Active" : "Inactive"}
+                            </Typography>
+                          </Stack>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                          >
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => handleOpenSmsDialog(row)}
+                              disabled={disabled}
+                              sx={{
+                                borderColor: (t) => t.palette.primary.main,
+                                color: "#b7ffb7",
+                                fontWeight: 600,
+                                textTransform: "none",
+                              }}
+                              aria-label={`Test SMS for ${row?.title || "item"}`}
+                            >
+                              Test SMS
+                            </Button>
+                            <Tooltip title="Edit">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => openEdit(row)}
+                                  disabled={disabled}
+                                  sx={{ color: (t) => t.palette.primary.main }}
+                                  aria-label={`Edit ${row?.title || "important info"}`}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Duplicate">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDuplicate(row)}
+                                  disabled={disabled}
+                                  sx={{ color: (t) => t.palette.info.main }}
+                                  aria-label={`Duplicate ${row?.title || "important info"}`}
+                                >
+                                  <ContentCopyIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDelete(row)}
+                                  disabled={disabled}
+                                  sx={{ color: "#ff6b6b" }}
+                                  aria-label={`Delete ${row?.title || "important info"}`}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </Stack>
+                        </CardActions>
+                      </Card>
+                    )}
+                  </SortableItem>
+                );
+              })}
             </SortableContext>
           </DndContext>
         </Stack>
@@ -1811,7 +1939,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         sx={{ "& .MuiPaper-root": { bgcolor: "background.paper" } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {dialogMode === "edit"
                 ? "Edit Important Info"
@@ -1821,15 +1953,28 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               <Stack direction="row" spacing={0.5} alignItems="center">
                 {draftStatus === "saving" ? (
                   <>
-                    <CircularProgress size={16} sx={{ color: (t) => t.palette.text.secondary }} />
+                    <CircularProgress
+                      size={16}
+                      sx={{ color: (t) => t.palette.text.secondary }}
+                    />
                     <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      {dialogMode === "edit" ? "Auto-saving..." : "Saving draft..."}
+                      {dialogMode === "edit"
+                        ? "Auto-saving..."
+                        : "Saving draft..."}
                     </Typography>
                   </>
                 ) : draftStatus === "saved" ? (
                   <>
-                    <CheckCircleIcon sx={{ fontSize: 16, color: (t) => t.palette.primary.main }} />
-                    <Typography variant="caption" sx={{ color: (t) => t.palette.primary.main }}>
+                    <CheckCircleIcon
+                      sx={{
+                        fontSize: 16,
+                        color: (t) => t.palette.primary.main,
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{ color: (t) => t.palette.primary.main }}
+                    >
                       {dialogMode === "edit" ? "Auto-saved" : "Draft saved"}
                     </Typography>
                   </>
@@ -1904,7 +2049,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               />
             </Stack>
             <Box>
-              <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="flex-start"
+                sx={{ mb: 1 }}
+              >
                 <TextField
                   label="SMS template (optional)"
                   value={formValues.smsTemplate}
@@ -2084,12 +2234,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               <DateTimePicker
                 label="Publish Date"
                 value={formValues.publishDate}
-                onChange={(newValue) => handleFieldChange("publishDate", newValue)}
+                onChange={(newValue) =>
+                  handleFieldChange("publishDate", newValue)
+                }
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     size: "small",
-                    helperText: "Set a future date to auto-activate this item. Leave empty for immediate activation.",
+                    helperText:
+                      "Set a future date to auto-activate this item. Leave empty for immediate activation.",
                   },
                 }}
                 minDateTime={dayjs()}
@@ -2330,7 +2483,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         disableRestoreFocus
       >
         <Stack spacing={1.5}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "primary.main" }}>
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 700, color: "primary.main" }}
+          >
             📱 SMS Preview
           </Typography>
           <Divider sx={{ borderColor: (t) => t.palette.divider }} />
@@ -2341,7 +2497,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               fontFamily: "monospace",
               fontSize: "0.875rem",
               p: 1.5,
-              bgcolor: (t) => t.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
+              bgcolor: (t) =>
+                t.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
               borderRadius: 1,
               border: 1,
               borderColor: "divider",
@@ -2351,7 +2508,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           </Typography>
           {previewItem?.images && previewItem.images.length > 0 && (
             <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              + {previewItem.images.length} image{previewItem.images.length > 1 ? "s" : ""} (MMS)
+              + {previewItem.images.length} image
+              {previewItem.images.length > 1 ? "s" : ""} (MMS)
             </Typography>
           )}
         </Stack>
@@ -2370,7 +2528,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       >
         {templates.length === 0 ? (
           <MenuItem disabled>
-            <Typography variant="body2" sx={{ fontStyle: "italic", opacity: 0.7 }}>
+            <Typography
+              variant="body2"
+              sx={{ fontStyle: "italic", opacity: 0.7 }}
+            >
               No saved templates
             </Typography>
           </MenuItem>
@@ -2379,7 +2540,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             <MenuItem
               key={template.name}
               onClick={() => handleLoadTemplate(template)}
-              sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
             >
               <Stack spacing={0.25} sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
@@ -2387,9 +2552,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 </Typography>
                 <Typography
                   variant="caption"
-                  sx={{ opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  sx={{
+                    opacity: 0.7,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
                 >
-                  {template.content.substring(0, 60)}{template.content.length > 60 ? "..." : ""}
+                  {template.content.substring(0, 60)}
+                  {template.content.length > 60 ? "..." : ""}
                 </Typography>
               </Stack>
               <IconButton

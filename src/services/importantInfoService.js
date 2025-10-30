@@ -47,7 +47,8 @@ function sanitizePayload(payload = {}) {
     title: safeTrim(payload.title) || "Untitled",
     blurb: safeTrim(payload.blurb),
     details: safeTrim(payload.details),
-    category: safeTrim(payload.category) || PROMO_PARTNER_CATEGORIES[0] || "Promotions",
+    category:
+      safeTrim(payload.category) || PROMO_PARTNER_CATEGORIES[0] || "Promotions",
     phone: nullable(payload.phone),
     url: nullable(payload.url),
     smsTemplate: nullable(payload.smsTemplate),
@@ -61,7 +62,8 @@ function sanitizePayload(payload = {}) {
 
   // Include sendCount if provided (for SMS tracking)
   if (payload.sendCount !== undefined) {
-    base.sendCount = typeof payload.sendCount === "number" ? payload.sendCount : 0;
+    base.sendCount =
+      typeof payload.sendCount === "number" ? payload.sendCount : 0;
   }
 
   // Include order if provided (for drag-and-drop ordering)
