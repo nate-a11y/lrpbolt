@@ -65,6 +65,7 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
 import HistoryIcon from "@mui/icons-material/History";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import CircularProgress from "@mui/material/CircularProgress";
 import { DateTimePicker } from "@mui/x-date-pickers-pro";
 
@@ -1828,10 +1829,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                     }) => (
                       <Card
                         variant="outlined"
-                        onMouseEnter={(e) =>
-                          !itemIsDragging && handlePreviewOpen(e, row)
-                        }
-                        onMouseLeave={handlePreviewClose}
                         sx={(t) => ({
                           bgcolor: t.palette.background.paper,
                           borderColor: t.palette.divider,
@@ -2090,6 +2087,19 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                             >
                               Test SMS
                             </Button>
+                            <Tooltip title="Preview SMS">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handlePreviewOpen(e, row)}
+                                  disabled={disabled}
+                                  sx={{ color: (t) => t.palette.primary.main }}
+                                  aria-label={`Preview SMS for ${row?.title || "item"}`}
+                                >
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                             <Tooltip title="Edit">
                               <span>
                                 <IconButton
@@ -2695,19 +2705,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         anchorEl={previewAnchor}
         onClose={handlePreviewClose}
         anchorOrigin={{
-          vertical: "top",
-          horizontal: "right",
+          vertical: "bottom",
+          horizontal: "center",
         }}
         transformOrigin={{
           vertical: "top",
-          horizontal: "left",
-        }}
-        sx={{
-          pointerEvents: "none",
+          horizontal: "center",
         }}
         PaperProps={{
           sx: {
-            pointerEvents: "auto",
             maxWidth: 400,
             p: 2,
             bgcolor: "background.paper",
@@ -2715,7 +2721,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             borderColor: "primary.main",
           },
         }}
-        disableRestoreFocus
       >
         <Stack spacing={1.5}>
           <Typography
