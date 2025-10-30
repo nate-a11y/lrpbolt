@@ -723,7 +723,23 @@ Once you have ALL required pieces of information and the customer confirms detai
       if (response.tool_calls && response.tool_calls.length > 0) {
         const toolCall = response.tool_calls[0];
 
-        if (toolCall.function.name === "submit_booking_request") {
+        // 🔍 AGGRESSIVE LOGGING - See exactly what GPT is calling
+        console.log("=== FUNCTION CALL DETECTED ===");
+        console.log("Function name:", toolCall.function.name);
+        console.log("Function arguments:", toolCall.function.arguments);
+        console.log("Full tool call:", JSON.stringify(toolCall, null, 2));
+
+        logger.info("🎯 FUNCTION CALL DETECTED", {
+          functionName: toolCall.function.name,
+          arguments: toolCall.function.arguments,
+          fullToolCall: JSON.stringify(toolCall),
+        });
+
+        // Handle both function names (in case of mismatch)
+        if (
+          toolCall.function.name === "submit_booking_request" ||
+          toolCall.function.name === "collect_booking_details"
+        ) {
           logger.info("🎉 GPT CALLED BOOKING FUNCTION - Booking submission starting!", {
             functionName: toolCall.function.name,
             arguments: toolCall.function.arguments,
@@ -788,12 +804,17 @@ Once you have ALL required pieces of information and the customer confirms detai
           // Generate unique booking ID
           const bookingId = `LRP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+          console.log("📋 Generated booking ID:", bookingId);
+
           try {
             // Import the email/SMS functions
+            console.log("📦 Importing email/SMS functions...");
             const { sendBookingRequestEmail } = require("./sendBookingRequestEmail");
             const { sendBookingConfirmationSMS } = require("./sendBookingConfirmationSMS");
+            console.log("✅ Email/SMS functions imported successfully");
 
             // Store in Firestore FIRST
+            console.log("💾 Storing booking in Firestore...");
             await db.collection("bookingRequests").doc(bookingId).set({
               ...bookingData,
               bookingId,
@@ -803,6 +824,7 @@ Once you have ALL required pieces of information and the customer confirms detai
               updatedAt: new Date().toISOString(),
             });
 
+            console.log("✅ Booking stored in Firestore successfully");
             logger.info("Booking stored in Firestore", {
               bookingId,
               customer: bookingData.customer_name,
@@ -811,50 +833,67 @@ Once you have ALL required pieces of information and the customer confirms detai
             // Send email to owners and track result
             let emailSent = false;
             try {
+              console.log("📧 Sending email to owners@lakeridepros.com...");
               const emailResult = await sendBookingRequestEmail(bookingId, bookingData);
               emailSent = emailResult.success;
               if (emailSent) {
+                console.log("✅ Email sent successfully! MessageID:", emailResult.messageId);
                 logger.info("Booking request email sent successfully", {
                   bookingId,
                   messageId: emailResult.messageId,
                 });
               } else {
+                console.error("❌ Email send failed:", emailResult.error);
                 logger.error("Email send failed", {
                   bookingId,
                   error: emailResult.error,
                 });
               }
             } catch (err) {
+              console.error("❌ Email send threw exception:", err.message);
               logger.error("Email send threw exception", {
                 bookingId,
                 error: err.message,
+                stack: err.stack,
               });
             }
 
             // Send SMS to customer and track result
             let smsSent = false;
             try {
+              console.log("📱 Sending SMS to customer:", bookingData.customer_phone);
               const smsResult = await sendBookingConfirmationSMS(bookingId, bookingData);
               smsSent = smsResult.success;
               if (smsSent) {
+                console.log("✅ SMS sent successfully!");
                 logger.info("Booking confirmation SMS sent successfully", {
                   bookingId,
                   phone: bookingData.customer_phone,
                 });
               } else {
+                console.error("❌ SMS send failed:", smsResult.error);
                 logger.error("SMS send failed", {
                   bookingId,
                   error: smsResult.error,
                 });
               }
             } catch (err) {
+              console.error("❌ SMS send threw exception:", err.message);
               logger.error("SMS send threw exception", {
                 bookingId,
                 error: err.message,
+                stack: err.stack,
               });
             }
 
             // Log overall booking submission status
+            console.log("=== BOOKING SUBMISSION COMPLETE ===");
+            console.log("Booking ID:", bookingId);
+            console.log("Customer:", bookingData.customer_name);
+            console.log("Email sent:", emailSent);
+            console.log("SMS sent:", smsSent);
+            console.log("=================================");
+
             logger.info("✅ BOOKING SUCCESSFULLY SUBMITTED", {
               bookingId,
               customer: bookingData.customer_name,
@@ -924,6 +963,9 @@ Once you have ALL required pieces of information and the customer confirms detai
             confirmationMsg += `💬 Facebook: facebook.com/lakeridepros\n`;
             confirmationMsg += `📧 Email: owners@lakeridepros.com`;
 
+            console.log("🎉 Sending confirmation to user...");
+            console.log("Confirmation message:", confirmationMsg.substring(0, 100) + "...");
+
             return res.status(200).json({
               success: true,
               reply: confirmationMsg,
@@ -951,6 +993,13 @@ Once you have ALL required pieces of information and the customer confirms detai
               error: error.message,
             });
           }
+        } else {
+          // GPT called a function we don't recognize
+          console.error("⚠️ UNKNOWN FUNCTION CALLED:", toolCall.function.name);
+          logger.error("Unknown function called by GPT", {
+            functionName: toolCall.function.name,
+            arguments: toolCall.function.arguments,
+          });
         }
       }
 
