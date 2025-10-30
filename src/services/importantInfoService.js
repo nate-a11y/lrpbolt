@@ -46,18 +46,52 @@ function nullable(value) {
   return trimmed ? trimmed : null;
 }
 
-function sanitizePayload(payload = {}) {
-  const base = {
-    title: safeTrim(payload.title) || "Untitled",
-    blurb: safeTrim(payload.blurb),
-    details: safeTrim(payload.details),
-    category:
-      safeTrim(payload.category) || PROMO_PARTNER_CATEGORIES[0] || "Promotions",
-    phone: nullable(payload.phone),
-    url: nullable(payload.url),
-    smsTemplate: nullable(payload.smsTemplate),
-    isActive: typeof payload.isActive === "boolean" ? payload.isActive : true,
-  };
+function sanitizePayload(payload = {}, isCreate = false) {
+  const base = {};
+
+  // For creates, we need to ensure required fields have defaults
+  // For updates, we only include fields that are explicitly provided
+
+  // title - required field
+  if (payload.title !== undefined || isCreate) {
+    base.title = safeTrim(payload.title) || "Untitled";
+  }
+
+  // blurb - optional field
+  if (payload.blurb !== undefined) {
+    base.blurb = safeTrim(payload.blurb);
+  }
+
+  // details - optional field
+  if (payload.details !== undefined) {
+    base.details = safeTrim(payload.details);
+  }
+
+  // category - required field for creates
+  if (payload.category !== undefined || isCreate) {
+    base.category =
+      safeTrim(payload.category) || PROMO_PARTNER_CATEGORIES[0] || "Promotions";
+  }
+
+  // phone - optional field
+  if (payload.phone !== undefined) {
+    base.phone = nullable(payload.phone);
+  }
+
+  // url - optional field
+  if (payload.url !== undefined) {
+    base.url = nullable(payload.url);
+  }
+
+  // smsTemplate - optional field
+  if (payload.smsTemplate !== undefined) {
+    base.smsTemplate = nullable(payload.smsTemplate);
+  }
+
+  // isActive - default to true for creates, otherwise only if provided
+  if (payload.isActive !== undefined || isCreate) {
+    base.isActive = typeof payload.isActive === "boolean" ? payload.isActive : true;
+  }
 
   // Only include images if provided (don't overwrite existing with empty array)
   if (payload.images !== undefined) {
@@ -143,7 +177,7 @@ export function subscribeImportantInfo({ onData, onError } = {}) {
 }
 
 export async function createImportantInfo(payload, userContext = null) {
-  const data = sanitizePayload(payload);
+  const data = sanitizePayload(payload, true);
   try {
     const itemId = await withExponentialBackoff(async () => {
       const ref = await addDoc(collection(db, COLLECTION), {
@@ -311,7 +345,7 @@ export async function bulkCreateImportantInfo(items = []) {
         slice.forEach((raw) => {
           const ref = doc(colRef);
           const payload = {
-            ...sanitizePayload(raw),
+            ...sanitizePayload(raw, true),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           };
