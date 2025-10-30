@@ -27,8 +27,9 @@ export async function getChatbotAnalytics({ startDate, endDate, metric } = {}) {
     const region = "us-central1"; // Default region for Cloud Functions
 
     // Build the Cloud Functions URL
-    const baseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL ||
-                    `https://${region}-${projectId}.cloudfunctions.net`;
+    const baseUrl =
+      import.meta.env.VITE_FIREBASE_FUNCTIONS_URL ||
+      `https://${region}-${projectId}.cloudfunctions.net`;
 
     const url = `${baseUrl}/getChatbotAnalytics?${params.toString()}`;
 

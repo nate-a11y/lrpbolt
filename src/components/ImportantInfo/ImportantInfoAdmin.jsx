@@ -1495,7 +1495,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
   const handleGenerateWithAI = useCallback(async () => {
     if (!formValues.title || !formValues.details) {
-      show("Please enter a title and details before generating content.", "warning");
+      show(
+        "Please enter a title and details before generating content.",
+        "warning",
+      );
       return;
     }
 
@@ -1531,7 +1534,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       setDraftStatus("saved");
       setTimeout(() => setDraftStatus("idle"), 2000);
       setAiJustGenerated(true);
-      show("Content generated successfully! Please review and edit as needed.", "success");
+      show(
+        "Content generated successfully! Please review and edit as needed.",
+        "success",
+      );
     } catch (err) {
       logError(err, { where: "ImportantInfoAdmin.handleGenerateWithAI" });
       setDraftStatus("idle");
@@ -2322,9 +2328,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 How to use AI Content Generator:
               </Typography>
               <Typography variant="caption" component="div">
-                1. Fill in Title, Category, and Details<br />
-                2. Optionally add Phone and URL for context<br />
-                3. Click &ldquo;Generate SMS &amp; Blurb with AI&rdquo;<br />
+                1. Fill in Title, Category, and Details
+                <br />
+                2. Optionally add Phone and URL for context
+                <br />
+                3. Click &ldquo;Generate SMS &amp; Blurb with AI&rdquo;
+                <br />
                 4. Review and edit the AI-generated content before saving
               </Typography>
             </Alert>
@@ -2343,8 +2352,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                   ⚠️ Please review AI-generated content
                 </Typography>
                 <Typography variant="caption">
-                  AI can make mistakes. Verify the blurb and SMS message are accurate
-                  and appropriate before saving.
+                  AI can make mistakes. Verify the blurb and SMS message are
+                  accurate and appropriate before saving.
                 </Typography>
               </Alert>
             )}
@@ -2415,7 +2424,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               loading={generatingAI}
               loadingText="Generating with AI..."
               startIcon={<AutoFixHighIcon />}
-              disabled={!formValues.title || !formValues.details || saving || uploading}
+              disabled={
+                !formValues.title || !formValues.details || saving || uploading
+              }
               sx={{
                 bgcolor: (t) => alpha(t.palette.success.main, 0.9),
                 color: (t) => t.palette.success.contrastText,
@@ -2441,7 +2452,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               fullWidth
               multiline
               minRows={2}
-              helperText={aiJustGenerated ? "✨ AI-generated - please review and edit as needed" : "Brief description (1-2 sentences)"}
+              helperText={
+                aiJustGenerated
+                  ? "✨ AI-generated - please review and edit as needed"
+                  : "Brief description (1-2 sentences)"
+              }
             />
             <Box>
               <Stack
@@ -2993,12 +3008,14 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
             zIndex: (t) => t.zIndex.tooltip + 1,
             backgroundColor: (t) => t.palette.primary.main,
-            boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+            boxShadow: (t) =>
+              `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
             transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             "&:hover": {
               backgroundColor: (t) => t.palette.primary.dark,
               transform: "scale(1.1)",
-              boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+              boxShadow: (t) =>
+                `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
             },
             "&:active": {
               transform: "scale(0.95)",

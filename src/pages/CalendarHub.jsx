@@ -137,12 +137,15 @@ export default function CalendarHub() {
               borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
             }}
           >
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}
+            >
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
                 📅 Ride &amp; Vehicle Calendar
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                View and manage ride schedules, vehicle availability, and driver assignments
+                View and manage ride schedules, vehicle availability, and driver
+                assignments
               </Typography>
             </Box>
 
@@ -171,7 +174,8 @@ export default function CalendarHub() {
                         transition: "all 0.2s ease",
                         "&:hover": {
                           bgcolor: (t) => t.palette.background.paper,
-                          boxShadow: (t) => `0 2px 8px ${alpha(t.palette.common.black, 0.1)}`,
+                          boxShadow: (t) =>
+                            `0 2px 8px ${alpha(t.palette.common.black, 0.1)}`,
                         },
                       },
                     },
@@ -192,7 +196,8 @@ export default function CalendarHub() {
                     bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
                     borderColor: (t) => t.palette.primary.main,
                     transform: "translateY(-1px)",
-                    boxShadow: (t) => `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
+                    boxShadow: (t) =>
+                      `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
                   },
                 }}
               >
@@ -212,7 +217,8 @@ export default function CalendarHub() {
                     bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
                     borderColor: (t) => t.palette.primary.main,
                     transform: "translateY(-1px)",
-                    boxShadow: (t) => `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
+                    boxShadow: (t) =>
+                      `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
                   },
                 }}
               >
@@ -238,9 +244,10 @@ export default function CalendarHub() {
                       "& .MuiSwitch-switchBase.Mui-checked": {
                         color: (t) => t.palette.primary.main,
                       },
-                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-                        bgcolor: (t) => t.palette.primary.main,
-                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                        {
+                          bgcolor: (t) => t.palette.primary.main,
+                        },
                     }}
                   />
                 }
@@ -257,12 +264,14 @@ export default function CalendarHub() {
                   sx={{
                     bgcolor: (t) => t.palette.primary.main,
                     fontWeight: 600,
-                    boxShadow: (t) => `0 2px 8px ${alpha(t.palette.primary.main, 0.3)}`,
+                    boxShadow: (t) =>
+                      `0 2px 8px ${alpha(t.palette.primary.main, 0.3)}`,
                     transition: "all 0.2s ease",
                     "&:hover": {
                       bgcolor: (t) => t.palette.primary.dark,
                       transform: "translateY(-1px)",
-                      boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.4)}`,
+                      boxShadow: (t) =>
+                        `0 4px 12px ${alpha(t.palette.primary.main, 0.4)}`,
                     },
                   }}
                 >
@@ -346,12 +355,14 @@ export default function CalendarHub() {
               bottom: `calc(88px + env(safe-area-inset-bottom, 0px))`,
               zIndex: (t) => t.zIndex.tooltip + 1,
               backgroundColor: (t) => t.palette.primary.main,
-              boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+              boxShadow: (t) =>
+                `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               "&:hover": {
                 backgroundColor: (t) => t.palette.primary.dark,
                 transform: "scale(1.1)",
-                boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+                boxShadow: (t) =>
+                  `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
               },
               "&:active": {
                 transform: "scale(0.95)",
@@ -374,12 +385,14 @@ export default function CalendarHub() {
               bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
               zIndex: (t) => t.zIndex.tooltip + 1,
               backgroundColor: (t) => t.palette.primary.main,
-              boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+              boxShadow: (t) =>
+                `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               "&:hover": {
                 backgroundColor: (t) => t.palette.primary.dark,
                 transform: "scale(1.1)",
-                boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+                boxShadow: (t) =>
+                  `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
               },
               "&:active": {
                 transform: "scale(0.95)",

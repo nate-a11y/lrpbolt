@@ -42,7 +42,8 @@ export async function getChatbotSettings() {
     return {
       enabled: false,
       name: "Johnny",
-      welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
+      welcomeMessage:
+        "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
       placeholder: "Ask about our rides, availability, pricing...",
       primaryColor: null, // Default provided by theme.palette.lrp.chatbotPrimary
       position: "bottom-right",
@@ -99,13 +100,15 @@ When escalating:
     return {
       enabled: false,
       name: "Johnny",
-      welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
+      welcomeMessage:
+        "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
       placeholder: "Ask about our rides, availability, pricing...",
       primaryColor: null, // Default provided by theme.palette.lrp.chatbotPrimary
       position: "bottom-right",
       facebookPageUrl: "https://m.me/lakeridepros",
       bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
-      instructions: "You are Johnny, the Chief Chauffeur of Chat at Lake Ride Pros. Be helpful, friendly, and professional.",
+      instructions:
+        "You are Johnny, the Chief Chauffeur of Chat at Lake Ride Pros. Be helpful, friendly, and professional.",
       createdAt: new Date().toISOString(),
     };
   }
@@ -125,7 +128,7 @@ export async function saveChatbotSettings(settings) {
         ...settings,
         updatedAt: new Date().toISOString(),
       },
-      { merge: true }
+      { merge: true },
     );
     return true;
   } catch (err) {
@@ -151,19 +154,21 @@ export function subscribeToChatbotSettings(callback) {
         callback({
           enabled: false,
           name: "Johnny",
-          welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
+          welcomeMessage:
+            "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
           placeholder: "Ask about our rides, availability, pricing...",
           primaryColor: null, // Default provided by theme.palette.lrp.chatbotPrimary
           position: "bottom-right",
           facebookPageUrl: "https://m.me/lakeridepros",
           bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
-          instructions: "You are Johnny, the Chief Chauffeur of Chat at Lake Ride Pros. Be helpful, friendly, and professional.",
+          instructions:
+            "You are Johnny, the Chief Chauffeur of Chat at Lake Ride Pros. Be helpful, friendly, and professional.",
         });
       }
     },
     (err) => {
       logError(err, { where: "chatbotService.subscribeToChatbotSettings" });
-    }
+    },
   );
 }
 
@@ -175,7 +180,7 @@ export async function getKnowledgeBase() {
   try {
     const q = query(
       collection(db, KNOWLEDGE_BASE_COLLECTION),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -193,19 +198,22 @@ export async function getKnowledgeBase() {
 export function subscribeToKnowledgeBase(callback) {
   const q = query(
     collection(db, KNOWLEDGE_BASE_COLLECTION),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
   );
 
   return onSnapshot(
     q,
     (snapshot) => {
-      const entries = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const entries = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       callback(entries);
     },
     (err) => {
       logError(err, { where: "chatbotService.subscribeToKnowledgeBase" });
       callback([]);
-    }
+    },
   );
 }
 
@@ -275,7 +283,9 @@ export async function queryChatbot(message, conversationHistory = []) {
     // Get AI settings (uses the same OpenAI API key)
     const aiSettings = await getAISettings();
     if (!aiSettings.enabled || !aiSettings.apiKey) {
-      throw new Error("AI is not configured. Please set up your API key in Important Info settings.");
+      throw new Error(
+        "AI is not configured. Please set up your API key in Important Info settings.",
+      );
     }
 
     // Get chatbot settings
@@ -338,7 +348,7 @@ Guidelines:
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        errorData.error?.message || `API error: ${response.status}`
+        errorData.error?.message || `API error: ${response.status}`,
       );
     }
 
@@ -364,11 +374,7 @@ export async function isChatbotReady() {
   try {
     const aiSettings = await getAISettings();
     const chatbotSettings = await getChatbotSettings();
-    return (
-      aiSettings.enabled &&
-      aiSettings.apiKey &&
-      chatbotSettings.enabled
-    );
+    return aiSettings.enabled && aiSettings.apiKey && chatbotSettings.enabled;
   } catch {
     return false;
   }

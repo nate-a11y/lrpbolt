@@ -89,12 +89,20 @@ export default function ChatBotSettings() {
   // Chatbot Settings
   const [enabled, setEnabled] = useState(false);
   const [name, setName] = useState("Johnny");
-  const [welcomeMessage, setWelcomeMessage] = useState("Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?");
-  const [placeholder, setPlaceholder] = useState("Ask about our rides, availability, pricing...");
+  const [welcomeMessage, setWelcomeMessage] = useState(
+    "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
+  );
+  const [placeholder, setPlaceholder] = useState(
+    "Ask about our rides, availability, pricing...",
+  );
   const [primaryColor, setPrimaryColor] = useState(null); // Will use theme default if null
   const [position, setPosition] = useState("bottom-right");
-  const [facebookPageUrl, setFacebookPageUrl] = useState("https://m.me/lakeridepros");
-  const [bookingUrl, setBookingUrl] = useState("https://customer.moovs.app/lake-ride-pros/new/info");
+  const [facebookPageUrl, setFacebookPageUrl] = useState(
+    "https://m.me/lakeridepros",
+  );
+  const [bookingUrl, setBookingUrl] = useState(
+    "https://customer.moovs.app/lake-ride-pros/new/info",
+  );
   const [instructions, setInstructions] = useState(
     `Respond on behalf of the business as an employee of Lake Ride Pros.
 
@@ -129,7 +137,7 @@ Contact Info:
 Chat Escalation:
 If the user needs more personalized help or wants to speak with a human, direct them to:
 💬 Facebook Messenger: Message us on Facebook for live chat support
-📞 Call directly: 573-206-9499`
+📞 Call directly: 573-206-9499`,
   );
 
   // Knowledge Base
@@ -164,17 +172,30 @@ If the user needs more personalized help or wants to speak with a human, direct 
         setEnabled(chatbotData.enabled || false);
         setName(chatbotData.name || "Johnny");
         setWelcomeMessage(
-          chatbotData.welcomeMessage || "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?"
+          chatbotData.welcomeMessage ||
+            "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
         );
-        setPlaceholder(chatbotData.placeholder || "Ask about our rides, availability, pricing...");
+        setPlaceholder(
+          chatbotData.placeholder ||
+            "Ask about our rides, availability, pricing...",
+        );
         // Only set primaryColor if it's a valid hex color (not a theme path)
-        setPrimaryColor(chatbotData.primaryColor && chatbotData.primaryColor.startsWith('#') ? chatbotData.primaryColor : null);
+        setPrimaryColor(
+          chatbotData.primaryColor && chatbotData.primaryColor.startsWith("#")
+            ? chatbotData.primaryColor
+            : null,
+        );
         setPosition(chatbotData.position || "bottom-right");
-        setFacebookPageUrl(chatbotData.facebookPageUrl || "https://m.me/lakeridepros");
-        setBookingUrl(chatbotData.bookingUrl || "https://customer.moovs.app/lake-ride-pros/new/info");
+        setFacebookPageUrl(
+          chatbotData.facebookPageUrl || "https://m.me/lakeridepros",
+        );
+        setBookingUrl(
+          chatbotData.bookingUrl ||
+            "https://customer.moovs.app/lake-ride-pros/new/info",
+        );
         setInstructions(
           chatbotData.instructions ||
-            "You are Johnny, the Chief Chauffeur of Chat at Lake Ride Pros. Be helpful, friendly, and professional."
+            "You are Johnny, the Chief Chauffeur of Chat at Lake Ride Pros. Be helpful, friendly, and professional.",
         );
 
         // Check AI configuration
@@ -278,14 +299,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
       logError(err, { where: "ChatBotSettings.handleSaveKnowledge" });
       show("Failed to save knowledge entry", "error");
     }
-  }, [
-    entryType,
-    entryUrl,
-    entryTitle,
-    entryContent,
-    editingEntry,
-    show,
-  ]);
+  }, [entryType, entryUrl, entryTitle, entryContent, editingEntry, show]);
 
   const handleDeleteKnowledge = useCallback(
     async (id) => {
@@ -299,7 +313,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
         show("Failed to delete entry", "error");
       }
     },
-    [show]
+    [show],
   );
 
   const handleCopyEmbedCode = useCallback(() => {
@@ -377,7 +391,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
             background: (theme) =>
               `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)} 0%, ${alpha(
                 theme.palette.background.paper,
-                0.6
+                0.6,
               )} 100%)`,
           }}
         >
@@ -464,7 +478,10 @@ If the user needs more personalized help or wants to speak with a human, direct 
               <Stack spacing={3}>
                 <FormControlLabel
                   control={
-                    <Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+                    <Switch
+                      checked={enabled}
+                      onChange={(e) => setEnabled(e.target.checked)}
+                    />
                   }
                   label="Enable Chatbot"
                 />
@@ -584,7 +601,13 @@ If the user needs more personalized help or wants to speak with a human, direct 
             {/* Knowledge Base Tab */}
             {tab === "knowledge" && (
               <Stack spacing={3}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <Typography variant="h6">Knowledge Base</Typography>
                   <Button
                     variant="contained"
@@ -597,7 +620,8 @@ If the user needs more personalized help or wants to speak with a human, direct 
 
                 {knowledgeBase.length === 0 ? (
                   <Alert severity="info">
-                    No knowledge base entries yet. Add websites or documents to teach your chatbot.
+                    No knowledge base entries yet. Add websites or documents to
+                    teach your chatbot.
                   </Alert>
                 ) : (
                   <List>
@@ -611,14 +635,21 @@ If the user needs more personalized help or wants to speak with a human, direct 
                           mb: 1,
                         }}
                       >
-                        <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1 }}>
+                        <Stack
+                          direction="row"
+                          spacing={2}
+                          alignItems="center"
+                          sx={{ flex: 1 }}
+                        >
                           {entry.type === "website" ? (
                             <LanguageIcon color="primary" />
                           ) : (
                             <DescriptionIcon color="primary" />
                           )}
                           <ListItemText
-                            primary={entry.type === "website" ? entry.url : entry.title}
+                            primary={
+                              entry.type === "website" ? entry.url : entry.title
+                            }
                             secondary={
                               entry.content
                                 ? `${entry.content.substring(0, 100)}...`
@@ -657,19 +688,29 @@ If the user needs more personalized help or wants to speak with a human, direct 
             {/* Analytics Tab */}
             {tab === "analytics" && (
               <Stack spacing={3}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <Typography variant="h6">Chatbot Analytics</Typography>
                   <Stack direction="row" spacing={1}>
                     <Button
                       size="small"
-                      variant={analyticsDateRange === 7 ? "contained" : "outlined"}
+                      variant={
+                        analyticsDateRange === 7 ? "contained" : "outlined"
+                      }
                       onClick={() => setAnalyticsDateRange(7)}
                     >
                       7 Days
                     </Button>
                     <Button
                       size="small"
-                      variant={analyticsDateRange === 30 ? "contained" : "outlined"}
+                      variant={
+                        analyticsDateRange === 30 ? "contained" : "outlined"
+                      }
                       onClick={() => setAnalyticsDateRange(30)}
                     >
                       30 Days
@@ -699,16 +740,34 @@ If the user needs more personalized help or wants to speak with a human, direct 
                     <Box
                       sx={{
                         display: "grid",
-                        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, 1fr)" },
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          sm: "1fr 1fr",
+                          md: "repeat(4, 1fr)",
+                        },
                         gap: 2,
                       }}
                     >
                       {/* Total Conversations */}
-                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05) }}>
+                      <Card
+                        sx={{
+                          bgcolor: (theme) =>
+                            alpha(theme.palette.primary.main, 0.05),
+                        }}
+                      >
                         <CardContent>
                           <Stack spacing={1}>
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <Typography variant="caption" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 Total Conversations
                               </Typography>
                               <MessageIcon fontSize="small" color="primary" />
@@ -716,19 +775,40 @@ If the user needs more personalized help or wants to speak with a human, direct 
                             <Typography variant="h4" fontWeight={700}>
                               {analytics.metrics.totalConversations}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Avg {analytics.metrics.avgMessagesPerConversation.toFixed(1)} messages/conversation
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Avg{" "}
+                              {analytics.metrics.avgMessagesPerConversation.toFixed(
+                                1,
+                              )}{" "}
+                              messages/conversation
                             </Typography>
                           </Stack>
                         </CardContent>
                       </Card>
 
                       {/* Booking Rate */}
-                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.success.main, 0.05) }}>
+                      <Card
+                        sx={{
+                          bgcolor: (theme) =>
+                            alpha(theme.palette.success.main, 0.05),
+                        }}
+                      >
                         <CardContent>
                           <Stack spacing={1}>
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <Typography variant="caption" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 Booking Rate
                               </Typography>
                               <CheckIcon fontSize="small" color="success" />
@@ -736,27 +816,50 @@ If the user needs more personalized help or wants to speak with a human, direct 
                             <Typography variant="h4" fontWeight={700}>
                               {formatPercentage(analytics.metrics.bookingRate)}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {analytics.metrics.bookingCount} bookings submitted
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {analytics.metrics.bookingCount} bookings
+                              submitted
                             </Typography>
                           </Stack>
                         </CardContent>
                       </Card>
 
                       {/* Escalation Rate */}
-                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.warning.main, 0.05) }}>
+                      <Card
+                        sx={{
+                          bgcolor: (theme) =>
+                            alpha(theme.palette.warning.main, 0.05),
+                        }}
+                      >
                         <CardContent>
                           <Stack spacing={1}>
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <Typography variant="caption" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 Escalation Rate
                               </Typography>
                               <WarningIcon fontSize="small" color="warning" />
                             </Box>
                             <Typography variant="h4" fontWeight={700}>
-                              {formatPercentage(analytics.metrics.escalationRate)}
+                              {formatPercentage(
+                                analytics.metrics.escalationRate,
+                              )}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
                               {analytics.metrics.escalatedCount} escalations
                             </Typography>
                           </Stack>
@@ -764,11 +867,25 @@ If the user needs more personalized help or wants to speak with a human, direct 
                       </Card>
 
                       {/* Total Cost */}
-                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.info.main, 0.05) }}>
+                      <Card
+                        sx={{
+                          bgcolor: (theme) =>
+                            alpha(theme.palette.info.main, 0.05),
+                        }}
+                      >
                         <CardContent>
                           <Stack spacing={1}>
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <Typography variant="caption" color="text.secondary">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 Total Cost
                               </Typography>
                               <AttachMoneyIcon fontSize="small" color="info" />
@@ -776,8 +893,14 @@ If the user needs more personalized help or wants to speak with a human, direct 
                             <Typography variant="h4" fontWeight={700}>
                               {formatCurrency(analytics.metrics.totalCost)}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatCurrency(analytics.metrics.avgCostPerConversation)}/conversation
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {formatCurrency(
+                                analytics.metrics.avgCostPerConversation,
+                              )}
+                              /conversation
                             </Typography>
                           </Stack>
                         </CardContent>
@@ -795,38 +918,81 @@ If the user needs more personalized help or wants to speak with a human, direct 
                       {/* Performance Metrics */}
                       <Card>
                         <CardContent>
-                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                          <Typography
+                            variant="subtitle1"
+                            fontWeight={600}
+                            gutterBottom
+                          >
                             Performance Metrics
                           </Typography>
                           <Stack spacing={2} sx={{ mt: 2 }}>
-                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                              <Typography variant="body2">Completion Rate</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography variant="body2">
+                                Completion Rate
+                              </Typography>
                               <Typography variant="body2" fontWeight={600}>
-                                {formatPercentage(analytics.metrics.completionRate)}
+                                {formatPercentage(
+                                  analytics.metrics.completionRate,
+                                )}
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                              <Typography variant="body2">Hallucinations Caught</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography variant="body2">
+                                Hallucinations Caught
+                              </Typography>
                               <Typography variant="body2" fontWeight={600}>
                                 {analytics.metrics.hallucinationsCaught}
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                              <Typography variant="body2">Avg Conversation Duration</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography variant="body2">
+                                Avg Conversation Duration
+                              </Typography>
                               <Typography variant="body2" fontWeight={600}>
                                 {analytics.metrics.avgConversationDuration}s
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                              <Typography variant="body2">Total Tokens Used</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography variant="body2">
+                                Total Tokens Used
+                              </Typography>
                               <Typography variant="body2" fontWeight={600}>
                                 {analytics.metrics.totalTokensUsed.toLocaleString()}
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                              <Typography variant="body2">Cost per Booking</Typography>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography variant="body2">
+                                Cost per Booking
+                              </Typography>
                               <Typography variant="body2" fontWeight={600}>
-                                {formatCurrency(calculateCostPerBooking(analytics.metrics))}
+                                {formatCurrency(
+                                  calculateCostPerBooking(analytics.metrics),
+                                )}
                               </Typography>
                             </Box>
                           </Stack>
@@ -836,43 +1002,66 @@ If the user needs more personalized help or wants to speak with a human, direct 
                       {/* Top Escalation Reasons */}
                       <Card>
                         <CardContent>
-                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                          <Typography
+                            variant="subtitle1"
+                            fontWeight={600}
+                            gutterBottom
+                          >
                             Top Escalation Reasons
                           </Typography>
-                          {analytics.metrics.topEscalationReasons.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                          {analytics.metrics.topEscalationReasons.length ===
+                          0 ? (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 2 }}
+                            >
                               No escalations recorded
                             </Typography>
                           ) : (
                             <Stack spacing={1.5} sx={{ mt: 2 }}>
-                              {analytics.metrics.topEscalationReasons.map((item) => (
-                                <Box key={item.reason}>
-                                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                                    <Typography variant="body2" sx={{ textTransform: "capitalize" }}>
-                                      {item.reason.replace(/_/g, " ")}
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                      {item.count}
-                                    </Typography>
-                                  </Box>
-                                  <Box
-                                    sx={{
-                                      height: 4,
-                                      bgcolor: "divider",
-                                      borderRadius: 1,
-                                      overflow: "hidden",
-                                    }}
-                                  >
+                              {analytics.metrics.topEscalationReasons.map(
+                                (item) => (
+                                  <Box key={item.reason}>
                                     <Box
                                       sx={{
-                                        height: "100%",
-                                        width: `${(item.count / analytics.metrics.escalatedCount) * 100}%`,
-                                        bgcolor: "warning.main",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        mb: 0.5,
                                       }}
-                                    />
+                                    >
+                                      <Typography
+                                        variant="body2"
+                                        sx={{ textTransform: "capitalize" }}
+                                      >
+                                        {item.reason.replace(/_/g, " ")}
+                                      </Typography>
+                                      <Typography
+                                        variant="body2"
+                                        fontWeight={600}
+                                      >
+                                        {item.count}
+                                      </Typography>
+                                    </Box>
+                                    <Box
+                                      sx={{
+                                        height: 4,
+                                        bgcolor: "divider",
+                                        borderRadius: 1,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      <Box
+                                        sx={{
+                                          height: "100%",
+                                          width: `${(item.count / analytics.metrics.escalatedCount) * 100}%`,
+                                          bgcolor: "warning.main",
+                                        }}
+                                      />
+                                    </Box>
                                   </Box>
-                                </Box>
-                              ))}
+                                ),
+                              )}
                             </Stack>
                           )}
                         </CardContent>
@@ -880,65 +1069,106 @@ If the user needs more personalized help or wants to speak with a human, direct 
                     </Box>
 
                     {/* Daily Breakdown Chart */}
-                    {analytics.dailyBreakdown && analytics.dailyBreakdown.length > 0 && (
-                      <Card>
-                        <CardContent>
-                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                            Daily Breakdown
-                          </Typography>
-                          <TableContainer sx={{ mt: 2 }}>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>
-                                    <Typography variant="caption" fontWeight={600}>Date</Typography>
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Typography variant="caption" fontWeight={600}>Conversations</Typography>
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Typography variant="caption" fontWeight={600}>Bookings</Typography>
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Typography variant="caption" fontWeight={600}>Escalations</Typography>
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Typography variant="caption" fontWeight={600}>Cost</Typography>
-                                  </TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {analytics.dailyBreakdown.map((day) => (
-                                  <TableRow key={day.date}>
+                    {analytics.dailyBreakdown &&
+                      analytics.dailyBreakdown.length > 0 && (
+                        <Card>
+                          <CardContent>
+                            <Typography
+                              variant="subtitle1"
+                              fontWeight={600}
+                              gutterBottom
+                            >
+                              Daily Breakdown
+                            </Typography>
+                            <TableContainer sx={{ mt: 2 }}>
+                              <Table size="small">
+                                <TableHead>
+                                  <TableRow>
                                     <TableCell>
-                                      <Typography variant="body2">{day.date}</Typography>
+                                      <Typography
+                                        variant="caption"
+                                        fontWeight={600}
+                                      >
+                                        Date
+                                      </Typography>
                                     </TableCell>
                                     <TableCell align="right">
-                                      <Typography variant="body2">{day.conversations}</Typography>
+                                      <Typography
+                                        variant="caption"
+                                        fontWeight={600}
+                                      >
+                                        Conversations
+                                      </Typography>
                                     </TableCell>
                                     <TableCell align="right">
-                                      <Typography variant="body2">{day.bookings}</Typography>
+                                      <Typography
+                                        variant="caption"
+                                        fontWeight={600}
+                                      >
+                                        Bookings
+                                      </Typography>
                                     </TableCell>
                                     <TableCell align="right">
-                                      <Typography variant="body2">{day.escalations}</Typography>
+                                      <Typography
+                                        variant="caption"
+                                        fontWeight={600}
+                                      >
+                                        Escalations
+                                      </Typography>
                                     </TableCell>
                                     <TableCell align="right">
-                                      <Typography variant="body2">{formatCurrency(day.cost)}</Typography>
+                                      <Typography
+                                        variant="caption"
+                                        fontWeight={600}
+                                      >
+                                        Cost
+                                      </Typography>
                                     </TableCell>
                                   </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </CardContent>
-                      </Card>
-                    )}
+                                </TableHead>
+                                <TableBody>
+                                  {analytics.dailyBreakdown.map((day) => (
+                                    <TableRow key={day.date}>
+                                      <TableCell>
+                                        <Typography variant="body2">
+                                          {day.date}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell align="right">
+                                        <Typography variant="body2">
+                                          {day.conversations}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell align="right">
+                                        <Typography variant="body2">
+                                          {day.bookings}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell align="right">
+                                        <Typography variant="body2">
+                                          {day.escalations}
+                                        </Typography>
+                                      </TableCell>
+                                      <TableCell align="right">
+                                        <Typography variant="body2">
+                                          {formatCurrency(day.cost)}
+                                        </Typography>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </CardContent>
+                        </Card>
+                      )}
                   </>
                 )}
 
                 {!analyticsLoading && !analytics && (
                   <Alert severity="info">
-                    No analytics data available. Start using the chatbot to see metrics here.
+                    No analytics data available. Start using the chatbot to see
+                    metrics here.
                   </Alert>
                 )}
               </Stack>
@@ -957,7 +1187,8 @@ If the user needs more personalized help or wants to speak with a human, direct 
                   variant="outlined"
                   sx={{
                     p: 2,
-                    bgcolor: (theme) => alpha(theme.palette.background.default, 0.5),
+                    bgcolor: (theme) =>
+                      alpha(theme.palette.background.default, 0.5),
                     fontFamily: "monospace",
                     fontSize: "0.875rem",
                     overflow: "auto",
@@ -994,16 +1225,22 @@ If the user needs more personalized help or wants to speak with a human, direct 
                     <strong>How it works:</strong>
                   </Typography>
                   <Typography variant="body2" component="div">
-                    1. The script loads from <code>/chatbot-embed.js</code> (already deployed)<br />
-                    2. It fetches chatbot settings from the public API (no authentication required)<br />
-                    3. Creates the chat widget on the external website<br />
+                    1. The script loads from <code>/chatbot-embed.js</code>{" "}
+                    (already deployed)
+                    <br />
+                    2. It fetches chatbot settings from the public API (no
+                    authentication required)
+                    <br />
+                    3. Creates the chat widget on the external website
+                    <br />
                     4. All conversations are handled through Firebase Functions
                   </Typography>
                 </Alert>
 
                 <Alert severity="success" sx={{ mt: 2 }}>
                   <Typography variant="body2">
-                    ✅ <strong>Ready to use!</strong> The chatbot will work on any website with this code.
+                    ✅ <strong>Ready to use!</strong> The chatbot will work on
+                    any website with this code.
                   </Typography>
                 </Alert>
               </Stack>
@@ -1014,7 +1251,8 @@ If the user needs more personalized help or wants to speak with a human, direct 
               <Stack spacing={3}>
                 <Typography variant="h6">Live Preview</Typography>
                 <Alert severity="info">
-                  This is how the chatbot will appear on your website. Try interacting with it!
+                  This is how the chatbot will appear on your website. Try
+                  interacting with it!
                 </Alert>
 
                 <Box
@@ -1024,7 +1262,8 @@ If the user needs more personalized help or wants to speak with a human, direct 
                     border: 2,
                     borderColor: "divider",
                     borderRadius: 2,
-                    bgcolor: (theme) => alpha(theme.palette.background.default, 0.3),
+                    bgcolor: (theme) =>
+                      alpha(theme.palette.background.default, 0.3),
                   }}
                 >
                   <ChatbotWidget settings={getCurrentSettings()} isPreview />

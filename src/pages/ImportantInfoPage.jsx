@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Box, CircularProgress, Tab, Tabs, Typography, Fab, Zoom } from "@mui/material";
+import {
+  Box,
+  CircularProgress,
+  Tab,
+  Tabs,
+  Typography,
+  Fab,
+  Zoom,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import dayjs from "dayjs";
@@ -231,12 +239,14 @@ export default function ImportantInfoPage() {
             bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
             zIndex: (t) => t.zIndex.tooltip + 1,
             backgroundColor: (t) => t.palette.primary.main,
-            boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+            boxShadow: (t) =>
+              `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
             transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             "&:hover": {
               backgroundColor: (t) => t.palette.primary.dark,
               transform: "scale(1.1)",
-              boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+              boxShadow: (t) =>
+                `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
             },
             "&:active": {
               transform: "scale(0.95)",

@@ -320,7 +320,8 @@ export async function undoDriverClaim(
         rideId,
         state: TRIP_STATES.OPEN,
         status: TRIP_STATES.OPEN,
-        createdAt: data?.createdAt || data?.created_at || data?.created || timestamp,
+        createdAt:
+          data?.createdAt || data?.created_at || data?.created || timestamp,
         updatedAt: timestamp,
       };
       tx.set(liveRef, livePayload, { merge: true });
