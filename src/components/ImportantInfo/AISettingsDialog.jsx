@@ -29,7 +29,6 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import {
   getAISettings,
   saveAISettings,
-  subscribeToAISettings,
 } from "@/services/appSettingsService.js";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 

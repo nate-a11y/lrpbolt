@@ -99,14 +99,14 @@ import {
   PROMO_PARTNER_CATEGORIES,
   PROMO_PARTNER_FILTER_OPTIONS,
 } from "@/constants/importantInfo.js";
-
-import BulkImportDialog from "./BulkImportDialog.jsx";
-import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
-import AISettingsDialog from "./AISettingsDialog.jsx";
 import {
   generateContent,
   isAIConfigured,
 } from "@/services/aiContentGenerator.js";
+
+import BulkImportDialog from "./BulkImportDialog.jsx";
+import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
+import AISettingsDialog from "./AISettingsDialog.jsx";
 
 const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
