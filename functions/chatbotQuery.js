@@ -97,21 +97,149 @@ async function getKnowledgeBase() {
 }
 
 /**
- * Query OpenAI API
+ * Function definitions for GPT function calling
  */
-async function queryOpenAI(settings, messages) {
+const BOOKING_FUNCTION_DEFINITION = {
+  type: "function",
+  function: {
+    name: "submitBookingRequest",
+    description: "Submit a ride booking request when the customer has provided all required information. Use this when the customer wants to book a ride and you have collected their details.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Customer's full name",
+        },
+        email: {
+          type: "string",
+          description: "Customer's email address",
+        },
+        phone: {
+          type: "string",
+          description: "Customer's phone number (10 digits, US format)",
+        },
+        pickupLocation: {
+          type: "string",
+          description: "Pickup location address or description",
+        },
+        dropoffLocation: {
+          type: "string",
+          description: "Drop-off location address or description",
+        },
+        date: {
+          type: "string",
+          description: "Ride date in YYYY-MM-DD format",
+        },
+        time: {
+          type: "string",
+          description: "Ride time in HH:MM format (24-hour)",
+        },
+        passengers: {
+          type: "number",
+          description: "Number of passengers (1-14)",
+        },
+        specialRequests: {
+          type: "string",
+          description: "Any special requests or notes (optional)",
+        },
+      },
+      required: [
+        "name",
+        "email",
+        "phone",
+        "pickupLocation",
+        "dropoffLocation",
+        "date",
+        "time",
+        "passengers",
+      ],
+    },
+  },
+};
+
+/**
+ * Handle booking submission - stores data and returns confirmation
+ */
+async function handleBookingSubmission(bookingData) {
+  try {
+    // Validate required fields
+    const requiredFields = [
+      "name",
+      "email",
+      "phone",
+      "pickupLocation",
+      "dropoffLocation",
+      "date",
+      "time",
+      "passengers",
+    ];
+
+    for (const field of requiredFields) {
+      if (!bookingData[field]) {
+        return {
+          success: false,
+          error: `Missing required field: ${field}`,
+        };
+      }
+    }
+
+    // Store booking request in Firestore
+    const bookingRef = await db.collection("bookingRequests").add({
+      ...bookingData,
+      source: "chatbot",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      notificationsSent: false,
+    });
+
+    logger.info("Booking request created via chatbot", {
+      bookingId: bookingRef.id,
+      customerEmail: bookingData.email,
+    });
+
+    return {
+      success: true,
+      bookingId: bookingRef.id,
+      message: "Booking request received successfully. You will receive a confirmation email and SMS shortly.",
+    };
+  } catch (error) {
+    logger.error("Error handling booking submission", {
+      error: error.message,
+      stack: error.stack,
+    });
+
+    return {
+      success: false,
+      error: "Failed to submit booking request. Please try again or contact us directly.",
+    };
+  }
+}
+
+/**
+ * Query OpenAI API with optional function calling
+ */
+async function queryOpenAI(settings, messages, tools = null) {
+  const requestBody = {
+    model: settings.model || "gpt-4o-mini",
+    messages,
+    temperature: 0.7,
+    max_tokens: 500,
+  };
+
+  // Add tools (function calling) if provided
+  if (tools && tools.length > 0) {
+    requestBody.tools = tools;
+    requestBody.tool_choice = "auto";
+  }
+
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${settings.apiKey}`,
     },
-    body: JSON.stringify({
-      model: settings.model || "gpt-4o-mini",
-      messages,
-      temperature: 0.7,
-      max_tokens: 500,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -122,13 +250,7 @@ async function queryOpenAI(settings, messages) {
   }
 
   const data = await response.json();
-  const reply = data.choices?.[0]?.message?.content;
-
-  if (!reply) {
-    throw new Error("No response from API");
-  }
-
-  return reply;
+  return data.choices?.[0]?.message;
 }
 
 /**
@@ -206,7 +328,21 @@ Guidelines:
 - Be concise and helpful
 - Use a friendly, professional tone
 - If you don't know something, admit it
-- Base your answers ONLY on the provided knowledge base`;
+- Base your answers ONLY on the provided knowledge base
+
+BOOKING ASSISTANCE:
+- You can help customers book rides by collecting their information conversationally
+- Required information: name, email, phone, pickup location, drop-off location, date, time, number of passengers
+- Optional: special requests
+- When you have all required information, use the submitBookingRequest function
+- Ask for missing information naturally, one or two fields at a time
+
+CRITICAL GUARDRAILS - NEVER HALLUCINATE:
+- NEVER quote specific prices - always say "Please contact us for current pricing"
+- NEVER confirm availability - always say "We'll check availability and confirm via email/SMS"
+- NEVER make promises about specific vehicles or drivers
+- NEVER guarantee service times or routes
+- Always say "Our team will review your request and contact you to confirm details and pricing"`;
 
       // Build messages array
       const messages = [
@@ -215,13 +351,57 @@ Guidelines:
         { role: "user", content: message },
       ];
 
-      // Query OpenAI
-      const response = await queryOpenAI(aiSettings, messages);
+      // Query OpenAI with function calling support
+      const tools = [BOOKING_FUNCTION_DEFINITION];
+      let responseMessage = await queryOpenAI(aiSettings, messages, tools);
+
+      // Handle function calls
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        const toolCall = responseMessage.tool_calls[0];
+
+        if (toolCall.function.name === "submitBookingRequest") {
+          logger.info("GPT requested booking submission", {
+            arguments: toolCall.function.arguments,
+          });
+
+          // Parse function arguments
+          let bookingData;
+          try {
+            bookingData = JSON.parse(toolCall.function.arguments);
+          } catch (error) {
+            logger.error("Failed to parse function arguments", {
+              error: error.message,
+              arguments: toolCall.function.arguments,
+            });
+
+            res.status(200).json({
+              success: true,
+              reply: "I apologize, but there was an error processing your booking request. Please try again or contact us directly.",
+              botName: chatbotSettings.name || "Johnny",
+            });
+            return;
+          }
+
+          // Execute the booking submission
+          const bookingResult = await handleBookingSubmission(bookingData);
+
+          // Add the function call and result to messages
+          messages.push(responseMessage);
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(bookingResult),
+          });
+
+          // Get final response from GPT
+          responseMessage = await queryOpenAI(aiSettings, messages, tools);
+        }
+      }
 
       // Return response
       res.status(200).json({
         success: true,
-        reply: response,
+        reply: responseMessage.content || responseMessage,
         botName: chatbotSettings.name || "Johnny",
       });
     } catch (err) {
