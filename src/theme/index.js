@@ -35,6 +35,7 @@ function paletteFor(mode) {
           "linear-gradient(180deg, rgba(76,187,23,0.12) 0%, rgba(6,6,6,0) 100%)",
         gradientRing:
           "radial-gradient(closest-side, rgba(76,187,23,0.18), rgba(6,6,6,0) 70%)",
+        chatbotPrimary: "#4CAF50",
       },
     };
   }
@@ -56,6 +57,7 @@ function paletteFor(mode) {
         "linear-gradient(180deg, rgba(76,187,23,0.06) 0%, rgba(255,255,255,0) 100%)",
       gradientRing:
         "radial-gradient(closest-side, rgba(76,187,23,0.09), rgba(255,255,255,0) 70%)",
+      chatbotPrimary: "#4CAF50",
     },
   };
 }

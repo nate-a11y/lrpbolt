@@ -25,9 +25,6 @@ const SETTINGS_COLLECTION = "appSettings";
 const CHATBOT_SETTINGS_DOC = "chatbot";
 const KNOWLEDGE_BASE_COLLECTION = "chatbotKnowledge";
 
-// Default chatbot color (matches theme primary #4CAF50)
-const DEFAULT_CHATBOT_COLOR = "#4CAF50";
-
 /**
  * Get chatbot configuration from Firestore
  * @returns {Promise<Object>} Chatbot settings
@@ -47,7 +44,7 @@ export async function getChatbotSettings() {
       name: "Johnny",
       welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
       placeholder: "Ask about our rides, availability, pricing...",
-      primaryColor: DEFAULT_CHATBOT_COLOR,
+      primaryColor: null, // Default provided by theme.palette.lrp.chatbotPrimary
       position: "bottom-right",
       facebookPageUrl: "https://m.me/lakeridepros",
       bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
@@ -94,7 +91,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
       name: "Johnny",
       welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
       placeholder: "Ask about our rides, availability, pricing...",
-      primaryColor: DEFAULT_CHATBOT_COLOR,
+      primaryColor: null, // Default provided by theme.palette.lrp.chatbotPrimary
       position: "bottom-right",
       facebookPageUrl: "https://m.me/lakeridepros",
       bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
@@ -146,7 +143,7 @@ export function subscribeToChatbotSettings(callback) {
           name: "Johnny",
           welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
           placeholder: "Ask about our rides, availability, pricing...",
-          primaryColor: DEFAULT_CHATBOT_COLOR,
+          primaryColor: null, // Default provided by theme.palette.lrp.chatbotPrimary
           position: "bottom-right",
           facebookPageUrl: "https://m.me/lakeridepros",
           bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
