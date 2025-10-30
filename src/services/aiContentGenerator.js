@@ -3,47 +3,25 @@
  * Generates SMS templates and blurbs using OpenAI or compatible APIs
  */
 
-const AI_SETTINGS_KEY = "lrp_ai_settings";
+import {
+  getAISettings as getAISettingsFromFirestore,
+  isAIConfigured as isAIConfiguredFromFirestore,
+} from "@/services/appSettingsService.js";
 
 /**
- * Get stored AI settings from localStorage
+ * Get stored AI settings from Firestore
+ * @returns {Promise<Object>}
  */
-export function getAISettings() {
-  try {
-    const stored = localStorage.getItem(AI_SETTINGS_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (err) {
-    console.error("Failed to load AI settings:", err);
-  }
-  return {
-    provider: "openai",
-    apiKey: "",
-    model: "gpt-4o-mini",
-    enabled: false,
-  };
-}
-
-/**
- * Save AI settings to localStorage
- */
-export function saveAISettings(settings) {
-  try {
-    localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(settings));
-    return true;
-  } catch (err) {
-    console.error("Failed to save AI settings:", err);
-    return false;
-  }
+export async function getAISettings() {
+  return await getAISettingsFromFirestore();
 }
 
 /**
  * Check if AI is configured and ready to use
+ * @returns {Promise<boolean>}
  */
-export function isAIConfigured() {
-  const settings = getAISettings();
-  return settings.enabled && settings.apiKey && settings.apiKey.length > 0;
+export async function isAIConfigured() {
+  return await isAIConfiguredFromFirestore();
 }
 
 /**
@@ -57,7 +35,7 @@ export function isAIConfigured() {
  * @returns {Promise<{sms: string, blurb: string}>}
  */
 export async function generateContent(data) {
-  const settings = getAISettings();
+  const settings = await getAISettings();
 
   if (!settings.enabled || !settings.apiKey) {
     throw new Error("AI is not configured. Please set up your API key in settings.");

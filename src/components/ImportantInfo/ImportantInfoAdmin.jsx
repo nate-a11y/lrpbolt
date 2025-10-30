@@ -66,7 +66,10 @@ import HistoryIcon from "@mui/icons-material/History";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import SettingsIcon from "@mui/icons-material/Settings";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import CircularProgress from "@mui/material/CircularProgress";
+import Zoom from "@mui/material/Zoom";
+import Fab from "@mui/material/Fab";
 import { DateTimePicker } from "@mui/x-date-pickers-pro";
 import { alpha } from "@mui/material/styles";
 
@@ -522,6 +525,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [isDragging, setIsDragging] = useState(false); // Track if currently dragging
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false); // AI settings dialog
   const [generatingAI, setGeneratingAI] = useState(false); // AI content generation loading
+  const [showScrollTop, setShowScrollTop] = useState(false); // Show scroll to top FAB
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -545,6 +549,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       setTemplates(loadTemplates());
     }
   }, [dialogOpen]);
+
+  // Track scroll position for scroll-to-top FAB
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const showEmpty = !showError && !loading && !hasRows;
 
@@ -1478,12 +1491,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   }, []);
 
   const handleGenerateWithAI = useCallback(async () => {
-    if (!isAIConfigured()) {
-      show("Please configure AI settings first.", "warning");
-      setAiSettingsOpen(true);
-      return;
-    }
-
     if (!formValues.title || !formValues.details) {
       show("Please enter a title and details before generating content.", "warning");
       return;
@@ -1493,6 +1500,15 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setDraftStatus("saving");
 
     try {
+      const configured = await isAIConfigured();
+      if (!configured) {
+        show("Please configure AI settings first.", "warning");
+        setAiSettingsOpen(true);
+        setGeneratingAI(false);
+        setDraftStatus("idle");
+        return;
+      }
+
       const generated = await generateContent({
         title: formValues.title,
         details: formValues.details,
@@ -1520,6 +1536,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       setGeneratingAI(false);
     }
   }, [formValues, handleFieldChange, show]);
+
+  const handleScrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   return (
     <Box
@@ -2902,6 +2922,35 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           ))
         )}
       </Menu>
+
+      {/* Scroll to Top FAB */}
+      <Zoom in={showScrollTop} unmountOnExit>
+        <Fab
+          size="medium"
+          color="primary"
+          onClick={handleScrollToTop}
+          sx={{
+            position: "fixed",
+            right: 16,
+            bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+            zIndex: (t) => t.zIndex.tooltip + 1,
+            backgroundColor: (t) => t.palette.primary.main,
+            boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            "&:hover": {
+              backgroundColor: (t) => t.palette.primary.dark,
+              transform: "scale(1.1)",
+              boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+            },
+            "&:active": {
+              transform: "scale(0.95)",
+            },
+          }}
+          aria-label="Scroll to top"
+        >
+          <KeyboardArrowUpIcon />
+        </Fab>
+      </Zoom>
     </Box>
   );
 }

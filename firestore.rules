@@ -30,6 +30,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // --- App Settings (AI configuration, etc.) ---
+    // Authenticated users can read; only admins can write.
+    match /appSettings/{docId} {
+      allow read: if authed();
+      allow create, update, delete: if isAdmin();
+    }
+
     // --- Outbound SMS logs ---
     // Any signed-in user can create a log; only admins can read.
     match /smsLogs/{docId} {

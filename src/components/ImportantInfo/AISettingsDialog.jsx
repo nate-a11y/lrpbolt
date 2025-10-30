@@ -18,13 +18,19 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  CircularProgress,
+  Box,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 
-import { getAISettings, saveAISettings } from "@/services/aiContentGenerator.js";
+import {
+  getAISettings,
+  saveAISettings,
+  subscribeToAISettings,
+} from "@/services/appSettingsService.js";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
 export default function AISettingsDialog({ open, onClose }) {
@@ -37,13 +43,20 @@ export default function AISettingsDialog({ open, onClose }) {
   });
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
-      const stored = getAISettings();
-      setSettings(stored);
-      setHasChanges(false);
-      setShowApiKey(false);
+      setLoading(true);
+      getAISettings()
+        .then((stored) => {
+          setSettings(stored);
+          setHasChanges(false);
+          setShowApiKey(false);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }, [open]);
 
@@ -52,14 +65,19 @@ export default function AISettingsDialog({ open, onClose }) {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    const success = saveAISettings(settings);
-    if (success) {
-      show("AI settings saved successfully.", "success");
-      setHasChanges(false);
-      onClose();
-    } else {
-      show("Failed to save AI settings.", "error");
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const success = await saveAISettings(settings);
+      if (success) {
+        show("AI settings saved successfully.", "success");
+        setHasChanges(false);
+        onClose();
+      } else {
+        show("Failed to save AI settings.", "error");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,7 +109,19 @@ export default function AISettingsDialog({ open, onClose }) {
         </Stack>
       </DialogTitle>
       <DialogContent dividers>
-        <Stack spacing={3} sx={{ mt: 1 }}>
+        {loading ? (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              py: 4,
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Stack spacing={3} sx={{ mt: 1 }}>
           <Alert
             severity="info"
             sx={{
@@ -99,9 +129,9 @@ export default function AISettingsDialog({ open, onClose }) {
               color: (t) => t.palette.info.light,
             }}
           >
-            Configure your AI API credentials to automatically generate SMS messages
-            and blurbs from your important info details. Your API key is stored
-            securely in your browser and never sent to our servers.
+            Configure AI API credentials to automatically generate SMS messages and
+            blurbs from your important info details. Settings are shared across all
+            admin users and stored securely in Firestore.
           </Alert>
 
           <FormControlLabel
@@ -204,19 +234,22 @@ export default function AISettingsDialog({ open, onClose }) {
             </Typography>
           </Alert>
         </Stack>
+        )}
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleClose} disabled={loading}>
+          Cancel
+        </Button>
         <Button
           variant="contained"
           onClick={handleSave}
-          disabled={!hasChanges}
+          disabled={!hasChanges || loading}
           sx={{
             bgcolor: (t) => t.palette.primary.main,
             "&:hover": { bgcolor: (t) => t.palette.primary.dark },
           }}
         >
-          Save Settings
+          {loading ? "Saving..." : "Save Settings"}
         </Button>
       </DialogActions>
     </Dialog>

@@ -220,34 +220,32 @@ export default function ImportantInfoPage() {
       />
 
       {/* Scroll to Top FAB */}
-      <Zoom in={showScrollTop}>
-        <Tooltip title="Scroll to top">
-          <Fab
-            size="medium"
-            color="primary"
-            onClick={handleScrollToTop}
-            sx={{
-              position: "fixed",
-              right: 16,
-              bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
-              zIndex: (t) => t.zIndex.tooltip + 1,
-              backgroundColor: (t) => t.palette.primary.main,
-              boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              "&:hover": {
-                backgroundColor: (t) => t.palette.primary.dark,
-                transform: "scale(1.1)",
-                boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
-              },
-              "&:active": {
-                transform: "scale(0.95)",
-              },
-            }}
-            aria-label="Scroll to top"
-          >
-            <KeyboardArrowUpIcon />
-          </Fab>
-        </Tooltip>
+      <Zoom in={showScrollTop} unmountOnExit>
+        <Fab
+          size="medium"
+          color="primary"
+          onClick={handleScrollToTop}
+          sx={{
+            position: "fixed",
+            right: 16,
+            bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
+            zIndex: (t) => t.zIndex.tooltip + 1,
+            backgroundColor: (t) => t.palette.primary.main,
+            boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            "&:hover": {
+              backgroundColor: (t) => t.palette.primary.dark,
+              transform: "scale(1.1)",
+              boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+            },
+            "&:active": {
+              transform: "scale(0.95)",
+            },
+          }}
+          aria-label="Scroll to top"
+        >
+          <KeyboardArrowUpIcon />
+        </Fab>
       </Zoom>
     </Box>
   );
