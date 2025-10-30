@@ -111,9 +111,13 @@ export default function CalendarHub() {
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box
         sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 0,
           pt: 0,
           pb: `env(safe-area-inset-bottom, 0px)`,
-          px: { xs: 1, sm: 2 },
+          px: { xs: 2, md: 3 },
+          color: "text.primary",
         }}
       >
         <Box sx={{ maxWidth: 1280, mx: "auto", width: "100%" }}>
@@ -123,25 +127,32 @@ export default function CalendarHub() {
               position: "sticky",
               top: stickyTopCss,
               zIndex: (t) => t.zIndex.appBar,
-              pt: 0,
-              pb: 1,
+              py: 2,
               background:
                 theme.palette.mode === "dark"
-                  ? alpha(theme.palette.background.default, 0.9)
-                  : theme.palette.background.paper,
-              backdropFilter: "saturate(1.2) blur(6px)",
+                  ? alpha(theme.palette.background.default, 0.95)
+                  : alpha(theme.palette.background.paper, 0.95),
+              backdropFilter: "saturate(1.2) blur(12px)",
+              mb: 2,
+              borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, mt: 0 }}>
-              📅 Ride &amp; Vehicle Calendar
-            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                📅 Ride &amp; Vehicle Calendar
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                View and manage ride schedules, vehicle availability, and driver assignments
+              </Typography>
+            </Box>
 
             <Stack
               direction="row"
-              spacing={1}
+              spacing={1.5}
               alignItems="center"
               flexWrap="wrap"
-              rowGap={1}
+              useFlexGap
+              sx={{ rowGap: 1.5 }}
             >
               <DatePicker
                 value={dayjs(dateISO)}
@@ -153,27 +164,69 @@ export default function CalendarHub() {
                 slotProps={{
                   textField: {
                     size: "small",
-                    sx: { minWidth: 140 },
+                    sx: {
+                      minWidth: 140,
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: (t) => alpha(t.palette.background.paper, 0.8),
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          bgcolor: (t) => t.palette.background.paper,
+                          boxShadow: (t) => `0 2px 8px ${alpha(t.palette.common.black, 0.1)}`,
+                        },
+                      },
+                    },
                   },
                 }}
               />
               <Button
                 size="small"
+                variant="outlined"
                 startIcon={<TodayIcon />}
                 onClick={actions.onToday}
+                sx={{
+                  bgcolor: (t) => alpha(t.palette.background.paper, 0.8),
+                  borderColor: (t) => t.palette.divider,
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                    borderColor: (t) => t.palette.primary.main,
+                    transform: "translateY(-1px)",
+                    boxShadow: (t) => `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
+                  },
+                }}
               >
                 Today
               </Button>
               <Button
                 size="small"
+                variant="outlined"
                 startIcon={<CenterFocusStrongIcon />}
                 onClick={actions.onCenterNow}
+                sx={{
+                  bgcolor: (t) => alpha(t.palette.background.paper, 0.8),
+                  borderColor: (t) => t.palette.divider,
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                    borderColor: (t) => t.palette.primary.main,
+                    transform: "translateY(-1px)",
+                    boxShadow: (t) => `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
+                  },
+                }}
               >
                 Center Now
               </Button>
 
               <FormControlLabel
-                sx={{ ml: 1 }}
+                sx={{
+                  ml: { xs: 0, sm: 1 },
+                  "& .MuiFormControlLabel-label": {
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                  },
+                }}
                 label="Center on load"
                 control={
                   <Switch
@@ -181,6 +234,14 @@ export default function CalendarHub() {
                     onChange={(_, v) =>
                       setFilters((p) => ({ ...p, scrollToNow: v }))
                     }
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": {
+                        color: (t) => t.palette.primary.main,
+                      },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                        bgcolor: (t) => t.palette.primary.main,
+                      },
+                    }}
                   />
                 }
               />
@@ -190,10 +251,22 @@ export default function CalendarHub() {
               <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
                 <Button
                   size="small"
+                  variant="contained"
                   onClick={() => setHelpOpen(true)}
                   startIcon={<HelpOutlineIcon />}
+                  sx={{
+                    bgcolor: (t) => t.palette.primary.main,
+                    fontWeight: 600,
+                    boxShadow: (t) => `0 2px 8px ${alpha(t.palette.primary.main, 0.3)}`,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      bgcolor: (t) => t.palette.primary.dark,
+                      transform: "translateY(-1px)",
+                      boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.4)}`,
+                    },
+                  }}
                 >
-                  Availability Help
+                  {isMdUp ? "Availability Help" : "Help"}
                 </Button>
               </Tooltip>
             </Stack>
@@ -262,7 +335,7 @@ export default function CalendarHub() {
         </Drawer>
 
         {/* Mobile reach FABs */}
-        <Tooltip title="Today">
+        <Tooltip title="Jump to today's date">
           <Fab
             size="medium"
             color="primary"
@@ -273,7 +346,16 @@ export default function CalendarHub() {
               bottom: `calc(88px + env(safe-area-inset-bottom, 0px))`,
               zIndex: (t) => t.zIndex.tooltip + 1,
               backgroundColor: (t) => t.palette.primary.main,
-              "&:hover": { backgroundColor: (t) => t.palette.primary.dark },
+              boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              "&:hover": {
+                backgroundColor: (t) => t.palette.primary.dark,
+                transform: "scale(1.1)",
+                boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+              },
+              "&:active": {
+                transform: "scale(0.95)",
+              },
             }}
             aria-label="Jump to today"
           >
@@ -281,7 +363,7 @@ export default function CalendarHub() {
           </Fab>
         </Tooltip>
 
-        <Tooltip title="Center to now">
+        <Tooltip title="Center calendar to current time">
           <Fab
             size="medium"
             color="primary"
@@ -292,7 +374,16 @@ export default function CalendarHub() {
               bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
               zIndex: (t) => t.zIndex.tooltip + 1,
               backgroundColor: (t) => t.palette.primary.main,
-              "&:hover": { backgroundColor: (t) => t.palette.primary.dark },
+              boxShadow: (t) => `0 4px 16px ${alpha(t.palette.primary.main, 0.4)}`,
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              "&:hover": {
+                backgroundColor: (t) => t.palette.primary.dark,
+                transform: "scale(1.1)",
+                boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.5)}`,
+              },
+              "&:active": {
+                transform: "scale(0.95)",
+              },
             }}
             aria-label="Center to current time"
           >
