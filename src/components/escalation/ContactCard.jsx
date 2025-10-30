@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import React, { useMemo, memo } from "react";
 import {
   Avatar,
   Box,
@@ -6,11 +6,6 @@ import {
   Card,
   CardActions,
   CardContent,
-  Collapse,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
   Stack,
   Typography,
 } from "@mui/material";
@@ -19,11 +14,10 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DownloadIcon from "@mui/icons-material/Download";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
 import useCopy from "./useCopy.js";
 import { downloadVCard } from "./vcard.js";
+import ExpandableDetails from "@/components/ExpandableDetails.jsx";
 
 function initialsFrom(name = "") {
   return (
@@ -57,7 +51,6 @@ function ActionButton(props) {
 }
 
 function ContactCardImpl({ contact }) {
-  const [expanded, setExpanded] = useState(false);
   const { copy, copied } = useCopy();
 
   const name = contact?.name ?? "Unknown";
@@ -67,6 +60,27 @@ function ContactCardImpl({ contact }) {
   const responsibilities = Array.isArray(contact?.responsibilities)
     ? contact.responsibilities
     : [];
+
+  // Build blurb and details for ExpandableDetails
+  const { blurb, details } = useMemo(() => {
+    if (responsibilities.length === 0) {
+      return { blurb: "", details: "" };
+    }
+
+    const allText = responsibilities.map((r) => `• ${r}`).join("\n");
+    if (allText.length <= 150) {
+      return { blurb: allText, details: "" };
+    }
+
+    // Show first 2-3 responsibilities as blurb
+    const firstFew = responsibilities.slice(0, 2).map((r) => `• ${r}`).join("\n");
+    const rest = responsibilities.slice(2).map((r) => `• ${r}`).join("\n");
+
+    return {
+      blurb: firstFew,
+      details: rest,
+    };
+  }, [responsibilities]);
 
   return (
     <Card
@@ -162,40 +176,37 @@ function ContactCardImpl({ contact }) {
           </ActionButton>
         </Stack>
 
-        {responsibilities.length ? (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Button
-              onClick={() => setExpanded((v) => !v)}
-              endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        {(blurb || details) && (
+          <Box
+            sx={{
+              mt: 2,
+              bgcolor: (t) => alpha(t.palette.common.white, 0.04),
+              border: (t) => `1px solid ${t.palette.divider}`,
+              borderRadius: 2,
+              px: 2,
+              py: 1.5,
+            }}
+          >
+            <Typography
+              variant="caption"
               sx={{
-                color: (t) => t.palette.primary.main,
-                px: 0,
-                "&:hover": {
-                  background: "transparent",
-                  textDecoration: "underline",
-                },
+                opacity: 0.7,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                display: "block",
+                mb: 1,
               }}
-              aria-expanded={expanded}
-              aria-controls={`resp-${contact?.id || name}`}
             >
-              {expanded ? "Show less" : "Show more"}
-            </Button>
-            <Collapse in={expanded} timeout="auto" unmountOnExit>
-              <List dense disablePadding id={`resp-${contact?.id || name}`}>
-                {responsibilities.map((item, idx) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <ListItem key={idx} sx={{ py: 0.5, pl: 2 }}>
-                    <ListItemText
-                      primaryTypographyProps={{ variant: "body2" }}
-                      primary={`• ${item}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Collapse>
-          </>
-        ) : null}
+              Responsibilities:
+            </Typography>
+            <ExpandableDetails
+              id={contact?.id || name}
+              blurb={blurb}
+              details={details}
+              remember={false}
+            />
+          </Box>
+        )}
       </CardContent>
 
       <CardActions sx={{ display: "none" }} />

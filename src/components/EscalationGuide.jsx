@@ -1,6 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState, useEffect } from "react";
-import { Box, Stack, TextField, Typography, Alert } from "@mui/material";
+import { Box, Stack, TextField, Typography, Alert, Pagination } from "@mui/material";
 
 import ContactCard from "@/components/escalation/ContactCard.jsx";
 import EmptyState from "@/components/escalation/EmptyState.jsx";
@@ -83,6 +83,8 @@ function normalizeContacts(input = []) {
 export default function EscalationGuide(props = {}) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 6; // Show 6 contacts per page
 
   useEffect(() => {
     const handle = setTimeout(() => setDebounced(query), 300);
@@ -112,6 +114,19 @@ export default function EscalationGuide(props = {}) {
       return hay.includes(q);
     });
   }, [contacts, debounced]);
+
+  // Paginate contacts
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginatedContacts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filtered.slice(start, end);
+  }, [filtered, page, pageSize]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debounced]);
 
   const loading = Boolean(props?.loading);
   const error = props?.error ?? null;
@@ -168,14 +183,44 @@ export default function EscalationGuide(props = {}) {
       {loading ? (
         <Typography sx={{ opacity: 0.8 }}>Loading…</Typography>
       ) : filtered.length ? (
-        <Stack spacing={2}>
-          {filtered.map((c) => (
-            <ContactCard
-              key={c.id || c.email || c.phone || c.name}
-              contact={c}
-            />
-          ))}
-        </Stack>
+        <>
+          <Typography variant="body2" sx={{ opacity: 0.7, mb: 2 }}>
+            Showing {paginatedContacts.length} of {filtered.length} contact
+            {filtered.length === 1 ? "" : "s"}
+            {query &&
+              ` matching "${query.length > 30 ? query.substring(0, 30) + "…" : query}"`}
+          </Typography>
+          <Stack spacing={2}>
+            {paginatedContacts.map((c) => (
+              <ContactCard
+                key={c.id || c.email || c.phone || c.name}
+                contact={c}
+              />
+            ))}
+          </Stack>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Stack
+              direction="row"
+              justifyContent="center"
+              sx={{ mt: 3, mb: 1 }}
+            >
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(event, value) => {
+                  setPage(value);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                color="primary"
+                size="large"
+                showFirstButton
+                showLastButton
+              />
+            </Stack>
+          )}
+        </>
       ) : (
         <EmptyState onClear={() => setQuery("")} />
       )}

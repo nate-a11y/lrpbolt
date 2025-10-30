@@ -13,6 +13,7 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
+  Pagination,
   Select,
   Stack,
   TextField,
@@ -106,6 +107,8 @@ export default function ImportantInfoList({
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortBy, setSortBy] = useState("title");
+  const [page, setPage] = useState(1);
+  const pageSize = 10; // Show 10 cards per page
 
   const categories = useMemo(() => PROMO_PARTNER_FILTER_OPTIONS.slice(), []);
 
@@ -115,6 +118,11 @@ export default function ImportantInfoList({
     }, 300);
     return () => window.clearTimeout(timeout);
   }, [query]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, categoryFilter, sortBy]);
 
   const filteredRows = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
@@ -156,6 +164,14 @@ export default function ImportantInfoList({
     },
     [onSendSms],
   );
+
+  // Paginate filtered rows
+  const totalPages = Math.ceil(filteredRows.length / pageSize);
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredRows.slice(start, end);
+  }, [filteredRows, page, pageSize]);
 
   if (showError) {
     return (
@@ -281,6 +297,15 @@ export default function ImportantInfoList({
         </FormControl>
       </Stack>
 
+      {filteredRows.length > 0 && (
+        <Typography variant="body2" sx={{ opacity: 0.7, mb: 1 }}>
+          Showing {paginatedRows.length} of {filteredRows.length} item
+          {filteredRows.length === 1 ? "" : "s"}
+          {debouncedQuery &&
+            ` matching "${debouncedQuery.length > 30 ? debouncedQuery.substring(0, 30) + "…" : debouncedQuery}"`}
+        </Typography>
+      )}
+
       <Stack spacing={2.5}>
         {loading && !filteredRows.length ? (
           <Typography variant="body2" sx={{ opacity: 0.7 }}>
@@ -288,7 +313,7 @@ export default function ImportantInfoList({
           </Typography>
         ) : null}
 
-        {safeSections(filteredRows, categoryFilter).map(
+        {safeSections(paginatedRows, categoryFilter).map(
           ({ category, items }) => (
             <Box
               key={category}
@@ -497,6 +522,24 @@ export default function ImportantInfoList({
           </Box>
         ) : null}
       </Stack>
+
+      {/* Pagination */}
+      {totalPages > 1 && filteredRows.length > 0 && (
+        <Stack direction="row" justifyContent="center" sx={{ mt: 3, mb: 1 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(event, value) => {
+              setPage(value);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            color="primary"
+            size="large"
+            showFirstButton
+            showLastButton
+          />
+        </Stack>
+      )}
     </Box>
   );
 }
