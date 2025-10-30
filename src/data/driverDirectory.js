@@ -9,7 +9,7 @@ const DRIVER_LIST = [
   {
     name: "Nate Bullock",
     lrp: "LRP2",
-    phone: "417.380.8853",
+    phone: "417.380.9953",
     email: "Nate@lakeridepros.com",
     vehicles: ["Suburban", "Limo Bus", "Rescue Squad", "Sprinter"],
   },
