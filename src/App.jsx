@@ -66,6 +66,9 @@ const RideEntryForm = lazy(() => import("./components/RideEntryForm"));
 const NotificationsCenter = lazy(
   () => import("./pages/Admin/NotificationsCenter.jsx"),
 );
+const ChatBotSettings = lazy(
+  () => import("./pages/Admin/ChatBotSettings.jsx"),
+);
 const ProfilePage = lazy(() => import("./pages/Profile/Settings.jsx"));
 const ShootoutTab = lazy(() => import("./components/ShootoutTab"));
 const TicketViewer = lazy(() => import("./components/TicketViewer"));
@@ -396,6 +399,12 @@ function App() {
                 path="/admin/notifications"
                 element={
                   isAdmin ? <NotificationsCenter /> : <Navigate to="/" />
+                }
+              />
+              <Route
+                path="/admin/chatbot-settings"
+                element={
+                  isAdmin ? <ChatBotSettings /> : <Navigate to="/" />
                 }
               />
               <Route
