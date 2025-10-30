@@ -1,7 +1,6 @@
 import React, { useEffect, useCallback, useMemo, useState } from "react";
 import { writeBatch, doc } from "firebase/firestore";
 import { Button, Paper, Snackbar } from "@mui/material";
-import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import AppError from "@/utils/AppError.js";
 import logError from "@/utils/logError.js";
@@ -11,48 +10,30 @@ import { COLLECTIONS } from "@/constants.js";
 import { TRIP_STATES } from "@/constants/tripStates.js";
 import { useTripsByState } from "@/hooks/useTripsByState.js";
 import useAuth from "@/hooks/useAuth.js";
-import { getFlag } from "@/services/observability";
 import { db } from "@/services/firebase.js";
 import { driverClaimRide, undoDriverClaim } from "@/services/tripsService.js";
 import {
   notifyRideEvent,
   playFeedbackSound,
 } from "@/services/notificationsService.js";
-import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
 import useStableCallback from "@/hooks/useStableCallback.js";
 import useOptimisticOverlay from "@/hooks/useOptimisticOverlay.js";
-import useUsersMap from "@/hooks/useUsersMap.js";
 
-import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
-import {
-  resolveClaimedAt,
-  resolveClaimedBy,
-  resolveCreatedAt,
-  resolvePickupTime,
-  resolveRideDuration,
-  resolveRideNotes,
-  resolveRideType,
-  resolveStatus,
-  resolveTripId,
-  resolveVehicle,
-} from "../columns/rideColumns.jsx";
 import { deleteRide } from "../services/firestoreService";
 
-import SmartDataGrid from "./SmartDataGrid.jsx";
+import RideCardGrid from "./rides/RideCardGrid.jsx";
+import LiveRideCard from "./rides/LiveRideCard.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function LiveRidesGrid() {
   const [editRow, setEditRow] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
-  const apiRef = useGridApiRef();
-  const [selectionModel, setSelectionModel] = useState([]);
   const { rows: baseRows, loading, error } = useTripsByState(TRIP_STATES.OPEN);
   const { user } = useAuth();
   const driverId = user?.uid ?? null;
   const [snack, setSnack] = useState(null);
   const [pendingClaims, setPendingClaims] = useState(() => new Set());
   const [undoPending, setUndoPending] = useState(false);
-  const usersMap = useUsersMap();
 
   const getRowId = useStableCallback((row) => row?.id || row?.rideId || null);
   const {
@@ -88,15 +69,6 @@ export default function LiveRidesGrid() {
       }
     });
   }, [baseRows, clearPatch, getPatch, getRowId]);
-
-  useEffect(() => {
-    if (!getFlag || !getFlag("grid.debug")) {
-      return;
-    }
-    const sample = Array.isArray(rows) ? rows[0] : null;
-    // eslint-disable-next-line no-console
-    console.log("[GridDebug:LiveRides] row0", sample);
-  }, [rows]);
 
   const handleEditRide = useCallback((row) => {
     setEditRow(row);
@@ -176,6 +148,20 @@ export default function LiveRidesGrid() {
     }
   });
 
+  const handleDelete = useCallback(
+    async (ride) => {
+      const id = getRowId(ride);
+      if (!id) return;
+      try {
+        await deleteRide(COLLECTIONS.LIVE_RIDES, id);
+      } catch (err) {
+        logError(err, { where: "LiveRidesGrid.handleDelete", rideId: id });
+        setSnack({ msg: "Delete failed" });
+      }
+    },
+    [getRowId],
+  );
+
   const performDelete = useCallback(async (ids) => {
     const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -232,260 +218,55 @@ export default function LiveRidesGrid() {
 
   const handleBulkDelete = useCallback(
     async (ids) => {
-      const rowsToDelete = ids
-        .map((id) => apiRef.current?.getRow?.(id))
-        .filter(Boolean);
+      const rowsToDelete = ids.map((id) => rows.find((r) => getRowId(r) === id)).filter(Boolean);
       openDialog(ids, rowsToDelete);
     },
-    [apiRef, openDialog],
+    [rows, getRowId, openDialog],
   );
 
   const sampleRows = useMemo(() => {
-    const sel = apiRef.current?.getSelectedRows?.() || new Map();
-    return selectionModel.map((id) => sel.get(id)).filter(Boolean);
-  }, [apiRef, selectionModel]);
+    return rows.filter((r) => r?.id);
+  }, [rows]);
 
-  const initialState = useMemo(
-    () => ({
-      pagination: { paginationModel: { pageSize: 15, page: 0 } },
-      columns: {
-        columnVisibilityModel: {
-          claimedBy: false,
-          claimedAt: false,
-          status: false,
-        },
-      },
-    }),
-    [],
-  );
+  const renderCard = useCallback(
+    ({ ride, selected, onSelect }) => {
+      const rideId = getRowId(ride);
+      const isPending = rideId ? pendingClaims.has(rideId) : false;
 
-  const actionsColumn = useMemo(
-    () =>
-      buildNativeActionsColumn({
-        onEdit: (_id, row) => handleEditRide(row),
-        onDelete: async (id) => await deleteRide(COLLECTIONS.LIVE_RIDES, id),
-      }),
-    [handleEditRide],
-  );
-
-  const renderActions = useCallback(
-    (params) => {
-      const items = actionsColumn.getActions?.(params);
-      if (!items || (Array.isArray(items) && items.length === 0)) return null;
-      return <>{items}</>;
+      return (
+        <LiveRideCard
+          key={rideId}
+          ride={ride}
+          selected={selected}
+          onSelect={onSelect}
+          onClaim={handleClaim}
+          onEdit={handleEditRide}
+          onDelete={handleDelete}
+          claiming={isPending}
+          driverId={driverId}
+        />
+      );
     },
-    [actionsColumn],
-  );
-
-  const claimColumn = useMemo(
-    () => ({
-      field: "claimRide",
-      headerName: "Claim",
-      minWidth: 140,
-      flex: 0.6,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => {
-        const ride = params?.row || {};
-        const rideId = ride?.id || params?.id;
-        const isPending = rideId ? pendingClaims.has(rideId) : false;
-        const alreadyClaimed = Boolean(
-          ride?.claimedBy && ride.claimedBy !== driverId,
-        );
-        const disabled =
-          !driverId ||
-          isPending ||
-          alreadyClaimed ||
-          Boolean(ride?.disableClaim) ||
-          loading;
-
-        return (
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            disabled={disabled}
-            onClick={() => handleClaim(ride)}
-            aria-label="Claim ride"
-          >
-            {alreadyClaimed ? "Claimed" : isPending ? "Claiming…" : "Claim"}
-          </Button>
-        );
-      },
-    }),
-    [driverId, handleClaim, loading, pendingClaims],
-  );
-
-  const deriveClaimedByDisplay = useMemo(
-    () => (value, row) => {
-      const raw = row?._raw || {};
-
-      const directName =
-        row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
-      if (directName) return directName;
-
-      const resolved = resolveClaimedBy(value, row);
-      if (resolved && typeof resolved === "object") {
-        const objectName =
-          resolved?.displayName ||
-          resolved?.name ||
-          resolved?.fullName ||
-          resolved?.email ||
-          null;
-        if (objectName) return objectName;
-      }
-
-      const resolvedString =
-        typeof resolved === "string" && resolved.trim() !== ""
-          ? resolved.trim()
-          : null;
-
-      const candidateUid =
-        resolvedString ||
-        row?.claimedBy ||
-        raw?.claimedBy ||
-        raw?.ClaimedBy ||
-        row?.ClaimedBy ||
-        null;
-
-      if (candidateUid) {
-        const uid = String(candidateUid).trim();
-        if (uid && usersMap[uid]) {
-          return usersMap[uid];
-        }
-        return uid || null;
-      }
-
-      return null;
-    },
-    [usersMap],
-  );
-
-  const columns = useMemo(
-    () => [
-      {
-        field: "tripId",
-        headerName: "Trip ID",
-        minWidth: 140,
-        flex: 1,
-        valueGetter: resolveTripId,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "pickupTime",
-        headerName: "Pickup",
-        minWidth: 160,
-        flex: 1,
-        valueGetter: resolvePickupTime,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        minWidth: 120,
-        flex: 0.6,
-        valueGetter: resolveRideDuration,
-        valueFormatter: vfDurationHM,
-      },
-      {
-        field: "rideType",
-        headerName: "Type",
-        minWidth: 120,
-        flex: 0.7,
-        valueGetter: resolveRideType,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveVehicle,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "rideNotes",
-        headerName: "Notes",
-        minWidth: 180,
-        flex: 1,
-        valueGetter: resolveRideNotes,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveCreatedAt,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "claimedBy",
-        headerName: "Claimed By",
-        minWidth: 140,
-        flex: 0.8,
-        valueGetter: deriveClaimedByDisplay,
-        renderCell: (params) =>
-          deriveClaimedByDisplay(params?.value, params?.row) || "N/A",
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "claimedAt",
-        headerName: "Claimed At",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveClaimedAt,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "status",
-        headerName: "Status",
-        minWidth: 120,
-        flex: 0.7,
-        valueGetter: resolveStatus,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      claimColumn,
-      {
-        field: "__actions",
-        headerName: "Actions",
-        minWidth: 120,
-        sortable: false,
-        renderCell: renderActions,
-      },
-    ],
-    [claimColumn, deriveClaimedByDisplay, renderActions],
+    [driverId, getRowId, handleClaim, handleDelete, handleEditRide, pendingClaims],
   );
 
   return (
     <>
-      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
-        <SmartDataGrid
-          id="live-grid"
-          rows={rows}
-          columns={columns}
-          getRowId={getRowId}
-          checkboxSelection
-          disableRowSelectionOnClick
-          apiRef={apiRef}
-          rowSelectionModel={selectionModel}
-          onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          initialState={initialState}
-          pageSizeOptions={[15, 30, 60]}
-          slotProps={{
-            toolbar: {
-              onDeleteSelected: handleBulkDelete,
-              quickFilterPlaceholder: "Search rides",
-            },
-          }}
-          density="compact"
-          autoHeight={false}
+      <Paper sx={{ width: "100%", p: 2 }}>
+        <RideCardGrid
+          rides={rows}
+          renderCard={renderCard}
           loading={loading}
-          sx={{ minHeight: 420 }}
+          error={error}
+          onBulkDelete={handleBulkDelete}
+          searchPlaceholder="Search live rides..."
+          title="Live Rides"
+          emptyMessage="No live rides available"
+          pageSize={12}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}
-          total={selectionModel.length}
+          total={sampleRows.length}
           deleting={deleting}
           onClose={closeDialog}
           onConfirm={onConfirm}

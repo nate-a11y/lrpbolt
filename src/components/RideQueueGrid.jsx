@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { writeBatch, doc } from "firebase/firestore";
 import { Button, Paper, Snackbar } from "@mui/material";
-import { GridActionsCellItem, useGridApiRef } from "@mui/x-data-grid-pro";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 
 import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
@@ -10,7 +8,6 @@ import { COLLECTIONS } from "@/constants.js";
 import { TRIP_STATES } from "@/constants/tripStates.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
-import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
 import { moveQueuedToOpen, cancelRide } from "@/services/tripsService.js";
 import {
   notifyRideEvent,
@@ -21,29 +18,16 @@ import useStableCallback from "@/hooks/useStableCallback.js";
 import useOptimisticOverlay from "@/hooks/useOptimisticOverlay.js";
 import { db } from "@/services/firebase.js";
 
-import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
-import {
-  resolveClaimedAt,
-  resolveClaimedBy,
-  resolveCreatedAt,
-  resolvePickupTime,
-  resolveRideDuration,
-  resolveRideNotes,
-  resolveRideType,
-  resolveStatus,
-  resolveTripId,
-  resolveVehicle,
-} from "../columns/rideColumns.jsx";
+import { resolveTripId } from "../columns/rideColumns.jsx";
 import { deleteRide } from "../services/firestoreService";
 
-import SmartDataGrid from "./SmartDataGrid.jsx";
+import RideCardGrid from "./rides/RideCardGrid.jsx";
+import QueueRideCard from "./rides/QueueRideCard.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function RideQueueGrid() {
   const [editRow, setEditRow] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
-  const apiRef = useGridApiRef();
-  const [selectionModel, setSelectionModel] = useState([]);
   const [snack, setSnack] = useState(null);
   const [pendingMoves, setPendingMoves] = useState(() => new Set());
   const {
@@ -161,6 +145,20 @@ export default function RideQueueGrid() {
     setEditOpen(false);
     setEditRow(null);
   }, []);
+
+  const handleDelete = useCallback(
+    async (ride) => {
+      const id = getRowId(ride);
+      if (!id) return;
+      try {
+        await deleteRide(COLLECTIONS.RIDE_QUEUE, id);
+      } catch (err) {
+        logError(err, { where: "RideQueueGrid.handleDelete", rideId: id });
+        setSnack({ message: "Delete failed" });
+      }
+    },
+    [getRowId],
+  );
 
   const handleMoveToLive = useStableCallback(async (row) => {
     const queueId = getRowId(row);
@@ -313,210 +311,54 @@ export default function RideQueueGrid() {
 
   const handleBulkDelete = useCallback(
     async (ids) => {
-      const rowsToDelete = ids
-        .map((id) => apiRef.current?.getRow?.(id))
-        .filter(Boolean);
+      const rowsToDelete = ids.map((id) => rows.find((r) => getRowId(r) === id)).filter(Boolean);
       openDialog(ids, rowsToDelete);
     },
-    [apiRef, openDialog],
+    [rows, getRowId, openDialog],
   );
 
   const sampleRows = useMemo(() => {
-    const sel = apiRef.current?.getSelectedRows?.() || new Map();
-    return selectionModel.map((id) => sel.get(id)).filter(Boolean);
-  }, [apiRef, selectionModel]);
+    return rows.filter((r) => r?.id);
+  }, [rows]);
 
-  const initialState = useMemo(
-    () => ({
-      pagination: { paginationModel: { pageSize: 15, page: 0 } },
-      columns: {
-        columnVisibilityModel: {
-          claimedBy: false,
-          claimedAt: false,
-          status: false,
-        },
-      },
-    }),
-    [],
-  );
+  const renderCard = useCallback(
+    ({ ride, selected, onSelect }) => {
+      const rideId = getRowId(ride);
+      const isMoving = rideId ? pendingMoves.has(rideId) : false;
 
-  const actionsColumn = useMemo(
-    () =>
-      buildNativeActionsColumn({
-        onEdit: (_id, row) => handleEditRide(row),
-        onDelete: async (id) => await deleteRide(COLLECTIONS.RIDE_QUEUE, id),
-      }),
-    [handleEditRide],
-  );
-
-  const renderActions = useCallback(
-    (params) => {
-      const row = params?.row || {};
-      const rideId = getRowId(row);
-      const baseItems = actionsColumn.getActions?.(params) || [];
-      const normalized = Array.isArray(baseItems)
-        ? [...baseItems]
-        : baseItems
-          ? [baseItems]
-          : [];
-
-      const statusCandidate =
-        row?.status ??
-        row?.state ??
-        row?._raw?.status ??
-        row?._raw?.state ??
-        row?.QueueStatus ??
-        row?.queueStatus ??
-        TRIP_STATES.QUEUED;
-      const normalizedStatus =
-        typeof statusCandidate === "string"
-          ? statusCandidate.toLowerCase()
-          : statusCandidate;
-
-      const disableMove =
-        !rideId ||
-        pendingMoves.has(rideId) ||
-        normalizedStatus !== TRIP_STATES.QUEUED;
-
-      const actionItems = [
-        <GridActionsCellItem
-          key="move-to-live"
-          icon={<PlayArrowRoundedIcon fontSize="small" />}
-          label="Move to Live"
-          onClick={() => handleMoveToLive(row)}
-          disabled={disableMove}
-          showInMenu={false}
-        />,
-        ...normalized,
-      ];
-
-      return <>{actionItems}</>;
+      return (
+        <QueueRideCard
+          key={rideId}
+          ride={ride}
+          selected={selected}
+          onSelect={onSelect}
+          onMoveToLive={handleMoveToLive}
+          onEdit={handleEditRide}
+          onDelete={handleDelete}
+          moving={isMoving}
+        />
+      );
     },
-    [actionsColumn, getRowId, handleMoveToLive, pendingMoves],
-  );
-
-  const columns = useMemo(
-    () => [
-      {
-        field: "tripId",
-        headerName: "Trip ID",
-        minWidth: 140,
-        flex: 1,
-        valueGetter: resolveTripId,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "pickupTime",
-        headerName: "Pickup",
-        minWidth: 160,
-        flex: 1,
-        valueGetter: resolvePickupTime,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        minWidth: 120,
-        flex: 0.6,
-        valueGetter: resolveRideDuration,
-        valueFormatter: vfDurationHM,
-      },
-      {
-        field: "rideType",
-        headerName: "Type",
-        minWidth: 120,
-        flex: 0.7,
-        valueGetter: resolveRideType,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveVehicle,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "rideNotes",
-        headerName: "Notes",
-        minWidth: 180,
-        flex: 1,
-        valueGetter: resolveRideNotes,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveCreatedAt,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "claimedBy",
-        headerName: "Claimed By",
-        minWidth: 140,
-        flex: 0.8,
-        valueGetter: resolveClaimedBy,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "claimedAt",
-        headerName: "Claimed At",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveClaimedAt,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "status",
-        headerName: "Status",
-        minWidth: 120,
-        flex: 0.7,
-        valueGetter: resolveStatus,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "__actions",
-        headerName: "Actions",
-        minWidth: 120,
-        sortable: false,
-        renderCell: renderActions,
-      },
-    ],
-    [renderActions],
+    [getRowId, handleDelete, handleEditRide, handleMoveToLive, pendingMoves],
   );
 
   return (
     <>
-      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
-        <SmartDataGrid
-          id="queue-grid"
-          rows={rows}
-          columns={columns}
-          getRowId={getRowId}
-          checkboxSelection
-          disableRowSelectionOnClick
-          apiRef={apiRef}
-          rowSelectionModel={selectionModel}
-          onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          initialState={initialState}
-          pageSizeOptions={[15, 30, 60]}
-          slotProps={{
-            toolbar: {
-              onDeleteSelected: handleBulkDelete,
-              quickFilterPlaceholder: "Search rides",
-            },
-          }}
-          density="compact"
-          autoHeight={false}
+      <Paper sx={{ width: "100%", p: 2 }}>
+        <RideCardGrid
+          rides={rows}
+          renderCard={renderCard}
           loading={loading}
-          sx={{ minHeight: 420 }}
+          error={error}
+          onBulkDelete={handleBulkDelete}
+          searchPlaceholder="Search queued rides..."
+          title="Ride Queue"
+          emptyMessage="No queued rides"
+          pageSize={12}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}
-          total={selectionModel.length}
+          total={sampleRows.length}
           deleting={deleting}
           onClose={closeDialog}
           onConfirm={onConfirm}
