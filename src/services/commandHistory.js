@@ -33,16 +33,20 @@ export class Command {
  * Command to create an ImportantInfo item
  */
 export class CreateItemCommand extends Command {
-  constructor(serviceModule, payload, onSuccess) {
+  constructor(serviceModule, payload, userContext, onSuccess) {
     super();
     this.serviceModule = serviceModule;
     this.payload = payload;
+    this.userContext = userContext;
     this.onSuccess = onSuccess;
     this.createdId = null;
   }
 
   async execute() {
-    const id = await this.serviceModule.createImportantInfo(this.payload);
+    const id = await this.serviceModule.createImportantInfo(
+      this.payload,
+      this.userContext,
+    );
     this.createdId = id;
     if (this.onSuccess) this.onSuccess(id);
     return id;
@@ -50,7 +54,10 @@ export class CreateItemCommand extends Command {
 
   async undo() {
     if (this.createdId) {
-      await this.serviceModule.deleteImportantInfo(this.createdId);
+      await this.serviceModule.deleteImportantInfo(
+        this.createdId,
+        this.userContext,
+      );
     }
   }
 
@@ -63,17 +70,30 @@ export class CreateItemCommand extends Command {
  * Command to update an ImportantInfo item
  */
 export class UpdateItemCommand extends Command {
-  constructor(serviceModule, itemId, newChanges, previousState, onSuccess) {
+  constructor(
+    serviceModule,
+    itemId,
+    newChanges,
+    previousState,
+    userContext,
+    onSuccess,
+  ) {
     super();
     this.serviceModule = serviceModule;
     this.itemId = itemId;
     this.newChanges = newChanges;
     this.previousState = previousState;
+    this.userContext = userContext;
     this.onSuccess = onSuccess;
   }
 
   async execute() {
-    await this.serviceModule.updateImportantInfo(this.itemId, this.newChanges);
+    await this.serviceModule.updateImportantInfo(
+      this.itemId,
+      this.newChanges,
+      this.userContext,
+      this.previousState,
+    );
     if (this.onSuccess) this.onSuccess(this.itemId);
   }
 
@@ -82,6 +102,11 @@ export class UpdateItemCommand extends Command {
     await this.serviceModule.updateImportantInfo(
       this.itemId,
       this.previousState,
+      this.userContext,
+      {
+        ...this.previousState,
+        ...this.newChanges,
+      },
     );
   }
 
@@ -94,22 +119,29 @@ export class UpdateItemCommand extends Command {
  * Command to delete an ImportantInfo item
  */
 export class DeleteItemCommand extends Command {
-  constructor(serviceModule, itemId, snapshot, onSuccess) {
+  constructor(serviceModule, itemId, snapshot, userContext, onSuccess) {
     super();
     this.serviceModule = serviceModule;
     this.itemId = itemId;
     this.snapshot = snapshot;
+    this.userContext = userContext;
     this.onSuccess = onSuccess;
   }
 
   async execute() {
-    await this.serviceModule.deleteImportantInfo(this.itemId);
+    await this.serviceModule.deleteImportantInfo(
+      this.itemId,
+      this.userContext,
+    );
     if (this.onSuccess) this.onSuccess(this.itemId);
   }
 
   async undo() {
     // Restore the deleted item
-    await this.serviceModule.restoreImportantInfo(this.snapshot);
+    await this.serviceModule.restoreImportantInfo(
+      this.snapshot,
+      this.userContext,
+    );
   }
 
   getDescription() {

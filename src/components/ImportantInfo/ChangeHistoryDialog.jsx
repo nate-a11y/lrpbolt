@@ -1,3 +1,5 @@
+// allow-color-literal-file
+
 import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
