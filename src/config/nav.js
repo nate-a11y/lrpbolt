@@ -120,4 +120,12 @@ export const NAV_ITEMS = [
     rolesVisible: ["admin"],
     iconColor: (t) => t.palette.success.main,
   },
+  {
+    id: "chatbot-settings",
+    to: "/admin/chatbot-settings",
+    label: "Chat Bot",
+    icon: "SmartToy",
+    rolesVisible: ["admin"],
+    iconColor: (t) => t.palette.success.main,
+  },
 ];
