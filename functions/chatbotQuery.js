@@ -685,7 +685,7 @@ Once you have ALL 9 required pieces of information and the customer confirms det
             });
 
             // Send SMS to customer (don't await - fire and forget)
-            sendBookingConfirmationSMS(bookingData).catch((err) => {
+            sendBookingConfirmationSMS(bookingId, bookingData).catch((err) => {
               logger.error("SMS send failed but booking stored", {
                 bookingId,
                 error: err.message,

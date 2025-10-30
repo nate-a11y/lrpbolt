@@ -11,10 +11,11 @@ try {
 /**
  * Send SMS confirmation to customer
  *
+ * @param {string} bookingId - Unique booking ID
  * @param {Object} bookingData - Booking details
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function sendBookingConfirmationSMS(bookingData) {
+async function sendBookingConfirmationSMS(bookingId, bookingData) {
   try {
     // Get Twilio credentials
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -46,19 +47,18 @@ async function sendBookingConfirmationSMS(bookingData) {
     }
 
     // Build SMS message
-    const firstName = bookingData.customer_name.split(" ")[0];
-    const shortPickup = shortenLocation(bookingData.pickup_location);
-    const shortDropoff = shortenLocation(bookingData.dropoff_location);
+    const message = `Thank you for your booking/quote request with Lake Ride Pros! 🚐
 
-    const message = `Hi ${firstName}! Lake Ride Pros here 🚗
+Your request has been received (ID: ${bookingId}).
 
-Got your booking:
-📍 ${shortPickup} → ${shortDropoff}
-📅 ${bookingData.trip_date} at ${bookingData.trip_time}
+Our team will contact you within 24 hours from (573) 206-9499 to confirm details and pricing.
 
-We'll text you pricing & confirmation within 24 hours.
+⚠️ This number does not receive replies. For questions, reach out:
+📞 Call/Text: (573) 206-9499
+💬 Facebook: facebook.com/lakeridepros
+📧 Email: owners@lakeridepros.com
 
-Questions? Reply here!`;
+- Lake Ride Pros Team`;
 
     // Send SMS
     const client = twilioFactory(twilioAccountSid, twilioAuthToken);
@@ -68,16 +68,18 @@ Questions? Reply here!`;
       to: bookingData.customer_phone,
     });
 
-    logger.info("Booking confirmation SMS sent", {
+    logger.info("Booking/quote confirmation SMS sent", {
       to: bookingData.customer_phone,
       customerName: bookingData.customer_name,
+      bookingId: bookingId,
     });
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to send booking confirmation SMS", {
+    logger.error("Failed to send booking/quote confirmation SMS", {
       error: error.message,
       phone: bookingData.customer_phone,
+      bookingId: bookingId,
       stack: error.stack,
     });
 
@@ -87,22 +89,6 @@ Questions? Reply here!`;
       error: error.message,
     };
   }
-}
-
-/**
- * Shorten location for SMS (keep it concise)
- */
-function shortenLocation(location) {
-  // Remove state/zip if present
-  const parts = location.split(",");
-  if (parts.length > 2) {
-    return parts.slice(0, 2).join(",").trim();
-  }
-  // Truncate if still too long
-  if (location.length > 30) {
-    return location.substring(0, 27) + "...";
-  }
-  return location;
 }
 
 module.exports = { sendBookingConfirmationSMS };
