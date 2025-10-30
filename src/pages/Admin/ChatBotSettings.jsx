@@ -31,7 +31,6 @@ import {
   InputLabel,
   Chip,
   Avatar,
-  Tooltip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
@@ -124,6 +123,9 @@ If the user needs more personalized help or wants to speak with a human, direct 
   const [entryTitle, setEntryTitle] = useState("");
   const [entryContent, setEntryContent] = useState("");
 
+  // Default color value (stable reference)
+  const defaultPrimaryColor = theme.palette.primary.main;
+
   // Load initial data
   useEffect(() => {
     let mounted = true;
@@ -145,7 +147,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
           chatbotData.welcomeMessage || "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?"
         );
         setPlaceholder(chatbotData.placeholder || "Ask about our rides, availability, pricing...");
-        setPrimaryColor(chatbotData.primaryColor || theme.palette.primary.main);
+        setPrimaryColor(chatbotData.primaryColor || defaultPrimaryColor);
         setPosition(chatbotData.position || "bottom-right");
         setFacebookPageUrl(chatbotData.facebookPageUrl || "https://m.me/lakeridepros");
         setBookingUrl(chatbotData.bookingUrl || "https://customer.moovs.app/lake-ride-pros/new/info");
@@ -170,7 +172,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
     return () => {
       mounted = false;
     };
-  }, [show]);
+  }, [show, defaultPrimaryColor]);
 
   // Subscribe to knowledge base updates
   useEffect(() => {

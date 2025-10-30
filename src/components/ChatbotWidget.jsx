@@ -453,7 +453,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                 transform: "scale(1.1)",
               },
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: (theme) => `0 4px 20px ${alpha(primaryColor, 0.4)}`,
+              boxShadow: `0 4px 20px ${alpha(primaryColor, 0.4)}`,
             }}
             aria-label="Open chat"
           >
