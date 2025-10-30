@@ -2,6 +2,23 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
+import dayjs from "dayjs";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Alert,
   Box,
@@ -20,7 +37,9 @@ import {
   FormControlLabel,
   IconButton,
   InputLabel,
+  Menu,
   MenuItem,
+  Popover,
   Select,
   Stack,
   Switch,
@@ -40,7 +59,11 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import CircularProgress from "@mui/material/CircularProgress";
+import { DateTimePicker } from "@mui/x-date-pickers-pro";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -73,6 +96,10 @@ const ADMIN_DRAFT_KEY = "important_info_admin_draft";
 // Search history key
 const SEARCH_HISTORY_KEY = "important_info_search_history";
 const MAX_SEARCH_HISTORY = 5;
+
+// Templates library key
+const TEMPLATES_KEY = "important_info_sms_templates";
+const MAX_TEMPLATES = 10;
 
 // Category colors for visual distinction
 const CATEGORY_COLORS = {
@@ -146,7 +173,7 @@ function clearAdminDraft(mode = "create", itemId = null) {
   }
 }
 
-// Search history helpers
+// Search history helpers (currently unused, reserved for future feature)
 function loadSearchHistory() {
   try {
     const saved = localStorage.getItem(SEARCH_HISTORY_KEY);
@@ -156,7 +183,7 @@ function loadSearchHistory() {
   }
 }
 
-function saveSearchHistory(query) {
+function _saveSearchHistory(query) {
   if (!query || !query.trim()) return;
   try {
     const history = loadSearchHistory();
@@ -168,6 +195,51 @@ function saveSearchHistory(query) {
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
   } catch {
     // Ignore errors
+  }
+}
+
+// Templates library helpers
+function loadTemplates() {
+  try {
+    const saved = localStorage.getItem(TEMPLATES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTemplate(name, content) {
+  if (!name || !name.trim() || !content || !content.trim()) return false;
+  try {
+    const templates = loadTemplates();
+    const trimmedName = name.trim();
+    const trimmedContent = content.trim();
+
+    // Remove if template with same name exists
+    const filtered = templates.filter(t => t.name !== trimmedName);
+
+    // Add new template
+    const updated = [
+      { name: trimmedName, content: trimmedContent, savedAt: Date.now() },
+      ...filtered
+    ].slice(0, MAX_TEMPLATES);
+
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function deleteTemplate(name) {
+  if (!name) return false;
+  try {
+    const templates = loadTemplates();
+    const filtered = templates.filter(t => t.name !== name);
+    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(filtered));
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -205,10 +277,82 @@ function getCategoryColor(category) {
   return CATEGORY_COLORS[category] || CATEGORY_COLORS["General"];
 }
 
+// Generate SMS preview for an item
+function generateSmsPreview(item) {
+  if (!item) return "";
+
+  // Use custom template if available
+  if (item.smsTemplate && item.smsTemplate.trim()) {
+    return item.smsTemplate.trim();
+  }
+
+  // Auto-generate preview
+  const parts = [];
+
+  if (item.title) {
+    parts.push(`📢 ${item.title}`);
+  }
+
+  if (item.blurb) {
+    parts.push(`\n\n${item.blurb}`);
+  }
+
+  if (item.details) {
+    const truncated = item.details.length > 100
+      ? item.details.substring(0, 100) + "..."
+      : item.details;
+    parts.push(`\n\n${truncated}`);
+  }
+
+  if (item.phone) {
+    parts.push(`\n\n📞 ${item.phone}`);
+  }
+
+  if (item.url) {
+    parts.push(`\n\n🔗 ${item.url}`);
+  }
+
+  if (item.images && item.images.length > 0) {
+    parts.push(`\n\n📷 ${item.images.length} image${item.images.length > 1 ? "s" : ""} attached`);
+  }
+
+  return parts.join("");
+}
+
 function ensureString(value) {
   if (value == null) return "";
   return String(value);
 }
+
+// Sortable Item Component for drag-and-drop
+function SortableItem({ id, children, disabled }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ attributes, listeners, isDragging })}
+    </div>
+  );
+}
+
+SortableItem.propTypes = {
+  id: PropTypes.string.isRequired,
+  children: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
 
 function normalizeCategory(value) {
   const label = ensureString(value).trim();
@@ -216,7 +360,7 @@ function normalizeCategory(value) {
 }
 
 function buildPayload(values) {
-  return {
+  const payload = {
     title: ensureString(values.title),
     blurb: ensureString(values.blurb),
     details: ensureString(values.details),
@@ -226,6 +370,16 @@ function buildPayload(values) {
     smsTemplate: ensureString(values.smsTemplate),
     isActive: values.isActive !== false,
   };
+
+  // Add publishDate if provided (scheduled publishing)
+  if (values.publishDate) {
+    const date = dayjs(values.publishDate);
+    if (date.isValid()) {
+      payload.publishDate = date.toISOString();
+    }
+  }
+
+  return payload;
 }
 
 const DEFAULT_FORM = {
@@ -238,6 +392,7 @@ const DEFAULT_FORM = {
   smsTemplate: "",
   isActive: true,
   images: [],
+  publishDate: null,
 };
 
 function toTelHref(phone) {
@@ -295,10 +450,34 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [draftSaveTimeout, setDraftSaveTimeout] = useState(null);
   const [frozenOrder, setFrozenOrder] = useState(null); // Freeze list order during edit
   const [selectedIds, setSelectedIds] = useState([]); // Bulk selection
+  const [previewAnchor, setPreviewAnchor] = useState(null); // Quick preview popover
+  const [previewItem, setPreviewItem] = useState(null); // Item being previewed
+  const [templatesAnchor, setTemplatesAnchor] = useState(null); // Templates menu anchor
+  const [templates, setTemplates] = useState([]); // Saved templates
+  const [isDragging, setIsDragging] = useState(false); // Track if currently dragging
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
   const showError = Boolean(error) && !loading;
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Load templates when dialog opens
+  useEffect(() => {
+    if (dialogOpen) {
+      setTemplates(loadTemplates());
+    }
+  }, [dialogOpen]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -397,6 +576,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     } else {
       // Normal sorting
       filtered.sort((a, b) => {
+        // If both have order field, sort by order (for manual reordering within category)
+        if (typeof a?.order === "number" && typeof b?.order === "number") {
+          return a.order - b.order;
+        }
+        // Fall back to other sorting methods
         if (sortBy === "title") {
           return ensureString(a?.title).localeCompare(ensureString(b?.title));
         }
@@ -467,6 +651,19 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setSelectedItemForSms(null);
   }, []);
 
+  const handleSmsSent = useCallback(async (itemId) => {
+    if (!itemId) return;
+    try {
+      // Increment sendCount
+      const item = rows.find(r => r.id === itemId);
+      const currentCount = typeof item?.sendCount === "number" ? item.sendCount : 0;
+      await updateImportantInfo(itemId, { sendCount: currentCount + 1 });
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleSmsSent", itemId });
+      // Don't show error to user - this is a background operation
+    }
+  }, [rows]);
+
   const handleImportClose = useCallback(
     (result) => {
       setImportDialogOpen(false);
@@ -492,6 +689,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       smsTemplate: ensureString(row.smsTemplate),
       images: Array.isArray(row.images) ? row.images : [],
       isActive: row.isActive !== false,
+      publishDate: row.publishDate ? dayjs(row.publishDate) : null,
     });
     setPendingFiles([]);
     // Freeze the current list order to prevent jumping during auto-save
@@ -862,10 +1060,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     show(`Exported ${filteredRows.length} item${filteredRows.length !== 1 ? "s" : ""} to CSV.`, "success");
   }, [filteredRows, show]);
 
-  const handleSearchSubmit = useCallback(() => {
-    saveSearchHistory(query);
-  }, [query]);
-
   const handleSelectAll = useCallback((event) => {
     if (event.target.checked) {
       setSelectedIds(filteredRows.map(r => r.id));
@@ -923,6 +1117,104 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       show("Failed to delete items.", "error");
     }
   }, [selectedIds, show]);
+
+  const handlePreviewOpen = useCallback((event, item) => {
+    setPreviewAnchor(event.currentTarget);
+    setPreviewItem(item);
+  }, []);
+
+  const handlePreviewClose = useCallback(() => {
+    setPreviewAnchor(null);
+    setPreviewItem(null);
+  }, []);
+
+  const handleOpenTemplatesMenu = useCallback((event) => {
+    setTemplatesAnchor(event.currentTarget);
+    setTemplates(loadTemplates());
+  }, []);
+
+  const handleCloseTemplatesMenu = useCallback(() => {
+    setTemplatesAnchor(null);
+  }, []);
+
+  const handleLoadTemplate = useCallback((template) => {
+    handleFieldChange("smsTemplate", template.content);
+    handleCloseTemplatesMenu();
+    show(`Template "${template.name}" loaded.`, "success");
+  }, [handleFieldChange, handleCloseTemplatesMenu, show]);
+
+  const handleSaveTemplate = useCallback(() => {
+    const content = formValues.smsTemplate?.trim();
+    if (!content) {
+      show("Enter an SMS template first.", "warning");
+      return;
+    }
+
+    // eslint-disable-next-line no-alert
+    const name = window.prompt("Enter a name for this template:");
+    if (!name || !name.trim()) return;
+
+    const success = saveTemplate(name.trim(), content);
+    if (success) {
+      setTemplates(loadTemplates());
+      show(`Template "${name.trim()}" saved.`, "success");
+    } else {
+      show("Failed to save template.", "error");
+    }
+  }, [formValues.smsTemplate, show]);
+
+  const handleDeleteTemplate = useCallback((event, templateName) => {
+    event.stopPropagation();
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(`Delete template "${templateName}"?`);
+    if (!confirmed) return;
+
+    const success = deleteTemplate(templateName);
+    if (success) {
+      setTemplates(loadTemplates());
+      show(`Template "${templateName}" deleted.`, "info");
+    } else {
+      show("Failed to delete template.", "error");
+    }
+  }, [show]);
+
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true);
+    // Close preview popover during drag
+    setPreviewAnchor(null);
+    setPreviewItem(null);
+  }, []);
+
+  const handleDragEnd = useCallback(async (event) => {
+    setIsDragging(false);
+    const { active, over } = event;
+
+    if (!active || !over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = filteredRows.findIndex((item) => item.id === active.id);
+    const newIndex = filteredRows.findIndex((item) => item.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Reorder the items
+    const reordered = arrayMove(filteredRows, oldIndex, newIndex);
+
+    // Update the order field for all affected items
+    try {
+      // Update each item with its new order
+      await Promise.all(
+        reordered.map((item, index) =>
+          updateImportantInfo(item.id, { order: index })
+        )
+      );
+      show("Order updated successfully.", "success");
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleDragEnd" });
+      show("Failed to update order.", "error");
+    }
+  }, [filteredRows, show]);
 
   return (
     <Box
@@ -1199,7 +1491,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             </Box>
           ) : null}
 
-          {filteredRows.map((row) => {
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredRows.map(r => r.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {filteredRows.map((row) => {
             const id = row?.id;
             const disabled = !!pendingMap[id];
             const updatedLabel = formatDateTime(row?.updatedAt);
@@ -1209,28 +1511,46 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             const telHref = toTelHref(row?.phone);
 
             return (
-              <Card
-                key={id}
-                variant="outlined"
-                sx={(t) => ({
-                  bgcolor: t.palette.background.paper,
-                  borderColor: t.palette.divider,
-                  borderRadius: 3,
-                })}
-              >
-                <CardContent sx={{ pb: 1.5 }}>
-                  <Stack spacing={1.25}>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      alignItems="flex-start"
-                    >
-                      <Checkbox
-                        checked={selectedIds.includes(id)}
-                        onChange={() => handleSelectOne(id)}
-                        disabled={disabled}
-                        sx={{ mt: -0.5 }}
-                      />
+              <SortableItem key={id} id={id} disabled={disabled || isDragging}>
+                {({ attributes, listeners, isDragging: itemIsDragging }) => (
+                  <Card
+                    variant="outlined"
+                    onMouseEnter={(e) => !itemIsDragging && handlePreviewOpen(e, row)}
+                    onMouseLeave={handlePreviewClose}
+                    sx={(t) => ({
+                      bgcolor: t.palette.background.paper,
+                      borderColor: t.palette.divider,
+                      borderRadius: 3,
+                      cursor: itemIsDragging ? "grabbing" : "default",
+                    })}
+                  >
+                    <CardContent sx={{ pb: 1.5 }}>
+                      <Stack spacing={1.25}>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="flex-start"
+                        >
+                          <IconButton
+                            size="small"
+                            sx={{
+                              mt: -0.5,
+                              cursor: disabled ? "not-allowed" : "grab",
+                              "&:active": { cursor: "grabbing" },
+                              color: (t) => t.palette.text.secondary
+                            }}
+                            disabled={disabled}
+                            {...attributes}
+                            {...listeners}
+                          >
+                            <DragIndicatorIcon fontSize="small" />
+                          </IconButton>
+                          <Checkbox
+                            checked={selectedIds.includes(id)}
+                            onChange={() => handleSelectOne(id)}
+                            disabled={disabled}
+                            sx={{ mt: -0.5 }}
+                          />
                       <Stack
                         direction={{ xs: "column", sm: "row" }}
                         spacing={1}
@@ -1250,16 +1570,44 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                             Updated {updatedLabel}
                           </Typography>
                         </Stack>
-                        <Chip
-                          size="small"
-                          label={categoryLabel}
-                          sx={{
-                            fontWeight: 600,
-                            bgcolor: getCategoryColor(categoryLabel).bg,
-                            color: getCategoryColor(categoryLabel).text,
-                            border: `1px solid ${getCategoryColor(categoryLabel).border}`,
-                          }}
-                        />
+                        <Stack direction="column" spacing={0.5} alignItems="flex-end">
+                          <Chip
+                            size="small"
+                            label={categoryLabel}
+                            sx={{
+                              fontWeight: 600,
+                              bgcolor: getCategoryColor(categoryLabel).bg,
+                              color: getCategoryColor(categoryLabel).text,
+                              border: `1px solid ${getCategoryColor(categoryLabel).border}`,
+                            }}
+                          />
+                          {row?.publishDate && dayjs(row.publishDate).isAfter(dayjs()) && (
+                            <Chip
+                              size="small"
+                              label={`📅 Scheduled: ${dayjs(row.publishDate).format("MMM D, YYYY h:mm A")}`}
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: "0.7rem",
+                                bgcolor: "#2a1f11",
+                                color: "#ffdca8",
+                                border: "1px solid #ff9800",
+                              }}
+                            />
+                          )}
+                          {typeof row?.sendCount === "number" && row.sendCount > 0 && (
+                            <Chip
+                              size="small"
+                              label={`📊 ${row.sendCount} SMS sent`}
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: "0.7rem",
+                                bgcolor: "#1a1a3d",
+                                color: "#9fa8da",
+                                border: "1px solid #3f51b5",
+                              }}
+                            />
+                          )}
+                        </Stack>
                       </Stack>
                     </Stack>
 
@@ -1440,8 +1788,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                   </Stack>
                 </CardActions>
               </Card>
+                )}
+              </SortableItem>
             );
           })}
+            </SortableContext>
+          </DndContext>
         </Stack>
       ) : null}
 
@@ -1550,17 +1902,42 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 fullWidth
               />
             </Stack>
-            <TextField
-              label="SMS template (optional)"
-              value={formValues.smsTemplate}
-              onChange={(event) =>
-                handleFieldChange("smsTemplate", event.target.value)
-              }
-              fullWidth
-              multiline
-              minRows={3}
-              helperText="Leave blank to auto-generate a message."
-            />
+            <Box>
+              <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1 }}>
+                <TextField
+                  label="SMS template (optional)"
+                  value={formValues.smsTemplate}
+                  onChange={(event) =>
+                    handleFieldChange("smsTemplate", event.target.value)
+                  }
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  helperText="Leave blank to auto-generate a message."
+                />
+                <Stack direction="column" spacing={0.5} sx={{ mt: 0.5 }}>
+                  <Tooltip title="Load saved template">
+                    <IconButton
+                      size="small"
+                      onClick={handleOpenTemplatesMenu}
+                      sx={{ color: (t) => t.palette.primary.main }}
+                    >
+                      <BookmarkBorderIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Save as template">
+                    <IconButton
+                      size="small"
+                      onClick={handleSaveTemplate}
+                      disabled={!formValues.smsTemplate?.trim()}
+                      sx={{ color: (t) => t.palette.primary.main }}
+                    >
+                      <BookmarkIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </Stack>
+            </Box>
             <Divider sx={{ borderColor: (t) => t.palette.divider, my: 1 }} />
             <Box>
               <Stack
@@ -1698,6 +2075,25 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               />
               <Typography variant="body2">Active</Typography>
             </Stack>
+            <Divider sx={{ borderColor: (t) => t.palette.divider, my: 1 }} />
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                Scheduled Publishing (Optional)
+              </Typography>
+              <DateTimePicker
+                label="Publish Date"
+                value={formValues.publishDate}
+                onChange={(newValue) => handleFieldChange("publishDate", newValue)}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                    helperText: "Set a future date to auto-activate this item. Leave empty for immediate activation.",
+                  },
+                }}
+                minDateTime={dayjs()}
+              />
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, justifyContent: "space-between" }}>
@@ -1901,8 +2297,111 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       <SmsSendDialog
         open={smsDialogOpen}
         onClose={handleCloseSmsDialog}
+        onSuccess={handleSmsSent}
         item={selectedItemForSms}
       />
+
+      <Popover
+        open={Boolean(previewAnchor)}
+        anchorEl={previewAnchor}
+        onClose={handlePreviewClose}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+        sx={{
+          pointerEvents: "none",
+        }}
+        PaperProps={{
+          sx: {
+            pointerEvents: "auto",
+            maxWidth: 400,
+            p: 2,
+            bgcolor: "background.paper",
+            border: 1,
+            borderColor: "primary.main",
+          },
+        }}
+        disableRestoreFocus
+      >
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "primary.main" }}>
+            📱 SMS Preview
+          </Typography>
+          <Divider sx={{ borderColor: (t) => t.palette.divider }} />
+          <Typography
+            variant="body2"
+            sx={{
+              whiteSpace: "pre-wrap",
+              fontFamily: "monospace",
+              fontSize: "0.875rem",
+              p: 1.5,
+              bgcolor: (t) => t.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
+              borderRadius: 1,
+              border: 1,
+              borderColor: "divider",
+            }}
+          >
+            {generateSmsPreview(previewItem)}
+          </Typography>
+          {previewItem?.images && previewItem.images.length > 0 && (
+            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+              + {previewItem.images.length} image{previewItem.images.length > 1 ? "s" : ""} (MMS)
+            </Typography>
+          )}
+        </Stack>
+      </Popover>
+
+      <Menu
+        anchorEl={templatesAnchor}
+        open={Boolean(templatesAnchor)}
+        onClose={handleCloseTemplatesMenu}
+        PaperProps={{
+          sx: {
+            maxWidth: 400,
+            maxHeight: 400,
+          },
+        }}
+      >
+        {templates.length === 0 ? (
+          <MenuItem disabled>
+            <Typography variant="body2" sx={{ fontStyle: "italic", opacity: 0.7 }}>
+              No saved templates
+            </Typography>
+          </MenuItem>
+        ) : (
+          templates.map((template) => (
+            <MenuItem
+              key={template.name}
+              onClick={() => handleLoadTemplate(template)}
+              sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <Stack spacing={0.25} sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                  {template.name}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
+                  {template.content.substring(0, 60)}{template.content.length > 60 ? "..." : ""}
+                </Typography>
+              </Stack>
+              <IconButton
+                size="small"
+                onClick={(e) => handleDeleteTemplate(e, template.name)}
+                sx={{ ml: 1, color: (t) => t.palette.error.main }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </MenuItem>
+          ))
+        )}
+      </Menu>
     </Box>
   );
 }

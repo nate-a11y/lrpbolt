@@ -86,7 +86,7 @@ function buildMessagePreview(item) {
   return message.length > 840 ? `${message.slice(0, 837)}…` : message;
 }
 
-export default function SmsSendDialog({ open, onClose, item }) {
+export default function SmsSendDialog({ open, onClose, item, onSuccess }) {
   const { show } = useSnack();
   const [phone, setPhone] = useState(() => loadDraft());
   const [sending, setSending] = useState(false);
@@ -162,6 +162,8 @@ export default function SmsSendDialog({ open, onClose, item }) {
         // Clear draft and phone on successful send
         clearDraft();
         setPhone("");
+        // Call onSuccess callback if provided
+        if (onSuccess) onSuccess(item.id);
         if (onClose) onClose();
       } catch (error) {
         logError(error, {
@@ -184,7 +186,7 @@ export default function SmsSendDialog({ open, onClose, item }) {
         setSending(false);
       }
     },
-    [item, onClose, phone, show],
+    [item, onClose, onSuccess, phone, show],
   );
 
   return (
@@ -358,6 +360,7 @@ export default function SmsSendDialog({ open, onClose, item }) {
 SmsSendDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func,
+  onSuccess: PropTypes.func,
   item: PropTypes.shape({
     id: PropTypes.string,
     title: PropTypes.string,
