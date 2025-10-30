@@ -186,17 +186,15 @@ function validateResponse(userMessage, botResponse) {
       escalate: true,
     },
 
-    // Availability claims
+    // Availability claims (but NOT booking collection language)
     {
-      pattern: /we (have|don't have) .* available/i,
+      pattern: /we (have|don't have) (vehicles?|buses?|shuttles?) available/i,
       reason: "claimed_availability",
       escalate: true,
     },
-    {
-      pattern: /(yes|no),? we can (do|provide)/i,
-      reason: "definitive_commitment",
-      escalate: true,
-    },
+    // REMOVED the overly broad "(yes|no),? we can (do|provide)" pattern
+    // because it blocks legitimate booking collection responses like
+    // "Yes, we can book that ride for you!"
 
     // Invented policies
     {
@@ -205,10 +203,11 @@ function validateResponse(userMessage, botResponse) {
       escalate: true,
     },
     {
-      pattern: /guaranteed|promise|definitely can/i,
+      pattern: /guaranteed|promise/i,
       reason: "overconfident",
       escalate: true,
     },
+    // REMOVED "definitely can" because it's legitimate for booking confirmations
   ];
 
   for (const { pattern, reason, escalate } of dangerPatterns) {
@@ -582,11 +581,15 @@ exports.chatbotQuery = onRequest(
 
 ---
 
+## 🚐 YOUR PRIMARY MISSION: COLLECT BOOKINGS PROACTIVELY
+
+You are a BOOKING ASSISTANT first and foremost. When users want to book a ride, you MUST collect their information through chat. DO NOT send them to the portal or phone unless they explicitly ask for it.
+
 ## WHEN A USER WANTS TO BOOK A RIDE:
 
 **1. ENTHUSIASTICALLY ENGAGE**: "Absolutely! I'd love to help you book that ride. 🚐"
 
-**2. COLLECT REQUIRED INFORMATION** (ask one question at a time):
+**2. COLLECT REQUIRED INFORMATION** (ask 1-2 questions at a time to keep it conversational):
    - Pickup location
    - Dropoff location (destination)
    - Date
@@ -605,7 +608,16 @@ exports.chatbotQuery = onRequest(
    - Clear next steps: "Our team will contact you within 24 hours from (573) 206-9499 to confirm details and pricing. 📞"
    - Reminder about no-reply SMS and proper contact channels
 
-**IMPORTANT**: You CAN and SHOULD collect booking information. Don't deflect users to the portal or phone unless they explicitly request it. Making booking easy through chat is your main purpose.
+**CRITICAL RULES**:
+✅ YES: "Absolutely! I can help you book that ride."
+✅ YES: "Let me collect your booking details."
+✅ YES: Ask for missing information one piece at a time
+✅ YES: Use the submit_booking_request function when you have all details
+
+🚫 NO: "Visit our booking portal at..."
+🚫 NO: "Please call us to book..."
+🚫 NO: "I can't help with bookings"
+🚫 NO: Deflecting to phone/portal unless user explicitly asks for those options
 
 ---
 
@@ -669,9 +681,25 @@ Once you have ALL required pieces of information and the customer confirms detai
         { role: "user", content: message },
       ];
 
+      // Log system prompt for debugging
+      logger.info("System prompt being sent to GPT", {
+        promptLength: systemPrompt.length,
+        promptPreview: systemPrompt.substring(0, 200),
+        toolsEnabled: true,
+        bookingToolDefined: true,
+      });
+
       // Query OpenAI with function calling enabled
       const data = await queryOpenAI(aiSettings, messages, [BOOKING_TOOL]);
       const response = data.choices?.[0]?.message;
+
+      // Log GPT response type
+      logger.info("GPT response received", {
+        hasContent: !!response.content,
+        hasToolCalls: !!(response.tool_calls && response.tool_calls.length > 0),
+        toolCallsCount: response.tool_calls?.length || 0,
+        toolName: response.tool_calls?.[0]?.function?.name || null,
+      });
 
       if (!response) {
         throw new Error("No response from API");
@@ -696,7 +724,8 @@ Once you have ALL required pieces of information and the customer confirms detai
         const toolCall = response.tool_calls[0];
 
         if (toolCall.function.name === "submit_booking_request") {
-          logger.info("GPT requested booking submission", {
+          logger.info("🎉 GPT CALLED BOOKING FUNCTION - Booking submission starting!", {
+            functionName: toolCall.function.name,
             arguments: toolCall.function.arguments,
           });
 
@@ -826,10 +855,17 @@ Once you have ALL required pieces of information and the customer confirms detai
             }
 
             // Log overall booking submission status
-            logger.info("Booking request submission complete", {
+            logger.info("✅ BOOKING SUCCESSFULLY SUBMITTED", {
               bookingId,
               customer: bookingData.customer_name,
+              email: bookingData.customer_email,
+              phone: bookingData.customer_phone,
+              pickup: bookingData.pickup_location,
+              dropoff: bookingData.dropoff_location,
               tripDate: bookingData.trip_date,
+              tripTime: bookingData.trip_time,
+              passengers: bookingData.passenger_count,
+              tripType: bookingData.trip_type,
               emailSent,
               smsSent,
             });
@@ -918,11 +954,25 @@ Once you have ALL required pieces of information and the customer confirms detai
         }
       }
 
-      // Regular conversation response
+      // Regular conversation response (no function call)
       const botReply = response.content;
+
+      logger.info("GPT returned text response (no function call)", {
+        responseLength: botReply?.length || 0,
+        responsePreview: botReply?.substring(0, 150) || "",
+        conversationTurn: conversationHistory.length + 1,
+      });
 
       // Validate response for hallucinations
       const validation = validateResponse(message, botReply);
+
+      if (!validation.safe) {
+        logger.warn("⚠️ VALIDATION BLOCKED RESPONSE", {
+          reason: validation.reason,
+          userMessage: message.substring(0, 100),
+          blockedResponse: botReply.substring(0, 150),
+        });
+      }
 
       if (!validation.safe) {
         // Track hallucination caught
