@@ -471,6 +471,32 @@ exports.chatbotQuery = onRequest(
         return;
       }
 
+      // Initialize analytics tracking
+      const conversationStartTime = Date.now();
+      const conversationId = `CONV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const analyticsData = {
+        conversationId,
+        timestamp: new Date(),
+        messageCount: conversationHistory.length + 1, // +1 for current message
+        conversationDuration: 0,
+        completedSuccessfully: false,
+        escalated: false,
+        escalationReason: null,
+        bookingSubmitted: false,
+        bookingId: null,
+        validationFailures: [],
+        lowConfidenceResponses: 0,
+        hallucinationsCaught: 0,
+        tokensUsed: {
+          input: 0,
+          output: 0,
+          total: 0,
+        },
+        estimatedCost: 0,
+        source: req.headers.origin || "unknown",
+        userAgent: req.headers["user-agent"] || "unknown",
+      };
+
       // Get settings
       const chatbotSettings = await getChatbotSettings();
 
@@ -488,6 +514,12 @@ exports.chatbotQuery = onRequest(
 
       // Check for immediate escalation triggers
       if (shouldEscalateImmediately(message)) {
+        // Track escalation in analytics
+        analyticsData.escalated = true;
+        analyticsData.escalationReason = "user_trigger";
+        analyticsData.completedSuccessfully = false;
+        analyticsData.conversationDuration = Date.now() - conversationStartTime;
+
         // Store context and build Messenger URL with ref parameter
         const escalationId = await storeEscalationContext(
           conversationHistory,
@@ -500,6 +532,18 @@ exports.chatbotQuery = onRequest(
           escalationId,
           trigger: message.substring(0, 50),
         });
+
+        // Save analytics to Firestore
+        await db
+          .collection("chatbotAnalytics")
+          .doc(conversationId)
+          .set(analyticsData)
+          .catch((err) => {
+            logger.error("Failed to save analytics", {
+              conversationId,
+              error: err.message,
+            });
+          });
 
         return res.status(200).json({
           success: true,
@@ -599,6 +643,20 @@ Once you have ALL 9 required pieces of information and the customer confirms det
         throw new Error("No response from API");
       }
 
+      // Track token usage and cost
+      if (data.usage) {
+        analyticsData.tokensUsed = {
+          input: data.usage.prompt_tokens || 0,
+          output: data.usage.completion_tokens || 0,
+          total: data.usage.total_tokens || 0,
+        };
+
+        // Estimate cost (gpt-4o-mini rates: $0.15/1M input, $0.60/1M output)
+        const inputCost = (data.usage.prompt_tokens / 1000000) * 0.15;
+        const outputCost = (data.usage.completion_tokens / 1000000) * 0.6;
+        analyticsData.estimatedCost = inputCost + outputCost;
+      }
+
       // Check if GPT wants to submit booking
       if (response.tool_calls && response.tool_calls.length > 0) {
         const toolCall = response.tool_calls[0];
@@ -650,6 +708,12 @@ Once you have ALL 9 required pieces of information and the customer confirms det
               data: bookingData,
             });
 
+            // Track validation failure
+            analyticsData.validationFailures.push({
+              type: "missing_fields",
+              fields: missingFields,
+            });
+
             return res.status(200).json({
               success: true,
               reply: `I still need: ${missingFields.join(", ")}. Can you provide those details?`,
@@ -699,6 +763,24 @@ Once you have ALL 9 required pieces of information and the customer confirms det
               tripDate: bookingData.trip_date,
             });
 
+            // Track booking in analytics
+            analyticsData.bookingSubmitted = true;
+            analyticsData.bookingId = bookingId;
+            analyticsData.completedSuccessfully = true;
+            analyticsData.conversationDuration = Date.now() - conversationStartTime;
+
+            // Save analytics to Firestore
+            await db
+              .collection("chatbotAnalytics")
+              .doc(conversationId)
+              .set(analyticsData)
+              .catch((err) => {
+                logger.error("Failed to save analytics", {
+                  conversationId,
+                  error: err.message,
+                });
+              });
+
             // Return success to user
             const firstName = bookingData.customer_name.split(" ")[0];
 
@@ -747,6 +829,18 @@ Your booking reference: ${bookingId}`,
       const validation = validateResponse(message, botReply);
 
       if (!validation.safe) {
+        // Track hallucination caught
+        analyticsData.hallucinationsCaught += 1;
+        analyticsData.validationFailures.push({
+          type: "hallucination",
+          reason: validation.reason,
+          response: botReply.substring(0, 200),
+        });
+        analyticsData.escalated = true;
+        analyticsData.escalationReason = validation.reason;
+        analyticsData.completedSuccessfully = false;
+        analyticsData.conversationDuration = Date.now() - conversationStartTime;
+
         // Store context and build Messenger URL with ref parameter
         const conversationSoFar = [
           ...conversationHistory,
@@ -765,6 +859,18 @@ Your booking reference: ${bookingId}`,
           escalationId,
         });
 
+        // Save analytics to Firestore
+        await db
+          .collection("chatbotAnalytics")
+          .doc(conversationId)
+          .set(analyticsData)
+          .catch((err) => {
+            logger.error("Failed to save analytics", {
+              conversationId,
+              error: err.message,
+            });
+          });
+
         return res.status(200).json({
           success: true,
           reply:
@@ -776,6 +882,22 @@ Your booking reference: ${bookingId}`,
           botName: chatbotSettings.name,
         });
       }
+
+      // Track successful conversation
+      analyticsData.completedSuccessfully = true;
+      analyticsData.conversationDuration = Date.now() - conversationStartTime;
+
+      // Save analytics to Firestore
+      await db
+        .collection("chatbotAnalytics")
+        .doc(conversationId)
+        .set(analyticsData)
+        .catch((err) => {
+          logger.error("Failed to save analytics", {
+            conversationId,
+            error: err.message,
+          });
+        });
 
       // Return normal response
       return res.status(200).json({

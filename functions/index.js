@@ -50,6 +50,7 @@ attach("sendPartnerInfoSMS", "./sendPartnerInfoSMS", "sendPartnerInfoSMS");
 attach("smsHealth", "./smsHealth", "smsHealth");
 attach("chatbotQuery", "./chatbotQuery", "chatbotQuery");
 attach("chatbotConfig", "./chatbotQuery", "chatbotConfig");
+attach("getChatbotAnalytics", "./getChatbotAnalytics", "getChatbotAnalytics");
 attach("apiCalendarFetch", "./calendarFetch", "apiCalendarFetch");
 attach("apiCalendarFetchHttp", "./calendarFetch", "apiCalendarFetchHttp");
 attach("sendShuttleTicketEmail", "./sendShuttleTicketEmail", "sendShuttleTicketEmail");

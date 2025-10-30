@@ -14,6 +14,7 @@ import {
   CircularProgress,
   Zoom,
   Tooltip,
+  Button,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -42,7 +43,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
     name = "Johnny",
     welcomeMessage = "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
     placeholder = "Ask about our rides, availability, pricing...",
-    primaryColor = "#4CAF50",
+    primaryColor = "primary.main",
     position = "bottom-right",
     facebookPageUrl = "https://m.me/lakeridepros",
     bookingUrl = "https://customer.moovs.app/lake-ride-pros/new/info",
@@ -188,7 +189,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
           <Box
             sx={{
               bgcolor: primaryColor,
-              color: "white",
+              color: "common.white",
               p: 2,
               display: "flex",
               alignItems: "center",
@@ -198,7 +199,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Avatar
                 sx={{
-                  bgcolor: alpha("#fff", 0.2),
+                  bgcolor: (theme) => alpha(theme.palette.common.white, 0.2),
                   width: 36,
                   height: 36,
                 }}
@@ -214,7 +215,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                 </Typography>
               </Box>
             </Stack>
-            <IconButton onClick={handleToggle} size="small" sx={{ color: "white" }}>
+            <IconButton onClick={handleToggle} size="small" sx={{ color: "common.white" }}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -309,7 +310,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                           msg.role === "user"
                             ? primaryColor
                             : (theme) => theme.palette.background.paper,
-                        color: msg.role === "user" ? "white" : "text.primary",
+                        color: msg.role === "user" ? "common.white" : "text.primary",
                         borderRadius: 2,
                       }}
                     >
@@ -423,7 +424,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                 disabled={!input.trim() || loading}
                 sx={{
                   bgcolor: primaryColor,
-                  color: "white",
+                  color: "common.white",
                   "&:hover": {
                     bgcolor: alpha(primaryColor, 0.8),
                   },
@@ -446,13 +447,13 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
             onClick={handleToggle}
             sx={{
               bgcolor: primaryColor,
-              color: "white",
+              color: "common.white",
               "&:hover": {
                 bgcolor: alpha(primaryColor, 0.8),
                 transform: "scale(1.1)",
               },
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: (theme) => `0 4px 20px ${alpha(primaryColor, 0.4)}`,
+              boxShadow: `0 4px 20px ${alpha(primaryColor, 0.4)}`,
             }}
             aria-label="Open chat"
           >

@@ -31,9 +31,8 @@ import {
   InputLabel,
   Chip,
   Avatar,
-  Tooltip,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -62,6 +61,7 @@ import ChatbotWidget from "@/components/ChatbotWidget.jsx";
 import logError from "@/utils/logError.js";
 
 export default function ChatBotSettings() {
+  const theme = useTheme();
   const { show } = useSnack();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,7 +73,7 @@ export default function ChatBotSettings() {
   const [name, setName] = useState("Johnny");
   const [welcomeMessage, setWelcomeMessage] = useState("Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?");
   const [placeholder, setPlaceholder] = useState("Ask about our rides, availability, pricing...");
-  const [primaryColor, setPrimaryColor] = useState("#4CAF50");
+  const [primaryColor, setPrimaryColor] = useState(theme.palette.primary.main);
   const [position, setPosition] = useState("bottom-right");
   const [facebookPageUrl, setFacebookPageUrl] = useState("https://m.me/lakeridepros");
   const [bookingUrl, setBookingUrl] = useState("https://customer.moovs.app/lake-ride-pros/new/info");
@@ -123,6 +123,9 @@ If the user needs more personalized help or wants to speak with a human, direct 
   const [entryTitle, setEntryTitle] = useState("");
   const [entryContent, setEntryContent] = useState("");
 
+  // Default color value (stable reference)
+  const defaultPrimaryColor = theme.palette.primary.main;
+
   // Load initial data
   useEffect(() => {
     let mounted = true;
@@ -144,7 +147,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
           chatbotData.welcomeMessage || "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?"
         );
         setPlaceholder(chatbotData.placeholder || "Ask about our rides, availability, pricing...");
-        setPrimaryColor(chatbotData.primaryColor || "#4CAF50");
+        setPrimaryColor(chatbotData.primaryColor || defaultPrimaryColor);
         setPosition(chatbotData.position || "bottom-right");
         setFacebookPageUrl(chatbotData.facebookPageUrl || "https://m.me/lakeridepros");
         setBookingUrl(chatbotData.bookingUrl || "https://customer.moovs.app/lake-ride-pros/new/info");
@@ -169,7 +172,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
     return () => {
       mounted = false;
     };
-  }, [show]);
+  }, [show, defaultPrimaryColor]);
 
   // Subscribe to knowledge base updates
   useEffect(() => {

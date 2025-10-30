@@ -9,7 +9,6 @@ import {
   setDoc,
   collection,
   query,
-  where,
   getDocs,
   addDoc,
   updateDoc,
@@ -25,6 +24,9 @@ import logError from "@/utils/logError.js";
 const SETTINGS_COLLECTION = "appSettings";
 const CHATBOT_SETTINGS_DOC = "chatbot";
 const KNOWLEDGE_BASE_COLLECTION = "chatbotKnowledge";
+
+// Default chatbot color (matches theme primary)
+const DEFAULT_CHATBOT_COLOR = "primary.main";
 
 /**
  * Get chatbot configuration from Firestore
@@ -45,7 +47,7 @@ export async function getChatbotSettings() {
       name: "Johnny",
       welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
       placeholder: "Ask about our rides, availability, pricing...",
-      primaryColor: "#4CAF50",
+      primaryColor: DEFAULT_CHATBOT_COLOR,
       position: "bottom-right",
       facebookPageUrl: "https://m.me/lakeridepros",
       bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
@@ -92,7 +94,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
       name: "Johnny",
       welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
       placeholder: "Ask about our rides, availability, pricing...",
-      primaryColor: "#4CAF50",
+      primaryColor: DEFAULT_CHATBOT_COLOR,
       position: "bottom-right",
       facebookPageUrl: "https://m.me/lakeridepros",
       bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
@@ -144,7 +146,7 @@ export function subscribeToChatbotSettings(callback) {
           name: "Johnny",
           welcomeMessage: "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?",
           placeholder: "Ask about our rides, availability, pricing...",
-          primaryColor: "#4CAF50",
+          primaryColor: DEFAULT_CHATBOT_COLOR,
           position: "bottom-right",
           facebookPageUrl: "https://m.me/lakeridepros",
           bookingUrl: "https://customer.moovs.app/lake-ride-pros/new/info",
