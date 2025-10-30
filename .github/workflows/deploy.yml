@@ -393,9 +393,14 @@ jobs:
         run: |
           gcloud run services update sendbulkticketsemail \
             --region=us-central1 \
-            --platform=managed \
-            --allow-unauthenticated \
+            --ingress=all \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_REPLY_TO=${GMAIL_REPLY_TO}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
+            --quiet
+
+          gcloud run services add-iam-policy-binding sendbulkticketsemail \
+            --region=us-central1 \
+            --member=allUsers \
+            --role=roles/run.invoker \
             --quiet
 
       - name: Pin env vars on Cloud Run (sendShuttleTicketEmail)
@@ -408,9 +413,14 @@ jobs:
         run: |
           gcloud run services update sendshuttleticketemail \
             --region=us-central1 \
-            --platform=managed \
-            --allow-unauthenticated \
+            --ingress=all \
             --set-env-vars="^@@^GCAL_SA_EMAIL=${GCAL_SA_EMAIL}@@GCAL_SA_PRIVATE_KEY=${GCAL_SA_PRIVATE_KEY}@@GMAIL_SENDER=${GMAIL_SENDER}@@GMAIL_REPLY_TO=${GMAIL_REPLY_TO}@@GMAIL_USE_DOMAIN_DELEGATION=true" \
+            --quiet
+
+          gcloud run services add-iam-policy-binding sendshuttleticketemail \
+            --region=us-central1 \
+            --member=allUsers \
+            --role=roles/run.invoker \
             --quiet
 
   rules:
