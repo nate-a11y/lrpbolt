@@ -4,6 +4,7 @@
  */
 
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+
 import { db } from "@/services/firebase.js";
 import logError from "@/utils/logError.js";
 
