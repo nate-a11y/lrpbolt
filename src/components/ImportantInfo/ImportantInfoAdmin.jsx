@@ -64,6 +64,8 @@ import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
 import HistoryIcon from "@mui/icons-material/History";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import SettingsIcon from "@mui/icons-material/Settings";
 import CircularProgress from "@mui/material/CircularProgress";
 import { DateTimePicker } from "@mui/x-date-pickers-pro";
 import { alpha } from "@mui/material/styles";
@@ -97,6 +99,11 @@ import {
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
 import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
+import AISettingsDialog from "./AISettingsDialog.jsx";
+import {
+  generateContent,
+  isAIConfigured,
+} from "@/services/aiContentGenerator.js";
 
 const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
@@ -513,6 +520,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [templatesAnchor, setTemplatesAnchor] = useState(null); // Templates menu anchor
   const [templates, setTemplates] = useState([]); // Saved templates
   const [isDragging, setIsDragging] = useState(false); // Track if currently dragging
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false); // AI settings dialog
+  const [generatingAI, setGeneratingAI] = useState(false); // AI content generation loading
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -1460,6 +1469,58 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     [filteredRows, show],
   );
 
+  const handleOpenAISettings = useCallback(() => {
+    setAiSettingsOpen(true);
+  }, []);
+
+  const handleCloseAISettings = useCallback(() => {
+    setAiSettingsOpen(false);
+  }, []);
+
+  const handleGenerateWithAI = useCallback(async () => {
+    if (!isAIConfigured()) {
+      show("Please configure AI settings first.", "warning");
+      setAiSettingsOpen(true);
+      return;
+    }
+
+    if (!formValues.title || !formValues.details) {
+      show("Please enter a title and details before generating content.", "warning");
+      return;
+    }
+
+    setGeneratingAI(true);
+    setDraftStatus("saving");
+
+    try {
+      const generated = await generateContent({
+        title: formValues.title,
+        details: formValues.details,
+        category: formValues.category,
+        phone: formValues.phone,
+        url: formValues.url,
+      });
+
+      // Update form with generated content
+      if (generated.blurb) {
+        handleFieldChange("blurb", generated.blurb);
+      }
+      if (generated.sms) {
+        handleFieldChange("smsTemplate", generated.sms);
+      }
+
+      setDraftStatus("saved");
+      setTimeout(() => setDraftStatus("idle"), 2000);
+      show("Content generated successfully!", "success");
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleGenerateWithAI" });
+      setDraftStatus("idle");
+      show(err.message || "Failed to generate content.", "error");
+    } finally {
+      setGeneratingAI(false);
+    }
+  }, [formValues, handleFieldChange, show]);
+
   return (
     <Box
       sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}
@@ -1561,6 +1622,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             }}
           >
             Export CSV
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleOpenAISettings}
+            startIcon={<SettingsIcon />}
+            sx={{
+              borderColor: (t) => t.palette.primary.main,
+              color: (t) => alpha(t.palette.primary.main, 0.6),
+            }}
+          >
+            AI Settings
           </Button>
         </Stack>
       </Stack>
@@ -2259,6 +2331,26 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               multiline
               minRows={4}
             />
+            <LoadingButtonLite
+              variant="contained"
+              onClick={handleGenerateWithAI}
+              loading={generatingAI}
+              loadingText="Generating with AI..."
+              startIcon={<AutoFixHighIcon />}
+              disabled={!formValues.title || !formValues.details || saving || uploading}
+              sx={{
+                bgcolor: (t) => alpha(t.palette.success.main, 0.9),
+                color: (t) => t.palette.success.contrastText,
+                "&:hover": {
+                  bgcolor: (t) => t.palette.success.dark,
+                },
+                fontWeight: 600,
+                py: 1.5,
+              }}
+              fullWidth
+            >
+              Generate SMS & Blurb with AI
+            </LoadingButtonLite>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <TextField
                 label="Partner phone"
@@ -2691,6 +2783,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         itemId={changeHistoryItemId}
         itemTitle={changeHistoryItemTitle}
       />
+
+      <AISettingsDialog open={aiSettingsOpen} onClose={handleCloseAISettings} />
 
       <Popover
         open={Boolean(previewAnchor)}
