@@ -1,6 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
 // Tickets.jsx — Ticket grid with search, filters, preview, bulk ops
-// allow-color-literal-file
 
 import {
   useEffect,
@@ -1163,7 +1162,7 @@ function Tickets() {
     try {
       const dataUrl = await htmlToImage.toPng(node, {
         pixelRatio: 2,
-        backgroundColor: "#FFFFFF",
+        backgroundColor: theme.palette.common.white,
       });
       const link = document.createElement("a");
       link.download = `${t.ticketId}.png`;
@@ -1732,7 +1731,7 @@ function Tickets() {
               PaperProps={{
                 sx: {
                   bgcolor: (t) => t.palette.background.paper,
-                  color: "#f5f5f5",
+                  color: (t) => t.palette.text.primary,
                   ...(scannerFullScreen
                     ? {}
                     : {
@@ -1774,7 +1773,7 @@ function Tickets() {
                     }
                     label="Sequential mode"
                     sx={{
-                      color: "rgba(255,255,255,0.8)",
+                      color: (t) => alpha(t.palette.common.white, 0.8),
                       "& .MuiFormControlLabel-label": {
                         fontSize: 14,
                       },
@@ -1784,7 +1783,7 @@ function Tickets() {
                     edge="end"
                     onClick={closeScanner}
                     aria-label="Close ticket scanner"
-                    sx={{ color: "#f5f5f5" }}
+                    sx={{ color: (t) => t.palette.text.primary }}
                   >
                     <CloseIcon />
                   </IconButton>
@@ -1831,9 +1830,9 @@ function Tickets() {
                   right: 16,
                   bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
                   bgcolor: (t) => t.palette.primary.main,
-                  color: "#060606",
+                  color: (t) => t.palette.primary.contrastText,
                   display: scannerOpen ? "none" : "inline-flex",
-                  "&:hover": { bgcolor: "#43a414" },
+                  "&:hover": { bgcolor: (t) => t.palette.primary.dark },
                   zIndex: (t) => t.zIndex.modal + 1,
                 }}
               >
@@ -1850,7 +1849,7 @@ function Tickets() {
           PaperProps={{
             sx: {
               bgcolor: (t) => t.palette.background.paper,
-              color: "#f5f5f5",
+              color: (t) => t.palette.text.primary,
               borderRadius: 2,
               width: "min(420px, 90vw)",
             },
@@ -1882,7 +1881,7 @@ function Tickets() {
                 />
                 <Typography
                   variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72) }}
                 >
                   Fetching the latest ticket details…
                 </Typography>
@@ -1894,33 +1893,33 @@ function Tickets() {
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72) }}
                 >
                   Passenger: {pendingScanTicket?.passenger || "Unknown"}
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72) }}
                 >
                   Pickup: {pendingScanTicket?.pickup || "N/A"}
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72) }}
                 >
                   Date: {formatDate(pendingScanTicket?.pickupTime)} at{" "}
                   {formatTime(pendingScanTicket?.pickupTime)}
                 </Typography>
                 <Typography
                   variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.72)" }}
+                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72) }}
                 >
                   Current status: {pendingScanStatus}
                 </Typography>
                 {pendingScanMeta?.outAt && (
                   <Typography
                     variant="body2"
-                    sx={{ color: "rgba(255,255,255,0.6)" }}
+                    sx={{ color: (t) => alpha(t.palette.common.white, 0.6) }}
                   >
                     Outbound recorded by {pendingScanMeta.outBy || "Unknown"} at{" "}
                     {formatDateTime(pendingScanMeta.outAt)}
@@ -1929,7 +1928,7 @@ function Tickets() {
                 {pendingScanMeta?.retAt && (
                   <Typography
                     variant="body2"
-                    sx={{ color: "rgba(255,255,255,0.6)" }}
+                    sx={{ color: (t) => alpha(t.palette.common.white, 0.6) }}
                   >
                     Return recorded by {pendingScanMeta.retBy || "Unknown"} at{" "}
                     {formatDateTime(pendingScanMeta.retAt)}
@@ -1937,7 +1936,7 @@ function Tickets() {
                 )}
                 <Typography
                   variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.72)", pt: 0.5 }}
+                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72), pt: 0.5 }}
                 >
                   Select a direction to log this scan.
                 </Typography>
@@ -1958,8 +1957,8 @@ function Tickets() {
               onClick={handleScanDialogClose}
               disabled={savingScan || scanLookupLoading}
               sx={{
-                color: "#f5f5f5",
-                "&.Mui-disabled": { color: "rgba(255,255,255,0.4)" },
+                color: (t) => t.palette.text.primary,
+                "&.Mui-disabled": { color: (t) => alpha(t.palette.common.white, 0.4) },
               }}
             >
               Cancel
@@ -1977,11 +1976,11 @@ function Tickets() {
               sx={{
                 fontWeight: 600,
                 borderColor: (t) => alpha(t.palette.primary.main, 0.6),
-                color: "#f5f5f5",
+                color: (t) => t.palette.text.primary,
                 "&:hover": { borderColor: (t) => t.palette.primary.main },
                 "&.Mui-disabled": {
                   borderColor: (t) => alpha(t.palette.common.white, 0.24),
-                  color: "rgba(255,255,255,0.4)",
+                  color: (t) => alpha(t.palette.common.white, 0.4),
                 },
               }}
             >
@@ -2010,7 +2009,7 @@ function Tickets() {
                 },
                 "&.Mui-disabled": {
                   boxShadow: "none",
-                  color: "rgba(255,255,255,0.4)",
+                  color: (t) => alpha(t.palette.common.white, 0.4),
                 },
               })}
             >

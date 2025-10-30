@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useState, useMemo, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
@@ -267,7 +265,7 @@ export default function NotesAdmin({ notes, loading, error }) {
           onClick={openCreate}
           sx={{
             bgcolor: (t) => t.palette.primary.main,
-            "&:hover": { bgcolor: "#3aa40f" },
+            "&:hover": { bgcolor: (t) => t.palette.primary.dark },
           }}
         >
           New Template
@@ -316,14 +314,14 @@ export default function NotesAdmin({ notes, loading, error }) {
           <Stack
             spacing={1.5}
             sx={{
-              bgcolor: "#1a0b0b",
+              bgcolor: (t) => t.palette.error.dark,
               border: 1,
               borderColor: "divider",
               p: 2,
               borderRadius: 2,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: "#ffb4b4" }}>
+            <Typography variant="subtitle1" sx={{ color: (t) => t.palette.error.light }}>
               Unable to load templates.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -336,7 +334,7 @@ export default function NotesAdmin({ notes, loading, error }) {
               size="small"
               sx={{
                 borderColor: (t) => t.palette.primary.main,
-                color: "#b7ffb7",
+                color: (t) => t.palette.success.light,
                 width: "fit-content",
               }}
             >
@@ -358,7 +356,7 @@ export default function NotesAdmin({ notes, loading, error }) {
               borderRadius: 2,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: "#b7ffb7" }}>
+            <Typography variant="subtitle1" sx={{ color: (t) => t.palette.success.light }}>
               No templates yet.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.85 }}>
@@ -370,7 +368,7 @@ export default function NotesAdmin({ notes, loading, error }) {
               variant="contained"
               sx={{
                 bgcolor: (t) => t.palette.primary.main,
-                "&:hover": { bgcolor: "#3aa40f" },
+                "&:hover": { bgcolor: (t) => t.palette.primary.dark },
                 width: "fit-content",
               }}
             >
@@ -501,7 +499,7 @@ export default function NotesAdmin({ notes, loading, error }) {
                           size="small"
                           onClick={() => handleDelete(row)}
                           disabled={disabled}
-                          sx={{ color: "#ff6b6b" }}
+                          sx={{ color: (t) => t.palette.error.main }}
                           aria-label={`Delete ${row?.title || "template"}`}
                         >
                           <DeleteIcon fontSize="small" />
@@ -573,7 +571,7 @@ export default function NotesAdmin({ notes, loading, error }) {
             variant="contained"
             sx={{
               bgcolor: (t) => t.palette.primary.main,
-              "&:hover": { bgcolor: "#3aa40f" },
+              "&:hover": { bgcolor: (t) => t.palette.primary.dark },
             }}
           >
             {dialogMode === "edit" ? "Save Changes" : "Create"}

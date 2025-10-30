@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -11,6 +10,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
@@ -196,7 +196,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
           gap: 1,
           px: collapsed ? 1 : 1.5,
           py: 1,
-          boxShadow: "0 6px 30px rgba(0,0,0,0.45)",
+          boxShadow: (t) => `0 6px 30px ${alpha(t.palette.common.black, 0.45)}`,
           pointerEvents: isVisible ? "auto" : "none",
         }}
         aria-label="On the clock bubble"
@@ -220,7 +220,10 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
         {!collapsed && (
           <Typography
             variant="body2"
-            sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 600 }}
+            sx={{
+              color: (t) => alpha(t.palette.common.white, 0.9),
+              fontWeight: 600,
+            }}
           >
             On the clock • {elapsedLabel}
           </Typography>
@@ -262,7 +265,7 @@ function ActiveTimeClockBubble({ hasActive, startTimeTs }) {
               size="small"
               onClick={() => setCollapsed((value) => !value)}
               aria-label={collapsed ? "Expand bubble" : "Collapse bubble"}
-              sx={{ color: "rgba(255,255,255,0.85)" }}
+              sx={{ color: (t) => alpha(t.palette.common.white, 0.85) }}
             >
               {collapsed ? (
                 <OpenInNewIcon fontSize="small" />

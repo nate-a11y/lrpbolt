@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useMemo, useState, useCallback, useEffect } from "react";
 import {
@@ -21,7 +20,7 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { NavLink, useLocation } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
@@ -60,8 +59,8 @@ const makeActiveExpandedSX = (theme) => {
     borderLeft: `4px solid ${c}`,
     bgcolor:
       theme.palette.mode === "dark"
-        ? "rgba(76,187,23,0.18)"
-        : "rgba(76,187,23,0.12)",
+        ? alpha(theme.palette.success.main, 0.18)
+        : alpha(theme.palette.success.main, 0.12),
     "& .MuiListItemIcon-root": { color: c },
     fontWeight: 700,
   };
@@ -80,8 +79,8 @@ const makeActiveCollapsedSX = (theme) => {
       borderRadius: 12,
       backgroundColor:
         theme.palette.mode === "dark"
-          ? "rgba(76,187,23,0.18)"
-          : "rgba(76,187,23,0.12)",
+          ? alpha(theme.palette.success.main, 0.18)
+          : alpha(theme.palette.success.main, 0.12),
       zIndex: -1,
     },
   };

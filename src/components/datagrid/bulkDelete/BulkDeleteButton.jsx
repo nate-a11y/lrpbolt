@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import * as React from "react";
 import { Button } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -17,8 +15,8 @@ export default function BulkDeleteButton({ disabled, count, onClick }) {
       sx={{
         textTransform: "none",
         ml: 1,
-        backgroundColor: "#b71c1c",
-        "&:hover": { backgroundColor: "#8e0000" },
+        backgroundColor: (t) => t.palette.error.main,
+        "&:hover": { backgroundColor: (t) => t.palette.error.dark },
       }}
     >
       Delete Selected ({count})

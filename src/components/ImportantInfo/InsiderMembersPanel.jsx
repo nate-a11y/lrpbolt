@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -285,26 +283,26 @@ export default function InsiderMembersPanel({ isAdmin = false }) {
                         <Chip
                           size="small"
                           label={formatTitle(level)}
-                          sx={{
+                          sx={(t) => ({
                             textTransform: "capitalize",
                             bgcolor:
                               level === "diamond"
-                                ? "rgba(180,180,200,0.18)"
+                                ? alpha(t.palette.grey[400], 0.18)
                                 : level === "gold"
-                                  ? "rgba(255,215,0,0.18)"
+                                  ? alpha(t.palette.warning.light, 0.18)
                                   : level === "silver"
-                                    ? "rgba(192,192,192,0.18)"
-                                    : "rgba(205,127,50,0.18)",
+                                    ? alpha(t.palette.grey[500], 0.18)
+                                    : alpha(t.palette.warning.dark, 0.18),
                             border: "1px solid",
                             borderColor:
                               level === "diamond"
-                                ? "rgba(180,180,200,0.35)"
+                                ? alpha(t.palette.grey[400], 0.35)
                                 : level === "gold"
-                                  ? "rgba(255,215,0,0.35)"
+                                  ? alpha(t.palette.warning.light, 0.35)
                                   : level === "silver"
-                                    ? "rgba(192,192,192,0.35)"
-                                    : "rgba(205,127,50,0.35)",
-                          }}
+                                    ? alpha(t.palette.grey[500], 0.35)
+                                    : alpha(t.palette.warning.dark, 0.35),
+                          })}
                         />
                         <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
                           {list.length}{" "}

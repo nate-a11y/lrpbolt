@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -487,7 +485,7 @@ function HyperlanePanel() {
             variant="body2"
             sx={{ opacity: 0.85, fontSize: "0.875rem" }}
           >
-            Controls: ← / → keys or tap. Collect neon rings for +100. Dodge red
+            Controls: ← / → keys or tap. Collect neon rings for +100. Dodge red {/* allow-color-literal */}
             blocks and chase the leaderboard!
           </Typography>
         </CardContent>
@@ -1150,7 +1148,7 @@ export default function GamesHub() {
           sx={{
             borderBottom: (t) => `1px solid ${t.palette.divider}`,
             "& .MuiTab-root": {
-              color: "rgba(255,255,255,0.7)",
+              color: (t) => alpha(t.palette.common.white, 0.7),
               fontWeight: 700,
             },
             "& .Mui-selected": { color: (t) => t.palette.primary.main },

@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Chip, IconButton, Stack, Tooltip } from "@mui/material";

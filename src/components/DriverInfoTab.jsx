@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -46,7 +45,7 @@ void _GridToolbarExport;
 // --- constants ---
 const FLW_URL = "https://pass.aie.army.mil/steps/installation_selection";
 
-const GATE_CODES = [
+const GATE_CODES = [ // allow-color-literal
   { name: "Camden", codes: ["1793#", "1313"] },
   { name: "Cypress", codes: ["7469"] },
   { name: "Shooters 21", codes: ["4040"] },
@@ -55,27 +54,27 @@ const GATE_CODES = [
     codes: ["4365", "1610", "5746", "1713", "4271", "0509"],
   },
   { name: "Ledges (Back Gate)", codes: ["2014"] },
-  { name: "Ty’s Cove", codes: ["5540", "2349"] },
-  { name: "Lighthouse Point", codes: ["#7373"] },
+  { name: "Ty's Cove", codes: ["5540", "2349"] },
+  { name: "Lighthouse Point", codes: ["#7373"] }, // allow-color-literal
   { name: "Southwood Shores", codes: ["60200", "42888", "48675"] },
   {
     name: "Palisades",
-    codes: ["#4667", "6186", "#5572", "6649", "8708", "2205"],
+    codes: ["#4667", "6186", "#5572", "6649", "8708", "2205"], // allow-color-literal
   },
-  { name: "The Cove (off Bluff Dr)", codes: ["#1172"] },
+  { name: "The Cove (off Bluff Dr)", codes: ["#1172"] }, // allow-color-literal
   { name: "Cobblestone (off Nichols)", codes: ["1776"] },
-  { name: "Cape Royal", codes: ["#1114", "#1099"] },
+  { name: "Cape Royal", codes: ["#1114", "#1099"] }, // allow-color-literal
   { name: "Car Wash", codes: ["655054#"] },
   { name: "Bronx", codes: ["9376"] },
   { name: "Mystic Bay", codes: ["0235#"] },
-  { name: "RT’s Cove", codes: ["8870"] },
-  { name: "Magnolia Point", codes: ["#1827"] },
+  { name: "RT's Cove", codes: ["8870"] },
+  { name: "Magnolia Point", codes: ["#1827"] }, // allow-color-literal
   { name: "Paige", codes: ["9195"] },
   { name: "Del Sol", codes: ["2202"] },
-  { name: "Hamptons", codes: ["#3202"] },
+  { name: "Hamptons", codes: ["#3202"] }, // allow-color-literal
   { name: "Stone Ridge", codes: ["1379"] },
   { name: "Lee C. Fine Airport", codes: ["1228"] },
-  { name: "Sac Road", codes: ["#6423"] },
+  { name: "Sac Road", codes: ["#6423"] }, // allow-color-literal
 ];
 
 function NoRowsOverlay() {
@@ -450,7 +449,7 @@ export default function DriverInfoTab() {
             bottom: `calc(16px + env(safe-area-inset-bottom, 0px))`,
             zIndex: (t) => t.zIndex.tooltip + 1,
             backgroundColor: (t) => t.palette.primary.main,
-            "&:hover": { backgroundColor: "#3ea313" },
+            "&:hover": { backgroundColor: (t) => t.palette.primary.dark },
             px: { xs: 2, sm: 3 },
           }}
         >

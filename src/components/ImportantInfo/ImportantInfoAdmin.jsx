@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useState, useMemo, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import dayjs from "dayjs";
@@ -95,6 +93,7 @@ import {
   PROMO_PARTNER_CATEGORIES,
   PROMO_PARTNER_FILTER_OPTIONS,
 } from "@/constants/importantInfo.js";
+import { alpha } from "@mui/material/styles";
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
 import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
@@ -112,13 +111,29 @@ const MAX_SEARCH_HISTORY = 5;
 const TEMPLATES_KEY = "important_info_sms_templates";
 const MAX_TEMPLATES = 10;
 
-// Category colors for visual distinction
-const CATEGORY_COLORS = {
-  Promotions: { bg: "#1a3d1a", border: "#4caf50", text: "#81c784" },
-  Partners: { bg: "#1a1a3d", border: "#3f51b5", text: "#9fa8da" },
-  Referrals: { bg: "#3d1a1a", border: "#f44336", text: "#e57373" },
-  General: { bg: "#2a2a2a", border: "#757575", text: "#bdbdbd" },
-};
+// Category colors for visual distinction (using theme-based colors)
+const getCategoryColors = (theme) => ({
+  Promotions: {
+    bg: theme.palette.primary.dark,
+    border: theme.palette.primary.main,
+    text: alpha(theme.palette.primary.main, 0.6),
+  },
+  Partners: {
+    bg: alpha(theme.palette.info.dark, 0.5),
+    border: theme.palette.info.main,
+    text: theme.palette.info.light,
+  },
+  Referrals: {
+    bg: alpha(theme.palette.error.dark, 0.5),
+    border: theme.palette.error.main,
+    text: theme.palette.error.light,
+  },
+  General: {
+    bg: alpha(theme.palette.grey[800], 0.5),
+    border: theme.palette.grey[600],
+    text: theme.palette.grey[400],
+  },
+});
 
 // Load draft from localStorage
 function loadAdminDraft() {
@@ -303,9 +318,10 @@ function exportToCSV(rows, filename = "important-info.csv") {
   URL.revokeObjectURL(link.href);
 }
 
-// Get category color
-function getCategoryColor(category) {
-  return CATEGORY_COLORS[category] || CATEGORY_COLORS["General"];
+// Get category color (returns a function that takes theme)
+function getCategoryColor(category, theme) {
+  const colors = getCategoryColors(theme);
+  return colors[category] || colors["General"];
 }
 
 // Generate SMS preview for an item
@@ -1463,7 +1479,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             onClick={openCreate}
             sx={{
               bgcolor: (t) => t.palette.primary.main,
-              "&:hover": { bgcolor: "#3aa40f" },
+              "&:hover": { bgcolor: (t) => t.palette.primary.dark },
             }}
           >
             New Item
@@ -1480,7 +1496,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 onClick={handleUndo}
                 disabled={!historyState.canUndo}
                 sx={{
-                  color: historyState.canUndo ? "#b7ffb7" : "text.disabled",
+                  color: historyState.canUndo
+                    ? (t) => alpha(t.palette.primary.main, 0.6)
+                    : "text.disabled",
                 }}
                 aria-label="Undo last action (Ctrl+Z)"
               >
@@ -1500,7 +1518,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 onClick={handleRedo}
                 disabled={!historyState.canRedo}
                 sx={{
-                  color: historyState.canRedo ? "#b7ffb7" : "text.disabled",
+                  color: historyState.canRedo
+                    ? (t) => alpha(t.palette.primary.main, 0.6)
+                    : "text.disabled",
                 }}
                 aria-label="Redo last action (Ctrl+Y or Ctrl+Shift+Z)"
               >
@@ -1513,7 +1533,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             onClick={() => setImportDialogOpen(true)}
             sx={{
               borderColor: (t) => t.palette.primary.main,
-              color: "#b7ffb7",
+              color: (t) => alpha(t.palette.primary.main, 0.6),
             }}
           >
             Import Excel
@@ -1524,7 +1544,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             loading={healthLoading && healthDialogOpen}
             sx={{
               borderColor: (t) => t.palette.primary.main,
-              color: "#b7ffb7",
+              color: (t) => alpha(t.palette.primary.main, 0.6),
               minWidth: 140,
             }}
           >
@@ -1537,7 +1557,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             disabled={!filteredRows.length}
             sx={{
               borderColor: (t) => t.palette.primary.main,
-              color: "#b7ffb7",
+              color: (t) => alpha(t.palette.primary.main, 0.6),
             }}
           >
             Export CSV
@@ -1659,14 +1679,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           <Stack
             spacing={1.5}
             sx={{
-              bgcolor: "#1a0b0b",
+              bgcolor: (t) => alpha(t.palette.error.dark, 0.9),
               border: 1,
               borderColor: "divider",
               p: 2,
               borderRadius: 2,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: "#ffb4b4" }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: (t) => alpha(t.palette.error.main, 0.5) }}
+            >
               Unable to load important information.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -1679,7 +1702,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               size="small"
               sx={{
                 borderColor: (t) => t.palette.primary.main,
-                color: "#b7ffb7",
+                color: (t) => alpha(t.palette.primary.main, 0.6),
                 width: "fit-content",
               }}
             >
@@ -1701,7 +1724,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               borderRadius: 2,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: "#b7ffb7" }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: (t) => alpha(t.palette.primary.main, 0.6) }}
+            >
               No items yet.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.85 }}>
@@ -1713,7 +1739,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               variant="contained"
               sx={{
                 bgcolor: (t) => t.palette.primary.main,
-                "&:hover": { bgcolor: "#3aa40f" },
+                "&:hover": { bgcolor: (t) => t.palette.primary.dark },
               }}
             >
               Add first item
@@ -1861,13 +1887,17 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                                   <Chip
                                     size="small"
                                     label={categoryLabel}
-                                    sx={{
-                                      fontWeight: 600,
-                                      bgcolor:
-                                        getCategoryColor(categoryLabel).bg,
-                                      color:
-                                        getCategoryColor(categoryLabel).text,
-                                      border: `1px solid ${getCategoryColor(categoryLabel).border}`,
+                                    sx={(t) => {
+                                      const colors = getCategoryColor(
+                                        categoryLabel,
+                                        t,
+                                      );
+                                      return {
+                                        fontWeight: 600,
+                                        bgcolor: colors.bg,
+                                        color: colors.text,
+                                        border: `1px solid ${colors.border}`,
+                                      };
                                     }}
                                   />
                                   {row?.publishDate &&
@@ -1878,9 +1908,12 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                                         sx={{
                                           fontWeight: 600,
                                           fontSize: "0.7rem",
-                                          bgcolor: "#2a1f11",
-                                          color: "#ffdca8",
-                                          border: "1px solid #ff9800",
+                                          bgcolor: (t) =>
+                                            alpha(t.palette.warning.dark, 0.5),
+                                          color: (t) =>
+                                            alpha(t.palette.warning.main, 0.4),
+                                          border: (t) =>
+                                            `1px solid ${t.palette.warning.main}`,
                                         }}
                                       />
                                     )}
@@ -1892,9 +1925,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                                         sx={{
                                           fontWeight: 600,
                                           fontSize: "0.7rem",
-                                          bgcolor: "#1a1a3d",
-                                          color: "#9fa8da",
-                                          border: "1px solid #3f51b5",
+                                          bgcolor: (t) =>
+                                            alpha(t.palette.info.dark, 0.5),
+                                          color: (t) => t.palette.info.light,
+                                          border: (t) =>
+                                            `1px solid ${t.palette.info.main}`,
                                         }}
                                       />
                                     )}
@@ -2085,7 +2120,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                                   size="small"
                                   onClick={() => handleOpenChangeHistory(row)}
                                   disabled={disabled}
-                                  sx={{ color: "#ffdca8" }}
+                                  sx={{
+                                    color: (t) =>
+                                      alpha(t.palette.warning.main, 0.4),
+                                  }}
                                   aria-label={`View change history for ${row?.title || "important info"}`}
                                 >
                                   <HistoryIcon fontSize="small" />
@@ -2098,7 +2136,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                                   size="small"
                                   onClick={() => handleDelete(row)}
                                   disabled={disabled}
-                                  sx={{ color: "#ff6b6b" }}
+                                  sx={{ color: (t) => t.palette.error.light }}
                                   aria-label={`Delete ${row?.title || "important info"}`}
                                 >
                                   <DeleteIcon fontSize="small" />
@@ -2304,7 +2342,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 disabled={saving || uploading}
                 sx={{
                   borderColor: (t) => t.palette.primary.main,
-                  color: "#b7ffb7",
+                  color: (t) => alpha(t.palette.primary.main, 0.6),
                   mb: 2,
                 }}
               >
@@ -2340,14 +2378,13 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                         }}
                       />
                       <ImageListItemBar
-                        sx={{
-                          background:
-                            "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0) 100%)",
-                        }}
+                        sx={(t) => ({
+                          background: `linear-gradient(to bottom, ${alpha(t.palette.common.black, 0.7)} 0%, ${alpha(t.palette.common.black, 0.3)} 70%, ${alpha(t.palette.common.black, 0)} 100%)`,
+                        })}
                         position="top"
                         actionIcon={
                           <IconButton
-                            sx={{ color: "rgba(255, 255, 255, 0.85)" }}
+                            sx={(t) => ({ color: alpha(t.palette.common.white, 0.85) })}
                             aria-label={`Delete ${image.name || "image"}`}
                             onClick={() => handleRemoveExistingImage(image)}
                             disabled={saving || uploading}
@@ -2374,10 +2411,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                         }}
                       />
                       <ImageListItemBar
-                        sx={{
-                          background:
-                            "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0) 100%)",
-                        }}
+                        sx={(t) => ({
+                          background: `linear-gradient(to bottom, ${alpha(t.palette.common.black, 0.7)} 0%, ${alpha(t.palette.common.black, 0.3)} 70%, ${alpha(t.palette.common.black, 0)} 100%)`,
+                        })}
                         position="top"
                         title={
                           <Chip
@@ -2392,7 +2428,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                         }
                         actionIcon={
                           <IconButton
-                            sx={{ color: "rgba(255, 255, 255, 0.85)" }}
+                            sx={(t) => ({ color: alpha(t.palette.common.white, 0.85) })}
                             aria-label={`Remove ${file.name}`}
                             onClick={() => handleRemovePendingFile(index)}
                             disabled={saving || uploading}
@@ -2465,7 +2501,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               variant="contained"
               sx={{
                 bgcolor: (t) => t.palette.primary.main,
-                "&:hover": { bgcolor: "#3aa40f" },
+                "&:hover": { bgcolor: (t) => t.palette.primary.dark },
               }}
             >
               {dialogMode === "edit" ? "Save Changes" : "Create"}
@@ -2491,7 +2527,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             {healthError ? (
               <Alert
                 severity="error"
-                sx={{ bgcolor: "#2a1111", color: "#ffb4b4" }}
+                sx={{
+                  bgcolor: (t) => alpha(t.palette.error.dark, 0.9),
+                  color: (t) => alpha(t.palette.error.main, 0.5),
+                }}
               >
                 {healthError}
               </Alert>
@@ -2603,7 +2642,10 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                 {!healthData.ok && !healthError ? (
                   <Alert
                     severity="warning"
-                    sx={{ bgcolor: "#2a1f11", color: "#ffdca8" }}
+                    sx={{
+                      bgcolor: (t) => alpha(t.palette.warning.dark, 0.5),
+                      color: (t) => alpha(t.palette.warning.main, 0.4),
+                    }}
                   >
                     Missing Twilio secrets. Set <code>TWILIO_ACCOUNT_SID</code>,{" "}
                     <code>TWILIO_AUTH_TOKEN</code>, and
@@ -2631,7 +2673,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             variant="contained"
             sx={{
               bgcolor: (t) => t.palette.primary.main,
-              "&:hover": { bgcolor: "#3aa40f" },
+              "&:hover": { bgcolor: (t) => t.palette.primary.dark },
             }}
           >
             Refresh
@@ -2684,7 +2726,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               fontSize: "0.875rem",
               p: 1.5,
               bgcolor: (t) =>
-                t.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
+                t.palette.mode === "dark"
+                  ? t.palette.grey[900]
+                  : t.palette.grey[100],
               borderRadius: 1,
               border: 1,
               borderColor: "divider",

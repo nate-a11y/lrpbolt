@@ -1,8 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useEffect, useState, memo } from "react";
-import { Box, Typography, Button, IconButton, Slide } from "@mui/material";
+import { Box, Typography, Button, IconButton, Slide, alpha } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
 const isIosSafari = () => {
@@ -83,7 +82,9 @@ const InstallBanner = () => {
                 backgroundColor: "common.white",
                 color: (t) => t.palette.primary.main,
                 fontWeight: "bold",
-                "&:hover": { backgroundColor: "#eafbe3" },
+                "&:hover": {
+                  backgroundColor: (t) => alpha(t.palette.primary.main, 0.1),
+                },
               }}
             >
               TAP TO INSTALL

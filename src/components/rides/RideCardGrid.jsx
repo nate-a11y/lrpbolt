@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
@@ -139,7 +137,13 @@ export default function RideCardGrid({
       {/* Header with search and bulk actions */}
       <Stack spacing={2} sx={{ mb: 2.5 }}>
         {title && (
-          <Typography variant="h6" sx={{ fontWeight: 700, color: "#b7ffb7" }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              color: (t) => alpha(t.palette.primary.main, 0.6),
+            }}
+          >
             {title}
           </Typography>
         )}

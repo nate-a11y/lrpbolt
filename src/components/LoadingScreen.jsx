@@ -1,9 +1,8 @@
 // src/components/LoadingScreen.jsx
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { Box, Typography, LinearProgress } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { imageSetFor } from "@/utils/assetVariant";
@@ -19,17 +18,15 @@ export default function LoadingScreen({ progress = null }) {
   const prefersReducedMotion = useReducedMotion();
   const upMd = useMediaQuery(theme.breakpoints.up("md"));
 
-  // Simplified brand colors - static instead of theme-calculated
+  // Simplified brand colors using theme
   const isDark = theme.palette.mode === "dark";
   const brand = {
-    primary: isDark ? "#60A5FA" : "#2563EB",
-    accent: isDark ? "#34D399" : "#059669",
+    primary: theme.palette.primary.main,
+    accent: theme.palette.secondary.main,
   };
 
-  // Simplified gradient - single linear gradient instead of multiple radials
-  const gradient = isDark
-    ? "linear-gradient(135deg, #0B0F19 0%, #0F1729 50%, #0B0F19 100%)"
-    : "linear-gradient(135deg, #F6F8FC 0%, #EEF2F9 50%, #F6F8FC 100%)";
+  // Simplified gradient using theme colors
+  const gradient = `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${alpha(theme.palette.background.paper, 0.5)} 50%, ${theme.palette.background.default} 100%)`;
 
   const MotionBox = motion(Box);
 
@@ -90,7 +87,10 @@ export default function LoadingScreen({ progress = null }) {
             alt=""
             width={36}
             height={36}
-            style={{ borderRadius: 8, boxShadow: "0 0 0 3px rgba(0,0,0,0.06)" }}
+            style={{
+              borderRadius: 8,
+              boxShadow: `0 0 0 3px ${alpha(theme.palette.common.black, 0.06)}`,
+            }}
             onError={(e) => {
               // defensive: hide if asset missing
               try {
@@ -106,7 +106,7 @@ export default function LoadingScreen({ progress = null }) {
             fontWeight={800}
             sx={{
               letterSpacing: 0.2,
-              background: `linear-gradient(90deg, ${brand.primary}, ${brand.accent})`,
+              background: `linear-gradient(90deg, ${brand.primary}, ${brand.accent})`, // allow-color-literal
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -132,8 +132,8 @@ export default function LoadingScreen({ progress = null }) {
             "&.MuiLinearProgress-colorPrimary": {
               backgroundColor:
                 theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,.08)"
-                  : "rgba(0,0,0,.06)",
+                  ? alpha(theme.palette.common.white, 0.08)
+                  : alpha(theme.palette.common.black, 0.06),
             },
           }}
         />

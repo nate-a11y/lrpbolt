@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Box, Button, Collapse, Stack, Typography } from "@mui/material";
@@ -114,7 +112,7 @@ export default function ExpandableDetails({
                 borderRadius: 1,
                 backgroundImage: (theme) =>
                   (theme.palette.lrp && theme.palette.lrp.gradient) ||
-                  "linear-gradient(180deg, rgba(76,187,23,0.18) 0%, rgba(6,6,6,0) 100%)",
+                  `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.18)} 0%, ${alpha(theme.palette.background.default, 0)} 100%)`,
               }}
             />
           ) : null}

@@ -1,6 +1,5 @@
 // [LRP:BEGIN:calendarHub:defaults-only]
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import {
@@ -17,7 +16,7 @@ import {
   Switch,
   FormControlLabel,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -128,7 +127,7 @@ export default function CalendarHub() {
               pb: 1,
               background:
                 theme.palette.mode === "dark"
-                  ? "rgba(6,6,6,0.9)"
+                  ? alpha(theme.palette.background.default, 0.9)
                   : theme.palette.background.paper,
               backdropFilter: "saturate(1.2) blur(6px)",
             }}
@@ -274,7 +273,7 @@ export default function CalendarHub() {
               bottom: `calc(88px + env(safe-area-inset-bottom, 0px))`,
               zIndex: (t) => t.zIndex.tooltip + 1,
               backgroundColor: (t) => t.palette.primary.main,
-              "&:hover": { backgroundColor: "#3ea313" },
+              "&:hover": { backgroundColor: (t) => t.palette.primary.dark },
             }}
             aria-label="Jump to today"
           >
@@ -293,7 +292,7 @@ export default function CalendarHub() {
               bottom: `calc(24px + env(safe-area-inset-bottom, 0px))`,
               zIndex: (t) => t.zIndex.tooltip + 1,
               backgroundColor: (t) => t.palette.primary.main,
-              "&:hover": { backgroundColor: "#3ea313" },
+              "&:hover": { backgroundColor: (t) => t.palette.primary.dark },
             }}
             aria-label="Center to current time"
           >

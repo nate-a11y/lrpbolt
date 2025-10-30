@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Button, Chip, IconButton, Stack, Tooltip } from "@mui/material";
@@ -91,7 +89,7 @@ export default function QueueRideCard({
               px: 2.5,
               py: 0.75,
               fontWeight: 700,
-              color: "#060606",
+              color: "primary.contrastText",
               "&:hover": { filter: "brightness(1.08)" },
             }}
           >

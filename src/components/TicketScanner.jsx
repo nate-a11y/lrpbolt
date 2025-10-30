@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -448,11 +447,11 @@ function TicketScanner({
   }, [noCameraAvailable, showSnack]);
 
   return (
-    <Stack spacing={3} sx={{ color: "#f5f5f5", py: 2 }}>
+    <Stack spacing={3} sx={{ color: (t) => t.palette.text.primary, py: 2 }}>
       <Box>
         <Typography
           variant="body2"
-          sx={{ color: "rgba(255,255,255,0.72)", mb: 1 }}
+          sx={{ color: (t) => alpha(t.palette.common.white, 0.72), mb: 1 }}
         >
           Align the QR code within the frame. Tip: enable torch for low light.
         </Typography>
@@ -496,7 +495,7 @@ function TicketScanner({
               </Typography>
               <Typography
                 variant="body2"
-                sx={{ color: "rgba(255,255,255,0.74)" }}
+                sx={{ color: (t) => alpha(t.palette.common.white, 0.74) }}
               >
                 Connect a camera or upload a QR image to scan tickets.
               </Typography>
@@ -551,7 +550,7 @@ function TicketScanner({
               </Typography>
               <Typography
                 variant="body2"
-                sx={{ color: "rgba(255,255,255,0.7)" }}
+                sx={{ color: (t) => alpha(t.palette.common.white, 0.7) }}
               >
                 You can upload an image of the QR code instead.
               </Typography>
@@ -674,7 +673,7 @@ function TicketScanner({
             sx={{
               alignSelf: "flex-start",
               bgcolor: (t) => t.palette.primary.main,
-              color: "#060606",
+              color: (t) => t.palette.primary.contrastText,
             }}
           >
             Scan again

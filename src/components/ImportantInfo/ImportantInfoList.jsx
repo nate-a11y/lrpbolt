@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useMemo, useCallback, useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import dayjs from "dayjs";
@@ -22,6 +20,7 @@ import {
   ImageList,
   ImageListItem,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import {
   PROMO_PARTNER_CATEGORIES,
@@ -179,14 +178,17 @@ export default function ImportantInfoList({
         <Stack
           spacing={1.5}
           sx={{
-            bgcolor: "#1a0b0b",
+            bgcolor: (t) => alpha(t.palette.error.dark, 0.9),
             border: 1,
             borderColor: "divider",
             p: 2,
             borderRadius: 2,
           }}
         >
-          <Typography variant="subtitle1" sx={{ color: "#ffb4b4" }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ color: (t) => alpha(t.palette.error.main, 0.5) }}
+          >
             Unable to load important information.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -198,7 +200,7 @@ export default function ImportantInfoList({
             size="small"
             sx={{
               borderColor: (t) => t.palette.primary.main,
-              color: "#b7ffb7",
+              color: (t) => alpha(t.palette.primary.main, 0.6),
               width: "fit-content",
             }}
           >
@@ -222,11 +224,14 @@ export default function ImportantInfoList({
             borderRadius: 2,
           }}
         >
-          <Typography variant="subtitle1" sx={{ color: "#b7ffb7" }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ color: (t) => alpha(t.palette.primary.main, 0.6) }}
+          >
             No important info yet.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.85 }}>
-            Once admins add partners or emergency contacts, they’ll show here
+            Once admins add partners or emergency contacts, they'll show here
             with quick share buttons.
           </Typography>
         </Stack>
@@ -319,7 +324,10 @@ export default function ImportantInfoList({
               key={category}
               sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}
             >
-              <Typography variant="h6" sx={{ color: "#b7ffb7" }}>
+              <Typography
+                variant="h6"
+                sx={{ color: (t) => alpha(t.palette.primary.main, 0.6) }}
+              >
                 {category}
               </Typography>
               <Stack spacing={1.25}>
@@ -368,8 +376,8 @@ export default function ImportantInfoList({
                               size="small"
                               label={category}
                               sx={{
-                                bgcolor: "#143d0a",
-                                color: "#b7ffb7",
+                                bgcolor: (t) => t.palette.primary.dark,
+                                color: (t) => alpha(t.palette.primary.main, 0.6),
                                 border: (t) =>
                                   `1px solid ${t.palette.primary.main}`,
                                 fontWeight: 600,
@@ -483,7 +491,9 @@ export default function ImportantInfoList({
                             sx={{
                               bgcolor: (t) => t.palette.primary.main,
                               fontWeight: 600,
-                              "&:hover": { bgcolor: "#3aa40f" },
+                              "&:hover": {
+                                bgcolor: (t) => t.palette.primary.dark,
+                              },
                             }}
                             aria-label="Text this information to a customer"
                           >

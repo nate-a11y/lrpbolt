@@ -32,6 +32,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import Grid from "@mui/material/Grid";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
@@ -129,11 +130,11 @@ const MODERN_CARD_SX = {
   borderRadius: 4,
   overflow: "visible",
   background: (t) =>
-    `linear-gradient(135deg, ${t.palette.mode === "dark" ? "rgba(76,187,23,0.08)" : "rgba(76,187,23,0.04)"}, ${t.palette.background.paper})`,
+    `linear-gradient(135deg, ${alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.08 : 0.04)}, ${t.palette.background.paper})`,
   border: "1px solid",
   borderColor: (t) =>
-    t.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
-  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+    alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, 0.08),
+  boxShadow: (t) => `0 8px 24px ${alpha(t.palette.common.black, 0.12)}`,
   transition: "all 0.3s ease",
   "&::before": {
     content: '""',
@@ -143,9 +144,9 @@ const MODERN_CARD_SX = {
     padding: "1px",
     pointerEvents: "none",
     background: (t) =>
-      `linear-gradient(90deg, ${t.palette.mode === "dark" ? "rgba(76,187,23,0.3)" : "rgba(76,187,23,0.2)"}, transparent 60%)`,
-    WebkitMask:
-      "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      `linear-gradient(90deg, ${alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.3 : 0.2)}, transparent 60%)`,
+    WebkitMask: (t) =>
+      `linear-gradient(${t.palette.common.black} 0 0) content-box, linear-gradient(${t.palette.common.black} 0 0)`,
     WebkitMaskComposite: "xor",
     maskComposite: "exclude",
   },
@@ -1244,9 +1245,7 @@ export default function RideEntryForm() {
                     borderRadius: 2,
                     border: (t) => `1px solid ${t.palette.divider}`,
                     bgcolor: (t) =>
-                      t.palette.mode === "dark"
-                        ? "rgba(76,187,23,0.05)"
-                        : "rgba(76,187,23,0.03)",
+                      alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.05 : 0.03),
                   }}
                 >
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -1318,9 +1317,9 @@ export default function RideEntryForm() {
                       py: 1.5,
                       fontWeight: 700,
                       textTransform: "none",
-                      boxShadow: "0 4px 14px rgba(76,187,23,0.35)",
+                      boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
                       "&:hover": {
-                        boxShadow: "0 6px 20px rgba(76,187,23,0.45)",
+                        boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
                       },
                     }}
                   >
@@ -1391,9 +1390,7 @@ export default function RideEntryForm() {
                   p: 2,
                   borderRadius: 2,
                   bgcolor: (t) =>
-                    t.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.03)"
-                      : "rgba(0,0,0,0.02)",
+                    alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.03 : 0.02),
                   border: (t) => `1px solid ${t.palette.divider}`,
                 }}
               >
@@ -1454,9 +1451,7 @@ export default function RideEntryForm() {
                     fontSize: "0.9rem",
                     fontWeight: 600,
                     bgcolor: (t) =>
-                      t.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(0,0,0,0.04)",
+                      alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.06 : 0.04),
                     "& .MuiChip-icon": { color: "primary.main" },
                   }}
                 />
@@ -1469,9 +1464,7 @@ export default function RideEntryForm() {
                     p: 1.5,
                     borderRadius: 2,
                     bgcolor: (t) =>
-                      t.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(0,0,0,0.04)",
+                      alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.06 : 0.04),
                   }}
                 >
                   <Typography
@@ -1496,9 +1489,7 @@ export default function RideEntryForm() {
                     p: 2,
                     borderRadius: 2,
                     bgcolor: (t) =>
-                      t.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.03)"
-                        : "rgba(0,0,0,0.02)",
+                      alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.03 : 0.02),
                     border: (t) => `1px solid ${t.palette.divider}`,
                   }}
                 >
@@ -1524,13 +1515,9 @@ export default function RideEntryForm() {
                   borderRadius: 2,
                   bgcolor: isFormValid
                     ? (t) =>
-                        t.palette.mode === "dark"
-                          ? "rgba(76,187,23,0.15)"
-                          : "rgba(76,187,23,0.08)"
+                        alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.15 : 0.08)
                     : (t) =>
-                        t.palette.mode === "dark"
-                          ? "rgba(255,152,0,0.15)"
-                          : "rgba(255,152,0,0.08)",
+                        alpha(t.palette.warning.main, t.palette.mode === "dark" ? 0.15 : 0.08),
                   border: (t) =>
                     `1px solid ${isFormValid ? t.palette.success.main : t.palette.warning.main}`,
                 }}
@@ -1759,9 +1746,9 @@ export default function RideEntryForm() {
                     py: 1.5,
                     fontWeight: 700,
                     textTransform: "none",
-                    boxShadow: "0 4px 14px rgba(76,187,23,0.35)",
+                    boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
                     "&:hover": {
-                      boxShadow: "0 6px 20px rgba(76,187,23,0.45)",
+                      boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
                     },
                   }}
                 >
@@ -1831,17 +1818,11 @@ export default function RideEntryForm() {
                         border: "2px solid",
                         borderColor: isValid ? "primary.main" : "warning.main",
                         bgcolor: (t) =>
-                          isValid
-                            ? t.palette.mode === "dark"
-                              ? "rgba(76,187,23,0.08)"
-                              : "rgba(76,187,23,0.04)"
-                            : t.palette.mode === "dark"
-                              ? "rgba(255,152,0,0.08)"
-                              : "rgba(255,152,0,0.04)",
+                          alpha(isValid ? t.palette.primary.main : t.palette.warning.main, t.palette.mode === "dark" ? 0.08 : 0.04),
                         transition: "all 0.2s ease",
                         "&:hover": {
                           transform: "translateY(-2px)",
-                          boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+                          boxShadow: (t) => `0 8px 16px ${alpha(t.palette.common.black, 0.15)}`,
                         },
                       }}
                     >
@@ -1908,9 +1889,7 @@ export default function RideEntryForm() {
                             p: 1.5,
                             borderRadius: 2,
                             bgcolor: (t) =>
-                              t.palette.mode === "dark"
-                                ? "rgba(255,255,255,0.05)"
-                                : "rgba(0,0,0,0.03)",
+                              alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.05 : 0.03),
                           }}
                         >
                           <Typography
@@ -2034,9 +2013,9 @@ export default function RideEntryForm() {
                         py: 1.5,
                         fontWeight: 700,
                         textTransform: "none",
-                        boxShadow: "0 4px 14px rgba(76,187,23,0.35)",
+                        boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
                         "&:hover": {
-                          boxShadow: "0 6px 20px rgba(76,187,23,0.45)",
+                          boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
                         },
                       }}
                     >
@@ -2143,11 +2122,11 @@ export default function RideEntryForm() {
                           fontWeight: 700,
                           bgcolor:
                             viewMode === "live"
-                              ? "rgba(255,255,255,0.2)"
+                              ? (t) => alpha(t.palette.common.white, 0.2)
                               : "primary.main",
                           color:
                             viewMode === "live"
-                              ? "white"
+                              ? "common.white"
                               : "primary.contrastText",
                         }}
                       />
@@ -2179,11 +2158,11 @@ export default function RideEntryForm() {
                           fontWeight: 700,
                           bgcolor:
                             viewMode === "queue"
-                              ? "rgba(255,255,255,0.2)"
+                              ? (t) => alpha(t.palette.common.white, 0.2)
                               : "primary.main",
                           color:
                             viewMode === "queue"
-                              ? "white"
+                              ? "common.white"
                               : "primary.contrastText",
                         }}
                       />
@@ -2215,11 +2194,11 @@ export default function RideEntryForm() {
                           fontWeight: 700,
                           bgcolor:
                             viewMode === "claimed"
-                              ? "rgba(255,255,255,0.2)"
+                              ? (t) => alpha(t.palette.common.white, 0.2)
                               : "primary.main",
                           color:
                             viewMode === "claimed"
-                              ? "white"
+                              ? "common.white"
                               : "primary.contrastText",
                         }}
                       />

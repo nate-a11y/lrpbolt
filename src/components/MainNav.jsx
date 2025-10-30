@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useMemo, memo, useCallback, useState, useEffect } from "react";
 import {
   Drawer,
@@ -16,6 +14,7 @@ import {
   Button,
   Tooltip,
   IconButton,
+  alpha,
 } from "@mui/material";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -289,7 +288,7 @@ function MainNav({
                 sx={{
                   color: (t) =>
                     t.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.5)"
+                      ? alpha(t.palette.common.white, 0.5)
                       : t.palette.text.secondary,
                 }}
               >
@@ -300,7 +299,7 @@ function MainNav({
                 sx={{
                   color: (t) =>
                     t.palette.mode === "dark"
-                      ? "rgba(255,255,255,0.72)"
+                      ? alpha(t.palette.common.white, 0.72)
                       : t.palette.text.secondary,
                 }}
               />

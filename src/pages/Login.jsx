@@ -1,5 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Container,
@@ -22,6 +22,7 @@ import {
   LinearProgress,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { alpha } from "@mui/material/styles";
 import MailIcon from "@mui/icons-material/Mail";
 import KeyIcon from "@mui/icons-material/Key";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -287,8 +288,8 @@ export default function Login() {
           inset: 0,
           background: (t) =>
             t.palette.mode === "dark"
-              ? "radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,.25), transparent 60%), radial-gradient(1000px 700px at 110% 110%, rgba(34,197,94,.18), transparent 60%), linear-gradient(180deg, #0b0f19 0%, #0b0f19 100%)"
-              : "radial-gradient(1200px 600px at 0% -20%, rgba(99,102,241,.18), transparent 60%), radial-gradient(1000px 700px at 120% 120%, rgba(59,130,246,.15), transparent 60%), linear-gradient(180deg, #f7f9fc 0%, #eef2f7 100%)",
+              ? `radial-gradient(1200px 600px at 10% -10%, ${alpha(t.palette.primary.main, 0.25)}, transparent 60%), radial-gradient(1000px 700px at 110% 110%, ${alpha(t.palette.success.main, 0.18)}, transparent 60%), linear-gradient(180deg, ${t.palette.background.default} 0%, ${t.palette.background.default} 100%)`
+              : `radial-gradient(1200px 600px at 0% -20%, ${alpha(t.palette.primary.main, 0.18)}, transparent 60%), radial-gradient(1000px 700px at 120% 120%, ${alpha(t.palette.info.main, 0.15)}, transparent 60%), linear-gradient(180deg, ${t.palette.grey[50]} 0%, ${t.palette.grey[100]} 100%)`,
           overflow: "hidden",
           pointerEvents: "none",
           zIndex: 0,
@@ -329,8 +330,8 @@ export default function Login() {
               backdropFilter: "saturate(120%) blur(10px)",
               backgroundColor: (t) =>
                 t.palette.mode === "dark"
-                  ? "rgba(17, 24, 39, 0.75)"
-                  : "rgba(255,255,255,0.8)",
+                  ? alpha(t.palette.background.paper, 0.75)
+                  : alpha(t.palette.common.white, 0.8),
               overflow: "hidden",
             }}
           >
