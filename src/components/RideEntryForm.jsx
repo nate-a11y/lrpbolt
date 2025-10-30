@@ -38,9 +38,11 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DownloadIcon from "@mui/icons-material/Download";
 import AddIcon from "@mui/icons-material/Add";
+import DirectionsCar from "@mui/icons-material/DirectionsCar";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers-pro";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DataGridPro, GridToolbar } from "@mui/x-data-grid-pro";
 import Papa from "papaparse";
 import {
   Timestamp,
@@ -121,6 +123,33 @@ const SECTION_PAPER_SX = {
 };
 
 const GRID_SPACING = { xs: 1.5, sm: 2 };
+
+const MODERN_CARD_SX = {
+  position: "relative",
+  borderRadius: 4,
+  overflow: "visible",
+  background: (t) =>
+    `linear-gradient(135deg, ${t.palette.mode === "dark" ? "rgba(76,187,23,0.08)" : "rgba(76,187,23,0.04)"}, ${t.palette.background.paper})`,
+  border: "1px solid",
+  borderColor: (t) =>
+    t.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+  transition: "all 0.3s ease",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    inset: 0,
+    borderRadius: 4,
+    padding: "1px",
+    pointerEvents: "none",
+    background: (t) =>
+      `linear-gradient(90deg, ${t.palette.mode === "dark" ? "rgba(76,187,23,0.3)" : "rgba(76,187,23,0.2)"}, transparent 60%)`,
+    WebkitMask:
+      "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+    WebkitMaskComposite: "xor",
+    maskComposite: "exclude",
+  },
+};
 
 function DailyDrop({ isAdmin, expanded, onToggle, dropRunning, onDrop }) {
   if (!isAdmin) {
@@ -319,23 +348,6 @@ function downloadCsvTemplate() {
   URL.revokeObjectURL(url);
 }
 
-function TabLabel({ label, count }) {
-  if (typeof count === "number") {
-    return (
-      <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
-        <span>{label}</span>
-        <Chip
-          size="small"
-          label={count ?? 0}
-          color="primary"
-          sx={{ fontWeight: 600 }}
-        />
-      </Box>
-    );
-  }
-  return <>{label}</>;
-}
-
 export default function RideEntryForm() {
   const theme = useTheme();
   const prefersReducedMotion = useMediaQuery(
@@ -402,6 +414,8 @@ export default function RideEntryForm() {
 
   const [dropExpanded, setDropExpanded] = useState(false);
   const [dropRunning, setDropRunning] = useState(false);
+  const [entryMode, setEntryMode] = useState("single"); // "single" or "multi"
+  const [viewMode, setViewMode] = useState("live"); // "live", "queue", or "claimed"
 
   const { driver } = useDriver();
   const isAdmin = (driver?.access || "").toLowerCase() === "admin";
@@ -466,14 +480,8 @@ export default function RideEntryForm() {
   }, [claimedError]);
 
   const tabItems = useMemo(
-    () => [
-      { label: "Single Ride" },
-      { label: "Multi-Ride Builder" },
-      { label: <TabLabel label="Live" count={liveCount} /> },
-      { label: <TabLabel label="Queue" count={queueCount} /> },
-      { label: <TabLabel label="Claimed" count={claimedCount} /> },
-    ],
-    [claimedCount, liveCount, queueCount],
+    () => [{ label: "Ride Entry" }, { label: "View Rides" }],
+    [],
   );
 
   const lazyGridFallback = useMemo(
@@ -482,62 +490,6 @@ export default function RideEntryForm() {
         <CircularProgress size={20} /> Loading…
       </Box>
     ),
-    [],
-  );
-
-  const builderColumns = useMemo(
-    () => [
-      {
-        field: "tripId",
-        headerName: "Trip ID",
-        minWidth: 140,
-        flex: 1,
-        editable: true,
-        valueFormatter: ({ value }) => (value ? value : "N/A"),
-      },
-      {
-        field: "pickupAt",
-        headerName: "Pickup Time",
-        minWidth: 200,
-        flex: 1.1,
-        editable: true,
-        valueFormatter: ({ value }) => (value ? formatDateTime(value) : "N/A"),
-      },
-      {
-        field: "rideType",
-        headerName: "Ride Type",
-        minWidth: 140,
-        flex: 1,
-        editable: true,
-        valueFormatter: ({ value }) => (value ? value : "N/A"),
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        minWidth: 140,
-        flex: 1,
-        editable: true,
-        valueFormatter: ({ value }) => (value ? value : "N/A"),
-      },
-      {
-        field: "durationMinutes",
-        headerName: "Duration (min)",
-        type: "number",
-        minWidth: 140,
-        flex: 0.8,
-        editable: true,
-        valueFormatter: ({ value }) =>
-          Number.isFinite(Number(value)) && Number(value) > 0 ? value : "N/A",
-      },
-      {
-        field: "notes",
-        headerName: "Notes",
-        minWidth: 220,
-        flex: 1.2,
-        editable: true,
-        valueFormatter: ({ value }) => (value ? value : "N/A"),
-      },
-    ],
     [],
   );
 
@@ -742,29 +694,6 @@ export default function RideEntryForm() {
       severity: "success",
     });
   }, [builderRide, currentUser]);
-
-  const handleProcessRowUpdate = useCallback((newRow) => {
-    setMultiRows((prev) =>
-      prev.map((row) => (row.tempId === newRow.tempId ? newRow : row)),
-    );
-    return newRow;
-  }, []);
-
-  const handleProcessRowError = useCallback((error) => {
-    const appError =
-      error instanceof AppError
-        ? error
-        : new AppError("Failed to update row", {
-            cause: error,
-            context: { where: "RideEntryForm.preview" },
-          });
-    logError(appError);
-    setSnackbar({
-      open: true,
-      message: appError.message,
-      severity: "error",
-    });
-  }, []);
 
   const handleImportCsv = useCallback(
     (file) => {
@@ -1062,240 +991,571 @@ export default function RideEntryForm() {
         ? formatDateTime(provisionalEnd)
         : "N/A";
 
+    const isFormValid =
+      Object.keys(computeSingleErrors(singleRide)).length === 0;
+
     return (
-      <Paper elevation={2} sx={SECTION_PAPER_SX}>
-        <Grid container spacing={GRID_SPACING}>
-          <Grid item xs={12}>
-            <Typography variant="h6" fontWeight={700}>
-              Single Ride
-            </Typography>
-          </Grid>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", lg: "row" },
+          gap: 2.5,
+        }}
+      >
+        {/* Form Section */}
+        <Paper
+          elevation={0}
+          sx={{ ...MODERN_CARD_SX, flex: 1, p: { xs: 2, sm: 3 } }}
+        >
+          <Stack spacing={2.5}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  backgroundColor: (t) => `${t.palette.primary.main}20`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "primary.main",
+                }}
+              >
+                <RocketLaunchIcon />
+              </Box>
+              <Typography
+                variant="h5"
+                fontWeight={800}
+                sx={{ color: "text.primary" }}
+              >
+                Single Ride Entry
+              </Typography>
+            </Box>
 
-          <Grid item xs={12}>
-            <TextField
-              label="Trip ID"
-              value={singleRide.tripId}
-              onChange={(event) =>
-                updateSingleRide({ tripId: formatTripId(event.target.value) })
-              }
-              onBlur={() => {
-                const formatted = formatTripId(singleRide.tripId);
-                updateSingleRide({ tripId: formatted });
-              }}
-              error={Boolean(singleErrors.tripId) && showSingleValidation}
-              helperText={
-                showSingleValidation && singleErrors.tripId
-                  ? singleErrors.tripId
-                  : "Format XXXX-XX"
-              }
-              inputProps={{ maxLength: 7, "aria-label": "Trip ID" }}
-              size="small"
-              fullWidth
-              sx={singleShakeSx(
-                showSingleValidation && Boolean(singleErrors.tripId),
+            <Grid container spacing={GRID_SPACING}>
+              <Grid item xs={12}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  Trip Details
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  label="Trip ID"
+                  value={singleRide.tripId}
+                  onChange={(event) =>
+                    updateSingleRide({
+                      tripId: formatTripId(event.target.value),
+                    })
+                  }
+                  onBlur={() => {
+                    const formatted = formatTripId(singleRide.tripId);
+                    updateSingleRide({ tripId: formatted });
+                  }}
+                  error={Boolean(singleErrors.tripId) && showSingleValidation}
+                  helperText={
+                    showSingleValidation && singleErrors.tripId
+                      ? singleErrors.tripId
+                      : "Format XXXX-XX"
+                  }
+                  inputProps={{ maxLength: 7, "aria-label": "Trip ID" }}
+                  size="small"
+                  fullWidth
+                  sx={singleShakeSx(
+                    showSingleValidation && Boolean(singleErrors.tripId),
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <DateTimePicker
+                  label="Pickup Time"
+                  value={singleRide.pickupAt}
+                  onChange={(value) => updateSingleRide({ pickupAt: value })}
+                  minutesStep={5}
+                  slotProps={{
+                    textField: {
+                      size: "small",
+                      fullWidth: true,
+                      error:
+                        Boolean(singleErrors.pickupAt) && showSingleValidation,
+                      helperText:
+                        showSingleValidation && singleErrors.pickupAt
+                          ? singleErrors.pickupAt
+                          : "",
+                      sx: singleShakeSx(
+                        showSingleValidation && Boolean(singleErrors.pickupAt),
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Stack direction="row" spacing={1.5}>
+                  <TextField
+                    label="Hours"
+                    type="number"
+                    value={singleRide.durationHours}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      updateSingleRide({
+                        durationHours:
+                          val === "" ? "" : Math.max(0, Number(val)),
+                      });
+                    }}
+                    error={
+                      Boolean(singleErrors.duration) && showSingleValidation
+                    }
+                    helperText={
+                      showSingleValidation && singleErrors.duration
+                        ? singleErrors.duration
+                        : ""
+                    }
+                    size="small"
+                    fullWidth
+                    inputProps={{ min: 0, "aria-label": "Duration hours" }}
+                    sx={singleShakeSx(
+                      showSingleValidation && Boolean(singleErrors.duration),
+                    )}
+                  />
+                  <TextField
+                    label="Minutes"
+                    type="number"
+                    value={singleRide.durationMinutes}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      updateSingleRide({
+                        durationMinutes:
+                          val === "" ? "" : Math.max(0, Number(val)),
+                      });
+                    }}
+                    error={
+                      Boolean(singleErrors.duration) && showSingleValidation
+                    }
+                    helperText={
+                      showSingleValidation && singleErrors.duration
+                        ? singleErrors.duration
+                        : ""
+                    }
+                    size="small"
+                    fullWidth
+                    inputProps={{
+                      min: 0,
+                      max: 59,
+                      "aria-label": "Duration minutes",
+                    }}
+                    sx={singleShakeSx(
+                      showSingleValidation && Boolean(singleErrors.duration),
+                    )}
+                  />
+                </Stack>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Stack direction="row" spacing={1.5}>
+                  <Box sx={{ flex: 1 }}>
+                    <LrpSelectField
+                      label="Ride Type"
+                      name="rideType"
+                      value={singleRide.rideType ?? ""}
+                      onChange={(event) =>
+                        updateSingleRide({ rideType: event.target.value })
+                      }
+                      placeholder="Choose type…"
+                      options={RIDE_TYPES.map((type) => ({
+                        value: type,
+                        label: type,
+                      }))}
+                      helperText={
+                        showSingleValidation && singleErrors.rideType
+                          ? singleErrors.rideType
+                          : ""
+                      }
+                      size="small"
+                      FormControlProps={{
+                        error:
+                          Boolean(singleErrors.rideType) &&
+                          showSingleValidation,
+                        sx: singleShakeSx(
+                          showSingleValidation &&
+                            Boolean(singleErrors.rideType),
+                        ),
+                      }}
+                    />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <LrpSelectField
+                      label="Vehicle"
+                      name="vehicle"
+                      value={singleRide.vehicle ?? ""}
+                      onChange={(event) =>
+                        updateSingleRide({ vehicle: event.target.value })
+                      }
+                      placeholder="Choose vehicle…"
+                      options={VEHICLES.map((vehicle) => ({
+                        value: vehicle.id || vehicle.name || vehicle,
+                        label: vehicle.name || vehicle.label || String(vehicle),
+                      }))}
+                      helperText={
+                        showSingleValidation && singleErrors.vehicle
+                          ? singleErrors.vehicle
+                          : ""
+                      }
+                      size="small"
+                      FormControlProps={{
+                        error:
+                          Boolean(singleErrors.vehicle) && showSingleValidation,
+                        sx: singleShakeSx(
+                          showSingleValidation && Boolean(singleErrors.vehicle),
+                        ),
+                      }}
+                    />
+                  </Box>
+                </Stack>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  label="Ride Notes"
+                  value={singleRide.notes}
+                  onChange={(event) =>
+                    updateSingleRide({ notes: event.target.value })
+                  }
+                  multiline
+                  minRows={2}
+                  size="small"
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: (t) => `1px solid ${t.palette.divider}`,
+                    bgcolor: (t) =>
+                      t.palette.mode === "dark"
+                        ? "rgba(76,187,23,0.05)"
+                        : "rgba(76,187,23,0.03)",
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography
+                      variant="body2"
+                      fontWeight={600}
+                      sx={{ color: "primary.main" }}
+                    >
+                      Estimated End:
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {endDisplay}
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  Actions
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleSingleReset}
+                    disabled={isSubmittingSingle}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      borderRadius: 3,
+                      py: 1.5,
+                      fontWeight: 700,
+                      textTransform: "none",
+                    }}
+                  >
+                    Reset Form
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleSingleSubmit}
+                    disabled={isSubmittingSingle}
+                    fullWidth
+                    size="large"
+                    startIcon={
+                      isSubmittingSingle ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <RocketLaunchIcon />
+                      )
+                    }
+                    sx={{
+                      borderRadius: 3,
+                      py: 1.5,
+                      fontWeight: 700,
+                      textTransform: "none",
+                      boxShadow: "0 4px 14px rgba(76,187,23,0.35)",
+                      "&:hover": {
+                        boxShadow: "0 6px 20px rgba(76,187,23,0.45)",
+                      },
+                    }}
+                  >
+                    {isSubmittingSingle ? "Submitting…" : "Submit to Queue"}
+                  </Button>
+                </Stack>
+              </Grid>
+            </Grid>
+          </Stack>
+        </Paper>
+
+        {/* Live Preview Section */}
+        <Box
+          sx={{
+            flex: { lg: 0.65 },
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6" fontWeight={700} sx={{ px: 1 }}>
+            Live Preview
+          </Typography>
+          <Paper
+            elevation={0}
+            sx={{
+              ...MODERN_CARD_SX,
+              p: 3,
+              border: isFormValid ? "2px solid" : "2px dashed",
+              borderColor: isFormValid ? "primary.main" : "divider",
+              opacity: isFormValid ? 1 : 0.6,
+              transition: "all 0.3s ease",
+            }}
+          >
+            <Stack spacing={2.5}>
+              {/* Vehicle Header */}
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Box
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: "50%",
+                    backgroundColor: (t) => `${t.palette.primary.main}16`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "primary.main",
+                  }}
+                >
+                  <DirectionsCar fontSize="large" />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="overline"
+                    sx={{ color: "text.secondary", letterSpacing: 1.2 }}
+                  >
+                    {singleRide.rideType || "Ride Type"}
+                  </Typography>
+                  <Typography variant="h6" fontWeight={800}>
+                    {singleRide.vehicle || "Vehicle"}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              {/* Trip ID */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: (t) =>
+                    t.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(0,0,0,0.02)",
+                  border: (t) => `1px solid ${t.palette.divider}`,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{ color: "text.secondary", fontWeight: 600 }}
+                >
+                  TRIP ID
+                </Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight={900}
+                  sx={{ color: "primary.main", mt: 0.5 }}
+                >
+                  {singleRide.tripId || "XXXX-XX"}
+                </Typography>
+              </Box>
+
+              {/* Pickup Time */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: (t) => `${t.palette.primary.main}12`,
+                  border: (t) => `1px solid ${t.palette.primary.main}40`,
+                }}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <ScheduleRoundedIcon sx={{ color: "primary.main" }} />
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "text.secondary", fontWeight: 600 }}
+                    >
+                      PICKUP TIME
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      fontWeight={700}
+                      sx={{ color: "primary.main" }}
+                    >
+                      {pickupAtFormatted
+                        ? formatDateTime(pickupAtFormatted)
+                        : "Not set"}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+
+              {/* Duration & End Time */}
+              <Stack direction="row" spacing={1.5}>
+                <Chip
+                  icon={<AccessTimeIcon />}
+                  label={totalMinutes > 0 ? `${totalMinutes} min` : "Duration"}
+                  sx={{
+                    flex: 1,
+                    height: 44,
+                    fontSize: "0.9rem",
+                    fontWeight: 600,
+                    bgcolor: (t) =>
+                      t.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(0,0,0,0.04)",
+                    "& .MuiChip-icon": { color: "primary.main" },
+                  }}
+                />
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: (t) =>
+                      t.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    fontWeight={600}
+                    sx={{ color: "text.secondary", mr: 1 }}
+                  >
+                    Ends:
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    {safeDuration > 0 && provisionalEnd?.isValid?.()
+                      ? provisionalEnd.format("h:mm A")
+                      : "—"}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              {/* Notes */}
+              {singleRide.notes && (
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: (t) =>
+                      t.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(0,0,0,0.02)",
+                    border: (t) => `1px solid ${t.palette.divider}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontWeight: 600 }}
+                  >
+                    NOTES
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}
+                  >
+                    {singleRide.notes}
+                  </Typography>
+                </Box>
               )}
-            />
-          </Grid>
 
-          <Grid item xs={12}>
-            <DateTimePicker
-              label="Pickup Time"
-              value={singleRide.pickupAt}
-              onChange={(value) => updateSingleRide({ pickupAt: value })}
-              minutesStep={5}
-              slotProps={{
-                textField: {
-                  size: "small",
-                  fullWidth: true,
-                  error: Boolean(singleErrors.pickupAt) && showSingleValidation,
-                  helperText:
-                    showSingleValidation && singleErrors.pickupAt
-                      ? singleErrors.pickupAt
-                      : "",
-                  sx: singleShakeSx(
-                    showSingleValidation && Boolean(singleErrors.pickupAt),
-                  ),
-                },
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Stack direction="row" spacing={1.5}>
-              <TextField
-                label="Hours"
-                type="number"
-                value={singleRide.durationHours}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  updateSingleRide({
-                    durationHours: val === "" ? "" : Math.max(0, Number(val)),
-                  });
+              {/* Validation Status */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: isFormValid
+                    ? (t) =>
+                        t.palette.mode === "dark"
+                          ? "rgba(76,187,23,0.15)"
+                          : "rgba(76,187,23,0.08)"
+                    : (t) =>
+                        t.palette.mode === "dark"
+                          ? "rgba(255,152,0,0.15)"
+                          : "rgba(255,152,0,0.08)",
+                  border: (t) =>
+                    `1px solid ${isFormValid ? t.palette.success.main : t.palette.warning.main}`,
                 }}
-                error={Boolean(singleErrors.duration) && showSingleValidation}
-                helperText={
-                  showSingleValidation && singleErrors.duration
-                    ? singleErrors.duration
-                    : ""
-                }
-                size="small"
-                fullWidth
-                inputProps={{ min: 0, "aria-label": "Duration hours" }}
-                sx={singleShakeSx(
-                  showSingleValidation && Boolean(singleErrors.duration),
-                )}
-              />
-              <TextField
-                label="Minutes"
-                type="number"
-                value={singleRide.durationMinutes}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  updateSingleRide({
-                    durationMinutes: val === "" ? "" : Math.max(0, Number(val)),
-                  });
-                }}
-                error={Boolean(singleErrors.duration) && showSingleValidation}
-                helperText={
-                  showSingleValidation && singleErrors.duration
-                    ? singleErrors.duration
-                    : ""
-                }
-                size="small"
-                fullWidth
-                inputProps={{
-                  min: 0,
-                  max: 59,
-                  "aria-label": "Duration minutes",
-                }}
-                sx={singleShakeSx(
-                  showSingleValidation && Boolean(singleErrors.duration),
-                )}
-              />
-            </Stack>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Stack direction="row" spacing={1.5}>
-              <Box sx={{ flex: 1 }}>
-                <LrpSelectField
-                  label="Ride Type"
-                  name="rideType"
-                  value={singleRide.rideType ?? ""}
-                  onChange={(event) =>
-                    updateSingleRide({ rideType: event.target.value })
-                  }
-                  placeholder="Choose type…"
-                  options={RIDE_TYPES.map((type) => ({
-                    value: type,
-                    label: type,
-                  }))}
-                  helperText={
-                    showSingleValidation && singleErrors.rideType
-                      ? singleErrors.rideType
-                      : ""
-                  }
-                  size="small"
-                  FormControlProps={{
-                    error:
-                      Boolean(singleErrors.rideType) && showSingleValidation,
-                    sx: singleShakeSx(
-                      showSingleValidation && Boolean(singleErrors.rideType),
-                    ),
-                  }}
-                />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <LrpSelectField
-                  label="Vehicle"
-                  name="vehicle"
-                  value={singleRide.vehicle ?? ""}
-                  onChange={(event) =>
-                    updateSingleRide({ vehicle: event.target.value })
-                  }
-                  placeholder="Choose vehicle…"
-                  options={VEHICLES.map((vehicle) => ({
-                    value: vehicle.id || vehicle.name || vehicle,
-                    label: vehicle.name || vehicle.label || String(vehicle),
-                  }))}
-                  helperText={
-                    showSingleValidation && singleErrors.vehicle
-                      ? singleErrors.vehicle
-                      : ""
-                  }
-                  size="small"
-                  FormControlProps={{
-                    error:
-                      Boolean(singleErrors.vehicle) && showSingleValidation,
-                    sx: singleShakeSx(
-                      showSingleValidation && Boolean(singleErrors.vehicle),
-                    ),
-                  }}
-                />
+              >
+                <Typography
+                  variant="body2"
+                  fontWeight={600}
+                  sx={{ color: isFormValid ? "success.main" : "warning.main" }}
+                >
+                  {isFormValid
+                    ? "✓ Ready to submit"
+                    : "⚠ Fill required fields"}
+                </Typography>
               </Box>
             </Stack>
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              label="Ride Notes"
-              value={singleRide.notes}
-              onChange={(event) =>
-                updateSingleRide({ notes: event.target.value })
-              }
-              multiline
-              minRows={2}
-              size="small"
-              fullWidth
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
-              Estimated end: {endDisplay}
-            </Alert>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={handleSingleReset}
-                disabled={isSubmittingSingle}
-                fullWidth
-                size="medium"
-              >
-                Reset
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSingleSubmit}
-                disabled={isSubmittingSingle}
-                fullWidth
-                size="medium"
-                startIcon={
-                  isSubmittingSingle ? (
-                    <CircularProgress size={18} />
-                  ) : (
-                    <RocketLaunchIcon />
-                  )
-                }
-              >
-                {isSubmittingSingle ? "Submitting…" : "Submit"}
-              </Button>
-            </Stack>
-          </Grid>
-        </Grid>
-      </Paper>
+          </Paper>
+        </Box>
+      </Box>
     );
   };
 
   const renderBuilder = () => {
     return (
       <>
-        <Paper elevation={2} sx={SECTION_PAPER_SX}>
+        <Paper elevation={0} sx={{ ...MODERN_CARD_SX, p: { xs: 2, sm: 3 } }}>
           <Grid container spacing={GRID_SPACING}>
             <Grid item xs={12}>
               <Stack
@@ -1463,7 +1723,7 @@ export default function RideEntryForm() {
                 <Button
                   variant="outlined"
                   color="primary"
-                  size="medium"
+                  size="large"
                   onClick={() => {
                     if (!csvText.trim()) {
                       setSnackbar({
@@ -1478,16 +1738,32 @@ export default function RideEntryForm() {
                   }}
                   startIcon={<UploadFileIcon />}
                   fullWidth
+                  sx={{
+                    borderRadius: 3,
+                    py: 1.5,
+                    fontWeight: 700,
+                    textTransform: "none",
+                  }}
                 >
                   Import Pasted CSV
                 </Button>
                 <Button
                   variant="contained"
                   color="primary"
-                  size="medium"
+                  size="large"
                   startIcon={<AddIcon />}
                   onClick={appendBuilderRide}
                   fullWidth
+                  sx={{
+                    borderRadius: 3,
+                    py: 1.5,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    boxShadow: "0 4px 14px rgba(76,187,23,0.35)",
+                    "&:hover": {
+                      boxShadow: "0 6px 20px rgba(76,187,23,0.45)",
+                    },
+                  }}
                 >
                   Add to Preview
                 </Button>
@@ -1497,76 +1773,276 @@ export default function RideEntryForm() {
         </Paper>
 
         {multiRows.length > 0 && (
-          <Paper elevation={2} sx={SECTION_PAPER_SX}>
-            <Stack spacing={2}>
-              <Typography variant="subtitle1" fontWeight={700}>
-                Preview ({multiRows.length})
-              </Typography>
-              <Box sx={{ height: 360, width: "100%" }}>
-                <DataGridPro
-                  id="ridebuilder-grid"
-                  rows={multiRows}
-                  columns={builderColumns}
-                  getRowId={(row) => row.tempId || row.id}
-                  processRowUpdate={handleProcessRowUpdate}
-                  onProcessRowUpdateError={handleProcessRowError}
-                  disableRowSelectionOnClick
-                  slots={{ toolbar: GridToolbar }}
-                  slotProps={{
-                    toolbar: {
-                      showQuickFilter: true,
-                      quickFilterProps: { debounceMs: 300 },
-                    },
-                  }}
-                  density="compact"
-                  sx={(t) => ({
-                    "& .MuiDataGrid-toolbarContainer": {
-                      backgroundColor: t.palette.background.paper,
-                      borderBottom: `1px solid ${t.palette.divider}`,
-                    },
-                    "& .MuiDataGrid-columnHeaders": {
-                      backgroundColor: t.palette.background.paper,
-                      borderBottom: `1px solid ${t.palette.divider}`,
-                    },
-                    "& .MuiDataGrid-virtualScroller, & .MuiDataGrid-virtualScrollerContent, & .MuiDataGrid-footerContainer":
-                      {
-                        backgroundColor: t.palette.background.paper,
-                      },
-                    "& .MuiDataGrid-cell": { borderColor: t.palette.divider },
-                  })}
+          <Paper
+            elevation={0}
+            sx={{ ...MODERN_CARD_SX, p: { xs: 2, sm: 3 }, mt: 3 }}
+          >
+            <Stack spacing={3}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="h6" fontWeight={800}>
+                  Preview Queue
+                </Typography>
+                <Chip
+                  label={`${multiRows.length} ${multiRows.length === 1 ? "ride" : "rides"}`}
+                  color="primary"
+                  sx={{ fontWeight: 700, fontSize: "0.9rem" }}
                 />
+              </Box>
+
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(auto-fill, minmax(340px, 1fr))",
+                  },
+                  gap: 2,
+                  maxHeight: 600,
+                  overflowY: "auto",
+                  pr: 1,
+                }}
+              >
+                {multiRows.map((row) => {
+                  const pickupDate = row.pickupAt
+                    ? toDayjs(row.pickupAt)
+                    : null;
+                  const isValid = Boolean(
+                    row.tripId &&
+                      isTripIdValid(row.tripId) &&
+                      pickupDate?.isValid?.() &&
+                      row.rideType &&
+                      row.vehicle &&
+                      row.durationMinutes > 0,
+                  );
+
+                  return (
+                    <Paper
+                      key={row.tempId}
+                      elevation={0}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: 3,
+                        border: "2px solid",
+                        borderColor: isValid ? "primary.main" : "warning.main",
+                        bgcolor: (t) =>
+                          isValid
+                            ? t.palette.mode === "dark"
+                              ? "rgba(76,187,23,0.08)"
+                              : "rgba(76,187,23,0.04)"
+                            : t.palette.mode === "dark"
+                              ? "rgba(255,152,0,0.08)"
+                              : "rgba(255,152,0,0.04)",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+                        },
+                      }}
+                    >
+                      <Stack spacing={2}>
+                        {/* Header */}
+                        <Stack
+                          direction="row"
+                          spacing={1.5}
+                          alignItems="center"
+                        >
+                          <Box
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "50%",
+                              backgroundColor: (t) =>
+                                `${t.palette.primary.main}20`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "primary.main",
+                            }}
+                          >
+                            <DirectionsCar fontSize="small" />
+                          </Box>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "text.secondary" }}
+                            >
+                              {row.rideType || "Type"}
+                            </Typography>
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={700}
+                              sx={{
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {row.vehicle || "Vehicle"}
+                            </Typography>
+                          </Box>
+                          <Tooltip title="Remove from queue">
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() =>
+                                setMultiRows((prev) =>
+                                  prev.filter((r) => r.tempId !== row.tempId),
+                                )
+                              }
+                              sx={{ minWidth: "auto", p: 0.5 }}
+                            >
+                              ✕
+                            </Button>
+                          </Tooltip>
+                        </Stack>
+
+                        {/* Trip ID */}
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: (t) =>
+                              t.palette.mode === "dark"
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(0,0,0,0.03)",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "text.secondary", fontWeight: 600 }}
+                          >
+                            TRIP ID
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            fontWeight={800}
+                            sx={{ color: "primary.main" }}
+                          >
+                            {row.tripId || "N/A"}
+                          </Typography>
+                        </Box>
+
+                        {/* Time & Duration */}
+                        <Stack spacing={1}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <ScheduleRoundedIcon
+                              sx={{ fontSize: 18, color: "primary.main" }}
+                            />
+                            <Typography variant="body2" fontWeight={600}>
+                              {pickupDate?.isValid?.()
+                                ? formatDateTime(pickupDate)
+                                : "No pickup time"}
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <AccessTimeIcon
+                              sx={{ fontSize: 18, color: "text.secondary" }}
+                            />
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "text.secondary" }}
+                            >
+                              {row.durationMinutes > 0
+                                ? `${row.durationMinutes} min`
+                                : "No duration"}
+                            </Typography>
+                          </Box>
+                        </Stack>
+
+                        {/* Notes */}
+                        {row.notes && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              fontStyle: "italic",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {row.notes}
+                          </Typography>
+                        )}
+
+                        {/* Status Badge */}
+                        <Chip
+                          label={isValid ? "Ready" : "Incomplete"}
+                          size="small"
+                          color={isValid ? "success" : "warning"}
+                          sx={{ fontWeight: 600, alignSelf: "flex-start" }}
+                        />
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </Box>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 <Button
                   variant="outlined"
                   color="primary"
-                  size="medium"
+                  size="large"
                   onClick={() => setMultiRows([])}
                   disabled={isSubmittingMulti}
                   fullWidth
+                  sx={{
+                    borderRadius: 3,
+                    py: 1.5,
+                    fontWeight: 700,
+                    textTransform: "none",
+                  }}
                 >
                   Clear Preview
                 </Button>
                 <Tooltip title="Validates and shows summary before committing">
-                  <span>
+                  <span style={{ flex: 1 }}>
                     <Button
                       variant="contained"
                       color="primary"
-                      size="medium"
+                      size="large"
                       onClick={handlePrepareCommit}
                       disabled={isSubmittingMulti}
                       fullWidth
                       startIcon={
                         isSubmittingMulti ? (
-                          <CircularProgress size={18} />
+                          <CircularProgress size={18} color="inherit" />
                         ) : (
                           <RocketLaunchIcon />
                         )
                       }
+                      sx={{
+                        borderRadius: 3,
+                        py: 1.5,
+                        fontWeight: 700,
+                        textTransform: "none",
+                        boxShadow: "0 4px 14px rgba(76,187,23,0.35)",
+                        "&:hover": {
+                          boxShadow: "0 6px 20px rgba(76,187,23,0.45)",
+                        },
+                      }}
                     >
                       {isSubmittingMulti
                         ? "Committing…"
-                        : `Commit ${multiRows.length} Rides`}
+                        : `Commit ${multiRows.length} ${multiRows.length === 1 ? "Ride" : "Rides"}`}
                     </Button>
                   </span>
                 </Tooltip>
@@ -1581,32 +2057,189 @@ export default function RideEntryForm() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 0:
-        return renderSingleRide();
+        return (
+          <Stack spacing={3}>
+            {/* Mode Toggle */}
+            <Paper elevation={0} sx={{ ...MODERN_CARD_SX, p: 2 }}>
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Button
+                  variant={entryMode === "single" ? "contained" : "outlined"}
+                  color="primary"
+                  onClick={() => setEntryMode("single")}
+                  size="large"
+                  sx={{
+                    flex: 1,
+                    maxWidth: 240,
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    fontSize: "1rem",
+                  }}
+                >
+                  Single Ride
+                </Button>
+                <Button
+                  variant={entryMode === "multi" ? "contained" : "outlined"}
+                  color="primary"
+                  onClick={() => setEntryMode("multi")}
+                  size="large"
+                  sx={{
+                    flex: 1,
+                    maxWidth: 240,
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    fontSize: "1rem",
+                  }}
+                >
+                  Multi-Ride Builder
+                </Button>
+              </Stack>
+            </Paper>
+
+            {/* Render form based on mode */}
+            {entryMode === "single" ? renderSingleRide() : renderBuilder()}
+          </Stack>
+        );
       case 1:
-        return renderBuilder();
-      case 2:
         return (
-          <Paper elevation={2} sx={SECTION_PAPER_SX}>
-            <Suspense fallback={lazyGridFallback}>
-              <LiveRidesGrid />
-            </Suspense>
-          </Paper>
-        );
-      case 3:
-        return (
-          <Paper elevation={2} sx={SECTION_PAPER_SX}>
-            <Suspense fallback={lazyGridFallback}>
-              <RideQueueGrid />
-            </Suspense>
-          </Paper>
-        );
-      case 4:
-        return (
-          <Paper elevation={2} sx={SECTION_PAPER_SX}>
-            <Suspense fallback={lazyGridFallback}>
-              <ClaimedRidesGrid />
-            </Suspense>
-          </Paper>
+          <Stack spacing={3}>
+            {/* View Mode Toggle */}
+            <Paper elevation={0} sx={{ ...MODERN_CARD_SX, p: 2 }}>
+              <Stack
+                direction="row"
+                spacing={1.5}
+                alignItems="center"
+                justifyContent="center"
+                flexWrap="wrap"
+              >
+                <Button
+                  variant={viewMode === "live" ? "contained" : "outlined"}
+                  color="primary"
+                  onClick={() => setViewMode("live")}
+                  size="large"
+                  sx={{
+                    flex: { xs: 1, sm: "0 1 180px" },
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    fontSize: "1rem",
+                  }}
+                  endIcon={
+                    liveCount !== undefined && (
+                      <Chip
+                        label={liveCount}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          fontWeight: 700,
+                          bgcolor:
+                            viewMode === "live"
+                              ? "rgba(255,255,255,0.2)"
+                              : "primary.main",
+                          color:
+                            viewMode === "live"
+                              ? "white"
+                              : "primary.contrastText",
+                        }}
+                      />
+                    )
+                  }
+                >
+                  Live
+                </Button>
+                <Button
+                  variant={viewMode === "queue" ? "contained" : "outlined"}
+                  color="primary"
+                  onClick={() => setViewMode("queue")}
+                  size="large"
+                  sx={{
+                    flex: { xs: 1, sm: "0 1 180px" },
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    fontSize: "1rem",
+                  }}
+                  endIcon={
+                    queueCount !== undefined && (
+                      <Chip
+                        label={queueCount}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          fontWeight: 700,
+                          bgcolor:
+                            viewMode === "queue"
+                              ? "rgba(255,255,255,0.2)"
+                              : "primary.main",
+                          color:
+                            viewMode === "queue"
+                              ? "white"
+                              : "primary.contrastText",
+                        }}
+                      />
+                    )
+                  }
+                >
+                  Queue
+                </Button>
+                <Button
+                  variant={viewMode === "claimed" ? "contained" : "outlined"}
+                  color="primary"
+                  onClick={() => setViewMode("claimed")}
+                  size="large"
+                  sx={{
+                    flex: { xs: 1, sm: "0 1 180px" },
+                    py: 1.5,
+                    borderRadius: 3,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    fontSize: "1rem",
+                  }}
+                  endIcon={
+                    claimedCount !== undefined && (
+                      <Chip
+                        label={claimedCount}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          fontWeight: 700,
+                          bgcolor:
+                            viewMode === "claimed"
+                              ? "rgba(255,255,255,0.2)"
+                              : "primary.main",
+                          color:
+                            viewMode === "claimed"
+                              ? "white"
+                              : "primary.contrastText",
+                        }}
+                      />
+                    )
+                  }
+                >
+                  Claimed
+                </Button>
+              </Stack>
+            </Paper>
+
+            {/* Render grid based on view mode */}
+            <Paper elevation={2} sx={SECTION_PAPER_SX}>
+              <Suspense fallback={lazyGridFallback}>
+                {viewMode === "live" && <LiveRidesGrid />}
+                {viewMode === "queue" && <RideQueueGrid />}
+                {viewMode === "claimed" && <ClaimedRidesGrid />}
+              </Suspense>
+            </Paper>
+          </Stack>
         );
       default:
         return null;
