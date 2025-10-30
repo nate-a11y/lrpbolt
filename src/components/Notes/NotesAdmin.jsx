@@ -321,7 +321,10 @@ export default function NotesAdmin({ notes, loading, error }) {
               borderRadius: 2,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: (t) => t.palette.error.light }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: (t) => t.palette.error.light }}
+            >
               Unable to load templates.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -356,7 +359,10 @@ export default function NotesAdmin({ notes, loading, error }) {
               borderRadius: 2,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: (t) => t.palette.success.light }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: (t) => t.palette.success.light }}
+            >
               No templates yet.
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.85 }}>

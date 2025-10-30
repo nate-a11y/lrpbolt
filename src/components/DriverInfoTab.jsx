@@ -45,7 +45,8 @@ void _GridToolbarExport;
 // --- constants ---
 const FLW_URL = "https://pass.aie.army.mil/steps/installation_selection";
 
-const GATE_CODES = [ // allow-color-literal
+const GATE_CODES = [
+  // allow-color-literal
   { name: "Camden", codes: ["1793#", "1313"] },
   { name: "Cypress", codes: ["7469"] },
   { name: "Shooters 21", codes: ["4040"] },

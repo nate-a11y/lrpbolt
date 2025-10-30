@@ -66,6 +66,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CircularProgress from "@mui/material/CircularProgress";
 import { DateTimePicker } from "@mui/x-date-pickers-pro";
+import { alpha } from "@mui/material/styles";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -93,7 +94,6 @@ import {
   PROMO_PARTNER_CATEGORIES,
   PROMO_PARTNER_FILTER_OPTIONS,
 } from "@/constants/importantInfo.js";
-import { alpha } from "@mui/material/styles";
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
 import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
@@ -2384,7 +2384,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                         position="top"
                         actionIcon={
                           <IconButton
-                            sx={(t) => ({ color: alpha(t.palette.common.white, 0.85) })}
+                            sx={(t) => ({
+                              color: alpha(t.palette.common.white, 0.85),
+                            })}
                             aria-label={`Delete ${image.name || "image"}`}
                             onClick={() => handleRemoveExistingImage(image)}
                             disabled={saving || uploading}
@@ -2428,7 +2430,9 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                         }
                         actionIcon={
                           <IconButton
-                            sx={(t) => ({ color: alpha(t.palette.common.white, 0.85) })}
+                            sx={(t) => ({
+                              color: alpha(t.palette.common.white, 0.85),
+                            })}
                             aria-label={`Remove ${file.name}`}
                             onClick={() => handleRemovePendingFile(index)}
                             disabled={saving || uploading}
