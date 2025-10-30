@@ -8,7 +8,6 @@ import {
   Alert,
   Box as MuiBox,
   Button,
-  Divider,
   Drawer,
   Fab,
   Link as MUILink,
