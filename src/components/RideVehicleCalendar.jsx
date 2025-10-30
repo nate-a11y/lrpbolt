@@ -707,12 +707,7 @@ function RideVehicleCalendar({
     if (!dateISO) return;
     const parsed = dayjs(dateISO).tz(CST);
     if (!parsed.isValid()) return;
-    setDate((prev) => {
-      if (prev && prev.isValid() && prev.isSame(parsed, "day")) {
-        return prev;
-      }
-      return parsed;
-    });
+    setDate(parsed);
   }, [dateISO]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
