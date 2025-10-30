@@ -526,6 +526,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false); // AI settings dialog
   const [generatingAI, setGeneratingAI] = useState(false); // AI content generation loading
   const [showScrollTop, setShowScrollTop] = useState(false); // Show scroll to top FAB
+  const [aiJustGenerated, setAiJustGenerated] = useState(false); // Track if AI was just used
 
   const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const hasRows = rows.length > 0;
@@ -651,6 +652,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     }
     setActiveId(null);
     setPendingFiles([]);
+    setAiJustGenerated(false);
     setDialogOpen(true);
   }, []);
 
@@ -711,6 +713,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         publishDate: row.publishDate ? dayjs(row.publishDate) : null,
       });
       setPendingFiles([]);
+      setAiJustGenerated(false);
       // Freeze the current list order to prevent jumping during auto-save
       setFrozenOrder(filteredRows.map((r) => r.id));
       setDialogOpen(true);
@@ -1527,7 +1530,8 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
       setDraftStatus("saved");
       setTimeout(() => setDraftStatus("idle"), 2000);
-      show("Content generated successfully!", "success");
+      setAiJustGenerated(true);
+      show("Content generated successfully! Please review and edit as needed.", "success");
     } catch (err) {
       logError(err, { where: "ImportantInfoAdmin.handleGenerateWithAI" });
       setDraftStatus("idle");
@@ -2306,6 +2310,45 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
+            {/* Instructions */}
+            <Alert
+              severity="info"
+              sx={{
+                bgcolor: (t) => alpha(t.palette.info.dark, 0.5),
+                color: (t) => t.palette.info.light,
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                How to use AI Content Generator:
+              </Typography>
+              <Typography variant="caption" component="div">
+                1. Fill in Title, Category, and Details<br />
+                2. Optionally add Phone and URL for context<br />
+                3. Click "Generate SMS & Blurb with AI"<br />
+                4. Review and edit the AI-generated content before saving
+              </Typography>
+            </Alert>
+
+            {/* AI-generated content reminder */}
+            {aiJustGenerated && (
+              <Alert
+                severity="warning"
+                onClose={() => setAiJustGenerated(false)}
+                sx={{
+                  bgcolor: (t) => alpha(t.palette.warning.dark, 0.5),
+                  color: (t) => alpha(t.palette.warning.main, 0.4),
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  ⚠️ Please review AI-generated content
+                </Typography>
+                <Typography variant="caption">
+                  AI can make mistakes. Verify the blurb and SMS message are accurate
+                  and appropriate before saving.
+                </Typography>
+              </Alert>
+            )}
+
             <TextField
               label="Title"
               value={formValues.title}
@@ -2314,6 +2357,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               }
               required
               fullWidth
+              helperText="Required for AI generation"
             />
             <FormControl fullWidth size="small">
               <InputLabel>Category</InputLabel>
@@ -2332,16 +2376,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               </Select>
             </FormControl>
             <TextField
-              label="Blurb"
-              value={formValues.blurb}
-              onChange={(event) =>
-                handleFieldChange("blurb", event.target.value)
-              }
-              fullWidth
-              multiline
-              minRows={2}
-            />
-            <TextField
               label="Details"
               value={formValues.details}
               onChange={(event) =>
@@ -2350,7 +2384,31 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               fullWidth
               multiline
               minRows={4}
+              helperText="Required for AI generation. Provide detailed information about this item."
             />
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <TextField
+                label="Partner phone"
+                value={formValues.phone}
+                onChange={(event) =>
+                  handleFieldChange("phone", event.target.value)
+                }
+                fullWidth
+                helperText="Optional, helps AI context"
+              />
+              <TextField
+                label="Reference URL"
+                value={formValues.url}
+                onChange={(event) =>
+                  handleFieldChange("url", event.target.value)
+                }
+                fullWidth
+                helperText="Optional, helps AI context"
+              />
+            </Stack>
+
+            <Divider sx={{ borderColor: (t) => t.palette.divider, my: 1 }} />
+
             <LoadingButtonLite
               variant="contained"
               onClick={handleGenerateWithAI}
@@ -2371,24 +2429,20 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
             >
               Generate SMS & Blurb with AI
             </LoadingButtonLite>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-              <TextField
-                label="Partner phone"
-                value={formValues.phone}
-                onChange={(event) =>
-                  handleFieldChange("phone", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Reference URL"
-                value={formValues.url}
-                onChange={(event) =>
-                  handleFieldChange("url", event.target.value)
-                }
-                fullWidth
-              />
-            </Stack>
+
+            <Divider sx={{ borderColor: (t) => t.palette.divider, my: 1 }} />
+
+            <TextField
+              label="Blurb"
+              value={formValues.blurb}
+              onChange={(event) =>
+                handleFieldChange("blurb", event.target.value)
+              }
+              fullWidth
+              multiline
+              minRows={2}
+              helperText={aiJustGenerated ? "✨ AI-generated - please review and edit as needed" : "Brief description (1-2 sentences)"}
+            />
             <Box>
               <Stack
                 direction="row"
@@ -2405,7 +2459,11 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                   fullWidth
                   multiline
                   minRows={3}
-                  helperText="Leave blank to auto-generate a message."
+                  helperText={
+                    aiJustGenerated
+                      ? "✨ AI-generated - please review and edit as needed"
+                      : "Leave blank to auto-generate a message when sending"
+                  }
                 />
                 <Stack direction="column" spacing={0.5} sx={{ mt: 0.5 }}>
                   <Tooltip title="Load saved template">
