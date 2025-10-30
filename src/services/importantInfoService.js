@@ -59,6 +59,21 @@ function sanitizePayload(payload = {}) {
     base.images = Array.isArray(payload.images) ? payload.images : [];
   }
 
+  // Include sendCount if provided (for SMS tracking)
+  if (payload.sendCount !== undefined) {
+    base.sendCount = typeof payload.sendCount === "number" ? payload.sendCount : 0;
+  }
+
+  // Include order if provided (for drag-and-drop ordering)
+  if (payload.order !== undefined) {
+    base.order = typeof payload.order === "number" ? payload.order : 0;
+  }
+
+  // Include publishDate if provided (for scheduled publishing)
+  if (payload.publishDate !== undefined) {
+    base.publishDate = payload.publishDate;
+  }
+
   return base;
 }
 
