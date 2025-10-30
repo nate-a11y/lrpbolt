@@ -84,11 +84,11 @@ import {
 } from "@/services/importantInfoImageService.js";
 import {
   CommandHistory,
-  // TODO: Integrate command pattern into CRUD operations
-  // CreateItemCommand,
-  // UpdateItemCommand,
-  // DeleteItemCommand,
+  CreateItemCommand,
+  UpdateItemCommand,
+  DeleteItemCommand,
 } from "@/services/commandHistory.js";
+import * as importantInfoService from "@/services/importantInfoService.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
 import {
@@ -728,7 +728,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   }, [saving, uploading, dialogMode, formValues, activeId, draftSaveTimeout]);
 
   // Helper to get user context for audit logging
-  // TODO: Use this in CRUD operations for audit log
   const getUserContext = useCallback(() => {
     if (!user) return null;
     return {
@@ -738,9 +737,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       role: user.role || "unknown",
     };
   }, [user]);
-
-  // Suppress unused var warning - will be used when command pattern is integrated
-  void getUserContext;
 
   // Undo/Redo handlers
   const handleUndo = useCallback(async () => {
@@ -1031,53 +1027,122 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       event?.preventDefault();
       try {
         setSaving(true);
+        const userContext = getUserContext();
 
         let itemId = activeId;
         let updatedImages = [...(formValues.images || [])];
 
-        // If creating a new item, create it first to get an ID
         if (dialogMode === "create" && !itemId) {
+          // CREATE MODE: Use CreateItemCommand
           const payload = buildPayload(formValues);
-          itemId = await createImportantInfo(payload);
-        }
 
-        // Upload pending files if we have any
-        if (pendingFiles.length > 0 && itemId) {
-          setUploading(true);
-          try {
-            const uploadedImages = await uploadMultipleImages(
-              itemId,
-              pendingFiles,
+          // If we have pending files, we need to create first, upload images, then update
+          if (pendingFiles.length > 0) {
+            // Create item first to get an ID
+            const createCommand = new CreateItemCommand(
+              importantInfoService,
+              payload,
+              userContext,
+              (createdId) => {
+                itemId = createdId;
+              },
             );
-            updatedImages = [...updatedImages, ...uploadedImages];
-          } catch (uploadErr) {
-            logError(uploadErr, {
-              where: "ImportantInfoAdmin.handleSubmit.upload",
-              itemId,
-            });
-            show("Some images failed to upload.", "warning");
-          } finally {
-            setUploading(false);
+            await commandHistory.execute(createCommand);
+            setHistoryState(commandHistory.getState());
+
+            // Upload images
+            setUploading(true);
+            try {
+              const uploadedImages = await uploadMultipleImages(
+                itemId,
+                pendingFiles,
+              );
+              updatedImages = [...uploadedImages];
+
+              // Update with images using UpdateItemCommand
+              const item = rows.find((r) => r.id === itemId);
+              const previousState = item || { ...payload, id: itemId };
+              const updateCommand = new UpdateItemCommand(
+                importantInfoService,
+                itemId,
+                { images: updatedImages },
+                previousState,
+                userContext,
+              );
+              await commandHistory.execute(updateCommand);
+              setHistoryState(commandHistory.getState());
+            } catch (uploadErr) {
+              logError(uploadErr, {
+                where: "ImportantInfoAdmin.handleSubmit.upload",
+                itemId,
+              });
+              show("Some images failed to upload.", "warning");
+            } finally {
+              setUploading(false);
+            }
+          } else {
+            // No images, just create
+            const createCommand = new CreateItemCommand(
+              importantInfoService,
+              payload,
+              userContext,
+              (createdId) => {
+                itemId = createdId;
+              },
+            );
+            await commandHistory.execute(createCommand);
+            setHistoryState(commandHistory.getState());
           }
-        }
 
-        // Update with final payload including images
-        const finalPayload = {
-          ...buildPayload(formValues),
-          images: updatedImages,
-        };
-
-        if (dialogMode === "edit" && activeId) {
-          await updateImportantInfo(activeId, finalPayload);
-          show("Important info updated.", "success");
-          // Clear draft on successful edit
-          clearAdminDraft("edit", activeId);
-        } else if (dialogMode === "create" && itemId) {
-          // Update the newly created item with full payload including images
-          await updateImportantInfo(itemId, finalPayload);
           show("Important info created.", "success");
-          // Clear draft on successful creation
           clearAdminDraft("create");
+        } else if (dialogMode === "edit" && activeId) {
+          // EDIT MODE: Use UpdateItemCommand
+          // Get previous state for undo
+          const previousItem = rows.find((r) => r.id === activeId);
+          if (!previousItem) {
+            throw new Error("Cannot find item to update");
+          }
+
+          // Upload pending files if any
+          if (pendingFiles.length > 0) {
+            setUploading(true);
+            try {
+              const uploadedImages = await uploadMultipleImages(
+                activeId,
+                pendingFiles,
+              );
+              updatedImages = [...updatedImages, ...uploadedImages];
+            } catch (uploadErr) {
+              logError(uploadErr, {
+                where: "ImportantInfoAdmin.handleSubmit.upload",
+                activeId,
+              });
+              show("Some images failed to upload.", "warning");
+            } finally {
+              setUploading(false);
+            }
+          }
+
+          // Build update payload
+          const finalPayload = {
+            ...buildPayload(formValues),
+            images: updatedImages,
+          };
+
+          // Create and execute update command
+          const updateCommand = new UpdateItemCommand(
+            importantInfoService,
+            activeId,
+            finalPayload,
+            previousItem,
+            userContext,
+          );
+          await commandHistory.execute(updateCommand);
+          setHistoryState(commandHistory.getState());
+
+          show("Important info updated.", "success");
+          clearAdminDraft("edit", activeId);
         }
 
         setDialogOpen(false);
@@ -1094,7 +1159,16 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         setUploading(false);
       }
     },
-    [activeId, dialogMode, formValues, pendingFiles, show],
+    [
+      activeId,
+      dialogMode,
+      formValues,
+      pendingFiles,
+      show,
+      getUserContext,
+      commandHistory,
+      rows,
+    ],
   );
 
   const setRowPending = useCallback((id, value) => {
@@ -1115,7 +1189,20 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       if (!row?.id) return;
       setRowPending(row.id, true);
       try {
-        await updateImportantInfo(row.id, { isActive: nextActive });
+        const userContext = getUserContext();
+        const previousState = { ...row };
+
+        // Use UpdateItemCommand for undo/redo support
+        const updateCommand = new UpdateItemCommand(
+          importantInfoService,
+          row.id,
+          { isActive: nextActive },
+          previousState,
+          userContext,
+        );
+        await commandHistory.execute(updateCommand);
+        setHistoryState(commandHistory.getState());
+
         show(
           nextActive ? "Marked as active." : "Marked as inactive.",
           "success",
@@ -1130,7 +1217,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         setRowPending(row.id, false);
       }
     },
-    [setRowPending, show],
+    [setRowPending, show, getUserContext, commandHistory],
   );
 
   const handleDelete = useCallback(
@@ -1138,37 +1225,25 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
       if (!row?.id) return;
       // eslint-disable-next-line no-alert
       const confirmed = window.confirm(
-        "Delete this item? This cannot be undone.",
+        "Delete this item? You can undo this with Ctrl+Z.",
       );
       if (!confirmed) return;
       setRowPending(row.id, true);
       const snapshot = { ...row };
       try {
-        await deleteImportantInfo(row.id);
-        show(`Deleted “${row.title || "item"}”.`, "info", {
-          autoHideDuration: 6000,
-          action: (
-            <Button
-              color="inherit"
-              size="small"
-              sx={{ fontWeight: 600 }}
-              onClick={async () => {
-                try {
-                  await restoreImportantInfo(snapshot);
-                  show("Undo complete.", "success");
-                } catch (undoErr) {
-                  logError(undoErr, {
-                    where: "ImportantInfoAdmin.undoDelete",
-                    id: snapshot.id,
-                  });
-                  show("Failed to undo delete.", "error");
-                }
-              }}
-            >
-              Undo
-            </Button>
-          ),
-        });
+        const userContext = getUserContext();
+
+        // Use DeleteItemCommand for undo/redo support
+        const deleteCommand = new DeleteItemCommand(
+          importantInfoService,
+          row.id,
+          snapshot,
+          userContext,
+        );
+        await commandHistory.execute(deleteCommand);
+        setHistoryState(commandHistory.getState());
+
+        show(`Deleted "${row.title || "item"}". Press Ctrl+Z to undo.`, "info");
       } catch (err) {
         logError(err, {
           where: "ImportantInfoAdmin.handleDelete",
@@ -1179,7 +1254,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         setRowPending(row.id, false);
       }
     },
-    [setRowPending, show],
+    [setRowPending, show, getUserContext, commandHistory],
   );
 
   const handleDuplicate = useCallback(
