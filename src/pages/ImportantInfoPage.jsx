@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Box, CircularProgress, Tab, Tabs, Typography } from "@mui/material";
+import dayjs from "dayjs";
 
 import SmsSendDialog from "@/components/ImportantInfo/SmsSendDialog.jsx";
 import ImportantInfoList from "@/components/ImportantInfo/ImportantInfoList.jsx";
 import ImportantInfoAdmin from "@/components/ImportantInfo/ImportantInfoAdmin.jsx";
 import InsiderMembersPanel from "@/components/ImportantInfo/InsiderMembersPanel.jsx";
-import { subscribeImportantInfo } from "@/services/importantInfoService.js";
+import {
+  subscribeImportantInfo,
+  updateImportantInfo,
+} from "@/services/importantInfoService.js";
 import { useAuth } from "@/context/AuthContext.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import logError from "@/utils/logError.js";
@@ -61,10 +65,20 @@ export default function ImportantInfoPage() {
   }, [isAdmin, tab]);
 
   const activeItems = useMemo(() => {
+    const now = dayjs();
     return items.filter((item) => {
       if (!item || item.isActive === false) {
         return false;
       }
+
+      // Filter out items scheduled for future publication
+      if (item.publishDate) {
+        const publishDate = dayjs(item.publishDate);
+        if (publishDate.isValid() && publishDate.isAfter(now)) {
+          return false;
+        }
+      }
+
       const label = item?.category ? String(item.category) : "";
       return PROMO_PARTNER_CATEGORIES.includes(label);
     });
@@ -84,6 +98,23 @@ export default function ImportantInfoPage() {
     setSmsOpen(false);
     setSelectedItem(null);
   }, []);
+
+  const handleSmsSent = useCallback(
+    async (itemId) => {
+      if (!itemId) return;
+      try {
+        // Increment sendCount for analytics tracking
+        const item = items.find((r) => r.id === itemId);
+        const currentCount =
+          typeof item?.sendCount === "number" ? item.sendCount : 0;
+        await updateImportantInfo(itemId, { sendCount: currentCount + 1 });
+      } catch (err) {
+        logError(err, { where: "ImportantInfoPage.handleSmsSent", itemId });
+        // Don't show error to user - this is a background operation
+      }
+    },
+    [items],
+  );
 
   const renderContent = () => {
     if (tab === "promos_partners" && loading) {
@@ -168,6 +199,7 @@ export default function ImportantInfoPage() {
       <SmsSendDialog
         open={smsOpen}
         onClose={handleCloseSms}
+        onSuccess={handleSmsSent}
         item={selectedItem}
       />
     </Box>
