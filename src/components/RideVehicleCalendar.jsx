@@ -695,17 +695,17 @@ function RideVehicleCalendar({
 } = {}) {
   const [date, setDate] = useState(() => {
     if (dateISO) {
-      const parsed = dayjs(dateISO).tz(CST);
+      const parsed = dayjs.tz(dateISO, CST);
       if (parsed.isValid()) {
         return parsed;
       }
     }
     const stored = localStorage.getItem("rvcal.date");
-    return stored ? dayjs(stored).tz(CST) : dayjs().tz(CST);
+    return stored ? dayjs.tz(stored, CST) : dayjs().tz(CST);
   });
   useEffect(() => {
     if (!dateISO) return;
-    const parsed = dayjs(dateISO).tz(CST);
+    const parsed = dayjs.tz(dateISO, CST);
     if (!parsed.isValid()) return;
     setDate((prev) => {
       if (prev && prev.isValid() && prev.isSame(parsed, "day")) {
@@ -1346,7 +1346,7 @@ function RideVehicleCalendar({
                   value={date}
                   onChange={(newDate) => {
                     if (newDate) {
-                      const parsed = dayjs(newDate);
+                      const parsed = dayjs(newDate).tz(CST);
                       setDate(parsed);
                       onDateChange?.(parsed.format("YYYY-MM-DD"));
                     }

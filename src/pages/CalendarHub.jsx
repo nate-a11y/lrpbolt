@@ -27,6 +27,7 @@ import useMediaQuery from "@/hooks/useMediaQuery.js";
 import dayjs from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
+import { TIMEZONE } from "@/constants.js";
 
 const STORAGE_KEY = "lrp.calendar.filters.v2";
 const LazyCalendar = lazy(() => import("@/components/RideVehicleCalendar.jsx"));
@@ -158,7 +159,7 @@ export default function CalendarHub() {
               sx={{ rowGap: 1.5 }}
             >
               <DatePicker
-                value={dayjs(dateISO)}
+                value={dayjs.tz(dateISO, TIMEZONE)}
                 onChange={(newDate) => {
                   if (newDate) {
                     setDateISO(newDate.format("YYYY-MM-DD"));
