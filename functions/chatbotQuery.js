@@ -537,31 +537,116 @@ Once you have ALL 9 required pieces of information and the customer confirms det
             });
           }
 
-          // Execute the booking submission
-          const bookingResult = await handleBookingSubmission(bookingData);
+          // Validate all required fields are present
+          const requiredFields = [
+            "customer_name",
+            "customer_email",
+            "customer_phone",
+            "pickup_location",
+            "dropoff_location",
+            "trip_date",
+            "trip_time",
+            "passenger_count",
+            "trip_type",
+          ];
 
-          // Add the function call and result to messages
-          messages.push(response);
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(bookingResult),
-          });
+          const missingFields = requiredFields.filter(
+            (field) => !bookingData[field]
+          );
 
-          // Get final response from GPT
-          const finalData = await queryOpenAI(aiSettings, messages, [
-            BOOKING_TOOL,
-          ]);
-          const finalResponse = finalData.choices?.[0]?.message;
+          if (missingFields.length > 0) {
+            logger.warn("Booking submission missing fields", {
+              missing: missingFields,
+              data: bookingData,
+            });
 
-          return res.status(200).json({
-            success: true,
-            reply: finalResponse?.content || "Booking submitted successfully!",
-            bookingSubmitted: bookingResult.success,
-            bookingId: bookingResult.bookingId,
-            shouldEscalate: false,
-            botName: chatbotSettings.name,
-          });
+            return res.status(200).json({
+              success: true,
+              reply: `I still need: ${missingFields.join(", ")}. Can you provide those details?`,
+              bookingSubmitted: false,
+              botName: chatbotSettings.name,
+            });
+          }
+
+          // Generate unique booking ID
+          const bookingId = `LRP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+          try {
+            // Import the email/SMS functions
+            const { sendBookingRequestEmail } = require("./sendBookingRequestEmail");
+            const { sendBookingConfirmationSMS } = require("./sendBookingConfirmationSMS");
+
+            // Store in Firestore
+            await db.collection("bookingRequests").doc(bookingId).set({
+              ...bookingData,
+              bookingId,
+              status: "pending",
+              source: "chatbot",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+
+            // Send email to owners (don't await - fire and forget)
+            sendBookingRequestEmail(bookingId, bookingData).catch((err) => {
+              logger.error("Email send failed but booking stored", {
+                bookingId,
+                error: err.message,
+              });
+            });
+
+            // Send SMS to customer (don't await - fire and forget)
+            sendBookingConfirmationSMS(bookingData).catch((err) => {
+              logger.error("SMS send failed but booking stored", {
+                bookingId,
+                error: err.message,
+              });
+            });
+
+            // Log successful booking
+            logger.info("Booking request submitted", {
+              bookingId,
+              customer: bookingData.customer_name,
+              tripDate: bookingData.trip_date,
+            });
+
+            // Return success to user
+            const firstName = bookingData.customer_name.split(" ")[0];
+
+            return res.status(200).json({
+              success: true,
+              reply: `Perfect, ${firstName}! I've sent your request to our team.
+
+📍 Pickup: ${bookingData.pickup_location}
+📍 Dropoff: ${bookingData.dropoff_location}
+📅 ${bookingData.trip_date} at ${bookingData.trip_time}
+👥 ${bookingData.passenger_count} passenger${bookingData.passenger_count > 1 ? "s" : ""}
+🚗 ${bookingData.trip_type}
+${bookingData.special_requests ? `📝 ${bookingData.special_requests}\n` : ""}
+You'll receive a text within 24 hours with pricing and confirmation.
+
+Your booking reference: ${bookingId}`,
+              bookingSubmitted: true,
+              bookingId: bookingId,
+              shouldEscalate: false,
+              botName: chatbotSettings.name,
+            });
+          } catch (error) {
+            logger.error("Booking submission failed", {
+              error: error.message,
+              bookingData,
+              stack: error.stack,
+            });
+
+            return res.status(500).json({
+              success: false,
+              reply:
+                "I'm having trouble submitting your booking. Please reach out to us on Messenger or call us directly.",
+              shouldEscalate: true,
+              messengerUrl: chatbotSettings.facebookPageUrl,
+              bookingSubmitted: false,
+              error: error.message,
+            });
+          }
         }
       }
 
