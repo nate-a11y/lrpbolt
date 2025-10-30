@@ -25,8 +25,8 @@ const SETTINGS_COLLECTION = "appSettings";
 const CHATBOT_SETTINGS_DOC = "chatbot";
 const KNOWLEDGE_BASE_COLLECTION = "chatbotKnowledge";
 
-// Default chatbot color (matches theme primary)
-const DEFAULT_CHATBOT_COLOR = "primary.main";
+// Default chatbot color (matches theme primary #4CAF50)
+const DEFAULT_CHATBOT_COLOR = "#4CAF50";
 
 /**
  * Get chatbot configuration from Firestore

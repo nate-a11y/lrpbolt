@@ -31,6 +31,13 @@ import {
   InputLabel,
   Chip,
   Avatar,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
@@ -44,6 +51,11 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import SettingsIcon from "@mui/icons-material/Settings";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AnalyticsIcon from "@mui/icons-material/Analytics";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import MessageIcon from "@mui/icons-material/Message";
+import CheckIcon from "@mui/icons-material/Check";
+import WarningIcon from "@mui/icons-material/Warning";
 
 import ResponsiveContainer from "@/components/responsive/ResponsiveContainer.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
@@ -58,6 +70,12 @@ import {
 } from "@/services/chatbotService.js";
 import { getAISettings } from "@/services/appSettingsService.js";
 import ChatbotWidget from "@/components/ChatbotWidget.jsx";
+import {
+  getRecentAnalytics,
+  calculateCostPerBooking,
+  formatCurrency,
+  formatPercentage,
+} from "@/services/chatbotAnalyticsService.js";
 import logError from "@/utils/logError.js";
 
 export default function ChatBotSettings() {
@@ -73,7 +91,7 @@ export default function ChatBotSettings() {
   const [name, setName] = useState("Johnny");
   const [welcomeMessage, setWelcomeMessage] = useState("Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?");
   const [placeholder, setPlaceholder] = useState("Ask about our rides, availability, pricing...");
-  const [primaryColor, setPrimaryColor] = useState(theme.palette.primary.main);
+  const [primaryColor, setPrimaryColor] = useState("#4CAF50"); // Store actual hex color, not theme path
   const [position, setPosition] = useState("bottom-right");
   const [facebookPageUrl, setFacebookPageUrl] = useState("https://m.me/lakeridepros");
   const [bookingUrl, setBookingUrl] = useState("https://customer.moovs.app/lake-ride-pros/new/info");
@@ -123,8 +141,10 @@ If the user needs more personalized help or wants to speak with a human, direct 
   const [entryTitle, setEntryTitle] = useState("");
   const [entryContent, setEntryContent] = useState("");
 
-  // Default color value (stable reference)
-  const defaultPrimaryColor = theme.palette.primary.main;
+  // Analytics
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsDateRange, setAnalyticsDateRange] = useState(7); // days
 
   // Load initial data
   useEffect(() => {
@@ -147,7 +167,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
           chatbotData.welcomeMessage || "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?"
         );
         setPlaceholder(chatbotData.placeholder || "Ask about our rides, availability, pricing...");
-        setPrimaryColor(chatbotData.primaryColor || defaultPrimaryColor);
+        setPrimaryColor(chatbotData.primaryColor || "#4CAF50");
         setPosition(chatbotData.position || "bottom-right");
         setFacebookPageUrl(chatbotData.facebookPageUrl || "https://m.me/lakeridepros");
         setBookingUrl(chatbotData.bookingUrl || "https://customer.moovs.app/lake-ride-pros/new/info");
@@ -172,7 +192,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
     return () => {
       mounted = false;
     };
-  }, [show, defaultPrimaryColor]);
+  }, [show]);
 
   // Subscribe to knowledge base updates
   useEffect(() => {
@@ -302,6 +322,26 @@ If the user needs more personalized help or wants to speak with a human, direct 
     show("Embed code copied to clipboard", "success");
   }, [show]);
 
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await getRecentAnalytics(analyticsDateRange);
+      setAnalytics(data);
+    } catch (err) {
+      logError(err, { where: "ChatBotSettings.loadAnalytics" });
+      show("Failed to load analytics data", "error");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsDateRange, show]);
+
+  // Load analytics when tab changes to analytics
+  useEffect(() => {
+    if (tab === "analytics" && !analytics) {
+      loadAnalytics();
+    }
+  }, [tab, analytics, loadAnalytics]);
+
   const getCurrentSettings = () => ({
     enabled,
     name,
@@ -393,6 +433,12 @@ If the user needs more personalized help or wants to speak with a human, direct 
               iconPosition="start"
               label="Knowledge Base"
               value="knowledge"
+            />
+            <Tab
+              icon={<AnalyticsIcon />}
+              iconPosition="start"
+              label="Analytics"
+              value="analytics"
             />
             <Tab
               icon={<CodeIcon />}
@@ -600,6 +646,296 @@ If the user needs more personalized help or wants to speak with a human, direct 
                       </ListItem>
                     ))}
                   </List>
+                )}
+              </Stack>
+            )}
+
+            {/* Analytics Tab */}
+            {tab === "analytics" && (
+              <Stack spacing={3}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Typography variant="h6">Chatbot Analytics</Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      variant={analyticsDateRange === 7 ? "contained" : "outlined"}
+                      onClick={() => setAnalyticsDateRange(7)}
+                    >
+                      7 Days
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={analyticsDateRange === 30 ? "contained" : "outlined"}
+                      onClick={() => setAnalyticsDateRange(30)}
+                    >
+                      30 Days
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={loadAnalytics}
+                      disabled={analyticsLoading}
+                    >
+                      Refresh
+                    </Button>
+                  </Stack>
+                </Box>
+
+                {analyticsLoading && (
+                  <Box sx={{ textAlign: "center", py: 4 }}>
+                    <CircularProgress />
+                    <Typography variant="body2" sx={{ mt: 2 }}>
+                      Loading analytics...
+                    </Typography>
+                  </Box>
+                )}
+
+                {!analyticsLoading && analytics && analytics.metrics && (
+                  <>
+                    {/* Key Metrics Cards */}
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, 1fr)" },
+                        gap: 2,
+                      }}
+                    >
+                      {/* Total Conversations */}
+                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05) }}>
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Total Conversations
+                              </Typography>
+                              <MessageIcon fontSize="small" color="primary" />
+                            </Box>
+                            <Typography variant="h4" fontWeight={700}>
+                              {analytics.metrics.totalConversations}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Avg {analytics.metrics.avgMessagesPerConversation.toFixed(1)} messages/conversation
+                            </Typography>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+
+                      {/* Booking Rate */}
+                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.success.main, 0.05) }}>
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Booking Rate
+                              </Typography>
+                              <CheckIcon fontSize="small" color="success" />
+                            </Box>
+                            <Typography variant="h4" fontWeight={700}>
+                              {formatPercentage(analytics.metrics.bookingRate)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {analytics.metrics.bookingCount} bookings submitted
+                            </Typography>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+
+                      {/* Escalation Rate */}
+                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.warning.main, 0.05) }}>
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Escalation Rate
+                              </Typography>
+                              <WarningIcon fontSize="small" color="warning" />
+                            </Box>
+                            <Typography variant="h4" fontWeight={700}>
+                              {formatPercentage(analytics.metrics.escalationRate)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {analytics.metrics.escalatedCount} escalations
+                            </Typography>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+
+                      {/* Total Cost */}
+                      <Card sx={{ bgcolor: (theme) => alpha(theme.palette.info.main, 0.05) }}>
+                        <CardContent>
+                          <Stack spacing={1}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Total Cost
+                              </Typography>
+                              <AttachMoneyIcon fontSize="small" color="info" />
+                            </Box>
+                            <Typography variant="h4" fontWeight={700}>
+                              {formatCurrency(analytics.metrics.totalCost)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatCurrency(analytics.metrics.avgCostPerConversation)}/conversation
+                            </Typography>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    </Box>
+
+                    {/* Additional Metrics */}
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                        gap: 2,
+                      }}
+                    >
+                      {/* Performance Metrics */}
+                      <Card>
+                        <CardContent>
+                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                            Performance Metrics
+                          </Typography>
+                          <Stack spacing={2} sx={{ mt: 2 }}>
+                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                              <Typography variant="body2">Completion Rate</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {formatPercentage(analytics.metrics.completionRate)}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                              <Typography variant="body2">Hallucinations Caught</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {analytics.metrics.hallucinationsCaught}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                              <Typography variant="body2">Avg Conversation Duration</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {analytics.metrics.avgConversationDuration}s
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                              <Typography variant="body2">Total Tokens Used</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {analytics.metrics.totalTokensUsed.toLocaleString()}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                              <Typography variant="body2">Cost per Booking</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {formatCurrency(calculateCostPerBooking(analytics.metrics))}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+
+                      {/* Top Escalation Reasons */}
+                      <Card>
+                        <CardContent>
+                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                            Top Escalation Reasons
+                          </Typography>
+                          {analytics.metrics.topEscalationReasons.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                              No escalations recorded
+                            </Typography>
+                          ) : (
+                            <Stack spacing={1.5} sx={{ mt: 2 }}>
+                              {analytics.metrics.topEscalationReasons.map((item) => (
+                                <Box key={item.reason}>
+                                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                                    <Typography variant="body2" sx={{ textTransform: "capitalize" }}>
+                                      {item.reason.replace(/_/g, " ")}
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {item.count}
+                                    </Typography>
+                                  </Box>
+                                  <Box
+                                    sx={{
+                                      height: 4,
+                                      bgcolor: "divider",
+                                      borderRadius: 1,
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        height: "100%",
+                                        width: `${(item.count / analytics.metrics.escalatedCount) * 100}%`,
+                                        bgcolor: "warning.main",
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Stack>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Box>
+
+                    {/* Daily Breakdown Chart */}
+                    {analytics.dailyBreakdown && analytics.dailyBreakdown.length > 0 && (
+                      <Card>
+                        <CardContent>
+                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                            Daily Breakdown
+                          </Typography>
+                          <TableContainer sx={{ mt: 2 }}>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>
+                                    <Typography variant="caption" fontWeight={600}>Date</Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="caption" fontWeight={600}>Conversations</Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="caption" fontWeight={600}>Bookings</Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="caption" fontWeight={600}>Escalations</Typography>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <Typography variant="caption" fontWeight={600}>Cost</Typography>
+                                  </TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {analytics.dailyBreakdown.map((day) => (
+                                  <TableRow key={day.date}>
+                                    <TableCell>
+                                      <Typography variant="body2">{day.date}</Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography variant="body2">{day.conversations}</Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography variant="body2">{day.bookings}</Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography variant="body2">{day.escalations}</Typography>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography variant="body2">{formatCurrency(day.cost)}</Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
+
+                {!analyticsLoading && !analytics && (
+                  <Alert severity="info">
+                    No analytics data available. Start using the chatbot to see metrics here.
+                  </Alert>
                 )}
               </Stack>
             )}
