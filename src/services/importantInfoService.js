@@ -22,6 +22,10 @@ import logError from "@/utils/logError.js";
 import { getLRPFunctions } from "@/utils/functions.js";
 import { PROMO_PARTNER_CATEGORIES } from "@/constants/importantInfo.js";
 import { deleteImportantInfoImage } from "@/services/importantInfoImageService.js";
+import {
+  logAuditEntry,
+  computeChanges,
+} from "@/services/importantInfoAuditLog.js";
 
 const COLLECTION = "importantInfo";
 
@@ -138,10 +142,10 @@ export function subscribeImportantInfo({ onData, onError } = {}) {
   }
 }
 
-export async function createImportantInfo(payload) {
+export async function createImportantInfo(payload, userContext = null) {
   const data = sanitizePayload(payload);
   try {
-    return await withExponentialBackoff(async () => {
+    const itemId = await withExponentialBackoff(async () => {
       const ref = await addDoc(collection(db, COLLECTION), {
         ...data,
         createdAt: serverTimestamp(),
@@ -149,6 +153,20 @@ export async function createImportantInfo(payload) {
       });
       return ref.id;
     });
+
+    // Log audit entry
+    if (userContext) {
+      await logAuditEntry(itemId, {
+        action: "create",
+        user: userContext,
+        metadata: {
+          title: data.title,
+          category: data.category,
+        },
+      });
+    }
+
+    return itemId;
   } catch (error) {
     const appErr =
       error instanceof AppError
@@ -165,7 +183,12 @@ export async function createImportantInfo(payload) {
   }
 }
 
-export async function updateImportantInfo(id, changes) {
+export async function updateImportantInfo(
+  id,
+  changes,
+  userContext = null,
+  previousState = null,
+) {
   if (!id) {
     throw new AppError("Missing important info id", {
       code: "importantinfo_missing_id",
@@ -179,6 +202,21 @@ export async function updateImportantInfo(id, changes) {
         updatedAt: serverTimestamp(),
       });
     });
+
+    // Log audit entry
+    if (userContext && previousState) {
+      const fieldChanges = computeChanges(previousState, {
+        ...previousState,
+        ...patch,
+      });
+      if (fieldChanges) {
+        await logAuditEntry(id, {
+          action: "update",
+          user: userContext,
+          changes: fieldChanges,
+        });
+      }
+    }
   } catch (error) {
     const appErr =
       error instanceof AppError
@@ -196,7 +234,7 @@ export async function updateImportantInfo(id, changes) {
   }
 }
 
-export async function deleteImportantInfo(id) {
+export async function deleteImportantInfo(id, userContext = null) {
   if (!id) {
     throw new AppError("Missing important info id", {
       code: "importantinfo_missing_id",
@@ -207,6 +245,18 @@ export async function deleteImportantInfo(id) {
     const docRef = doc(db, COLLECTION, id);
     const docSnap = await getDoc(docRef);
     const data = docSnap.exists() ? docSnap.data() : null;
+
+    // Log audit entry before deletion
+    if (userContext && data) {
+      await logAuditEntry(id, {
+        action: "delete",
+        user: userContext,
+        metadata: {
+          title: data.title,
+          category: data.category,
+        },
+      });
+    }
 
     await withExponentialBackoff(async () => {
       await deleteDoc(docRef);
@@ -289,7 +339,7 @@ export async function bulkCreateImportantInfo(items = []) {
   return total;
 }
 
-export async function restoreImportantInfo(item) {
+export async function restoreImportantInfo(item, userContext = null) {
   const id = item?.id;
   if (!id) {
     throw new AppError("Missing important info id", {
@@ -307,6 +357,18 @@ export async function restoreImportantInfo(item) {
     await withExponentialBackoff(async () => {
       await setDoc(doc(db, COLLECTION, id), payload, { merge: false });
     });
+
+    // Log audit entry
+    if (userContext) {
+      await logAuditEntry(id, {
+        action: "restore",
+        user: userContext,
+        metadata: {
+          title: payload.title,
+          category: payload.category,
+        },
+      });
+    }
   } catch (error) {
     const appErr =
       error instanceof AppError

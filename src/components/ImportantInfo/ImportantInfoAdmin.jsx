@@ -62,11 +62,15 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import UndoIcon from "@mui/icons-material/Undo";
+import RedoIcon from "@mui/icons-material/Redo";
+import HistoryIcon from "@mui/icons-material/History";
 import CircularProgress from "@mui/material/CircularProgress";
 import { DateTimePicker } from "@mui/x-date-pickers-pro";
 
 import LoadingButtonLite from "@/components/inputs/LoadingButtonLite.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
+import { useAuth } from "@/context/AuthContext.jsx";
 import {
   createImportantInfo,
   updateImportantInfo,
@@ -78,6 +82,13 @@ import {
   uploadMultipleImages,
   deleteImportantInfoImage,
 } from "@/services/importantInfoImageService.js";
+import {
+  CommandHistory,
+  // TODO: Integrate command pattern into CRUD operations
+  // CreateItemCommand,
+  // UpdateItemCommand,
+  // DeleteItemCommand,
+} from "@/services/commandHistory.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime, toDayjs } from "@/utils/time.js";
 import {
@@ -87,6 +98,7 @@ import {
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
 import SmsSendDialog from "./SmsSendDialog.jsx";
+import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
 
 const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
 
@@ -449,10 +461,20 @@ function matchesQuery(row, query) {
 
 export default function ImportantInfoAdmin({ items, loading, error }) {
   const { show } = useSnack();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState("create");
   const [formValues, setFormValues] = useState(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
+
+  // Command history for undo/redo
+  const [commandHistory] = useState(() => new CommandHistory(50));
+  const [historyState, setHistoryState] = useState(commandHistory.getState());
+
+  // Change history dialog
+  const [changeHistoryOpen, setChangeHistoryOpen] = useState(false);
+  const [changeHistoryItemId, setChangeHistoryItemId] = useState(null);
+  const [changeHistoryItemTitle, setChangeHistoryItemTitle] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [pendingMap, setPendingMap] = useState({});
   const [query, setQuery] = useState("");
@@ -705,9 +727,80 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setFrozenOrder(null);
   }, [saving, uploading, dialogMode, formValues, activeId, draftSaveTimeout]);
 
+  // Helper to get user context for audit logging
+  // TODO: Use this in CRUD operations for audit log
+  const getUserContext = useCallback(() => {
+    if (!user) return null;
+    return {
+      uid: user.uid || "unknown",
+      email: user.email || "unknown",
+      displayName: user.displayName || user.email || "Unknown User",
+      role: user.role || "unknown",
+    };
+  }, [user]);
+
+  // Suppress unused var warning - will be used when command pattern is integrated
+  void getUserContext;
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(async () => {
+    if (!commandHistory.canUndo()) return;
+    try {
+      await commandHistory.undo();
+      setHistoryState(commandHistory.getState());
+      show("Undone successfully.", "info");
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleUndo" });
+      show("Failed to undo.", "error");
+    }
+  }, [commandHistory, show]);
+
+  const handleRedo = useCallback(async () => {
+    if (!commandHistory.canRedo()) return;
+    try {
+      await commandHistory.redo();
+      setHistoryState(commandHistory.getState());
+      show("Redone successfully.", "info");
+    } catch (err) {
+      logError(err, { where: "ImportantInfoAdmin.handleRedo" });
+      show("Failed to redo.", "error");
+    }
+  }, [commandHistory, show]);
+
+  // Change history handlers
+  const handleOpenChangeHistory = useCallback((item) => {
+    if (!item?.id) return;
+    setChangeHistoryItemId(item.id);
+    setChangeHistoryItemTitle(item.title || "Untitled");
+    setChangeHistoryOpen(true);
+  }, []);
+
+  const handleCloseChangeHistory = useCallback(() => {
+    setChangeHistoryOpen(false);
+    setChangeHistoryItemId(null);
+    setChangeHistoryItemTitle(null);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ctrl+Z = Undo (works even in input fields)
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Ctrl+Shift+Z or Ctrl+Y = Redo (works even in input fields)
+      if (
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z") ||
+        ((e.ctrlKey || e.metaKey) && e.key === "y")
+      ) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
       // Ignore if user is typing in an input
       if (
         e.target.tagName === "INPUT" ||
@@ -752,7 +845,14 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [openCreate, selectedIds.length, dialogOpen, closeDialog]);
+  }, [
+    openCreate,
+    selectedIds.length,
+    dialogOpen,
+    closeDialog,
+    handleUndo,
+    handleRedo,
+  ]);
 
   const handleFieldChange = useCallback(
     (field, value) => {
@@ -1324,6 +1424,46 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           >
             New Item
           </Button>
+          <Tooltip
+            title={
+              historyState.undoDescription
+                ? `Undo: ${historyState.undoDescription}`
+                : "Nothing to undo"
+            }
+          >
+            <span>
+              <IconButton
+                onClick={handleUndo}
+                disabled={!historyState.canUndo}
+                sx={{
+                  color: historyState.canUndo ? "#b7ffb7" : "text.disabled",
+                }}
+                aria-label="Undo last action (Ctrl+Z)"
+              >
+                <UndoIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip
+            title={
+              historyState.redoDescription
+                ? `Redo: ${historyState.redoDescription}`
+                : "Nothing to redo"
+            }
+          >
+            <span>
+              <IconButton
+                onClick={handleRedo}
+                disabled={!historyState.canRedo}
+                sx={{
+                  color: historyState.canRedo ? "#b7ffb7" : "text.disabled",
+                }}
+                aria-label="Redo last action (Ctrl+Y or Ctrl+Shift+Z)"
+              >
+                <RedoIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
           <Button
             variant="outlined"
             onClick={() => setImportDialogOpen(true)}
@@ -1901,6 +2041,19 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                                 </IconButton>
                               </span>
                             </Tooltip>
+                            <Tooltip title="Change History">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleOpenChangeHistory(row)}
+                                  disabled={disabled}
+                                  sx={{ color: "#ffdca8" }}
+                                  aria-label={`View change history for ${row?.title || "important info"}`}
+                                >
+                                  <HistoryIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                             <Tooltip title="Delete">
                               <span>
                                 <IconButton
@@ -2453,6 +2606,13 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
         onClose={handleCloseSmsDialog}
         onSuccess={handleSmsSent}
         item={selectedItemForSms}
+      />
+
+      <ChangeHistoryDialog
+        open={changeHistoryOpen}
+        onClose={handleCloseChangeHistory}
+        itemId={changeHistoryItemId}
+        itemTitle={changeHistoryItemTitle}
       />
 
       <Popover
