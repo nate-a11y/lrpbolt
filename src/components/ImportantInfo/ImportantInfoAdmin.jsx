@@ -479,44 +479,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     }
   }, [dialogOpen]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ignore if user is typing in an input
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
-        // Allow "/" to focus search even in inputs
-        if (e.key === "/" && e.target.tagName !== "INPUT") {
-          e.preventDefault();
-          document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
-        }
-        return;
-      }
-
-      // N = New Item
-      if (e.key === "n" || e.key === "N") {
-        e.preventDefault();
-        openCreate();
-      }
-
-      // / = Focus Search
-      if (e.key === "/") {
-        e.preventDefault();
-        document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
-      }
-
-      // Escape = Clear selection or close dialog
-      if (e.key === "Escape") {
-        if (selectedIds.length > 0) {
-          setSelectedIds([]);
-        } else if (dialogOpen) {
-          closeDialog();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [openCreate, selectedIds.length, dialogOpen, closeDialog]);
   const showEmpty = !showError && !loading && !hasRows;
 
   const categories = useMemo(() => {
@@ -712,6 +674,45 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     // Unfreeze list order to resume normal sorting
     setFrozenOrder(null);
   }, [saving, uploading, dialogMode, formValues, activeId, draftSaveTimeout]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+        // Allow "/" to focus search even in inputs
+        if (e.key === "/" && e.target.tagName !== "INPUT") {
+          e.preventDefault();
+          document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+        }
+        return;
+      }
+
+      // N = New Item
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        openCreate();
+      }
+
+      // / = Focus Search
+      if (e.key === "/") {
+        e.preventDefault();
+        document.querySelector('input[aria-label="Search important info admin list"]')?.focus();
+      }
+
+      // Escape = Clear selection or close dialog
+      if (e.key === "Escape") {
+        if (selectedIds.length > 0) {
+          setSelectedIds([]);
+        } else if (dialogOpen) {
+          closeDialog();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [openCreate, selectedIds.length, dialogOpen, closeDialog]);
 
   const handleFieldChange = useCallback((field, value) => {
     setFormValues((prev) => {
