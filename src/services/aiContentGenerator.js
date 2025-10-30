@@ -137,7 +137,7 @@ async function callOpenAI(settings, systemPrompt, userPrompt) {
       sms: parsed.sms || "",
       blurb: parsed.blurb || "",
     };
-  } catch (_err) {
+  } catch {
     console.error("Failed to parse AI response:", content);
     throw new Error("Failed to parse AI response");
   }
