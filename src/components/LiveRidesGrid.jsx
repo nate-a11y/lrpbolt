@@ -31,6 +31,10 @@ export default function LiveRidesGrid() {
   const { rows: baseRows, loading, error } = useTripsByState(TRIP_STATES.OPEN);
   const { user } = useAuth();
   const driverId = user?.uid ?? null;
+  const driverName =
+    user?.displayName ||
+    user?.email ||
+    (driverId ? `Driver ${driverId}` : "Unknown");
   const [snack, setSnack] = useState(null);
   const [pendingClaims, setPendingClaims] = useState(() => new Set());
   const [undoPending, setUndoPending] = useState(false);
@@ -104,6 +108,7 @@ export default function LiveRidesGrid() {
       await driverClaimRide(rideId, driverId, {
         userId: driverId,
         vehicleId: ride?.vehicleId ?? ride?.vehicle?.id ?? null,
+        driverName,
       });
       await notifyRideEvent("claim", { rideId, driverId });
       playFeedbackSound();

@@ -210,7 +210,7 @@ export function claimOpenRide(rideId, { driverId, userId = "system" }) {
 export async function driverClaimRide(
   rideId,
   driverId,
-  { vehicleId = null, userId = "system" } = {},
+  { vehicleId = null, userId = "system", driverName = null } = {},
 ) {
   const rideRef = doc(db, RIDES_COLLECTION, rideId);
   const liveRef = LIVE_RIDES_COLLECTION
@@ -254,6 +254,7 @@ export async function driverClaimRide(
         ...next,
         id: rideId,
         rideId,
+        claimedByName: driverName || driverId,
         createdAt:
           data?.createdAt || data?.created_at || data?.created || timestamp,
         updatedAt: timestamp,
