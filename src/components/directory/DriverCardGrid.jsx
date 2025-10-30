@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import { Box, Pagination, Stack, TextField, Typography } from "@mui/material";
@@ -66,7 +64,13 @@ export default function DriverCardGrid({
       {/* Header with search */}
       <Stack spacing={2} sx={{ mb: 2.5 }}>
         {title && (
-          <Typography variant="h6" sx={{ fontWeight: 700, color: "#b7ffb7" }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              color: (t) => alpha(t.palette.primary.main, 0.6),
+            }}
+          >
             {title}
           </Typography>
         )}

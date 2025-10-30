@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Button, Chip, IconButton, Stack, Tooltip } from "@mui/material";
@@ -99,10 +97,10 @@ export default function LiveRideCard({
               px: 2.5,
               py: 0.75,
               fontWeight: 700,
-              color: "#060606",
+              color: "primary.contrastText",
               "&:hover": { filter: "brightness(1.08)" },
               "&.Mui-disabled": {
-                color: "rgba(255,255,255,0.4)",
+                color: (t) => alpha(t.palette.common.white, 0.4),
                 backgroundColor: (t) => alpha(t.palette.common.white, 0.08),
               },
             }}

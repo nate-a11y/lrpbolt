@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import React, {
   useCallback,
   useEffect,
@@ -384,7 +382,7 @@ export default function ClaimRides() {
                 px: 3,
                 py: 0.9,
                 fontWeight: 700,
-                color: "#060606",
+                color: "primary.contrastText",
                 minWidth: 160,
                 "&:hover": { filter: "brightness(1.08)" },
               }}

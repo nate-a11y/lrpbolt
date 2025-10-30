@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import React, { useMemo } from "react";
 import {
@@ -221,15 +220,16 @@ export default function RideCard({
           overflow: "visible", // ⬅️ allow content/hover lift to render freely
           zIndex: 2, // keep surface above decorative backgrounds
           background: "transparent",
-          boxShadow: selected
-            ? "0 18px 34px rgba(76,187,23,0.28)"
-            : "0 14px 26px rgba(0,0,0,0.45)",
+          boxShadow: (t) =>
+            selected
+              ? `0 18px 34px ${alpha(t.palette.primary.main, 0.28)}`
+              : `0 14px 26px ${alpha(t.palette.common.black, 0.45)}`,
           transition:
             "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
           willChange: "transform",
           "&:hover": {
             transform: "translateY(-3px) translateZ(0)",
-            boxShadow: "0 18px 36px rgba(0,0,0,0.55)",
+            boxShadow: (t) => `0 18px 36px ${alpha(t.palette.common.black, 0.55)}`,
           },
           "&::before": {
             content: '""',
@@ -243,8 +243,8 @@ export default function RideCard({
                 t.palette.primary.main,
                 0,
               )} 60%)`,
-            WebkitMask:
-              "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+            WebkitMask: (t) =>
+              `linear-gradient(${t.palette.common.black} 0 0) content-box, linear-gradient(${t.palette.common.black} 0 0)`,
             WebkitMaskComposite: "xor",
             maskComposite: "exclude",
           },
@@ -314,7 +314,7 @@ export default function RideCard({
                   variant="overline"
                   sx={{
                     letterSpacing: 1.1,
-                    color: "rgba(255,255,255,0.64)",
+                    color: (t) => alpha(t.palette.common.white, 0.64),
                     textTransform: "uppercase",
                   }}
                 >
@@ -405,10 +405,10 @@ export default function RideCard({
                       normalizedStatus === "open"
                         ? alpha(t.palette.primary.main, 0.16)
                         : alpha(t.palette.common.white, 0.06),
-                    color:
+                    color: (t) =>
                       normalizedStatus === "open"
-                        ? "primary.main"
-                        : "rgba(255,255,255,0.7)",
+                        ? t.palette.primary.main
+                        : alpha(t.palette.common.white, 0.7),
                     border: (t) =>
                       `1px solid ${
                         normalizedStatus === "open"
@@ -504,12 +504,12 @@ export default function RideCard({
                     px: 3,
                     py: 1,
                     alignSelf: { xs: "stretch", sm: "center" },
-                    boxShadow: "0 0 0 0 rgba(0,0,0,0)",
-                    color: "#060606",
+                    boxShadow: (t) => `0 0 0 0 ${alpha(t.palette.common.black, 0)}`,
+                    color: (t) => t.palette.common.black,
                     fontWeight: 700,
                     "&:hover": { filter: "brightness(1.08)" },
                     "&.Mui-disabled": {
-                      color: "rgba(255,255,255,0.4)",
+                      color: (t) => alpha(t.palette.common.white, 0.4),
                       backgroundColor: (t) =>
                         alpha(t.palette.common.white, 0.08),
                     },

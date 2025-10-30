@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import React, { useState, useCallback, useEffect } from "react";
 import {
@@ -109,7 +108,7 @@ export default function LrpGridToolbar(props = {}) {
           bgcolor: (t) => t.palette.background.paper,
           borderBottom: (t) => `1px solid ${t.palette.divider}`,
           "& .MuiButton-root, & .MuiIconButton-root, & .MuiInputBase-root": {
-            color: "rgba(255,255,255,0.92)",
+            color: (t) => alpha(t.palette.common.white, 0.92),
           },
           "& .MuiSvgIcon-root": { color: (t) => t.palette.primary.main },
         }}

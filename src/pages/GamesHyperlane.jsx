@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -562,7 +560,7 @@ export default function GamesHyperlane() {
 
               <Typography variant="body2" sx={{ opacity: 0.85 }}>
                 Controls: ← / → or tap the on-screen pads. Grab neon rings,
-                dodge red blocks, and chase the hyperlane leaderboard.
+                dodge red blocks, and chase the hyperlane leaderboard. {/* allow-color-literal */}
               </Typography>
 
               <Stack

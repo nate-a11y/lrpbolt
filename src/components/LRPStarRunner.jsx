@@ -1,5 +1,4 @@
 /* eslint-disable react/no-unknown-property */
-// allow-color-literal-file
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -162,6 +161,8 @@ function Scene({
   scoreBumpRef,
   play,
   primaryColor,
+  fogColor,
+  laneColor,
 }) {
   useFrame(() => {
     const target = runningRef.current ? 1 : 0;
@@ -172,7 +173,7 @@ function Scene({
     <>
       <ambientLight intensity={0.45} />
       <pointLight position={[10, 10, 10]} />
-      <fog attach="fog" args={["#060606", 5, 32]} />
+      <fog attach="fog" args={[fogColor, 5, 32]} />
       <Stars radius={80} depth={30} count={1500} factor={3} fade speed={0.6} />
       <Ship xRef={shipXRef} color={primaryColor} />
       <Orbs
@@ -186,7 +187,7 @@ function Scene({
       {[-3, 0, 3].map((x) => (
         <mesh key={x} position={[x, 0, -6]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[1.2, 40]} />
-          <meshBasicMaterial color="rgba(255,255,255,0.06)" transparent />
+          <meshBasicMaterial color={laneColor} transparent />
         </mesh>
       ))}
     </>
@@ -198,6 +199,8 @@ export default function LRPStarRunner() {
   const theme = useTheme();
   const primaryColor = theme.palette.primary.main;
   const primaryContrast = theme.palette.getContrastText(primaryColor);
+  const fogColor = theme.palette.background.default;
+  const laneColor = alpha(theme.palette.common.white, 0.06);
   const [score, setScore] = useState(0);
   const [running, setRunning] = useState(false);
 
@@ -306,6 +309,8 @@ export default function LRPStarRunner() {
             scoreBumpRef={scoreBumpRef}
             play={play}
             primaryColor={primaryColor}
+            fogColor={fogColor}
+            laneColor={laneColor}
           />
         </Box>
       </CanvasShell>

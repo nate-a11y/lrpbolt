@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useMemo } from "react";
 import PropTypes from "prop-types";
 import {
@@ -101,14 +99,15 @@ export default function BaseRideCard({
                 ? t.palette.primary.light
                 : t.palette.divider,
           border: 1,
-          boxShadow: selected
-            ? "0 8px 24px rgba(76,187,23,0.25)"
-            : "0 4px 12px rgba(0,0,0,0.15)",
+          boxShadow: (t) =>
+            selected
+              ? `0 8px 24px ${alpha(t.palette.primary.main, 0.25)}`
+              : `0 4px 12px ${alpha(t.palette.common.black, 0.15)}`,
           transition:
             "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
           "&:hover": {
             transform: "translateY(-2px)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            boxShadow: (t) => `0 8px 24px ${alpha(t.palette.common.black, 0.25)}`,
           },
         }}
       >

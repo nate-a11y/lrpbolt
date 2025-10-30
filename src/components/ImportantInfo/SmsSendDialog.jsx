@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
@@ -349,7 +347,7 @@ export default function SmsSendDialog({ open, onClose, item, onSuccess }) {
           variant="contained"
           sx={{
             bgcolor: (t) => t.palette.primary.main,
-            "&:hover": { bgcolor: "#3aa40f" },
+            "&:hover": { bgcolor: (t) => t.palette.primary.dark },
           }}
           aria-label="Send SMS to entered phone number"
         >

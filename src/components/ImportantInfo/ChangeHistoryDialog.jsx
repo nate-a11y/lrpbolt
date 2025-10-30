@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
@@ -16,6 +14,7 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -24,20 +23,37 @@ import logError from "@/utils/logError.js";
 
 dayjs.extend(relativeTime);
 
-// Action colors for visual distinction
-const ACTION_COLORS = {
-  create: { bg: "#1a3d1a", border: "#4caf50", text: "#81c784" },
-  update: { bg: "#1a1a3d", border: "#3f51b5", text: "#9fa8da" },
-  delete: { bg: "#3d1a1a", border: "#f44336", text: "#e57373" },
-  restore: { bg: "#2a1f11", border: "#ff9800", text: "#ffdca8" },
-};
+// Action colors for visual distinction (using theme-based colors)
+const getActionColors = (theme) => ({
+  create: {
+    bg: theme.palette.primary.dark,
+    border: theme.palette.primary.main,
+    text: alpha(theme.palette.primary.main, 0.6),
+  },
+  update: {
+    bg: alpha(theme.palette.info.dark, 0.5),
+    border: theme.palette.info.main,
+    text: theme.palette.info.light,
+  },
+  delete: {
+    bg: alpha(theme.palette.error.dark, 0.5),
+    border: theme.palette.error.main,
+    text: theme.palette.error.light,
+  },
+  restore: {
+    bg: alpha(theme.palette.warning.dark, 0.5),
+    border: theme.palette.warning.main,
+    text: alpha(theme.palette.warning.main, 0.4),
+  },
+});
 
-function getActionColor(action) {
+function getActionColor(action, theme) {
+  const colors = getActionColors(theme);
   return (
-    ACTION_COLORS[action] || {
-      bg: "#2a2a2a",
-      border: "#757575",
-      text: "#bdbdbd",
+    colors[action] || {
+      bg: alpha(theme.palette.grey[800], 0.5),
+      border: theme.palette.grey[600],
+      text: theme.palette.grey[400],
     }
   );
 }
@@ -65,30 +81,38 @@ function renderChanges(changes) {
         <Box key={field} sx={{ mb: 0.5 }}>
           <Typography
             variant="caption"
+            component="div"
             sx={{
               fontFamily: "monospace",
               color: (t) => t.palette.text.secondary,
             }}
           >
-            <strong>{field}:</strong>{" "}
+            <Box component="strong">{field}:</Box>{" "}
             {change.from !== undefined && change.from !== null ? (
-              <span style={{ textDecoration: "line-through", opacity: 0.7 }}>
+              <Box
+                component="span"
+                sx={{ textDecoration: "line-through", opacity: 0.7 }}
+              >
                 {typeof change.from === "object"
                   ? JSON.stringify(change.from)
                   : String(change.from)}
-              </span>
+              </Box>
             ) : (
-              <span style={{ opacity: 0.5 }}>(empty)</span>
+              <Box component="span" sx={{ opacity: 0.5 }}>
+                (empty)
+              </Box>
             )}{" "}
             →{" "}
             {change.to !== undefined && change.to !== null ? (
-              <span style={{ color: "#81c784" }}>
+              <Box component="span" sx={{ color: (t) => t.palette.success.light }}>
                 {typeof change.to === "object"
                   ? JSON.stringify(change.to)
                   : String(change.to)}
-              </span>
+              </Box>
             ) : (
-              <span style={{ opacity: 0.5 }}>(empty)</span>
+              <Box component="span" sx={{ opacity: 0.5 }}>
+                (empty)
+              </Box>
             )}
           </Typography>
         </Box>
@@ -167,7 +191,13 @@ export default function ChangeHistoryDialog({
             <CircularProgress color="inherit" />
           </Box>
         ) : error ? (
-          <Alert severity="error" sx={{ bgcolor: "#2a1111", color: "#ffb4b4" }}>
+          <Alert
+            severity="error"
+            sx={{
+              bgcolor: (t) => alpha(t.palette.error.dark, 0.9),
+              color: (t) => alpha(t.palette.error.main, 0.5),
+            }}
+          >
             {error}
           </Alert>
         ) : history.length === 0 ? (
@@ -179,7 +209,6 @@ export default function ChangeHistoryDialog({
         ) : (
           <Stack spacing={2}>
             {history.map((entry, index) => {
-              const actionColor = getActionColor(entry.action);
               const timestamp = formatTimestamp(entry.timestamp);
               const fullTimestamp = formatFullTimestamp(entry.timestamp);
               const user =
@@ -198,12 +227,15 @@ export default function ChangeHistoryDialog({
                       <Chip
                         size="small"
                         label={entry.action}
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: actionColor.bg,
-                          color: actionColor.text,
-                          border: `1px solid ${actionColor.border}`,
-                          textTransform: "capitalize",
+                        sx={(t) => {
+                          const actionColor = getActionColor(entry.action, t);
+                          return {
+                            fontWeight: 600,
+                            bgcolor: actionColor.bg,
+                            color: actionColor.text,
+                            border: `1px solid ${actionColor.border}`,
+                            textTransform: "capitalize",
+                          };
                         }}
                       />
                       <Typography variant="body2">
@@ -264,7 +296,7 @@ export default function ChangeHistoryDialog({
           variant="outlined"
           sx={{
             borderColor: (t) => t.palette.primary.main,
-            color: "#b7ffb7",
+            color: (t) => alpha(t.palette.primary.main, 0.6),
           }}
         >
           Refresh

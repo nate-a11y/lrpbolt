@@ -1,9 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 // src/components/BlackoutOverlay.jsx
-// allow-color-literal-file
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Typography, Button, Fade, CircularProgress } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import LockIcon from "@mui/icons-material/Lock";
 import HourglassBottomIcon from "@mui/icons-material/HourglassBottom";
 
@@ -97,7 +97,9 @@ export default function BlackoutOverlay({
           borderRadius: 2,
           backdropFilter: "blur(6px)",
           bgcolor: (t) =>
-            t.palette.mode === "dark" ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.60)",
+            t.palette.mode === "dark"
+              ? alpha(t.palette.common.black, 0.72)
+              : alpha(t.palette.common.black, 0.6),
           color: (t) => t.palette.getContrastText(t.palette.background.default),
           p: 2,
           pointerEvents: "none",
@@ -112,12 +114,12 @@ export default function BlackoutOverlay({
               borderRadius: 3,
               bgcolor: (t) =>
                 t.palette.mode === "dark"
-                  ? "rgba(18,18,18,0.85)"
-                  : "rgba(255,255,255,0.12)",
+                  ? alpha(t.palette.background.paper, 0.85)
+                  : alpha(t.palette.common.white, 0.12),
               boxShadow: (t) =>
                 t.palette.mode === "dark"
-                  ? "0 10px 30px rgba(0,0,0,0.6)"
-                  : "0 10px 30px rgba(0,0,0,0.4)",
+                  ? `0 10px 30px ${alpha(t.palette.common.black, 0.6)}`
+                  : `0 10px 30px ${alpha(t.palette.common.black, 0.4)}`,
             }}
           >
             <LockIcon
@@ -125,7 +127,8 @@ export default function BlackoutOverlay({
                 fontSize: 64,
                 mb: 1,
                 color: (t) => t.palette.warning.main,
-                filter: "drop-shadow(0 0 8px rgba(255,193,7,0.7))",
+                filter: (t) =>
+                  `drop-shadow(0 0 8px ${alpha(t.palette.warning.main, 0.7)})`,
               }}
             />
             <Typography variant="h5" fontWeight={800} sx={{ mb: 0.5 }}>

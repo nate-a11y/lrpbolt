@@ -1,5 +1,4 @@
 /* Proprietary and confidential. See LICENSE. */
-// allow-color-literal-file
 
 import { useMemo, useCallback, memo } from "react";
 import {
@@ -167,7 +166,9 @@ const DriverSelector = ({
           label="Locked"
           size="small"
           sx={{
-            backgroundColor: isDark ? "#555" : "#888",
+            backgroundColor: isDark
+              ? theme.palette.grey[600]
+              : theme.palette.grey[500],
             color: "common.white",
           }}
         />

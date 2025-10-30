@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import { useCallback, useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 
@@ -117,7 +115,7 @@ export default function TicketsPage() {
           onClick={handleOpen}
           sx={{
             bgcolor: (t) => t.palette.primary.main,
-            "&:hover": { bgcolor: "#3aa40f" },
+            "&:hover": { bgcolor: (t) => t.palette.primary.dark },
           }}
         >
           New Support Ticket

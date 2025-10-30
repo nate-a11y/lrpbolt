@@ -1,6 +1,5 @@
 /* Proprietary and confidential. See LICENSE. */
 // React & vendor
-// allow-color-literal-file
 
 import * as React from "react";
 import { Box, Divider, Paper, Typography, useTheme } from "@mui/material";
@@ -67,7 +66,7 @@ export default function DriverDirectory({
           sx={{
             fontWeight: 900,
             color: (t) => t.palette.text.primary,
-            textShadow: `0 0 12px rgba(76,187,23,0.6)`,
+            textShadow: (t) => `0 0 12px ${alpha(t.palette.primary.main, 0.6)}`,
           }}
         >
           📇 Driver Directory

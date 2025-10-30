@@ -1,5 +1,3 @@
-// allow-color-literal-file
-
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import {
@@ -94,12 +92,12 @@ export default function DriverCard({ driver, highlight = false }) {
           borderColor: (t) =>
             highlight ? t.palette.primary.light : t.palette.divider,
           border: 1,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          boxShadow: (t) => `0 4px 12px ${alpha(t.palette.common.black, 0.15)}`,
           transition:
             "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
           "&:hover": {
             transform: "translateY(-2px)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            boxShadow: (t) => `0 8px 24px ${alpha(t.palette.common.black, 0.25)}`,
           },
         }}
       >
@@ -139,7 +137,8 @@ export default function DriverCard({ driver, highlight = false }) {
                   sx={{
                     fontWeight: 800,
                     color: (t) => t.palette.text.primary,
-                    textShadow: `0 0 6px rgba(76,187,23,0.45)`,
+                    textShadow: (t) =>
+                      `0 0 6px ${alpha(t.palette.primary.main, 0.45)}`,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
