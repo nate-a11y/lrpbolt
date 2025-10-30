@@ -18,7 +18,7 @@ export function buildRowEditActionsColumn({
   onDelete,
   field = "__actions",
   headerName = "Actions",
-  width = 110,
+  width = 150,
 }) {
   const handleEditClick = (id) => () => {
     setRowModesModel((m) => ({ ...m, [id]: { mode: GridRowModes.Edit } }));
