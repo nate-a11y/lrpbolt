@@ -267,6 +267,83 @@ function shouldEscalateImmediately(message) {
 }
 
 /**
+ * Encode conversation context for Messenger ref parameter
+ */
+function encodeConversationContext(conversationHistory, bookingData = null) {
+  // Build context summary
+  const context = {
+    timestamp: Date.now(),
+    messages: conversationHistory.slice(-6).map((msg) => ({
+      role: msg.role,
+      content: msg.content.substring(0, 200), // Truncate long messages
+    })),
+  };
+
+  // Add booking data if available
+  if (bookingData) {
+    context.booking = {
+      name: bookingData.customer_name,
+      phone: bookingData.customer_phone,
+      pickup: bookingData.pickup_location,
+      dropoff: bookingData.dropoff_location,
+      date: bookingData.trip_date,
+      time: bookingData.trip_time,
+      passengers: bookingData.passenger_count,
+      type: bookingData.trip_type,
+    };
+  }
+
+  const json = JSON.stringify(context);
+
+  // Check if too long for URL parameter (2000 char limit)
+  if (json.length > 1500) {
+    // Return just a timestamp reference - team can check logs
+    return `long_${Date.now()}`;
+  }
+
+  // Encode to base64 (URL-safe)
+  const base64 = Buffer.from(json).toString("base64");
+
+  // Make URL-safe
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+/**
+ * Store escalation context in Firestore for team reference
+ */
+async function storeEscalationContext(
+  conversationHistory,
+  reason,
+  bookingData = null
+) {
+  try {
+    const escalationId = `ESC-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+    await db.collection("escalations").doc(escalationId).set({
+      escalationId,
+      conversationHistory: conversationHistory.slice(-10),
+      reason,
+      bookingData: bookingData || null,
+      timestamp: new Date().toISOString(),
+      status: "pending",
+    });
+
+    logger.info("Escalation context stored", {
+      escalationId,
+      reason,
+      messageCount: conversationHistory.length,
+    });
+
+    return escalationId;
+  } catch (error) {
+    logger.error("Failed to store escalation context", {
+      error: error.message,
+    });
+    return `fallback_${Date.now()}`;
+  }
+}
+
+/**
  * Handle booking submission - stores data and returns confirmation
  */
 async function handleBookingSubmission(bookingData) {
@@ -411,14 +488,27 @@ exports.chatbotQuery = onRequest(
 
       // Check for immediate escalation triggers
       if (shouldEscalateImmediately(message)) {
+        // Store context and build Messenger URL with ref parameter
+        const escalationId = await storeEscalationContext(
+          conversationHistory,
+          "user_trigger"
+        );
+        const contextRef = encodeConversationContext(conversationHistory);
+        const messengerUrl = `${chatbotSettings.facebookPageUrl || "https://m.me/lakeridepros"}?ref=chatbot_${contextRef}`;
+
+        logger.info("Immediate escalation triggered", {
+          escalationId,
+          trigger: message.substring(0, 50),
+        });
+
         return res.status(200).json({
           success: true,
           reply:
             "I want to make sure you get the best help with this. Let me connect you with our team on Messenger where they can assist you directly.",
           shouldEscalate: true,
           escalationReason: "user_trigger",
-          messengerUrl:
-            chatbotSettings.facebookPageUrl || "https://m.me/lakeridepros",
+          escalationId: escalationId,
+          messengerUrl: messengerUrl,
           botName: chatbotSettings.name,
         });
       }
@@ -657,9 +747,22 @@ Your booking reference: ${bookingId}`,
       const validation = validateResponse(message, botReply);
 
       if (!validation.safe) {
+        // Store context and build Messenger URL with ref parameter
+        const conversationSoFar = [
+          ...conversationHistory,
+          { role: "user", content: message },
+        ];
+        const escalationId = await storeEscalationContext(
+          conversationSoFar,
+          validation.reason
+        );
+        const contextRef = encodeConversationContext(conversationSoFar);
+        const messengerUrl = `${chatbotSettings.facebookPageUrl || "https://m.me/lakeridepros"}?ref=chatbot_${contextRef}`;
+
         logger.warn("Blocked potentially inaccurate response", {
           validation_reason: validation.reason,
           original_response: botReply.substring(0, 100),
+          escalationId,
         });
 
         return res.status(200).json({
@@ -668,8 +771,8 @@ Your booking reference: ${bookingId}`,
             "I want to make sure you get accurate information. Let me connect you with our team on Messenger for specific details.",
           shouldEscalate: true,
           escalationReason: validation.reason,
-          messengerUrl:
-            chatbotSettings.facebookPageUrl || "https://m.me/lakeridepros",
+          escalationId: escalationId,
+          messengerUrl: messengerUrl,
           botName: chatbotSettings.name,
         });
       }
@@ -688,10 +791,33 @@ Your booking reference: ${bookingId}`,
         stack: err.stack,
       });
 
-      res.status(500).json({
-        error: "Failed to process chatbot query",
-        message: err.message,
-      });
+      // Try to provide Messenger escalation on error
+      try {
+        const conversationSoFar = [
+          ...conversationHistory,
+          { role: "user", content: message },
+        ];
+        const escalationId = await storeEscalationContext(
+          conversationSoFar,
+          "error"
+        );
+        const contextRef = encodeConversationContext(conversationSoFar);
+        const messengerUrl = `${chatbotSettings?.facebookPageUrl || "https://m.me/lakeridepros"}?ref=chatbot_${contextRef}`;
+
+        res.status(500).json({
+          error: "Failed to process chatbot query",
+          message: err.message,
+          shouldEscalate: true,
+          escalationId: escalationId,
+          messengerUrl: messengerUrl,
+        });
+      } catch (escalationError) {
+        // If even escalation fails, return basic error
+        res.status(500).json({
+          error: "Failed to process chatbot query",
+          message: err.message,
+        });
+      }
     }
   }
 );

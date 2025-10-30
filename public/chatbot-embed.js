@@ -125,7 +125,7 @@
   /**
    * Show Messenger escalation prompt
    */
-  function showMessengerEscalation(messengerUrl, reason) {
+  function showMessengerEscalation(messengerUrl, reason, escalationId) {
     let reasonText = '';
     switch(reason) {
       case 'user_trigger':
@@ -136,6 +136,9 @@
         break;
       case 'claimed_availability':
         reasonText = 'Our team can check availability for you';
+        break;
+      case 'error':
+        reasonText = 'Let me connect you with our team';
         break;
       default:
         reasonText = 'Our team can help you with this';
@@ -149,6 +152,7 @@
         <div class="lrp-escalation-text">
           <div class="lrp-escalation-title">${reasonText}</div>
           <div class="lrp-escalation-subtitle">Continue this conversation on Messenger</div>
+          ${escalationId ? `<div class="lrp-escalation-ref">Ref: ${escapeHtml(escalationId)}</div>` : ''}
         </div>
       </div>
       <button class="lrp-escalation-button" onclick="window.open('${messengerUrl || 'https://m.me/lakeridepros'}', '_blank')">
@@ -600,6 +604,14 @@
         font-size: 13px;
       }
 
+      .lrp-escalation-ref {
+        font-size: 10px;
+        color: #1565c0;
+        opacity: 0.7;
+        font-family: 'Courier New', monospace;
+        margin-top: 4px;
+      }
+
       .lrp-escalation-button {
         width: 100%;
         padding: 12px;
@@ -916,13 +928,17 @@
 
       // Handle escalation to Messenger
       if (data.shouldEscalate) {
-        showMessengerEscalation(data.messengerUrl, data.escalationReason);
+        showMessengerEscalation(data.messengerUrl, data.escalationReason, data.escalationId);
       }
 
     } catch (error) {
       hideLoading();
       addMessage('assistant', 'Sorry, something went wrong. Please try again or reach out on Messenger.');
-      showMessengerEscalation(chatbotSettings.facebookPageUrl || 'https://m.me/lakeridepros', 'error');
+
+      // Try to get messengerUrl from error response
+      const messengerUrl = error.messengerUrl || chatbotSettings.facebookPageUrl || 'https://m.me/lakeridepros';
+      const escalationId = error.escalationId || null;
+      showMessengerEscalation(messengerUrl, 'error', escalationId);
     } finally {
       isLoading = false;
       document.getElementById('lrp-status').textContent = 'Online';
