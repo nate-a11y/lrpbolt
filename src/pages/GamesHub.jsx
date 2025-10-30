@@ -485,9 +485,8 @@ function HyperlanePanel() {
             variant="body2"
             sx={{ opacity: 0.85, fontSize: "0.875rem" }}
           >
-            Controls: ← / → keys or tap. Collect neon rings for +100. Dodge red{" "}
-            {/* allow-color-literal */}
-            blocks and chase the leaderboard!
+            Controls: ← / → keys or tap. Collect neon rings for +100. Dodge
+            danger blocks and chase the leaderboard!
           </Typography>
         </CardContent>
       </Card>
