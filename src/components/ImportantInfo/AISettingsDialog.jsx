@@ -84,7 +84,7 @@ export default function AISettingsDialog({ open, onClose }) {
     if (hasChanges) {
       // eslint-disable-next-line no-alert
       const confirmed = window.confirm(
-        "You have unsaved changes. Are you sure you want to close?"
+        "You have unsaved changes. Are you sure you want to close?",
       );
       if (!confirmed) return;
     }
@@ -121,90 +121,105 @@ export default function AISettingsDialog({ open, onClose }) {
           </Box>
         ) : (
           <Stack spacing={3} sx={{ mt: 1 }}>
-          <Alert
-            severity="info"
-            sx={{
-              bgcolor: (t) => alpha(t.palette.info.dark, 0.5),
-              color: (t) => t.palette.info.light,
-            }}
-          >
-            Configure AI API credentials to automatically generate SMS messages and
-            blurbs from your important info details. Settings are shared across all
-            admin users and stored securely in Firestore.
-          </Alert>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.enabled}
-                onChange={(e) => handleChange("enabled", e.target.checked)}
-              />
-            }
-            label={
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Enable AI Content Generation
-              </Typography>
-            }
-          />
-
-          <FormControl fullWidth size="small">
-            <InputLabel>AI Provider</InputLabel>
-            <Select
-              label="AI Provider"
-              value={settings.provider}
-              onChange={(e) => handleChange("provider", e.target.value)}
-              disabled={!settings.enabled}
+            <Alert
+              severity="info"
+              sx={{
+                bgcolor: (t) => alpha(t.palette.info.dark, 0.5),
+                color: (t) => t.palette.info.light,
+              }}
             >
-              <MenuItem value="openai">OpenAI (ChatGPT)</MenuItem>
-            </Select>
-          </FormControl>
+              Configure AI API credentials to automatically generate SMS
+              messages and blurbs from your important info details. Settings are
+              shared across all admin users and stored securely in Firestore.
+            </Alert>
 
-          {settings.provider === "openai" && (
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={settings.enabled}
+                  onChange={(e) => handleChange("enabled", e.target.checked)}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Enable AI Content Generation
+                </Typography>
+              }
+            />
+
             <FormControl fullWidth size="small">
-              <InputLabel>Model</InputLabel>
+              <InputLabel>AI Provider</InputLabel>
               <Select
-                label="Model"
-                value={settings.model}
-                onChange={(e) => handleChange("model", e.target.value)}
+                label="AI Provider"
+                value={settings.provider}
+                onChange={(e) => handleChange("provider", e.target.value)}
                 disabled={!settings.enabled}
               >
-                <MenuItem value="gpt-4o">GPT-4o (Most Capable)</MenuItem>
-                <MenuItem value="gpt-4o-mini">GPT-4o Mini (Faster, Cheaper)</MenuItem>
-                <MenuItem value="gpt-4-turbo">GPT-4 Turbo</MenuItem>
-                <MenuItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Budget)</MenuItem>
+                <MenuItem value="openai">OpenAI (ChatGPT)</MenuItem>
               </Select>
             </FormControl>
-          )}
 
-          <TextField
-            label="API Key"
-            value={settings.apiKey}
-            onChange={(e) => handleChange("apiKey", e.target.value)}
-            disabled={!settings.enabled}
-            type={showApiKey ? "text" : "password"}
-            fullWidth
-            placeholder="sk-..."
-            helperText={
-              settings.provider === "openai"
-                ? "Get your API key from platform.openai.com/api-keys"
-                : "Enter your API key"
-            }
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    edge="end"
-                    size="small"
-                  >
-                    {showApiKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+            {settings.provider === "openai" && (
+              <FormControl fullWidth size="small">
+                <InputLabel>Model</InputLabel>
+                <Select
+                  label="Model"
+                  value={settings.model}
+                  onChange={(e) => handleChange("model", e.target.value)}
+                  disabled={!settings.enabled}
+                >
+                  <MenuItem value="gpt-4o">GPT-4o (Most Capable)</MenuItem>
+                  <MenuItem value="gpt-4o-mini">
+                    GPT-4o Mini (Faster, Cheaper)
+                  </MenuItem>
+                  <MenuItem value="gpt-4-turbo">GPT-4 Turbo</MenuItem>
+                  <MenuItem value="gpt-3.5-turbo">
+                    GPT-3.5 Turbo (Budget)
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            )}
 
-          {settings.enabled && !settings.apiKey && (
+            <TextField
+              label="API Key"
+              value={settings.apiKey}
+              onChange={(e) => handleChange("apiKey", e.target.value)}
+              disabled={!settings.enabled}
+              type={showApiKey ? "text" : "password"}
+              fullWidth
+              placeholder="sk-..."
+              helperText={
+                settings.provider === "openai"
+                  ? "Get your API key from platform.openai.com/api-keys"
+                  : "Enter your API key"
+              }
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showApiKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            {settings.enabled && !settings.apiKey && (
+              <Alert
+                severity="warning"
+                sx={{
+                  bgcolor: (t) => alpha(t.palette.warning.dark, 0.5),
+                  color: (t) => alpha(t.palette.warning.main, 0.4),
+                }}
+              >
+                Please enter your API key to use AI content generation.
+              </Alert>
+            )}
+
             <Alert
               severity="warning"
               sx={{
@@ -212,27 +227,17 @@ export default function AISettingsDialog({ open, onClose }) {
                 color: (t) => alpha(t.palette.warning.main, 0.4),
               }}
             >
-              Please enter your API key to use AI content generation.
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Important:
+              </Typography>
+              <Typography variant="caption" sx={{ display: "block" }}>
+                Using AI content generation will make API calls to your
+                configured provider. Standard API usage charges will apply to
+                your account. The generated content should be reviewed before
+                sending to guests.
+              </Typography>
             </Alert>
-          )}
-
-          <Alert
-            severity="warning"
-            sx={{
-              bgcolor: (t) => alpha(t.palette.warning.dark, 0.5),
-              color: (t) => alpha(t.palette.warning.main, 0.4),
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Important:
-            </Typography>
-            <Typography variant="caption" sx={{ display: "block" }}>
-              Using AI content generation will make API calls to your configured
-              provider. Standard API usage charges will apply to your account. The
-              generated content should be reviewed before sending to guests.
-            </Typography>
-          </Alert>
-        </Stack>
+          </Stack>
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>

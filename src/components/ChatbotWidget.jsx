@@ -53,11 +53,15 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
   // Use theme default if no custom color provided
   // Ensure we get an actual color value, not a theme path string
   const getEffectiveColor = () => {
-    if (primaryColor && typeof primaryColor === 'string' && primaryColor.startsWith('#')) {
+    if (
+      primaryColor &&
+      typeof primaryColor === "string" &&
+      primaryColor.startsWith("#")
+    ) {
       return primaryColor;
     }
     // Return hardcoded default that matches theme
-    return theme.palette.lrp?.chatbotPrimary || '#4CAF50';
+    return theme.palette.lrp?.chatbotPrimary || "#4CAF50";
   };
   const effectiveColor = getEffectiveColor();
 
@@ -129,7 +133,10 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
           content: m.content,
         }));
 
-      const response = await queryChatbot(userMessage.content, conversationHistory);
+      const response = await queryChatbot(
+        userMessage.content,
+        conversationHistory,
+      );
 
       const botMessage = {
         id: `bot-${Date.now()}`,
@@ -154,7 +161,7 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
         handleSend();
       }
     },
-    [handleSend]
+    [handleSend],
   );
 
   // Position styles
@@ -227,7 +234,11 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                 </Typography>
               </Box>
             </Stack>
-            <IconButton onClick={handleToggle} size="small" sx={{ color: "common.white" }}>
+            <IconButton
+              onClick={handleToggle}
+              size="small"
+              sx={{ color: "common.white" }}
+            >
               <CloseIcon />
             </IconButton>
           </Box>
@@ -245,7 +256,10 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
               {/* Quick Actions - Show before conversation starts */}
               {showQuickActions && messages.length <= 1 && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="caption" sx={{ opacity: 0.7, mb: 1, display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ opacity: 0.7, mb: 1, display: "block" }}
+                  >
                     Quick Actions
                   </Typography>
                   <Stack spacing={1}>
@@ -293,7 +307,8 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                   key={msg.id}
                   sx={{
                     display: "flex",
-                    justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                    justifyContent:
+                      msg.role === "user" ? "flex-end" : "flex-start",
                   }}
                 >
                   <Stack
@@ -305,13 +320,19 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                       sx={{
                         width: 32,
                         height: 32,
-                        bgcolor: msg.role === "user" ? "primary.main" : alpha(effectiveColor, 0.15),
+                        bgcolor:
+                          msg.role === "user"
+                            ? "primary.main"
+                            : alpha(effectiveColor, 0.15),
                       }}
                     >
                       {msg.role === "user" ? (
                         <PersonIcon fontSize="small" />
                       ) : (
-                        <SmartToyIcon fontSize="small" sx={{ color: effectiveColor }} />
+                        <SmartToyIcon
+                          fontSize="small"
+                          sx={{ color: effectiveColor }}
+                        />
                       )}
                     </Avatar>
                     <Paper
@@ -322,11 +343,15 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                           msg.role === "user"
                             ? effectiveColor
                             : (theme) => theme.palette.background.paper,
-                        color: msg.role === "user" ? "common.white" : "text.primary",
+                        color:
+                          msg.role === "user" ? "common.white" : "text.primary",
                         borderRadius: 2,
                       }}
                     >
-                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ whiteSpace: "pre-wrap" }}
+                      >
                         {msg.content}
                       </Typography>
                     </Paper>
@@ -344,7 +369,10 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                         bgcolor: alpha(effectiveColor, 0.15),
                       }}
                     >
-                      <SmartToyIcon fontSize="small" sx={{ color: effectiveColor }} />
+                      <SmartToyIcon
+                        fontSize="small"
+                        sx={{ color: effectiveColor }}
+                      />
                     </Avatar>
                     <Paper
                       elevation={1}
@@ -354,7 +382,10 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
                         borderRadius: 2,
                       }}
                     >
-                      <CircularProgress size={20} sx={{ color: effectiveColor }} />
+                      <CircularProgress
+                        size={20}
+                        sx={{ color: effectiveColor }}
+                      />
                     </Paper>
                   </Stack>
                 </Box>
@@ -362,7 +393,11 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
 
               {error && (
                 <Box sx={{ display: "flex", justifyContent: "center" }}>
-                  <Typography variant="caption" color="error" sx={{ textAlign: "center" }}>
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ textAlign: "center" }}
+                  >
                     {error}
                   </Typography>
                 </Box>
@@ -484,7 +519,12 @@ ChatbotWidget.propTypes = {
     welcomeMessage: PropTypes.string,
     placeholder: PropTypes.string,
     effectiveColor: PropTypes.string,
-    position: PropTypes.oneOf(["bottom-left", "bottom-right", "top-left", "top-right"]),
+    position: PropTypes.oneOf([
+      "bottom-left",
+      "bottom-right",
+      "top-left",
+      "top-right",
+    ]),
   }),
   isPreview: PropTypes.bool,
 };

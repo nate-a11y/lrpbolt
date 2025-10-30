@@ -38,7 +38,9 @@ export async function generateContent(data) {
   const settings = await getAISettings();
 
   if (!settings.enabled || !settings.apiKey) {
-    throw new Error("AI is not configured. Please set up your API key in settings.");
+    throw new Error(
+      "AI is not configured. Please set up your API key in settings.",
+    );
   }
 
   const { title, details, category, phone, url } = data;
@@ -88,7 +90,8 @@ Respond in JSON format:
   } catch (err) {
     console.error("AI generation failed:", err);
     throw new Error(
-      err.message || "Failed to generate content. Please check your API settings and try again."
+      err.message ||
+        "Failed to generate content. Please check your API settings and try again.",
     );
   }
 }
@@ -120,7 +123,8 @@ async function callOpenAI(settings, systemPrompt, userPrompt) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      errorData.error?.message || `OpenAI API error: ${response.status} ${response.statusText}`
+      errorData.error?.message ||
+        `OpenAI API error: ${response.status} ${response.statusText}`,
     );
   }
 

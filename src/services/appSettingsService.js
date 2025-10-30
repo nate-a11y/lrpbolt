@@ -57,7 +57,7 @@ export async function saveAISettings(settings) {
         ...settings,
         updatedAt: new Date().toISOString(),
       },
-      { merge: true }
+      { merge: true },
     );
     return true;
   } catch (err) {
@@ -98,7 +98,7 @@ export function subscribeToAISettings(callback) {
         model: "gpt-4o-mini",
         enabled: false,
       });
-    }
+    },
   );
 
   return unsubscribe;
