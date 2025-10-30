@@ -215,6 +215,13 @@
         transform-origin: bottom right;
       }
 
+      /* Mobile keyboard handling - iOS safe areas */
+      @supports (padding: env(safe-area-inset-bottom)) {
+        .lrp-chatbot-window {
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+      }
+
       .lrp-chatbot-window.hidden {
         opacity: 0;
         transform: scale(0);
@@ -656,6 +663,23 @@
         .lrp-chatbot-window {
           width: calc(100vw - 32px);
           height: calc(100vh - 100px);
+          /* Use dvh (dynamic viewport height) if supported - accounts for keyboard */
+          height: calc(100dvh - 100px);
+          max-height: calc(100dvh - 100px);
+          bottom: 80px;
+        }
+
+        /* When keyboard is visible, adjust positioning */
+        .lrp-chatbot-window.keyboard-visible {
+          height: calc(50vh);
+          max-height: calc(50vh);
+          bottom: 10px;
+        }
+
+        .lrp-chatbot-messages {
+          /* Ensure messages can scroll independently */
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
         }
 
         .lrp-options-buttons {
@@ -976,29 +1000,118 @@
   }
 
   /**
+   * Handle mobile keyboard visibility
+   */
+  function setupKeyboardHandling() {
+    if (!chatWindow) return;
+
+    let initialHeight = window.innerHeight;
+
+    // Detect viewport resize (keyboard opening/closing)
+    window.addEventListener('resize', () => {
+      const currentHeight = window.innerHeight;
+      const diff = initialHeight - currentHeight;
+
+      // If viewport shrunk by more than 150px, keyboard is likely visible
+      if (diff > 150) {
+        chatWindow.classList.add('keyboard-visible');
+      } else {
+        chatWindow.classList.remove('keyboard-visible');
+        initialHeight = currentHeight; // Reset reference
+      }
+    });
+
+    // For iOS: detect focus on input
+    if (inputField) {
+      inputField.addEventListener('focus', () => {
+        // Small delay to allow keyboard to appear
+        setTimeout(() => {
+          const viewportHeight = window.visualViewport?.height || window.innerHeight;
+          const windowHeight = window.innerHeight;
+
+          if (windowHeight - viewportHeight > 150) {
+            chatWindow.classList.add('keyboard-visible');
+          }
+        }, 300);
+      });
+
+      inputField.addEventListener('blur', () => {
+        setTimeout(() => {
+          chatWindow.classList.remove('keyboard-visible');
+        }, 100);
+      });
+    }
+  }
+
+  /**
+   * Check and warn about viewport meta tag
+   */
+  function checkViewportMeta() {
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+
+    if (!viewportMeta) {
+      console.warn(
+        'No viewport meta tag found. For best mobile experience, add:\n' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+      );
+    } else {
+      const content = viewportMeta.getAttribute('content');
+      if (!content.includes('viewport-fit=cover')) {
+        console.info(
+          'Consider adding viewport-fit=cover to your viewport meta tag for better iOS support:\n' +
+          '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+        );
+      }
+    }
+  }
+
+  /**
    * Initialize chatbot
    */
   async function init() {
     try {
+      console.log('Chatbot widget initializing...', {
+        apiUrl,
+        origin: window.location.origin,
+        timestamp: new Date().toISOString()
+      });
+
+      // Check viewport configuration
+      checkViewportMeta();
+
       // Fetch configuration
       const settings = await fetchConfig();
 
       if (!settings || !settings.enabled) {
-        console.log('Chatbot is disabled or not configured');
+        console.log('Chatbot is disabled or not configured', { settings });
         return;
       }
+
+      console.log('Chatbot config loaded successfully', {
+        enabled: settings.enabled,
+        name: settings.name
+      });
 
       chatbotSettings = settings;
 
       // Inject styles
       injectStyles();
+      console.log('Chatbot styles injected');
 
       // Create widget
       createWidget();
+      console.log('Chatbot widget created');
 
-      console.log('Lake Ride Pros chatbot initialized');
+      // Setup mobile keyboard handling
+      setupKeyboardHandling();
+      console.log('Keyboard handling configured');
+
+      console.log('Lake Ride Pros chatbot initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize chatbot:', error);
+      console.error('Failed to initialize chatbot:', error, {
+        message: error.message,
+        stack: error.stack
+      });
     }
   }
 
