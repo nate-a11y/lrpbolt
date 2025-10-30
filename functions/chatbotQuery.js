@@ -99,64 +99,172 @@ async function getKnowledgeBase() {
 /**
  * Function definitions for GPT function calling
  */
-const BOOKING_FUNCTION_DEFINITION = {
+const BOOKING_TOOL = {
   type: "function",
   function: {
-    name: "submitBookingRequest",
-    description: "Submit a ride booking request when the customer has provided all required information. Use this when the customer wants to book a ride and you have collected their details.",
+    name: "submit_booking_request",
+    description: "Submit complete booking request after collecting all required customer information",
     parameters: {
       type: "object",
       properties: {
-        name: {
+        customer_name: {
           type: "string",
-          description: "Customer's full name",
+          description: "Customer's full name (first and last)",
         },
-        email: {
+        customer_email: {
           type: "string",
           description: "Customer's email address",
         },
-        phone: {
+        customer_phone: {
           type: "string",
-          description: "Customer's phone number (10 digits, US format)",
+          description: "Customer's phone number (US format: XXX-XXX-XXXX)",
         },
-        pickupLocation: {
+        pickup_location: {
           type: "string",
-          description: "Pickup location address or description",
+          description: "Detailed pickup address or location",
         },
-        dropoffLocation: {
+        dropoff_location: {
           type: "string",
-          description: "Drop-off location address or description",
+          description: "Detailed dropoff address or location",
         },
-        date: {
+        trip_date: {
           type: "string",
-          description: "Ride date in YYYY-MM-DD format",
+          description: "Trip date in YYYY-MM-DD format",
         },
-        time: {
+        trip_time: {
           type: "string",
-          description: "Ride time in HH:MM format (24-hour)",
+          description: "Pickup time in HH:MM format (24-hour)",
         },
-        passengers: {
+        passenger_count: {
           type: "number",
-          description: "Number of passengers (1-14)",
+          description: "Number of passengers",
         },
-        specialRequests: {
+        trip_type: {
           type: "string",
-          description: "Any special requests or notes (optional)",
+          enum: ["one-way", "round-trip", "hourly", "event", "airport"],
+          description: "Type of trip - REQUIRED",
+        },
+        special_requests: {
+          type: "string",
+          description: "Any special needs or requests (car seats, wheelchair, luggage, etc.)",
         },
       },
       required: [
-        "name",
-        "email",
-        "phone",
-        "pickupLocation",
-        "dropoffLocation",
-        "date",
-        "time",
-        "passengers",
+        "customer_name",
+        "customer_email",
+        "customer_phone",
+        "pickup_location",
+        "dropoff_location",
+        "trip_date",
+        "trip_time",
+        "passenger_count",
+        "trip_type",
       ],
     },
   },
 };
+
+/**
+ * Validate response to catch GPT-4o-mini hallucinations
+ */
+function validateResponse(userMessage, botResponse) {
+  const dangerPatterns = [
+    // Pricing hallucinations
+    {
+      pattern: /\$\d+/i,
+      reason: "mentioned_price",
+      escalate: true,
+    },
+    {
+      pattern: /cost.*\d+.*dollars?/i,
+      reason: "mentioned_price",
+      escalate: true,
+    },
+    {
+      pattern: /price.*\d+/i,
+      reason: "mentioned_price",
+      escalate: true,
+    },
+
+    // Availability claims
+    {
+      pattern: /we (have|don't have) .* available/i,
+      reason: "claimed_availability",
+      escalate: true,
+    },
+    {
+      pattern: /(yes|no),? we can (do|provide)/i,
+      reason: "definitive_commitment",
+      escalate: true,
+    },
+
+    // Invented policies
+    {
+      pattern: /our policy (is|states)/i,
+      reason: "policy_claim",
+      escalate: true,
+    },
+    {
+      pattern: /guaranteed|promise|definitely can/i,
+      reason: "overconfident",
+      escalate: true,
+    },
+  ];
+
+  for (const { pattern, reason, escalate } of dangerPatterns) {
+    if (pattern.test(botResponse)) {
+      logger.warn("Response validation failed", {
+        reason,
+        userMessage: userMessage.substring(0, 100),
+        botResponse: botResponse.substring(0, 100),
+      });
+
+      return {
+        safe: false,
+        reason,
+        shouldEscalate: escalate,
+      };
+    }
+  }
+
+  return { safe: true };
+}
+
+/**
+ * Check if user message should trigger immediate escalation
+ */
+function shouldEscalateImmediately(message) {
+  const escalationTriggers = [
+    // Explicit requests
+    /speak to (a )?human/i,
+    /talk to (a )?person/i,
+    /real person/i,
+    /customer service/i,
+
+    // Urgent situations
+    /emergency/i,
+    /urgent/i,
+    /complaint/i,
+    /problem with/i,
+
+    // Pricing questions
+    /how much/i,
+    /what.*cost/i,
+    /price/i,
+    /rate/i,
+
+    // Complex requests
+    /multiple stops/i,
+    /wedding/i,
+    /corporate event/i,
+    /large group/i,
+    /modify.*booking/i,
+    /change.*reservation/i,
+    /cancel/i,
+  ];
+
+  return escalationTriggers.some((pattern) => pattern.test(message));
+}
 
 /**
  * Handle booking submission - stores data and returns confirmation
@@ -165,14 +273,15 @@ async function handleBookingSubmission(bookingData) {
   try {
     // Validate required fields
     const requiredFields = [
-      "name",
-      "email",
-      "phone",
-      "pickupLocation",
-      "dropoffLocation",
-      "date",
-      "time",
-      "passengers",
+      "customer_name",
+      "customer_email",
+      "customer_phone",
+      "pickup_location",
+      "dropoff_location",
+      "trip_date",
+      "trip_time",
+      "passenger_count",
+      "trip_type",
     ];
 
     for (const field of requiredFields) {
@@ -195,13 +304,14 @@ async function handleBookingSubmission(bookingData) {
 
     logger.info("Booking request created via chatbot", {
       bookingId: bookingRef.id,
-      customerEmail: bookingData.email,
+      customerEmail: bookingData.customer_email,
     });
 
     return {
       success: true,
       bookingId: bookingRef.id,
-      message: "Booking request received successfully. You will receive a confirmation email and SMS shortly.",
+      message:
+        "Booking request received successfully. You will receive a confirmation email and SMS shortly.",
     };
   } catch (error) {
     logger.error("Error handling booking submission", {
@@ -211,7 +321,8 @@ async function handleBookingSubmission(bookingData) {
 
     return {
       success: false,
-      error: "Failed to submit booking request. Please try again or contact us directly.",
+      error:
+        "Failed to submit booking request. Please try again or contact us directly.",
     };
   }
 }
@@ -220,17 +331,16 @@ async function handleBookingSubmission(bookingData) {
  * Query OpenAI API with optional function calling
  */
 async function queryOpenAI(settings, messages, tools = null) {
-  const requestBody = {
+  const body = {
     model: settings.model || "gpt-4o-mini",
     messages,
-    temperature: 0.7,
+    temperature: 0.3, // Lower temp = less creative = fewer hallucinations
     max_tokens: 500,
   };
 
-  // Add tools (function calling) if provided
-  if (tools && tools.length > 0) {
-    requestBody.tools = tools;
-    requestBody.tool_choice = "auto";
+  if (tools) {
+    body.tools = tools;
+    body.tool_choice = "auto";
   }
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -239,7 +349,7 @@ async function queryOpenAI(settings, messages, tools = null) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${settings.apiKey}`,
     },
-    body: JSON.stringify(requestBody),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -249,8 +359,7 @@ async function queryOpenAI(settings, messages, tools = null) {
     );
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message;
+  return await response.json();
 }
 
 /**
@@ -285,7 +394,7 @@ exports.chatbotQuery = onRequest(
         return;
       }
 
-      // Get chatbot settings
+      // Get settings
       const chatbotSettings = await getChatbotSettings();
 
       if (!chatbotSettings.enabled) {
@@ -293,12 +402,25 @@ exports.chatbotQuery = onRequest(
         return;
       }
 
-      // Get AI settings
       const aiSettings = await getAISettings();
 
       if (!aiSettings.enabled || !aiSettings.apiKey) {
         res.status(503).json({ error: "AI is not configured" });
         return;
+      }
+
+      // Check for immediate escalation triggers
+      if (shouldEscalateImmediately(message)) {
+        return res.status(200).json({
+          success: true,
+          reply:
+            "I want to make sure you get the best help with this. Let me connect you with our team on Messenger where they can assist you directly.",
+          shouldEscalate: true,
+          escalationReason: "user_trigger",
+          messengerUrl:
+            chatbotSettings.facebookPageUrl || "https://m.me/lakeridepros",
+          botName: chatbotSettings.name,
+        });
       }
 
       // Get knowledge base
@@ -320,29 +442,57 @@ exports.chatbotQuery = onRequest(
         });
       }
 
-      const systemPrompt = `${chatbotSettings.instructions || "You are a helpful assistant."}
+      const systemPrompt = `You are Johnny, Lake Ride Pros' friendly booking assistant.
 
-${context ? context + "\n\nUse ONLY the information from the knowledge base above to answer questions. If the answer is not in the knowledge base, say 'I don't have that information in my knowledge base.'" : ""}
+YOUR PRIMARY GOAL: Collect booking details naturally through conversation, then submit via submit_booking_request function.
 
-Guidelines:
-- Be concise and helpful
-- Use a friendly, professional tone
-- If you don't know something, admit it
-- Base your answers ONLY on the provided knowledge base
+REQUIRED INFORMATION (must collect all 9):
+1. Customer name (first and last)
+2. Email address
+3. Phone number
+4. Pickup location (get specific address if possible)
+5. Dropoff location (get specific address if possible)
+6. Date of trip
+7. Time of pickup
+8. Number of passengers
+9. Trip type (one-way, round-trip, hourly, event, or airport) - REQUIRED
 
-BOOKING ASSISTANCE:
-- You can help customers book rides by collecting their information conversationally
-- Required information: name, email, phone, pickup location, drop-off location, date, time, number of passengers
-- Optional: special requests
-- When you have all required information, use the submitBookingRequest function
-- Ask for missing information naturally, one or two fields at a time
+OPTIONAL BUT HELPFUL:
+- Special requests (car seats, wheelchair access, extra luggage, coolers, etc.)
 
-CRITICAL GUARDRAILS - NEVER HALLUCINATE:
-- NEVER quote specific prices - always say "Please contact us for current pricing"
-- NEVER confirm availability - always say "We'll check availability and confirm via email/SMS"
-- NEVER make promises about specific vehicles or drivers
-- NEVER guarantee service times or routes
-- Always say "Our team will review your request and contact you to confirm details and pricing"`;
+CONVERSATION STYLE:
+- Be warm and conversational, NOT a boring form
+- Don't ask for everything at once - flow naturally
+- If they volunteer multiple details, acknowledge them all
+- Ask clarifying questions if location/time is vague
+- Use their name once you know it
+- Confirm all details before submitting: "Let me make sure I have everything correct..."
+
+CRITICAL RULES - NEVER BREAK THESE:
+- NEVER discuss specific pricing (say: "Our team will provide you with exact pricing within 24 hours")
+- NEVER guarantee availability (say: "We'll confirm availability right away")
+- NEVER make commitments about services
+- NEVER invent information about policies or services
+- If you're uncertain about ANYTHING, say: "Let me connect you with our team on Messenger for accurate details"
+
+WHEN TO ESCALATE TO MESSENGER (trigger escalation instead of answering):
+- User asks about pricing/costs
+- User asks about real-time availability
+- User mentions complaint, emergency, or urgent issue
+- User explicitly asks to speak to a human
+- Complex requests: multiple stops, weddings, corporate events, large groups (8+ people)
+- Modification of existing bookings
+- Questions outside your knowledge base
+
+ESCALATION RESPONSE:
+When you need to escalate, respond with:
+"I want to make sure you get the best help with this. Let me connect you with our team on Messenger where they can assist you directly."
+
+Then the system will show them the Messenger button.
+
+${context}
+
+Once you have ALL 9 required pieces of information and the customer confirms details, call submit_booking_request.`;
 
       // Build messages array
       const messages = [
@@ -351,15 +501,19 @@ CRITICAL GUARDRAILS - NEVER HALLUCINATE:
         { role: "user", content: message },
       ];
 
-      // Query OpenAI with function calling support
-      const tools = [BOOKING_FUNCTION_DEFINITION];
-      let responseMessage = await queryOpenAI(aiSettings, messages, tools);
+      // Query OpenAI with function calling enabled
+      const data = await queryOpenAI(aiSettings, messages, [BOOKING_TOOL]);
+      const response = data.choices?.[0]?.message;
 
-      // Handle function calls
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        const toolCall = responseMessage.tool_calls[0];
+      if (!response) {
+        throw new Error("No response from API");
+      }
 
-        if (toolCall.function.name === "submitBookingRequest") {
+      // Check if GPT wants to submit booking
+      if (response.tool_calls && response.tool_calls.length > 0) {
+        const toolCall = response.tool_calls[0];
+
+        if (toolCall.function.name === "submit_booking_request") {
           logger.info("GPT requested booking submission", {
             arguments: toolCall.function.arguments,
           });
@@ -374,19 +528,20 @@ CRITICAL GUARDRAILS - NEVER HALLUCINATE:
               arguments: toolCall.function.arguments,
             });
 
-            res.status(200).json({
+            return res.status(200).json({
               success: true,
-              reply: "I apologize, but there was an error processing your booking request. Please try again or contact us directly.",
-              botName: chatbotSettings.name || "Johnny",
+              reply:
+                "I apologize, but there was an error processing your booking request. Please try again or contact us directly.",
+              bookingSubmitted: false,
+              botName: chatbotSettings.name,
             });
-            return;
           }
 
           // Execute the booking submission
           const bookingResult = await handleBookingSubmission(bookingData);
 
           // Add the function call and result to messages
-          messages.push(responseMessage);
+          messages.push(response);
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
@@ -394,15 +549,53 @@ CRITICAL GUARDRAILS - NEVER HALLUCINATE:
           });
 
           // Get final response from GPT
-          responseMessage = await queryOpenAI(aiSettings, messages, tools);
+          const finalData = await queryOpenAI(aiSettings, messages, [
+            BOOKING_TOOL,
+          ]);
+          const finalResponse = finalData.choices?.[0]?.message;
+
+          return res.status(200).json({
+            success: true,
+            reply: finalResponse?.content || "Booking submitted successfully!",
+            bookingSubmitted: bookingResult.success,
+            bookingId: bookingResult.bookingId,
+            shouldEscalate: false,
+            botName: chatbotSettings.name,
+          });
         }
       }
 
-      // Return response
-      res.status(200).json({
+      // Regular conversation response
+      const botReply = response.content;
+
+      // Validate response for hallucinations
+      const validation = validateResponse(message, botReply);
+
+      if (!validation.safe) {
+        logger.warn("Blocked potentially inaccurate response", {
+          validation_reason: validation.reason,
+          original_response: botReply.substring(0, 100),
+        });
+
+        return res.status(200).json({
+          success: true,
+          reply:
+            "I want to make sure you get accurate information. Let me connect you with our team on Messenger for specific details.",
+          shouldEscalate: true,
+          escalationReason: validation.reason,
+          messengerUrl:
+            chatbotSettings.facebookPageUrl || "https://m.me/lakeridepros",
+          botName: chatbotSettings.name,
+        });
+      }
+
+      // Return normal response
+      return res.status(200).json({
         success: true,
-        reply: responseMessage.content || responseMessage,
-        botName: chatbotSettings.name || "Johnny",
+        reply: botReply,
+        bookingSubmitted: false,
+        shouldEscalate: false,
+        botName: chatbotSettings.name,
       });
     } catch (err) {
       logger.error("Chatbot query error", {
