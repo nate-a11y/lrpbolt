@@ -594,6 +594,7 @@ exports.chatbotQuery = onRequest(
    - Number of passengers
    - Trip type (one-way or round-trip)
    - Customer name
+   - Customer email address
    - Customer phone number
    - Any special requests (optional)
 
