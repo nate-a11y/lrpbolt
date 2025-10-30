@@ -97,7 +97,6 @@ import {
 } from "@/constants/importantInfo.js";
 
 import BulkImportDialog from "./BulkImportDialog.jsx";
-import SmsSendDialog from "./SmsSendDialog.jsx";
 import ChangeHistoryDialog from "./ChangeHistoryDialog.jsx";
 
 const DEFAULT_CATEGORY = PROMO_PARTNER_CATEGORIES[0] || "Promotions";
@@ -489,8 +488,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
   const [localLastSmsError, setLocalLastSmsError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [pendingFiles, setPendingFiles] = useState([]);
-  const [smsDialogOpen, setSmsDialogOpen] = useState(false);
-  const [selectedItemForSms, setSelectedItemForSms] = useState(null);
   const [draftStatus, setDraftStatus] = useState("idle"); // idle, saving, saved
   const [draftSaveTimeout, setDraftSaveTimeout] = useState(null);
   const [frozenOrder, setFrozenOrder] = useState(null); // Freeze list order during edit
@@ -647,33 +644,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
     setHealthDialogOpen(false);
   }, [healthLoading]);
 
-  const handleOpenSmsDialog = useCallback((item) => {
-    if (!item) return;
-    setSelectedItemForSms(item);
-    setSmsDialogOpen(true);
-  }, []);
-
-  const handleCloseSmsDialog = useCallback(() => {
-    setSmsDialogOpen(false);
-    setSelectedItemForSms(null);
-  }, []);
-
-  const handleSmsSent = useCallback(
-    async (itemId) => {
-      if (!itemId) return;
-      try {
-        // Increment sendCount
-        const item = rows.find((r) => r.id === itemId);
-        const currentCount =
-          typeof item?.sendCount === "number" ? item.sendCount : 0;
-        await updateImportantInfo(itemId, { sendCount: currentCount + 1 });
-      } catch (err) {
-        logError(err, { where: "ImportantInfoAdmin.handleSmsSent", itemId });
-        // Don't show error to user - this is a background operation
-      }
-    },
-    [rows],
-  );
 
   const handleImportClose = useCallback(
     (result) => {
@@ -2071,21 +2041,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
                             spacing={1}
                             alignItems="center"
                           >
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => handleOpenSmsDialog(row)}
-                              disabled={disabled}
-                              sx={{
-                                borderColor: (t) => t.palette.primary.main,
-                                color: "#b7ffb7",
-                                fontWeight: 600,
-                                textTransform: "none",
-                              }}
-                              aria-label={`Test SMS for ${row?.title || "item"}`}
-                            >
-                              Test SMS
-                            </Button>
                             <Tooltip title="Preview SMS">
                               <span>
                                 <IconButton
@@ -2684,13 +2639,6 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
           </LoadingButtonLite>
         </DialogActions>
       </Dialog>
-
-      <SmsSendDialog
-        open={smsDialogOpen}
-        onClose={handleCloseSmsDialog}
-        onSuccess={handleSmsSent}
-        item={selectedItemForSms}
-      />
 
       <ChangeHistoryDialog
         open={changeHistoryOpen}

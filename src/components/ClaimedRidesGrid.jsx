@@ -1,63 +1,47 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { collection, onSnapshot, writeBatch, doc } from "firebase/firestore";
 import { Paper } from "@mui/material";
-import { useGridApiRef } from "@mui/x-data-grid-pro";
 
 import logError from "@/utils/logError.js";
 import AppError from "@/utils/AppError.js";
 import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBulkDeleteDialog.jsx";
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
 import { normalizeRideArray } from "@/utils/normalizeRide.js";
-import { vfDurationHM, vfText, vfTime } from "@/utils/vf.js";
-import useUsersMap from "@/hooks/useUsersMap.js";
 
-import { buildNativeActionsColumn } from "../columns/nativeActions.jsx";
-import {
-  resolveClaimedAt,
-  resolveClaimedBy,
-  resolveCreatedAt,
-  resolvePickupTime,
-  resolveRideDuration,
-  resolveRideNotes,
-  resolveRideType,
-  resolveStatus,
-  resolveTripId,
-  resolveVehicle,
-} from "../columns/rideColumns.jsx";
 import { deleteRide } from "../services/firestoreService";
 import { db } from "../utils/firebaseInit";
 
+import RideCardGrid from "./rides/RideCardGrid.jsx";
+import ClaimedRideCard from "./rides/ClaimedRideCard.jsx";
 import EditRideDialog from "./EditRideDialog.jsx";
 
 export default function ClaimedRidesGrid() {
   const [rows, setRows] = useState([]);
   const [editRow, setEditRow] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
-  const apiRef = useGridApiRef();
-  const [selectionModel, setSelectionModel] = useState([]);
-  const usersMap = useUsersMap();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    setLoading(true);
     const unsub = onSnapshot(
       collection(db, "claimedRides"),
-      (snap) => setRows(normalizeRideArray(snap.docs)),
+      (snap) => {
+        setRows(normalizeRideArray(snap.docs));
+        setLoading(false);
+        setError(null);
+      },
       (err) => {
         logError(err, {
           where: "ClaimedRidesGrid",
           action: "loadClaimedRides",
         });
+        setError(err);
+        setLoading(false);
       },
     );
     return () => unsub();
   }, []);
-
-  useEffect(() => {
-    if (window?.__GRID_DEBUG__) {
-      // eslint-disable-next-line no-console
-      console.log("[ClaimedRidesGrid sample]", rows?.[0]);
-    }
-  }, [rows]);
 
   const handleEditRide = useCallback((row) => {
     setEditRow(row);
@@ -116,220 +100,64 @@ export default function ClaimedRidesGrid() {
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
     useBulkDelete({ performDelete });
 
-  const handleBulkDelete = useCallback(
-    async (ids) => {
-      const rows = ids
-        .map((id) => apiRef.current?.getRow?.(id))
-        .filter(Boolean);
-      openDialog(ids, rows);
+  const handleDelete = useCallback(
+    async (ride) => {
+      const id = ride?.id;
+      if (!id) return;
+      try {
+        await deleteRide("claimedRides", id);
+      } catch (err) {
+        logError(err, { where: "ClaimedRidesGrid.handleDelete", rideId: id });
+      }
     },
-    [apiRef, openDialog],
-  );
-
-  const sampleRows = useMemo(() => {
-    const sel = apiRef.current?.getSelectedRows?.() || new Map();
-    return selectionModel.map((id) => sel.get(id)).filter(Boolean);
-  }, [apiRef, selectionModel]);
-
-  const initialState = useMemo(
-    () => ({
-      pagination: { paginationModel: { pageSize: 15, page: 0 } },
-      columns: {
-        columnVisibilityModel: {
-          claimedAt: false,
-          status: false,
-        },
-      },
-    }),
     [],
   );
 
-  const actionsColumn = useMemo(
-    () =>
-      buildNativeActionsColumn({
-        onEdit: (_id, row) => handleEditRide(row),
-        onDelete: async (id) => await deleteRide("claimedRides", id),
-      }),
-    [handleEditRide],
-  );
-
-  const renderActions = useCallback(
-    (params) => {
-      const items = actionsColumn.getActions?.(params);
-      if (!items || (Array.isArray(items) && items.length === 0)) return null;
-      return <>{items}</>;
+  const handleBulkDelete = useCallback(
+    async (ids) => {
+      const rowsToDelete = ids.map((id) => rows.find((r) => r?.id === id)).filter(Boolean);
+      openDialog(ids, rowsToDelete);
     },
-    [actionsColumn],
+    [rows, openDialog],
   );
 
-  const deriveClaimedByDisplay = useMemo(
-    () => (value, row) => {
-      const raw = row?._raw || {};
+  const sampleRows = useMemo(() => {
+    return rows.filter((r) => r?.id);
+  }, [rows]);
 
-      const directName =
-        row?.claimedByName || raw?.claimedByName || raw?.ClaimedByName || null;
-      if (directName) return directName;
-
-      const resolved = resolveClaimedBy(value, row);
-      if (resolved && typeof resolved === "object") {
-        const objectName =
-          resolved?.displayName ||
-          resolved?.name ||
-          resolved?.fullName ||
-          resolved?.email ||
-          null;
-        if (objectName) return objectName;
-      }
-
-      const resolvedString =
-        typeof resolved === "string" && resolved.trim() !== ""
-          ? resolved.trim()
-          : null;
-
-      const candidateUid =
-        resolvedString ||
-        row?.claimedBy ||
-        raw?.claimedBy ||
-        raw?.ClaimedBy ||
-        row?.ClaimedBy ||
-        null;
-
-      if (candidateUid) {
-        const uid = String(candidateUid).trim();
-        if (uid && usersMap[uid]) {
-          return usersMap[uid];
-        }
-        return uid || null;
-      }
-
-      return null;
+  const renderCard = useCallback(
+    ({ ride, selected, onSelect }) => {
+      return (
+        <ClaimedRideCard
+          key={ride.id}
+          ride={ride}
+          selected={selected}
+          onSelect={onSelect}
+          onEdit={handleEditRide}
+          onDelete={handleDelete}
+        />
+      );
     },
-    [usersMap],
-  );
-
-  const columns = useMemo(
-    () => [
-      {
-        field: "tripId",
-        headerName: "Trip ID",
-        minWidth: 140,
-        flex: 1,
-        valueGetter: resolveTripId,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "pickupTime",
-        headerName: "Pickup",
-        minWidth: 160,
-        flex: 1,
-        valueGetter: resolvePickupTime,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "rideDuration",
-        headerName: "Duration",
-        minWidth: 120,
-        flex: 0.6,
-        valueGetter: resolveRideDuration,
-        valueFormatter: vfDurationHM,
-      },
-      {
-        field: "rideType",
-        headerName: "Type",
-        minWidth: 120,
-        flex: 0.7,
-        valueGetter: resolveRideType,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "vehicle",
-        headerName: "Vehicle",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveVehicle,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "rideNotes",
-        headerName: "Notes",
-        minWidth: 180,
-        flex: 1,
-        valueGetter: resolveRideNotes,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "createdAt",
-        headerName: "Created",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveCreatedAt,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "claimedBy",
-        headerName: "Claimed By",
-        minWidth: 140,
-        flex: 0.8,
-        valueGetter: deriveClaimedByDisplay,
-        renderCell: (params) =>
-          deriveClaimedByDisplay(params?.value, params?.row) || "N/A",
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "claimedAt",
-        headerName: "Claimed At",
-        minWidth: 160,
-        flex: 0.9,
-        valueGetter: resolveClaimedAt,
-        valueFormatter: vfTime,
-      },
-      {
-        field: "status",
-        headerName: "Status",
-        minWidth: 120,
-        flex: 0.7,
-        valueGetter: resolveStatus,
-        valueFormatter: (value) => vfText(value, null, null, null, "N/A"),
-      },
-      {
-        field: "__actions",
-        headerName: "Actions",
-        minWidth: 120,
-        sortable: false,
-        renderCell: renderActions,
-      },
-    ],
-    [deriveClaimedByDisplay, renderActions],
+    [handleEditRide, handleDelete],
   );
 
   return (
     <>
-      <Paper sx={{ width: "100%", display: "flex", flexDirection: "column" }}>
-        <LrpDataGridPro
-          id="claimed-grid"
-          rows={rows}
-          columns={columns}
-          getRowId={(row) => row?.id ?? null}
-          checkboxSelection
-          disableRowSelectionOnClick
-          apiRef={apiRef}
-          rowSelectionModel={selectionModel}
-          onRowSelectionModelChange={(m) => setSelectionModel(m)}
-          initialState={initialState}
-          pageSizeOptions={[15, 30, 60]}
-          slotProps={{
-            toolbar: {
-              onDeleteSelected: handleBulkDelete,
-              quickFilterPlaceholder: "Search rides",
-            },
-          }}
-          density="compact"
-          autoHeight={false}
-          sx={{ minHeight: 420 }}
+      <Paper sx={{ width: "100%", p: 2 }}>
+        <RideCardGrid
+          rides={rows}
+          renderCard={renderCard}
+          loading={loading}
+          error={error}
+          onBulkDelete={handleBulkDelete}
+          searchPlaceholder="Search claimed rides..."
+          title="Claimed Rides"
+          emptyMessage="No claimed rides"
+          pageSize={12}
         />
         <ConfirmBulkDeleteDialog
           open={dialogOpen}
-          total={selectionModel.length}
+          total={sampleRows.length}
           deleting={deleting}
           onClose={closeDialog}
           onConfirm={onConfirm}

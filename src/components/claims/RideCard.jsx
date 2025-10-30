@@ -9,8 +9,6 @@ import {
   CardActions,
   CardContent,
   Chip,
-  Collapse,
-  Divider,
   Stack,
   Typography,
   Tooltip,
@@ -23,7 +21,7 @@ import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import BoltIcon from "@mui/icons-material/Bolt";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
-// Build a clean summary + extra details without duplicates.
+// Build blurb and details for ExpandableDetails component
 function buildDetails(ride = {}) {
   // Candidate lines: prefer summary/description/notes; also allow pickup/dropoff/type
   const candidates = [
@@ -56,9 +54,16 @@ function buildDetails(ride = {}) {
     }
   }
 
-  const headline = lines[0] || "No details provided.";
-  const extras = lines.slice(1);
-  return { headline, extras, hasMore: extras.length > 0 };
+  const allText = lines.join("\n");
+  if (allText.length <= 100) {
+    return { blurb: allText, details: "" };
+  }
+
+  // Split into blurb (first line) and details (rest)
+  return {
+    blurb: lines[0] || "No details provided.",
+    details: lines.slice(1).join("\n"),
+  };
 }
 
 import {
@@ -68,6 +73,7 @@ import {
 } from "@/columns/rideColumns.jsx";
 import { tsToDayjs, formatHMFromMinutes } from "@/utils/timeUtils";
 import { normalizeStatus } from "@/utils/statusUtils.js";
+import ExpandableDetails from "@/components/ExpandableDetails.jsx";
 
 const formatRideWindow = (startAt, endAt) => {
   if (!startAt && !endAt) return "N/A";
@@ -199,11 +205,10 @@ export default function RideCard({
       : "Unavailable to claim";
   }, [claimable, normalizedStatus, ride?.claimedBy]);
 
-  const { headline, extras, hasMore } = useMemo(
+  const { blurb, details } = useMemo(
     () => buildDetails({ ...ride, notes }),
     [ride, notes],
   );
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
     <Grow in timeout={220}>
@@ -435,57 +440,12 @@ export default function RideCard({
                 py: 1.25,
               }}
             >
-              <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ gap: 1 }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{ color: "rgba(255,255,255,.85)", pr: 1, minWidth: 0 }}
-                >
-                  {headline}
-                </Typography>
-
-                {hasMore && (
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={() => setDetailsOpen((v) => !v)}
-                    sx={{
-                      textTransform: "none",
-                      color: "#cfcfcf",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {detailsOpen ? "Hide" : "View"}
-                  </Button>
-                )}
-              </Stack>
-
-              <Collapse in={detailsOpen} timeout="auto" unmountOnExit>
-                <Divider
-                  sx={{ my: 1, borderColor: (t) => t.palette.divider }}
-                />
-                <Stack
-                  component="ul"
-                  sx={{
-                    m: 0,
-                    pl: 2,
-                    listStyle: "disc",
-                    color: "rgba(255,255,255,.75)",
-                  }}
-                  spacing={0.5}
-                >
-                  {extras.map((line, i) => (
-                    // eslint-disable-next-line react/no-array-index-key
-                    <Typography key={i} component="li" variant="body2">
-                      {line}
-                    </Typography>
-                  ))}
-                </Stack>
-              </Collapse>
+              <ExpandableDetails
+                id={ride?.id}
+                blurb={blurb}
+                details={details}
+                remember={false}
+              />
             </Box>
           </CardContent>
 
