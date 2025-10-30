@@ -73,11 +73,95 @@
       }
 
       const data = await response.json();
-      return data.reply;
+      return data; // Return full response object
     } catch (error) {
       console.error('Chatbot query error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Show booking success banner with booking ID
+   */
+  function showBookingSuccess(bookingId) {
+    const successBanner = document.createElement('div');
+    successBanner.className = 'lrp-booking-success';
+    successBanner.innerHTML = `
+      <div class="lrp-success-icon">✅</div>
+      <div class="lrp-success-content">
+        <div class="lrp-success-title">Booking Request Sent!</div>
+        <div class="lrp-success-subtitle">We'll text you within 24 hours</div>
+        <div class="lrp-booking-ref">Reference: ${escapeHtml(bookingId)}</div>
+      </div>
+    `;
+
+    messagesContainer.appendChild(successBanner);
+    scrollToBottom();
+  }
+
+  /**
+   * Show options after successful booking
+   */
+  function showPostBookingOptions() {
+    const settings = chatbotSettings;
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = 'lrp-post-booking-options';
+    optionsDiv.innerHTML = `
+      <div class="lrp-options-title">Need anything else?</div>
+      <div class="lrp-options-buttons">
+        <button class="lrp-option-button lrp-option-primary" onclick="window.location.reload()">
+          📅 Book Another Ride
+        </button>
+        <button class="lrp-option-button lrp-option-secondary" onclick="window.open('${settings.facebookPageUrl || 'https://m.me/lakeridepros'}', '_blank')">
+          💬 Chat on Messenger
+        </button>
+      </div>
+    `;
+
+    messagesContainer.appendChild(optionsDiv);
+    scrollToBottom();
+  }
+
+  /**
+   * Show Messenger escalation prompt
+   */
+  function showMessengerEscalation(messengerUrl, reason, escalationId) {
+    let reasonText = '';
+    switch(reason) {
+      case 'user_trigger':
+        reasonText = 'Let me connect you with our team';
+        break;
+      case 'mentioned_price':
+        reasonText = 'Our team can give you exact pricing';
+        break;
+      case 'claimed_availability':
+        reasonText = 'Our team can check availability for you';
+        break;
+      case 'error':
+        reasonText = 'Let me connect you with our team';
+        break;
+      default:
+        reasonText = 'Our team can help you with this';
+    }
+
+    const escalationDiv = document.createElement('div');
+    escalationDiv.className = 'lrp-escalation-prompt';
+    escalationDiv.innerHTML = `
+      <div class="lrp-escalation-content">
+        <div class="lrp-escalation-icon">💬</div>
+        <div class="lrp-escalation-text">
+          <div class="lrp-escalation-title">${reasonText}</div>
+          <div class="lrp-escalation-subtitle">Continue this conversation on Messenger</div>
+          ${escalationId ? `<div class="lrp-escalation-ref">Ref: ${escapeHtml(escalationId)}</div>` : ''}
+        </div>
+      </div>
+      <button class="lrp-escalation-button" onclick="window.open('${messengerUrl || 'https://m.me/lakeridepros'}', '_blank')">
+        Open Messenger →
+      </button>
+    `;
+
+    messagesContainer.appendChild(escalationDiv);
+    scrollToBottom();
   }
 
   /**
@@ -380,10 +464,206 @@
         40% { transform: scale(1); }
       }
 
+      /* Booking Success Banner */
+      .lrp-booking-success {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 2px solid #28a745;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+        animation: lrp-slideIn 0.3s ease-out;
+      }
+
+      .lrp-success-icon {
+        font-size: 32px;
+        animation: lrp-bounce-icon 0.6s ease-out;
+      }
+
+      .lrp-success-content {
+        flex: 1;
+      }
+
+      .lrp-success-title {
+        color: #155724;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .lrp-success-subtitle {
+        color: #155724;
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+
+      .lrp-booking-ref {
+        font-size: 11px;
+        color: #155724;
+        opacity: 0.8;
+        font-family: 'Courier New', monospace;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-block;
+      }
+
+      /* Post-Booking Options */
+      .lrp-post-booking-options {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0;
+        text-align: center;
+      }
+
+      .lrp-options-title {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 12px;
+        font-weight: 500;
+      }
+
+      .lrp-options-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .lrp-option-button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .lrp-option-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      }
+
+      .lrp-option-primary {
+        background: #4CAF50;
+        color: white;
+      }
+
+      .lrp-option-primary:hover {
+        background: #45a049;
+      }
+
+      .lrp-option-secondary {
+        background: #2196F3;
+        color: white;
+      }
+
+      .lrp-option-secondary:hover {
+        background: #1976D2;
+      }
+
+      /* Messenger Escalation */
+      .lrp-escalation-prompt {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 2px solid #2196F3;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+        animation: lrp-slideIn 0.3s ease-out;
+      }
+
+      .lrp-escalation-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .lrp-escalation-icon {
+        font-size: 32px;
+      }
+
+      .lrp-escalation-text {
+        flex: 1;
+      }
+
+      .lrp-escalation-title {
+        color: #0d47a1;
+        font-size: 15px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .lrp-escalation-subtitle {
+        color: #1565c0;
+        font-size: 13px;
+      }
+
+      .lrp-escalation-ref {
+        font-size: 10px;
+        color: #1565c0;
+        opacity: 0.7;
+        font-family: 'Courier New', monospace;
+        margin-top: 4px;
+      }
+
+      .lrp-escalation-button {
+        width: 100%;
+        padding: 12px;
+        background: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .lrp-escalation-button:hover {
+        background: #1976D2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+      }
+
+      /* Animations */
+      @keyframes lrp-slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes lrp-bounce-icon {
+        0%, 100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
       @media (max-width: 640px) {
         .lrp-chatbot-window {
           width: calc(100vw - 32px);
           height: calc(100vh - 100px);
+        }
+
+        .lrp-options-buttons {
+          flex-direction: column;
+        }
+
+        .lrp-option-button {
+          width: 100%;
         }
       }
     `;
@@ -623,17 +903,49 @@
     showLoading();
 
     try {
-      const response = await sendMessage(message);
+      const data = await sendMessage(message);
       hideLoading();
-      addMessage('assistant', response);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      // Add bot's text response
+      if (data.reply) {
+        addMessage('assistant', data.reply);
+      }
+
+      // Handle booking submission
+      if (data.bookingSubmitted && data.bookingId) {
+        showBookingSuccess(data.bookingId);
+        showPostBookingOptions();
+
+        // Optionally disable input after successful booking
+        inputField.placeholder = 'Booking submitted! Reload to start another.';
+        inputField.disabled = true;
+        document.getElementById('lrp-send').disabled = true;
+      }
+
+      // Handle escalation to Messenger
+      if (data.shouldEscalate) {
+        showMessengerEscalation(data.messengerUrl, data.escalationReason, data.escalationId);
+      }
+
     } catch (error) {
       hideLoading();
-      addMessage('assistant', 'Sorry, something went wrong. Please try again.');
+      addMessage('assistant', 'Sorry, something went wrong. Please try again or reach out on Messenger.');
+
+      // Try to get messengerUrl from error response
+      const messengerUrl = error.messengerUrl || chatbotSettings.facebookPageUrl || 'https://m.me/lakeridepros';
+      const escalationId = error.escalationId || null;
+      showMessengerEscalation(messengerUrl, 'error', escalationId);
     } finally {
       isLoading = false;
       document.getElementById('lrp-status').textContent = 'Online';
-      document.getElementById('lrp-send').disabled = false;
-      inputField.focus();
+      if (!inputField.disabled) {
+        document.getElementById('lrp-send').disabled = false;
+        inputField.focus();
+      }
     }
   }
 
