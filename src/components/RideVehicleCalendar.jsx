@@ -707,7 +707,12 @@ function RideVehicleCalendar({
     if (!dateISO) return;
     const parsed = dayjs(dateISO).tz(CST);
     if (!parsed.isValid()) return;
-    setDate(parsed);
+    setDate((prev) => {
+      if (prev && prev.isValid() && prev.isSame(parsed, "day")) {
+        return prev;
+      }
+      return parsed;
+    });
   }, [dateISO]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1004,8 +1009,7 @@ function RideVehicleCalendar({
   );
 
   useEffect(() => {
-    const vehiclesKey = (filtersState?.vehicles || []).sort().join(",");
-    const key = `${date.format("YYYY-MM-DD")}:${tz}:${vehiclesKey}`;
+    const key = `${date.format("YYYY-MM-DD")}:${tz}`;
     const cached = cache.get(key);
     if (cached) {
       setEvents(cached);
@@ -1079,7 +1083,8 @@ function RideVehicleCalendar({
 
     load();
     return () => controller.abort();
-  }, [date, normalizeEvents, tz, filtersState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, normalizeEvents, tz]);
 
   const grouped = useMemo(() => {
     const map = {};
@@ -1341,7 +1346,7 @@ function RideVehicleCalendar({
                   value={date}
                   onChange={(newDate) => {
                     if (newDate) {
-                      const parsed = dayjs(newDate).tz(CST);
+                      const parsed = dayjs(newDate);
                       setDate(parsed);
                       onDateChange?.(parsed.format("YYYY-MM-DD"));
                     }
