@@ -42,6 +42,7 @@ import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsAc
 import ContactEmergencyIcon from "@mui/icons-material/ContactEmergency";
 import CarRepairIcon from "@mui/icons-material/CarRepair";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 
 import { useDriver } from "../context/DriverContext.jsx";
 import useMenuAnchor from "../hooks/useMenuAnchor";
@@ -146,6 +147,12 @@ const ALL_NAV_ITEMS = [
     label: "Add Ride",
     icon: <AddCircleOutlineIcon sx={{ color: "success.main" }} />,
     path: "/ride-entry",
+    admin: true,
+  },
+  {
+    label: "Chat Bot",
+    icon: <SmartToyIcon sx={{ color: "success.main" }} />,
+    path: "/admin/chatbot-settings",
     admin: true,
   },
 ];
