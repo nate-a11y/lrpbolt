@@ -97,7 +97,8 @@ export default function DriverCard({ driver, highlight = false }) {
             "transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease",
           "&:hover": {
             transform: "translateY(-2px)",
-            boxShadow: (t) => `0 8px 24px ${alpha(t.palette.common.black, 0.25)}`,
+            boxShadow: (t) =>
+              `0 8px 24px ${alpha(t.palette.common.black, 0.25)}`,
           },
         }}
       >

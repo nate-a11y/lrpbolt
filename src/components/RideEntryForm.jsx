@@ -133,7 +133,12 @@ const MODERN_CARD_SX = {
     `linear-gradient(135deg, ${alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.08 : 0.04)}, ${t.palette.background.paper})`,
   border: "1px solid",
   borderColor: (t) =>
-    alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, 0.08),
+    alpha(
+      t.palette.mode === "dark"
+        ? t.palette.common.white
+        : t.palette.common.black,
+      0.08,
+    ),
   boxShadow: (t) => `0 8px 24px ${alpha(t.palette.common.black, 0.12)}`,
   transition: "all 0.3s ease",
   "&::before": {
@@ -1245,7 +1250,10 @@ export default function RideEntryForm() {
                     borderRadius: 2,
                     border: (t) => `1px solid ${t.palette.divider}`,
                     bgcolor: (t) =>
-                      alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.05 : 0.03),
+                      alpha(
+                        t.palette.primary.main,
+                        t.palette.mode === "dark" ? 0.05 : 0.03,
+                      ),
                   }}
                 >
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -1317,9 +1325,11 @@ export default function RideEntryForm() {
                       py: 1.5,
                       fontWeight: 700,
                       textTransform: "none",
-                      boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
+                      boxShadow: (t) =>
+                        `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
                       "&:hover": {
-                        boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
+                        boxShadow: (t) =>
+                          `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
                       },
                     }}
                   >
@@ -1390,7 +1400,12 @@ export default function RideEntryForm() {
                   p: 2,
                   borderRadius: 2,
                   bgcolor: (t) =>
-                    alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.03 : 0.02),
+                    alpha(
+                      t.palette.mode === "dark"
+                        ? t.palette.common.white
+                        : t.palette.common.black,
+                      t.palette.mode === "dark" ? 0.03 : 0.02,
+                    ),
                   border: (t) => `1px solid ${t.palette.divider}`,
                 }}
               >
@@ -1451,7 +1466,12 @@ export default function RideEntryForm() {
                     fontSize: "0.9rem",
                     fontWeight: 600,
                     bgcolor: (t) =>
-                      alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.06 : 0.04),
+                      alpha(
+                        t.palette.mode === "dark"
+                          ? t.palette.common.white
+                          : t.palette.common.black,
+                        t.palette.mode === "dark" ? 0.06 : 0.04,
+                      ),
                     "& .MuiChip-icon": { color: "primary.main" },
                   }}
                 />
@@ -1464,7 +1484,12 @@ export default function RideEntryForm() {
                     p: 1.5,
                     borderRadius: 2,
                     bgcolor: (t) =>
-                      alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.06 : 0.04),
+                      alpha(
+                        t.palette.mode === "dark"
+                          ? t.palette.common.white
+                          : t.palette.common.black,
+                        t.palette.mode === "dark" ? 0.06 : 0.04,
+                      ),
                   }}
                 >
                   <Typography
@@ -1489,7 +1514,12 @@ export default function RideEntryForm() {
                     p: 2,
                     borderRadius: 2,
                     bgcolor: (t) =>
-                      alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.03 : 0.02),
+                      alpha(
+                        t.palette.mode === "dark"
+                          ? t.palette.common.white
+                          : t.palette.common.black,
+                        t.palette.mode === "dark" ? 0.03 : 0.02,
+                      ),
                     border: (t) => `1px solid ${t.palette.divider}`,
                   }}
                 >
@@ -1515,9 +1545,15 @@ export default function RideEntryForm() {
                   borderRadius: 2,
                   bgcolor: isFormValid
                     ? (t) =>
-                        alpha(t.palette.primary.main, t.palette.mode === "dark" ? 0.15 : 0.08)
+                        alpha(
+                          t.palette.primary.main,
+                          t.palette.mode === "dark" ? 0.15 : 0.08,
+                        )
                     : (t) =>
-                        alpha(t.palette.warning.main, t.palette.mode === "dark" ? 0.15 : 0.08),
+                        alpha(
+                          t.palette.warning.main,
+                          t.palette.mode === "dark" ? 0.15 : 0.08,
+                        ),
                   border: (t) =>
                     `1px solid ${isFormValid ? t.palette.success.main : t.palette.warning.main}`,
                 }}
@@ -1746,9 +1782,11 @@ export default function RideEntryForm() {
                     py: 1.5,
                     fontWeight: 700,
                     textTransform: "none",
-                    boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
+                    boxShadow: (t) =>
+                      `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
                     "&:hover": {
-                      boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
+                      boxShadow: (t) =>
+                        `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
                     },
                   }}
                 >
@@ -1818,11 +1856,17 @@ export default function RideEntryForm() {
                         border: "2px solid",
                         borderColor: isValid ? "primary.main" : "warning.main",
                         bgcolor: (t) =>
-                          alpha(isValid ? t.palette.primary.main : t.palette.warning.main, t.palette.mode === "dark" ? 0.08 : 0.04),
+                          alpha(
+                            isValid
+                              ? t.palette.primary.main
+                              : t.palette.warning.main,
+                            t.palette.mode === "dark" ? 0.08 : 0.04,
+                          ),
                         transition: "all 0.2s ease",
                         "&:hover": {
                           transform: "translateY(-2px)",
-                          boxShadow: (t) => `0 8px 16px ${alpha(t.palette.common.black, 0.15)}`,
+                          boxShadow: (t) =>
+                            `0 8px 16px ${alpha(t.palette.common.black, 0.15)}`,
                         },
                       }}
                     >
@@ -1889,7 +1933,12 @@ export default function RideEntryForm() {
                             p: 1.5,
                             borderRadius: 2,
                             bgcolor: (t) =>
-                              alpha(t.palette.mode === "dark" ? t.palette.common.white : t.palette.common.black, t.palette.mode === "dark" ? 0.05 : 0.03),
+                              alpha(
+                                t.palette.mode === "dark"
+                                  ? t.palette.common.white
+                                  : t.palette.common.black,
+                                t.palette.mode === "dark" ? 0.05 : 0.03,
+                              ),
                           }}
                         >
                           <Typography
@@ -2013,9 +2062,11 @@ export default function RideEntryForm() {
                         py: 1.5,
                         fontWeight: 700,
                         textTransform: "none",
-                        boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
+                        boxShadow: (t) =>
+                          `0 4px 14px ${alpha(t.palette.primary.main, 0.35)}`,
                         "&:hover": {
-                          boxShadow: (t) => `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
+                          boxShadow: (t) =>
+                            `0 6px 20px ${alpha(t.palette.primary.main, 0.45)}`,
                         },
                       }}
                     >

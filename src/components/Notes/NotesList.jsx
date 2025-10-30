@@ -215,7 +215,10 @@ export default function NotesList({ notes, loading, error }) {
             borderRadius: 2,
           }}
         >
-          <Typography variant="subtitle1" sx={{ color: (t) => t.palette.error.light }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ color: (t) => t.palette.error.light }}
+          >
             Unable to load notes.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -251,7 +254,10 @@ export default function NotesList({ notes, loading, error }) {
             borderRadius: 2,
           }}
         >
-          <Typography variant="subtitle1" sx={{ color: (t) => t.palette.success.light }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ color: (t) => t.palette.success.light }}
+          >
             No notes yet.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.85 }}>
@@ -450,7 +456,10 @@ export default function NotesList({ notes, loading, error }) {
                           size="small"
                           sx={{
                             color: (t) => t.palette.primary.main,
-                            "&:hover": { bgcolor: (t) => alpha(t.palette.primary.main, 0.08) },
+                            "&:hover": {
+                              bgcolor: (t) =>
+                                alpha(t.palette.primary.main, 0.08),
+                            },
                           }}
                         >
                           <ContentCopyIcon />

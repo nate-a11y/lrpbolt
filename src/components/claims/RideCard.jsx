@@ -229,7 +229,8 @@ export default function RideCard({
           willChange: "transform",
           "&:hover": {
             transform: "translateY(-3px) translateZ(0)",
-            boxShadow: (t) => `0 18px 36px ${alpha(t.palette.common.black, 0.55)}`,
+            boxShadow: (t) =>
+              `0 18px 36px ${alpha(t.palette.common.black, 0.55)}`,
           },
           "&::before": {
             content: '""',
@@ -504,7 +505,8 @@ export default function RideCard({
                     px: 3,
                     py: 1,
                     alignSelf: { xs: "stretch", sm: "center" },
-                    boxShadow: (t) => `0 0 0 0 ${alpha(t.palette.common.black, 0)}`,
+                    boxShadow: (t) =>
+                      `0 0 0 0 ${alpha(t.palette.common.black, 0)}`,
                     color: (t) => t.palette.common.black,
                     fontWeight: 700,
                     "&:hover": { filter: "brightness(1.08)" },

@@ -104,7 +104,10 @@ function renderChanges(changes) {
             )}{" "}
             →{" "}
             {change.to !== undefined && change.to !== null ? (
-              <Box component="span" sx={{ color: (t) => t.palette.success.light }}>
+              <Box
+                component="span"
+                sx={{ color: (t) => t.palette.success.light }}
+              >
                 {typeof change.to === "object"
                   ? JSON.stringify(change.to)
                   : String(change.to)}

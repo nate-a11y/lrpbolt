@@ -19,7 +19,6 @@ export default function LoadingScreen({ progress = null }) {
   const upMd = useMediaQuery(theme.breakpoints.up("md"));
 
   // Simplified brand colors using theme
-  const isDark = theme.palette.mode === "dark";
   const brand = {
     primary: theme.palette.primary.main,
     accent: theme.palette.secondary.main,

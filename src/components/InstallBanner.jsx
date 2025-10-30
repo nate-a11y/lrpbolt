@@ -1,7 +1,14 @@
 /* Proprietary and confidential. See LICENSE. */
 
 import { useEffect, useState, memo } from "react";
-import { Box, Typography, Button, IconButton, Slide, alpha } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Slide,
+  alpha,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
 const isIosSafari = () => {

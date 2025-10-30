@@ -231,8 +231,8 @@ export default function ImportantInfoList({
             No important info yet.
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.85 }}>
-            Once admins add partners or emergency contacts, they'll show here
-            with quick share buttons.
+            Once admins add partners or emergency contacts, they&apos;ll show
+            here with quick share buttons.
           </Typography>
         </Stack>
       </Box>
@@ -377,7 +377,8 @@ export default function ImportantInfoList({
                               label={category}
                               sx={{
                                 bgcolor: (t) => t.palette.primary.dark,
-                                color: (t) => alpha(t.palette.primary.main, 0.6),
+                                color: (t) =>
+                                  alpha(t.palette.primary.main, 0.6),
                                 border: (t) =>
                                   `1px solid ${t.palette.primary.main}`,
                                 fontWeight: 600,

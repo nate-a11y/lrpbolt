@@ -1173,7 +1173,12 @@ function Tickets() {
       logError(err, { area: "tickets", action: "downloadTicket" });
       showWarnOrErrorSnack("Failed to generate image", "error");
     }
-  }, [previewTicket, showSuccessSnack, showWarnOrErrorSnack]);
+  }, [
+    previewTicket,
+    showSuccessSnack,
+    showWarnOrErrorSnack,
+    theme.palette.common.white,
+  ]);
 
   // Set preview tickets when email dialog opens
   useEffect(() => {
@@ -1936,7 +1941,10 @@ function Tickets() {
                 )}
                 <Typography
                   variant="body2"
-                  sx={{ color: (t) => alpha(t.palette.common.white, 0.72), pt: 0.5 }}
+                  sx={{
+                    color: (t) => alpha(t.palette.common.white, 0.72),
+                    pt: 0.5,
+                  }}
                 >
                   Select a direction to log this scan.
                 </Typography>
@@ -1958,7 +1966,9 @@ function Tickets() {
               disabled={savingScan || scanLookupLoading}
               sx={{
                 color: (t) => t.palette.text.primary,
-                "&.Mui-disabled": { color: (t) => alpha(t.palette.common.white, 0.4) },
+                "&.Mui-disabled": {
+                  color: (t) => alpha(t.palette.common.white, 0.4),
+                },
               }}
             >
               Cancel

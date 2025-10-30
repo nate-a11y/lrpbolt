@@ -560,7 +560,8 @@ export default function GamesHyperlane() {
 
               <Typography variant="body2" sx={{ opacity: 0.85 }}>
                 Controls: ← / → or tap the on-screen pads. Grab neon rings,
-                dodge red blocks, and chase the hyperlane leaderboard. {/* allow-color-literal */}
+                dodge red blocks, and chase the hyperlane leaderboard.{" "}
+                {/* allow-color-literal */}
               </Typography>
 
               <Stack
