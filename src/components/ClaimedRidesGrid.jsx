@@ -100,22 +100,21 @@ export default function ClaimedRidesGrid() {
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
     useBulkDelete({ performDelete });
 
-  const handleDelete = useCallback(
-    async (ride) => {
-      const id = ride?.id;
-      if (!id) return;
-      try {
-        await deleteRide("claimedRides", id);
-      } catch (err) {
-        logError(err, { where: "ClaimedRidesGrid.handleDelete", rideId: id });
-      }
-    },
-    [],
-  );
+  const handleDelete = useCallback(async (ride) => {
+    const id = ride?.id;
+    if (!id) return;
+    try {
+      await deleteRide("claimedRides", id);
+    } catch (err) {
+      logError(err, { where: "ClaimedRidesGrid.handleDelete", rideId: id });
+    }
+  }, []);
 
   const handleBulkDelete = useCallback(
     async (ids) => {
-      const rowsToDelete = ids.map((id) => rows.find((r) => r?.id === id)).filter(Boolean);
+      const rowsToDelete = ids
+        .map((id) => rows.find((r) => r?.id === id))
+        .filter(Boolean);
       openDialog(ids, rowsToDelete);
     },
     [rows, openDialog],

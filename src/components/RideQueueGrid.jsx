@@ -311,7 +311,9 @@ export default function RideQueueGrid() {
 
   const handleBulkDelete = useCallback(
     async (ids) => {
-      const rowsToDelete = ids.map((id) => rows.find((r) => getRowId(r) === id)).filter(Boolean);
+      const rowsToDelete = ids
+        .map((id) => rows.find((r) => getRowId(r) === id))
+        .filter(Boolean);
       openDialog(ids, rowsToDelete);
     },
     [rows, getRowId, openDialog],

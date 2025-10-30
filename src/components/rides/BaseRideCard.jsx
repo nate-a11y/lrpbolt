@@ -1,6 +1,6 @@
 // allow-color-literal-file
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
@@ -21,7 +21,6 @@ import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import ExpandableDetails from "@/components/ExpandableDetails.jsx";
 import {
   resolvePickupTime,
-  resolveDropoffTime,
   resolveRideDuration,
   resolveTripId,
   resolveVehicle,
@@ -33,7 +32,6 @@ import {
   resolveClaimedAt,
 } from "@/columns/rideColumns.jsx";
 import { vfTime, vfDurationHM, vfText } from "@/utils/vf.js";
-import { tsToDayjs } from "@/utils/timeUtils";
 
 /**
  * BaseRideCard - A beautiful card component for displaying ride information
@@ -48,12 +46,9 @@ export default function BaseRideCard({
   highlight = false,
   showCheckbox = false,
 }) {
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
-
   // Resolve ride fields
   const tripId = useMemo(() => resolveTripId(null, ride), [ride]);
   const pickupSource = useMemo(() => resolvePickupTime(null, ride), [ride]);
-  const dropoffSource = useMemo(() => resolveDropoffTime(null, ride), [ride]);
   const rawDuration = useMemo(() => resolveRideDuration(null, ride), [ride]);
   const vehicle = useMemo(() => resolveVehicle(null, ride), [ride]);
   const rideType = useMemo(() => resolveRideType(null, ride), [ride]);
@@ -65,10 +60,7 @@ export default function BaseRideCard({
 
   // Format times
   const pickupLabel = useMemo(() => vfTime(pickupSource), [pickupSource]);
-  const durationLabel = useMemo(
-    () => vfDurationHM(rawDuration),
-    [rawDuration],
-  );
+  const durationLabel = useMemo(() => vfDurationHM(rawDuration), [rawDuration]);
   const createdLabel = useMemo(() => vfTime(createdAt), [createdAt]);
   const claimedAtLabel = useMemo(() => vfTime(claimedAt), [claimedAt]);
 
@@ -158,7 +150,8 @@ export default function BaseRideCard({
                     {vfText(vehicle, null, null, null, "Vehicle")}
                   </Typography>
                   <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                    {vfText(rideType, null, null, null, "Ride")} • ID: {vfText(tripId, null, null, null, "N/A")}
+                    {vfText(rideType, null, null, null, "Ride")} • ID:{" "}
+                    {vfText(tripId, null, null, null, "N/A")}
                   </Typography>
                 </Box>
               </Stack>
@@ -184,7 +177,8 @@ export default function BaseRideCard({
               alignItems="center"
               sx={{
                 bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
-                border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.3)}`,
+                border: (t) =>
+                  `1px solid ${alpha(t.palette.primary.main, 0.3)}`,
                 borderRadius: 2,
                 px: 1.5,
                 py: 1,
@@ -266,7 +260,6 @@ export default function BaseRideCard({
                   id={ride?.id || tripId}
                   blurb={blurb}
                   details={details}
-                  defaultExpanded={detailsExpanded}
                   remember={false}
                 />
               </Box>

@@ -2,13 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
-import {
-  Box,
-  Pagination,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, Pagination, Stack, TextField, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
 
@@ -118,7 +112,9 @@ export default function DriverCardGrid({
       {filteredDrivers.length === 0 ? (
         <Box sx={{ p: 4, textAlign: "center" }}>
           <Typography variant="body1" sx={{ opacity: 0.8 }}>
-            {searchQuery ? "No drivers match your search" : "No drivers to display"}
+            {searchQuery
+              ? "No drivers match your search"
+              : "No drivers to display"}
           </Typography>
         </Box>
       ) : null}

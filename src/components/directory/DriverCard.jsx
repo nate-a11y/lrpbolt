@@ -61,10 +61,7 @@ export default function DriverCard({ driver, highlight = false }) {
   const initials = useMemo(() => getInitials(driver?.name), [driver?.name]);
   const tel = useMemo(() => telHref(driver?.phone), [driver?.phone]);
   const sms = useMemo(() => smsHrefOrNull(driver?.phone), [driver?.phone]);
-  const email = useMemo(
-    () => `mailto:${driver?.email}`,
-    [driver?.email],
-  );
+  const email = useMemo(() => `mailto:${driver?.email}`, [driver?.email]);
 
   const onCopy = async () => {
     try {
@@ -78,15 +75,12 @@ export default function DriverCard({ driver, highlight = false }) {
 
   const vehicles = useMemo(
     () =>
-      Array.isArray(driver?.vehicles)
-        ? driver.vehicles.filter(Boolean)
-        : [],
+      Array.isArray(driver?.vehicles) ? driver.vehicles.filter(Boolean) : [],
     [driver?.vehicles],
   );
 
   const roles = useMemo(
-    () =>
-      Array.isArray(driver?.roles) ? driver.roles.filter(Boolean) : [],
+    () => (Array.isArray(driver?.roles) ? driver.roles.filter(Boolean) : []),
     [driver?.roles],
   );
 
@@ -98,9 +92,7 @@ export default function DriverCard({ driver, highlight = false }) {
           borderRadius: 3,
           bgcolor: (t) => t.palette.background.paper,
           borderColor: (t) =>
-            highlight
-              ? t.palette.primary.light
-              : t.palette.divider,
+            highlight ? t.palette.primary.light : t.palette.divider,
           border: 1,
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           transition:
@@ -203,9 +195,9 @@ export default function DriverCard({ driver, highlight = false }) {
                   >
                     ROLES:
                   </Typography>
-                  {roles.map((role, i) => (
+                  {roles.map((role) => (
                     <Chip
-                      key={i}
+                      key={role}
                       size="small"
                       label={role}
                       sx={{
@@ -221,15 +213,8 @@ export default function DriverCard({ driver, highlight = false }) {
 
               {vehicles.length > 0 && (
                 <Stack spacing={0.5}>
-                  <Stack
-                    direction="row"
-                    spacing={0.5}
-                    alignItems="center"
-                  >
-                    <LocalShippingIcon
-                      fontSize="small"
-                      sx={{ opacity: 0.7 }}
-                    />
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <LocalShippingIcon fontSize="small" sx={{ opacity: 0.7 }} />
                     <Typography
                       variant="caption"
                       sx={{ opacity: 0.7, fontWeight: 600 }}
@@ -244,9 +229,13 @@ export default function DriverCard({ driver, highlight = false }) {
                     useFlexGap
                     sx={{ rowGap: 0.5 }}
                   >
-                    {vehicles.slice(0, 4).map((vehicle, i) => (
+                    {vehicles.slice(0, 4).map((vehicle) => (
                       <VehicleChip
-                        key={i}
+                        key={
+                          typeof vehicle === "string"
+                            ? vehicle
+                            : JSON.stringify(vehicle)
+                        }
                         vehicle={vehicle}
                         sx={{
                           "& .MuiChip-root, &": {
@@ -384,7 +373,8 @@ export default function DriverCard({ driver, highlight = false }) {
                 size="small"
                 sx={{
                   color: (t) => t.palette.text.primary,
-                  border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
+                  border: (t) =>
+                    `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
                   borderRadius: 2,
                   "&:hover": {
                     borderColor: (t) => t.palette.primary.main,
@@ -403,7 +393,8 @@ export default function DriverCard({ driver, highlight = false }) {
                 size="small"
                 sx={{
                   color: (t) => t.palette.text.primary,
-                  border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
+                  border: (t) =>
+                    `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
                   borderRadius: 2,
                   "&:hover": {
                     borderColor: (t) => t.palette.primary.main,
@@ -421,7 +412,8 @@ export default function DriverCard({ driver, highlight = false }) {
                 size="small"
                 sx={{
                   color: (t) => t.palette.text.primary,
-                  border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
+                  border: (t) =>
+                    `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
                   borderRadius: 2,
                   "&:hover": {
                     borderColor: (t) => t.palette.primary.main,
@@ -438,7 +430,8 @@ export default function DriverCard({ driver, highlight = false }) {
                 size="small"
                 sx={{
                   color: (t) => t.palette.text.primary,
-                  border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
+                  border: (t) =>
+                    `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
                   borderRadius: 2,
                   "&:hover": {
                     borderColor: (t) => t.palette.primary.main,

@@ -106,7 +106,7 @@ export class UpdateItemCommand extends Command {
     const restorePayload = { ...this.previousState };
 
     // For optional fields that were added but didn't exist before, mark them for deletion
-    const optionalFields = ['phone', 'url', 'details', 'blurb', 'smsTemplate'];
+    const optionalFields = ["phone", "url", "details", "blurb", "smsTemplate"];
     for (const field of optionalFields) {
       if (field in this.newChanges && !(field in this.previousState)) {
         // Field was added in the change but didn't exist before - delete it
@@ -144,10 +144,7 @@ export class DeleteItemCommand extends Command {
   }
 
   async execute() {
-    await this.serviceModule.deleteImportantInfo(
-      this.itemId,
-      this.userContext,
-    );
+    await this.serviceModule.deleteImportantInfo(this.itemId, this.userContext);
     if (this.onSuccess) this.onSuccess(this.itemId);
   }
 
