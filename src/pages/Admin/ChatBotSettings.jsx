@@ -1078,13 +1078,17 @@ If the user needs more personalized help or wants to speak with a human, direct 
             )}
 
             <TextField
-              label="Content"
+              label={entryType === "website" ? "Content (Optional)" : "Content"}
               value={entryContent}
               onChange={(e) => setEntryContent(e.target.value)}
               fullWidth
               multiline
               rows={8}
-              helperText="Paste the text content or key information from this source"
+              helperText={
+                entryType === "website"
+                  ? "Optional: Paste key information or leave blank to just reference the URL"
+                  : "Required: Paste the text content or key information from this document"
+              }
             />
           </Stack>
         </DialogContent>
@@ -1095,8 +1099,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
             onClick={handleSaveKnowledge}
             disabled={
               (entryType === "website" && !entryUrl) ||
-              (entryType === "document" && !entryTitle) ||
-              !entryContent
+              (entryType === "document" && (!entryTitle || !entryContent))
             }
           >
             {editingEntry ? "Update" : "Add"}
