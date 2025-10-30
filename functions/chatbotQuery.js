@@ -548,7 +548,7 @@ exports.chatbotQuery = onRequest(
         return res.status(200).json({
           success: true,
           reply:
-            "I want to make sure you get the best help with this. Let me connect you with our team on Messenger where they can assist you directly.",
+            "I want to make sure you get the best help with this. Click the Messenger button below to chat directly with our team - they'll have all the details from our conversation.",
           shouldEscalate: true,
           escalationReason: "user_trigger",
           escalationId: escalationId,
@@ -578,7 +578,9 @@ exports.chatbotQuery = onRequest(
 
       const systemPrompt = `You are Johnny, Lake Ride Pros' friendly booking assistant.
 
-YOUR PRIMARY GOAL: Collect booking details naturally through conversation, then submit via submit_booking_request function.
+YOUR PRIMARY GOAL: Collect booking details naturally through conversation, then SUBMIT the booking request to our team via submit_booking_request function.
+
+IMPORTANT: You are a COLLECTOR, not a completer. You gather information and submit it to our team - you don't book rides directly.
 
 REQUIRED INFORMATION (must collect all 9):
 1. Customer name (first and last)
@@ -600,11 +602,19 @@ CONVERSATION STYLE:
 - If they volunteer multiple details, acknowledge them all
 - Ask clarifying questions if location/time is vague
 - Use their name once you know it
-- Confirm all details before submitting: "Let me make sure I have everything correct..."
+- Confirm all details before submitting: "Let me make sure I have everything correct before I send this to our team..."
+
+LANGUAGE TO USE:
+✓ "I'll submit your booking request to our team"
+✓ "Let me send this to our team for confirmation"
+✓ "I'll get this request to our team right away"
+✗ NEVER say "I'll book this for you"
+✗ NEVER say "I'll finalize the booking"
+✗ NEVER say "Your ride is confirmed"
 
 CRITICAL RULES - NEVER BREAK THESE:
 - NEVER discuss specific pricing (say: "Our team will provide you with exact pricing within 24 hours")
-- NEVER guarantee availability (say: "We'll confirm availability right away")
+- NEVER guarantee availability (say: "Our team will confirm availability and contact you within 24 hours")
 - NEVER make commitments about services
 - NEVER invent information about policies or services
 - If you're uncertain about ANYTHING, say: "Let me connect you with our team on Messenger for accurate details"
@@ -620,7 +630,7 @@ WHEN TO ESCALATE TO MESSENGER (trigger escalation instead of answering):
 
 ESCALATION RESPONSE:
 When you need to escalate, respond with:
-"I want to make sure you get the best help with this. Let me connect you with our team on Messenger where they can assist you directly."
+"I want to make sure you get the best help with this. Click the Messenger button below to chat directly with our team - they'll have all the details from our conversation."
 
 Then the system will show them the Messenger button.
 
@@ -730,7 +740,7 @@ Once you have ALL 9 required pieces of information and the customer confirms det
             const { sendBookingRequestEmail } = require("./sendBookingRequestEmail");
             const { sendBookingConfirmationSMS } = require("./sendBookingConfirmationSMS");
 
-            // Store in Firestore
+            // Store in Firestore FIRST
             await db.collection("bookingRequests").doc(bookingId).set({
               ...bookingData,
               bookingId,
@@ -740,27 +750,64 @@ Once you have ALL 9 required pieces of information and the customer confirms det
               updatedAt: new Date().toISOString(),
             });
 
-            // Send email to owners (don't await - fire and forget)
-            sendBookingRequestEmail(bookingId, bookingData).catch((err) => {
-              logger.error("Email send failed but booking stored", {
+            logger.info("Booking stored in Firestore", {
+              bookingId,
+              customer: bookingData.customer_name,
+            });
+
+            // Send email to owners and track result
+            let emailSent = false;
+            try {
+              const emailResult = await sendBookingRequestEmail(bookingId, bookingData);
+              emailSent = emailResult.success;
+              if (emailSent) {
+                logger.info("Booking request email sent successfully", {
+                  bookingId,
+                  messageId: emailResult.messageId,
+                });
+              } else {
+                logger.error("Email send failed", {
+                  bookingId,
+                  error: emailResult.error,
+                });
+              }
+            } catch (err) {
+              logger.error("Email send threw exception", {
                 bookingId,
                 error: err.message,
               });
-            });
+            }
 
-            // Send SMS to customer (don't await - fire and forget)
-            sendBookingConfirmationSMS(bookingId, bookingData).catch((err) => {
-              logger.error("SMS send failed but booking stored", {
+            // Send SMS to customer and track result
+            let smsSent = false;
+            try {
+              const smsResult = await sendBookingConfirmationSMS(bookingId, bookingData);
+              smsSent = smsResult.success;
+              if (smsSent) {
+                logger.info("Booking confirmation SMS sent successfully", {
+                  bookingId,
+                  phone: bookingData.customer_phone,
+                });
+              } else {
+                logger.error("SMS send failed", {
+                  bookingId,
+                  error: smsResult.error,
+                });
+              }
+            } catch (err) {
+              logger.error("SMS send threw exception", {
                 bookingId,
                 error: err.message,
               });
-            });
+            }
 
-            // Log successful booking
-            logger.info("Booking request submitted", {
+            // Log overall booking submission status
+            logger.info("Booking request submission complete", {
               bookingId,
               customer: bookingData.customer_name,
               tripDate: bookingData.trip_date,
+              emailSent,
+              smsSent,
             });
 
             // Track booking in analytics
@@ -784,21 +831,46 @@ Once you have ALL 9 required pieces of information and the customer confirms det
             // Return success to user
             const firstName = bookingData.customer_name.split(" ")[0];
 
+            // Build confirmation message with notification status
+            let confirmationMsg = `Perfect, ${firstName}! I've submitted your booking request to our team.\n\n`;
+
+            confirmationMsg += `📍 Pickup: ${bookingData.pickup_location}\n`;
+            confirmationMsg += `📍 Dropoff: ${bookingData.dropoff_location}\n`;
+            confirmationMsg += `📅 ${bookingData.trip_date} at ${bookingData.trip_time}\n`;
+            confirmationMsg += `👥 ${bookingData.passenger_count} passenger${bookingData.passenger_count > 1 ? "s" : ""}\n`;
+            confirmationMsg += `🚗 ${bookingData.trip_type}\n`;
+            if (bookingData.special_requests) {
+              confirmationMsg += `📝 ${bookingData.special_requests}\n`;
+            }
+
+            confirmationMsg += `\n📋 Booking ID: ${bookingId}\n\n`;
+
+            // Notification confirmations
+            if (emailSent) {
+              confirmationMsg += `✅ Email sent to our team\n`;
+            } else {
+              confirmationMsg += `⚠️ Email notification failed (booking still saved)\n`;
+            }
+
+            if (smsSent) {
+              confirmationMsg += `✅ SMS confirmation sent to ${bookingData.customer_phone}\n`;
+            } else {
+              confirmationMsg += `⚠️ SMS notification failed (booking still saved)\n`;
+            }
+
+            confirmationMsg += `\n🎯 Our team will contact you within 24 hours from (573) 206-9499 to confirm details and pricing.\n`;
+            confirmationMsg += `\n⚠️ This chatbot does not receive replies. Questions?\n`;
+            confirmationMsg += `📞 Call/Text: (573) 206-9499\n`;
+            confirmationMsg += `💬 Facebook: facebook.com/lakeridepros\n`;
+            confirmationMsg += `📧 Email: owners@lakeridepros.com`;
+
             return res.status(200).json({
               success: true,
-              reply: `Perfect, ${firstName}! I've sent your request to our team.
-
-📍 Pickup: ${bookingData.pickup_location}
-📍 Dropoff: ${bookingData.dropoff_location}
-📅 ${bookingData.trip_date} at ${bookingData.trip_time}
-👥 ${bookingData.passenger_count} passenger${bookingData.passenger_count > 1 ? "s" : ""}
-🚗 ${bookingData.trip_type}
-${bookingData.special_requests ? `📝 ${bookingData.special_requests}\n` : ""}
-You'll receive a text within 24 hours with pricing and confirmation.
-
-Your booking reference: ${bookingId}`,
+              reply: confirmationMsg,
               bookingSubmitted: true,
               bookingId: bookingId,
+              emailSent: emailSent,
+              smsSent: smsSent,
               shouldEscalate: false,
               botName: chatbotSettings.name,
             });
@@ -812,7 +884,7 @@ Your booking reference: ${bookingId}`,
             return res.status(500).json({
               success: false,
               reply:
-                "I'm having trouble submitting your booking. Please reach out to us on Messenger or call us directly.",
+                "I'm having trouble submitting your booking. Click the Messenger button below to chat with our team directly, or call us at (573) 206-9499.",
               shouldEscalate: true,
               messengerUrl: chatbotSettings.facebookPageUrl,
               bookingSubmitted: false,
@@ -874,7 +946,7 @@ Your booking reference: ${bookingId}`,
         return res.status(200).json({
           success: true,
           reply:
-            "I want to make sure you get accurate information. Let me connect you with our team on Messenger for specific details.",
+            "I want to make sure you get accurate information. Click the Messenger button below to chat directly with our team - they can provide specific details.",
           shouldEscalate: true,
           escalationReason: validation.reason,
           escalationId: escalationId,
