@@ -37,7 +37,6 @@ import useMediaQuery from "../hooks/useMediaQuery";
 
 import DropoffAccordion from "./DropoffAccordion";
 import PassengerAppModal from "./PassengerAppModal";
-import PageContainer from "./PageContainer.jsx";
 import VehicleDropGuides from "./VehicleDropGuides.jsx";
 
 void _GridToolbarExport;
@@ -217,20 +216,27 @@ export default function DriverInfoTab() {
   };
 
   return (
-    <PageContainer pb={4}>
-      <Typography variant="h5" gutterBottom fontWeight="bold">
-        🚗 Driver Drop-Off Info & Instructions
-      </Typography>
-
-      <Typography variant="body1" sx={{ mb: 3 }}>
-        These tips are here to help you stay compliant and deliver a seamless
-        VIP experience.
-      </Typography>
-
-      <Divider sx={{ mb: 3 }} />
+    <MuiBox
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        p: { xs: 2, md: 3 },
+        color: "text.primary",
+      }}
+    >
+      <MuiBox sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          🚗 Driver Drop-Off Info & Instructions
+        </Typography>
+        <Typography variant="body1" sx={{ color: "text.secondary" }}>
+          These tips are here to help you stay compliant and deliver a seamless
+          VIP experience.
+        </Typography>
+      </MuiBox>
 
       {/* Airport Pickup (Fort Leonard Wood / Waynesville–St. Robert) */}
-      <Accordion defaultExpanded={false} sx={{ mt: 1 }}>
+      <Accordion defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography fontWeight="bold">
             ✈️ Airport Pickup: Waynesville–St. Robert (Fort Leonard Wood) —
@@ -388,15 +394,15 @@ export default function DriverInfoTab() {
       </Accordion>
 
       {/* Dropoff Locations Section */}
-      <MuiBox sx={{ mt: 2 }}>
-        <Typography variant="h6" gutterBottom>
+      <MuiBox>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
           📍 Dropoff Locations
         </Typography>
         <DropoffAccordion onSelectImage={setSelectedImage} />
       </MuiBox>
 
       {/* Gate Codes Accordion with Search */}
-      <Accordion defaultExpanded={false} sx={{ mt: 4 }}>
+      <Accordion defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography fontWeight="bold">
             🔐 Gate Codes & Access Notes
@@ -429,8 +435,8 @@ export default function DriverInfoTab() {
       </Accordion>
 
       {/* Passenger App Walkthrough */}
-      <MuiBox sx={{ mt: 4 }}>
-        <Typography variant="h6" gutterBottom>
+      <MuiBox>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
           📲 Passenger App Overview
         </Typography>
         <Button variant="outlined" onClick={() => setModalOpen(true)}>
@@ -546,6 +552,6 @@ export default function DriverInfoTab() {
 
       {/* Passenger App Walkthrough Modal */}
       <PassengerAppModal open={modalOpen} onClose={() => setModalOpen(false)} />
-    </PageContainer>
+    </MuiBox>
   );
 }
