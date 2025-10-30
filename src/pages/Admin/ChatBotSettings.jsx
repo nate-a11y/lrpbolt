@@ -279,15 +279,17 @@ If the user needs more personalized help or wants to speak with a human, direct 
   );
 
   const handleCopyEmbedCode = useCallback(() => {
-    const embedCode = `<!-- Chatbot Widget -->
+    // Get the base URL for the embed (use production URL if available)
+    const embedUrl = window.location.origin;
+
+    const embedCode = `<!-- Lake Ride Pros Chatbot Widget -->
 <script>
   (function() {
     window.lrpChatbotConfig = {
-      apiUrl: '${window.location.origin}',
-      enabled: ${enabled}
+      apiUrl: '${embedUrl}'
     };
     var script = document.createElement('script');
-    script.src = '${window.location.origin}/chatbot-embed.js';
+    script.src = '${embedUrl}/chatbot-embed.js';
     script.async = true;
     document.head.appendChild(script);
   })();
@@ -295,7 +297,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
 
     navigator.clipboard.writeText(embedCode);
     show("Embed code copied to clipboard", "success");
-  }, [enabled, show]);
+  }, [show]);
 
   const getCurrentSettings = () => ({
     enabled,
@@ -619,12 +621,11 @@ If the user needs more personalized help or wants to speak with a human, direct 
                   }}
                 >
                   <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                    {`<!-- Chatbot Widget -->
+                    {`<!-- Lake Ride Pros Chatbot Widget -->
 <script>
   (function() {
     window.lrpChatbotConfig = {
-      apiUrl: '${window.location.origin}',
-      enabled: ${enabled}
+      apiUrl: '${window.location.origin}'
     };
     var script = document.createElement('script');
     script.src = '${window.location.origin}/chatbot-embed.js';
@@ -645,10 +646,23 @@ If the user needs more personalized help or wants to speak with a human, direct 
 
                 <Divider />
 
-                <Typography variant="body2" color="text.secondary">
-                  Note: The embed script needs to be created as a public asset. Contact your
-                  developer to create <code>/public/chatbot-embed.js</code>
-                </Typography>
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>How it works:</strong>
+                  </Typography>
+                  <Typography variant="body2" component="div">
+                    1. The script loads from <code>/chatbot-embed.js</code> (already deployed)<br />
+                    2. It fetches chatbot settings from the public API (no authentication required)<br />
+                    3. Creates the chat widget on the external website<br />
+                    4. All conversations are handled through Firebase Functions
+                  </Typography>
+                </Alert>
+
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    ✅ <strong>Ready to use!</strong> The chatbot will work on any website with this code.
+                  </Typography>
+                </Alert>
               </Stack>
             )}
 
