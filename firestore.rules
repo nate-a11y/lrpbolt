@@ -424,5 +424,36 @@ service cloud.firestore {
       allow create: if authed();
       allow read, update, delete: if false;
     }
+
+    // ---------- chatbotAnalytics ----------
+    // Analytics data for chatbot conversations
+    match /chatbotAnalytics/{conversationId} {
+      allow read: if isAdmin();
+      allow create, update: if true; // Cloud Functions need to write analytics
+      allow delete: if isAdmin();
+    }
+
+    // ---------- bookingRequests ----------
+    // Booking requests submitted via chatbot
+    match /bookingRequests/{bookingId} {
+      allow read: if authed();
+      allow create: if true; // Allow chatbot to create booking requests
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- escalations ----------
+    // Escalation context for chatbot-to-human handoffs
+    match /escalations/{escalationId} {
+      allow read: if authed();
+      allow create: if true; // Allow chatbot to create escalations
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------- chatbotKnowledge ----------
+    // Knowledge base for chatbot training
+    match /chatbotKnowledge/{docId} {
+      allow read: if authed();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
