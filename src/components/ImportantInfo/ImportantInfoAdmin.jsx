@@ -2324,7 +2324,7 @@ export default function ImportantInfoAdmin({ items, loading, error }) {
               <Typography variant="caption" component="div">
                 1. Fill in Title, Category, and Details<br />
                 2. Optionally add Phone and URL for context<br />
-                3. Click "Generate SMS & Blurb with AI"<br />
+                3. Click &ldquo;Generate SMS &amp; Blurb with AI&rdquo;<br />
                 4. Review and edit the AI-generated content before saving
               </Typography>
             </Alert>
