@@ -91,7 +91,7 @@ export default function ChatBotSettings() {
   const [name, setName] = useState("Johnny");
   const [welcomeMessage, setWelcomeMessage] = useState("Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?");
   const [placeholder, setPlaceholder] = useState("Ask about our rides, availability, pricing...");
-  const [primaryColor, setPrimaryColor] = useState(theme.palette.lrp?.chatbotPrimary || theme.palette.primary.main); // Use theme default
+  const [primaryColor, setPrimaryColor] = useState(null); // Will use theme default if null
   const [position, setPosition] = useState("bottom-right");
   const [facebookPageUrl, setFacebookPageUrl] = useState("https://m.me/lakeridepros");
   const [bookingUrl, setBookingUrl] = useState("https://customer.moovs.app/lake-ride-pros/new/info");
@@ -167,7 +167,8 @@ If the user needs more personalized help or wants to speak with a human, direct 
           chatbotData.welcomeMessage || "Hey there! 👋 I'm Johnny, your Chief Chauffeur of Chat at Lake Ride Pros. How can I help you today?"
         );
         setPlaceholder(chatbotData.placeholder || "Ask about our rides, availability, pricing...");
-        setPrimaryColor(chatbotData.primaryColor || theme.palette.lrp?.chatbotPrimary || theme.palette.primary.main);
+        // Only set primaryColor if it's a valid hex color (not a theme path)
+        setPrimaryColor(chatbotData.primaryColor && chatbotData.primaryColor.startsWith('#') ? chatbotData.primaryColor : null);
         setPosition(chatbotData.position || "bottom-right");
         setFacebookPageUrl(chatbotData.facebookPageUrl || "https://m.me/lakeridepros");
         setBookingUrl(chatbotData.bookingUrl || "https://customer.moovs.app/lake-ride-pros/new/info");
@@ -416,6 +417,9 @@ If the user needs more personalized help or wants to speak with a human, direct 
           <Tabs
             value={tab}
             onChange={(_, v) => setTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
               borderBottom: 1,
               borderColor: "divider",

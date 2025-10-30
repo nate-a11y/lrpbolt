@@ -51,7 +51,15 @@ export default function ChatbotWidget({ settings, isPreview = false }) {
   } = settings || {};
 
   // Use theme default if no custom color provided
-  const effectiveColor = primaryColor || theme.palette.lrp?.chatbotPrimary || theme.palette.primary.main;
+  // Ensure we get an actual color value, not a theme path string
+  const getEffectiveColor = () => {
+    if (primaryColor && typeof primaryColor === 'string' && primaryColor.startsWith('#')) {
+      return primaryColor;
+    }
+    // Return hardcoded default that matches theme
+    return theme.palette.lrp?.chatbotPrimary || '#4CAF50';
+  };
+  const effectiveColor = getEffectiveColor();
 
   // Add welcome message when chat opens
   useEffect(() => {

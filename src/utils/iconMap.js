@@ -23,6 +23,8 @@ import SportsEsports from "@mui/icons-material/SportsEsports";
 import CarRepair from "@mui/icons-material/CarRepair";
 import ContactEmergency from "@mui/icons-material/ContactEmergency";
 import PriorityHigh from "@mui/icons-material/PriorityHigh";
+import SmartToy from "@mui/icons-material/SmartToy";
+import Notes from "@mui/icons-material/Notes";
 
 export const iconMap = {
   AssignmentTurnedIn,
@@ -48,4 +50,6 @@ export const iconMap = {
   CarRepair,
   ContactEmergency,
   PriorityHigh,
+  SmartToy,
+  Notes,
 };
