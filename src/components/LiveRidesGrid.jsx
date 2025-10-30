@@ -218,7 +218,9 @@ export default function LiveRidesGrid() {
 
   const handleBulkDelete = useCallback(
     async (ids) => {
-      const rowsToDelete = ids.map((id) => rows.find((r) => getRowId(r) === id)).filter(Boolean);
+      const rowsToDelete = ids
+        .map((id) => rows.find((r) => getRowId(r) === id))
+        .filter(Boolean);
       openDialog(ids, rowsToDelete);
     },
     [rows, getRowId, openDialog],
@@ -247,7 +249,14 @@ export default function LiveRidesGrid() {
         />
       );
     },
-    [driverId, getRowId, handleClaim, handleDelete, handleEditRide, pendingClaims],
+    [
+      driverId,
+      getRowId,
+      handleClaim,
+      handleDelete,
+      handleEditRide,
+      pendingClaims,
+    ],
   );
 
   return (

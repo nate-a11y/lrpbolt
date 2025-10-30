@@ -1,7 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 // allow-color-literal-file
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Button,

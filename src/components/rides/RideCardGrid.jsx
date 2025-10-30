@@ -171,9 +171,7 @@ export default function RideCardGrid({
                   control={
                     <Checkbox
                       checked={allSelected}
-                      indeterminate={
-                        selectedIds.size > 0 && !allSelected
-                      }
+                      indeterminate={selectedIds.size > 0 && !allSelected}
                       onChange={handleSelectAll}
                       disabled={filteredRides.length === 0}
                     />

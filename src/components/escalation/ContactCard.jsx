@@ -15,9 +15,10 @@ import EmailIcon from "@mui/icons-material/Email";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DownloadIcon from "@mui/icons-material/Download";
 
+import ExpandableDetails from "@/components/ExpandableDetails.jsx";
+
 import useCopy from "./useCopy.js";
 import { downloadVCard } from "./vcard.js";
-import ExpandableDetails from "@/components/ExpandableDetails.jsx";
 
 function initialsFrom(name = "") {
   return (
@@ -57,12 +58,13 @@ function ContactCardImpl({ contact }) {
   const role = contact?.roleLabel ?? contact?.role ?? "";
   const phone = contact?.phone ?? "";
   const email = contact?.email ?? "";
-  const responsibilities = Array.isArray(contact?.responsibilities)
-    ? contact.responsibilities
-    : [];
 
   // Build blurb and details for ExpandableDetails
   const { blurb, details } = useMemo(() => {
+    const responsibilities = Array.isArray(contact?.responsibilities)
+      ? contact.responsibilities
+      : [];
+
     if (responsibilities.length === 0) {
       return { blurb: "", details: "" };
     }
@@ -73,14 +75,20 @@ function ContactCardImpl({ contact }) {
     }
 
     // Show first 2-3 responsibilities as blurb
-    const firstFew = responsibilities.slice(0, 2).map((r) => `• ${r}`).join("\n");
-    const rest = responsibilities.slice(2).map((r) => `• ${r}`).join("\n");
+    const firstFew = responsibilities
+      .slice(0, 2)
+      .map((r) => `• ${r}`)
+      .join("\n");
+    const rest = responsibilities
+      .slice(2)
+      .map((r) => `• ${r}`)
+      .join("\n");
 
     return {
       blurb: firstFew,
       details: rest,
     };
-  }, [responsibilities]);
+  }, [contact?.responsibilities]);
 
   return (
     <Card

@@ -90,7 +90,8 @@ function sanitizePayload(payload = {}, isCreate = false) {
 
   // isActive - default to true for creates, otherwise only if provided
   if (payload.isActive !== undefined || isCreate) {
-    base.isActive = typeof payload.isActive === "boolean" ? payload.isActive : true;
+    base.isActive =
+      typeof payload.isActive === "boolean" ? payload.isActive : true;
   }
 
   // Only include images if provided (don't overwrite existing with empty array)

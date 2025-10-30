@@ -1,6 +1,13 @@
 /* Proprietary and confidential. See LICENSE. */
 import React, { useMemo, useState, useEffect } from "react";
-import { Box, Stack, TextField, Typography, Alert, Pagination } from "@mui/material";
+import {
+  Box,
+  Stack,
+  TextField,
+  Typography,
+  Alert,
+  Pagination,
+} from "@mui/material";
 
 import ContactCard from "@/components/escalation/ContactCard.jsx";
 import EmptyState from "@/components/escalation/EmptyState.jsx";

@@ -3,14 +3,7 @@
 // allow-color-literal-file
 
 import * as React from "react";
-import {
-  Box,
-  Divider,
-  Paper,
-  Stack,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import { Box, Divider, Paper, Typography, useTheme } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
 import DRIVER_LIST from "../data/driverDirectory";
@@ -18,7 +11,6 @@ import DRIVER_LIST from "../data/driverDirectory";
 import DriverCardGrid from "./directory/DriverCardGrid.jsx";
 import DriverCard from "./directory/DriverCard.jsx";
 import PageContainer from "./PageContainer.jsx";
-
 
 export default function DriverDirectory({
   disableContainer = false,
