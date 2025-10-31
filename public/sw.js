@@ -297,14 +297,19 @@ async function focusOrOpen(path = "/") {
       type: "window",
       includeUncontrolled: true,
     });
-    const targetHref = new URL(normalizedPath, self.registration.scope).href;
+    const targetUrl = new URL(normalizedPath, self.registration.scope);
     const existing = all.find((client) => {
       try {
-        const url = client.url || "";
+        const clientUrlStr = client.url || "";
+        if (!clientUrlStr) return false;
+
+        // Use proper URL parsing for comparison to avoid substring matching vulnerabilities
+        const clientUrl = new URL(clientUrlStr);
+
+        // Match if origin and pathname are the same (ignore query/hash differences)
         return (
-          url === targetHref ||
-          url.startsWith(`${targetHref}?`) ||
-          url.startsWith(`${targetHref}#`)
+          clientUrl.origin === targetUrl.origin &&
+          clientUrl.pathname === targetUrl.pathname
         );
       } catch (error) {
         console.warn("[sw] client url compare failed", error);

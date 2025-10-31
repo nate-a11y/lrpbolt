@@ -84,7 +84,6 @@ export default function DropoffAccordion({ onSelectImage }) {
                   <DirectionsCarIcon fontSize="small" sx={{ mr: 1 }} />
                   {loc.name}
                 </Typography>
-
                 <Typography
                   variant="body2"
                   sx={{ mb: 1, whiteSpace: "pre-wrap" }}
@@ -92,7 +91,6 @@ export default function DropoffAccordion({ onSelectImage }) {
                 >
                   {loc.notes}
                 </Typography>
-
                 <Link
                   component="button"
                   underline="hover"

@@ -81,7 +81,6 @@ export default function DropoffTipsModal() {
       >
         🚐 View Vehicle Drop-Off Tips
       </Button>
-
       <Dialog
         open={open}
         onClose={() => setOpen(false)}

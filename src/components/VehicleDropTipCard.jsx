@@ -23,7 +23,6 @@ export default function VehicleDropTipCard({ title, tips, icon }) {
           {title}
         </Typography>
       </Box>
-
       <Box
         component="ul"
         sx={{

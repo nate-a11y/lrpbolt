@@ -303,6 +303,7 @@ If the user needs more personalized help or wants to speak with a human, direct 
 
   const handleDeleteKnowledge = useCallback(
     async (id) => {
+      // eslint-disable-next-line no-alert
       if (!confirm("Are you sure you want to delete this entry?")) return;
 
       try {
@@ -1273,7 +1274,6 @@ If the user needs more personalized help or wants to speak with a human, direct 
           </Box>
         </Paper>
       </Stack>
-
       {/* Knowledge Entry Dialog */}
       <Dialog
         open={knowledgeDialog}
