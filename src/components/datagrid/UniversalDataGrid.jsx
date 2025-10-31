@@ -130,14 +130,12 @@ export default function UniversalDataGrid({
   const mergedSx = useMemo(
     () => [
       (theme) => ({
-        // Remove focus outlines
-        [`& .MuiDataGrid-cell`]: { outline: "none" },
-        [`& .MuiDataGrid-columnHeader:focus`]: { outline: "none" },
-
-        // Borders
+        // Cell styling (remove focus outlines + borders)
         [`& .MuiDataGrid-cell`]: {
-          borderColor: theme.palette.divider
+          outline: "none",
+          borderColor: theme.palette.divider,
         },
+        [`& .MuiDataGrid-columnHeader:focus`]: { outline: "none" },
 
         // Toolbar styling
         [`& .MuiDataGrid-toolbarContainer`]: {
