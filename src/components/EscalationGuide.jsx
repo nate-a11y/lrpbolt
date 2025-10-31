@@ -1,5 +1,11 @@
 /* Proprietary and confidential. See LICENSE. */
-import React, { useMemo, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Box,
   Stack,
@@ -7,7 +13,15 @@ import {
   Typography,
   Alert,
   Pagination,
+  Chip,
+  Button,
+  Menu,
+  MenuItem,
 } from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+
+import { exportToCSV, exportAllAsVCard } from "../utils/exportContacts";
 
 import ContactCard from "@/components/escalation/ContactCard.jsx";
 import EmptyState from "@/components/escalation/EmptyState.jsx";
@@ -91,12 +105,28 @@ export default function EscalationGuide(props = {}) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState(null);
+  const searchInputRef = useRef(null);
   const pageSize = 6; // Show 6 contacts per page
 
   useEffect(() => {
     const handle = setTimeout(() => setDebounced(query), 300);
     return () => clearTimeout(handle);
   }, [query]);
+
+  // Keyboard shortcut: Ctrl/Cmd+K to focus search
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const rowsSource =
     Array.isArray(props?.rows) && props.rows.length
@@ -105,22 +135,72 @@ export default function EscalationGuide(props = {}) {
 
   const contacts = useMemo(() => normalizeContacts(rowsSource), [rowsSource]);
 
-  const filtered = useMemo(() => {
-    const q = debounced.trim().toLowerCase();
-    if (!q) return contacts;
-    return contacts.filter((c) => {
-      const hay = [
-        c?.name,
-        c?.email,
-        c?.phone,
-        ...(Array.isArray(c?.responsibilities) ? c.responsibilities : []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+  // Extract common responsibility categories
+  const responsibilityCategories = useMemo(() => {
+    const categories = new Set();
+    const keywords = [
+      "Trip issues",
+      "Vehicle issues",
+      "Schedule issues",
+      "Payroll",
+      "Insurance",
+      "Permits",
+      "Tech support",
+      "Website",
+      "Moovs",
+      "Social Media",
+      "Apparel",
+      "Passenger",
+      "Incident",
+    ];
+
+    contacts.forEach((contact) => {
+      if (Array.isArray(contact?.responsibilities)) {
+        contact.responsibilities.forEach((resp) => {
+          keywords.forEach((keyword) => {
+            if (resp.toLowerCase().includes(keyword.toLowerCase())) {
+              categories.add(keyword);
+            }
+          });
+        });
+      }
     });
-  }, [contacts, debounced]);
+
+    return Array.from(categories).sort();
+  }, [contacts]);
+
+  const filtered = useMemo(() => {
+    let result = contacts;
+
+    // Apply search filter
+    const q = debounced.trim().toLowerCase();
+    if (q) {
+      result = result.filter((c) => {
+        const hay = [
+          c?.name,
+          c?.email,
+          c?.phone,
+          ...(Array.isArray(c?.responsibilities) ? c.responsibilities : []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    // Apply category filter
+    if (selectedCategory) {
+      result = result.filter((c) => {
+        if (!Array.isArray(c?.responsibilities)) return false;
+        return c.responsibilities.some((resp) =>
+          resp.toLowerCase().includes(selectedCategory.toLowerCase()),
+        );
+      });
+    }
+
+    return result;
+  }, [contacts, debounced, selectedCategory]);
 
   // Paginate contacts
   const totalPages = Math.ceil(filtered.length / pageSize);
@@ -130,10 +210,41 @@ export default function EscalationGuide(props = {}) {
     return filtered.slice(start, end);
   }, [filtered, page, pageSize]);
 
-  // Reset page when search changes
+  // Reset page when search or filters change
   useEffect(() => {
     setPage(1);
-  }, [debounced]);
+  }, [debounced, selectedCategory]);
+
+  const handleCategoryFilter = (category) => {
+    setSelectedCategory((prev) => (prev === category ? null : category));
+  };
+
+  const clearAllFilters = () => {
+    setQuery("");
+    setSelectedCategory(null);
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(query.trim() || selectedCategory);
+
+  // Export handlers
+  const handleExportClick = useCallback((event) => {
+    setExportMenuAnchor(event.currentTarget);
+  }, []);
+
+  const handleExportClose = useCallback(() => {
+    setExportMenuAnchor(null);
+  }, []);
+
+  const handleExportCSV = useCallback(() => {
+    exportToCSV(filtered, "escalation-contacts.csv");
+    handleExportClose();
+  }, [filtered, handleExportClose]);
+
+  const handleExportVCard = useCallback(() => {
+    exportAllAsVCard(filtered, "escalation-contacts.vcf");
+    handleExportClose();
+  }, [filtered, handleExportClose]);
 
   const loading = Boolean(props?.loading);
   const error = props?.error ?? null;
@@ -162,24 +273,103 @@ export default function EscalationGuide(props = {}) {
 
   return (
     <Box sx={mergedSx}>
-      {showHeading ? (
-        <Typography
-          variant="h5"
-          sx={{ mb: 2, color: (t) => t.palette.primary.main }}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}
+      >
+        {showHeading ? (
+          <Typography
+            variant="h5"
+            sx={{ color: (t) => t.palette.primary.main }}
+          >
+            Who to Contact & When
+          </Typography>
+        ) : null}
+
+        {/* Export button */}
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<FileDownloadIcon />}
+          onClick={handleExportClick}
+          disabled={filtered.length === 0}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+          }}
         >
-          Who to Contact & When
-        </Typography>
-      ) : null}
+          Export ({filtered.length})
+        </Button>
+      </Stack>
 
       <TextField
         fullWidth
-        placeholder="Search by name, phone, email, or responsibility…"
+        placeholder="Search by name, phone, email, or responsibility… (Ctrl/Cmd+K)"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         size="small"
         sx={{ mb: 2 }}
+        inputRef={searchInputRef}
         inputProps={{ "aria-label": "Search contacts" }}
       />
+
+      {/* Filter chips */}
+      {responsibilityCategories.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <FilterListIcon
+              sx={{ fontSize: 18, color: (t) => t.palette.text.secondary }}
+            />
+            <Typography
+              variant="caption"
+              sx={{ opacity: 0.7, fontWeight: 700 }}
+            >
+              FILTER BY RESPONSIBILITY:
+            </Typography>
+          </Stack>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            sx={{ flexWrap: "wrap", gap: 0.75 }}
+          >
+            {responsibilityCategories.map((category) => (
+              <Chip
+                key={category}
+                label={category}
+                size="small"
+                onClick={() => handleCategoryFilter(category)}
+                color={selectedCategory === category ? "success" : "default"}
+                variant={selectedCategory === category ? "filled" : "outlined"}
+                sx={{
+                  fontSize: "0.75rem",
+                  height: 26,
+                  "& .MuiChip-label": { px: 1.5 },
+                }}
+              />
+            ))}
+          </Stack>
+
+          {/* Clear filters button */}
+          {hasActiveFilters && (
+            <Box sx={{ mt: 1 }}>
+              <Chip
+                label="Clear All Filters"
+                size="small"
+                onDelete={clearAllFilters}
+                color="error"
+                variant="outlined"
+                sx={{
+                  fontSize: "0.75rem",
+                  height: 26,
+                  "& .MuiChip-label": { px: 1.5 },
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+      )}
 
       {error ? (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -231,6 +421,48 @@ export default function EscalationGuide(props = {}) {
       ) : (
         <EmptyState onClear={() => setQuery("")} />
       )}
+
+      {/* Export menu */}
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={handleExportClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <MenuItem onClick={handleExportCSV}>
+          <Stack spacing={1} direction="row" alignItems="center">
+            <FileDownloadIcon fontSize="small" />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Export as CSV
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                Spreadsheet format
+              </Typography>
+            </Box>
+          </Stack>
+        </MenuItem>
+        <MenuItem onClick={handleExportVCard}>
+          <Stack spacing={1} direction="row" alignItems="center">
+            <FileDownloadIcon fontSize="small" />
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Export as vCard
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                Import to contacts app
+              </Typography>
+            </Box>
+          </Stack>
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }
