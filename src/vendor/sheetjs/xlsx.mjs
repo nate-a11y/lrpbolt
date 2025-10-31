@@ -22818,7 +22818,20 @@ function sheet_add_dom(ws/*:Worksheet*/, table/*:HTMLElement*/, _opts/*:?any*/)/
 			if(Aelts && Aelts.length) for(var Aelti = 0; Aelti < Aelts.length; ++Aelti)	if(Aelts[Aelti].hasAttribute("href")) {
 				l = Aelts[Aelti].getAttribute("href"); if(l.charAt(0) != "#") break;
 			}
-			if(l && l.charAt(0) != "#" &&	l.slice(0, 11).toLowerCase() != 'javascript:') o.l = ({ Target: l });
+			if(l && l.charAt(0) != "#") {
+				// Security: Block dangerous protocols with proper validation
+				var isSafeUrl = true;
+				try {
+					var urlLower = l.toLowerCase().replace(/[\s\n\r\t]/g, '');
+					// Block javascript:, vbscript:, data:, and other dangerous protocols
+					if(/^(javascript|vbscript|data|file):/i.test(urlLower)) {
+						isSafeUrl = false;
+					}
+				} catch(e) {
+					isSafeUrl = false;
+				}
+				if(isSafeUrl) o.l = ({ Target: l });
+			}
 			if(dense) { if(!ws["!data"][R + or_R]) ws["!data"][R + or_R] = []; ws["!data"][R + or_R][C + or_C] = o; }
 			else ws[encode_cell({c:C + or_C, r:R + or_R})] = o;
 			if(range.e.c < C + or_C) range.e.c = C + or_C;

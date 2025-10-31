@@ -64,7 +64,7 @@ const formatHm = (mins) => {
 };
 
 function getLuminance(hex) {
-  const c = hex.replace("#", "");
+  const c = hex.replace(/#/g, "");
   const rgb = [0, 1, 2].map((i) => {
     const v = parseInt(c.substr(i * 2, 2), 16) / 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
@@ -718,7 +718,7 @@ function RideVehicleCalendar({
           if (/Driver:\s*-/.test(descriptionRaw)) return null;
 
           const cleanedDescription = descriptionRaw
-            .replace("(Lake Ride Pros)", "")
+            .replace(/\(Lake Ride Pros\)/g, "")
             .trim();
 
           const vehicleSource =
@@ -733,7 +733,7 @@ function RideVehicleCalendar({
             (typeof item.title === "string" && item.title) ||
             vehicle ||
             "Untitled";
-          const title = summaryRaw.replace("(Lake Ride Pros)", "").trim();
+          const title = summaryRaw.replace(/\(Lake Ride Pros\)/g, "").trim();
 
           const isGooglePayload =
             item.start &&

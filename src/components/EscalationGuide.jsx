@@ -21,10 +21,10 @@ import {
 import FilterListIcon from "@mui/icons-material/FilterList";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
-import { exportToCSV, exportAllAsVCard } from "../utils/exportContacts";
-
 import ContactCard from "@/components/escalation/ContactCard.jsx";
 import EmptyState from "@/components/escalation/EmptyState.jsx";
+
+import { exportToCSV, exportAllAsVCard } from "../utils/exportContacts";
 
 const fallbackContacts = [
   {
