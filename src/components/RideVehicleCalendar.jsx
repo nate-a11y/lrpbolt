@@ -1094,18 +1094,18 @@ function RideVehicleCalendar({
     const vehicles = new Set();
     let tight = 0;
     let overlap = 0;
-    events.forEach((e) => {
+    flatFiltered.forEach((e) => {
       vehicles.add(e.vehicle);
       if (e.tightGap) tight++;
       if (overlapsMap.has(e.id)) overlap++;
     });
     return {
-      rides: events.length,
+      rides: flatFiltered.length,
       vehicles: vehicles.size,
       tight,
       overlap,
     };
-  }, [events, overlapsMap]);
+  }, [flatFiltered, overlapsMap]);
 
   const vehicleOptions = useMemo(() => ["ALL", ...vehicles], [vehicles]);
 
