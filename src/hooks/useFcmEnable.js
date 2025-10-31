@@ -34,9 +34,11 @@ export default function useFcmEnable() {
 
   useEffect(() => {
     if (!FCM_ENABLED || !supported) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing FCM permission state
     setPermission(
       typeof Notification !== "undefined" ? Notification.permission : "denied",
     );
+
     setToken(readToken());
   }, [readToken, supported]);
 

@@ -43,8 +43,11 @@ export function useCalendarEvents(
     // Check cache
     const cached = cache.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting state from cache
       setEvents(cached.events);
+
       setLoading(false);
+
       setError(null);
       return;
     }

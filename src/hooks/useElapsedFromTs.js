@@ -32,9 +32,11 @@ export default function useElapsedFromTs(
   const start = useMemo(() => {
     const parsed = toDayjs(startTs);
     if (parsed) {
+      // eslint-disable-next-line react-hooks/refs -- Resetting log flag when timestamp becomes valid
       logOnceRef.current = false;
       return parsed;
     }
+    // eslint-disable-next-line react-hooks/refs -- Checking log flag to prevent duplicate error logs
     if (startTs != null && logOnNullOnce && !logOnceRef.current) {
       logError(new Error("Invalid start timestamp"), {
         where: "useElapsedFromTs",

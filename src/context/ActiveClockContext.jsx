@@ -202,6 +202,7 @@ export default function ActiveClockProvider({ children }) {
         action: "lockedSubscribe",
       });
       clearDetectedSchema();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clearing schema on subscription error
       setLockedSchema(null);
     }
 
@@ -225,6 +226,7 @@ export default function ActiveClockProvider({ children }) {
     if (multiActiveRef.current) return undefined;
     multiActiveRef.current = true;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting debug state for multi-probe
     setState((prev) => ({
       ...prev,
       debug: {

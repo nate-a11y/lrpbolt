@@ -140,6 +140,7 @@ export default function PermissionGate({ user: userProp, children = null }) {
   useEffect(() => {
     if (!supported) return undefined;
     if (typeof Notification === "undefined") return undefined;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing notification permission state
     setPermission(Notification.permission);
     if (Notification.permission !== "default") {
       return undefined;

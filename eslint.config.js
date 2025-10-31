@@ -64,6 +64,7 @@ export default [
       // Hooks (stricter)
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",  // stricter: exhaustive deps is now error
+      "react-hooks/preserve-manual-memoization": "warn",  // React Compiler optimization hints as warnings
 
       // Code quality
       "no-debugger": "error",                  // no debugger statements

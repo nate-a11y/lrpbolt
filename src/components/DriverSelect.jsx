@@ -18,6 +18,7 @@ export default function DriverSelect({
   useEffect(() => {
     if (authLoading || !user?.email) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state for subscription is intentional
     setLoading(true);
     const unsubscribe = subscribeUserAccess(
       (rows) => {

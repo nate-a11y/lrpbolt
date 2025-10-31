@@ -74,12 +74,12 @@ export default function DriverCard({ driver, highlight = false }) {
   const vehicles = useMemo(
     () =>
       Array.isArray(driver?.vehicles) ? driver.vehicles.filter(Boolean) : [],
-    [driver?.vehicles],
+    [driver],
   );
 
   const roles = useMemo(
     () => (Array.isArray(driver?.roles) ? driver.roles.filter(Boolean) : []),
-    [driver?.roles],
+    [driver],
   );
 
   return (

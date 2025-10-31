@@ -23,6 +23,7 @@ export default function ClaimedRidesGrid() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state for subscription is intentional
     setLoading(true);
     const unsub = onSnapshot(
       collection(db, "claimedRides"),
@@ -75,7 +76,7 @@ export default function ClaimedRidesGrid() {
     }
   }, []);
 
-  performDelete.restore = async (rowsToRestore) => {
+  const performRestore = useCallback(async (rowsToRestore) => {
     const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -95,10 +96,10 @@ export default function ClaimedRidesGrid() {
         }
       }
     }
-  };
+  }, []);
 
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
-    useBulkDelete({ performDelete });
+    useBulkDelete({ performDelete, performRestore });
 
   const handleDelete = useCallback(async (ride) => {
     const id = ride?.id;

@@ -199,12 +199,7 @@ function useGridStatePersistence(id, defaults = {}) {
       logError(error, { where: "LrpDataGridPro.initialState" });
       return fallback;
     }
-  }, [
-    defaults?.columnVisibilityModel,
-    defaults?.density,
-    defaults?.filterModel,
-    storageKey,
-  ]);
+  }, [defaults, storageKey]);
 
   const onStateChange = useCallback(
     (state) => {
@@ -227,7 +222,7 @@ function useGridStatePersistence(id, defaults = {}) {
         logError(error, { where: "LrpDataGridPro.onStateChange" });
       }
     },
-    [defaults?.density, storageKey],
+    [defaults, storageKey],
   );
 
   return { initialState, onStateChange };
@@ -497,6 +492,7 @@ function LrpDataGridPro({
       globalThis.process?.env?.NODE_ENV === "production") ||
     Boolean(import.meta?.env?.PROD);
 
+  // eslint-disable-next-line react-hooks/refs -- Debug logging only, ref used to prevent multiple logs
   if (!isProductionEnv && !normalizedDebugLoggedRef.current) {
     const dbg = {
       id,

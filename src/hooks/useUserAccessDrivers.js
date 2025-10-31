@@ -22,6 +22,7 @@ export function useUserAccessDrivers(roles = ["admin", "driver"]) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state for subscription
     setLoading(true);
 
     const q = query(

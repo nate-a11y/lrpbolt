@@ -202,7 +202,7 @@ export default function RideCard({
     return normalizedStatus
       ? `Status: ${normalizedStatus}`
       : "Unavailable to claim";
-  }, [claimable, normalizedStatus, ride?.claimedBy]);
+  }, [ride, claimable, normalizedStatus]);
 
   const { blurb, details } = useMemo(
     () => buildDetails({ ...ride, notes }),

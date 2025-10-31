@@ -19,7 +19,7 @@
   // State
   let chatbotSettings = null;
   let isOpen = false;
-  let messages = [];
+  const messages = [];
   let isLoading = false;
 
   // DOM elements (will be created)

@@ -102,7 +102,9 @@ export default function NotifDiag() {
 
   useEffect(() => {
     if (!ENABLED) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing permission state on mount
     setPerm(getPermission());
+
     setControlled(getControlled());
   }, []);
 

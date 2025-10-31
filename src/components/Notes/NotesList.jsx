@@ -176,6 +176,7 @@ export default function NotesList({ notes, loading, error }) {
         selectedVehicles,
         miscellaneous,
       );
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Generating note from template when dependencies change
       setGeneratedNote(note);
     } else {
       setGeneratedNote("");

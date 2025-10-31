@@ -9,6 +9,9 @@ import { imageSetFor } from "@/utils/assetVariant";
 
 import useMediaQuery from "../hooks/useMediaQuery";
 
+// Create motion component outside render to avoid React Compiler warning
+const MotionBox = motion(Box);
+
 /**
  * Props:
  * - progress?: number | null   // 0..100 (if provided shows determinate bar), else indeterminate
@@ -26,8 +29,6 @@ export default function LoadingScreen({ progress = null }) {
 
   // Simplified gradient using theme colors
   const gradient = `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${alpha(theme.palette.background.paper, 0.5)} 50%, ${theme.palette.background.default} 100%)`;
-
-  const MotionBox = motion(Box);
 
   return (
     <Box

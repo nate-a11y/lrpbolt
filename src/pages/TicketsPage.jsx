@@ -63,6 +63,7 @@ export default function TicketsPage() {
   useEffect(() => {
     if (!drawerOpen) return;
     if (!selectedTicket) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Closing drawer when ticket is deselected
       setDrawerOpen(false);
     }
   }, [drawerOpen, selectedTicket]);

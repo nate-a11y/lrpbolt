@@ -202,7 +202,9 @@ function TicketGrid({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state for subscription
     setLoading(true);
+
     setError(null);
     const unsubscribe = subscribeTickets({}, (result) => {
       if (result?.error) {
@@ -530,6 +532,7 @@ function TicketGrid({
 
   useEffect(() => {
     if (!activeTicketId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clearing selection when active ticket is removed
       setSelectedId(null);
     }
   }, [activeTicketId]);

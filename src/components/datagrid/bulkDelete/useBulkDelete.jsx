@@ -7,9 +7,10 @@ import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
  * useBulkDelete
  * @param {Object} options
  * @param {(ids: string[], rows: any[]) => Promise<void>} options.performDelete - required deleter
+ * @param {(rows: any[]) => Promise<void>} options.performRestore - optional restore function for undo
  * @returns {Object} control api
  */
-export default function useBulkDelete({ performDelete }) {
+export default function useBulkDelete({ performDelete, performRestore }) {
   const { show } = useSnack();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
@@ -41,8 +42,8 @@ export default function useBulkDelete({ performDelete }) {
             size="small"
             onClick={async () => {
               try {
-                if (typeof performDelete.restore === "function") {
-                  await performDelete.restore(selectedRowsCache);
+                if (typeof performRestore === "function") {
+                  await performRestore(selectedRowsCache);
                   show("Undo complete", "success");
                 }
               } catch (err) {

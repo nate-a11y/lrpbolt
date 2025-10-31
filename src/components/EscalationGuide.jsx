@@ -212,6 +212,7 @@ export default function EscalationGuide(props = {}) {
 
   // Reset page when search or filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentionally resetting page when filters change
     setPage(1);
   }, [debounced, selectedCategory]);
 

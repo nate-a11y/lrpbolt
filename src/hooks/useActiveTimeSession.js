@@ -46,6 +46,7 @@ export default function useActiveTimeSession(user) {
     addIdentity(user?.displayName);
 
     if (identities.size === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clearing session state when no identities
       setState((prev) => ({
         ...prev,
         session: null,

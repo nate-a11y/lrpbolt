@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- MUI DataGrid pattern: apiRef.current is the official way to access grid state */
 import * as React from "react";
 import { useMemo } from "react";
 import {
@@ -13,6 +14,7 @@ export default function SafeGridFooter() {
   const rootProps = useGridRootProps();
 
   // Never call gridRowSelectionSelector; it throws if the slice is undefined.
+
   const selectedCount = useMemo(() => {
     const sel = apiRef?.current?.state?.rowSelection;
     if (!sel) return 0;
@@ -23,6 +25,7 @@ export default function SafeGridFooter() {
   }, [apiRef]);
 
   const pagination = apiRef?.current?.state?.pagination;
+
   const rowCount = apiRef?.current?.state?.rows?.totalRowCount ?? 0;
 
   return (
