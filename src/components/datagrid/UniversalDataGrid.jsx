@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { DataGridPro } from "@mui/x-data-grid-pro";
 import { alpha } from "@mui/material/styles";
 
+import logError from "@/utils/logError.js";
 import LrpGridToolbar from "./LrpGridToolbar.jsx";
 import SafeGridFooter from "./SafeGridFooter.jsx";
 import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
-import logError from "@/utils/logError.js";
 
 function isBrowser() {
   return (
