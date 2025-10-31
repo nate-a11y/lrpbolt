@@ -320,7 +320,6 @@ export default function ShootoutStatsTab() {
       {rows?.length ? (
         <UniversalDataGrid
           id="admin-timelog-shootout-grid"
-          rows={rows}
           columns={columns}
           editMode="row"
           rowModesModel={rowModesModel}
