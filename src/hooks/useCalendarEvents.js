@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useState, useEffect, useCallback } from "react";
+
 import dayjs from "@/utils/dayjsSetup.js";
 import { getVehicleEvents } from "@/services/calendarService.js";
 import { getCalendarIdsForVehicles } from "@/constants/vehicleCalendars.js";

@@ -45,8 +45,7 @@ import {
   compareLte,
 } from "@/utils/calendarTime.js";
 // Data fetching now handled by useCalendarEvents hook in CalendarHub
-// Removed: getVehicleEvents, getCalendarIdsForVehicles
-import { VEHICLE_CALENDARS } from "@/constants/vehicleCalendars.js";
+// Removed: getVehicleEvents, getCalendarIdsForVehicles, VEHICLE_CALENDARS
 
 import { TIMEZONE } from "../constants";
 
@@ -804,8 +803,7 @@ function RideVehicleCalendar({
   useEffect(() => {
     if (!Array.isArray(data)) return;
     setEvents(normalizeEvents(data));
-    setLoading(false);
-    setError(null);
+    // loading and error are managed by parent via props
   }, [data, normalizeEvents]);
   const [filtersState, setFiltersState] = useState(() => {
     const base = { ...DEFAULT_FILTERS };
@@ -1248,7 +1246,7 @@ function RideVehicleCalendar({
               >
                 <DatePicker
                   value={date}
-                  onChange={(newDate) => {
+                  onChange={(_newDate) => {
                     // This DatePicker is hidden when used in CalendarHub
                     // Date management is now in parent component
                     // Kept for backward compatibility if used standalone
@@ -1358,8 +1356,6 @@ function RideVehicleCalendar({
                     size="small"
                     onClick={() => {
                       // Note: This is redundant when used in CalendarHub (which has its own Today button)
-                      // Kept for backward compatibility if component is used standalone
-                      const today = dayjs().tz(CST);
                       // Date is now managed by parent via dateISO prop
                     }}
                     disabled
