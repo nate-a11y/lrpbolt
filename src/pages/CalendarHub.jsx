@@ -28,6 +28,7 @@ import dayjs from "@/utils/dayjsSetup.js";
 import logError from "@/utils/logError.js";
 import CalendarUpdateTab from "@/components/CalendarUpdateTab.jsx";
 import { TIMEZONE } from "@/constants.js";
+import { useCalendarEvents } from "@/hooks/useCalendarEvents.js";
 
 const STORAGE_KEY = "lrp.calendar.filters.v2";
 const LazyCalendar = lazy(() => import("@/components/RideVehicleCalendar.jsx"));
@@ -74,9 +75,24 @@ export default function CalendarHub() {
   const [dateISO, setDateISO] = useState(() => dayjs().format("YYYY-MM-DD"));
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // Fetch calendar events using the custom hook
+  const { events, loading, error } = useCalendarEvents(
+    dateISO,
+    filters,
+    TIMEZONE,
+  );
+
   const actions = useMemo(
     () => ({
       onToday: () => setDateISO(dayjs().format("YYYY-MM-DD")),
+      onPrevDay: () =>
+        setDateISO((current) =>
+          dayjs.tz(current, TIMEZONE).subtract(1, "day").format("YYYY-MM-DD"),
+        ),
+      onNextDay: () =>
+        setDateISO((current) =>
+          dayjs.tz(current, TIMEZONE).add(1, "day").format("YYYY-MM-DD"),
+        ),
       onCenterNow: () =>
         window.dispatchEvent(new CustomEvent("calendar:center-now")),
     }),
@@ -302,7 +318,11 @@ export default function CalendarHub() {
               >
                 <LazyCalendar
                   dateISO={dateISO}
-                  onDateChange={setDateISO}
+                  onPrevDay={actions.onPrevDay}
+                  onNextDay={actions.onNextDay}
+                  data={events}
+                  loading={loading}
+                  error={error}
                   hideHeader={true}
                   hideDatePicker={true}
                   stickyTopOffset={stickyTopCss}

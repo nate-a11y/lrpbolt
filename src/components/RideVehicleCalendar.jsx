@@ -44,17 +44,15 @@ import {
   compareGte,
   compareLte,
 } from "@/utils/calendarTime.js";
-import { getVehicleEvents } from "@/services/calendarService.js";
-import {
-  VEHICLE_CALENDARS,
-  getCalendarIdsForVehicles,
-} from "@/constants/vehicleCalendars.js";
+// Data fetching now handled by useCalendarEvents hook in CalendarHub
+// Removed: getVehicleEvents, getCalendarIdsForVehicles
+import { VEHICLE_CALENDARS } from "@/constants/vehicleCalendars.js";
 
 import { TIMEZONE } from "../constants";
 
 import PageContainer from "./PageContainer.jsx";
 
-const cache = new Map();
+// Remove cache - now handled by useCalendarEvents hook
 
 const DEFAULT_STICKY_TOP = 64;
 
@@ -683,40 +681,29 @@ const DEFAULT_FILTERS = { vehicles: ["ALL"], scrollToNow: true };
 function RideVehicleCalendar({
   dateISO,
   data,
+  loading: loadingProp = false,
+  error: errorProp = null,
+  onPrevDay,
+  onNextDay,
   hideHeader = false,
   hideDatePicker = false,
   stickyTopOffset = DEFAULT_STICKY_TOP,
   onCenterNow,
-  onDateChange,
   persistedFilters,
   onFiltersChange,
   hideQuickActions = false,
   ...rest
 } = {}) {
-  const [date, setDate] = useState(() => {
-    if (dateISO) {
-      const parsed = dayjs.tz(dateISO, CST);
-      if (parsed.isValid()) {
-        return parsed;
-      }
-    }
-    const stored = localStorage.getItem("rvcal.date");
-    return stored ? dayjs.tz(stored, CST) : dayjs().tz(CST);
-  });
-  useEffect(() => {
-    if (!dateISO) return;
-    const parsed = dayjs.tz(dateISO, CST);
-    if (!parsed.isValid()) return;
-    setDate((prev) => {
-      if (prev && prev.isValid() && prev.isSame(parsed, "day")) {
-        return prev;
-      }
-      return parsed;
-    });
-  }, [dateISO]);
+  // Use dateISO directly from parent - no internal date state needed
+  const date = useMemo(
+    () => dayjs.tz(dateISO || dayjs().format("YYYY-MM-DD"), CST),
+    [dateISO],
+  );
+
+  // Normalized events state (data from parent gets normalized)
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const loading = loadingProp;
+  const error = errorProp;
   const tz = useMemo(() => dayjs.tz?.guess?.() || CST, []);
 
   const normalizeEvents = useCallback(
@@ -970,9 +957,7 @@ function RideVehicleCalendar({
     return () => clearInterval(id);
   }, [tz]);
 
-  useEffect(() => {
-    localStorage.setItem("rvcal.date", date.format("YYYY-MM-DD"));
-  }, [date]);
+  // Date is now managed by parent (CalendarHub) - no need to persist locally
   useEffect(() => {
     localStorage.setItem("rvcal.compact", compactMode);
   }, [compactMode]);
@@ -1008,83 +993,8 @@ function RideVehicleCalendar({
     [vehicleColors],
   );
 
-  useEffect(() => {
-    const key = `${date.format("YYYY-MM-DD")}:${tz}`;
-    const cached = cache.get(key);
-    if (cached) {
-      setEvents(cached);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const fallbackPrimary = import.meta.env.VITE_CALENDAR_ID;
-        const filterVehicles = filtersState?.vehicles || [];
-        const selectedVehicles = filterVehicles.includes("ALL")
-          ? Object.keys(VEHICLE_CALENDARS).length
-            ? Object.keys(VEHICLE_CALENDARS)
-            : [...new Set(events.map((event) => event.vehicle))]
-          : filterVehicles;
-
-        const calendarIds = getCalendarIdsForVehicles(
-          selectedVehicles,
-          fallbackPrimary,
-        );
-
-        const idsToQuery = calendarIds.length
-          ? calendarIds
-          : [fallbackPrimary].filter(Boolean);
-
-        if (!idsToQuery.length) {
-          setEvents([]);
-          setLoading(false);
-          setError(
-            new Error(
-              "No calendar ID configured. Set VITE_CALENDAR_ID or vehicle mapping.",
-            ),
-          );
-          return;
-        }
-
-        const { events: items } = await getVehicleEvents({
-          calendarIds: idsToQuery,
-          start: date.startOf("day"),
-          end: date.endOf("day"),
-          tz,
-          signal: controller.signal,
-        });
-
-        if (controller.signal.aborted) return;
-
-        const parsed = normalizeEvents(items);
-        cache.set(key, parsed);
-        setEvents(parsed);
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          logError(err, {
-            area: "RideVehicleCalendar",
-            action: "fetchEvents",
-            hint: "calendar-service",
-          });
-          setError(err);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load();
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, normalizeEvents, tz]);
+  // Data fetching is now handled by useCalendarEvents hook in CalendarHub
+  // This component just normalizes the data it receives
 
   const grouped = useMemo(() => {
     const map = {};
@@ -1209,20 +1119,14 @@ function RideVehicleCalendar({
 
   const vehicleOptions = useMemo(() => ["ALL", ...vehicles], [vehicles]);
 
+  // Navigation is handled by parent - just pass through the callbacks
   const handlePrevDay = useCallback(() => {
-    setDate((d) => {
-      const newDate = d.subtract(1, "day");
-      onDateChange?.(newDate.format("YYYY-MM-DD"));
-      return newDate;
-    });
-  }, [onDateChange]);
+    onPrevDay?.();
+  }, [onPrevDay]);
+
   const handleNextDay = useCallback(() => {
-    setDate((d) => {
-      const newDate = d.add(1, "day");
-      onDateChange?.(newDate.format("YYYY-MM-DD"));
-      return newDate;
-    });
-  }, [onDateChange]);
+    onNextDay?.();
+  }, [onNextDay]);
   const handleToggleSection = (v) => {
     setSectionState((s) => ({ ...s, [v]: !s[v] }));
   };
@@ -1345,12 +1249,11 @@ function RideVehicleCalendar({
                 <DatePicker
                   value={date}
                   onChange={(newDate) => {
-                    if (newDate) {
-                      const parsed = dayjs(newDate).tz(CST);
-                      setDate(parsed);
-                      onDateChange?.(parsed.format("YYYY-MM-DD"));
-                    }
+                    // This DatePicker is hidden when used in CalendarHub
+                    // Date management is now in parent component
+                    // Kept for backward compatibility if used standalone
                   }}
+                  disabled
                   slotProps={{
                     textField: { size: "small", fullWidth: isMobile },
                     popper: {
@@ -1454,10 +1357,13 @@ function RideVehicleCalendar({
                   <Button
                     size="small"
                     onClick={() => {
+                      // Note: This is redundant when used in CalendarHub (which has its own Today button)
+                      // Kept for backward compatibility if component is used standalone
                       const today = dayjs().tz(CST);
-                      setDate(today);
-                      onDateChange?.(today.format("YYYY-MM-DD"));
+                      // Date is now managed by parent via dateISO prop
                     }}
+                    disabled
+                    sx={{ display: "none" }}
                   >
                     Today
                   </Button>
@@ -1534,19 +1440,7 @@ function RideVehicleCalendar({
           {/* ===== [RVTC:overview:end] ===== */}
 
           {error && (
-            <Alert
-              severity="warning"
-              action={
-                <Button
-                  color="inherit"
-                  size="small"
-                  onClick={() => setDate((d) => d.clone())}
-                >
-                  Retry
-                </Button>
-              }
-              sx={{ mb: 2, width: "100%" }}
-            >
+            <Alert severity="warning" sx={{ mb: 2, width: "100%" }}>
               Failed to load Google Calendar events:
               <Box sx={{ display: "inline", fontWeight: 600, ml: 0.5 }}>
                 {String(error?.message || error)}
