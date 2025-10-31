@@ -150,7 +150,7 @@ export default function CalendarHub() {
           display: "flex",
           flexDirection: "column",
           gap: 0,
-          pt: 1,
+          pt: 0,
           pb: `env(safe-area-inset-bottom, 0px)`,
           px: { xs: 2, md: 3 },
           color: "text.primary",
@@ -169,7 +169,7 @@ export default function CalendarHub() {
                   ? alpha(theme.palette.background.default, 0.95)
                   : alpha(theme.palette.background.paper, 0.95),
               backdropFilter: "saturate(1.2) blur(12px)",
-              mb: 1.5,
+              mb: 0,
               borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
             }}
           >
