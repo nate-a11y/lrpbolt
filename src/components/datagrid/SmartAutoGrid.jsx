@@ -314,9 +314,10 @@ export default function SmartAutoGrid(props) {
       noRowsOverlay: NoRowsOverlay,
       errorOverlay: ErrorOverlay,
       toolbar: LrpGridToolbar,
+      ...(components || {}), // Backward compat fallback
       ...(slots || {}),
     }),
-    [slots],
+    [slots, components],
   );
 
   const mergedSlotProps = useMemo(
@@ -324,40 +325,17 @@ export default function SmartAutoGrid(props) {
       toolbar: {
         quickFilterPlaceholder: "Search",
         ...slotProps?.toolbar,
+        ...componentsProps?.toolbar, // Backward compat fallback
         onDeleteSelected:
           typeof slotProps?.toolbar?.onDeleteSelected === "function"
             ? slotProps.toolbar.onDeleteSelected
-            : undefined,
+            : typeof componentsProps?.toolbar?.onDeleteSelected === "function"
+              ? componentsProps.toolbar.onDeleteSelected
+              : undefined,
       },
       ...slotProps,
     }),
-    [slotProps],
-  );
-
-  const mergedComponents = useMemo(
-    () => ({
-      Footer: SafeGridFooter,
-      NoRowsOverlay: NoRowsOverlay,
-      ErrorOverlay: ErrorOverlay,
-      Toolbar: LrpGridToolbar,
-      ...(components || {}),
-    }),
-    [components],
-  );
-
-  const mergedComponentsProps = useMemo(
-    () => ({
-      toolbar: {
-        quickFilterPlaceholder: "Search",
-        ...componentsProps?.toolbar,
-        onDeleteSelected:
-          typeof componentsProps?.toolbar?.onDeleteSelected === "function"
-            ? componentsProps.toolbar.onDeleteSelected
-            : undefined,
-      },
-      ...componentsProps,
-    }),
-    [componentsProps],
+    [slotProps, componentsProps],
   );
 
   const computedAutoHeight = autoHeightProp ?? false;
@@ -468,8 +446,6 @@ export default function SmartAutoGrid(props) {
         density={density}
         slots={mergedSlots}
         slotProps={mergedSlotProps}
-        components={mergedComponents}
-        componentsProps={mergedComponentsProps}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         sx={mergedGridSx}
         {...rest}
