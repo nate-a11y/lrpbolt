@@ -683,6 +683,7 @@ function RideVehicleCalendar({
   persistedFilters,
   onFiltersChange,
   hideQuickActions = false,
+  compactMode: compactModeProp,
   ...rest
 } = {}) {
   // Use dateISO directly from parent - no internal date state needed
@@ -843,9 +844,11 @@ function RideVehicleCalendar({
   });
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [compactMode, setCompactMode] = useState(
-    () => localStorage.getItem("rvcal.compact") !== "false",
-  );
+  // Use compactMode from prop if provided, otherwise fallback to localStorage
+  const compactMode =
+    compactModeProp !== undefined
+      ? compactModeProp
+      : localStorage.getItem("rvcal.compact") !== "false";
   const [sectionState, setSectionState] = useState(() =>
     JSON.parse(localStorage.getItem("rvcal.sectionState") || "{}"),
   );
@@ -947,10 +950,7 @@ function RideVehicleCalendar({
     return () => clearInterval(id);
   }, [tz]);
 
-  // Date is now managed by parent (CalendarHub) - no need to persist locally
-  useEffect(() => {
-    localStorage.setItem("rvcal.compact", compactMode);
-  }, [compactMode]);
+  // Compact mode is now managed by parent (CalendarHub)
   useEffect(() => {
     localStorage.setItem("rvcal.sectionState", JSON.stringify(sectionState));
   }, [sectionState]);
@@ -1290,13 +1290,6 @@ function RideVehicleCalendar({
                       updateFilters({ scrollToNow: event.target.checked })
                     }
                     inputProps={{ "aria-label": "Auto scroll to now" }}
-                  />
-                </Tooltip>
-                <Tooltip title="Toggle Compact Mode">
-                  <Switch
-                    size="small"
-                    checked={compactMode}
-                    onChange={() => setCompactMode((v) => !v)}
                   />
                 </Tooltip>
               </Stack>
