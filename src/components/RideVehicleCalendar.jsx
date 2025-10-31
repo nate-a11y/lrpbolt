@@ -27,12 +27,8 @@ import Alert from "@mui/material/Alert";
 import { alpha, useTheme } from "@mui/material/styles";
 import Autocomplete from "@mui/material/Autocomplete";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers-pro";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 import useMediaQuery from "@/hooks/useMediaQuery.js";
 import dayjs, { toDayjs, isD } from "@/utils/dayjsSetup.js";
@@ -682,10 +678,7 @@ function RideVehicleCalendar({
   data,
   loading: loadingProp = false,
   error: errorProp = null,
-  onPrevDay,
-  onNextDay,
   hideHeader = false,
-  hideDatePicker = false,
   stickyTopOffset = DEFAULT_STICKY_TOP,
   onCenterNow,
   persistedFilters,
@@ -1117,14 +1110,6 @@ function RideVehicleCalendar({
 
   const vehicleOptions = useMemo(() => ["ALL", ...vehicles], [vehicles]);
 
-  // Navigation is handled by parent - just pass through the callbacks
-  const handlePrevDay = useCallback(() => {
-    onPrevDay?.();
-  }, [onPrevDay]);
-
-  const handleNextDay = useCallback(() => {
-    onNextDay?.();
-  }, [onNextDay]);
   const handleToggleSection = (v) => {
     setSectionState((s) => ({ ...s, [v]: !s[v] }));
   };
@@ -1202,128 +1187,69 @@ function RideVehicleCalendar({
             </Typography>
           )}
 
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            mb={2}
-            sx={{
-              flexWrap: { xs: "wrap", sm: "nowrap" },
-              gap: 1,
-            }}
-          >
-            <Stack direction="row" spacing={0.5} alignItems="center">
-              <IconButton
-                size="small"
-                onClick={handlePrevDay}
-                aria-label="Previous day"
-              >
-                <ChevronLeftIcon fontSize="small" />
-              </IconButton>
-              <Typography
-                variant={isMobile ? "body1" : "subtitle1"}
-                sx={{ minWidth: { xs: "auto", sm: 200 }, textAlign: "center" }}
-              >
-                {date.format(isMobile ? "MMM D" : "dddd, MMMM D")}
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={handleNextDay}
-                aria-label="Next day"
-              >
-                <ChevronRightIcon fontSize="small" />
-              </IconButton>
-            </Stack>
-          </Stack>
-
-          {!hideDatePicker && (
-            <Box sx={{ width: "100%", mb: 2 }}>
-              <Stack
-                direction={isMobile ? "column" : "row"}
-                spacing={isMobile ? 1.5 : 2}
-                alignItems={isMobile ? "stretch" : "center"}
-                sx={{ width: "100%" }}
-              >
-                <DatePicker
-                  value={date}
-                  onChange={(_newDate) => {
-                    // This DatePicker is hidden when used in CalendarHub
-                    // Date management is now in parent component
-                    // Kept for backward compatibility if used standalone
-                  }}
-                  disabled
-                  slotProps={{
-                    textField: { size: "small", fullWidth: isMobile },
-                    popper: {
-                      sx: { zIndex: (t) => t.zIndex.modal },
-                    },
-                  }}
-                />
-                <Autocomplete
-                  multiple
-                  options={vehicleOptions}
-                  value={vehicleFilter}
-                  onChange={(e, val) => {
-                    const list = Array.isArray(val) ? val : [];
-                    let next = list;
-                    if (next.includes("ALL") && next.length > 1) {
-                      next = next.filter((v) => v !== "ALL");
-                    }
-                    updateFilters({
-                      vehicles:
-                        next.length === 0
-                          ? [...DEFAULT_FILTERS.vehicles]
-                          : next,
-                    });
-                  }}
-                  filterSelectedOptions
-                  disableCloseOnSelect
-                  getOptionLabel={(option) =>
-                    option === "ALL" ? "All Vehicles" : option
+          <Box sx={{ width: "100%", mb: 2 }}>
+            <Stack
+              direction={isMobile ? "column" : "row"}
+              spacing={isMobile ? 1.5 : 2}
+              alignItems={isMobile ? "stretch" : "center"}
+              sx={{ width: "100%" }}
+            >
+              <Autocomplete
+                multiple
+                options={vehicleOptions}
+                value={vehicleFilter}
+                onChange={(e, val) => {
+                  const list = Array.isArray(val) ? val : [];
+                  let next = list;
+                  if (next.includes("ALL") && next.length > 1) {
+                    next = next.filter((v) => v !== "ALL");
                   }
-                  renderOption={(props, option) => {
-                    const { key, ...rest } = props;
-                    return (
-                      <Box
-                        component="li"
-                        key={key}
-                        {...rest}
-                        sx={{
+                  updateFilters({
+                    vehicles:
+                      next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
+                  });
+                }}
+                filterSelectedOptions
+                disableCloseOnSelect
+                getOptionLabel={(option) =>
+                  option === "ALL" ? "All Vehicles" : option
+                }
+                renderOption={(props, option) => {
+                  const { key, ...rest } = props;
+                  return (
+                    <Box
+                      component="li"
+                      key={key}
+                      {...rest}
+                      sx={{
+                        backgroundColor:
+                          option === "ALL" ? undefined : vehicleColors[option],
+                        color:
+                          option === "ALL" ? undefined : vehicleText[option],
+                        fontWeight: 500,
+                        "&:hover": {
                           backgroundColor:
                             option === "ALL"
                               ? undefined
                               : vehicleColors[option],
-                          color:
-                            option === "ALL" ? undefined : vehicleText[option],
-                          fontWeight: 500,
-                          "&:hover": {
-                            backgroundColor:
-                              option === "ALL"
-                                ? undefined
-                                : vehicleColors[option],
-                            opacity: 0.9,
-                          },
-                        }}
-                      >
-                        {option === "ALL" ? "All Vehicles" : option}
-                      </Box>
-                    );
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Filter Vehicles"
-                      size="small"
-                    />
-                  )}
-                  sx={{
-                    minWidth: isMobile ? "100%" : 260,
-                    flex: isMobile ? undefined : 1,
-                  }}
-                />
-              </Stack>
-            </Box>
-          )}
+                          opacity: 0.9,
+                        },
+                      }}
+                    >
+                      {option === "ALL" ? "All Vehicles" : option}
+                    </Box>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Filter Vehicles" size="small" />
+                )}
+                sx={{
+                  minWidth: isMobile ? "100%" : 260,
+                  flex: isMobile ? undefined : 1,
+                }}
+              />
+            </Stack>
+          </Box>
 
           {!hideQuickActions && (
             <Box
@@ -1352,17 +1278,6 @@ function RideVehicleCalendar({
                   {plural(summary.overlap, "overlap")}
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      // Note: This is redundant when used in CalendarHub (which has its own Today button)
-                      // Date is now managed by parent via dateISO prop
-                    }}
-                    disabled
-                    sx={{ display: "none" }}
-                  >
-                    Today
-                  </Button>
                   <Button
                     size="small"
                     onClick={() => {

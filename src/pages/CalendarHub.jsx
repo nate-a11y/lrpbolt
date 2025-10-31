@@ -85,14 +85,6 @@ export default function CalendarHub() {
   const actions = useMemo(
     () => ({
       onToday: () => setDateISO(dayjs().format("YYYY-MM-DD")),
-      onPrevDay: () =>
-        setDateISO((current) =>
-          dayjs.tz(current, TIMEZONE).subtract(1, "day").format("YYYY-MM-DD"),
-        ),
-      onNextDay: () =>
-        setDateISO((current) =>
-          dayjs.tz(current, TIMEZONE).add(1, "day").format("YYYY-MM-DD"),
-        ),
       onCenterNow: () =>
         window.dispatchEvent(new CustomEvent("calendar:center-now")),
     }),
@@ -318,13 +310,10 @@ export default function CalendarHub() {
               >
                 <LazyCalendar
                   dateISO={dateISO}
-                  onPrevDay={actions.onPrevDay}
-                  onNextDay={actions.onNextDay}
                   data={events}
                   loading={loading}
                   error={error}
                   hideHeader={true}
-                  hideDatePicker={true}
                   stickyTopOffset={stickyTopCss}
                   onCenterNow={filters?.scrollToNow ? "init" : undefined}
                   hideQuickActions={!isMdUp}
