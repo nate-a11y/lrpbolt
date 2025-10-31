@@ -8808,7 +8808,7 @@ var DIF = /*#__PURE__*/(function() {
 })();
 
 var ETH = /*#__PURE__*/(function() {
-	function decode(s/*:string*/)/*:string*/ { return s.replace(/\\b/g,"\\").replace(/\\c/g,":").replace(/\\n/g,"\n"); }
+	function decode(s/*:string*/)/*:string*/ { return s.replace(/\\c/g,":").replace(/\\n/g,"\n").replace(/\\b/g,"\\"); }
 	function encode(s/*:string*/)/*:string*/ { return s.replace(/\\/g, "\\b").replace(/:/g, "\\c").replace(/\n/g,"\\n"); }
 
 	function eth_to_aoa(str/*:string*/, opts)/*:AOA*/ {
@@ -22870,7 +22870,12 @@ function parse_text_p(text/*:string*//*::, tag*/)/*:Array<any>*/ {
 		.replace(/<text:s text:c="(\d+)"\/>/g, function($$,$1) { return Array(parseInt($1,10)+1).join(" "); })
 		.replace(/<text:tab[^<>]*\/>/g,"\t")
 		.replace(/<text:line-break\/>/g,"\n");
-	var v = unescapexml(fixed.replace(/<[^<>]*>/g,""));
+	var tag_stripped = fixed;
+	do {
+		var prev = tag_stripped;
+		tag_stripped = tag_stripped.replace(/<[^<>]*>/g, "");
+	} while (tag_stripped !== prev);
+	var v = unescapexml(tag_stripped);
 
 	return [v];
 }
