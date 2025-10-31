@@ -1185,7 +1185,7 @@ function RideVehicleCalendar({
           </Typography>
         )}
 
-        <Box sx={{ width: "100%", mb: 2 }}>
+        <Box sx={{ width: "100%", mb: 1 }}>
           <Stack
             direction={isMobile ? "column" : "row"}
             spacing={isMobile ? 1.5 : 2}
