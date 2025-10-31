@@ -8,7 +8,7 @@ import { Paper, CircularProgress } from "@mui/material";
 import { tsToDate } from "@/utils/fsTime";
 import { formatTz, durationHm } from "@/utils/timeSafe";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 
@@ -318,7 +318,7 @@ export default function ShootoutStatsTab() {
       }}
     >
       {rows?.length ? (
-        <LrpDataGridPro
+        <UniversalDataGrid
           id="admin-timelog-shootout-grid"
           rows={rows}
           columns={columns}

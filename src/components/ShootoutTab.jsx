@@ -16,7 +16,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
@@ -332,7 +332,7 @@ function ShootoutTab() {
               onAction={!running ? handleStart : undefined}
             />
           ) : (
-            <LrpDataGridPro
+            <UniversalDataGrid
               id="shootout-sessions-grid"
               rows={rows}
               columns={columns}

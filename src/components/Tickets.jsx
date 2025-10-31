@@ -67,7 +67,7 @@ import {
   restoreTicketsBatch,
   getTicketById,
 } from "@/services/fs";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import { exportTicketNodesAsZip } from "@/utils/exportTickets";
 import { sendTicketsEmail } from "@/services/emailTickets";
 import { getFlag } from "@/services/observability";
@@ -1491,7 +1491,7 @@ function Tickets() {
             </Button>
           </Stack>
           <Paper sx={{ width: "100%" }}>
-            <LrpDataGridPro
+            <UniversalDataGrid
               id="tickets-grid"
               rows={safeRows}
               columns={columns}

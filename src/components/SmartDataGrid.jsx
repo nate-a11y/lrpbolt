@@ -2,7 +2,7 @@
 import { memo, useMemo } from "react";
 import { GridToolbar } from "@mui/x-data-grid-pro";
 
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -104,7 +104,7 @@ function SmartDataGridBase({
   }, [sxProp, toolbarSx]);
 
   return (
-    <LrpDataGridPro
+    <UniversalDataGrid
       rows={safeRows}
       columns={stableColumns}
       getRowId={stableGetRowId}

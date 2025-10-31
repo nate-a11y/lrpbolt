@@ -20,7 +20,7 @@ import {
 import { timestampSortComparator } from "@/utils/timeUtils.js";
 import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
 import { deleteTimeLog, subscribeTimeLogs, updateTimeLog } from "@/services/fs";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 
 import { db } from "../../utils/firebaseInit";
 import { enrichDriverNames } from "../../services/normalizers";
@@ -489,12 +489,10 @@ export default function EntriesTab() {
             description="Time logs will appear here after drivers clock in."
           />
         ) : (
-          <LrpDataGridPro
-            id="admin-timelog-grid"
+          <UniversalDataGrid
             rows={safeRows}
             columns={gridColumns}
             loading={loading}
-            editMode="row"
             rowModesModel={rowModesModel}
             onRowModesModelChange={(m) => setRowModesModel(m)}
             processRowUpdate={handleProcessRowUpdate}
@@ -504,7 +502,6 @@ export default function EntriesTab() {
             onRowEditStart={handleRowEditStart}
             onRowEditStop={handleRowEditStop}
             apiRef={apiRef}
-            experimentalFeatures={{ newEditingApi: true }}
             checkboxSelection
             disableRowSelectionOnClick
             rowSelectionModel={selectionModel}

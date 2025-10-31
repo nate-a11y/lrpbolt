@@ -15,7 +15,7 @@ import { alpha } from "@mui/material/styles";
 import { keyframes } from "@mui/system";
 import { PlayArrow, Stop } from "@mui/icons-material";
 
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import { useAuth } from "@/context/AuthContext.jsx";
 import logError from "@/utils/logError.js";
 import { logTime, subscribeTimeLogs, updateTimeLog } from "@/services/fs";
@@ -714,7 +714,7 @@ export default function TimeClock({ setIsTracking }) {
         </Card>
 
         <Box sx={{ width: "100%" }}>
-          <LrpDataGridPro
+          <UniversalDataGrid
             id="time-clock-grid"
             autoHeight
             rows={Array.isArray(rows) ? rows : []}
