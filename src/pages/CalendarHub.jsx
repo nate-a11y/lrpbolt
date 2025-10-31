@@ -98,6 +98,18 @@ export default function CalendarHub() {
     TIMEZONE,
   );
 
+  // Calculate simple summary stats
+  const summary = useMemo(() => {
+    const vehicles = new Set();
+    events.forEach((e) => {
+      if (e.vehicle) vehicles.add(e.vehicle);
+    });
+    return {
+      rides: events.length,
+      vehicles: vehicles.size,
+    };
+  }, [events]);
+
   const actions = useMemo(
     () => ({
       onToday: () => setDateISO(dayjs().format("YYYY-MM-DD")),
@@ -172,6 +184,20 @@ export default function CalendarHub() {
                 View and manage ride schedules, vehicle availability, and driver
                 assignments
               </Typography>
+              {!loading && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  {summary.rides} {summary.rides === 1 ? "ride" : "rides"} •{" "}
+                  {summary.vehicles}{" "}
+                  {summary.vehicles === 1 ? "vehicle" : "vehicles"}
+                </Typography>
+              )}
             </Box>
 
             <Stack
