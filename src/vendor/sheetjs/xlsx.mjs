@@ -2036,7 +2036,7 @@ function rebuild_cfb(cfb/*:CFBContainer*/, f/*:?boolean*/)/*:void*/ {
 			while(dirname(dad) && !fullPaths[dirname(dad)]) dad = dirname(dad);
 
 			data.push([dad, ({
-				name: filename(dad).replace("/",""),
+				name: filename(dad).replace(/\//g,""),
 				type: 1,
 				clsid: HEADER_CLSID,
 				ct: now, mt: now,
@@ -2058,7 +2058,7 @@ function rebuild_cfb(cfb/*:CFBContainer*/, f/*:?boolean*/)/*:void*/ {
 		var elt = cfb.FileIndex[i];
 		var nm = cfb.FullPaths[i];
 
-		elt.name =  filename(nm).replace("/","");
+		elt.name =  filename(nm).replace(/\//g,"");
 		elt.L = elt.R = elt.C = -(elt.color = 1);
 		elt.size = elt.content ? elt.content.length : 0;
 		elt.start = 0;
@@ -3220,7 +3220,7 @@ function cfb_add(cfb/*:CFBContainer*/, name/*:string*/, content/*:?RawBytes*/, o
 		if(name.slice(0, fpath.length) == fpath) fpath = name;
 		else {
 			if(fpath.slice(-1) != "/") fpath += "/";
-			fpath = (fpath + name).replace("//","/");
+			fpath = (fpath + name).replace(/\/\//g,"/");
 		}
 		file = ({name: filename(name), type: 2}/*:any*/);
 		cfb.FileIndex.push(file);
@@ -5775,7 +5775,7 @@ function add_rels(rels, rId/*:number*/, f, type, relobj, targetmode/*:?string*/)
 	else if([RELS.HLINK, RELS.XPATH, RELS.XMISS].indexOf(relobj.Type) > -1) relobj.TargetMode = "External";
 	if(rels['!id'][relobj.Id]) throw new Error("Cannot rewrite rId " + rId);
 	rels['!id'][relobj.Id] = relobj;
-	rels[('/' + relobj.Target).replace("//","/")] = relobj;
+	rels[('/' + relobj.Target).replace(/\/\//g,"/")] = relobj;
 	return rId;
 }
 var CT_ODS = "application/vnd.oasis.opendocument.spreadsheet";
@@ -8415,9 +8415,9 @@ var SYLK = /*#__PURE__*/(function() {
 		"!":161, '"':162, "#":163, "(":164, "%":165, "'":167, "H ":168,
 		"+":171, ";":187, "<":188, "=":189, ">":190, "?":191, "{":223
 	}/*:any*/);
-	var sylk_char_regex = new RegExp("\u001BN(" + keys(sylk_escapes).join("|").replace(/\|\|\|/, "|\\||").replace(/([?()+])/g,"\\$1").replace("{", "\\{") + "|\\|)", "gm");
+	var sylk_char_regex = new RegExp("\u001BN(" + keys(sylk_escapes).join("|").replace(/\|\|\|/, "|\\||").replace(/([?()+])/g,"\\$1").replace(/\{/g, "\\{") + "|\\|)", "gm");
 	try {
-		sylk_char_regex = new RegExp("\u001BN(" + keys(sylk_escapes).join("|").replace(/\|\|\|/, "|\\||").replace(/([?()+])/g,"\\$1") + "|\\|)", "gm");
+		sylk_char_regex = new RegExp("\u001BN(" + keys(sylk_escapes).join("|").replace(/\|\|\|/, "|\\||").replace(/([?()+])/g,"\\$1").replace(/\{/g, "\\{") + "|\\|)", "gm");
 	} catch(e) {}
 	var sylk_char_fn = function(_, $1){ var o = sylk_escapes[$1]; return typeof o == "number" ? _getansi(o) : o; };
 	var decode_sylk_char = function($$, $1, $2) { var newcc = (($1.charCodeAt(0) - 0x20)<<4) | ($2.charCodeAt(0) - 0x30); return newcc == 59 ? $$ : _getansi(newcc); };
