@@ -36,6 +36,7 @@ export default function SanityGrid() {
         slotProps={{ toolbar: { quickFilterPlaceholder: "Search" } }}
         components={{ Toolbar: LrpGridToolbar }}
         componentsProps={{ toolbar: { quickFilterPlaceholder: "Search" } }}
+        showToolbar
       />
     </Box>
   );

@@ -9,15 +9,16 @@
     <title>LRP Rush Hour — Premium Chauffeur</title>
     <style>
       :root { --lrp:#4cbb17; --bg:#060606; --fg:#e8f5e9; --panel:#0b0b0b; --gold:#ffd700; }
-      * { box-sizing: border-box; }
-      html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
-      #root { position:fixed; inset:0; display:grid; place-items:center; }
-      .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-weight:800; letter-spacing:.3px; font-size:14px; z-index:10; }
+      * { box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; overflow:hidden; }
+      #root { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; }
+      .game-container { display:flex; flex-direction:column; align-items:center; width:100%; max-width:720px; gap:12px; }
+      .hud { width:100%; display:flex; justify-content:space-between; font-weight:800; letter-spacing:.3px; font-size:14px; padding:0 10px; }
       .hud-left { display:flex; flex-direction:column; gap:4px; }
       .hud-right { display:flex; flex-direction:column; gap:4px; text-align:right; }
-      .title { position:absolute; top:10px; left:50%; transform:translateX(-50%); color:var(--lrp); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:16px; z-index:10; }
-      canvas { width:min(96vw,720px); height:min(72vh,540px); border-radius:16px; background:linear-gradient(180deg,#0a0a0a,#050505); box-shadow: 0 10px 30px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05); }
-      .controls { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr; gap:8px; z-index:10; }
+      .title { color:var(--lrp); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:16px; text-align:center; margin-bottom:4px; }
+      canvas { width:100%; max-width:720px; aspect-ratio:4/3; border-radius:12px; background:linear-gradient(180deg,#0a0a0a,#050505); box-shadow: 0 10px 30px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05); display:block; }
+      .controls { display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr; gap:8px; width:100%; max-width:300px; margin-top:8px; }
       .btn { background:var(--lrp); color:#000; border:0; border-radius:12px; padding:12px 16px; font-weight:900; box-shadow:0 8px 24px rgba(76,187,23,.35); cursor:pointer; user-select:none; touch-action:manipulation; min-width:60px; }
       .btn:active { transform:scale(0.96); }
       .btn-up { grid-column:2; grid-row:1; }
@@ -29,7 +30,7 @@
         .btn { padding:10px 12px; font-size:14px; min-width:50px; }
         .btn-restart { font-size:0.8em; padding:6px; }
       }
-      .toast { position:absolute; top:44px; left:50%; transform:translateX(-50%); background:rgba(25,25,25,.92); border:1px solid rgba(255,255,255,.06); padding:6px 10px; border-radius:8px; font-size:12px; opacity:.92; z-index:10; max-width:90%; text-align:center; }
+      .toast { background:rgba(25,25,25,.92); border:1px solid rgba(255,255,255,.06); padding:6px 10px; border-radius:8px; font-size:11px; opacity:.92; text-align:center; margin-bottom:8px; }
       .satisfaction { display:flex; align-items:center; gap:6px; }
       .sat-bar { width:80px; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; }
       .sat-fill { height:100%; background:linear-gradient(90deg, #ff5252, #ffd700, var(--lrp)); transition:width 0.3s; }
@@ -43,29 +44,31 @@
   </head>
   <body>
     <div id="root">
-      <div class="hud">
-        <div class="hud-left">
-          <div>Score: <span id="score">0</span></div>
-          <div>Pickups: <span id="pickups">0</span></div>
-          <div class="satisfaction">
-            <span>Service:</span>
-            <div class="sat-bar"><div class="sat-fill" id="satFill" style="width:100%"></div></div>
+      <div class="game-container">
+        <div class="title">LRP Rush Hour</div>
+        <div class="hud">
+          <div class="hud-left">
+            <div>Score: <span id="score">0</span></div>
+            <div>Pickups: <span id="pickups">0</span></div>
+            <div class="satisfaction">
+              <span>Service:</span>
+              <div class="sat-bar"><div class="sat-fill" id="satFill" style="width:100%"></div></div>
+            </div>
+          </div>
+          <div class="hud-right">
+            <div>Best: <span id="best">0</span></div>
+            <div class="vip-badge">⭐ <span id="stars">5.0</span></div>
           </div>
         </div>
-        <div class="hud-right">
-          <div>Best: <span id="best">0</span></div>
-          <div class="vip-badge">⭐ <span id="stars">5.0</span></div>
+        <div class="toast">Use buttons or arrow keys • Pick up VIPs • Avoid traffic!</div>
+        <canvas id="game" width="720" height="540" aria-label="Rush Hour game canvas" tabindex="0"></canvas>
+        <div class="controls">
+          <button class="btn btn-up" id="btnUp" aria-label="Accelerate">▲</button>
+          <button class="btn btn-left" id="btnLeft" aria-label="Turn left">◀</button>
+          <button class="btn btn-down" id="btnDown" aria-label="Brake">▼</button>
+          <button class="btn btn-right" id="btnRight" aria-label="Turn right">▶</button>
+          <button class="btn btn-restart" id="btnRestart" aria-label="Start new shift">🔄 New Shift</button>
         </div>
-      </div>
-      <div class="title">LRP Rush Hour</div>
-      <div class="toast">Arrow keys or WASD • Pick up VIPs • Smooth driving = bonus!</div>
-      <canvas id="game" width="720" height="540" aria-label="Rush Hour game canvas" tabindex="0"></canvas>
-      <div class="controls">
-        <button class="btn btn-up" id="btnUp" aria-label="Accelerate">▲</button>
-        <button class="btn btn-left" id="btnLeft" aria-label="Turn left">◀</button>
-        <button class="btn btn-down" id="btnDown" aria-label="Brake">▼</button>
-        <button class="btn btn-right" id="btnRight" aria-label="Turn right">▶</button>
-        <button class="btn btn-restart" id="btnRestart" aria-label="Start new shift">🔄 New Shift</button>
       </div>
     </div>
     <script>
@@ -303,32 +306,37 @@
 
           gameTime += clampedDelta;
 
-          // Input handling
+          // Input handling - arcade style direct movement
           const keys = window.keys || {};
-          let turning = 0;
-          let accelerating = 0;
+          let moveX = 0;
+          let moveY = 0;
 
-          if (keys.ArrowLeft || keys.KeyA) turning -= 1;
-          if (keys.ArrowRight || keys.KeyD) turning += 1;
-          if (keys.ArrowUp || keys.KeyW) accelerating = 1;
-          if (keys.ArrowDown || keys.KeyS) accelerating = -0.7;
+          if (keys.ArrowLeft || keys.KeyA) moveX -= 1;
+          if (keys.ArrowRight || keys.KeyD) moveX += 1;
+          if (keys.ArrowUp || keys.KeyW) moveY -= 1;
+          if (keys.ArrowDown || keys.KeyS) moveY += 1;
 
-          // Physics
-          if (accelerating !== 0) {
-            player.speed = Math.max(-player.maxSpeed * 0.5, Math.min(player.maxSpeed, player.speed + accelerating * player.accel * frameScale));
-          } else {
-            player.speed *= Math.pow(player.friction, frameScale);
-            if (Math.abs(player.speed) < 0.05) player.speed = 0;
-          }
+          // Arcade physics - direct velocity control
+          const targetVx = moveX * player.maxSpeed;
+          const targetVy = moveY * player.maxSpeed;
 
-          if (turning !== 0 && Math.abs(player.speed) > 0.5) {
-            player.angle += turning * player.turnSpeed * frameScale;
-          }
+          // Smooth acceleration
+          const accelRate = 0.3;
+          player.vx += (targetVx - player.vx) * accelRate * frameScale;
+          player.vy += (targetVy - player.vy) * accelRate * frameScale;
 
-          player.vx = Math.cos(player.angle) * player.speed;
-          player.vy = Math.sin(player.angle) * player.speed;
+          // Apply friction when not moving
+          if (moveX === 0) player.vx *= Math.pow(0.85, frameScale);
+          if (moveY === 0) player.vy *= Math.pow(0.85, frameScale);
+
+          // Update position
           player.x += player.vx * frameScale;
           player.y += player.vy * frameScale;
+
+          // Update angle to face movement direction
+          if (Math.abs(player.vx) > 0.5 || Math.abs(player.vy) > 0.5) {
+            player.angle = Math.atan2(player.vy, player.vx);
+          }
 
           // Keep player in bounds with soft edges
           if (player.x < 20) player.x = 20;
@@ -611,25 +619,33 @@
         });
 
         // Button controls
-        function setKey(code, pressed) {
+        function setKey(code, pressed, event) {
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
           window.keys[code] = pressed;
         }
 
-        btnUp.addEventListener('pointerdown', () => setKey('ArrowUp', true));
-        btnUp.addEventListener('pointerup', () => setKey('ArrowUp', false));
-        btnUp.addEventListener('pointerleave', () => setKey('ArrowUp', false));
+        btnUp.addEventListener('pointerdown', (e) => { setKey('ArrowUp', true, e); });
+        btnUp.addEventListener('pointerup', (e) => { setKey('ArrowUp', false, e); });
+        btnUp.addEventListener('pointerleave', (e) => { setKey('ArrowUp', false, e); });
+        btnUp.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        btnDown.addEventListener('pointerdown', () => setKey('ArrowDown', true));
-        btnDown.addEventListener('pointerup', () => setKey('ArrowDown', false));
-        btnDown.addEventListener('pointerleave', () => setKey('ArrowDown', false));
+        btnDown.addEventListener('pointerdown', (e) => { setKey('ArrowDown', true, e); });
+        btnDown.addEventListener('pointerup', (e) => { setKey('ArrowDown', false, e); });
+        btnDown.addEventListener('pointerleave', (e) => { setKey('ArrowDown', false, e); });
+        btnDown.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        btnLeft.addEventListener('pointerdown', () => setKey('ArrowLeft', true));
-        btnLeft.addEventListener('pointerup', () => setKey('ArrowLeft', false));
-        btnLeft.addEventListener('pointerleave', () => setKey('ArrowLeft', false));
+        btnLeft.addEventListener('pointerdown', (e) => { setKey('ArrowLeft', true, e); });
+        btnLeft.addEventListener('pointerup', (e) => { setKey('ArrowLeft', false, e); });
+        btnLeft.addEventListener('pointerleave', (e) => { setKey('ArrowLeft', false, e); });
+        btnLeft.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        btnRight.addEventListener('pointerdown', () => setKey('ArrowRight', true));
-        btnRight.addEventListener('pointerup', () => setKey('ArrowRight', false));
-        btnRight.addEventListener('pointerleave', () => setKey('ArrowRight', false));
+        btnRight.addEventListener('pointerdown', (e) => { setKey('ArrowRight', true, e); });
+        btnRight.addEventListener('pointerup', (e) => { setKey('ArrowRight', false, e); });
+        btnRight.addEventListener('pointerleave', (e) => { setKey('ArrowRight', false, e); });
+        btnRight.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // Restart button
         btnRestart.addEventListener('click', () => {

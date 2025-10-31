@@ -1274,7 +1274,6 @@ If the user needs more personalized help or wants to speak with a human, direct 
           </Box>
         </Paper>
       </Stack>
-
       {/* Knowledge Entry Dialog */}
       <Dialog
         open={knowledgeDialog}
