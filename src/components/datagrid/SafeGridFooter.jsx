@@ -16,10 +16,11 @@ export default function SafeGridFooter() {
   // Never call gridRowSelectionSelector; it throws if the slice is undefined.
 
   const selectedCount = useMemo(() => {
-    const sel = apiRef?.current?.state?.rowSelection;
+    if (!apiRef?.current?.state) return 0;
+    const sel = apiRef.current.state.rowSelection;
     if (!sel) return 0;
     // sel can be a Set (v6/7) or array (custom wrappers). Normalize.
-    if (typeof sel.size === "number") return sel.size;
+    if (typeof sel?.size === "number") return sel.size;
     if (Array.isArray(sel)) return sel.length;
     return 0;
   }, [apiRef]);
