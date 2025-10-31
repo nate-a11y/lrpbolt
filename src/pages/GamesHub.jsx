@@ -90,6 +90,7 @@ export default function GamesHub() {
   }, [play]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state for subscription
     setAllTimeLoading(true);
     const unsubscribe = subscribeTopRushHourAllTime({
       topN: 10,
@@ -109,6 +110,7 @@ export default function GamesHub() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state for subscription
     setWeeklyLoading(true);
     const unsubscribe = subscribeTopRushHourWeekly({
       topN: 10,
@@ -129,10 +131,13 @@ export default function GamesHub() {
 
   useEffect(() => {
     if (!user?.uid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clearing user best when no user
       setUserBest(null);
+
       setUserBestLoading(false);
       return undefined;
     }
+
     setUserBestLoading(true);
     const unsubscribe = subscribeUserWeeklyRushHourBest({
       uid: user.uid,

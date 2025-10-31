@@ -32,8 +32,11 @@ export function useTripsByState(state) {
     if (!state) {
       const err = new Error("state is required for useTripsByState");
       logError(err, { where: "useTripsByState", phase: "init" });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting error state for invalid state param
       setRows([]);
+
       setLoading(false);
+
       setError(err);
       return () => {};
     }

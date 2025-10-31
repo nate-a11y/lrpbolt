@@ -26,6 +26,7 @@ export default function EditTicketDialog({ open, ticket, onClose }) {
 
   useEffect(() => {
     if (ticket) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state with ticket prop
       setForm({
         passenger: ticket.passenger || "",
         passengers: ticket.passengers ?? "",

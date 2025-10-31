@@ -32,6 +32,7 @@ export default function ExpandableDetails({
     try {
       const value = window.localStorage.getItem(storageKey);
       if (value === "1") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing with localStorage on mount
         setOpen(true);
       } else if (value === "0") {
         setOpen(false);

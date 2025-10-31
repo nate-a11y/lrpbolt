@@ -1181,6 +1181,7 @@ export default function useGameSound() {
       const sound = sounds[name];
       if (sound) {
         try {
+          // eslint-disable-next-line react-hooks/immutability -- HTML Audio element property, not React state
           sound.currentTime = 0;
           const playPromise = sound.play();
           if (playPromise && typeof playPromise.catch === "function") {

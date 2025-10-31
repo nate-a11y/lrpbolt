@@ -25,7 +25,9 @@ const InstallBanner = () => {
 
   useEffect(() => {
     if (isIosSafari() && !localStorage.getItem("lrp_hide_install")) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Initializing state based on browser check
       setIsIos(true);
+
       setVisible(true);
     }
 

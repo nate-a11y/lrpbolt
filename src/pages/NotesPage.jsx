@@ -36,7 +36,9 @@ export default function NotesPage() {
       });
     } catch (err) {
       logError(err, { where: "NotesPage.subscribeInit" });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting error state on subscription failure
       setError(err);
+
       setLoading(false);
       show("Failed to start notes feed.", "error");
     }
@@ -51,6 +53,7 @@ export default function NotesPage() {
 
   useEffect(() => {
     if (!isAdmin && tab === "admin") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Switching tab when user loses admin access
       setTab("view");
     }
   }, [isAdmin, tab]);

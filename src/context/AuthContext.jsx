@@ -33,7 +33,9 @@ export default function AuthProvider({ children }) {
 
   useEffect(() => {
     if (authLoading || !user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting default role when no user
       setRole("driver");
+
       setRoleLoading(false);
       return;
     }

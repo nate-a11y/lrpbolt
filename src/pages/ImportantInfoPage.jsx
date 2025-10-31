@@ -65,7 +65,9 @@ export default function ImportantInfoPage() {
       });
     } catch (err) {
       logError(err, { where: "ImportantInfoPage.subscribeInit" });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting error state on subscription failure
       setError(err);
+
       setLoading(false);
       show("Failed to start important info feed.", "error");
     }
@@ -80,6 +82,7 @@ export default function ImportantInfoPage() {
 
   useEffect(() => {
     if (!isAdmin && tab === "admin") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Switching tab when user loses admin access
       setTab("promos_partners");
     }
   }, [isAdmin, tab]);

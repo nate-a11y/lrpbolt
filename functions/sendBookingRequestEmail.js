@@ -1,5 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 const { logger } = require("firebase-functions/v2");
+
 const { sendEmail } = require("./gmailHelper");
 
 /**

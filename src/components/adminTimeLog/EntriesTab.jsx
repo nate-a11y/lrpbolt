@@ -356,7 +356,7 @@ export default function EntriesTab() {
     }
   }, []);
 
-  performDelete.restore = async (rowsToRestore) => {
+  const performRestore = useCallback(async (rowsToRestore) => {
     const backoff = (a) => new Promise((res) => setTimeout(res, 2 ** a * 100));
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
@@ -376,10 +376,10 @@ export default function EntriesTab() {
         }
       }
     }
-  };
+  }, []);
 
   const { dialogOpen, deleting, openDialog, closeDialog, onConfirm } =
-    useBulkDelete({ performDelete });
+    useBulkDelete({ performDelete, performRestore });
 
   const handleBulkDelete = useCallback(
     async (ids) => {

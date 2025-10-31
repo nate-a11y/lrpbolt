@@ -62,6 +62,7 @@ export default function useRides() {
       initialized = true;
       fetchRides();
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting cached rides state
       setState({
         ...ridesCache,
         counts: countsCache,
