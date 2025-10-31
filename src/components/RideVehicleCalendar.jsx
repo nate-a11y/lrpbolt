@@ -20,7 +20,6 @@ import Chip from "@mui/material/Chip";
 import TextField from "@mui/material/TextField";
 import Switch from "@mui/material/Switch";
 import Tooltip from "@mui/material/Tooltip";
-import IconButton from "@mui/material/IconButton";
 import Collapse from "@mui/material/Collapse";
 import Skeleton from "@mui/material/Skeleton";
 import Alert from "@mui/material/Alert";
@@ -1178,449 +1177,444 @@ function RideVehicleCalendar({
   // [LRP:END:calendar:eventBridge]
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <PageContainer {...rest}>
-        <Box sx={{ width: "100%" }}>
-          {!hideHeader && (
-            <Typography variant="h5" gutterBottom>
-              🚖 Ride & Vehicle Calendar
-            </Typography>
-          )}
+    <PageContainer {...rest}>
+      <Box sx={{ width: "100%" }}>
+        {!hideHeader && (
+          <Typography variant="h5" gutterBottom>
+            🚖 Ride & Vehicle Calendar
+          </Typography>
+        )}
 
-          <Box sx={{ width: "100%", mb: 2 }}>
-            <Stack
-              direction={isMobile ? "column" : "row"}
-              spacing={isMobile ? 1.5 : 2}
-              alignItems={isMobile ? "stretch" : "center"}
-              sx={{ width: "100%" }}
-            >
-              <Autocomplete
-                multiple
-                options={vehicleOptions}
-                value={vehicleFilter}
-                onChange={(e, val) => {
-                  const list = Array.isArray(val) ? val : [];
-                  let next = list;
-                  if (next.includes("ALL") && next.length > 1) {
-                    next = next.filter((v) => v !== "ALL");
-                  }
-                  updateFilters({
-                    vehicles:
-                      next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
-                  });
-                }}
-                filterSelectedOptions
-                disableCloseOnSelect
-                getOptionLabel={(option) =>
-                  option === "ALL" ? "All Vehicles" : option
+        <Box sx={{ width: "100%", mb: 2 }}>
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={isMobile ? 1.5 : 2}
+            alignItems={isMobile ? "stretch" : "center"}
+            sx={{ width: "100%" }}
+          >
+            <Autocomplete
+              multiple
+              options={vehicleOptions}
+              value={vehicleFilter}
+              onChange={(e, val) => {
+                const list = Array.isArray(val) ? val : [];
+                let next = list;
+                if (next.includes("ALL") && next.length > 1) {
+                  next = next.filter((v) => v !== "ALL");
                 }
-                renderOption={(props, option) => {
-                  const { key, ...rest } = props;
-                  return (
-                    <Box
-                      component="li"
-                      key={key}
-                      {...rest}
-                      sx={{
+                updateFilters({
+                  vehicles:
+                    next.length === 0 ? [...DEFAULT_FILTERS.vehicles] : next,
+                });
+              }}
+              filterSelectedOptions
+              disableCloseOnSelect
+              getOptionLabel={(option) =>
+                option === "ALL" ? "All Vehicles" : option
+              }
+              renderOption={(props, option) => {
+                const { key, ...rest } = props;
+                return (
+                  <Box
+                    component="li"
+                    key={key}
+                    {...rest}
+                    sx={{
+                      backgroundColor:
+                        option === "ALL" ? undefined : vehicleColors[option],
+                      color: option === "ALL" ? undefined : vehicleText[option],
+                      fontWeight: 500,
+                      "&:hover": {
                         backgroundColor:
                           option === "ALL" ? undefined : vehicleColors[option],
-                        color:
-                          option === "ALL" ? undefined : vehicleText[option],
-                        fontWeight: 500,
-                        "&:hover": {
-                          backgroundColor:
-                            option === "ALL"
-                              ? undefined
-                              : vehicleColors[option],
-                          opacity: 0.9,
-                        },
-                      }}
-                    >
-                      {option === "ALL" ? "All Vehicles" : option}
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Filter Vehicles" size="small" />
-                )}
-                sx={{
-                  minWidth: isMobile ? "100%" : 260,
-                  flex: isMobile ? undefined : 1,
-                }}
-              />
+                        opacity: 0.9,
+                      },
+                    }}
+                  >
+                    {option === "ALL" ? "All Vehicles" : option}
+                  </Box>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Filter Vehicles" size="small" />
+              )}
+              sx={{
+                minWidth: isMobile ? "100%" : 260,
+                flex: isMobile ? undefined : 1,
+              }}
+            />
+          </Stack>
+        </Box>
+
+        {!hideQuickActions && (
+          <Box
+            sx={{
+              position: "sticky",
+              top: resolveTopCss(stickyTopOffset),
+              zIndex: 1,
+              backgroundColor: theme.palette.background.default,
+              borderBottom: 1,
+              borderColor: "divider",
+              py: 1,
+              mb: 2,
+              width: "100%",
+            }}
+          >
+            <Stack
+              direction={isMobile ? "column" : "row"}
+              spacing={2}
+              alignItems={isMobile ? "flex-start" : "center"}
+              justifyContent="space-between"
+            >
+              <Typography fontSize={14}>
+                {plural(summary.rides, "ride")} •{" "}
+                {plural(summary.vehicles, "vehicle")} •{" "}
+                {plural(summary.tight, "tight gap")} •{" "}
+                {plural(summary.overlap, "overlap")}
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  size="small"
+                  onClick={() => {
+                    scrollToNow();
+                    centerNow();
+                  }}
+                >
+                  Scroll to Now
+                </Button>
+                <Tooltip title="Keep the view centered on now when opening today">
+                  <Switch
+                    size="small"
+                    checked={scrollToNowPref}
+                    onChange={(event) =>
+                      updateFilters({ scrollToNow: event.target.checked })
+                    }
+                    inputProps={{ "aria-label": "Auto scroll to now" }}
+                  />
+                </Tooltip>
+                <Tooltip title="Toggle Compact Mode">
+                  <Switch
+                    size="small"
+                    checked={compactMode}
+                    onChange={() => setCompactMode((v) => !v)}
+                  />
+                </Tooltip>
+              </Stack>
             </Stack>
           </Box>
-
-          {!hideQuickActions && (
+        )}
+        {/* ===== [RVTC:overview:start] ===== */}
+        <Box sx={{ mb: 2 }}>
+          {showOverview ? (
+            <AvailabilityOverview
+              ref={availabilityOverviewRef}
+              vehicles={overviewVehicles}
+              tz={tz}
+              pxPerMin={pxPerMin}
+              minutesSinceVisibleStart={minutesSinceVisibleStart}
+              onHideClick={() => setShowOverview(false)}
+              onEventClick={handleOverviewEventClick}
+              selectedDay={date}
+            />
+          ) : (
             <Box
               sx={{
-                position: "sticky",
-                top: resolveTopCss(stickyTopOffset),
-                zIndex: 1,
-                backgroundColor: theme.palette.background.default,
-                borderBottom: 1,
-                borderColor: "divider",
-                py: 1,
-                mb: 2,
-                width: "100%",
+                borderRadius: 3,
+                bgcolor: (t) => t.palette.background.paper,
+                p: 1.5,
+                border: (t) => `1px solid ${t.palette.divider}`,
               }}
             >
               <Stack
-                direction={isMobile ? "column" : "row"}
-                spacing={2}
-                alignItems={isMobile ? "flex-start" : "center"}
+                direction="row"
+                alignItems="center"
                 justifyContent="space-between"
               >
-                <Typography fontSize={14}>
-                  {plural(summary.rides, "ride")} •{" "}
-                  {plural(summary.vehicles, "vehicle")} •{" "}
-                  {plural(summary.tight, "tight gap")} •{" "}
-                  {plural(summary.overlap, "overlap")}
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "text.primary", fontWeight: 600 }}
+                >
+                  Vehicle Availability Overview
                 </Typography>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      scrollToNow();
-                      centerNow();
-                    }}
-                  >
-                    Scroll to Now
-                  </Button>
-                  <Tooltip title="Keep the view centered on now when opening today">
-                    <Switch
-                      size="small"
-                      checked={scrollToNowPref}
-                      onChange={(event) =>
-                        updateFilters({ scrollToNow: event.target.checked })
-                      }
-                      inputProps={{ "aria-label": "Auto scroll to now" }}
-                    />
-                  </Tooltip>
-                  <Tooltip title="Toggle Compact Mode">
-                    <Switch
-                      size="small"
-                      checked={compactMode}
-                      onChange={() => setCompactMode((v) => !v)}
-                    />
-                  </Tooltip>
-                </Stack>
+                <Button size="small" onClick={() => setShowOverview(true)}>
+                  Show
+                </Button>
               </Stack>
             </Box>
           )}
-          {/* ===== [RVTC:overview:start] ===== */}
-          <Box sx={{ mb: 2 }}>
-            {showOverview ? (
-              <AvailabilityOverview
-                ref={availabilityOverviewRef}
-                vehicles={overviewVehicles}
-                tz={tz}
-                pxPerMin={pxPerMin}
-                minutesSinceVisibleStart={minutesSinceVisibleStart}
-                onHideClick={() => setShowOverview(false)}
-                onEventClick={handleOverviewEventClick}
-                selectedDay={date}
-              />
-            ) : (
+        </Box>
+        {/* ===== [RVTC:overview:end] ===== */}
+
+        {error && (
+          <Alert severity="warning" sx={{ mb: 2, width: "100%" }}>
+            Failed to load Google Calendar events:
+            <Box sx={{ display: "inline", fontWeight: 600, ml: 0.5 }}>
+              {String(error?.message || error)}
+            </Box>
+          </Alert>
+        )}
+
+        {loading ? (
+          <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
+            {Array.from({ length: 5 }).map((_, i) => (
               <Box
+                // eslint-disable-next-line react/no-array-index-key
+                key={i}
                 sx={{
-                  borderRadius: 3,
-                  bgcolor: (t) => t.palette.background.paper,
-                  p: 1.5,
-                  border: (t) => `1px solid ${t.palette.divider}`,
+                  p: compactMode ? 1.25 : 2,
+                  borderRadius: 2,
+                  bgcolor:
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.paper
+                      : theme.palette.background.default,
+                  width: "100%",
                 }}
               >
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ color: "text.primary", fontWeight: 600 }}
-                  >
-                    Vehicle Availability Overview
-                  </Typography>
-                  <Button size="small" onClick={() => setShowOverview(true)}>
-                    Show
-                  </Button>
-                </Stack>
+                <Skeleton variant="text" width="60%" />
+                <Skeleton variant="text" width="40%" />
+                <Skeleton variant="rectangular" height={4} />
               </Box>
-            )}
-          </Box>
-          {/* ===== [RVTC:overview:end] ===== */}
-
-          {error && (
-            <Alert severity="warning" sx={{ mb: 2, width: "100%" }}>
-              Failed to load Google Calendar events:
-              <Box sx={{ display: "inline", fontWeight: 600, ml: 0.5 }}>
-                {String(error?.message || error)}
-              </Box>
-            </Alert>
-          )}
-
-          {loading ? (
-            <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Box
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={i}
+            ))}
+          </Stack>
+        ) : filteredGroups.length === 0 ? (
+          <Typography sx={{ width: "100%" }}>
+            No rides scheduled for this date.
+          </Typography>
+        ) : (
+          filteredGroups.map(({ vehicle, rides, total }) => {
+            const expanded = sectionState[vehicle] !== false;
+            return (
+              <Box key={vehicle} mb={2} sx={{ width: "100%" }}>
+                <Chip
+                  label={`${vehicle} • ${plural(rides.length, "ride")} • ${formatHm(total)}`}
+                  onClick={() => handleToggleSection(vehicle)}
+                  onDelete={() => handleToggleSection(vehicle)}
+                  deleteIcon={
+                    expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                  }
                   sx={{
-                    p: compactMode ? 1.25 : 2,
-                    borderRadius: 2,
-                    bgcolor:
-                      theme.palette.mode === "dark"
-                        ? theme.palette.background.paper
-                        : theme.palette.background.default,
-                    width: "100%",
+                    backgroundColor: vehicleColors[vehicle],
+                    color: vehicleText[vehicle],
+                    fontWeight: 500,
+                    mb: 1,
                   }}
-                >
-                  <Skeleton variant="text" width="60%" />
-                  <Skeleton variant="text" width="40%" />
-                  <Skeleton variant="rectangular" height={4} />
-                </Box>
-              ))}
-            </Stack>
-          ) : filteredGroups.length === 0 ? (
-            <Typography sx={{ width: "100%" }}>
-              No rides scheduled for this date.
-            </Typography>
-          ) : (
-            filteredGroups.map(({ vehicle, rides, total }) => {
-              const expanded = sectionState[vehicle] !== false;
-              return (
-                <Box key={vehicle} mb={2} sx={{ width: "100%" }}>
-                  <Chip
-                    label={`${vehicle} • ${plural(rides.length, "ride")} • ${formatHm(total)}`}
-                    onClick={() => handleToggleSection(vehicle)}
-                    onDelete={() => handleToggleSection(vehicle)}
-                    deleteIcon={
-                      expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />
-                    }
-                    sx={{
-                      backgroundColor: vehicleColors[vehicle],
-                      color: vehicleText[vehicle],
-                      fontWeight: 500,
-                      mb: 1,
-                    }}
-                  />
-                  <Collapse in={expanded} timeout="auto" unmountOnExit>
-                    <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
-                      {rides.map((event) => {
-                        const span = percentSpan(event, date, CST);
-                        const startPct = span.left;
-                        const widthPct = span.width;
-                        const durationMinutes = span.durationMinutes;
-                        const edgeChipLabel = edgeChipFor(event, date, CST);
-                        const minWidth =
-                          durationMinutes === 0
-                            ? "2px"
-                            : durationMinutes <= 5
-                              ? "6px"
-                              : durationMinutes <= 10
-                                ? "4px"
-                                : undefined;
-                        return (
-                          <Box
-                            key={event.id}
-                            ref={(el) => (rideRefs.current[event.id] = el)}
-                            onClick={() => {
-                              setSelectedEvent(event);
-                              setModalOpen(true);
-                            }}
-                            sx={{
-                              p: compactMode ? 1.25 : 2,
-                              borderRadius: 2,
-                              cursor: "pointer",
-                              borderLeft: `6px solid ${vehicleColors[event.vehicle]}`,
+                />
+                <Collapse in={expanded} timeout="auto" unmountOnExit>
+                  <Stack spacing={compactMode ? 1 : 2} sx={{ width: "100%" }}>
+                    {rides.map((event) => {
+                      const span = percentSpan(event, date, CST);
+                      const startPct = span.left;
+                      const widthPct = span.width;
+                      const durationMinutes = span.durationMinutes;
+                      const edgeChipLabel = edgeChipFor(event, date, CST);
+                      const minWidth =
+                        durationMinutes === 0
+                          ? "2px"
+                          : durationMinutes <= 5
+                            ? "6px"
+                            : durationMinutes <= 10
+                              ? "4px"
+                              : undefined;
+                      return (
+                        <Box
+                          key={event.id}
+                          ref={(el) => (rideRefs.current[event.id] = el)}
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setModalOpen(true);
+                          }}
+                          sx={{
+                            p: compactMode ? 1.25 : 2,
+                            borderRadius: 2,
+                            cursor: "pointer",
+                            borderLeft: `6px solid ${vehicleColors[event.vehicle]}`,
+                            backgroundColor:
+                              theme.palette.mode === "dark"
+                                ? theme.palette.background.paper
+                                : theme.palette.background.default,
+                            "&:hover": {
                               backgroundColor:
                                 theme.palette.mode === "dark"
-                                  ? theme.palette.background.paper
-                                  : theme.palette.background.default,
-                              "&:hover": {
-                                backgroundColor:
-                                  theme.palette.mode === "dark"
-                                    ? theme.palette.grey[800]
-                                    : theme.palette.background.paper,
-                              },
-                              width: "100%",
+                                  ? theme.palette.grey[800]
+                                  : theme.palette.background.paper,
+                            },
+                            width: "100%",
+                          }}
+                        >
+                          <Typography
+                            fontWeight="bold"
+                            display="flex"
+                            alignItems="center"
+                          >
+                            <DirectionsCarIcon
+                              fontSize="small"
+                              sx={{ mr: 1 }}
+                            />
+                            {event.title}
+                          </Typography>
+                          <Typography fontSize={14}>
+                            {event.start.format("h:mm A")} –{" "}
+                            {event.end.format("h:mm A")}
+                          </Typography>
+                          <Chip
+                            label={event.vehicle}
+                            size="small"
+                            sx={{
+                              mt: 0.5,
+                              backgroundColor: vehicleColors[event.vehicle],
+                              color: vehicleText[event.vehicle] || "grey.900",
+                              fontWeight: 500,
+                              fontSize: "0.75rem",
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              position: "relative",
+                              height: 4,
+                              mt: 1,
+                              bgcolor:
+                                theme.palette.mode === "dark"
+                                  ? "grey.800"
+                                  : "grey.300",
                             }}
                           >
-                            <Typography
-                              fontWeight="bold"
-                              display="flex"
-                              alignItems="center"
-                            >
-                              <DirectionsCarIcon
-                                fontSize="small"
-                                sx={{ mr: 1 }}
-                              />
-                              {event.title}
-                            </Typography>
-                            <Typography fontSize={14}>
-                              {event.start.format("h:mm A")} –{" "}
-                              {event.end.format("h:mm A")}
-                            </Typography>
-                            <Chip
-                              label={event.vehicle}
-                              size="small"
-                              sx={{
-                                mt: 0.5,
-                                backgroundColor: vehicleColors[event.vehicle],
-                                color: vehicleText[event.vehicle] || "grey.900",
-                                fontWeight: 500,
-                                fontSize: "0.75rem",
-                              }}
-                            />
                             <Box
                               sx={{
-                                position: "relative",
-                                height: 4,
-                                mt: 1,
-                                bgcolor:
-                                  theme.palette.mode === "dark"
-                                    ? "grey.800"
-                                    : "grey.300",
+                                position: "absolute",
+                                left: `${startPct}%`,
+                                width: `${widthPct}%`,
+                                minWidth,
+                                top: 0,
+                                bottom: 0,
+                                bgcolor: vehicleColors[event.vehicle],
                               }}
-                            >
+                            />
+                            {isToday && nowPct >= 0 && nowPct <= 100 && (
                               <Box
                                 sx={{
                                   position: "absolute",
-                                  left: `${startPct}%`,
-                                  width: `${widthPct}%`,
-                                  minWidth,
-                                  top: 0,
-                                  bottom: 0,
-                                  bgcolor: vehicleColors[event.vehicle],
+                                  left: `${nowPct}%`,
+                                  top: -2,
+                                  bottom: -2,
+                                  width: 2,
+                                  bgcolor: theme.palette.primary.main,
                                 }}
                               />
-                              {isToday && nowPct >= 0 && nowPct <= 100 && (
-                                <Box
-                                  sx={{
-                                    position: "absolute",
-                                    left: `${nowPct}%`,
-                                    top: -2,
-                                    bottom: -2,
-                                    width: 2,
-                                    bgcolor: theme.palette.primary.main,
-                                  }}
-                                />
-                              )}
-                            </Box>
-                            <Stack direction="row" spacing={1} mt={1}>
-                              {event.tightGap && (
-                                <Chip
-                                  label="Tight Gap"
-                                  color="warning"
-                                  size="small"
-                                />
-                              )}
-                              {overlapsMap.has(event.id) && (
-                                <Chip
-                                  label="Overlap"
-                                  color="error"
-                                  size="small"
-                                />
-                              )}
-                              {edgeChipLabel && (
-                                <Chip
-                                  size="small"
-                                  label={edgeChipLabel}
-                                  sx={{
-                                    bgcolor: "primary.main",
-                                    color: "grey.900",
-                                    fontWeight: 600,
-                                    mr: 1,
-                                  }}
-                                />
-                              )}
-                            </Stack>
+                            )}
                           </Box>
-                        );
-                      })}
-                    </Stack>
-                  </Collapse>
-                </Box>
-              );
-            })
-          )}
-        </Box>
+                          <Stack direction="row" spacing={1} mt={1}>
+                            {event.tightGap && (
+                              <Chip
+                                label="Tight Gap"
+                                color="warning"
+                                size="small"
+                              />
+                            )}
+                            {overlapsMap.has(event.id) && (
+                              <Chip
+                                label="Overlap"
+                                color="error"
+                                size="small"
+                              />
+                            )}
+                            {edgeChipLabel && (
+                              <Chip
+                                size="small"
+                                label={edgeChipLabel}
+                                sx={{
+                                  bgcolor: "primary.main",
+                                  color: "grey.900",
+                                  fontWeight: 600,
+                                  mr: 1,
+                                }}
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Collapse>
+              </Box>
+            );
+          })
+        )}
+      </Box>
 
-        <Dialog
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          fullWidth
-          maxWidth="sm"
-          fullScreen={isMobile}
-        >
-          <Box p={3}>
-            <Typography variant="h6" gutterBottom>
-              {selectedEvent?.title}
-            </Typography>
-            <Typography variant="body2">
-              {selectedEvent?.start.format("dddd, MMMM D")}
-              <br />
-              {selectedEvent?.start.format("h:mm A")} –{" "}
-              {selectedEvent?.end.format("h:mm A")}
-            </Typography>
-            {selectedEdgeChip && (
-              <Stack direction="row" spacing={1} mt={1}>
-                <Chip
-                  size="small"
-                  label={selectedEdgeChip}
-                  sx={{
-                    bgcolor: "primary.main",
-                    color: "grey.900",
-                    fontWeight: 600,
-                  }}
-                />
-              </Stack>
-            )}
-            {selectedEvent?.tightGap && (
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        fullScreen={isMobile}
+      >
+        <Box p={3}>
+          <Typography variant="h6" gutterBottom>
+            {selectedEvent?.title}
+          </Typography>
+          <Typography variant="body2">
+            {selectedEvent?.start.format("dddd, MMMM D")}
+            <br />
+            {selectedEvent?.start.format("h:mm A")} –{" "}
+            {selectedEvent?.end.format("h:mm A")}
+          </Typography>
+          {selectedEdgeChip && (
+            <Stack direction="row" spacing={1} mt={1}>
               <Chip
-                label="Tight Gap to Previous Ride"
-                color="warning"
-                sx={{ mt: 1 }}
+                size="small"
+                label={selectedEdgeChip}
+                sx={{
+                  bgcolor: "primary.main",
+                  color: "grey.900",
+                  fontWeight: 600,
+                }}
               />
-            )}
-            {overlapsMap.get(selectedEvent?.id)?.length > 0 && (
-              <Box mt={2}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Overlaps:
-                </Typography>
-                <Stack spacing={0.5}>
-                  {overlapsMap.get(selectedEvent.id).map((o) => (
-                    <Typography key={o.id} variant="body2">
-                      {o.title} ({o.start.format("h:mm A")} –{" "}
-                      {o.end.format("h:mm A")})
-                    </Typography>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-            {selectedEvent?.description && (
-              <Box mt={2}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Details:
-                </Typography>
-                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                  {selectedEvent.description}
-                </Typography>
-              </Box>
-            )}
-            <Box textAlign="right" mt={3}>
-              <Button
-                onClick={() => setModalOpen(false)}
-                variant="outlined"
-                sx={{ width: { xs: "100%", sm: "auto" } }}
-              >
-                Close
-              </Button>
+            </Stack>
+          )}
+          {selectedEvent?.tightGap && (
+            <Chip
+              label="Tight Gap to Previous Ride"
+              color="warning"
+              sx={{ mt: 1 }}
+            />
+          )}
+          {overlapsMap.get(selectedEvent?.id)?.length > 0 && (
+            <Box mt={2}>
+              <Typography variant="subtitle2" gutterBottom>
+                Overlaps:
+              </Typography>
+              <Stack spacing={0.5}>
+                {overlapsMap.get(selectedEvent.id).map((o) => (
+                  <Typography key={o.id} variant="body2">
+                    {o.title} ({o.start.format("h:mm A")} –{" "}
+                    {o.end.format("h:mm A")})
+                  </Typography>
+                ))}
+              </Stack>
             </Box>
+          )}
+          {selectedEvent?.description && (
+            <Box mt={2}>
+              <Typography variant="subtitle2" gutterBottom>
+                Details:
+              </Typography>
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                {selectedEvent.description}
+              </Typography>
+            </Box>
+          )}
+          <Box textAlign="right" mt={3}>
+            <Button
+              onClick={() => setModalOpen(false)}
+              variant="outlined"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+            >
+              Close
+            </Button>
           </Box>
-        </Dialog>
-      </PageContainer>
-    </LocalizationProvider>
+        </Box>
+      </Dialog>
+    </PageContainer>
   );
 }
 
