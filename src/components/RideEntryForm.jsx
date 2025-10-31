@@ -2333,7 +2333,6 @@ export default function RideEntryForm() {
           )}
         </Stack>
       </ResponsiveContainer>
-
       <Dialog
         open={multiConfirmOpen}
         onClose={() => setMultiConfirmOpen(false)}
@@ -2371,7 +2370,6 @@ export default function RideEntryForm() {
           </Button>
         </DialogActions>
       </Dialog>
-
       <Snackbar
         open={snackbar.open}
         autoHideDuration={5000}
