@@ -490,6 +490,7 @@ export default function EntriesTab() {
           />
         ) : (
           <UniversalDataGrid
+            id="admin-timelog-entries"
             rows={safeRows}
             columns={gridColumns}
             loading={loading}

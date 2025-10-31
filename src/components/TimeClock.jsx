@@ -716,6 +716,7 @@ export default function TimeClock({ setIsTracking }) {
         <Box sx={{ width: "100%" }}>
           <UniversalDataGrid
             id="time-clock-grid"
+            id="time-clock-grid"
             autoHeight
             rows={Array.isArray(rows) ? rows : []}
             columns={columns}
