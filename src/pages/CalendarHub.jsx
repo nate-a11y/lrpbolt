@@ -316,7 +316,7 @@ export default function CalendarHub() {
                   hideHeader={true}
                   stickyTopOffset={stickyTopCss}
                   onCenterNow={filters?.scrollToNow ? "init" : undefined}
-                  hideQuickActions={!isMdUp}
+                  hideQuickActions={true}
                   persistedFilters={filters}
                   onFiltersChange={setFilters}
                 />
