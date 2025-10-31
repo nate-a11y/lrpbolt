@@ -157,19 +157,11 @@ export default function CalendarHub() {
         }}
       >
         <Box sx={{ maxWidth: 1280, mx: "auto", width: "100%" }}>
-          {/* Sticky command bar */}
+          {/* Command bar */}
           <Box
             sx={{
-              position: "sticky",
-              top: stickyTopCss,
-              zIndex: (t) => t.zIndex.appBar,
-              py: 1.5,
-              background:
-                theme.palette.mode === "dark"
-                  ? alpha(theme.palette.background.default, 0.95)
-                  : alpha(theme.palette.background.paper, 0.95),
-              backdropFilter: "saturate(1.2) blur(12px)",
-              mb: 0,
+              py: 2,
+              mb: 2,
               borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
             }}
           >
