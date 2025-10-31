@@ -5,7 +5,7 @@ import { DatePicker } from "@mui/x-date-pickers-pro";
 
 import { dayjs } from "@/utils/time";
 import { formatTz } from "@/utils/timeSafe";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 
 import useWeeklySummary from "../../hooks/useWeeklySummary";
@@ -145,7 +145,7 @@ export default function WeeklySummaryTab() {
         />
       </Box>
       {weeklyRows?.length ? (
-        <LrpDataGridPro
+        <UniversalDataGrid
           id="admin-timelog-weekly-grid"
           rows={weeklyRows}
           columns={columns}

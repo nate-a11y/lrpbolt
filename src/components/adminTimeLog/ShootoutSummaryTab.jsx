@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Paper, CircularProgress } from "@mui/material";
 
 import { formatTz } from "@/utils/timeSafe";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 
 import { subscribeShootoutStats } from "../../hooks/firestore";
@@ -224,7 +224,7 @@ export default function ShootoutSummaryTab() {
       }}
     >
       {rows?.length ? (
-        <LrpDataGridPro
+        <UniversalDataGrid
           id="admin-timelog-shootout-summary-grid"
           rows={rows}
           columns={columns}

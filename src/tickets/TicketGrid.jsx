@@ -14,7 +14,7 @@ import {
 import { alpha } from "@mui/material/styles";
 
 import dayjs from "@/utils/dayjsSetup.js";
-import LrpDataGridPro from "@/components/datagrid/LrpDataGridPro.jsx";
+import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 import { subscribeTickets } from "@/services/tickets.js";
 import logError from "@/utils/logError.js";
 import { formatDateTime } from "@/utils/time.js";
@@ -556,7 +556,7 @@ function TicketGrid({
           <MenuItem value="closed">Closed</MenuItem>
         </Select>
       </Stack>
-      <LrpDataGridPro
+      <UniversalDataGrid
         id="support-tickets-grid"
         rows={filteredRows}
         columns={columns}
