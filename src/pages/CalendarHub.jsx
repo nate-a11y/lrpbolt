@@ -22,6 +22,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import TodayIcon from "@mui/icons-material/Today";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import ViewCompactIcon from "@mui/icons-material/ViewCompact";
 
 import useMediaQuery from "@/hooks/useMediaQuery.js";
 import dayjs from "@/utils/dayjsSetup.js";
@@ -74,6 +75,21 @@ export default function CalendarHub() {
 
   const [dateISO, setDateISO] = useState(() => dayjs().format("YYYY-MM-DD"));
   const [helpOpen, setHelpOpen] = useState(false);
+  const [compactMode, setCompactMode] = useState(() => {
+    try {
+      return localStorage.getItem("rvcal.compact") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rvcal.compact", compactMode);
+    } catch (e) {
+      logError(e, { area: "CalendarHub", action: "persist-compact" });
+    }
+  }, [compactMode]);
 
   // Fetch calendar events using the custom hook
   const { events, loading, error } = useCalendarEvents(
@@ -81,6 +97,18 @@ export default function CalendarHub() {
     filters,
     TIMEZONE,
   );
+
+  // Calculate simple summary stats
+  const summary = useMemo(() => {
+    const vehicles = new Set();
+    events.forEach((e) => {
+      if (e.vehicle) vehicles.add(e.vehicle);
+    });
+    return {
+      rides: events.length,
+      vehicles: vehicles.size,
+    };
+  }, [events]);
 
   const actions = useMemo(
     () => ({
@@ -156,6 +184,20 @@ export default function CalendarHub() {
                 View and manage ride schedules, vehicle availability, and driver
                 assignments
               </Typography>
+              {!loading && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  {summary.rides} {summary.rides === 1 ? "ride" : "rides"} •{" "}
+                  {summary.vehicles}{" "}
+                  {summary.vehicles === 1 ? "vehicle" : "vehicles"}
+                </Typography>
+              )}
             </Box>
 
             <Stack
@@ -262,6 +304,34 @@ export default function CalendarHub() {
                 }
               />
 
+              <Tooltip title="Toggle compact layout">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ViewCompactIcon />}
+                  onClick={() => setCompactMode((v) => !v)}
+                  sx={{
+                    bgcolor: (t) =>
+                      compactMode
+                        ? alpha(t.palette.primary.main, 0.12)
+                        : alpha(t.palette.background.paper, 0.8),
+                    borderColor: (t) =>
+                      compactMode ? t.palette.primary.main : t.palette.divider,
+                    fontWeight: 600,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                      borderColor: (t) => t.palette.primary.main,
+                      transform: "translateY(-1px)",
+                      boxShadow: (t) =>
+                        `0 2px 8px ${alpha(t.palette.primary.main, 0.2)}`,
+                    },
+                  }}
+                >
+                  Compact
+                </Button>
+              </Tooltip>
+
               <Box sx={{ flexGrow: 1 }} />
 
               <Tooltip title="How to mark yourself unavailable (Google Calendar + Moovs)">
@@ -317,6 +387,7 @@ export default function CalendarHub() {
                   stickyTopOffset={stickyTopCss}
                   onCenterNow={filters?.scrollToNow ? "init" : undefined}
                   hideQuickActions={true}
+                  compactMode={compactMode}
                   persistedFilters={filters}
                   onFiltersChange={setFilters}
                 />
