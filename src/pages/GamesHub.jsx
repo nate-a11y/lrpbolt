@@ -395,7 +395,9 @@ export default function GamesHub() {
                           sx={{ color: (t) => t.palette.primary.main }}
                         />
                       ) : (
-                        <VolumeOffIcon sx={{ color: (t) => t.palette.grey[500] }} />
+                        <VolumeOffIcon
+                          sx={{ color: (t) => t.palette.grey[500] }}
+                        />
                       )
                     }
                     labelPlacement="start"
@@ -509,14 +511,18 @@ export default function GamesHub() {
                 variant="body2"
                 sx={{ opacity: 0.85, fontSize: "0.875rem" }}
               >
-                Drive your LRP Sprinter to pick up VIP clients! Use Arrow keys or
-                WASD. Maintain 5-star service by avoiding collisions. Build combos
-                for massive score multipliers!
+                Drive your LRP Sprinter to pick up VIP clients! Use Arrow keys
+                or WASD. Maintain 5-star service by avoiding collisions. Build
+                combos for massive score multipliers!
               </Typography>
             </CardContent>
           </Card>
 
-          <Stack direction="column" spacing={{ xs: 2, sm: 2.5 }} sx={{ flex: 1 }}>
+          <Stack
+            direction="column"
+            spacing={{ xs: 2, sm: 2.5 }}
+            sx={{ flex: 1 }}
+          >
             <Card
               sx={{
                 flex: 1,
@@ -546,7 +552,9 @@ export default function GamesHub() {
                   >
                     Top 10 — All Time
                   </Typography>
-                  <Divider sx={{ mt: 1, borderColor: (t) => t.palette.divider }} />
+                  <Divider
+                    sx={{ mt: 1, borderColor: (t) => t.palette.divider }}
+                  />
                 </Box>
                 {renderLeaderboard(
                   allTimeLoading,
@@ -586,7 +594,9 @@ export default function GamesHub() {
                   >
                     Weekly Heat — Reset {startOfWeek.format("MMM D")}
                   </Typography>
-                  <Divider sx={{ mt: 1, borderColor: (t) => t.palette.divider }} />
+                  <Divider
+                    sx={{ mt: 1, borderColor: (t) => t.palette.divider }}
+                  />
                 </Box>
                 {renderLeaderboard(
                   weeklyLoading,
