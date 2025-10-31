@@ -308,24 +308,45 @@ export default function SmartAutoGrid(props) {
     return [MAX_VISIBLE_ROWS, ...opts.filter((v) => v !== MAX_VISIBLE_ROWS)];
   }, [pageSizeOptions]);
 
+  // Map legacy PascalCase component keys to camelCase slot keys for v7/v8 compatibility
+  const legacyComponentsToSlots = useMemo(() => {
+    if (!components || typeof components !== "object") return {};
+    const mapping = {
+      Footer: "footer",
+      Toolbar: "toolbar",
+      NoRowsOverlay: "noRowsOverlay",
+      ErrorOverlay: "errorOverlay",
+      LoadingOverlay: "loadingOverlay",
+      BaseCheckbox: "baseCheckbox",
+      ColumnMenu: "columnMenu",
+      Panel: "panel",
+    };
+    const mapped = {};
+    Object.keys(components).forEach((key) => {
+      const slotKey = mapping[key] || key.charAt(0).toLowerCase() + key.slice(1);
+      mapped[slotKey] = components[key];
+    });
+    return mapped;
+  }, [components]);
+
   const mergedSlots = useMemo(
     () => ({
       footer: SafeGridFooter,
       noRowsOverlay: NoRowsOverlay,
       errorOverlay: ErrorOverlay,
       toolbar: LrpGridToolbar,
-      ...(components || {}), // Backward compat fallback
+      ...legacyComponentsToSlots, // Backward compat with proper key mapping
       ...(slots || {}),
     }),
-    [slots, components],
+    [slots, legacyComponentsToSlots],
   );
 
   const mergedSlotProps = useMemo(
     () => ({
       toolbar: {
         quickFilterPlaceholder: "Search",
-        ...slotProps?.toolbar,
-        ...componentsProps?.toolbar, // Backward compat fallback
+        ...componentsProps?.toolbar, // Legacy v5/v6 props
+        ...slotProps?.toolbar, // v7/v8 props take precedence
         onDeleteSelected:
           typeof slotProps?.toolbar?.onDeleteSelected === "function"
             ? slotProps.toolbar.onDeleteSelected
@@ -333,7 +354,8 @@ export default function SmartAutoGrid(props) {
               ? componentsProps.toolbar.onDeleteSelected
               : undefined,
       },
-      ...slotProps,
+      ...componentsProps, // Spread legacy props first
+      ...slotProps, // v7/v8 props override legacy
     }),
     [slotProps, componentsProps],
   );
