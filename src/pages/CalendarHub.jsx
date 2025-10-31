@@ -151,7 +151,7 @@ export default function CalendarHub() {
           display: "flex",
           flexDirection: "column",
           gap: 0,
-          pt: 0,
+          pt: 1,
           pb: `env(safe-area-inset-bottom, 0px)`,
           px: { xs: 2, md: 3 },
           color: "text.primary",
@@ -164,18 +164,18 @@ export default function CalendarHub() {
               position: "sticky",
               top: stickyTopCss,
               zIndex: (t) => t.zIndex.appBar,
-              py: 2,
+              py: 1.5,
               background:
                 theme.palette.mode === "dark"
                   ? alpha(theme.palette.background.default, 0.95)
                   : alpha(theme.palette.background.paper, 0.95),
               backdropFilter: "saturate(1.2) blur(12px)",
-              mb: 2,
+              mb: 1.5,
               borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
             }}
           >
             <Box
-              sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}
+              sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1.5 }}
             >
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
                 📅 Ride &amp; Vehicle Calendar
@@ -202,11 +202,11 @@ export default function CalendarHub() {
 
             <Stack
               direction="row"
-              spacing={1.5}
+              spacing={1}
               alignItems="center"
               flexWrap="wrap"
               useFlexGap
-              sx={{ rowGap: 1.5 }}
+              sx={{ rowGap: 1 }}
             >
               <DatePicker
                 value={dayjs.tz(dateISO, TIMEZONE)}
@@ -359,8 +359,6 @@ export default function CalendarHub() {
               </Tooltip>
             </Stack>
           </Box>
-
-          {!isMdUp && <Divider sx={{ my: 2 }} />}
 
           <Grid container spacing={2}>
             <Grid item xs={12}>
