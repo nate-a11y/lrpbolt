@@ -22,6 +22,7 @@ const LAKECROSSING_COLLECTION_SEGMENTS = [
   "lakecrossing",
   "highscores",
 ];
+const RUSHHOUR_COLLECTION_SEGMENTS = ["games", "rushhour", "highscores"];
 const WEEKLY_BUFFER_SIZE = 200;
 
 function getHyperlaneCollectionRef(db) {
@@ -30,6 +31,10 @@ function getHyperlaneCollectionRef(db) {
 
 function getLakeCrossingCollectionRef(db) {
   return collection(db, ...LAKECROSSING_COLLECTION_SEGMENTS);
+}
+
+function getRushHourCollectionRef(db) {
+  return collection(db, ...RUSHHOUR_COLLECTION_SEGMENTS);
 }
 
 function parseScore(value) {
@@ -495,6 +500,193 @@ export function subscribeUserWeeklyLakeCrossingBest({
   } catch (error) {
     logError(error, {
       where: "services.games.subscribeUserWeeklyLakeCrossingBest",
+      uid,
+    });
+    onError?.(error);
+    return () => {};
+  }
+}
+
+// ===== Rush Hour Functions =====
+
+export async function saveRushHourScore(score) {
+  const db = getDb();
+  const auth = getAuth();
+  const user = auth?.currentUser || null;
+  const numericScore = parseScore(score) ?? 0;
+
+  try {
+    const ref = getRushHourCollectionRef(db);
+    await addDoc(ref, {
+      score: numericScore,
+      uid: user?.uid || null,
+      displayName: user?.displayName || null,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    logError(error, {
+      where: "services.games.saveRushHourScore",
+      score,
+      uid: user?.uid || null,
+    });
+    throw error;
+  }
+}
+
+export function subscribeTopRushHourAllTime({
+  topN = 10,
+  onData,
+  onError,
+} = {}) {
+  try {
+    const db = getDb();
+    const ref = getRushHourCollectionRef(db);
+    const q = query(
+      ref,
+      where("score", ">=", 0),
+      orderBy("score", "desc"),
+      orderBy("createdAt", "desc"),
+      limit(topN),
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => handleSnapshot({ snapshot, onData, onError }),
+      (error) => {
+        logError(error, {
+          where: "services.games.subscribeTopRushHourAllTime.listener",
+          topN,
+        });
+        onError?.(error);
+      },
+    );
+  } catch (error) {
+    logError(error, {
+      where: "services.games.subscribeTopRushHourAllTime",
+      topN,
+    });
+    onError?.(error);
+    return () => {};
+  }
+}
+
+export function subscribeTopRushHourWeekly({
+  topN = 10,
+  onData,
+  onError,
+} = {}) {
+  try {
+    const db = getDb();
+    const ref = getRushHourCollectionRef(db);
+    const fetchLimit = Math.max(topN * 4, WEEKLY_BUFFER_SIZE);
+    const q = query(ref, orderBy("createdAt", "desc"), limit(fetchLimit));
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const weekStartDate = startOfWeekLocal()?.toDate?.() ?? new Date(0);
+        handleSnapshot({
+          snapshot,
+          onError,
+          onData,
+          transform: (rows) => {
+            const filtered = rows.filter((row) => {
+              const created = row?.createdAt;
+              const dateValue =
+                created && typeof created.toDate === "function"
+                  ? created.toDate()
+                  : null;
+              return dateValue ? dateValue >= weekStartDate : false;
+            });
+            filtered.sort((a, b) => {
+              const scoreDiff = (b.score ?? 0) - (a.score ?? 0);
+              if (scoreDiff !== 0) return scoreDiff;
+              const aSeconds = a?.createdAt?.seconds ?? 0;
+              const bSeconds = b?.createdAt?.seconds ?? 0;
+              return bSeconds - aSeconds;
+            });
+            return filtered.slice(0, topN);
+          },
+        });
+      },
+      (error) => {
+        logError(error, {
+          where: "services.games.subscribeTopRushHourWeekly.listener",
+          topN,
+        });
+        onError?.(error);
+      },
+    );
+  } catch (error) {
+    logError(error, {
+      where: "services.games.subscribeTopRushHourWeekly",
+      topN,
+    });
+    onError?.(error);
+    return () => {};
+  }
+}
+
+export function subscribeUserWeeklyRushHourBest({
+  uid,
+  startAt,
+  onData,
+  onError,
+} = {}) {
+  if (!uid) {
+    onData?.(null);
+    return () => {};
+  }
+  const startTimestamp = parseTimestamp(startAt);
+  if (!startTimestamp) {
+    onData?.(null);
+    return () => {};
+  }
+
+  try {
+    const db = getDb();
+    const ref = getRushHourCollectionRef(db);
+    const q = query(
+      ref,
+      where("uid", "==", uid),
+      where("createdAt", ">=", startTimestamp),
+      orderBy("createdAt", "desc"),
+      orderBy("score", "desc"),
+      limit(50),
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        try {
+          const rows = snapshot.docs.map((docSnap) => mapHighscore(docSnap));
+          let best = null;
+          for (const row of rows) {
+            if (!Number.isFinite(row?.score)) continue;
+            if (!best || (row?.score ?? 0) > (best?.score ?? 0)) {
+              best = row;
+            }
+          }
+          onData?.(best);
+        } catch (error) {
+          logError(error, {
+            where: "services.games.subscribeUserWeeklyRushHourBest.onData",
+            uid,
+          });
+          onError?.(error);
+        }
+      },
+      (error) => {
+        logError(error, {
+          where: "services.games.subscribeUserWeeklyRushHourBest.listener",
+          uid,
+        });
+        onError?.(error);
+      },
+    );
+  } catch (error) {
+    logError(error, {
+      where: "services.games.subscribeUserWeeklyRushHourBest",
       uid,
     });
     onError?.(error);
