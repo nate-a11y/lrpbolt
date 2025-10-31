@@ -29,8 +29,6 @@ const expectedExports = [
 const allowedAliases = new Set([
   "calendarFetch",
   "ensureLiveOpen",
-  "notifyQueue",
-  "sendPortalNotification",
   "smsOnCreate",
 ]);
 
