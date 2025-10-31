@@ -477,7 +477,8 @@ function LrpDataGridPro({
       // Never override provided getters/formatters/renderers
       if (c.valueGetter == null) {
         // minimal default: just read the raw field; NO "N/A" coercion here
-        c.valueGetter = (params) => params?.row?.[c.field];
+        // MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
+        c.valueGetter = (value, row) => row?.[c.field];
       }
 
       // Do not apply any global "cap" or "N/A" conversion here.
