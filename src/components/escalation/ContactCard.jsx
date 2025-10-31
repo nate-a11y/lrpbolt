@@ -88,7 +88,7 @@ function ContactCardImpl({ contact }) {
       blurb: firstFew,
       details: rest,
     };
-  }, [contact?.responsibilities]);
+  }, [contact]);
 
   return (
     <Card
