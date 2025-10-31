@@ -7,6 +7,87 @@ import { alpha } from "@mui/material/styles";
 import LrpGridToolbar from "./LrpGridToolbar.jsx";
 import SafeGridFooter from "./SafeGridFooter.jsx";
 import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
+import logError from "@/utils/logError.js";
+
+function isBrowser() {
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
+}
+
+/**
+ * Persist per-grid state (column visibility, density, filters) in localStorage
+ */
+function useGridStatePersistence(id, defaults = {}) {
+  const storageKey = useMemo(() => {
+    if (!id) return null;
+    return `lrp:grid:${id}`;
+  }, [id]);
+
+  const persistedState = useMemo(() => {
+    const fallback = {
+      density: defaults?.density || "compact",
+      columnVisibilityModel: defaults?.columnVisibilityModel || {},
+      filterModel: defaults?.filterModel || null,
+    };
+
+    if (!storageKey || !isBrowser()) {
+      return fallback;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        return fallback;
+      }
+      const parsed = JSON.parse(raw);
+      let savedDensity = parsed?.density;
+      if (typeof savedDensity === "object" && savedDensity?.value) {
+        savedDensity = savedDensity.value;
+      }
+      if (typeof savedDensity !== "string") {
+        savedDensity = undefined;
+      }
+      return {
+        density: savedDensity || fallback.density,
+        columnVisibilityModel:
+          parsed?.columnVisibilityModel ||
+          defaults?.columnVisibilityModel ||
+          {},
+        filterModel: parsed?.filterModel || defaults?.filterModel || null,
+      };
+    } catch (error) {
+      logError(error, { where: "UniversalDataGrid.loadPersistedState" });
+      return fallback;
+    }
+  }, [defaults, storageKey]);
+
+  const onStateChange = useCallback(
+    (state) => {
+      if (!storageKey || !isBrowser()) return;
+      try {
+        let densityValue = state?.density;
+        if (typeof densityValue === "object" && densityValue?.value) {
+          densityValue = densityValue.value;
+        }
+        if (typeof densityValue !== "string") {
+          densityValue = undefined;
+        }
+        const payload = {
+          density: densityValue || defaults?.density || "compact",
+          columnVisibilityModel: state?.columns?.columnVisibilityModel || {},
+          filterModel: state?.filter?.filterModel || null,
+        };
+        window.localStorage.setItem(storageKey, JSON.stringify(payload));
+      } catch (error) {
+        logError(error, { where: "UniversalDataGrid.saveState" });
+      }
+    },
+    [defaults, storageKey],
+  );
+
+  return { persistedState, onStateChange };
+}
 
 /**
  * UniversalDataGrid - Single source of truth for all DataGrid usage
@@ -25,6 +106,9 @@ import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
  * - Safe error handling
  */
 export default function UniversalDataGrid({
+  // Persistence (required for state persistence)
+  id,
+
   // Data
   rows = [],
   columns = [],
@@ -69,6 +153,12 @@ export default function UniversalDataGrid({
   // Everything else
   ...rest
 }) {
+  // Persistence: Load/save grid state (density, columns, filters) to localStorage
+  const { persistedState, onStateChange } = useGridStatePersistence(id, {
+    density,
+    columnVisibilityModel,
+    filterModel: initialState?.filter?.filterModel,
+  });
   // Default row ID getter (works with Firebase docs)
   const defaultGetRowId = useCallback((row) => {
     return (
@@ -114,16 +204,22 @@ export default function UniversalDataGrid({
     [slotsPropsProp],
   );
 
-  // Default initial state
+  // Merge persisted state with initial state
   const finalInitialState = useMemo(
     () => ({
-      density: { value: density },
+      density: { value: persistedState.density },
       pagination: {
         paginationModel: { pageSize: pageSizeOptions[0] || 25, page: 0 },
       },
-      ...initialState,
+      columns: {
+        columnVisibilityModel: persistedState.columnVisibilityModel,
+      },
+      filter: {
+        filterModel: persistedState.filterModel,
+      },
+      ...initialState, // Allow consumer to override
     }),
-    [density, initialState, pageSizeOptions],
+    [persistedState, initialState, pageSizeOptions],
   );
 
   // Theme-aware styling
@@ -207,6 +303,9 @@ export default function UniversalDataGrid({
       columnVisibilityModel={columnVisibilityModel}
       onColumnVisibilityModelChange={onColumnVisibilityModelChange}
 
+      // Persistence: Save state changes to localStorage
+      onStateChange={onStateChange}
+
       // Styling
       sx={mergedSx}
 
@@ -217,6 +316,7 @@ export default function UniversalDataGrid({
 }
 
 UniversalDataGrid.propTypes = {
+  id: PropTypes.string, // Grid ID for state persistence
   rows: PropTypes.array,
   columns: PropTypes.array.isRequired,
   getRowId: PropTypes.func,
