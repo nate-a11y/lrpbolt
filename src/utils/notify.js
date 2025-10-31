@@ -3,7 +3,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 import { app } from "./firebaseInit";
 
-const fn = httpsCallable(getFunctions(app), "sendPortalNotification");
+const fn = httpsCallable(getFunctions(app), "sendPortalNotificationV2");
 
 /** Sends a portal notification.
  * opts: { email?: string, token?: string, topic?: string, title: string, body?: string, icon?: string, data?: Record<string,string> }
