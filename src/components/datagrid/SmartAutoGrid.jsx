@@ -342,21 +342,29 @@ export default function SmartAutoGrid(props) {
   );
 
   const mergedSlotProps = useMemo(
-    () => ({
-      toolbar: {
-        quickFilterPlaceholder: "Search",
-        ...componentsProps?.toolbar, // Legacy v5/v6 props
-        ...slotProps?.toolbar, // v7/v8 props take precedence
-        onDeleteSelected:
-          typeof slotProps?.toolbar?.onDeleteSelected === "function"
-            ? slotProps.toolbar.onDeleteSelected
-            : typeof componentsProps?.toolbar?.onDeleteSelected === "function"
-              ? componentsProps.toolbar.onDeleteSelected
-              : undefined,
-      },
-      ...componentsProps, // Spread legacy props first
-      ...slotProps, // v7/v8 props override legacy
-    }),
+    () => {
+      // Destructure to omit toolbar from parent spreads
+      const { toolbar: _legacyToolbar, ...restComponentsProps } = componentsProps || {};
+      const { toolbar: _v8Toolbar, ...restSlotProps } = slotProps || {};
+
+      return {
+        // Spread parent props first (without toolbar to avoid overwriting)
+        ...restComponentsProps,
+        ...restSlotProps,
+        // Then apply merged toolbar config
+        toolbar: {
+          quickFilterPlaceholder: "Search",
+          ...componentsProps?.toolbar, // Legacy v5/v6 props
+          ...slotProps?.toolbar, // v7/v8 props take precedence
+          onDeleteSelected:
+            typeof slotProps?.toolbar?.onDeleteSelected === "function"
+              ? slotProps.toolbar.onDeleteSelected
+              : typeof componentsProps?.toolbar?.onDeleteSelected === "function"
+                ? componentsProps.toolbar.onDeleteSelected
+                : undefined,
+        },
+      };
+    },
     [slotProps, componentsProps],
   );
 
