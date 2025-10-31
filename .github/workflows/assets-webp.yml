@@ -14,9 +14,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22.x'
           cache: 'npm'
@@ -30,7 +30,7 @@ jobs:
       - run: npm run ci:install
       - run: npm run images:build
       - name: Commit WebP outputs
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'chore(images): update generated .webp assets'
           file_pattern: 'public/webp/**'
