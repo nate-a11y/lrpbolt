@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, user-scalable=no"
+    />
+    <title>LRP Rush Hour — Premium Chauffeur</title>
+    <style>
+      :root { --lrp:#4cbb17; --bg:#060606; --fg:#e8f5e9; --panel:#0b0b0b; --gold:#ffd700; }
+      * { box-sizing: border-box; }
+      html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+      #root { position:fixed; inset:0; display:grid; place-items:center; }
+      .hud { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; font-weight:800; letter-spacing:.3px; font-size:14px; z-index:10; }
+      .hud-left { display:flex; flex-direction:column; gap:4px; }
+      .hud-right { display:flex; flex-direction:column; gap:4px; text-align:right; }
+      .title { position:absolute; top:10px; left:50%; transform:translateX(-50%); color:var(--lrp); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:16px; z-index:10; }
+      canvas { width:min(96vw,720px); height:min(72vh,540px); border-radius:16px; background:linear-gradient(180deg,#0a0a0a,#050505); box-shadow: 0 10px 30px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05); }
+      .controls { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:10; }
+      .btn { background:var(--lrp); color:#000; border:0; border-radius:12px; padding:12px 16px; font-weight:900; box-shadow:0 8px 24px rgba(76,187,23,.35); cursor:pointer; user-select:none; }
+      .btn:active { transform:scale(0.96); }
+      .toast { position:absolute; top:44px; left:50%; transform:translateX(-50%); background:rgba(25,25,25,.92); border:1px solid rgba(255,255,255,.06); padding:6px 10px; border-radius:8px; font-size:12px; opacity:.92; z-index:10; max-width:90%; text-align:center; }
+      .satisfaction { display:flex; align-items:center; gap:6px; }
+      .sat-bar { width:80px; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; }
+      .sat-fill { height:100%; background:linear-gradient(90deg, #ff5252, #ffd700, var(--lrp)); transition:width 0.3s; }
+      .vip-badge { color:var(--gold); font-weight:900; }
+      @media (max-width: 600px) {
+        .hud { font-size:12px; }
+        .title { font-size:14px; }
+        .sat-bar { width:60px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="hud">
+        <div class="hud-left">
+          <div>Score: <span id="score">0</span></div>
+          <div>Pickups: <span id="pickups">0</span></div>
+          <div class="satisfaction">
+            <span>Service:</span>
+            <div class="sat-bar"><div class="sat-fill" id="satFill" style="width:100%"></div></div>
+          </div>
+        </div>
+        <div class="hud-right">
+          <div>Best: <span id="best">0</span></div>
+          <div class="vip-badge">⭐ <span id="stars">5.0</span></div>
+        </div>
+      </div>
+      <div class="title">LRP Rush Hour</div>
+      <div class="toast">Arrow keys or WASD • Pick up VIPs • Smooth driving = bonus!</div>
+      <canvas id="game" width="720" height="540" aria-label="Rush Hour game canvas"></canvas>
+      <div class="controls">
+        <button class="btn" id="restart" aria-label="Restart">🔄 New Shift</button>
+      </div>
+    </div>
+    <script>
+      (function(){
+        const W=720, H=540;
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const pickupsEl = document.getElementById('pickups');
+        const bestEl = document.getElementById('best');
+        const starsEl = document.getElementById('stars');
+        const satFillEl = document.getElementById('satFill');
+        const btnRestart = document.getElementById('restart');
+
+        let best = Number(localStorage.getItem('lrp_rushhour_best')||0);
+        if (!Number.isFinite(best) || best < 0) best = 0;
+        best = Math.floor(best);
+        bestEl.textContent = String(best);
+
+        // Game state
+        let running = false;
+        let score = 0;
+        let pickups = 0;
+        let satisfaction = 100; // 0-100
+        let combo = 0;
+        let lastFrameTime = null;
+        let gameTime = 0;
+
+        // Player vehicle (LRP Sprinter)
+        const player = {
+          x: W/2,
+          y: H/2,
+          vx: 0,
+          vy: 0,
+          angle: -Math.PI/2, // pointing up
+          speed: 0,
+          maxSpeed: 4.5,
+          accel: 0.25,
+          friction: 0.92,
+          turnSpeed: 0.08,
+          width: 24,
+          height: 40,
+        };
+
+        // VIP pickups
+        let vips = [];
+        let nextVipTime = 0;
+
+        // Traffic obstacles
+        let traffic = [];
+        let nextTrafficTime = 0;
+
+        // Road grid
+        const roadOffset = { x: 0, y: 0 };
+
+        const sound = (function(){
+          const state = { enabled: false, ctx: null };
+          const whenReadyQueue = [];
+
+          function ensureContext(){
+            if (state.ctx) return state.ctx;
+            try {
+              const AudioCtx = window.AudioContext || window.webkitAudioContext;
+              if (!AudioCtx) return null;
+              state.ctx = new AudioCtx();
+              if (state.ctx.state === 'suspended' && state.enabled) {
+                state.ctx.resume().catch(()=>{});
+              }
+              while (whenReadyQueue.length) {
+                const job = whenReadyQueue.shift();
+                if (job) job();
+              }
+              return state.ctx;
+            } catch (err) {
+              return null;
+            }
+          }
+
+          function playPickup(){
+            const ctx = ensureContext();
+            if (!ctx) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(783, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+          }
+
+          function playCollision(){
+            const ctx = ensureContext();
+            if (!ctx) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.25);
+          }
+
+          function play(type){
+            if (!state.enabled) return;
+            const job = type === 'pickup' ? playPickup : playCollision;
+            const ctx = ensureContext();
+            if (!ctx) {
+              whenReadyQueue.push(job);
+              return;
+            }
+            if (ctx.state === 'suspended') {
+              ctx.resume().then(job).catch(()=>{});
+            } else {
+              job();
+            }
+          }
+
+          function setEnabled(value){
+            state.enabled = Boolean(value);
+            const ctx = state.ctx;
+            if (!ctx) return;
+            if (state.enabled && ctx.state === 'suspended') {
+              ctx.resume().catch(()=>{});
+            }
+            if (!state.enabled && ctx.state === 'running') {
+              ctx.suspend().catch(()=>{});
+            }
+          }
+
+          function prime(){
+            ensureContext();
+            if (state.ctx && state.ctx.state === 'suspended' && state.enabled) {
+              state.ctx.resume().catch(()=>{});
+            }
+          }
+
+          window.addEventListener('pointerdown', prime, { once: true });
+          window.addEventListener('keydown', prime, { once: true });
+
+          return {
+            playPickup(){ play('pickup'); },
+            playCollision(){ play('collision'); },
+            setEnabled,
+          };
+        })();
+
+        function postSound(name){
+          try {
+            if (window && window.parent) {
+              window.parent.postMessage({ type: 'SOUND', name }, '*');
+            }
+          } catch (err) {}
+        }
+
+        function reset(){
+          player.x = W/2;
+          player.y = H/2;
+          player.vx = 0;
+          player.vy = 0;
+          player.angle = -Math.PI/2;
+          player.speed = 0;
+          score = 0;
+          pickups = 0;
+          satisfaction = 100;
+          combo = 0;
+          gameTime = 0;
+          vips = [];
+          traffic = [];
+          nextVipTime = 1;
+          nextTrafficTime = 2;
+          roadOffset.x = 0;
+          roadOffset.y = 0;
+          lastFrameTime = null;
+          updateUI();
+          running = true;
+        }
+
+        function spawnVIP(){
+          const edge = Math.floor(Math.random() * 4);
+          let x, y;
+          if (edge === 0) { x = Math.random() * W; y = -30; }
+          else if (edge === 1) { x = W + 30; y = Math.random() * H; }
+          else if (edge === 2) { x = Math.random() * W; y = H + 30; }
+          else { x = -30; y = Math.random() * H; }
+
+          vips.push({
+            x, y,
+            collected: false,
+            pulse: 0,
+          });
+        }
+
+        function spawnTraffic(){
+          const edge = Math.floor(Math.random() * 4);
+          let x, y, vx, vy, angle;
+          const speed = 1 + Math.random() * 2;
+
+          if (edge === 0) { // top
+            x = Math.random() * W; y = -40;
+            angle = Math.PI/2; vx = 0; vy = speed;
+          } else if (edge === 1) { // right
+            x = W + 40; y = Math.random() * H;
+            angle = Math.PI; vx = -speed; vy = 0;
+          } else if (edge === 2) { // bottom
+            x = Math.random() * W; y = H + 40;
+            angle = -Math.PI/2; vx = 0; vy = -speed;
+          } else { // left
+            x = -40; y = Math.random() * H;
+            angle = 0; vx = speed; vy = 0;
+          }
+
+          traffic.push({ x, y, vx, vy, angle, width: 20, height: 32 });
+        }
+
+        function checkCollision(ax, ay, aw, ah, bx, by, bw, bh){
+          return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+        }
+
+        function update(deltaSeconds){
+          if (!running) return;
+          const clampedDelta = Math.min(Math.max(deltaSeconds, 0), 0.1);
+          if (clampedDelta <= 0) return;
+          const frameScale = clampedDelta * 60;
+
+          gameTime += clampedDelta;
+
+          // Input handling
+          const keys = window.keys || {};
+          let turning = 0;
+          let accelerating = 0;
+
+          if (keys.ArrowLeft || keys.KeyA) turning -= 1;
+          if (keys.ArrowRight || keys.KeyD) turning += 1;
+          if (keys.ArrowUp || keys.KeyW) accelerating = 1;
+          if (keys.ArrowDown || keys.KeyS) accelerating = -0.7;
+
+          // Physics
+          if (accelerating !== 0) {
+            player.speed = Math.max(-player.maxSpeed * 0.5, Math.min(player.maxSpeed, player.speed + accelerating * player.accel * frameScale));
+          } else {
+            player.speed *= Math.pow(player.friction, frameScale);
+            if (Math.abs(player.speed) < 0.05) player.speed = 0;
+          }
+
+          if (turning !== 0 && Math.abs(player.speed) > 0.5) {
+            player.angle += turning * player.turnSpeed * frameScale;
+          }
+
+          player.vx = Math.cos(player.angle) * player.speed;
+          player.vy = Math.sin(player.angle) * player.speed;
+          player.x += player.vx * frameScale;
+          player.y += player.vy * frameScale;
+
+          // Keep player in bounds with soft edges
+          if (player.x < 20) player.x = 20;
+          if (player.x > W - 20) player.x = W - 20;
+          if (player.y < 20) player.y = 20;
+          if (player.y > H - 20) player.y = H - 20;
+
+          // Spawn VIPs
+          if (gameTime > nextVipTime) {
+            spawnVIP();
+            nextVipTime = gameTime + 3 - Math.min(1.5, gameTime * 0.02);
+          }
+
+          // Spawn traffic
+          if (gameTime > nextTrafficTime) {
+            spawnTraffic();
+            nextTrafficTime = gameTime + 1.5 - Math.min(0.8, gameTime * 0.015);
+          }
+
+          // Update VIPs
+          vips.forEach(v => {
+            v.pulse += 0.1 * frameScale;
+          });
+
+          // Check VIP collection
+          vips.forEach(v => {
+            if (!v.collected) {
+              const dist = Math.hypot(player.x - v.x, player.y - v.y);
+              if (dist < 35) {
+                v.collected = true;
+                pickups++;
+                combo++;
+                const basePoints = 1000;
+                const comboBonus = combo * 200;
+                const satBonus = Math.floor(satisfaction * 5);
+                score += basePoints + comboBonus + satBonus;
+                sound.playPickup();
+                postSound('ring');
+                updateUI();
+              }
+            }
+          });
+
+          // Clean up collected VIPs
+          vips = vips.filter(v => !v.collected && Math.hypot(player.x - v.x, player.y - v.y) < W * 2);
+
+          // Update traffic
+          traffic.forEach(t => {
+            t.x += t.vx * frameScale;
+            t.y += t.vy * frameScale;
+          });
+
+          // Check traffic collisions
+          for (const t of traffic) {
+            if (checkCollision(
+              player.x - player.width/2, player.y - player.height/2, player.width, player.height,
+              t.x - t.width/2, t.y - t.height/2, t.width, t.height
+            )) {
+              sound.playCollision();
+              postSound('crash');
+              satisfaction = Math.max(0, satisfaction - 20);
+              combo = 0;
+              t.x = -999; // remove
+              updateUI();
+
+              if (satisfaction <= 0) {
+                gameOver();
+                return;
+              }
+            }
+          }
+
+          // Clean up offscreen traffic
+          traffic = traffic.filter(t => t.x > -100 && t.x < W + 100 && t.y > -100 && t.y < H + 100);
+
+          // Passive score
+          score += Math.max(1, pickups * 0.5) * frameScale;
+
+          // Satisfaction recovery
+          if (satisfaction < 100) {
+            satisfaction = Math.min(100, satisfaction + 0.5 * frameScale);
+          }
+
+          updateUI();
+        }
+
+        function updateUI(){
+          scoreEl.textContent = String(Math.floor(score));
+          pickupsEl.textContent = String(pickups);
+          satFillEl.style.width = satisfaction + '%';
+          const stars = 1 + (satisfaction / 100) * 4;
+          starsEl.textContent = stars.toFixed(1);
+        }
+
+        function drawRoad(){
+          // Simple road grid
+          ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+          ctx.lineWidth = 1;
+          const gridSize = 60;
+
+          for (let x = (roadOffset.x % gridSize); x < W; x += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, H);
+            ctx.stroke();
+          }
+
+          for (let y = (roadOffset.y % gridSize); y < H; y += gridSize) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(W, y);
+            ctx.stroke();
+          }
+
+          // Center lines
+          ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([20, 15]);
+          ctx.beginPath();
+          ctx.moveTo(W/2, 0);
+          ctx.lineTo(W/2, H);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, H/2);
+          ctx.lineTo(W, H/2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        function drawVIP(v){
+          const pulse = Math.sin(v.pulse) * 4 + 6;
+
+          // Glow
+          const grad = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, 20 + pulse);
+          grad.addColorStop(0, 'rgba(255, 215, 0, 0.6)');
+          grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(v.x, v.y, 20 + pulse, 0, Math.PI * 2);
+          ctx.fill();
+
+          // VIP marker
+          ctx.fillStyle = '#ffd700';
+          ctx.beginPath();
+          ctx.arc(v.x, v.y, 12, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#000';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('⭐', v.x, v.y);
+        }
+
+        function drawVehicle(x, y, angle, color, isPlayer = false){
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+
+          // Body
+          ctx.fillStyle = color;
+          roundRect(ctx, -player.width/2, -player.height/2, player.width, player.height, 6, true);
+
+          // Windows
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          roundRect(ctx, -player.width/2 + 4, -player.height/2 + 4, player.width - 8, 12, 3, true);
+
+          // Headlights
+          if (isPlayer) {
+            ctx.fillStyle = '#ffeb3b';
+            ctx.beginPath();
+            ctx.arc(-8, -player.height/2 - 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(8, -player.height/2 - 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
+        function roundRect(ctx, x, y, w, h, r, fill=true){
+          const rr = Math.min(r, w/2, h/2);
+          ctx.beginPath();
+          ctx.moveTo(x+rr, y);
+          ctx.arcTo(x+w, y, x+w, y+h, rr);
+          ctx.arcTo(x+w, y+h, x, y+h, rr);
+          ctx.arcTo(x, y+h, x, y, rr);
+          ctx.arcTo(x, y, x+w, y, rr);
+          if (fill) ctx.fill(); else ctx.stroke();
+        }
+
+        function draw(){
+          ctx.clearRect(0, 0, W, H);
+
+          // Background
+          const g = ctx.createLinearGradient(0, 0, 0, H);
+          g.addColorStop(0, '#1a1a1a');
+          g.addColorStop(1, '#0a0a0a');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+
+          drawRoad();
+
+          // VIPs
+          vips.forEach(v => drawVIP(v));
+
+          // Traffic
+          traffic.forEach(t => drawVehicle(t.x, t.y, t.angle, '#666'));
+
+          // Player
+          drawVehicle(player.x, player.y, player.angle, '#4cbb17', true);
+
+          // Combo indicator
+          if (combo > 1) {
+            ctx.fillStyle = '#4cbb17';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${combo}x COMBO!`, W/2, H - 40);
+          }
+        }
+
+        function loop(now){
+          if (!running) return;
+          if (lastFrameTime === null) lastFrameTime = now;
+          const deltaSeconds = (now - lastFrameTime) / 1000;
+          lastFrameTime = now;
+          update(deltaSeconds);
+          draw();
+          if (running) requestAnimationFrame(loop);
+        }
+
+        const portalOrigin = (() => {
+          const fallback = 'https://lakeridepros.xyz';
+          try {
+            const ref = typeof document !== 'undefined' ? document.referrer : '';
+            if (ref) {
+              const url = new URL(ref);
+              return url.origin || fallback;
+            }
+          } catch (error) {}
+          return fallback;
+        })();
+
+        function lrpPostScore(score){
+          try {
+            const numeric = Number(score);
+            if (!Number.isFinite(numeric) || numeric < 0) return;
+            if (typeof window === 'undefined' || !window.parent) return;
+            window.parent.postMessage(
+              { type: 'lrp:game-highscore', payload: { game: 'rushhour', score: numeric } },
+              portalOrigin,
+            );
+          } catch (error) {}
+        }
+
+        function gameOver(){
+          running = false;
+          const finalScore = Math.floor(score);
+          scoreEl.textContent = String(finalScore);
+          if (finalScore > best) {
+            best = finalScore;
+            localStorage.setItem('lrp_rushhour_best', String(best));
+            bestEl.textContent = String(best);
+          }
+          lrpPostScore(finalScore);
+        }
+
+        // Keyboard handling
+        window.keys = {};
+        window.addEventListener('keydown', (e) => {
+          window.keys[e.code] = true;
+          if (e.code === 'Space' && !running) {
+            postSound('start');
+            start();
+          }
+        });
+        window.addEventListener('keyup', (e) => {
+          window.keys[e.code] = false;
+        });
+
+        btnRestart.addEventListener('click', () => {
+          postSound('start');
+          start();
+        });
+
+        window.addEventListener('message', (event) => {
+          const payload = event?.data;
+          if (!payload || typeof payload !== 'object') return;
+          if (payload.type === 'RUSHHOUR_SOUND_TOGGLE') {
+            sound.setEnabled(Boolean(payload.enabled));
+          }
+        });
+
+        function start(){
+          running = false;
+          reset();
+          requestAnimationFrame(loop);
+        }
+
+        start();
+      })();
+    </script>
+  </body>
+</html>
