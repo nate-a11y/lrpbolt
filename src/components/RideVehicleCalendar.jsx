@@ -1202,39 +1202,44 @@ function RideVehicleCalendar({
             </Typography>
           )}
 
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            mb={2}
-            sx={{
-              flexWrap: { xs: "wrap", sm: "nowrap" },
-              gap: 1,
-            }}
-          >
-            <Stack direction="row" spacing={0.5} alignItems="center">
-              <IconButton
-                size="small"
-                onClick={handlePrevDay}
-                aria-label="Previous day"
-              >
-                <ChevronLeftIcon fontSize="small" />
-              </IconButton>
-              <Typography
-                variant={isMobile ? "body1" : "subtitle1"}
-                sx={{ minWidth: { xs: "auto", sm: 200 }, textAlign: "center" }}
-              >
-                {date.format(isMobile ? "MMM D" : "dddd, MMMM D")}
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={handleNextDay}
-                aria-label="Next day"
-              >
-                <ChevronRightIcon fontSize="small" />
-              </IconButton>
+          {!hideDatePicker && (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              mb={2}
+              sx={{
+                flexWrap: { xs: "wrap", sm: "nowrap" },
+                gap: 1,
+              }}
+            >
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <IconButton
+                  size="small"
+                  onClick={handlePrevDay}
+                  aria-label="Previous day"
+                >
+                  <ChevronLeftIcon fontSize="small" />
+                </IconButton>
+                <Typography
+                  variant={isMobile ? "body1" : "subtitle1"}
+                  sx={{
+                    minWidth: { xs: "auto", sm: 200 },
+                    textAlign: "center",
+                  }}
+                >
+                  {date.format(isMobile ? "MMM D" : "dddd, MMMM D")}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={handleNextDay}
+                  aria-label="Next day"
+                >
+                  <ChevronRightIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             </Stack>
-          </Stack>
+          )}
 
           {!hideDatePicker && (
             <Box sx={{ width: "100%", mb: 2 }}>
