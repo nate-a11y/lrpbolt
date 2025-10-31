@@ -1177,7 +1177,7 @@ function RideVehicleCalendar({
   // [LRP:END:calendar:eventBridge]
 
   return (
-    <PageContainer {...rest}>
+    <PageContainer pt={0} {...rest}>
       <Box sx={{ width: "100%" }}>
         {!hideHeader && (
           <Typography variant="h5" gutterBottom>
