@@ -17,9 +17,16 @@
       .hud-right { display:flex; flex-direction:column; gap:4px; text-align:right; }
       .title { position:absolute; top:10px; left:50%; transform:translateX(-50%); color:var(--lrp); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:16px; z-index:10; }
       canvas { width:min(96vw,720px); height:min(72vh,540px); border-radius:16px; background:linear-gradient(180deg,#0a0a0a,#050505); box-shadow: 0 10px 30px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.05); }
-      .controls { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:10; }
-      .btn { background:var(--lrp); color:#000; border:0; border-radius:12px; padding:12px 16px; font-weight:900; box-shadow:0 8px 24px rgba(76,187,23,.35); cursor:pointer; user-select:none; }
+      .controls { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr; gap:8px; z-index:10; }
+      .btn { background:var(--lrp); color:#000; border:0; border-radius:12px; padding:12px 16px; font-weight:900; box-shadow:0 8px 24px rgba(76,187,23,.35); cursor:pointer; user-select:none; touch-action:manipulation; min-width:60px; }
       .btn:active { transform:scale(0.96); }
+      .btn-up { grid-column:2; grid-row:1; }
+      .btn-left { grid-column:1; grid-row:2; }
+      .btn-down { grid-column:2; grid-row:2; }
+      .btn-right { grid-column:3; grid-row:2; }
+      @media (max-width: 600px) {
+        .btn { padding:10px 12px; font-size:14px; min-width:50px; }
+      }
       .toast { position:absolute; top:44px; left:50%; transform:translateX(-50%); background:rgba(25,25,25,.92); border:1px solid rgba(255,255,255,.06); padding:6px 10px; border-radius:8px; font-size:12px; opacity:.92; z-index:10; max-width:90%; text-align:center; }
       .satisfaction { display:flex; align-items:center; gap:6px; }
       .sat-bar { width:80px; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; }
@@ -50,9 +57,12 @@
       </div>
       <div class="title">LRP Rush Hour</div>
       <div class="toast">Arrow keys or WASD • Pick up VIPs • Smooth driving = bonus!</div>
-      <canvas id="game" width="720" height="540" aria-label="Rush Hour game canvas"></canvas>
+      <canvas id="game" width="720" height="540" aria-label="Rush Hour game canvas" tabindex="0"></canvas>
       <div class="controls">
-        <button class="btn" id="restart" aria-label="Restart">🔄 New Shift</button>
+        <button class="btn btn-up" id="btnUp" aria-label="Accelerate">▲</button>
+        <button class="btn btn-left" id="btnLeft" aria-label="Turn left">◀</button>
+        <button class="btn btn-down" id="btnDown" aria-label="Brake">▼</button>
+        <button class="btn btn-right" id="btnRight" aria-label="Turn right">▶</button>
       </div>
     </div>
     <script>
@@ -65,7 +75,10 @@
         const bestEl = document.getElementById('best');
         const starsEl = document.getElementById('stars');
         const satFillEl = document.getElementById('satFill');
-        const btnRestart = document.getElementById('restart');
+        const btnUp = document.getElementById('btnUp');
+        const btnDown = document.getElementById('btnDown');
+        const btnLeft = document.getElementById('btnLeft');
+        const btnRight = document.getElementById('btnRight');
 
         let best = Number(localStorage.getItem('lrp_rushhour_best')||0);
         if (!Number.isFinite(best) || best < 0) best = 0;
@@ -593,10 +606,30 @@
           window.keys[e.code] = false;
         });
 
-        btnRestart.addEventListener('click', () => {
-          postSound('start');
-          start();
-        });
+        // Button controls
+        function setKey(code, pressed) {
+          window.keys[code] = pressed;
+        }
+
+        btnUp.addEventListener('pointerdown', () => setKey('ArrowUp', true));
+        btnUp.addEventListener('pointerup', () => setKey('ArrowUp', false));
+        btnUp.addEventListener('pointerleave', () => setKey('ArrowUp', false));
+
+        btnDown.addEventListener('pointerdown', () => setKey('ArrowDown', true));
+        btnDown.addEventListener('pointerup', () => setKey('ArrowDown', false));
+        btnDown.addEventListener('pointerleave', () => setKey('ArrowDown', false));
+
+        btnLeft.addEventListener('pointerdown', () => setKey('ArrowLeft', true));
+        btnLeft.addEventListener('pointerup', () => setKey('ArrowLeft', false));
+        btnLeft.addEventListener('pointerleave', () => setKey('ArrowLeft', false));
+
+        btnRight.addEventListener('pointerdown', () => setKey('ArrowRight', true));
+        btnRight.addEventListener('pointerup', () => setKey('ArrowRight', false));
+        btnRight.addEventListener('pointerleave', () => setKey('ArrowRight', false));
+
+        // Auto-focus canvas for keyboard control
+        canvas.addEventListener('click', () => canvas.focus());
+        canvas.focus();
 
         window.addEventListener('message', (event) => {
           const payload = event?.data;
