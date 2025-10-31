@@ -74,7 +74,8 @@ const ORDER_TYPES = [
 const VEHICLES = [
   "Limo Bus",
   "Rescue Squad",
-  "Luxury Sprint",
+  "Luxury Sprinter",
+  "Shuttle",
   "LRP1",
   "LRP2",
   "LRP3",
