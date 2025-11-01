@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
-
 import { Alert, Box } from "@mui/material";
 
 import logError from "@/utils/logError.js";

@@ -25,6 +25,7 @@ import ErrorIcon from "@mui/icons-material/ErrorOutline";
 
 import { diagShowSwNotification } from "@/pwa/clockNotifications";
 import { setFlag, logEvent, captureError } from "@/services/observability";
+
 import VersionBadge from "./VersionBadge.jsx";
 
 const MAX_LOGS = 100;
@@ -230,7 +231,7 @@ export default function MobileConsole() {
           return String(arg);
         })
         .join(" ");
-    } catch (e) {
+    } catch {
       message = String(args);
     }
 
@@ -365,20 +366,26 @@ export default function MobileConsole() {
 
   // Intercept console methods
   useEffect(() => {
+     
     const originalError = console.error;
+     
     const originalWarn = console.warn;
+    // eslint-disable-next-line no-console -- Intentionally intercepting console methods
     const originalLog = console.log;
 
+     
     console.error = function (...args) {
       addLog("error", args);
       originalError.apply(console, args);
     };
 
+     
     console.warn = function (...args) {
       addLog("warn", args);
       originalWarn.apply(console, args);
     };
 
+    // eslint-disable-next-line no-console -- Intentionally intercepting console methods
     console.log = function (...args) {
       addLog("log", args);
       originalLog.apply(console, args);
@@ -404,8 +411,11 @@ export default function MobileConsole() {
     addLog("log", ["Mobile console initialized"]);
 
     return () => {
+       
       console.error = originalError;
+       
       console.warn = originalWarn;
+      // eslint-disable-next-line no-console -- Restoring original console methods
       console.log = originalLog;
       window.removeEventListener("error", handleError);
       window.removeEventListener("unhandledrejection", handleRejection);

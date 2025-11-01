@@ -1,7 +1,6 @@
 /* Proprietary and confidential. See LICENSE. */
 import { Component } from "react";
 import PropTypes from "prop-types";
-
 import { Box, Typography, Button, Alert, Paper } from "@mui/material";
 
 import logError from "@/utils/logError.js";
