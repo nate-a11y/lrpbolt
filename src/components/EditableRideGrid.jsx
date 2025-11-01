@@ -49,10 +49,17 @@ export default function EditableRideGrid({
 
   const columns = useMemo(
     () => [
-      { field: "tripId", headerName: "Ride ID", width: 110, minWidth: 120 },
+      {
+        field: "tripId",
+        headerName: "Ride ID",
+        width: 110,
+        minWidth: 120,
+        valueGetter: (value, row) => row?.tripId ?? row?.rideId ?? row?.id ?? "N/A",
+      },
       {
         field: "pickupTime",
         headerName: "Start",
+        valueGetter: (value, row) => row?.pickupTime ?? "N/A",
         valueFormatter: vfTime,
       },
       {
@@ -76,9 +83,27 @@ export default function EditableRideGrid({
         valueFormatter: vfDurationHM,
         sortComparator: (a, b) => (Number(a) || 0) - (Number(b) || 0),
       },
-      { field: "rideType", headerName: "Type", flex: 1, minWidth: 140 },
-      { field: "vehicle", headerName: "Vehicle", flex: 1, minWidth: 140 },
-      { field: "rideNotes", headerName: "Notes", flex: 1.5, minWidth: 160 },
+      {
+        field: "rideType",
+        headerName: "Type",
+        flex: 1,
+        minWidth: 140,
+        valueGetter: (value, row) => row?.rideType ?? row?.type ?? "N/A",
+      },
+      {
+        field: "vehicle",
+        headerName: "Vehicle",
+        flex: 1,
+        minWidth: 140,
+        valueGetter: (value, row) => row?.vehicle ?? row?.vehicleLabel ?? "N/A",
+      },
+      {
+        field: "rideNotes",
+        headerName: "Notes",
+        flex: 1.5,
+        minWidth: 160,
+        valueGetter: (value, row) => row?.rideNotes ?? row?.notes ?? "N/A",
+      },
       actionsCol(({ row }) => (
         <>
           <IconButton size="small" onClick={() => handleEdit(row)}>

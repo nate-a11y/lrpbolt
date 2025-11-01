@@ -314,6 +314,9 @@ export default function UniversalDataGrid({
     [sx],
   );
 
+  // Apply persisted density (persisted value takes precedence over prop)
+  const resolvedDensity = persistedState?.density || density;
+
   return (
     <DataGridPro
       // Data
@@ -341,7 +344,7 @@ export default function UniversalDataGrid({
       slots={mergedSlots}
       slotProps={mergedSlotProps}
       // Layout
-      density={density}
+      density={resolvedDensity}
       autoHeight={autoHeight}
       pagination
       pageSizeOptions={pageSizeOptions}

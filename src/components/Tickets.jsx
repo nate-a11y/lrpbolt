@@ -1011,7 +1011,7 @@ function Tickets() {
     [handleDeleteRows, showWarnOrErrorSnack],
   );
 
-  // MUI DataGrid Pro v7 API: valueGetter signature is (value, row, column, apiRef)
+  // MUI DataGrid Pro v8 API: valueGetter signature is (value, row, column, apiRef)
   const columns = useMemo(
     () =>
       withSafeColumns([
@@ -1019,36 +1019,43 @@ function Tickets() {
           field: "ticketId",
           headerName: "Ticket ID",
           minWidth: 140,
+          valueGetter: (value, row) => row?.ticketId ?? row?.id ?? "N/A",
           renderCell: (p) => p?.row?.ticketId ?? p?.row?.id ?? "N/A",
         },
         {
           field: "passenger",
           headerName: "Passenger",
           minWidth: 180,
+          valueGetter: (value, row) => row?.passenger ?? "N/A",
           renderCell: (p) => p?.row?.passenger ?? "N/A",
         },
         {
           field: "pickup",
           headerName: "Pickup",
           minWidth: 220,
+          valueGetter: (value, row) => row?.pickup ?? "N/A",
           renderCell: (p) => p?.row?.pickup ?? "N/A",
         },
         {
           field: "dropoff",
           headerName: "Dropoff",
           minWidth: 220,
+          valueGetter: (value, row) => row?.dropoff ?? "N/A",
           renderCell: (p) => p?.row?.dropoff ?? "N/A",
         },
         {
           field: "pickupTime",
           headerName: "Pickup Time",
           minWidth: 200,
+          valueGetter: (value, row) => fmtPickup(row || {}),
           renderCell: (p) => fmtPickup(p?.row || {}),
         },
         {
           field: "passengerCount",
           headerName: "Count",
           minWidth: 90,
+          valueGetter: (value, row) =>
+            row?.passengerCount ?? row?.passengercount ?? "N/A",
           renderCell: (p) =>
             p?.row?.passengerCount ?? p?.row?.passengercount ?? "N/A",
         },
