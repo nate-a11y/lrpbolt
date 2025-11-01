@@ -11,14 +11,16 @@ import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBul
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
+import { Chip } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
   formatDateTime,
   formatClockOutOrDash,
   toDayjs,
   durationSafe,
+  dayjs,
 } from "@/utils/time";
 import { timestampSortComparator } from "@/utils/timeUtils.js";
-import { buildTimeLogColumns } from "@/components/datagrid/columns/timeLogColumns.shared.jsx";
 import { deleteTimeLog, subscribeTimeLogs, updateTimeLog } from "@/services/fs";
 import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
 
@@ -134,88 +136,189 @@ export default function EntriesTab() {
     [apiRef, rowModesModel, handleDelete],
   );
 
-  const sharedColumns = useMemo(() => buildTimeLogColumns(), []);
+  // Helper functions
+  const val = useCallback((obj, keys) => {
+    const r = obj || {};
+    for (const k of keys) {
+      const v = r[k];
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+    return null;
+  }, []);
 
-  // MUI DataGrid Pro v7 API: valueGetter/valueFormatter signature is (value, row, column, apiRef)
-  const sharedAdminColumns = useMemo(() => {
-    return sharedColumns.map((col) => {
-      if (col.field === "driverName") {
-        return {
-          ...col,
-          editable: true,
-          valueGetter: (value, row) => row?.driverName ?? row?.driver ?? "N/A",
-          valueSetter: (params) => {
-            if (!params?.row) return params?.row || {};
-            const next = { ...params.row };
-            next.driverName = params.value ?? "";
-            next.driver = params.value ?? null;
-            return next;
-          },
-        };
-      }
-      if (col.field === "rideId") {
-        return {
-          ...col,
-          editable: true,
-          valueGetter: (value, row) => row?.rideId ?? "N/A",
-          valueSetter: (params) => {
-            if (!params?.row) return params?.row || {};
-            const next = { ...params.row };
-            next.rideId = params.value ?? null;
-            return next;
-          },
-        };
-      }
-      if (col.field === "clockIn") {
-        return {
-          ...col,
-          type: "dateTime",
-          editable: true,
-          valueGetter: (value, row) =>
-            toDateSafe(row?.startTime ?? row?.clockIn ?? null),
-          valueFormatter: (value) => (value ? formatDateTime(value) : "N/A"),
-          valueSetter: (params) => {
-            if (!params?.row) return params?.row || {};
-            const next = { ...params.row };
-            next.startTime = toDateSafe(params.value) ?? null;
-            return next;
-          },
-          sortComparator: (v1, v2, cellParams1, cellParams2) =>
-            timestampSortComparator(
-              cellParams1?.row?.startTime,
-              cellParams2?.row?.startTime,
-            ),
-        };
-      }
-      if (col.field === "clockOut") {
-        return {
-          ...col,
-          type: "dateTime",
-          editable: true,
-          valueGetter: (value, row) =>
-            toDateSafe(row?.endTime ?? row?.clockOut ?? null),
-          valueFormatter: (value) =>
-            value ? formatClockOutOrDash(value) : "—",
-          valueSetter: (params) => {
-            if (!params?.row) return params?.row || {};
-            const next = { ...params.row };
-            next.endTime = toDateSafe(params.value) ?? null;
-            return next;
-          },
-          sortComparator: (v1, v2, cellParams1, cellParams2) =>
-            timestampSortComparator(
-              cellParams1?.row?.endTime,
-              cellParams2?.row?.endTime,
-            ),
-        };
-      }
-      return col;
-    });
-  }, [sharedColumns, toDateSafe]);
+  const isActive = useCallback(
+    (row) => {
+      const r = row || {};
+      const start = val(r, ["startTime", "clockIn", "loggedAt"]);
+      const end = val(r, ["endTime", "clockOut"]);
+      return !!start && !end;
+    },
+    [val],
+  );
 
-  const columns = useMemo(() => {
-    return sharedAdminColumns;
-  }, [sharedAdminColumns]);
+  const duration = useCallback(
+    (startTs, endTs) => {
+      const start = toDayjs(startTs);
+      const end = endTs ? toDayjs(endTs) : dayjs();
+      if (!start || !end || end.isBefore(start)) return "N/A";
+      const mins = end.diff(start, "minute");
+      if (mins < 1) return "<1 min";
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return h ? `${h}h ${m}m` : `${m}m`;
+    },
+    [],
+  );
+
+  // Inline column definitions - explicit for timeLogs collection
+  const baseColumns = useMemo(() => {
+    return [
+      {
+        field: "driverName",
+        headerName: "Driver",
+        minWidth: 140,
+        flex: 0.8,
+        editable: true,
+        renderCell: (params) =>
+          val(params?.row, ["driverName", "driverId", "driver"]) ?? "N/A",
+        valueGetter: (value, row) =>
+          val(row, ["driverName", "driverId", "driver"]) ?? "N/A",
+        valueSetter: (params) => {
+          if (!params?.row) return params?.row || {};
+          const next = { ...params.row };
+          next.driverName = params.value ?? "";
+          next.driver = params.value ?? null;
+          return next;
+        },
+      },
+      {
+        field: "driverEmail",
+        headerName: "Driver Email",
+        minWidth: 200,
+        flex: 1,
+        renderCell: (params) =>
+          val(params?.row, ["driverEmail", "userEmail", "email"]) ?? "N/A",
+        valueGetter: (value, row) =>
+          val(row, ["driverEmail", "userEmail", "email"]) ?? "N/A",
+      },
+      {
+        field: "rideId",
+        headerName: "Ride ID",
+        minWidth: 120,
+        editable: true,
+        renderCell: (params) =>
+          val(params?.row, ["rideId", "rideID", "ride"]) ?? "N/A",
+        valueGetter: (value, row) =>
+          val(row, ["rideId", "rideID", "ride"]) ?? "N/A",
+        valueSetter: (params) => {
+          if (!params?.row) return params?.row || {};
+          const next = { ...params.row };
+          next.rideId = params.value ?? null;
+          return next;
+        },
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        minWidth: 110,
+        sortable: false,
+        renderCell: (params) =>
+          isActive(params?.row) ? (
+            <Chip
+              size="small"
+              label="Active"
+              sx={{
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.18),
+                color: (t) => t.palette.primary.main,
+                border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.35)}`,
+              }}
+            />
+          ) : (
+            <Chip
+              size="small"
+              label="Completed"
+              sx={{ bgcolor: "action.selected", color: "text.primary" }}
+            />
+          ),
+        valueGetter: (value, row) => (isActive(row) ? "Active" : "Completed"),
+      },
+      {
+        field: "clockIn",
+        headerName: "Clock In",
+        minWidth: 180,
+        type: "dateTime",
+        editable: true,
+        renderCell: (params) => {
+          const source = val(params?.row, ["startTime", "clockIn", "loggedAt"]);
+          return source ? formatDateTime(source) : "N/A";
+        },
+        valueGetter: (value, row) =>
+          toDateSafe(val(row, ["startTime", "clockIn", "loggedAt"])),
+        valueFormatter: (value) => (value ? formatDateTime(value) : "N/A"),
+        valueSetter: (params) => {
+          if (!params?.row) return params?.row || {};
+          const next = { ...params.row };
+          next.startTime = toDateSafe(params.value) ?? null;
+          return next;
+        },
+        sortComparator: (v1, v2, cellParams1, cellParams2) =>
+          timestampSortComparator(
+            cellParams1?.row?.startTime,
+            cellParams2?.row?.startTime,
+          ),
+      },
+      {
+        field: "clockOut",
+        headerName: "Clock Out",
+        minWidth: 180,
+        type: "dateTime",
+        editable: true,
+        renderCell: (params) => {
+          const source = val(params?.row, ["endTime", "clockOut"]);
+          return source ? formatDateTime(source) : "—";
+        },
+        valueGetter: (value, row) =>
+          toDateSafe(val(row, ["endTime", "clockOut"])),
+        valueFormatter: (value) =>
+          value ? formatClockOutOrDash(value) : "—",
+        valueSetter: (params) => {
+          if (!params?.row) return params?.row || {};
+          const next = { ...params.row };
+          next.endTime = toDateSafe(params.value) ?? null;
+          return next;
+        },
+        sortComparator: (v1, v2, cellParams1, cellParams2) =>
+          timestampSortComparator(
+            cellParams1?.row?.endTime,
+            cellParams2?.row?.endTime,
+          ),
+      },
+      {
+        field: "duration",
+        headerName: "Duration",
+        minWidth: 120,
+        renderCell: (params) => {
+          const r = params?.row;
+          return duration(
+            val(r, ["startTime", "clockIn", "loggedAt"]),
+            val(r, ["endTime", "clockOut"]),
+          );
+        },
+        valueGetter: (value, row) => {
+          // Calculate raw duration in minutes for sorting
+          const start = toDayjs(val(row, ["startTime", "clockIn", "loggedAt"]));
+          const end = val(row, ["endTime", "clockOut"])
+            ? toDayjs(val(row, ["endTime", "clockOut"]))
+            : dayjs();
+          if (!start || !end || end.isBefore(start)) return null;
+          return end.diff(start, "minute"); // Return raw minutes for sorting
+        },
+      },
+    ];
+  }, [val, isActive, duration, toDateSafe]);
+
+  // All column logic is inline above - use baseColumns directly
+  const columns = baseColumns;
 
   const gridColumns = useMemo(
     () => [...columns, actionsColumn],
