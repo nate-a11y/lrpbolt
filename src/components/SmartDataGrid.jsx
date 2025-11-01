@@ -3,6 +3,7 @@ import { memo, useMemo } from "react";
 import { GridToolbar } from "@mui/x-data-grid-pro";
 
 import UniversalDataGrid from "@/components/datagrid/UniversalDataGrid";
+import { generateDeterministicId } from "@/utils/gridIdUtils.js";
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -26,6 +27,7 @@ function SmartDataGridBase({
   sx: sxProp,
   ...rest
 }) {
+  // CRITICAL: Use deterministic IDs for stable row identity across renders
   const stableGetRowId = useMemo(
     () =>
       getRowId ||
@@ -33,7 +35,7 @@ function SmartDataGridBase({
         row?.id ||
         row?.rideId ||
         row?.ticketId ||
-        `temp-${Date.now()}-${Math.random()}`),
+        generateDeterministicId(row)),
     [getRowId],
   );
 

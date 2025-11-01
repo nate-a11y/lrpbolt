@@ -18,6 +18,7 @@ import {
 } from "@/services/notificationsService.js";
 import useStableCallback from "@/hooks/useStableCallback.js";
 import useOptimisticOverlay from "@/hooks/useOptimisticOverlay.js";
+import { generateDeterministicId } from "@/utils/gridIdUtils.js";
 
 import { deleteRide } from "../services/firestoreService";
 
@@ -39,8 +40,9 @@ export default function LiveRidesGrid() {
   const [pendingClaims, setPendingClaims] = useState(() => new Set());
   const [undoPending, setUndoPending] = useState(false);
 
+  // CRITICAL: Use deterministic IDs for optimistic overlay to work correctly
   const getRowId = useStableCallback(
-    (row) => row?.id || row?.rideId || `temp-${Date.now()}-${Math.random()}`,
+    (row) => row?.id || row?.rideId || generateDeterministicId(row),
   );
   const {
     rows: rowsWithOverlay,
