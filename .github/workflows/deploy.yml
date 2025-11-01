@@ -213,7 +213,7 @@ jobs:
           if npm ls vitest --depth=0 >/dev/null 2>&1; then npm test; else echo "Skipping tests"; fi
 
       - name: Clean dist before build (force fresh build)
-        run: rm -rf dist
+        run: rm -rf dist .vite node_modules/.vite
 
       - name: Build (Vite)
         env:
