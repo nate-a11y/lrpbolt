@@ -71,6 +71,18 @@ function useGridStatePersistence(id, defaults = {}) {
         return fallback;
       }
 
+      // CRITICAL: Clean up any persisted rowSelection from old versions
+      // This prevents "R.ids is not iterable" errors from malformed state
+      if ("rowSelection" in parsed) {
+        delete parsed.rowSelection;
+        // Re-save the cleaned state
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify(parsed));
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+
       return {
         density: savedDensity || fallback.density,
         columnVisibilityModel:
@@ -104,6 +116,8 @@ function useGridStatePersistence(id, defaults = {}) {
           density: densityValue || defaults?.density || "compact",
           columnVisibilityModel: state?.columns?.columnVisibilityModel || {},
           filterModel: state?.filter?.filterModel || null,
+          // CRITICAL: Never persist rowSelection - it can cause malformed state issues
+          // rowSelection: undefined
         };
         window.localStorage.setItem(storageKey, JSON.stringify(payload));
       } catch (error) {
@@ -218,6 +232,33 @@ export default function UniversalDataGrid({
     if (!Array.isArray(rows)) return [];
     return rows;
   }, [rows]);
+
+  // MUI v8 CRITICAL: Ensure rowSelectionModel is always a valid array
+  const safeRowSelectionModel = useMemo(() => {
+    if (rowSelectionModel == null) return [];
+    if (Array.isArray(rowSelectionModel)) return rowSelectionModel;
+    // Handle legacy Set-based selection models
+    if (rowSelectionModel instanceof Set) {
+      return Array.from(rowSelectionModel);
+    }
+    // Handle objects with ids property (malformed v7/v8 migration artifacts)
+    if (typeof rowSelectionModel === "object") {
+      if ("ids" in rowSelectionModel) {
+        const ids = rowSelectionModel.ids;
+        if (ids == null) return [];
+        if (Array.isArray(ids)) return ids;
+        if (ids instanceof Set) return Array.from(ids);
+        // ids exists but is not iterable - return empty array
+        return [];
+      }
+      // Object without ids property - try to extract values
+      if (typeof rowSelectionModel.size === "number") {
+        return Array.from(rowSelectionModel);
+      }
+    }
+    // Single value - wrap in array
+    return [rowSelectionModel];
+  }, [rowSelectionModel]);
 
   // MUI v8 slots API (no legacy components/componentsProps)
   const mergedSlots = useMemo(
@@ -350,7 +391,7 @@ export default function UniversalDataGrid({
       editMode={processRowUpdate ? "row" : undefined}
       // Selection (MUI v8 API)
       checkboxSelection={checkboxSelection}
-      rowSelectionModel={rowSelectionModel}
+      rowSelectionModel={safeRowSelectionModel}
       onRowSelectionModelChange={onRowSelectionModelChange}
       disableRowSelectionOnClick={disableRowSelectionOnClick}
       // Slots (MUI v8 API - NO legacy components/componentsProps)

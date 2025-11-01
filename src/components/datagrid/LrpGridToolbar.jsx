@@ -37,7 +37,18 @@ export default function LrpGridToolbar(props = {}) {
       if (sel instanceof Map) return Array.from(sel.keys());
       if (sel instanceof Set) return Array.from(sel.values());
       if (Array.isArray(sel)) return sel;
-      if (sel && typeof sel === "object") return Object.keys(sel);
+      if (sel && typeof sel === "object") {
+        // Handle MUI v8 selection objects with ids property
+        if ("ids" in sel) {
+          const ids = sel.ids;
+          if (ids == null) return [];
+          if (Array.isArray(ids)) return ids;
+          if (ids instanceof Set) return Array.from(ids);
+          // ids exists but is not iterable
+          return [];
+        }
+        return Object.keys(sel);
+      }
       return [];
     } catch {
       return [];
