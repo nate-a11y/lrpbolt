@@ -225,7 +225,6 @@ export default function ShootoutSummaryTab() {
     >
       {rows?.length ? (
         <UniversalDataGrid
-          id="admin-shootout-summary"
           id="admin-timelog-shootout-summary-grid"
           rows={rows}
           columns={columns}

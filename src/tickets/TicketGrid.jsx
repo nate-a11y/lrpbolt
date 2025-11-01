@@ -557,7 +557,6 @@ function TicketGrid({
         </Select>
       </Stack>
       <UniversalDataGrid
-        id="shuttle-tickets-grid"
         id="support-tickets-grid"
         rows={filteredRows}
         columns={columns}
