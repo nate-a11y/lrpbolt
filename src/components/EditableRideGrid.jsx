@@ -54,7 +54,8 @@ export default function EditableRideGrid({
         headerName: "Ride ID",
         width: 110,
         minWidth: 120,
-        valueGetter: (value, row) => row?.tripId ?? row?.rideId ?? row?.id ?? "N/A",
+        valueGetter: (value, row) =>
+          row?.tripId ?? row?.rideId ?? row?.id ?? "N/A",
       },
       {
         field: "pickupTime",

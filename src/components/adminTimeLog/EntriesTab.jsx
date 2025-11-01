@@ -40,17 +40,14 @@ export default function EntriesTab() {
   const [refreshKey, setRefreshKey] = useState(0);
   const { show: showSnack } = useSnack();
 
-  const getRowId = useCallback(
-    (row) => {
-      const id = row?.id || row?.docId || row?._id;
-      if (id) return id;
-      // Fallback: create unique ID from row data to prevent null
-      const email = row?.driverEmail || row?.userEmail || "unknown";
-      const startKey = row?.startTime?.seconds ?? row?.startTime ?? Date.now();
-      return `${email}-${startKey}`;
-    },
-    [],
-  );
+  const getRowId = useCallback((row) => {
+    const id = row?.id || row?.docId || row?._id;
+    if (id) return id;
+    // Fallback: create unique ID from row data to prevent null
+    const email = row?.driverEmail || row?.userEmail || "unknown";
+    const startKey = row?.startTime?.seconds ?? row?.startTime ?? Date.now();
+    return `${email}-${startKey}`;
+  }, []);
 
   const toDateSafe = useCallback((value) => {
     if (value == null) return null;
