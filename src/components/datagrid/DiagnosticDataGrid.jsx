@@ -1,15 +1,18 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
+
 import { Alert, Box } from "@mui/material";
-import UniversalDataGrid from "./UniversalDataGrid.jsx";
-import DataGridErrorBoundary from "./DataGridErrorBoundary.jsx";
+
 import logError from "@/utils/logError.js";
+
+import DataGridErrorBoundary from "./DataGridErrorBoundary.jsx";
+import UniversalDataGrid from "./UniversalDataGrid.jsx";
 
 /**
  * Validates DataGrid row data structure
  */
-function validateRows(rows, gridId) {
+function validateRows(rows) {
   const issues = [];
 
   if (!Array.isArray(rows)) {
@@ -49,7 +52,7 @@ function validateRows(rows, gridId) {
     // Check for circular references (will cause JSON.stringify to fail)
     try {
       JSON.stringify(row);
-    } catch (e) {
+    } catch {
       issues.push(`Row ${i} has circular references or non-serializable data`);
     }
   }
@@ -60,7 +63,7 @@ function validateRows(rows, gridId) {
 /**
  * Validates DataGrid column definitions
  */
-function validateColumns(columns, gridId) {
+function validateColumns(columns) {
   const issues = [];
 
   if (!Array.isArray(columns)) {
@@ -114,14 +117,14 @@ export default function DiagnosticDataGrid({
   // Validate rows
   const rowValidation = useMemo(() => {
     if (!enableValidation) return { valid: true, issues: [], rows };
-    return validateRows(rows, id);
-  }, [rows, id, enableValidation]);
+    return validateRows(rows);
+  }, [rows, enableValidation]);
 
   // Validate columns
   const columnValidation = useMemo(() => {
     if (!enableValidation) return { valid: true, issues: [], columns };
-    return validateColumns(columns, id);
-  }, [columns, id, enableValidation]);
+    return validateColumns(columns);
+  }, [columns, enableValidation]);
 
   // Log validation errors
   useEffect(() => {
@@ -172,11 +175,11 @@ export default function DiagnosticDataGrid({
         <Alert severity="error" sx={{ mb: 2 }}>
           <strong>DataGrid Validation Failed {id ? `(${id})` : ""}</strong>
           <ul style={{ margin: "8px 0 0 0", paddingLeft: 20 }}>
-            {rowValidation.issues.map((issue, i) => (
-              <li key={`row-${i}`}>{issue}</li>
+            {rowValidation.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
             ))}
-            {columnValidation.issues.map((issue, i) => (
-              <li key={`col-${i}`}>{issue}</li>
+            {columnValidation.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
             ))}
           </ul>
         </Alert>
