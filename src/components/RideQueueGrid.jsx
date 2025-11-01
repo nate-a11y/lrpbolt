@@ -36,7 +36,9 @@ export default function RideQueueGrid() {
     error,
   } = useTripsByState(TRIP_STATES.QUEUED);
 
-  const getRowId = useStableCallback((row) => row?.id ?? null);
+  const getRowId = useStableCallback(
+    (row) => row?.id ?? `temp-${Date.now()}-${Math.random()}`,
+  );
 
   const resolveRideDocumentId = useStableCallback((row) => {
     if (!row || typeof row !== "object") return null;

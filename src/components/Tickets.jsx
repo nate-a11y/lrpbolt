@@ -829,7 +829,8 @@ function Tickets() {
   const getRowId = useCallback((r) => {
     if (r?.id != null) return String(r.id);
     if (r?.ticketId != null) return String(r.ticketId);
-    return null;
+    // Fallback: never return null
+    return `temp-ticket-${Date.now()}-${Math.random()}`;
   }, []);
 
   const selectedRows = useMemo(() => {
@@ -1502,9 +1503,7 @@ function Tickets() {
               id="tickets-grid"
               rows={safeRows}
               columns={columns}
-              getRowId={(row) =>
-                getRowId(row) || (row?.ticketId ? String(row.ticketId) : null)
-              }
+              getRowId={getRowId}
               checkboxSelection
               disableRowSelectionOnClick
               rowSelectionModel={rowSelectionModel}
