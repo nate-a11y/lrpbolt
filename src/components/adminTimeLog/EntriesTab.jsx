@@ -41,7 +41,14 @@ export default function EntriesTab() {
   const { show: showSnack } = useSnack();
 
   const getRowId = useCallback(
-    (row) => row?.id || row?.docId || row?._id || null,
+    (row) => {
+      const id = row?.id || row?.docId || row?._id;
+      if (id) return id;
+      // Fallback: create unique ID from row data to prevent null
+      const email = row?.driverEmail || row?.userEmail || "unknown";
+      const startKey = row?.startTime?.seconds ?? row?.startTime ?? Date.now();
+      return `${email}-${startKey}`;
+    },
     [],
   );
 

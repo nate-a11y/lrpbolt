@@ -39,7 +39,9 @@ export default function LiveRidesGrid() {
   const [pendingClaims, setPendingClaims] = useState(() => new Set());
   const [undoPending, setUndoPending] = useState(false);
 
-  const getRowId = useStableCallback((row) => row?.id || row?.rideId || null);
+  const getRowId = useStableCallback(
+    (row) => row?.id || row?.rideId || `temp-${Date.now()}-${Math.random()}`,
+  );
   const {
     rows: rowsWithOverlay,
     applyPatch,

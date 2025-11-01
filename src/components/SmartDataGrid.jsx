@@ -28,7 +28,12 @@ function SmartDataGridBase({
 }) {
   const stableGetRowId = useMemo(
     () =>
-      getRowId || ((row) => row?.id || row?.rideId || row?.ticketId || null),
+      getRowId ||
+      ((row) =>
+        row?.id ||
+        row?.rideId ||
+        row?.ticketId ||
+        `temp-${Date.now()}-${Math.random()}`),
     [getRowId],
   );
 
