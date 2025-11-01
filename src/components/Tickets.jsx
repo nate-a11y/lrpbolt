@@ -1047,7 +1047,7 @@ function Tickets() {
           field: "pickupTime",
           headerName: "Pickup Time",
           minWidth: 200,
-          valueGetter: (value, row) => fmtPickup(row || {}),
+          valueGetter: (value, row) => row?.pickupTime ?? null,
           renderCell: (p) => fmtPickup(p?.row || {}),
         },
         {
