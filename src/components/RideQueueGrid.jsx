@@ -16,6 +16,7 @@ import {
 import { useTripsByState } from "@/hooks/useTripsByState.js";
 import useStableCallback from "@/hooks/useStableCallback.js";
 import useOptimisticOverlay from "@/hooks/useOptimisticOverlay.js";
+import { generateDeterministicId } from "@/utils/gridIdUtils.js";
 import { db } from "@/services/firebase.js";
 
 import { resolveTripId } from "../columns/rideColumns.jsx";
@@ -36,8 +37,9 @@ export default function RideQueueGrid() {
     error,
   } = useTripsByState(TRIP_STATES.QUEUED);
 
+  // CRITICAL: Use deterministic IDs for optimistic overlay to work correctly
   const getRowId = useStableCallback(
-    (row) => row?.id ?? `temp-${Date.now()}-${Math.random()}`,
+    (row) => row?.id ?? generateDeterministicId(row),
   );
 
   const resolveRideDocumentId = useStableCallback((row) => {

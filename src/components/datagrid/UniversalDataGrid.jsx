@@ -5,6 +5,7 @@ import { DataGridPro } from "@mui/x-data-grid-pro";
 import { alpha } from "@mui/material/styles";
 
 import logError from "@/utils/logError.js";
+import { generateDeterministicId } from "@/utils/gridIdUtils.js";
 
 import LrpGridToolbar from "./LrpGridToolbar.jsx";
 import SafeGridFooter from "./SafeGridFooter.jsx";
@@ -186,6 +187,7 @@ export default function UniversalDataGrid({
     filterModel: initialState?.filter?.filterModel,
   });
   // Default row ID getter (works with Firebase docs)
+  // CRITICAL: Use deterministic IDs to maintain stable row identity
   const defaultGetRowId = useCallback((row) => {
     return (
       row?.id ??
@@ -194,7 +196,7 @@ export default function UniversalDataGrid({
       row?.ticketId ??
       row?.rideId ??
       row?.uid ??
-      Math.random().toString(36).slice(2)
+      generateDeterministicId(row)
     );
   }, []);
 

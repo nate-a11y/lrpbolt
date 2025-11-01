@@ -26,6 +26,7 @@ import {
 import logError from "@/utils/logError.js";
 import { getFlag } from "@/services/observability";
 import { tsToDayjs } from "@/utils/timeUtils.js";
+import { generateDeterministicId } from "@/utils/gridIdUtils.js";
 
 // ---------- Ride cell rescue helpers (for queue/live/claimed) ----------
 const RIDE_GRID_IDS = ["queue-grid", "live-grid", "claimed-grid"];
@@ -457,6 +458,7 @@ function LrpDataGridPro({
       if (fallbackId != null) return fallbackId;
 
       // Final fallback: never return null/undefined in v8
+      // CRITICAL: Use deterministic IDs to maintain stable row identity
       if (
         typeof import.meta !== "undefined" &&
         import.meta.env?.DEV &&
@@ -465,7 +467,7 @@ function LrpDataGridPro({
         missingIdWarnedRef.current = true;
         console.warn("[LrpDataGridPro] Missing row id, using fallback", { gridId: id });
       }
-      return `fallback-${Date.now()}-${Math.random()}`;
+      return generateDeterministicId(row);
     },
     [getRowId, id],
   );
