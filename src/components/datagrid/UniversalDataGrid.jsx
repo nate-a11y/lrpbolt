@@ -41,6 +41,13 @@ function useGridStatePersistence(id, defaults = {}) {
         return fallback;
       }
       const parsed = JSON.parse(raw);
+
+      // Validate parsed data - if it has unexpected structure, clear it
+      if (typeof parsed !== "object" || parsed === null) {
+        window.localStorage.removeItem(storageKey);
+        return fallback;
+      }
+
       let savedDensity = parsed?.density;
       if (typeof savedDensity === "object" && savedDensity?.value) {
         savedDensity = savedDensity.value;
@@ -48,16 +55,33 @@ function useGridStatePersistence(id, defaults = {}) {
       if (typeof savedDensity !== "string") {
         savedDensity = undefined;
       }
+
+      // Validate columnVisibilityModel is a plain object
+      const columnVisibilityModel = parsed?.columnVisibilityModel;
+      if (columnVisibilityModel !== null &&
+          columnVisibilityModel !== undefined &&
+          (typeof columnVisibilityModel !== "object" || Array.isArray(columnVisibilityModel))) {
+        // Invalid structure, clear storage and use fallback
+        window.localStorage.removeItem(storageKey);
+        return fallback;
+      }
+
       return {
         density: savedDensity || fallback.density,
         columnVisibilityModel:
-          parsed?.columnVisibilityModel ||
+          columnVisibilityModel ||
           defaults?.columnVisibilityModel ||
           {},
         filterModel: parsed?.filterModel || defaults?.filterModel || null,
       };
     } catch (error) {
       logError(error, { where: "UniversalDataGrid.loadPersistedState" });
+      // Clear corrupted localStorage
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
       return fallback;
     }
   }, [defaults, storageKey]);
@@ -206,19 +230,42 @@ export default function UniversalDataGrid({
 
   // Merge persisted state with initial state
   const finalInitialState = useMemo(
-    () => ({
-      density: { value: persistedState.density },
-      pagination: {
-        paginationModel: { pageSize: pageSizeOptions[0] || 25, page: 0 },
-      },
-      columns: {
-        columnVisibilityModel: persistedState.columnVisibilityModel,
-      },
-      filter: {
-        filterModel: persistedState.filterModel,
-      },
-      ...initialState, // Allow consumer to override
-    }),
+    () => {
+      // Build base state with safe defaults
+      const baseState = {
+        density: { value: persistedState.density },
+        pagination: {
+          paginationModel: { pageSize: pageSizeOptions[0] || 25, page: 0 },
+        },
+        columns: {
+          columnVisibilityModel: persistedState.columnVisibilityModel || {},
+        },
+        filter: {
+          filterModel: persistedState.filterModel || { items: [] },
+        },
+      };
+
+      // Safely merge with initialState if provided
+      if (!initialState) return baseState;
+
+      return {
+        ...baseState,
+        ...initialState,
+        // Ensure nested objects are properly merged, not replaced
+        pagination: {
+          ...baseState.pagination,
+          ...initialState.pagination,
+        },
+        columns: {
+          ...baseState.columns,
+          ...initialState.columns,
+        },
+        filter: {
+          ...baseState.filter,
+          ...initialState.filter,
+        },
+      };
+    },
     [persistedState, initialState, pageSizeOptions],
   );
 
