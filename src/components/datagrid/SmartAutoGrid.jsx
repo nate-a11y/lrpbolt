@@ -274,7 +274,6 @@ export default function SmartAutoGrid(props) {
 
   const safeInitialState = useMemo(() => {
     const base = {
-      density: "compact",
       pagination: { paginationModel: { pageSize: MAX_VISIBLE_ROWS, page: 0 } },
       filter: { filterModel: { quickFilterValues: [], items: [] } },
     };
