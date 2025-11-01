@@ -12,14 +12,6 @@ import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 import ResponsiveScrollBox from "./ResponsiveScrollBox.jsx";
 import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
-import {
-  stringifyCell,
-  isFsTimestamp,
-  formatTs,
-  minutesToHuman,
-  diffMinutes,
-  DEFAULT_TZ,
-} from "./selectionV8";
 
 const MAX_VISIBLE_ROWS = 15;
 const DEFAULT_MIN_HEIGHT = { xs: 320, sm: 360, md: 420 };
@@ -52,90 +44,8 @@ function mergeSx(base, override) {
   return { ...base, ...override };
 }
 
-function headerFromKey(k) {
-  if (!k) return "";
-  return String(k)
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^./, (s) => s.toUpperCase());
-}
-
-// Heuristic predicates
-const TIME_KEY_RE =
-  /(start.?time|end.?time|created.?at|updated.?at|timestamp|time)$/i;
-const DURATION_KEY_RE = /(duration|mins?|minutes)$/i;
-
-// Auto-column builder with Central time + human duration
-function buildAutoColumns(sampleRow, opts = {}) {
-  const { hideKeys = [], preferredOrder = [] } = opts;
-  const keys = Object.keys(sampleRow || {}).filter(
-    (k) => !hideKeys.includes(k),
-  );
-
-  const ordered = [
-    ...preferredOrder.filter((k) => keys.includes(k)),
-    ...keys.filter((k) => !preferredOrder.includes(k)),
-  ];
-
-  return ordered.map((field) => {
-    // Timestamp-like
-    if (TIME_KEY_RE.test(field)) {
-      return {
-        field,
-        headerName: headerFromKey(field),
-        minWidth: 170,
-        flex: 1,
-        valueGetter: (value, row) => {
-          const raw = value ?? row?.[field];
-          if (!raw) return "N/A";
-          // Handle FS Timestamp or ISOish strings
-          return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ); // e.g., Aug 24, 12:30 pm
-        },
-        sortComparator: (v1, v2, p1, p2) =>
-          timestampSortComparator(p1?.row?.[field], p2?.row?.[field]),
-      };
-    }
-
-    // Duration-like (assume minutes; compute from start/end if missing)
-    if (DURATION_KEY_RE.test(field)) {
-      return {
-        field,
-        headerName: headerFromKey(field),
-        minWidth: 130,
-        flex: 0.7,
-        valueGetter: (value, row) => {
-          const raw = value ?? row?.[field];
-          const asNum = Number(raw);
-          if (Number.isFinite(asNum) && asNum > 0) return minutesToHuman(asNum);
-          const dm = diffMinutes(
-            row?.startTime ?? row?.start_time,
-            row?.endTime ?? row?.end_time,
-            DEFAULT_TZ,
-          );
-          return dm == null ? "N/A" : minutesToHuman(dm);
-        },
-      };
-    }
-
-    // Generic column
-    return {
-      field,
-      headerName: headerFromKey(field),
-      minWidth: 140,
-      flex: 1,
-      valueGetter: (value, row) => {
-        const raw = value ?? row?.[field];
-        if (raw == null) return "N/A";
-        if (isFsTimestamp(raw))
-          return formatTs(raw, "MMM D, h:mm a", DEFAULT_TZ);
-        if (typeof raw === "object") return stringifyCell(raw);
-        return raw;
-      },
-    };
-  });
-}
+// Auto-column generation removed - use explicit column definitions for each grid
+// This component now requires explicit columns to be passed via props
 
 export default function SmartAutoGrid(props) {
   const {
@@ -198,30 +108,8 @@ export default function SmartAutoGrid(props) {
     [autoHideKeys, hide, forceHide],
   );
 
-  const preferredOrder = useMemo(
-    () => order || autoPreferredOrder,
-    [order, autoPreferredOrder],
-  );
-
-  const autoCols = useMemo(() => {
-    if (!autoColumns || explicitCols.length > 0 || !dataHasRows) return [];
-    return buildAutoColumns(safeRows[0], {
-      hideKeys,
-      preferredOrder,
-    });
-  }, [
-    autoColumns,
-    explicitCols.length,
-    dataHasRows,
-    safeRows,
-    hideKeys,
-    preferredOrder,
-  ]);
-
-  const baseCols = useMemo(
-    () => (explicitCols.length > 0 ? explicitCols : autoCols),
-    [explicitCols, autoCols],
-  );
+  // Auto-column generation removed - explicit columns required
+  const baseCols = explicitCols;
 
   const mappedCols = useMemo(() => {
     if (!headerMap) return baseCols;
