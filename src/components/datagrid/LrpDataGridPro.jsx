@@ -465,7 +465,9 @@ function LrpDataGridPro({
         !missingIdWarnedRef.current
       ) {
         missingIdWarnedRef.current = true;
-        console.warn("[LrpDataGridPro] Missing row id, using fallback", { gridId: id });
+        console.warn("[LrpDataGridPro] Missing row id, using fallback", {
+          gridId: id,
+        });
       }
       return generateDeterministicId(row);
     },

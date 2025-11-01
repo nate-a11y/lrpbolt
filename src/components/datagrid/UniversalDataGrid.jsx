@@ -201,14 +201,17 @@ export default function UniversalDataGrid({
   }, []);
 
   // v8 CRITICAL: Wrap custom getRowId to ensure it never returns null/undefined
-  const finalGetRowId = useCallback((row) => {
-    if (typeof getRowId === "function") {
-      const customId = getRowId(row);
-      if (customId != null) return customId;
-    }
-    // Fall back to default if custom getRowId returns null/undefined
-    return defaultGetRowId(row);
-  }, [getRowId, defaultGetRowId]);
+  const finalGetRowId = useCallback(
+    (row) => {
+      if (typeof getRowId === "function") {
+        const customId = getRowId(row);
+        if (customId != null) return customId;
+      }
+      // Fall back to default if custom getRowId returns null/undefined
+      return defaultGetRowId(row);
+    },
+    [getRowId, defaultGetRowId],
+  );
 
   // Safe rows (always array)
   const safeRows = useMemo(() => {
