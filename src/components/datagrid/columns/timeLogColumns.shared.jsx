@@ -106,14 +106,14 @@ export function buildTimeLogColumns() {
       renderCell: (params) =>
         fmt(val(params?.row, ["startTime", "clockIn", "loggedAt"])),
       valueGetter: (value, row) =>
-        fmt(val(row, ["startTime", "clockIn", "loggedAt"])),
+        val(row, ["startTime", "clockIn", "loggedAt"]) ?? null,
     },
     {
       field: "clockOut",
       headerName: "Clock Out",
       minWidth: 180,
       renderCell: (params) => fmtOut(val(params?.row, ["endTime", "clockOut"])),
-      valueGetter: (value, row) => fmtOut(val(row, ["endTime", "clockOut"])),
+      valueGetter: (value, row) => val(row, ["endTime", "clockOut"]) ?? null,
     },
     {
       field: "duration",
@@ -127,10 +127,13 @@ export function buildTimeLogColumns() {
         );
       },
       valueGetter: (value, row) => {
-        return duration(
-          val(row, ["startTime", "clockIn", "loggedAt"]),
-          val(row, ["endTime", "clockOut"]),
-        );
+        // Calculate raw duration in minutes for sorting
+        const start = toDayjs(val(row, ["startTime", "clockIn", "loggedAt"]));
+        const end = val(row, ["endTime", "clockOut"])
+          ? toDayjs(val(row, ["endTime", "clockOut"]))
+          : dayjs();
+        if (!start || !end || end.isBefore(start)) return null;
+        return end.diff(start, "minute"); // Return raw minutes for sorting
       },
     },
   ];
