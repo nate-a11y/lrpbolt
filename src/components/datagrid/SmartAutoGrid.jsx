@@ -323,7 +323,8 @@ export default function SmartAutoGrid(props) {
     };
     const mapped = {};
     Object.keys(components).forEach((key) => {
-      const slotKey = mapping[key] || key.charAt(0).toLowerCase() + key.slice(1);
+      const slotKey =
+        mapping[key] || key.charAt(0).toLowerCase() + key.slice(1);
       mapped[slotKey] = components[key];
     });
     return mapped;
@@ -341,32 +342,30 @@ export default function SmartAutoGrid(props) {
     [slots, legacyComponentsToSlots],
   );
 
-  const mergedSlotProps = useMemo(
-    () => {
-      // Destructure to omit toolbar from parent spreads
-      const { toolbar: _legacyToolbar, ...restComponentsProps } = componentsProps || {};
-      const { toolbar: _v8Toolbar, ...restSlotProps } = slotProps || {};
+  const mergedSlotProps = useMemo(() => {
+    // Destructure to omit toolbar from parent spreads
+    const { toolbar: _legacyToolbar, ...restComponentsProps } =
+      componentsProps || {};
+    const { toolbar: _v8Toolbar, ...restSlotProps } = slotProps || {};
 
-      return {
-        // Spread parent props first (without toolbar to avoid overwriting)
-        ...restComponentsProps,
-        ...restSlotProps,
-        // Then apply merged toolbar config
-        toolbar: {
-          quickFilterPlaceholder: "Search",
-          ...componentsProps?.toolbar, // Legacy v5/v6 props
-          ...slotProps?.toolbar, // v7/v8 props take precedence
-          onDeleteSelected:
-            typeof slotProps?.toolbar?.onDeleteSelected === "function"
-              ? slotProps.toolbar.onDeleteSelected
-              : typeof componentsProps?.toolbar?.onDeleteSelected === "function"
-                ? componentsProps.toolbar.onDeleteSelected
-                : undefined,
-        },
-      };
-    },
-    [slotProps, componentsProps],
-  );
+    return {
+      // Spread parent props first (without toolbar to avoid overwriting)
+      ...restComponentsProps,
+      ...restSlotProps,
+      // Then apply merged toolbar config
+      toolbar: {
+        quickFilterPlaceholder: "Search",
+        ...componentsProps?.toolbar, // Legacy v5/v6 props
+        ...slotProps?.toolbar, // v7/v8 props take precedence
+        onDeleteSelected:
+          typeof slotProps?.toolbar?.onDeleteSelected === "function"
+            ? slotProps.toolbar.onDeleteSelected
+            : typeof componentsProps?.toolbar?.onDeleteSelected === "function"
+              ? componentsProps.toolbar.onDeleteSelected
+              : undefined,
+      },
+    };
+  }, [slotProps, componentsProps]);
 
   const computedAutoHeight = autoHeightProp ?? false;
   const resolvedMinHeight = useMemo(

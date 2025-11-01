@@ -5,6 +5,7 @@ import { DataGridPro } from "@mui/x-data-grid-pro";
 import { alpha } from "@mui/material/styles";
 
 import logError from "@/utils/logError.js";
+
 import LrpGridToolbar from "./LrpGridToolbar.jsx";
 import SafeGridFooter from "./SafeGridFooter.jsx";
 import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
@@ -58,9 +59,12 @@ function useGridStatePersistence(id, defaults = {}) {
 
       // Validate columnVisibilityModel is a plain object
       const columnVisibilityModel = parsed?.columnVisibilityModel;
-      if (columnVisibilityModel !== null &&
-          columnVisibilityModel !== undefined &&
-          (typeof columnVisibilityModel !== "object" || Array.isArray(columnVisibilityModel))) {
+      if (
+        columnVisibilityModel !== null &&
+        columnVisibilityModel !== undefined &&
+        (typeof columnVisibilityModel !== "object" ||
+          Array.isArray(columnVisibilityModel))
+      ) {
         // Invalid structure, clear storage and use fallback
         window.localStorage.removeItem(storageKey);
         return fallback;
@@ -69,9 +73,7 @@ function useGridStatePersistence(id, defaults = {}) {
       return {
         density: savedDensity || fallback.density,
         columnVisibilityModel:
-          columnVisibilityModel ||
-          defaults?.columnVisibilityModel ||
-          {},
+          columnVisibilityModel || defaults?.columnVisibilityModel || {},
         filterModel: parsed?.filterModel || defaults?.filterModel || null,
       };
     } catch (error) {
@@ -229,45 +231,41 @@ export default function UniversalDataGrid({
   );
 
   // Merge persisted state with initial state
-  const finalInitialState = useMemo(
-    () => {
-      // Build base state with safe defaults
-      const baseState = {
-        density: { value: persistedState.density },
-        pagination: {
-          paginationModel: { pageSize: pageSizeOptions[0] || 25, page: 0 },
-        },
-        columns: {
-          columnVisibilityModel: persistedState.columnVisibilityModel || {},
-        },
-        filter: {
-          filterModel: persistedState.filterModel || { items: [] },
-        },
-      };
+  const finalInitialState = useMemo(() => {
+    // Build base state with safe defaults
+    const baseState = {
+      pagination: {
+        paginationModel: { pageSize: pageSizeOptions[0] || 25, page: 0 },
+      },
+      columns: {
+        columnVisibilityModel: persistedState.columnVisibilityModel || {},
+      },
+      filter: {
+        filterModel: persistedState.filterModel || { items: [] },
+      },
+    };
 
-      // Safely merge with initialState if provided
-      if (!initialState) return baseState;
+    // Safely merge with initialState if provided
+    if (!initialState) return baseState;
 
-      return {
-        ...baseState,
-        ...initialState,
-        // Ensure nested objects are properly merged, not replaced
-        pagination: {
-          ...baseState.pagination,
-          ...initialState.pagination,
-        },
-        columns: {
-          ...baseState.columns,
-          ...initialState.columns,
-        },
-        filter: {
-          ...baseState.filter,
-          ...initialState.filter,
-        },
-      };
-    },
-    [persistedState, initialState, pageSizeOptions],
-  );
+    return {
+      ...baseState,
+      ...initialState,
+      // Ensure nested objects are properly merged, not replaced
+      pagination: {
+        ...baseState.pagination,
+        ...initialState.pagination,
+      },
+      columns: {
+        ...baseState.columns,
+        ...initialState.columns,
+      },
+      filter: {
+        ...baseState.filter,
+        ...initialState.filter,
+      },
+    };
+  }, [persistedState, initialState, pageSizeOptions]);
 
   // Theme-aware styling
   const mergedSx = useMemo(
@@ -291,8 +289,14 @@ export default function UniversalDataGrid({
 
         // Column headers
         [`& .MuiDataGrid-columnHeaders`]: {
-          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 1 : 0.12),
-          color: theme.palette.mode === "dark" ? theme.palette.common.white : theme.palette.text.primary,
+          backgroundColor: alpha(
+            theme.palette.primary.main,
+            theme.palette.mode === "dark" ? 1 : 0.12,
+          ),
+          color:
+            theme.palette.mode === "dark"
+              ? theme.palette.common.white
+              : theme.palette.text.primary,
           borderBottom: `1px solid ${theme.palette.divider}`,
         },
 
@@ -316,12 +320,10 @@ export default function UniversalDataGrid({
       rows={safeRows}
       columns={columns}
       getRowId={finalGetRowId}
-
       // State
       apiRef={apiRef}
       loading={loading}
       error={error}
-
       // Editing (MUI v8 API)
       processRowUpdate={processRowUpdate}
       onProcessRowUpdateError={onProcessRowUpdateError}
@@ -330,17 +332,14 @@ export default function UniversalDataGrid({
       onRowEditStart={onRowEditStart}
       onRowEditStop={onRowEditStop}
       editMode={processRowUpdate ? "row" : undefined}
-
       // Selection (MUI v8 API)
       checkboxSelection={checkboxSelection}
       rowSelectionModel={rowSelectionModel}
       onRowSelectionModelChange={onRowSelectionModelChange}
       disableRowSelectionOnClick={disableRowSelectionOnClick}
-
       // Slots (MUI v8 API - NO legacy components/componentsProps)
       slots={mergedSlots}
       slotProps={mergedSlotProps}
-
       // Layout
       density={density}
       autoHeight={autoHeight}
@@ -349,13 +348,10 @@ export default function UniversalDataGrid({
       initialState={finalInitialState}
       columnVisibilityModel={columnVisibilityModel}
       onColumnVisibilityModelChange={onColumnVisibilityModelChange}
-
       // Persistence: Save state changes to localStorage
       onStateChange={onStateChange}
-
       // Styling
       sx={mergedSx}
-
       // Pass through everything else
       {...rest}
     />
