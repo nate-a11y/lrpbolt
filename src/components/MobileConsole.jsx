@@ -35,7 +35,7 @@ const successStatuses = new Set(["ok", "granted"]);
 function isMobileDevice() {
   if (typeof window === "undefined") return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
+    navigator.userAgent,
   );
 }
 
@@ -85,7 +85,8 @@ function LogEntry({ entry }) {
       sx={{
         mb: 0.5,
         p: 0.75,
-        borderLeft: (theme) => `3px solid ${theme.palette[entry.type === "error" ? "error" : entry.type === "warn" ? "warning" : "success"].main}`,
+        borderLeft: (theme) =>
+          `3px solid ${theme.palette[entry.type === "error" ? "error" : entry.type === "warn" ? "warning" : "success"].main}`,
         bgcolor: (theme) => alpha(theme.palette.common.white, 0.05),
         fontSize: 10,
         fontFamily: "monospace",
@@ -208,7 +209,9 @@ export default function MobileConsole() {
     if (typeof Notification === "undefined") return;
     if (Notification.permission !== "granted") return;
     try {
-      new Notification("Mobile Console Test", { body: "Test notification from mobile console" });
+      new Notification("Mobile Console Test", {
+        body: "Test notification from mobile console",
+      });
     } catch (error) {
       console.error("[MobileConsole] page notify failed", error);
     }
@@ -304,7 +307,7 @@ export default function MobileConsole() {
     navigator.serviceWorker?.addEventListener?.("message", onMessage);
     navigator.serviceWorker?.addEventListener?.(
       "controllerchange",
-      onControllerChange
+      onControllerChange,
     );
 
     // Initial check
@@ -322,7 +325,7 @@ export default function MobileConsole() {
               registration.waiting?.scriptURL ||
               registration.installing?.scriptURL ||
               "unknown",
-          }))
+          })),
         );
       } catch (error) {
         console.error("[MobileConsole] registrations failed", error);
@@ -333,7 +336,7 @@ export default function MobileConsole() {
       navigator.serviceWorker?.removeEventListener?.("message", onMessage);
       navigator.serviceWorker?.removeEventListener?.(
         "controllerchange",
-        onControllerChange
+        onControllerChange,
       );
     };
   }, []);
@@ -345,7 +348,7 @@ export default function MobileConsole() {
     const ping = async () => {
       try {
         const registration = await navigator.serviceWorker?.ready.catch(
-          () => null
+          () => null,
         );
         if (cancelled) return;
         const target =
@@ -366,20 +369,17 @@ export default function MobileConsole() {
 
   // Intercept console methods
   useEffect(() => {
-     
     const originalError = console.error;
-     
+
     const originalWarn = console.warn;
     // eslint-disable-next-line no-console -- Intentionally intercepting console methods
     const originalLog = console.log;
 
-     
     console.error = function (...args) {
       addLog("error", args);
       originalError.apply(console, args);
     };
 
-     
     console.warn = function (...args) {
       addLog("warn", args);
       originalWarn.apply(console, args);
@@ -411,9 +411,8 @@ export default function MobileConsole() {
     addLog("log", ["Mobile console initialized"]);
 
     return () => {
-       
       console.error = originalError;
-       
+
       console.warn = originalWarn;
       // eslint-disable-next-line no-console -- Restoring original console methods
       console.log = originalLog;
@@ -457,7 +456,10 @@ export default function MobileConsole() {
         onClick={handleExpandToggle}
       >
         <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 11 }}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: "bold", fontSize: 11 }}
+          >
             📱 MOBILE CONSOLE
           </Typography>
           {!expanded && unreadCount > 0 && (
@@ -527,7 +529,10 @@ export default function MobileConsole() {
               </Stack>
               <Box sx={{ maxHeight: "60vh", overflowY: "auto" }}>
                 {logs.length === 0 ? (
-                  <Typography variant="caption" sx={{ color: "text.secondary", fontSize: 10 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "text.secondary", fontSize: 10 }}
+                  >
                     No logs yet...
                   </Typography>
                 ) : (
@@ -539,8 +544,15 @@ export default function MobileConsole() {
             {/* Diagnostics Tab */}
             <TabPanel value={tabIndex} index={1}>
               <Stack spacing={1}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 11 }}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: "bold", fontSize: 11 }}
+                  >
                     System Status
                   </Typography>
                   <IconButton
@@ -554,17 +566,32 @@ export default function MobileConsole() {
                 <StatusItem label="Service Worker" value={diagState.sw} />
                 <StatusItem label="Notifications/FCM" value={diagState.fcm} />
                 <StatusItem label="Firestore" value={diagState.firestore} />
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ py: 0.5 }}>
-                  <Typography variant="caption" sx={{ minWidth: 100, fontSize: 11 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{ py: 0.5 }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ minWidth: 100, fontSize: 11 }}
+                  >
                     Version
                   </Typography>
                   <VersionBadge value={diagState.version} />
                 </Stack>
                 <Divider sx={{ my: 1, bgcolor: "divider" }} />
-                <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 11 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: "bold", fontSize: 11 }}
+                >
                   SW Details
                 </Typography>
-                <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{ flexWrap: "wrap", gap: 0.5 }}
+                >
                   <Chip
                     size="small"
                     label={`perm:${perm}`}
@@ -606,7 +633,10 @@ export default function MobileConsole() {
             {/* Actions Tab */}
             <TabPanel value={tabIndex} index={2}>
               <Stack spacing={1}>
-                <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 11, mb: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: "bold", fontSize: 11, mb: 1 }}
+                >
                   Notifications
                 </Typography>
                 <Button
@@ -637,7 +667,10 @@ export default function MobileConsole() {
                   Test Page Notification
                 </Button>
                 <Divider sx={{ my: 1, bgcolor: "divider" }} />
-                <Typography variant="caption" sx={{ fontWeight: "bold", fontSize: 11, mb: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: "bold", fontSize: 11, mb: 1 }}
+                >
                   Grid Debug
                 </Typography>
                 <Stack direction="row" spacing={1}>

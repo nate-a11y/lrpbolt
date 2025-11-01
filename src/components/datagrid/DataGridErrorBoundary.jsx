@@ -139,7 +139,11 @@ export default class DataGridErrorBoundary extends Component {
 
           {errorInfo?.componentStack && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Component Stack:
               </Typography>
               <Typography
@@ -163,7 +167,11 @@ export default class DataGridErrorBoundary extends Component {
           )}
 
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button variant="contained" color="primary" onClick={this.handleRetry}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={this.handleRetry}
+            >
               Retry
             </Button>
             <Button variant="outlined" onClick={this.handleReset}>
@@ -182,8 +190,8 @@ export default class DataGridErrorBoundary extends Component {
 
           {errorCount > 1 && (
             <Alert severity="warning" sx={{ mt: 2 }}>
-              This error has occurred {errorCount} times. Consider checking the browser
-              console for more details.
+              This error has occurred {errorCount} times. Consider checking the
+              browser console for more details.
             </Alert>
           )}
         </Paper>

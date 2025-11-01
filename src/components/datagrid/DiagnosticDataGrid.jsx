@@ -91,7 +91,9 @@ function validateColumns(columns) {
 
     // Check for renderCell issues
     if (col.renderCell && typeof col.renderCell !== "function") {
-      issues.push(`Column ${index} (${col.field}) renderCell is not a function`);
+      issues.push(
+        `Column ${index} (${col.field}) renderCell is not a function`,
+      );
     }
   });
 
@@ -165,8 +167,7 @@ export default function DiagnosticDataGrid({
   ]);
 
   // Show validation warnings if enabled
-  const hasValidationIssues =
-    !rowValidation.valid || !columnValidation.valid;
+  const hasValidationIssues = !rowValidation.valid || !columnValidation.valid;
 
   if (hasValidationIssues && showWarnings) {
     return (

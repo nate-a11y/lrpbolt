@@ -26,6 +26,11 @@ import NotificationsProvider from "./context/NotificationsProvider.jsx";
 import { initAnalyticsIfEnabled } from "./utils/firebaseInit.js";
 import "./muix-license.js";
 import initEruda from "./utils/initEruda.js";
+import { cleanupGridStorageWithLogging } from "./utils/cleanupGridStorage.js";
+
+// CRITICAL: Clean up corrupted grid localStorage from v5→v8 migration
+// Must run before any grids render to prevent "R.ids is not iterable" errors
+cleanupGridStorageWithLogging();
 
 // Initialize Sentry immediately for error tracking
 if (typeof window !== "undefined" && !window.__LRP_OBS__) {
