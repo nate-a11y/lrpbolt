@@ -449,19 +449,23 @@ function LrpDataGridPro({
   const mergedGetRowId = useCallback(
     (row) => {
       if (typeof getRowId === "function") {
-        return getRowId(row);
+        const customId = getRowId(row);
+        // v8 CRITICAL: getRowId must NEVER return null/undefined
+        if (customId != null) return customId;
       }
-      const fallbackId = row?.id ?? row?.docId ?? row?.uid ?? undefined;
+      const fallbackId = row?.id ?? row?.docId ?? row?.uid;
+      if (fallbackId != null) return fallbackId;
+
+      // Final fallback: never return null/undefined in v8
       if (
-        fallbackId == null &&
         typeof import.meta !== "undefined" &&
         import.meta.env?.DEV &&
         !missingIdWarnedRef.current
       ) {
         missingIdWarnedRef.current = true;
-        console.warn("[LrpDataGridPro] Missing row id", { gridId: id });
+        console.warn("[LrpDataGridPro] Missing row id, using fallback", { gridId: id });
       }
-      return fallbackId;
+      return `fallback-${Date.now()}-${Math.random()}`;
     },
     [getRowId, id],
   );
