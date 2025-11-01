@@ -146,7 +146,6 @@ export default function WeeklySummaryTab() {
       </Box>
       {weeklyRows?.length ? (
         <UniversalDataGrid
-          id="admin-timelog-weekly"
           id="admin-timelog-weekly-grid"
           rows={weeklyRows}
           columns={columns}
