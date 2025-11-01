@@ -23,6 +23,7 @@ import ErrorBoundary from "@/components/feedback/ErrorBoundary.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
 import ClockOutConfirm from "@/components/ClockOutConfirm.jsx";
 import NotifDiag from "@/components/NotifDiag.jsx";
+import MobileConsole from "@/components/MobileConsole.jsx";
 import GlobalChrome from "@/components/GlobalChrome.jsx";
 import PermissionGate from "@/components/PermissionGate.jsx";
 import useActiveClockSession from "@/hooks/useActiveClockSession";
@@ -458,6 +459,7 @@ function App() {
           performClockOut={performClockOut}
         />
         <NotifDiag />
+        <MobileConsole />
       </AppShell>
     </LocalizationProvider>
   );
