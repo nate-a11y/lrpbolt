@@ -8,7 +8,6 @@ import LrpGridToolbar from "src/components/datagrid/LrpGridToolbar.jsx";
 import useIsMobile from "@/hooks/useIsMobile.js";
 import SafeGridFooter from "@/components/datagrid/SafeGridFooter.jsx";
 import { toArraySelection, safeGetRowId } from "@/utils/gridSelection";
-import { timestampSortComparator } from "@/utils/timeUtils.js";
 
 import ResponsiveScrollBox from "./ResponsiveScrollBox.jsx";
 import { NoRowsOverlay, ErrorOverlay } from "./DefaultGridOverlays.jsx";
@@ -53,7 +52,7 @@ export default function SmartAutoGrid(props) {
     columns,
     columnsCompat,
     headerMap,
-    order,
+    order: _order,
     hide,
     getRowId,
     checkboxSelection = false,
@@ -67,10 +66,10 @@ export default function SmartAutoGrid(props) {
     slots,
     components,
     componentsProps,
-    autoColumns = true,
+    autoColumns: _autoColumns = true,
     autoHideKeys = [],
     forceHide = [],
-    autoPreferredOrder = [],
+    autoPreferredOrder: _autoPreferredOrder = [],
     actionsColumn,
     overrides,
     hideFooterSelectedRowCount = false,
@@ -90,7 +89,6 @@ export default function SmartAutoGrid(props) {
   const { isMdDown } = useIsMobile();
 
   const safeRows = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
-  const dataHasRows = safeRows.length > 0;
 
   const explicitCols = useMemo(() => {
     if (Array.isArray(columns) && columns.length > 0) return columns;
@@ -98,15 +96,6 @@ export default function SmartAutoGrid(props) {
       return columnsCompat;
     return [];
   }, [columns, columnsCompat]);
-
-  const hideKeys = useMemo(
-    () => [
-      ...(Array.isArray(autoHideKeys) ? autoHideKeys : []),
-      ...(Array.isArray(hide) ? hide : []),
-      ...(Array.isArray(forceHide) ? forceHide : []),
-    ],
-    [autoHideKeys, hide, forceHide],
-  );
 
   // Auto-column generation removed - explicit columns required
   const baseCols = explicitCols;

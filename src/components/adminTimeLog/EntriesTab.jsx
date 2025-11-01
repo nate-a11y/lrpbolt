@@ -1,6 +1,7 @@
 /* Proprietary and confidential. See LICENSE. */
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Box, Paper, CircularProgress, TextField } from "@mui/material";
+import { Box, Paper, CircularProgress, TextField, Chip } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { DatePicker } from "@mui/x-date-pickers-pro";
 import { useGridApiRef } from "@mui/x-data-grid-pro";
 import { writeBatch, doc } from "firebase/firestore";
@@ -11,8 +12,6 @@ import ConfirmBulkDeleteDialog from "@/components/datagrid/bulkDelete/ConfirmBul
 import useBulkDelete from "@/components/datagrid/bulkDelete/useBulkDelete.jsx";
 import { EmptyState, ErrorState } from "@/components/feedback/SectionState.jsx";
 import { useSnack } from "@/components/feedback/SnackbarProvider.jsx";
-import { Chip } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import {
   formatDateTime,
   formatClockOutOrDash,

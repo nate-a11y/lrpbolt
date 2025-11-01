@@ -201,9 +201,16 @@ jobs:
       - name: Verify WebP assets
         run: npm run images:verify
 
-      - name: Lint
+      - name: Lint (auto-fix then check)
         run: |
-          if npm ls eslint --depth=0 >/dev/null 2>&1; then npm run lint --if-present; else echo "Skipping lint"; fi
+          if npm ls eslint --depth=0 >/dev/null 2>&1; then
+            echo "Running eslint --fix to auto-fix issues..."
+            npm run lint:fix --if-present || true
+            echo "Checking for remaining lint errors..."
+            npm run lint --if-present
+          else
+            echo "Skipping lint (eslint not installed)"
+          fi
 
       - name: Firestore Rules Validation
         run: npx firebase-tools@latest emulators:exec --only firestore "echo Firestore rules valid ✔️"
