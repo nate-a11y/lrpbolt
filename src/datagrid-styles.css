@@ -1,14 +1,6 @@
 /* MUI X DataGrid v8 styles
- * This file ensures DataGrid styles load correctly.
- * MUI X v8 should auto-import CSS, but we explicitly import
- * to guarantee compatibility with Vite alias overrides.
- */
-
-/* DataGrid base styles are automatically imported by @mui/x-data-grid-pro
- * If grids still appear blank after importing this file, try:
- * 1. Clear Vite cache: rm -rf .vite node_modules/.vite
- * 2. Reinstall dependencies: npm install
- * 3. Hard refresh browser (Ctrl+Shift+R / Cmd+Shift+R)
+ * MUI v8 DataGrid Pro auto-imports styles via JS modules (no separate CSS file).
+ * This file contains additional custom styling for better grid UX.
  */
 
 /* Additional grid styling for better visibility */
