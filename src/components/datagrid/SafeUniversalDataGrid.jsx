@@ -1,7 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import PropTypes from "prop-types";
-import UniversalDataGrid from "./UniversalDataGrid.jsx";
+
 import DataGridErrorBoundary from "./DataGridErrorBoundary.jsx";
+import UniversalDataGrid from "./UniversalDataGrid.jsx";
 
 /**
  * UniversalDataGrid wrapped in error boundary for React 19 safety

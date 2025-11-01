@@ -1,7 +1,9 @@
 /* Proprietary and confidential. See LICENSE. */
 import { Component } from "react";
 import PropTypes from "prop-types";
+
 import { Box, Typography, Button, Alert, Paper } from "@mui/material";
+
 import logError from "@/utils/logError.js";
 
 /**
@@ -171,8 +173,8 @@ export default class DataGridErrorBoundary extends Component {
             <Button
               variant="text"
               onClick={() => {
-                console.log("Full error object:", error);
-                console.log("Full errorInfo object:", errorInfo);
+                console.error("Full error object:", error);
+                console.error("Full errorInfo object:", errorInfo);
               }}
             >
               Log to Console

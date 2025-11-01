@@ -1,7 +1,8 @@
 /* Proprietary and confidential. See LICENSE. */
 import PropTypes from "prop-types";
-import LrpDataGridPro from "./LrpDataGridPro.jsx";
+
 import DataGridErrorBoundary from "./DataGridErrorBoundary.jsx";
+import LrpDataGridPro from "./LrpDataGridPro.jsx";
 
 /**
  * LrpDataGridPro wrapped in error boundary for React 19 safety
