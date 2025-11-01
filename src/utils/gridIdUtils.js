@@ -46,7 +46,7 @@ export function generateDeterministicId(row) {
   try {
     const json = JSON.stringify(row);
     return `fallback-obj-${hashString(json)}`;
-  } catch (err) {
+  } catch {
     // If stringify fails, use object keys as fingerprint
     const keys = Object.keys(row).sort().join(',');
     return `fallback-keys-${hashString(keys)}`;
